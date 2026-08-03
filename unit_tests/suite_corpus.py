@@ -83,6 +83,19 @@ REGISTER_TAB = {
 }
 
 
+def _ignore_sigint():
+    """Pool worker initialiser: let the parent own Ctrl+C.
+
+    On Windows Ctrl+C is delivered to the whole console process group, so
+    without this every worker raises KeyboardInterrupt at the same moment the
+    parent does. The parent is then trying to join processes that are already
+    dying, and the run hangs instead of stopping -- with workers left orphaned
+    behind it.
+    """
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
 def check_frame(job):
     """Every assertion for one frame. Returns (ran, failures, label, truths).
 
@@ -359,11 +372,18 @@ def main():
     bad = []
     by_label = Counter()
 
+    pool = None
     if jobs == 1:
         results = map(check_frame, jobs_list)
     else:
         from multiprocessing import Pool
-        pool = Pool(processes=jobs)
+        # Workers ignore Ctrl+C so the PARENT is the only one that handles it.
+        # On Windows Ctrl+C is delivered to the whole console process group, so
+        # without this all 16 workers raise KeyboardInterrupt at once while the
+        # parent is blocked iterating results -- it then tries to join
+        # processes that are already dying and the run hangs. Observed: a
+        # 16-worker run that would not die, leaving orphaned workers behind.
+        pool = Pool(processes=jobs, initializer=_ignore_sigint)
         results = pool.imap_unordered(check_frame, jobs_list, chunksize=4)
 
     total = len(jobs_list)
@@ -373,35 +393,52 @@ def main():
     print(f"{'done':>12}  {'running':>7}  {'queued':>7}  {'cases':>9}  "
           f"{'passed':>9}  {'failed':>6}  {'rate':>9}  {'eta':>7}", flush=True)
 
-    for r_ran, r_bad, r_label, r_truth in results:
-        ran += r_ran
-        bad.extend(r_bad)
-        by_label[r_label] += 1
-        truths += r_truth
-        done += 1
-        if r_bad:
-            frames_failed += 1
-            # Surface failures the moment they happen. Holding them to the end
-            # means a run that takes ten minutes tells you nothing for ten
-            # minutes, and the first failure is usually the informative one.
-            for why in r_bad:
-                print(f"  FAIL {why}", flush=True)
+    def consume():
+        nonlocal ran, truths, done, frames_failed, last_print
+        for r_ran, r_bad, r_label, r_truth in results:
+            ran += r_ran
+            bad.extend(r_bad)
+            by_label[r_label] += 1
+            truths += r_truth
+            done += 1
+            if r_bad:
+                frames_failed += 1
+                # Surface failures the moment they happen. Holding them to the
+                # end means a ten-minute run tells you nothing for ten minutes,
+                # and the first failure is usually the informative one.
+                for why in r_bad:
+                    print(f"  FAIL {why}", flush=True)
 
-        now = time.monotonic()
-        # Print on a frame interval OR a time interval, so a slow patch still
-        # reports rather than looking hung.
-        if done % PROGRESS_EVERY == 0 or now - last_print >= 15 or done == total:
-            last_print = now
-            rate = done / max(now - started, 1e-9)
-            eta = (total - done) / max(rate, 1e-9)
-            running = min(jobs, total - done)
-            print(f"  {done:>5}/{total:<5} {running:>7}  {total-done:>7}  "
-                  f"{ran:>9,}  {ran - len(bad):>9,}  {len(bad):>6,}  "
-                  f"{rate:>6.1f}/s  {eta/60:>5.1f}m", flush=True)
+            now = time.monotonic()
+            # Print on a frame interval OR a time interval, so a slow patch
+            # still reports rather than looking hung.
+            if done % PROGRESS_EVERY == 0 or now - last_print >= 15 or done == total:
+                last_print = now
+                rate = done / max(now - started, 1e-9)
+                eta = (total - done) / max(rate, 1e-9)
+                running = min(jobs, total - done)
+                print(f"  {done:>5}/{total:<5} {running:>7}  {total-done:>7}  "
+                      f"{ran:>9,}  {ran - len(bad):>9,}  {len(bad):>6,}  "
+                      f"{rate:>6.1f}/s  {eta/60:>5.1f}m", flush=True)
 
-    if jobs != 1:
-        pool.close()
-        pool.join()
+    interrupted = False
+    try:
+        consume()
+    except KeyboardInterrupt:
+        interrupted = True
+        print(f"\ninterrupted after {done}/{total} frames "
+              f"({ran:,} cases, {len(bad)} failures so far)", flush=True)
+    finally:
+        # terminate(), not close(): close() waits for every queued job to
+        # finish, which on an interrupt is the rest of the corpus. This is also
+        # why it lives in a finally -- it used to sit after the loop, so an
+        # exception left the workers orphaned. Measured: four stragglers from a
+        # killed run still resident half an hour later.
+        if pool is not None:
+            pool.terminate()
+            pool.join()
+    if interrupted:
+        raise SystemExit(130)
 
     elapsed = time.monotonic() - started
     print(f"\n{'step':32} {'frames':>7}")

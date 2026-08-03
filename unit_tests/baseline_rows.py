@@ -55,27 +55,43 @@ def read_one(path_name):
     ]
 
 
+def _ignore_sigint():
+    """Pool worker initialiser: let the parent own Ctrl+C. See suite_corpus."""
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
 def snapshot(jobs=JOBS):
     frames = sorted(p.name for p in CORPUS.glob("*.png"))
     started = time.monotonic()
     out = {}
+    pool = None
     if jobs == 1:
         results = map(read_one, frames)
     else:
-        pool = Pool(processes=jobs)
+        pool = Pool(processes=jobs, initializer=_ignore_sigint)
         results = pool.imap_unordered(read_one, frames, chunksize=4)
     done = 0
-    for name, rows in results:
-        done += 1
-        if rows is not None:
-            out[name] = rows
-        if done % 200 == 0:
-            rate = done / max(time.monotonic() - started, 1e-9)
-            print(f"  {done}/{len(frames)} frames, {rate:.1f}/s, "
-                  f"{(len(frames)-done)/max(rate,1e-9)/60:.1f} min left", flush=True)
-    if jobs != 1:
-        pool.close()
-        pool.join()
+    try:
+        for name, rows in results:
+            done += 1
+            if rows is not None:
+                out[name] = rows
+            if done % 200 == 0:
+                rate = done / max(time.monotonic() - started, 1e-9)
+                print(f"  {done}/{len(frames)} frames, {rate:.1f}/s, "
+                      f"{(len(frames)-done)/max(rate,1e-9)/60:.1f} min left",
+                      flush=True)
+    except KeyboardInterrupt:
+        print(f"\ninterrupted after {done}/{len(frames)} frames", flush=True)
+        raise
+    finally:
+        # terminate(), not close(), and in a finally: close() waits for every
+        # queued frame, which on an interrupt is the rest of the corpus, and
+        # sitting after the loop meant an exception orphaned the workers.
+        if pool is not None:
+            pool.terminate()
+            pool.join()
     return out, time.monotonic() - started, len(frames)
 
 
