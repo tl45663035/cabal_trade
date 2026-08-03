@@ -1,0 +1,6 @@
+# py -m pip install -r requirements.txt
+#
+# Tesseract OCR is NOT a Python package and must be installed separately --
+# see README.md. Nothing in this project works without it.
+pillow>=10.0
+mss>=9.0
