@@ -19,3 +19,9 @@ screenshots/*.png
 
 __pycache__/
 *.pyc
+
+# Per-run logs. One file per invocation, named by start time. Kept out of
+# git because they contain the full console output of a live session --
+# item names, prices and Alz figures -- and because a crash log is only
+# useful on the machine that produced it.
+logs/

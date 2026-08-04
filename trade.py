@@ -43,6 +43,7 @@ import shutil
 import subprocess
 import sys
 import time
+import traceback
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -1104,10 +1105,48 @@ def cooldown(seconds: float | None = None) -> None:
     time.sleep(ACTION_COOLDOWN if seconds is None else seconds)
 
 
-def _send(event: _Input) -> None:
-    sent = ctypes.windll.user32.SendInput(1, ctypes.byref(event), ctypes.sizeof(_Input))
-    if sent != 1:
-        raise PermissionError(CURSOR_BLOCKED_HINT)
+# How many times a refused input is retried before it counts as blocked.
+# SendInput returning 0 is usually transient (a hook, a momentary elevated
+# foreground, a desktop switch). Treating one refusal as permanent ended an
+# unattended run mid-cycle with no diagnosis; _release() already retried the
+# identical call three times for a key-up, so this was an asymmetry, not a
+# policy. Real UIPI blocking fails every attempt and still raises.
+SEND_ATTEMPTS = 4
+SEND_RETRY_PAUSE = 0.12
+
+def _send(event: _Input, attempts: int = SEND_ATTEMPTS) -> None:
+    """Inject one input event, retrying a refusal before giving up.
+
+    SendInput returning 0 is usually TRANSIENT: a low-level hook, a moment
+    where an elevated window owns the foreground, a desktop switch in
+    progress. It was being treated as permanent -- one refusal raised
+    PermissionError, which run_loop catches by BREAKING, so a single dropped
+    event ended an unattended run. Measured in the recorded corpus: a 47-minute
+    dead gap mid-cycle, with no abort recorded, because nothing retried and
+    nothing survived to say why.
+
+    The asymmetry was indefensible on its face: _release() already retries the
+    same call three times for a key-UP, on the reasoning that a dropped release
+    is dangerous. A dropped key-DOWN or click is no more permanent than that,
+    and the cost of being wrong is a whole run.
+
+    Genuine UIPI blocking does not clear on retry, so a real permission problem
+    still raises -- it just has to fail every attempt first, which takes a
+    fraction of a second and costs nothing.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            if ctypes.windll.user32.SendInput(
+                    1, ctypes.byref(event), ctypes.sizeof(_Input)) == 1:
+                if attempt > 1:
+                    print(f"  (input accepted on attempt {attempt})",
+                          file=sys.stderr)
+                return
+        except OSError:
+            pass
+        if attempt < attempts:
+            time.sleep(SEND_RETRY_PAUSE)
+    raise PermissionError(CURSOR_BLOCKED_HINT)
 
 
 def _release(event: _Input, what: str, attempts: int = 3) -> bool:
@@ -2853,6 +2892,15 @@ MAXIMISE_ALL_QUANTITIES = True
 # maximum, so anything larger than a stack can hold maximises it -- no need to
 # read the maximum off the panel first and type it back exactly.
 MAX_QTY_ENTRY = 9999
+# How far the panel's stack size may differ from the quantity the table showed
+# before the load is treated as a different item rather than a misread digit.
+# A different item differs by orders of magnitude; an OCR slip differs by one
+# glyph. Sized from the incident that motivated it: the table read a 233-stack
+# as 230, and exact equality aborted AFTER the cancel had committed -- which
+# stranded the stack, failed the next three cycles on the empty-work-tab check,
+# and stopped a five-hour run.
+QTY_CROSSCHECK_ABSOLUTE = 5
+QTY_CROSSCHECK_FRACTION = 0.10
 NO_MAX_QUANTITY_ITEMS: tuple[str, ...] = ()
 
 
@@ -3181,10 +3229,12 @@ def require_empty_work_tab(verbose: bool = True) -> bool:
 
     origin = inventory_origin()
     if origin is None:
+        record("worktab.no_panel")
         say("The Inventory panel is not visible - open it and rerun.")
         return False
 
     if not select_inventory_tab(WORK_TAB, origin):
+        record("worktab.tab_switch_failed", want=WORK_TAB)
         say(f"Could not switch to inventory tab {WORK_TAB}.")
         return False
 
@@ -3193,6 +3243,12 @@ def require_empty_work_tab(verbose: bool = True) -> bool:
     if occupied:
         where = ", ".join(f"{r},{c}" for r, c in occupied[:12])
         more = f" (+{len(occupied) - 12} more)" if len(occupied) > 12 else ""
+        # THE blind step. This refusal is the most common cycle-killer after a
+        # strand -- it is what every cycle hits once an item is left behind --
+        # and it recorded nothing, so three consecutive deaths here left an
+        # empty index and a five-hour outage with no attributable cause.
+        record("worktab.not_empty", tab=WORK_TAB, occupied=len(occupied),
+               slots=", ".join(f"{r},{c}" for r, c in occupied[:12]))
         say(f"Inventory tab {WORK_TAB} is not empty - {len(occupied)} slot(s) "
             f"in use: {where}{more}.\n"
             "Clear it before running: cancelled items land here, and leftover "
@@ -3588,7 +3644,17 @@ def cancel_item(
         # the sequence refused to continue. Recorded before any recovery
         # clicking, so the corpus keeps the state that caused it rather than
         # the state after backing out of it.
-        record("cancel.aborted", reason=str(exc), row=row, committed=committed)
+        # Read the dialog BEFORE recording, so the record carries what was
+        # determined rather than contradicting it. `committed` means only "the
+        # Confirmation click was sent"; whether the game ACCEPTED it is a
+        # different fact, and the corpus was storing the first while the log
+        # printed the second -- three recorded aborts say committed=True for
+        # cancellations the log calls refused. Reading costs one screenshot and
+        # no clicks, so it still happens before any recovery input.
+        still = dialog_kind(grab()) if committed else None
+        record("cancel.aborted", reason=str(exc), row=row, committed=committed,
+               dialog_after=still,
+               accepted=None if not committed else (still != "confirm"))
         say(f"ABORTED: {exc}.")
         if committed:
             # Past the point of no return; only report, never click further.
@@ -3600,15 +3666,33 @@ def cancel_item(
             # an observation -- the previous message said the cancel "may have
             # gone through" in exactly the case where it provably had not,
             # which sends you hunting for a stranded item that does not exist.
-            still = dialog_kind(grab())
             if still == "confirm":
-                say("The confirmation dialog is still open, which means the "
-                    "game did NOT accept the cancellation - the listing should "
-                    "still be on the market.")
-                say("The usual cause is not enough free inventory space to "
+                # An inference, not an observation, and it can be wrong:
+                # the game stacks confirmation dialogs (MAX_CONFIRM_STEPS
+                # exists for that on the register side), so it can commit
+                # AND still be showing one. Saying "still on the market"
+                # as fact would send the operator away from a listing that
+                # had in fact been withdrawn.
+                say("A confirmation dialog is still open. USUALLY that "
+                    "means the game refused the cancellation and the "
+                    "listing is untouched - but the game can also stack "
+                    "dialogs after accepting one, so this is not proof.")
+                say("CHECK THE LISTING before retrying: if it is gone, the "
+                    f"stack is in inventory tab {WORK_TAB}, unlisted.")
+                # Deliberately hedged. The corpus contains three consecutive
+                # refusals of the same listing where the work tab was verified
+                # EMPTY on all three, so free space in tab 4 is demonstrably
+                # not the whole story -- the game may check total space across
+                # every tab, which one frame cannot see.
+                say("A likely cause is not enough free inventory space to "
                     "receive the stack: a cancelled 250-item listing comes "
                     "back as ~64 separate slots, and the game refuses rather "
-                    "than partially withdrawing. Free some space and retry.")
+                    "than partially withdrawing. Note the check covers your "
+                    "WHOLE inventory, not just the work tab -- this has been "
+                    "observed refusing while the work tab was empty.")
+                say("Retrying this row will refuse identically until space is "
+                    "freed, so the run will stop after "
+                    f"{MAX_CONSECUTIVE_FAILURES} attempts.")
             else:
                 say("WARNING: Confirmation was already clicked and the dialog "
                     f"is now {still!r}, so the cancellation may have gone "
@@ -3742,9 +3826,44 @@ def register_item(
         # This is a cheap consistency check, not proof of identity -- that is
         # sanity_check()'s job, after the listing exists and can be read back.
         if expect_item and expect_qty is not None and panel["qty_max"] is not None:
-            require(panel["qty_max"] == expect_qty,
-                    f"loaded {panel['qty_max']} of an item but the cancelled "
-                    f"listing held {expect_qty} - this is not the same item")
+            # Exact equality here stranded a 233-item stack and stopped a
+            # five-hour run. The table's QTY column read 233 as 230 -- one
+            # glyph -- and this fired AFTER the cancel had committed, so the
+            # item was already out of the shop and in the work tab. Three
+            # cycles then failed the empty-work-tab check and the breaker
+            # stopped everything.
+            #
+            # Which number to trust: `expect_qty` comes from the table's
+            # cramped QTY column, `qty_max` from the panel's dedicated numeric
+            # field. When they disagree slightly the PANEL is the better read,
+            # and the quantity typed is MAX_QTY_ENTRY anyway, so the game
+            # clamps to whatever is really there.
+            #
+            # The check's stated purpose is catching a completely different
+            # item, and a different item does not differ by 1% -- it differs by
+            # orders of magnitude. So tolerate OCR noise, refuse on a real
+            # discrepancy, and never abort over a rounding error once the
+            # cancel is irreversible.
+            loaded = panel["qty_max"]
+            slack = max(QTY_CROSSCHECK_ABSOLUTE,
+                        int(expect_qty * QTY_CROSSCHECK_FRACTION))
+            if loaded != expect_qty and abs(loaded - expect_qty) <= slack:
+                say(f"NOTE: the panel holds {loaded} but the table said "
+                    f"{expect_qty} (within {slack}). The panel field is the "
+                    "more reliable read, so continuing with it - the table's "
+                    "QTY column is narrow and misreads a digit occasionally.")
+                # `if report is not None`, not `report and`: every caller
+                # passes a fresh {}, which is FALSY, so the truthiness form
+                # never executed once. Every other write in this function
+                # already gets this right.
+                if report is not None:
+                    report["qty_disagreement"] = (expect_qty, loaded)
+            else:
+                require(loaded == expect_qty,
+                        f"loaded {loaded} of an item but the cancelled listing "
+                        f"held {expect_qty} - off by {abs(loaded - expect_qty)}, "
+                        f"more than the {slack} tolerated, so this is probably "
+                        "not the same item")
 
         # ---- step 2: quantity, settled before pricing -----------------------
         # The suggested price is per item and Net sales is price x quantity, so
@@ -4334,7 +4453,16 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             return FAILED
 
         if not dry_run and not wait_for_table(max(timeout, 20.0)):
-            say("The table did not finish refreshing after the cancel - stopping.")
+            # The cancel committed one statement earlier, so this is a
+            # strand too. The comment on the sibling exit below named this
+            # very line as still missing its warning; here it is.
+            record("relist.stranded", stage="table_refresh", row=row,
+                   item=target.name, qty=target.qty, tab=start_tab)
+            say("The table did not finish refreshing after the cancel.")
+            say(f"IMPORTANT: row {row} was already cancelled, so "
+                f"{target.name!r} x{target.qty} is in inventory tab "
+                f"{start_tab}, UNLISTED. Later cycles will fail their "
+                "empty-work-tab check until it is cleared.")
             return FAILED
 
         slot = (inv_row, inv_col) if inv_row and inv_col else None
@@ -4385,6 +4513,24 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                                expect_item=target.name, expect_qty=target.qty,
                                report=report)
         if not listed and not report.get("committed"):
+            # THE path that cost five hours. The cancel committed ~60 lines
+            # above, so the item is out of the shop and sitting in the work
+            # tab -- and this returned FAILED without a word. register_item
+            # printed its own abort, but nothing said the consequence: every
+            # later cycle now fails require_empty_work_tab identically until a
+            # human clears it, which is exactly what the failure breaker is
+            # for and exactly why it fired three cycles later.
+            #
+            # Two of the six post-commit exits already say this. This one and
+            # the table-refresh exit below did not.
+            record("relist.stranded", stage="register_failed", row=row,
+                   item=target.name, qty=target.qty, tab=start_tab)
+            say(f"\nIMPORTANT: row {row} was cancelled, so {target.name!r} "
+                f"x{target.qty} is now in inventory tab {start_tab}, UNLISTED.")
+            say("Every later cycle will fail its empty-work-tab check until "
+                "that is cleared, so the run will stop after "
+                f"{MAX_CONSECUTIVE_FAILURES} of them.")
+            say(f"Re-list it by hand with:  --register INV_ROW INV_COL")
             return FAILED
         if dry_run:
             return RELISTED
@@ -4952,6 +5098,15 @@ def run_loop(
             cycle += 1
             started = time.monotonic()
             say(f"\n===== cycle {cycle} at {datetime.now():%H:%M:%S} =====")
+            # A gap in the index is only diagnostic if the boundaries are in
+            # it. A cycle.start with no cycle.end means it died mid-cycle; a
+            # cycle.end with no following start means the loop exited, and
+            # the loop.stopped beside it says why. Without these, three
+            # cycles that each failed in a record()-free function left NO
+            # frames at all -- which is what made a five-hour outage
+            # unattributable.
+            record("cycle.start", cycle=cycle, consecutive=consecutive,
+                   succeeded=succeeded, failures=failures)
 
             # A locked workstation blanks captures and swallows input, so every
             # action would fail. Say why rather than emitting confusing errors.
@@ -4979,6 +5134,8 @@ def run_loop(
                     say(f"\nCycle {cycle}: could not get the game ready - "
                         "will retry next cycle.")
             except FatalAbort as exc:
+                record("loop.stopped", reason="fatal", detail=str(exc),
+                       cycle=cycle, consecutive=consecutive)
                 # Not retryable: the run listed something it should not have.
                 say(f"\nFATAL: {exc}")
                 say("Terminating the loop; nothing further will be attempted.")
@@ -4986,6 +5143,8 @@ def run_loop(
                 stopped = True
                 break
             except PermissionError as exc:
+                record("loop.stopped", reason="permission", detail=str(exc),
+                       cycle=cycle, consecutive=consecutive)
                 # Input is being refused -- not elevated, or the foreground
                 # went to an elevated window or the secure desktop. Retrying
                 # cannot fix it, and it used to escape the loop entirely from
@@ -4997,10 +5156,19 @@ def run_loop(
                 stopped = True
                 break
             except Exception as exc:  # noqa: BLE001 - an unattended run must not die
+                # The traceback, not just type(exc).__name__. A NameError at
+                # line 4200 and one at 3900 print identically otherwise, and
+                # this is the only handler standing between an unattended run
+                # and an unexplained stop.
+                record("cycle.exception", cycle=cycle, exc=type(exc).__name__,
+                       detail=str(exc), traceback=traceback.format_exc(),
+                       consecutive=consecutive)
+                say(traceback.format_exc())
                 failures += 1
                 consecutive += 1
                 say(f"\nCycle {cycle} raised {type(exc).__name__}: {exc}")
                 if session_locked():
+                    record("loop.stopped", reason="locked", cycle=cycle)
                     say("The workstation is locked - terminating the loop.")
                     stopped = True
                     break
@@ -5012,7 +5180,15 @@ def run_loop(
             # coordinate, a NameError, a changed Tesseract path -- retried for
             # the whole duration, which is the exact failure this breaker was
             # added to stop.
+            record("cycle.end", cycle=cycle, consecutive=consecutive,
+                   succeeded=succeeded, failures=failures)
             if consecutive >= MAX_CONSECUTIVE_FAILURES:
+                # THE entry that was missing. This breaker fired correctly at
+                # 19:56 one night, printed an accurate diagnosis, and left no
+                # trace on disk -- so a five-hour outage looked like an
+                # unexplained crash rather than a deliberate, correct stop.
+                record("loop.stopped", reason="consecutive_failures",
+                       cycle=cycle, consecutive=consecutive)
                 say(f"\n{consecutive} cycles have failed in a row - stopping "
                     "rather than repeating it for the rest of the run. Check "
                     f"the shop and inventory tab {WORK_TAB} by hand.")
@@ -5035,6 +5211,7 @@ def run_loop(
                 time.sleep(min(MIN_CYCLE_SECONDS - (time.monotonic() - started),
                                remaining))
     except KeyboardInterrupt:
+        record("loop.stopped", reason="interrupt")
         say("\nInterrupted - stopping the loop.")
         stopped = True
     finally:
@@ -5910,6 +6087,137 @@ def ensure_calibrated(verbose: bool = True, required: bool = True) -> bool:
 # CLI
 # --------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------
+# Run logging
+# --------------------------------------------------------------------------
+#
+# Every run writes its own file. This exists because a five-hour unattended run
+# died in the small hours and left NOTHING to diagnose from: the frame index
+# stopped mid-cycle, no abort was recorded, and the console output was gone
+# with the terminal. The screenshots showed a completely healthy screen one
+# second before the end, so the failure was in code -- and nothing had captured
+# it.
+#
+# Three properties matter more than tidiness here:
+#
+#   * one file per run, named by start time, so a crash is never overwritten by
+#     the restart that follows it;
+#   * flushed on EVERY line, because the interesting content is whatever was
+#     written immediately before the process stopped, and a buffer is exactly
+#     what is lost when it stops;
+#   * incapable of breaking the run. Logging that can raise would become a new
+#     failure mode in a script whose whole problem is unexplained failures.
+
+LOG_DIR = SCRIPT_DIR / "logs"
+_log_handle = None
+
+
+class _Tee:
+    """Write to the console and the run log at once.
+
+    Wraps a stream rather than replacing it, so anything already holding a
+    reference to sys.stdout keeps working. Every write is flushed: the lines
+    that matter are the last ones before a crash.
+    """
+
+    def __init__(self, stream, handle):
+        self._stream = stream
+        self._handle = handle
+
+    def write(self, text):
+        self._stream.write(text)
+        try:
+            self._stream.flush()
+        except Exception:      # noqa: BLE001 - a console that will not flush
+            pass               # must not stop the log being written
+        try:
+            self._handle.write(text)
+            self._handle.flush()
+        except Exception:      # noqa: BLE001 - logging never breaks the run
+            pass
+        return len(text)
+
+    def flush(self):
+        for target in (self._stream, self._handle):
+            try:
+                target.flush()
+            except Exception:  # noqa: BLE001
+                pass
+
+    def isatty(self):
+        try:
+            return self._stream.isatty()
+        except Exception:      # noqa: BLE001
+            return False
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+
+def start_run_log(argv: list[str]) -> "Path | None":
+    """Begin a per-run log. Returns its path, or None if it could not start.
+
+    Installs an excepthook as well as the tee: an uncaught exception is exactly
+    the case this is for, and by default Python prints the traceback and exits
+    without anything else seeing it.
+    """
+    global _log_handle
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        started = datetime.now()
+        path = LOG_DIR / f"run_{started:%Y-%m-%d_%H%M%S}.log"
+        # Never clobber: two runs started inside the same second would
+        # otherwise share a file, and one of them is probably the crash.
+        n = 1
+        while path.exists():
+            n += 1
+            path = LOG_DIR / f"run_{started:%Y-%m-%d_%H%M%S}_{n}.log"
+        _log_handle = path.open("w", encoding="utf-8", buffering=1)
+        _log_handle.write(
+            f"=== trade.py run log ===\n"
+            f"started   {started.isoformat(timespec='seconds')}\n"
+            f"command   {' '.join(argv)}\n"
+            f"script    {Path(__file__).resolve()}\n"
+            f"python    {sys.version.split()[0]}\n"
+            f"cwd       {Path.cwd()}\n"
+            f"{'=' * 60}\n")
+        _log_handle.flush()
+        sys.stdout = _Tee(sys.stdout, _log_handle)
+        sys.stderr = _Tee(sys.stderr, _log_handle)
+
+        def log_uncaught(kind, value, tb):
+            # The whole point: a crash must leave a traceback behind. Written
+            # through the raw handle as well as stderr, in case the tee is the
+            # thing that broke.
+            try:
+                text = "".join(traceback.format_exception(kind, value, tb))
+                _log_handle.write(f"\n=== UNCAUGHT {kind.__name__} ===\n{text}")
+                _log_handle.write(f"ended     {datetime.now().isoformat(timespec='seconds')}\n")
+                _log_handle.flush()
+            except Exception:  # noqa: BLE001
+                pass
+            sys.__excepthook__(kind, value, tb)
+
+        sys.excepthook = log_uncaught
+        return path
+    except Exception:          # noqa: BLE001 - a run without a log is still a run
+        return None
+
+
+def finish_run_log(note: str = "") -> None:
+    """Close the run log with a final line, so a truncated file is obvious."""
+    if _log_handle is None:
+        return
+    try:
+        _log_handle.write(
+            f"\n{'=' * 60}\nended     "
+            f"{datetime.now().isoformat(timespec='seconds')}"
+            + (f"  ({note})" if note else "") + "\n")
+        _log_handle.flush()
+    except Exception:          # noqa: BLE001
+        pass
+
+
 def main() -> None:
     p = argparse.ArgumentParser(
         description="Cabal Online automation: capture, Alz and the Agent Shop.")
@@ -6365,4 +6673,23 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # Logging is started here rather than inside main() so it covers argument
+    # parsing too -- a bad argument that exits is still something worth having
+    # a record of -- and so the `finally` cannot be skipped by any of main()'s
+    # many sys.exit() calls.
+    _log_path = start_run_log(sys.argv)
+    if _log_path:
+        print(f"Logging this run to {_log_path}")
+    try:
+        main()
+    except SystemExit as exc:
+        finish_run_log(f"exit {exc.code}")
+        raise
+    except BaseException as exc:          # noqa: BLE001 - includes KeyboardInterrupt
+        # sys.excepthook writes the traceback; this adds the closing line so a
+        # log that stops without one means the process was killed outright
+        # rather than having raised.
+        finish_run_log(f"{type(exc).__name__}")
+        raise
+    else:
+        finish_run_log()
