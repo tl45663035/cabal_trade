@@ -525,6 +525,12 @@ MIN_ANCHOR_BASELINE = 300.0
 # extrapolated off that line. Measured, a set covering 430px of x and 100px of
 # y produced 40px of click error at the far end of the window.
 MIN_ANCHOR_SPREAD = 250.0
+# Confidence an anchor must reach when it is matched only as a CLIPPED word
+# (the font drops a leading glyph at smaller UI scales, so 'Trade' reads as
+# 'rade'). Higher than the 40.0 used for a whole-word match, because a partial
+# word is weaker evidence: the read that shifted the calibrated origin by 2px
+# scored 40.1, clearing the ordinary bar by a tenth of a point.
+NEAR_ANCHOR_MIN_CONF = 70.0
 # How many anchors must survive outlier rejection. Higher than the absolute
 # minimum of 3 on purpose: dropping is only sound while enough independent
 # evidence remains to contradict the next bad one.
@@ -665,6 +671,51 @@ def _prep_for_text(image: Image.Image, region: tuple[int, int, int, int], scale:
     return ImageOps.autocontrast(ImageOps.invert(crop))
 
 
+_CALIBRATED = False
+
+
+def _ocr_reference_scale() -> float:
+    """The UI scale to pick an OCR upscale from, before calibration exists.
+
+    LAYOUT.scale is the measured answer, but it is the built-in 1.0 until a
+    calibration succeeds -- and a calibration needs OCR to succeed first. That
+    circle is what made a 1080p screen uncalibratable: the first pass ran at
+    the x2 intended for 1440p, which is documented as splitting 'Refresh' into
+    'R' + 'efresh', and the upscale could only improve after reaching the state
+    it was blocking.
+
+    The window's own client rectangle breaks it, with no OCR at all. Measured
+    on the machine that could not calibrate: client height 1041 against the
+    reference 1369 gives 0.7604, where the anchors later measured 0.7607 --
+    0.04% out, against upscale bins ~30% wide.
+
+    `min` of the two axes, not the height alone, so a letterboxed client errs
+    toward MORE upscale, which costs time rather than accuracy.
+
+    This value only ever chooses an integer upscale. It must never reach
+    LAYOUT.scale: a guessed scale that reaches apply_layout is exactly the
+    "clicks confidently in the wrong place" failure the whole layer exists to
+    prevent.
+    """
+    if _CALIBRATED:
+        return LAYOUT.scale
+    try:
+        make_dpi_aware()          # GetClientRect returns logical px without it
+        client = client_rect()
+        if client:
+            width = client[2] - client[0]
+            height = client[3] - client[1]
+            ref_w = REF_CLIENT[2] - REF_CLIENT[0]
+            ref_h = REF_CLIENT[3] - REF_CLIENT[1]
+            if width > 100 and height > 100:     # not minimised
+                guess = min(width / ref_w, height / ref_h)
+                if SCALE_LIMITS[0] <= guess <= SCALE_LIMITS[1]:
+                    return guess
+    except Exception:             # noqa: BLE001 - never break OCR over a guess
+        pass
+    return LAYOUT.scale
+
+
 def find_words(
     source: Image.Image | Path | str,
     region: tuple[int, int, int, int],
@@ -681,7 +732,7 @@ def find_words(
     relist cycle could complete, with a perfect calibration.
     """
     if scale is None:
-        scale = max(2, min(6, int(round(2 / max(LAYOUT.scale, 0.34)))))
+        scale = max(2, min(6, int(round(2 / max(_ocr_reference_scale(), 0.34)))))
     tesseract = find_tesseract()
     if tesseract is None:
         # Degrade like the timeout and non-zero-exit paths below rather than
@@ -5129,6 +5180,11 @@ def apply_layout(layout: "Layout") -> None:
     object through all of them would be a far larger change with far more
     opportunity to miss one -- and a missed one clicks the wrong pixel.
     """
+    # A real measurement now exists, so _ocr_reference_scale stops
+    # guessing from the client rect and uses LAYOUT.scale instead.
+    global _CALIBRATED
+    _CALIBRATED = True
+
     global LAYOUT
     LAYOUT = layout
     if not _REFERENCE_GEOMETRY:
@@ -5188,7 +5244,6 @@ def apply_layout(layout: "Layout") -> None:
 
 _REFERENCE_NPC_BODY_OFFSET = NPC_BODY_OFFSET
 
-
 def client_rect() -> tuple[int, int, int, int] | None:
     """The game's client area in screen pixels, or None if not found.
 
@@ -5232,7 +5287,66 @@ def _anchor_centre(phrase: str, words: list, lines: list):
     needle = phrase.casefold()
     hits = sorted((w for w in words if needle in w.text.casefold()),
                   key=lambda w: w.top)
-    return hits[0].centre if hits else None
+
+    # AMBIGUOUS MEANS UNKNOWN. If the word appears more than once on screen,
+    # discard the anchor rather than pick one -- a missing anchor costs one
+    # unit of drop budget, a wrong one poisons the shared fit and consumes a
+    # drop to undo.
+    #
+    # The old rule took the topmost match, which is not a tie-break at all but
+    # an unconditional pick that happens to work because the chat log is drawn
+    # low. Measured over 3,019 frames with the Trade window open: 'Trade' has a
+    # second match on 33 frames, 'Selling' on 52, 'Name' on 13 -- all chat
+    # adverts ('SELLING Upgrade Core 85k', trade-channel tags, a player called
+    # NoNameNeeded). Discarding every ambiguous match still calibrates
+    # 3,019/3,019 and never leaves fewer than four anchors, so the safety costs
+    # nothing measurable.
+    #
+    # It also closes a gap "topmost wins" cannot: chat renders OVER the Trade
+    # window and grows upward. The highest chat line yet recorded sits at
+    # y=1031 while 'Selling' is at y=1012 and 'Refresh' at y=1010 -- a 19px
+    # margin, narrower than the 26px line pitch. One busier evening and the
+    # advert IS the topmost match.
+    if len(hits) > 1:
+        return None
+    if hits:
+        return hits[0].centre
+    # Nothing matched the whole word. At smaller UI scales this font clips its
+    # leading glyph: measured at 1920x1080, the Trade window's title reads
+    # 'rade' at 96% confidence on upscale 2, 3 AND 4 -- so a substring test can
+    # never find it, at any upscale, and the only remaining word on screen
+    # containing 'trade' is a chat line. That is how a decoy 858px away came to
+    # be treated as the window title.
+    #
+    # So: accept a word that is the anchor missing its first or last character,
+    # provided it is long enough that the match is still meaningful. Four
+    # characters minimum -- 'rade' qualifies, a stray 'na' would not.
+    if len(needle) >= 5:
+        # A clipped word's CENTRE IS NOT THE FULL WORD'S CENTRE. 'rade' is
+        # missing its leading glyph, so its box starts one character later and
+        # its centre sits about half a glyph to the right. Taking it raw put
+        # 'Trade' 9px off and shifted the whole calibrated origin by 2px --
+        # the same drift this file already fixed once. Compensate by the
+        # measured average glyph width of the text actually read.
+        #
+        # Confidence bar is higher than the 40.0 used for whole-word matches:
+        # a partial word is weaker evidence, and the case that caused the
+        # drift scored 40.1, i.e. it cleared the normal bar by a tenth.
+        for w in sorted(words, key=lambda x: x.top):
+            text = w.text.casefold().strip()
+            if w.conf < NEAR_ANCHOR_MIN_CONF or not text:
+                continue
+            lost_first = text == needle[1:]
+            lost_last = text == needle[:-1]
+            if not (lost_first or lost_last):
+                continue
+            glyph = (w.right - w.left) / max(len(text), 1)
+            cx, cy = w.centre
+            # Losing the FIRST glyph shifts the observed centre right, so
+            # correct left, and vice versa.
+            return (int(round(cx - glyph / 2 if lost_first else cx + glyph / 2)),
+                    cy)
+    return None
 
 
 def measure_layout(image: Image.Image | None = None,
@@ -5324,10 +5438,51 @@ def measure_layout(image: Image.Image | None = None,
     # anchor was accepted with "worst residual 0.0px" and produced 134px of
     # click error. The third anchor is what makes the residual mean anything.
     if len(found) < 3:
-        say(f"  found {len(found)} anchor(s); at least 3 are needed. With two, "
-            "an error along the line between them is indistinguishable from a "
-            "different scale, so the fit cannot be checked. Is the Trade "
-            "window fully visible and not overlapped?")
+        # Say what was OBSERVED, then draw only the conclusions the evidence
+        # supports. The old text named one cause ("not overlapped?") and
+        # guessed it, which is useless when the real cause is one of the three
+        # others -- and those need opposite fixes.
+        say(f"\nCalibration could not measure the Trade window.")
+        say(f"  display captured   {screen[0]}x{screen[1]}  (primary display only)")
+        if client:
+            say(f"  game client area   ({client[0]},{client[1]})-({client[2]},{client[3]})")
+            # Provable, not guessed: screenshots only ever cover the primary
+            # display, so a client rect outside it means the window was never
+            # in frame. This is a real failure that previously read as
+            # "the Trade window is not open".
+            if (client[0] < 0 or client[1] < 0
+                    or client[2] > screen[0] or client[3] > screen[1]):
+                say("  >> The game window is NOT on the display being captured.")
+                say("     Screenshots only ever cover the primary display, so the")
+                say("     Trade window was never in the frame and nothing here can")
+                say("     be measured. Move Cabal to the primary display.")
+                return None
+        say(f"  words read on screen {len(words)}")
+        if not words:
+            say("  >> OCR returned nothing at all, on the whole screen. That is")
+            say("     Tesseract failing, not the game. Nothing about the window")
+            say("     can be concluded from this frame -- check the messages")
+            say("     above and that Tesseract is installed.")
+            return None
+        say(f"  anchors found      {len(found)} of {len(REF_ANCHORS)}")
+        for phrase, centre, ref in found:
+            say(f"    {phrase!r:12} at {centre}   reference {ref}")
+        missing = [p for p, _ in REF_ANCHORS if p not in {f[0] for f in found}]
+        say(f"  anchors missing    {', '.join(repr(p) for p in missing)}")
+        # Where the missing ones live tells the user which EDGE is the problem.
+        low = [p for p in missing
+               if dict(REF_ANCHORS)[p][1] > REF_SCREEN[1] // 2]
+        if low and len(low) == len(missing):
+            say("  >> Every missing anchor sits along the window's lower half.")
+            say("     The bottom of the Trade window is off-screen or covered.")
+        say("\n  Three anchors are the minimum: with two, an error along the line")
+        say("  between them is indistinguishable from a different scale, so the")
+        say("  result cannot be checked.")
+        say("\n  Re-running --calibrate will read the same screen and fail the")
+        say("  same way. Change one of these first:")
+        say("    - move the Cabal window fully onto the primary display;")
+        say("    - close any overlay covering the Trade window;")
+        say("    - drag the Trade window so all four corners are visible.")
         return None
 
     # Fit origin and scale over EVERY anchor found, then reject on the worst
@@ -5409,21 +5564,123 @@ def measure_layout(image: Image.Image | None = None,
     # fails the spread test instead.
     while True:
         data, reason = fit(found)
+
+        # A GATE failure can also be caused by one bad anchor, so try dropping
+        # before giving up -- not only a residual failure.
+        #
+        # This ordering was the real defect. A single decoy drags the shared
+        # scale far enough to fail SCALE_LIMITS, fit() returns None, and the
+        # outlier-rejection loop below never runs. Measured on a 1920x1080
+        # screen: decoy + three good anchors fits at scale 0.250, outside the
+        # (0.4, 2.5) range, so calibration aborted with a message naming no
+        # anchor -- while the three good ones alone fit at 0.7607 with a 0.0px
+        # residual. The code written to rescue exactly that case was
+        # unreachable.
+        #
+        # Leave-one-out rather than "drop the worst residual", because a failed
+        # fit has no residuals to rank. Each candidate is dropped in turn and
+        # the survivors re-fitted; a drop is only accepted if what remains
+        # passes every gate on its own.
+        if data is None and len(found) - 1 >= MIN_ANCHORS_AFTER_DROP:
+            best = None
+            for candidate in found:
+                trial = [e for e in found if e[0] != candidate[0]]
+                t_data, _ = fit(trial)
+                if t_data is None:
+                    continue
+                t_worst = max(t_data[3], key=lambda pair: pair[1])[1]
+                if t_worst <= t_data[5] and (best is None or t_worst < best[0]):
+                    best = (t_worst, candidate[0], trial)
+            if best is not None:
+                say(f"  {best[1]!r} is inconsistent with the others ({reason}); "
+                    f"without it the remaining {len(best[2])} agree to "
+                    f"{best[0]:.1f}px. Dropping it and continuing.")
+                found = best[2]
+                continue
+
         if data is None:
-            say(f"  {reason}")
+            # The geometric reason alone leaves the user with nothing to do.
+            # Which anchors are MISSING is what tells them what to change, and
+            # it is already known here.
+            say(f"\nCalibration refused: {reason}")
+            missing = [p for p, _ in REF_ANCHORS if p not in {f[0] for f in found}]
+            if missing:
+                say(f"\n  found   {', '.join(repr(f[0]) for f in found)}")
+                say(f"  missing {', '.join(repr(p) for p in missing)}")
+                lower = [p for p in missing
+                         if dict(REF_ANCHORS)[p][1] > REF_TRADE_SIZE[1] // 2]
+                if lower:
+                    say(f"  >> {', '.join(repr(p) for p in lower)} sit along the "
+                        "Trade window's bottom edge. Missing them is why the "
+                        "anchors are all bunched at the top, and it usually "
+                        "means the window's lower part is off-screen, covered "
+                        "by another window, or below the visible area.")
+                say("\n  Fix: make the WHOLE Trade window visible -- all four "
+                    "corners -- then re-run --calibrate. Re-running without "
+                    "moving anything will read the same screen and refuse "
+                    "again.")
             return None
         scale, ox, oy, residuals, span, allowed = data
         worst_name, worst = max(residuals, key=lambda pair: pair[1])
         if worst <= allowed:
             break
         if len(found) - 1 < MIN_ANCHORS_AFTER_DROP:
-            say("  the anchors disagree about where the Trade window is:")
-            for name, residual in residuals:
-                say(f"    {name!r:16} off by {residual:5.1f}px")
-            say(f"  worst is {worst_name!r} at {worst:.0f}px against a "
-                f"{allowed:.0f}px bar, and dropping it would leave fewer than "
-                f"{MIN_ANCHORS_AFTER_DROP} - refusing to calibrate from a "
-                "misread.")
+            # A scalar distance for a two-dimensional problem tells the user
+            # nothing they can act on. Everything below is already computed by
+            # fit() and was being thrown away: where the anchor was found,
+            # where the others say it should be, and whether it lies outside
+            # the window they describe -- which is what distinguishes "a
+            # DIFFERENT 'Trade' somewhere on screen" from "the window moved".
+            say("\nThe anchors disagree about where the Trade window is.")
+            say(f"\n  fitted from {len(found)} anchors: origin ({ox:.0f},{oy:.0f}), "
+                f"scale {scale:.3f}, span {span:.0f}px")
+            say(f"  tolerance {allowed:.0f}px\n")
+            by_ref = {name: r for name, _, r in found}
+            for name, residual in sorted(residuals, key=lambda p: p[1]):
+                where = next(m_ for n_, m_, _ in found if n_ == name)
+                say(f"    {name!r:12} off by {residual:7.1f}px   found at {where}")
+            # Predict from a fit that EXCLUDES the outlier. Using the fit it
+            # corrupted would report a fabricated position with total
+            # confidence: on the real 1080p failure, the 4-anchor fit including
+            # the decoy gave scale 0.250 and origin (528,293), where the four
+            # good anchors alone give scale 0.761 and origin (15,37).
+            ref = by_ref[worst_name]
+            rest = [e for e in found if e[0] != worst_name]
+            clean, _ = fit(rest) if len(rest) >= 3 else (None, "")
+            if clean:
+                c_scale, c_ox, c_oy = clean[0], clean[1], clean[2]
+                say(f"\n  Without {worst_name!r}, the rest agree on origin "
+                    f"({c_ox:.0f},{c_oy:.0f}) scale {c_scale:.3f}.")
+            else:
+                c_scale, c_ox, c_oy = scale, ox, oy
+            predicted = (int(c_ox + c_scale * ref[0]),
+                         int(c_oy + c_scale * ref[1]))
+            say(f"  {worst_name!r} was found at "
+                f"{next(m_ for n_, m_, _ in found if n_ == worst_name)}, but they "
+                f"put it at {predicted}.")
+            win = (int(c_ox), int(c_oy),
+                   int(c_ox + c_scale * REF_TRADE_SIZE[0]),
+                   int(c_oy + c_scale * REF_TRADE_SIZE[1]))
+            actual = next(m_ for n_, m_, _ in found if n_ == worst_name)
+            outside = not (win[0] <= actual[0] <= win[2]
+                           and win[1] <= actual[1] <= win[3])
+            if outside:
+                say(f"  That is OUTSIDE the window the others describe "
+                    f"({win[0]},{win[1]})-({win[2]},{win[3]}), so it is a "
+                    f"different {worst_name!r} on screen -- a chat line, a quest "
+                    "panel, another window -- not part of the Trade window.")
+                say(f"\n  Fix: close or move whatever shows {worst_name!r} at "
+                    f"{actual}, or drag the Trade window clear of it, THEN "
+                    "re-run --calibrate.")
+            else:
+                say("  That is inside the window the others describe, so the "
+                    "reading is inconsistent rather than a decoy -- the window "
+                    "may have moved while it was being measured. Retry with "
+                    "the window held still.")
+            say(f"\n  Dropping it would leave {len(found) - 1} anchors, below the "
+                f"{MIN_ANCHORS_AFTER_DROP} that must survive for the remaining "
+                "fit to be checkable, so this refuses rather than calibrating "
+                "from a misread.")
             return None
         say(f"  {worst_name!r} is {worst:.0f}px from where the other "
             f"{len(found) - 1} put it (bar {allowed:.0f}px) - treating it as a "
@@ -5612,28 +5869,41 @@ def ensure_calibrated(verbose: bool = True, required: bool = True) -> bool:
                   "the reference the coordinates were measured on, so the "
                   "built-in values are used.")
         return True
-    if screen and tuple(screen) == REF_SCREEN and client and verbose:
-        print(f"The monitor matches the reference, but the game window is "
-              f"{client[2] - client[0]}x{client[3] - client[1]} at "
-              f"({client[0]},{client[1]}) where the built-in coordinates "
+    # DO NOT diagnose here. calibrate() has just run and printed exactly why it
+    # failed; anything invented at this point is a guess layered over evidence.
+    # The old text asserted a resolution mismatch as the cause, which produced
+    # the literal "This screen is 2560x1440 but the built-in coordinates were
+    # measured at 2560x1440" whenever the CLIENT rect was the thing that
+    # differed -- self-contradictory, and it overwrote the accurate message
+    # printed immediately above it.
+    if not required:
+        return False
+    if not verbose:
+        return False
+
+    print("\nRefusing to click without a calibration.")
+    if not screen:
+        print("The screen size could not be determined.")
+        return False
+
+    if tuple(screen) == REF_SCREEN and client and tuple(client) != REF_CLIENT:
+        # Specific, true, and different from "your resolution is wrong".
+        print(f"The display matches the reference ({screen[0]}x{screen[1]}), but "
+              f"the game window is {client[2] - client[0]}x{client[3] - client[1]} "
+              f"at ({client[0]},{client[1]}) where the built-in coordinates "
               f"assume {REF_CLIENT[2] - REF_CLIENT[0]}x"
               f"{REF_CLIENT[3] - REF_CLIENT[1]} at "
-              f"({REF_CLIENT[0]},{REF_CLIENT[1]}). Those coordinates do not "
-              "apply here.")
-
-    if required and verbose:
-        print(
-            "\nRefusing to click without a calibration.\n"
-            f"This screen is {screen[0]}x{screen[1]} but the built-in "
-            f"coordinates were measured at {REF_SCREEN[0]}x{REF_SCREEN[1]}, "
-            "so they point at the wrong pixels here -- clicking anyway would "
-            "hit the game world rather than the UI.\n"
-            "Fix: open the Agent Shop so the Trade window is visible, then run\n"
-            "    py trade.py --calibrate\n"
-            if screen else
-            "\nRefusing to click: the screen size could not be determined.\n"
-        )
-    return not required
+              f"({REF_CLIENT[0]},{REF_CLIENT[1]}), so they do not apply.")
+    elif tuple(screen) != REF_SCREEN:
+        print(f"This screen is {screen[0]}x{screen[1]} and the built-in "
+              f"coordinates were measured at {REF_SCREEN[0]}x{REF_SCREEN[1]}, "
+              "so they point at the wrong pixels here.")
+    print("A click that misses the UI lands in the game world, which moves "
+          "your character -- so nothing will be clicked.")
+    print("\nCalibration was attempted just now and failed for the reason "
+          "printed above. Running --calibrate again WITHOUT CHANGING ANYTHING "
+          "will read the same screen and fail identically.")
+    return False
 
 
 # --------------------------------------------------------------------------
