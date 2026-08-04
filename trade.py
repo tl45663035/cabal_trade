@@ -1609,8 +1609,8 @@ def find_npc(
         return any(left <= x <= right and top <= y <= bottom
                    for left, top, right, bottom in NPC_EXCLUDE_ZONES)
 
-    def label_centre(image: Image.Image) -> tuple[int, int] | None:
-        for line in _text_lines(find_words(image, NPC_SEARCH_REGION, 25)):
+    def label_centre(image: Image.Image, region=None) -> tuple[int, int] | None:
+        for line in _text_lines(find_words(image, region or NPC_SEARCH_REGION, 25)):
             joined = _normalise("".join(w.text for w in line))
             if NPC_NAME_FRAGMENT not in joined or NPC_TITLE_FRAGMENT not in joined:
                 continue
@@ -1625,10 +1625,30 @@ def find_npc(
             return _span_centre(window)
         return None
 
+    # Tesseract's sparse-text segmentation depends on the exact crop, and this
+    # search region moves with the calibrated layout -- which is re-measured
+    # every cycle and legitimately lands on origin (9,29) or (10,30) depending
+    # on OCR jitter. Measured on a real frame: NPC_SEARCH_REGION (600,150,...)
+    # finds nothing while (599,149,...) finds her at (1340,247), with her
+    # nameplate sitting at 90-96% confidence either way. One pixel.
+    #
+    # So a miss is retried against a slightly wider crop before believing it.
+    # Only on failure, so the common path still costs one pass.
+    def look(image):
+        for pad in (0, 8):
+            box = NPC_SEARCH_REGION if pad == 0 else (
+                max(0, NPC_SEARCH_REGION[0] - pad),
+                max(0, NPC_SEARCH_REGION[1] - pad),
+                NPC_SEARCH_REGION[2] + pad, NPC_SEARCH_REGION[3] + pad)
+            got = label_centre(image, box)
+            if got is not None and not excluded(got):
+                return got
+        return None
+
     for _ in range(retries):
         image = source if source is not None else grab()
-        label = label_centre(image)
-        if label is not None and not excluded(label):
+        label = look(image)
+        if label is not None:
             if seen is not None:
                 seen["shot"] = image
             return label
@@ -5005,13 +5025,27 @@ def measure_layout(image: Image.Image | None = None,
 
     words, lines = collect()
     attempts = [(words, lines)]
-    if sum(1 for p, _ in REF_ANCHORS
-           if _anchor_centre(p, words, lines) is not None) < len(REF_ANCHORS):
+    hits = sum(1 for p, _ in REF_ANCHORS
+               if _anchor_centre(p, words, lines) is not None)
+
+    # Retry ONLY when there is not enough to fit safely -- never merely to
+    # collect the full set.
+    #
+    # Retrying whenever fewer than six were found actively made calibration
+    # worse: measured over 181 corpus frames, 24 of them found five anchors
+    # that fit PERFECTLY (residual 0.0px, origin exactly (10,30)), and the
+    # larger pass then contributed a sixth, 'Trade', 9px from where the other
+    # five put it. That is inside the 11.7px bar, so it was accepted, and it
+    # dragged the origin 2px. More anchors is not the goal; a consistent fit
+    # is. 'Trade' is the least reliable of the six -- found on 237 of 286
+    # frames, the lowest of any -- and was also the decoy that made a 1080p
+    # screen uncalibratable.
+    if hits < MIN_ANCHORS_AFTER_DROP:
         for bigger in (3, 4):
             words2, lines2 = collect(bigger)
             attempts.append((words2, lines2))
             if sum(1 for p, _ in REF_ANCHORS
-                   if _anchor_centre(p, words2, lines2) is not None) == len(REF_ANCHORS):
+                   if _anchor_centre(p, words2, lines2) is not None) >= len(REF_ANCHORS):
                 break
 
     found: list[tuple[str, tuple[int, int], tuple[int, int]]] = []
