@@ -25,6 +25,15 @@ SUITES = [
     ("floors: both items",    HERE / "floor_siena_test.py",  []),
     ("floors: name fuzz",     HERE / "floor_fuzz_test.py",   []),
     ("floors: price paths",   HERE / "floor_paths_test.py",  []),
+    # These three replay what the script really saw, from baseline_rows.json,
+    # so they cost about a second each and never start Tesseract. They are the
+    # only suites here that assert PROPERTIES rather than recorded values --
+    # an audit found 91.8% of the older assertions bit-identically circular
+    # and none independent, which is how a reader that was wrong when a frame
+    # was recorded produced a green suite.
+    ("row invariants",        HERE / "invariants_test.py",   []),
+    ("row identity",          HERE / "identity_test.py",     []),
+    ("floors on real screens", HERE / "floor_live_test.py",  []),
     # The only coverage that drives the STATE MACHINE rather than the readers.
     # It stubs the click/capture layer and runs cancel_item, register_item,
     # relist_rows and run_loop through their failure paths for real -- the code

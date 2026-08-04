@@ -3023,6 +3023,51 @@ def enumerate_listings(timeout: float = 8.0,
     return found
 
 
+def listing_family(rows: list[Row], name: str,
+                   price: int | None) -> list[Row]:
+    """Live rows sharing a listing's name and price.
+
+    The unit the collect check counts. Module level, not a closure inside
+    relist(), so the tests can drive the real thing against real recorded
+    tables instead of a reimplementation that can drift from it.
+    """
+    pool = [r for r in match_rows(rows, name)
+            if r.action in ("change", "receive")]
+    if price is not None:
+        # Mirror locate_row: a filter that matches nothing is ignored rather
+        # than allowed to empty the pool.
+        priced = [r for r in pool if r.price == price]
+        if priced:
+            pool = priced
+    return pool
+
+
+def family_quantities(pool: list[Row]) -> list:
+    """The family's quantities, ordered so two readings compare directly."""
+    return sorted((r.qty for r in pool), key=lambda q: (q is None, q))
+
+
+def collect_delta(before: list, after: list) -> tuple[list, list]:
+    """(lost, gained): the multiset difference between two family readings.
+
+    This is what tells a collect apart from a dropped click without needing to
+    know WHICH row is which -- the question that has no answer when two stacks
+    are identical in name, quantity and price.
+
+        lost=[q], gained=[]    the stack went: fully sold and collected
+        lost=[q], gained=[n]   partial sale, n is the remainder
+        lost=[],  gained=[]    nothing moved: the click did not take
+    """
+    unmatched = list(before)
+    gained = []
+    for value in after:
+        if value in unmatched:
+            unmatched.remove(value)
+        else:
+            gained.append(value)
+    return unmatched, gained
+
+
 def locate_row(rows: list[Row], ref: RowRef,
                strict: bool = False) -> tuple[Row | None, str]:
     """The row `ref` points at, plus a note, tolerating duplicate names.
@@ -4499,20 +4544,10 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             # works when the QTY column is unreadable, which is precisely when
             # identity matching is weakest.
             def family(table: list[Row]) -> list[Row]:
-                """Live rows sharing this listing's name and price."""
-                pool = [r for r in match_rows(table, target.name)
-                        if r.action in ("change", "receive")]
-                if target.price is not None:
-                    # Mirror locate_row: a filter matching nothing is ignored
-                    # rather than allowed to empty the pool.
-                    priced = [r for r in pool if r.price == target.price]
-                    if priced:
-                        pool = priced
-                return pool
+                return listing_family(table, target.name, target.price)
 
             def quantities(pool: list[Row]) -> list:
-                return sorted((r.qty for r in pool),
-                              key=lambda q: (q is None, q))
+                return family_quantities(pool)
 
             before = quantities(family(rows))
             after: list = []
@@ -4535,14 +4570,7 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 return FAILED
 
             # Multiset difference: what left the family, and what appeared.
-            unmatched = list(before)
-            gained = []
-            for value in after:
-                if value in unmatched:
-                    unmatched.remove(value)
-                else:
-                    gained.append(value)
-            lost = unmatched
+            lost, gained = collect_delta(before, after)
 
             if not lost and not gained:
                 say(f"Row {row} still shows Receive and the table is unchanged "

@@ -22,6 +22,8 @@ SUITES = [
     ("9 outage replay",        "t9_outage_replay.py"),
     ("11 duplicate stacks",    "t11_duplicate_stacks.py"),
     ("12 scrolling past 10",   "t12_scrolling.py"),
+    ("13 live incidents",      "t13_live_incidents.py"),
+    ("14 duplicate matrix",    "t14_duplicate_matrix.py"),
 ]
 
 FORENSICS = [
