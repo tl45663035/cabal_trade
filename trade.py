@@ -1022,6 +1022,11 @@ class _Input(ctypes.Structure):
 INPUT_MOUSE, INPUT_KEYBOARD = 0, 1
 MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004
+MOUSEEVENTF_WHEEL = 0x0800
+# One wheel notch. Windows sends multiples of this; how many LINES the target
+# turns it into is the app's business, which is why the scroll offset is
+# recovered by reading the table rather than by counting notches.
+WHEEL_DELTA = 120
 KEYEVENTF_KEYUP = 0x0002
 KEYEVENTF_SCANCODE = 0x0008
 VK_CONTROL = 0x11
@@ -1174,6 +1179,33 @@ def type_number(value: int, per_key: float = TYPE_COOLDOWN,
     cooldown()
 
 
+def scroll_wheel(x: int, y: int, notches: int, settle: float = 0.35) -> None:
+    """Turn the mouse wheel over (x, y). Negative scrolls DOWN (further into
+    the list), positive scrolls UP, matching how Windows reports a real wheel.
+
+    The cursor is moved first because the wheel goes to the window under the
+    pointer, not to the focused one -- scrolling with the cursor parked
+    somewhere else would scroll whatever is there instead.
+
+    Sends one notch at a time with a pause between. A burst of notches in a
+    single event is legal, but the game animates the list and coalescing them
+    made the settle time unpredictable, which matters because the caller has
+    to re-read the table afterwards to learn where it landed.
+    """
+    make_dpi_aware()
+    if not move_mouse(x, y):
+        raise PermissionError(CURSOR_BLOCKED_HINT)
+    # mouseData is unsigned in the struct, so a downward notch has to be sent
+    # as its two's-complement value rather than a bare -120.
+    step = (WHEEL_DELTA if notches > 0 else -WHEEL_DELTA) & 0xFFFFFFFF
+    for _ in range(abs(notches)):
+        _send(_Input(type=INPUT_MOUSE,
+                     u=_InputUnion(mi=_MouseInput(0, 0, step,
+                                                  MOUSEEVENTF_WHEEL, 0, None))))
+        time.sleep(settle)
+    cooldown()
+
+
 def click(x: int, y: int, settle: float = 0.15) -> None:
     """Left-click at a screen coordinate.
 
@@ -1246,7 +1278,7 @@ def grab() -> Image.Image:
 
 RECORD_DIR = SCRIPT_DIR / "unit_tests" / "corpus"
 RECORD_ENABLED = False
-RECORD_LIMIT = 3000          # stop before filling the disk
+RECORD_LIMIT = 12000         # stop before filling the disk
 _last_shot: "Image.Image | None" = None
 _record_seq = 0
 _record_full = False
@@ -1274,7 +1306,22 @@ def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
     try:
         RECORD_DIR.mkdir(parents=True, exist_ok=True)
         if _record_seq == 0:
-            _record_seq = len(list(RECORD_DIR.glob("run_*.png")))
+            # The HIGHEST existing number, not the count. Counting breaks the
+            # moment a frame is deleted: with run_00002 removed, len() is 4
+            # while run_00005 exists, so the next write silently OVERWRITES a
+            # live frame -- and the index keeps the old entry, so the suite
+            # then asserts one frame's recorded values against a different
+            # image and reports confident, specific, wrong failures.
+            #
+            # That matters because pruning is the natural response to hitting
+            # RECORD_LIMIT, i.e. exactly when someone is most likely to delete
+            # frames.
+            highest = 0
+            for existing in RECORD_DIR.glob("run_*.png"):
+                digits = existing.stem[4:]
+                if digits.isdigit():
+                    highest = max(highest, int(digits))
+            _record_seq = highest
         if _record_seq >= RECORD_LIMIT:
             _record_full = True
             print(f"Frame recording stopped at {RECORD_LIMIT} frames.",
@@ -2059,6 +2106,30 @@ def read_rows(source: Image.Image | Path | str) -> list[Row]:
         # SIGMetal (FA)", which matches nothing, and the row was reported
         # "already sold out". Data-dependent, so it fired intermittently.
         name = " ".join(w.text for line in _text_lines(cell_words) for w in line)
+
+        # An empty name on a row that is plainly a live listing means the bulk
+        # pass could not segment it, NOT that the slot is vacant -- re-read
+        # just that cell before believing it.
+        #
+        # Tesseract's sparse-text segmentation depends on the crop it is given.
+        # Over the whole 2450x2070 table it drops names it reads perfectly from
+        # a cell-sized image: measured on a real listing, the full-table pass
+        # returned only the socket icon while the same pixels cropped to the
+        # cell gave 'Dragonium Daikatana of Outrageous + 5' at 93% confidence.
+        # That listing is worth 298,000,021 Alz, and read_rows called it
+        # '(empty)' -- which relist_rows skips as a vacant slot, silently, while
+        # reporting the cycle a success.
+        #
+        # Costs one extra OCR pass, and only for rows that would otherwise be
+        # reported nameless. A genuinely empty slot has no button text either,
+        # so this cannot resurrect one: it is gated on the row having a real
+        # action word.
+        if not name.strip() and button.text.strip().casefold() != "register":
+            retry = [w for w in find_words(image, (left, top, right, bottom), 40.0)
+                     if len(w.text.strip()) > 2 or w.conf >= NAME_FRAGMENT_MIN_CONF]
+            if retry:
+                name = " ".join(w.text for line in _text_lines(retry)
+                                for w in line)
 
         # Join the words before parsing. Taking max() over separate words means
         # a price OCR splits -- "105," + "000,000" -- reads as the fragment 105.
@@ -5453,6 +5524,11 @@ def main() -> None:
                         "recovery a failed cycle performs")
     p.add_argument("--words", action="store_true",
                    help="dump every word OCR sees in the trade window")
+    p.add_argument("--scroll", type=int, metavar="NOTCHES",
+                   help="probe: turn the wheel over the listings table by N "
+                        "notches (negative scrolls down) and report how far "
+                        "the rows actually moved. Nothing else uses scrolling "
+                        "yet")
     p.add_argument("--max-qty", action="store_true",
                    help="with --register, set the quantity to the maximum available")
     # default=None, not 0: the numeric validation below rejects non-positive
@@ -5547,8 +5623,11 @@ def main() -> None:
     # injects input and must face the elevation check like every other command
     # that does. Without it the run died on an uncaught PermissionError instead
     # of printing the "run as Administrator" message.
+    # `is not None` for --scroll: 0 is a legitimate no-op probe, and `or 0` is
+    # falsy, which would let it through the gate ungated.
     always_clicks = (args.load is not None or args.clear or args.confirm
-                     or args.open or args.reset or args.calibrate)
+                     or args.open or args.reset or args.calibrate
+                     or args.scroll is not None)
     honours_dry_run = (args.cancel is not None or args.register is not None
                        or args.relist is not None
                        or args.relist_rows is not None
@@ -5658,6 +5737,72 @@ def main() -> None:
         print(f"panel after: {after}")
         if not after["loaded"]:
             sys.exit("Nothing was loaded into the shop slot.")
+        return
+
+    if args.scroll is not None:
+        # Deliberately a probe, not a feature. Nothing in the relist path uses
+        # scrolling yet, because the hard part is not turning the wheel -- it
+        # is knowing WHICH listings you are looking at afterwards. read_rows
+        # numbers rows by screen position, so once the view moves, "row 1"
+        # is a different listing and every caller that acts on an index is
+        # acting on the wrong one. This measures the behaviour first.
+        before = grab()
+        rows_before = read_rows(before)
+        print(f"before: {len(rows_before)} rows")
+        for r in rows_before:
+            print(f"   {r.index:2d} [{r.action:8}] {r.name[:38]:40} "
+                  f"x{str(r.qty):>4} {r.price}  band {r.top}-{r.bottom}")
+        centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
+                  (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
+        print(f"\nscrolling {args.scroll:+d} notch(es) at {centre}")
+        record("scroll.before", before, notches=args.scroll)
+        scroll_wheel(*centre, args.scroll)
+        time.sleep(0.8)
+        park_cursor()
+        after = grab()
+        rows_after = read_rows(after)
+        record("scroll.after", after, notches=args.scroll)
+        print(f"\nafter: {len(rows_after)} rows")
+        for r in rows_after:
+            print(f"   {r.index:2d} [{r.action:8}] {r.name[:38]:40} "
+                  f"x{str(r.qty):>4} {r.price}  band {r.top}-{r.bottom}")
+
+        # How far did it move? Recovered from CONTENT, never from the notch
+        # count -- the wheel-to-lines ratio is the game's business and may not
+        # even be constant. Identity here is (name, price, qty).
+        def key(r):
+            return (r.name, r.price, r.qty)
+        b = [key(r) for r in rows_before]
+        a = [key(r) for r in rows_after]
+        # EVERY offset that fits, not the first. With duplicate listings more
+        # than one can fit, and taking the first would silently pick the wrong
+        # one -- 41 of 43 recorded tables contain rows identical in name,
+        # quantity AND price, so this is the normal case here, not an edge one.
+        fits = []
+        for d in range(-len(b), len(b) + 1):
+            overlap = [(i, i + d) for i in range(len(b))
+                       if 0 <= i + d < len(a)]
+            if len(overlap) >= 3 and all(b[i] == a[j] for i, j in overlap):
+                fits.append((-d, len(overlap)))
+        if len(fits) == 1:
+            shift = fits[0][0]
+        elif len(fits) > 1:
+            shift = None
+            print(f"\nAMBIGUOUS: {len(fits)} offsets fit equally well "
+                  f"{[f[0] for f in fits]} - duplicate listings make the view "
+                  "position unrecoverable from content alone.")
+        else:
+            shift = None
+        print(f"\nrows moved: {shift if shift is not None else 'COULD NOT TELL'}")
+        if fits:
+            print(f"  offsets that fit: {fits}  (offset, overlapping rows)")
+        if shift == 0:
+            print("  the view did not move - the list may be at its end, or the")
+            print("  wheel event did not reach the table.")
+        elif shift is None:
+            print("  no consistent overlap of 3+ rows. Either the whole page")
+            print("  changed, or a listing changed under us. Do NOT act on")
+            print("  positions in this state.")
         return
 
     if args.words:
