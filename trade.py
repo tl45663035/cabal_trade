@@ -1554,7 +1554,22 @@ def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
         name = f"run_{_record_seq:05d}.png"
         image.save(RECORD_DIR / name)
         entry = {"file": name, "label": label,
-                 "at": datetime.now().isoformat(timespec="seconds")}
+                 "at": datetime.now().isoformat(timespec="seconds"),
+                 # The layout the frame was READ under, not just when it was
+                 # taken. Every search region is derived from LAYOUT, and
+                 # Tesseract's sparse-text segmentation is crop-dependent -- so
+                 # replaying a frame under a different layout can legitimately
+                 # return a different answer from the same pixels.
+                 #
+                 # That is not hypothetical: calibration lands on origin (9,29)
+                 # or (10,30) from OCR jitter alone, 11 times and 13 times in
+                 # one day's runs. Replaying (9,29) frames under (10,30) shifted
+                 # the NPC nameplate centre by up to 5px and failed 4 of 378,764
+                 # corpus assertions -- a comparison the frames carried no way
+                 # to make fair. Now they do.
+                 "layout": {"origin": list(LAYOUT.origin),
+                            "scale": round(LAYOUT.scale, 6),
+                            "screen": list(LAYOUT.screen)}}
         # Context must never overwrite the three fields the index is keyed on.
         # Making label/shot positional-only stopped `record(..., label=x)` from
         # RAISING, but update() then let that same kwarg clobber the label
