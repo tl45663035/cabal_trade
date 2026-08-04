@@ -309,6 +309,12 @@ class Harness:
             elif self.dialog == "confirm":
                 self.dialog = None
                 self.pending_register = None
+            elif self.dialog == "receipt":
+                # Confirm Receipt also has a Cancel, and it closes outright.
+                # Modelling that click as a no-op made a receipt dialog
+                # uncloseable here, which is not how the game behaves and
+                # would hide a real failure to back out of one.
+                self.dialog = None
             return
         if near(CONFIRM_XY):
             if self.dialog != "confirm":

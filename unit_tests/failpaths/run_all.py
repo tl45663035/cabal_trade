@@ -25,6 +25,9 @@ SUITES = [
     ("13 live incidents",      "t13_live_incidents.py"),
     ("14 duplicate matrix",    "t14_duplicate_matrix.py"),
     ("15 dialog recovery",     "t15_dialog_recovery.py"),
+    ("16 dialog blind spot",   "t16_dialog_blindspot.py"),
+    ("17 late dialog",         "t17_late_dialog.py"),
+    ("18 collect permutations", "t18_collect_permutations.py"),
 ]
 
 FORENSICS = [

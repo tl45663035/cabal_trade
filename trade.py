@@ -788,6 +788,13 @@ DIALOG_BUTTON_MIN_X = 1200
 # Registering can raise more than one confirmation: pricing more than 25% below
 # the weekly average adds an extra "are you sure" dialog on top of the usual one.
 MAX_CONFIRM_STEPS = 3
+# How long to keep looking for the Registration Extension dialog after the main
+# wait has expired, before accepting that it never came.
+#
+# The main wait polls the TITLE, which Tesseract drops at POPUP_REGION scale on
+# some frames, so "expired" routinely means "did not read it in time" rather
+# than "it is not there". Only spent on a path that was about to abort.
+EXTENSION_RECHECK_SECONDS = 4.0
 # Dialog titles are large ornate glyphs that OCR poorly at the crop size this
 # search uses; a 40% bar dropped them entirely. Junk admitted at 25% is
 # filtered by having to match a specific title word, not by confidence.
@@ -3060,11 +3067,22 @@ def listing_family(rows: list[Row], name: str,
     pool = [r for r in match_rows(rows, name)
             if r.action in ("change", "receive")]
     if price is not None:
-        # Mirror locate_row: a filter that matches nothing is ignored rather
-        # than allowed to empty the pool.
-        priced = [r for r in pool if r.price == price]
-        if priced:
-            pool = priced
+        # Filtered STRICTLY, unlike locate_row. locate_row ignores a filter
+        # that matches nothing, because there an empty pool means "lost the
+        # row" and an unread price should not cause that. Here an empty family
+        # is the correct answer: it means every stack at that price is gone.
+        #
+        # Copying the fallback was a real bug. With two stacks of one item at
+        # DIFFERENT prices, collecting the only stack at its price left no row
+        # matching, the filter was ignored, and the family widened to the
+        # other stack -- so a stack that had never sold was read as the
+        # remainder and relisted. That is a registration fee and a wrong price
+        # on a listing nobody asked to touch.
+        #
+        # The failure this trades against is milder: if a price fails to OCR
+        # on the later frame its row drops out, the stack reads as fully
+        # collected, and a remainder waits for the next cycle.
+        pool = [r for r in pool if r.price == price]
     return pool
 
 
@@ -3860,6 +3878,19 @@ def cancel_item(
                 say("  ...but it IS up on a fresh frame: it arrived after the "
                     "wait expired. Continuing rather than aborting.")
                 shot = probe
+            else:
+                # One probe is a one-frame window, and the dialog does not
+                # arrive on a schedule. A sweep of arrival times showed the
+                # single recheck rescuing NONE of them: it happened to land on
+                # the right frame at 07:57 and would not have next time.
+                #
+                # So look again properly. This only runs on a path that was
+                # about to abort, so the cost is a few seconds on a failure
+                # rather than on every cancel.
+                shot = await_dialog("extension", EXTENSION_RECHECK_SECONDS)
+                if shot is not None:
+                    say("  ...it IS up on a fresh frame after a second look; "
+                        "continuing rather than aborting.")
         require(shot is not None, "the Registration Extension dialog did not appear")
 
         cancel = await_dialog_button(DISMISS_WORD, timeout)
