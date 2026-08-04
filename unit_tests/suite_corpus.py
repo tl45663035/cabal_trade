@@ -458,7 +458,10 @@ def main():
     if bad:
         # Grouped, because one broken reader produces the same failure on
         # hundreds of frames and an undifferentiated list buries the others.
-        kinds = Counter(w.split(": ", 1)[-1].split("(")[0].strip() for w in bad)
+        # Group on the leading phrase only. Splitting on "(" truncated every
+        # message about an item whose NAME contains a bracket -- which is
+        # most of them -- leaving "recorded '" as the entire summary.
+        kinds = Counter(w.split(":", 1)[-1].strip()[:70] for w in bad)
         print(f"\n  distinct failure kinds: {len(kinds)}")
         for kind, n in kinds.most_common(15):
             print(f"    {n:5d}  {kind[:90]}")

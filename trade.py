@@ -2546,6 +2546,164 @@ class RowRef:
         return pool
 
 
+# --------------------------------------------------------------------------
+# Scrolling the listings table
+# --------------------------------------------------------------------------
+#
+# The shop holds more listings than the ten on screen. Scrolling is only safe
+# if the script knows WHICH listings it is looking at afterwards, and read_rows
+# numbers rows by screen position -- so after a scroll, "row 1" is a different
+# listing with nothing to signal it. Every caller that acts on an index would
+# be acting on the wrong one.
+#
+# Measured on the live shop:
+#   * one wheel notch moves exactly one row
+#   * the row bands do NOT move; only content scrolls, so a screen position's
+#     click target is stable
+#   * scrolling clamps at both ends, so over-scrolling is safe and idempotent
+#
+# The offset is therefore recovered by matching content across two reads, never
+# by counting notches. Stepping ONE row at a time leaves nine of ten rows
+# overlapping, which over-determines the answer; a seven-row step leaves
+# exactly three, the bare minimum, and a twenty-row step leaves none.
+
+# Beyond any plausible list length. Over-scrolling clamps, so this is how the
+# view is driven to a known end rather than tracked with a running counter --
+# a counter drifts, and re-deriving from a known end cannot.
+SCROLL_TO_END_NOTCHES = 40
+# Rows that must overlap before an offset is believed.
+MIN_SCROLL_OVERLAP = 3
+
+
+def _row_key(row: Row) -> tuple:
+    """What makes two sightings the same listing, for scroll matching."""
+    return (row.name, row.price, row.qty, row.action)
+
+
+def measure_shift(before: list[Row], after: list[Row],
+                  minimum: int = MIN_SCROLL_OVERLAP) -> int | None:
+    """How many rows the view moved down, or None if it cannot be told.
+
+    Returns EVERY offset that fits and refuses unless exactly one does. With
+    duplicate listings more than one can fit -- 41 of 43 recorded tables carry
+    rows identical in name, quantity and price -- and taking the first would
+    silently pick the wrong one.
+    """
+    b = [_row_key(r) for r in before]
+    a = [_row_key(r) for r in after]
+    if not b or not a:
+        return None
+    fits = []
+    for d in range(-len(b), len(b) + 1):
+        overlap = [(i, i + d) for i in range(len(b)) if 0 <= i + d < len(a)]
+        if len(overlap) >= minimum and all(b[i] == a[j] for i, j in overlap):
+            fits.append(-d)
+    return fits[0] if len(fits) == 1 else None
+
+
+def scroll_to_end(up: bool, timeout: float = 8.0,
+                  verbose: bool = True) -> list[Row] | None:
+    """Drive the view to the top (up) or bottom, and return what is showing.
+
+    Relies on the clamp: asking for more than the list can give is a no-op, so
+    this needs no knowledge of how long the list is.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
+              (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
+    scroll_wheel(*centre, SCROLL_TO_END_NOTCHES if up else -SCROLL_TO_END_NOTCHES)
+    park_cursor()
+    rows = await_rows(timeout)
+    if not rows:
+        say("  the table could not be read after scrolling.")
+        return None
+    return rows
+
+
+def scroll_one(down: bool, before: list[Row], timeout: float = 8.0,
+               verbose: bool = True) -> tuple[list[Row] | None, int | None]:
+    """Move the view exactly one row. Returns (rows_after, shift).
+
+    `shift` is measured from content, and is 0 when the view is already at the
+    end -- which is how the caller learns it has seen everything. Anything
+    other than 0 or 1 means the wheel did something unexpected, and the caller
+    must stop rather than reinterpret it.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
+              (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
+    scroll_wheel(*centre, -1 if down else 1)
+    park_cursor()
+    after = await_rows(timeout)
+    if not after:
+        say("  the table could not be read after scrolling.")
+        return None, None
+    shift = measure_shift(before, after)
+    if shift is None:
+        say("  could not tell how far the view moved - refusing to guess "
+            "which listing is which.")
+        return after, None
+    want = 1 if down else -1
+    if shift not in (0, want):
+        say(f"  one notch moved {shift} rows, expected 0 or {want} - stopping "
+            "rather than reinterpreting it.")
+        return after, None
+    return after, shift
+
+
+def enumerate_listings(timeout: float = 8.0,
+                       verbose: bool = True) -> list[tuple[int, Row]] | None:
+    """Every listing in the shop, paired with its absolute position.
+
+    Walks from the top one row at a time. Absolute index 1 is the first
+    listing in the shop, independent of what is on screen.
+
+    Returns None rather than a partial list if the view is ever lost: a
+    half-enumerated shop is indistinguishable from a complete one to the
+    caller, and acting on it would act on the wrong listings.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    rows = scroll_to_end(up=True, timeout=timeout, verbose=verbose)
+    if not rows:
+        return None
+
+    found: list[tuple[int, Row]] = [(i + 1, r) for i, r in enumerate(rows)]
+    top = 1                      # absolute index of screen row 1
+    steps = 0
+    # Bounded: the shop cannot hold more listings than this, and an unbounded
+    # loop here would scroll for ever if the shift ever read 1 without the
+    # view actually moving.
+    while steps < SCROLL_TO_END_NOTCHES:
+        steps += 1
+        after, shift = scroll_one(True, rows, timeout=timeout, verbose=verbose)
+        if after is None or shift is None:
+            return None
+        if shift == 0:
+            break                # clamped: the bottom is on screen
+        top += shift
+        rows = after
+        # Only the row that just arrived at the bottom is new.
+        index = top + len(rows) - 1
+        if index > len(found):
+            found.append((index, rows[-1]))
+    else:
+        say(f"  still scrolling after {steps} steps - refusing to continue.")
+        return None
+
+    say(f"  {len(found)} listing(s) in the shop "
+        f"({len(found) - EXPECTED_ROWS} beyond the first screen)")
+    return found
+
+
 def locate_row(rows: list[Row], ref: RowRef,
                strict: bool = False) -> tuple[Row | None, str]:
     """The row `ref` points at, plus a note, tolerating duplicate names.
@@ -3383,8 +3541,27 @@ def cancel_item(
         say(f"ABORTED: {exc}.")
         if committed:
             # Past the point of no return; only report, never click further.
-            say("WARNING: Confirmation was already clicked, so the cancellation "
-                "may have gone through. Check the listing before retrying.")
+            #
+            # But "clicked" is not "accepted". A cancellation the game took
+            # closes the dialog; if the confirmation dialog is STILL up, the
+            # game refused the action and the listing is intact. Reading that
+            # costs one screenshot and no clicks, and it replaces a guess with
+            # an observation -- the previous message said the cancel "may have
+            # gone through" in exactly the case where it provably had not,
+            # which sends you hunting for a stranded item that does not exist.
+            still = dialog_kind(grab())
+            if still == "confirm":
+                say("The confirmation dialog is still open, which means the "
+                    "game did NOT accept the cancellation - the listing should "
+                    "still be on the market.")
+                say("The usual cause is not enough free inventory space to "
+                    "receive the stack: a cancelled 250-item listing comes "
+                    "back as ~64 separate slots, and the game refuses rather "
+                    "than partially withdrawing. Free some space and retry.")
+            else:
+                say("WARNING: Confirmation was already clicked and the dialog "
+                    f"is now {still!r}, so the cancellation may have gone "
+                    "through. Check the listing before retrying.")
             return False
         # --dry-run is exempt from the elevation gate precisely because it does
         # not click. This recovery path was not gated, so a dry run that
@@ -4097,7 +4274,12 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
         # table and would otherwise cancel whatever now sits at this index.
         if not cancel_item(row, dry_run=dry_run, timeout=timeout, verbose=verbose,
                            expect=RowRef.of(target, rows)):
-            say("Cancel did not complete - nothing will be listed.")
+            # Deliberately not "nothing will be listed": cancel_item returns
+            # False both when nothing happened AND when it committed but could
+            # not verify, and it has just printed which. Asserting the stronger
+            # claim here contradicted its own warning two lines earlier.
+            say("Cancel did not complete - see above for what state it left. "
+                "Nothing further will be listed this cycle.")
             return FAILED
 
         if not dry_run and not wait_for_table(max(timeout, 20.0)):
@@ -5524,6 +5706,9 @@ def main() -> None:
                         "recovery a failed cycle performs")
     p.add_argument("--words", action="store_true",
                    help="dump every word OCR sees in the trade window")
+    p.add_argument("--listings", action="store_true",
+                   help="scroll the whole shop and list every listing with " 
+                        "its absolute position (reads and scrolls only)")
     p.add_argument("--scroll", type=int, metavar="NOTCHES",
                    help="probe: turn the wheel over the listings table by N "
                         "notches (negative scrolls down) and report how far "
@@ -5627,7 +5812,7 @@ def main() -> None:
     # falsy, which would let it through the gate ungated.
     always_clicks = (args.load is not None or args.clear or args.confirm
                      or args.open or args.reset or args.calibrate
-                     or args.scroll is not None)
+                     or args.scroll is not None or args.listings)
     honours_dry_run = (args.cancel is not None or args.register is not None
                        or args.relist is not None
                        or args.relist_rows is not None
@@ -5738,6 +5923,30 @@ def main() -> None:
         if not after["loaded"]:
             sys.exit("Nothing was loaded into the shop slot.")
         return
+
+    if args.listings:
+        # Walks the whole shop one row at a time and prints it with ABSOLUTE
+        # positions. Still read-only in effect: it scrolls and reads, and
+        # touches nothing. This is the foundation relisting past row 10 needs,
+        # exercised on its own before anything acts on it.
+        found = enumerate_listings()
+        if found is None:
+            print("\nCould not enumerate the shop. Nothing was acted on.")
+            sys.exit(1)
+        floors = 0
+        print(f"\n{'#':>3}  {'action':8} {'name':44} {'qty':>5} {'price':>14}")
+        for index, row in found:
+            floor = item_price_floor(row.name)
+            if floor:
+                floors += 1
+            print(f"{index:3d}  {row.action:8} {row.name[:44]:44} "
+                  f"{str(row.qty):>5} {row.price if row.price is None else format(row.price, ',') :>14}"
+                  + (f"   floor {floor:,}" if floor else ""))
+        live = [r for _, r in found if r.action in ("change", "receive")]
+        print(f"\n{len(found)} listing(s), {len(live)} live, "
+              f"{len(found) - EXPECTED_ROWS} beyond the first screen, "
+              f"{floors} carrying a price floor")
+        sys.exit(0)
 
     if args.scroll is not None:
         # Deliberately a probe, not a feature. Nothing in the relist path uses
