@@ -4,7 +4,9 @@ Applies the discriminator from t5 to the actual recorded evidence.
 """
 import json
 from collections import Counter
-from pathlib import Path
+from pathlib import Path as _Path
+
+_ROOT = _Path(__file__).resolve().parent.parent.parent
 
 INDEX = _ROOT / "unit_tests" / "corpus" / "run_index.jsonl"
 

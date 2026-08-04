@@ -54,11 +54,19 @@ KNOWN_OPEN = {
         "the replayed outage still ends with the run stopped; the cause is "
         "recorded now, but the recovery (clearing a stranded work tab) does "
         "not exist",
-    "6 index forensics":
-        "historic corpus entries carry context from older record() signatures "
-        "and 16 frames have no index line -- evidence about the past, not a "
-        "defect in the current code",
 }
+
+# The FORENSICS scripts contain NO assertions -- they print what the recorded
+# index contains and always exit 0. They cannot fail, so showing them as
+# "clean" beside suites that can is a false green: three rows that look like
+# passing tests and test nothing.
+#
+# '6 index forensics' was listed in KNOWN_OPEN with a confident description of
+# findings it had supposedly reported. It had reported nothing: it was dying on
+# a NameError, exiting 1, and the exit code was read as "has findings". The
+# reason was written to fit that assumption instead of being read off the
+# suite's output, and it survived a full green run.
+REPORT_ONLY = {"6 index forensics", "7 index windows", "8 orphan frames"}
 
 
 def main(include_forensics=True):
@@ -68,15 +76,35 @@ def main(include_forensics=True):
     for label, name in todo:
         print(f"\n{'#' * 74}\n### {label}  ({name})\n{'#' * 74}", flush=True)
         started = time.monotonic()
-        proc = subprocess.run([sys.executable, str(HERE / name)], cwd=str(HERE))
-        results.append((label, time.monotonic() - started, proc.returncode))
+        proc = subprocess.run([sys.executable, str(HERE / name)], cwd=str(HERE),
+                              capture_output=True, text=True, errors="replace")
+        print(proc.stdout, end="", flush=True)
+        if proc.stderr:
+            print(proc.stderr, end="", flush=True)
+        # A suite that DIED is not a suite that reported findings, but both
+        # exit 1, so KNOWN_OPEN swallowed the difference: a NameError in t6
+        # was filed under its known finding and the build stayed green while
+        # the suite executed nothing at all. The give-away was in the summary
+        # the whole time -- 0.0s -- and it read like just another known one.
+        #
+        # A crash therefore fails the build no matter what KNOWN_OPEN says.
+        # KNOWN_OPEN is a statement about findings the suite REPORTS; it can
+        # never be a licence for the suite not to run.
+        crashed = "Traceback (most recent call last)" in proc.stderr
+        results.append((label, time.monotonic() - started, proc.returncode,
+                        crashed))
 
     print(f"\n{'=' * 74}")
     print(f"{'suite':26} {'time':>8}  result")
     print("-" * 74)
-    unexpected, known = [], []
-    for label, elapsed, code in results:
-        if code == 0:
+    unexpected, known, crashed_suites = [], [], []
+    for label, elapsed, code, crashed in results:
+        if crashed:
+            verdict = "CRASHED - did not run"
+            crashed_suites.append(label)
+        elif label in REPORT_ONLY:
+            verdict = "report (asserts nothing)"
+        elif code == 0:
             verdict = "clean"
         elif label in KNOWN_OPEN:
             verdict = "findings (known)"
@@ -97,19 +125,24 @@ def main(include_forensics=True):
 
     # A suite that was expected to fail and now passes is worth saying out
     # loud: it means a fix landed and the list should shrink.
-    fixed = [label for label, _, code in results
-             if code == 0 and label in KNOWN_OPEN]
+    fixed = [label for label, _, code, crashed in results
+             if code == 0 and not crashed and label in KNOWN_OPEN
+             and label not in REPORT_ONLY]
     if fixed:
         print(f"\n{len(fixed)} suite(s) now PASS that are still listed as "
               "known-open:")
         for label in fixed:
             print(f"  {label}  -- remove it from KNOWN_OPEN")
 
+    if crashed_suites:
+        print(f"\n{len(crashed_suites)} suite(s) CRASHED and tested nothing: "
+              + ", ".join(crashed_suites))
+        print("  This is not a finding. The suite did not run -- fix it before "
+              "trusting\n  anything else in this summary.")
     if unexpected:
         print(f"\n{len(unexpected)} suite(s) with NEW findings: "
               + ", ".join(unexpected))
-        return 1
-    return 0
+    return 1 if (unexpected or crashed_suites) else 0
 
 
 if __name__ == "__main__":

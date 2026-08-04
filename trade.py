@@ -79,7 +79,7 @@ from pathlib import Path
 # in conversation: the row reads "Siena's Unbinding Stone", and dropping the
 # "'s" would cost similarity on every single match for no reason.
 ITEM_PRICE_FLOORS: tuple[tuple[str, str, int], ...] = (
-    ("vip", "Yekaterina VIP Membership", 105_000_000),
+    ("vip", "Yekaterina VIP Membership", 110_000_000),
     # 'siena' is the token rather than 'unbinding': the plain "Unbinding Stone"
     # is a different, far cheaper item, and 'unbinding' would hand it this
     # floor on the token route. 'siena' is 5 characters and unique to this
@@ -4014,7 +4014,7 @@ def register_item(
             # An unnamed item could be anything, including a VIP. A stated
             # price below the strictest floor on the books therefore needs the
             # item named -- otherwise `--register R C --price 410000` on a slot
-            # that happens to hold a VIP dumps 119M of stock, and no
+            # that happens to hold a VIP dumps 110M of stock, and no
             # sanity_check runs on that path to catch it.
             strictest = strictest_price_floor()
             require(not strictest or force_price >= strictest,
