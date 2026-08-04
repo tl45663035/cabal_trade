@@ -4639,6 +4639,21 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 return family_quantities(pool)
 
             before = quantities(family(rows))
+
+            # Make the client REFETCH before counting. wait_for_table above
+            # only waits for a reload to finish; it does not cause one, so the
+            # poll below was reading the client's stale copy -- which still
+            # shows the pre-sale quantity however long it is polled.
+            #
+            # Measured on the 08:27 run: 16 collects across rows 2-8 polled the
+            # full budget, concluded "the click did not take", and retried. On
+            # the retry -- which reopens the shop, and therefore refreshes --
+            # the row read as [change] with the collected quantity already
+            # gone. The collect had worked every time. That is ~45s of polling
+            # plus a whole wasted attempt per sale, and it made a working
+            # collect look like a failing one in the log.
+            refresh_table(timeout=timeout, verbose=False)
+
             after: list = []
             after_rows: list[Row] = []
             saw_table = False
@@ -4662,8 +4677,16 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             lost, gained = collect_delta(before, after)
 
             if not lost and not gained:
-                say(f"Row {row} still shows Receive and the table is unchanged "
-                    f"- the click did not take; retrying.")
+                # Says what was MEASURED. The old wording claimed the row
+                # "still shows Receive", which this code never checked -- and
+                # it was wrong every time it printed during the 08:27 run,
+                # where the collect had in fact gone through and only the
+                # client's copy of the table was stale.
+                priced = (f"at {target.price:,} " if target.price is not None
+                          else "")
+                say(f"The {target.name!r} listings {priced}are unchanged "
+                    f"after collecting ({before}) - the click did not take; "
+                    f"retrying.")
                 continue
 
             if len(lost) == 1 and not gained:

@@ -23,8 +23,8 @@ sold stack reported as still listed.
 """
 import itertools
 
-from harness import (Harness, RECEIPT_XY, check, empty_panel, make_row, run,
-                     section, summary)
+from harness import (Harness, RECEIPT_XY, REFRESH_XY, check, empty_panel,
+                     make_row, run, section, summary)
 
 import trade
 
@@ -223,6 +223,50 @@ check("collect_delta reports exactly one stack lost, in every shape",
       not bad,
       f"{len(bad)} shape(s); first 3:\n           "
       + "\n           ".join(bad[:3]))
+
+
+# ===========================================================================
+section("the table must be REFETCHED before the collect is counted")
+
+# wait_for_table waits for a reload to finish; it does not cause one. Without
+# an explicit refresh the count reads the client's stale copy, which still
+# shows the pre-sale quantity however long it is polled.
+#
+# Measured on the 08:27 run: 16 collects polled the full 45s budget, reported
+# "the click did not take", and retried -- and on the retry, which reopens the
+# shop and therefore refreshes, the row already showed the collected quantity
+# gone. Every one of those collects had worked.
+h = Harness(rows=build(2, "distinct", "same", 1), panel=empty_panel())
+with h:
+    outcome, exc = run(trade.relist, 1)
+    # refresh_table is not stubbed -- it runs for real and clicks the Refresh
+    # button the harness reports, so the evidence is the click itself.
+    refreshes = sum(1 for n, args, _ in h.calls
+                    if n == "click" and len(args) >= 2
+                    and abs(args[0] - REFRESH_XY[0]) <= 40
+                    and abs(args[1] - REFRESH_XY[1]) <= 40)
+    check("the Refresh button is clicked after the receipt is accepted",
+          refreshes >= 1,
+          f"{refreshes} Refresh click(s) -- without one the count polls the "
+          f"client's stale copy and a working collect reads as a dropped "
+          f"click")
+    check("the collect is still reported correctly",
+          outcome == trade.SOLD_OUT and exc is None,
+          f"outcome={outcome!r} exc={exc!r}")
+    check("exactly one receipt, unchanged by the refresh", receipts(h) == 1,
+          f"{receipts(h)} receipts")
+
+# And the message must describe what was measured, not assert screen state it
+# never read.
+h = Stubborn(rows=build(2, "distinct", "same", 1), panel=empty_panel())
+with h:
+    run(trade.relist, 1)
+    check("a genuine no-op says the listings are unchanged",
+          h.said("are unchanged after collecting"), h.out()[-400:])
+    check("...and does NOT claim the row still shows Receive",
+          not h.said("still shows Receive"),
+          "that wording was never checked against the screen, and was wrong "
+          "every time it printed during the 08:27 run")
 
 
 raise SystemExit(summary())
