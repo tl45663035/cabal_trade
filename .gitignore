@@ -25,3 +25,7 @@ __pycache__/
 # item names, prices and Alz figures -- and because a crash log is only
 # useful on the machine that produced it.
 logs/
+
+# Scratch directory the failure-path harness records into while it runs.
+# Regenerated on every run; never part of the corpus.
+unit_tests/failpaths/_recdir/

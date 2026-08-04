@@ -32,6 +32,7 @@ FIRST RUN ON A NEW MACHINE
 from __future__ import annotations
 
 import argparse
+import atexit
 import csv
 import ctypes
 import ctypes.wintypes
@@ -48,6 +49,155 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+# ==========================================================================
+# SETTINGS -- the values you are most likely to want to change.
+# ==========================================================================
+#
+# Everything here is a plain literal and is defined ONCE, in this block.
+# The rest of the file reads these names; there is no second copy further
+# down that would silently win. Derived geometry (regions, offsets, the
+# calibration frame) is NOT here on purpose -- it is computed from the
+# measured layout and editing it by hand would send clicks into the game
+# world.
+#
+
+# --------------------------------------------------------------------------
+# PRICE FLOORS -- the money numbers
+# --------------------------------------------------------------------------
+
+# Absolute per-item floors, matched against the listing name (case-insensitive).
+# These bind no matter what the market suggests.
+# (token, full catalogue name, floor). The token is a fast substring test; the
+# full name is what a corrupted read is compared against, because a 3-character
+# token is far too small a target for OCR. Measured over realistic single-glyph
+# corruptions of the VIP name, the token alone lost the floor 4.8% of the time
+# -- every one of V->Y, V->U, P->F, P->R, P->B, I->T -- while also matching
+# 'V|pgrade Core(High)', which folds to contain "vip" and would have listed 158
+# cores at 110,000,000 each.
+#
+# The catalogue name must be spelled as the GAME renders it, not as it is said
+# in conversation: the row reads "Siena's Unbinding Stone", and dropping the
+# "'s" would cost similarity on every single match for no reason.
+ITEM_PRICE_FLOORS: tuple[tuple[str, str, int], ...] = (
+    ("vip", "Yekaterina VIP Membership", 105_000_000),
+    # 'siena' is the token rather than 'unbinding': the plain "Unbinding Stone"
+    # is a different, far cheaper item, and 'unbinding' would hand it this
+    # floor on the token route. 'siena' is 5 characters and unique to this
+    # item, so it is both a stronger target than 'vip' and a narrower one.
+    ("siena", "Siena's Unbinding Stone", 71_000_000),
+)
+
+FALLBACK_PRICE = 10_000_000_000    # 10B, when the game suggests no price
+
+# Below this, a table price is treated as a misread rather than a real figure.
+# Every guard derives from that number, and the `if original` / `if price_floor`
+# short-circuits mean a small value silently disables all of them at once.
+MIN_PLAUSIBLE_PRICE = 1_000
+
+# Sanity checks on relisting.
+#
+# There is NO relative floor against the previous price -- the rule is to take
+# the lowest current price, whatever it is. A MAX_PRICE_DROP constant and a
+# price_floor_for() helper implementing a 5% floor used to live here, called
+# from nowhere, while relist()'s docstring described them as binding. Dead
+# safety machinery is worse than none: it invites the one floor that does bind
+# (ITEM_PRICE_FLOORS) to be relaxed against a backstop that was never there.
+#
+# A market price below this fraction of the listed price is reported as a NOTE
+# and then listed at anyway.
+SUSPECT_PRICE_FRACTION = 0.5
+
+# --------------------------------------------------------------------------
+# WHAT GETS RELISTED
+# --------------------------------------------------------------------------
+
+# Relisting pushes the quantity to the maximum available for every item, so a
+# listing of 3 does not come back as a listing of 1. Add name fragments here to
+# exclude particular items from that.
+MAXIMISE_ALL_QUANTITIES = True
+
+NO_MAX_QUANTITY_ITEMS: tuple[str, ...] = ()
+
+# What to type to fill the quantity field. The game clamps entry to the stack's
+# maximum, so anything larger than a stack can hold maximises it -- no need to
+# read the maximum off the panel first and type it back exactly.
+MAX_QTY_ENTRY = 9999
+
+# How far the panel's stack size may differ from the quantity the table showed
+# before the load is treated as a different item rather than a misread digit.
+# A different item differs by orders of magnitude; an OCR slip differs by one
+# glyph. Sized from the incident that motivated it: the table read a 233-stack
+# as 230, and exact equality aborted AFTER the cancel had committed -- which
+# stranded the stack, failed the next three cycles on the empty-work-tab check,
+# and stopped a five-hour run.
+QTY_CROSSCHECK_ABSOLUTE = 5
+
+QTY_CROSSCHECK_FRACTION = 0.10
+
+# --------------------------------------------------------------------------
+# PACE AND PATIENCE
+# --------------------------------------------------------------------------
+
+# Pace every input the script sends. The game is a live client with its own
+# animations and server round-trips; acting faster than a person can leaves it
+# behind and produces the "the click did nothing" failures.
+ACTION_COOLDOWN = 0.5   # after a move, a click or a key press
+
+TYPE_COOLDOWN = 0.5     # between keystrokes while entering a value
+
+# Shortest turnaround between loop cycles, so `--every 0` cannot spin a core
+# when a cycle happens to do no work at all.
+MIN_CYCLE_SECONDS = 1.0
+
+# A sold row must be collected before it can be relisted; the server needs a
+# moment to settle before the table is worth re-reading.
+RECEIVE_WAIT = 3.0
+
+RELIST_ATTEMPTS = 3
+
+# How many times a refused input is retried before it counts as blocked.
+# SendInput returning 0 is usually transient (a hook, a momentary elevated
+# foreground, a desktop switch). Treating one refusal as permanent ended an
+# unattended run mid-cycle with no diagnosis; _release() already retried the
+# identical call three times for a key-up, so this was an asymmetry, not a
+# policy. Real UIPI blocking fails every attempt and still raises.
+SEND_ATTEMPTS = 4
+
+# Consecutive failed cycles before the loop gives up. Retrying only helps if
+# something might change between attempts; a stranded item in the work tab, for
+# instance, blocks every later cycle identically until a human clears it.
+MAX_CONSECUTIVE_FAILURES = 3
+
+# Every polling deadline in this file is measured around a Tesseract call, so
+# without a timeout here a wedged tesseract.exe hangs the whole run.
+TESSERACT_TIMEOUT = 30.0
+
+# --------------------------------------------------------------------------
+# GAME AND INVENTORY
+# --------------------------------------------------------------------------
+
+GAME_TITLE_HINT = "PlayCabal"
+
+# The tab cancelled items are expected to land in. It must be empty before a
+# run: a large stack scatters across tabs, and pre-existing items there make it
+# impossible to tell which slots the cancel actually filled.
+WORK_TAB = 4
+
+EXPECTED_ROWS = 10
+
+# --------------------------------------------------------------------------
+# FRAME RECORDING
+# --------------------------------------------------------------------------
+
+RECORD_ENABLED = False
+
+RECORD_LIMIT = 12000         # stop before filling the disk
+
+# ==========================================================================
+# END SETTINGS
+# ==========================================================================
+
+
 try:
     import mss
 except ImportError:
@@ -60,9 +210,6 @@ except ImportError:
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-# Every polling deadline in this file is measured around a Tesseract call, so
-# without a timeout here a wedged tesseract.exe hangs the whole run.
-TESSERACT_TIMEOUT = 30.0
 
 # Reading a full 10-row table costs ~18s of OCR (measured), so any deadline
 # that is meant to allow a retry has to be a multiple of that, not a few
@@ -1086,18 +1233,6 @@ VK_SHIFT = 0x10
 VK_MENU = 0x12    # Alt. Module level: release_modifiers() needs it too.
 
 
-# Pace every input the script sends. The game is a live client with its own
-# animations and server round-trips; acting faster than a person can leaves it
-# behind and produces the "the click did nothing" failures.
-ACTION_COOLDOWN = 0.5   # after a move, a click or a key press
-TYPE_COOLDOWN = 0.5     # between keystrokes while entering a value
-# Shortest turnaround between loop cycles, so `--every 0` cannot spin a core
-# when a cycle happens to do no work at all.
-MIN_CYCLE_SECONDS = 1.0
-# Consecutive failed cycles before the loop gives up. Retrying only helps if
-# something might change between attempts; a stranded item in the work tab, for
-# instance, blocks every later cycle identically until a human clears it.
-MAX_CONSECUTIVE_FAILURES = 3
 
 
 def cooldown(seconds: float | None = None) -> None:
@@ -1105,13 +1240,6 @@ def cooldown(seconds: float | None = None) -> None:
     time.sleep(ACTION_COOLDOWN if seconds is None else seconds)
 
 
-# How many times a refused input is retried before it counts as blocked.
-# SendInput returning 0 is usually transient (a hook, a momentary elevated
-# foreground, a desktop switch). Treating one refusal as permanent ended an
-# unattended run mid-cycle with no diagnosis; _release() already retried the
-# identical call three times for a key-up, so this was an asymmetry, not a
-# policy. Real UIPI blocking fails every attempt and still raises.
-SEND_ATTEMPTS = 4
 SEND_RETRY_PAUSE = 0.12
 
 def _send(event: _Input, attempts: int = SEND_ATTEMPTS) -> None:
@@ -1367,8 +1495,6 @@ def grab() -> Image.Image:
 # than just a pile of images.
 
 RECORD_DIR = SCRIPT_DIR / "unit_tests" / "corpus"
-RECORD_ENABLED = False
-RECORD_LIMIT = 12000         # stop before filling the disk
 _last_shot: "Image.Image | None" = None
 _record_seq = 0
 _record_full = False
@@ -1492,7 +1618,6 @@ def keep_awake(enable: bool = True) -> bool:
 # Window focus
 # --------------------------------------------------------------------------
 
-GAME_TITLE_HINT = "PlayCabal"
 
 
 def find_game_window() -> int | None:
@@ -1586,7 +1711,15 @@ def focus_game(settle: float = 0.35) -> bool:
 # --------------------------------------------------------------------------
 
 NAME_COLUMN = (275, 715)  # fallback only; normally derived from the headers
-EXPECTED_ROWS = 10
+# The game's own label for a VACANT premium listing slot, as it appears in the
+# name column: "Premium Exclusive Slot". Matched on the leading word after
+# _normalise, because the name column clips it to "Premium Ex".
+#
+# This exists because treating that label as a misread made read_rows discard
+# the entire table, which stopped a live run: a sold-out row was collected, the
+# slot it vacated became a labelled premium slot, and the script then read zero
+# listings from a perfectly readable screen until the failure breaker fired.
+PREMIUM_SLOT_MARKER = "premium"
 # Row spacing on the reference display; scaled through LAYOUT at runtime.
 REF_ROW_PITCH = 79
 # Every table row carries one of these in the Function column. Rows that are
@@ -2259,14 +2392,29 @@ def read_rows(source: Image.Image | Path | str) -> list[Row]:
                 qty = read_number(image, box, QTY_COL_MIN_CONF)
 
         action = button.text.strip().casefold()
-        # An empty slot has an empty name cell. A row that says "Register" in
-        # the Function column while its name cell holds text is not an empty
-        # slot -- it is a misread, and every caller treats action='register' as
-        # "nothing here", so the live listing would be skipped silently.
-        # Observed on a real frame: a screen overlay put "Premium Ex" in the
-        # name cell of a row whose button OCR'd as Register.
+        # An empty slot may or may not have an empty name cell, and the
+        # difference matters enormously.
+        #
+        # A row saying "Register" whose name cell holds an ITEM name is a
+        # misread: every caller treats action='register' as "nothing here", so
+        # a live listing would be skipped silently. That is worth discarding
+        # the whole frame over.
+        #
+        # But the game LABELS its own vacant premium slots "Premium Exclusive
+        # Slot", in the name column, at 96% confidence. The original comment
+        # here guessed that was "a screen overlay". It is not -- it is the
+        # game, and treating it as a misread threw away every row in the table.
+        #
+        # Measured cost of that mistake: 522 of 2,575 recorded frames, and one
+        # live run stopped. A sold-out row was collected, the slot it vacated
+        # became a labelled premium slot, read_rows returned nothing for the
+        # full 45-second budget, and three cycles later the failure breaker
+        # ended the run. The table was perfectly readable the whole time.
         if action == "register" and name.strip():
-            return []
+            if PREMIUM_SLOT_MARKER in _normalise(name):
+                name = ""            # a vacant slot, exactly as it says
+            else:
+                return []
         rows.append(Row(
             index=i, name=name.strip() or "(empty)", change=button.centre,
             top=top, bottom=bottom, action=action,
@@ -2884,24 +3032,6 @@ QTY_INPUT = (90, 651)              # the editable number in "N / MAX"
 # confidence -- so this field needs a lower bar than the rest of the UI.
 QTY_MIN_CONF = 15.0
 LOAD_ATTEMPTS = 3
-# Relisting pushes the quantity to the maximum available for every item, so a
-# listing of 3 does not come back as a listing of 1. Add name fragments here to
-# exclude particular items from that.
-MAXIMISE_ALL_QUANTITIES = True
-# What to type to fill the quantity field. The game clamps entry to the stack's
-# maximum, so anything larger than a stack can hold maximises it -- no need to
-# read the maximum off the panel first and type it back exactly.
-MAX_QTY_ENTRY = 9999
-# How far the panel's stack size may differ from the quantity the table showed
-# before the load is treated as a different item rather than a misread digit.
-# A different item differs by orders of magnitude; an OCR slip differs by one
-# glyph. Sized from the incident that motivated it: the table read a 233-stack
-# as 230, and exact equality aborted AFTER the cancel had committed -- which
-# stranded the stack, failed the next three cycles on the empty-work-tab check,
-# and stopped a five-hour run.
-QTY_CROSSCHECK_ABSOLUTE = 5
-QTY_CROSSCHECK_FRACTION = 0.10
-NO_MAX_QUANTITY_ITEMS: tuple[str, ...] = ()
 
 
 def wants_max_quantity(name: str) -> bool:
@@ -2916,43 +3046,6 @@ PRICE_TOP_Y = 477
 PRICE_BOTTOM_Y = 513
 PRICE_ROW_Y_TOL = 14
 
-# Sanity checks on relisting.
-#
-# There is NO relative floor against the previous price -- the rule is to take
-# the lowest current price, whatever it is. A MAX_PRICE_DROP constant and a
-# price_floor_for() helper implementing a 5% floor used to live here, called
-# from nowhere, while relist()'s docstring described them as binding. Dead
-# safety machinery is worse than none: it invites the one floor that does bind
-# (ITEM_PRICE_FLOORS) to be relaxed against a backstop that was never there.
-#
-# A market price below this fraction of the listed price is reported as a NOTE
-# and then listed at anyway.
-SUSPECT_PRICE_FRACTION = 0.5
-# Below this, a table price is treated as a misread rather than a real figure.
-# Every guard derives from that number, and the `if original` / `if price_floor`
-# short-circuits mean a small value silently disables all of them at once.
-MIN_PLAUSIBLE_PRICE = 1_000
-# Absolute per-item floors, matched against the listing name (case-insensitive).
-# These bind no matter what the market suggests.
-# (token, full catalogue name, floor). The token is a fast substring test; the
-# full name is what a corrupted read is compared against, because a 3-character
-# token is far too small a target for OCR. Measured over realistic single-glyph
-# corruptions of the VIP name, the token alone lost the floor 4.8% of the time
-# -- every one of V->Y, V->U, P->F, P->R, P->B, I->T -- while also matching
-# 'V|pgrade Core(High)', which folds to contain "vip" and would have listed 158
-# cores at 119,000,000 each.
-#
-# The catalogue name must be spelled as the GAME renders it, not as it is said
-# in conversation: the row reads "Siena's Unbinding Stone", and dropping the
-# "'s" would cost similarity on every single match for no reason.
-ITEM_PRICE_FLOORS: tuple[tuple[str, str, int], ...] = (
-    ("vip", "Yekaterina VIP Membership", 119_000_000),
-    # 'siena' is the token rather than 'unbinding': the plain "Unbinding Stone"
-    # is a different, far cheaper item, and 'unbinding' would hand it this
-    # floor on the token route. 'siena' is 5 characters and unique to this
-    # item, so it is both a stronger target than 'vip' and a narrower one.
-    ("siena", "Siena's Unbinding Stone", 71_000_000),
-)
 # A corrupted name must still look like the catalogue entry to earn its floor.
 FLOOR_NAME_SIMILARITY = 0.75
 # ...and a token hit must not be wildly unlike it, which is what rejects
@@ -2990,10 +3083,6 @@ FLOOR_TOKEN_MIN_SIMILARITY = 0.40
 # costs nothing but a listing nobody buys. Raise this only if that changes.
 FLOOR_LENGTH_RATIO = 0.0
 
-# A sold row must be collected before it can be relisted; the server needs a
-# moment to settle before the table is worth re-reading.
-RECEIVE_WAIT = 3.0
-RELIST_ATTEMPTS = 3
 # How many single Escape presses to try when backing out to a clean state.
 ESCAPE_ATTEMPTS = 3
 
@@ -3059,7 +3148,7 @@ def item_price_floor(name: str) -> int:
 
     A token hit additionally has to clear a low similarity bar. That is what
     stops a folded 'V|pgrade Core(High)' -- which really does contain "vip" --
-    from claiming a 119,000,000 floor and parking 158 cores nobody will buy.
+    from claiming a 110,000,000 floor and parking 158 cores nobody will buy.
 
     Compared against both the full folded name and its leading window, so a
     descriptive trailer that item_name() did not strip cannot dilute the score.
@@ -3106,7 +3195,6 @@ def strictest_price_floor() -> int:
     # the shop slot, and reported by run_sequence as "non-numeric argument".
     return max((floor for *_, floor in ITEM_PRICE_FLOORS), default=0)
 PANEL_RADIO_X = 39                 # x of the price radio buttons
-FALLBACK_PRICE = 10_000_000_000    # 10B, when the game suggests no price
 
 
 INVENTORY_TITLE_REGION = (1400, 100, 2560, 300)
@@ -3169,10 +3257,6 @@ TAB_PITCH = 69.2
 TAB_COUNT = 8
 # How far above the median a tab must sit to count as the selected one.
 TAB_ACTIVE_MARGIN = 6.0
-# The tab cancelled items are expected to land in. It must be empty before a
-# run: a large stack scatters across tabs, and pre-existing items there make it
-# impossible to tell which slots the cancel actually filled.
-WORK_TAB = 4
 # An empty slot measures near 0; an item icon lifts the spread well past this.
 SLOT_OCCUPIED_STDEV = 8.0
 
@@ -3914,7 +3998,7 @@ def register_item(
             # Substituting the strictest floor and listing at it is NOT the
             # safe direction, which an earlier version assumed. Nine of the ten
             # things on this account are worth 85,000-15,000,000; listing one
-            # at 119,000,000 pays a percentage sales fee on that inflated
+            # at 110,000,000 pays a percentage sales fee on that inflated
             # figure and takes the item off the market for the whole listing
             # period. Refusing costs nothing by comparison.
             #
@@ -4839,6 +4923,8 @@ def relist_rows(
         say(f"  {index:2d}. [{action}] {ref.name} x{ref.qty} at {priced}")
 
     worked = 0
+
+    failed_rows: list[str] = []
     for position, (index, ref, action) in enumerate(targets, start=1):
         name = ref.name
         say(f"\n########## {position}/{len(targets)}: row {index} - {name!r} ##########")
@@ -4895,6 +4981,29 @@ def relist_rows(
             say(f"{name!r} sold out - collected, nothing to relist. Moving on.")
             continue
         if outcome != RELISTED:
+            # A failure on ONE row is not evidence about the other nine -- but
+            # some failures leave debris that makes every later row fail too,
+            # and those must stop the batch. The difference is decidable, not a
+            # guess: if the work tab is still empty, the cancel either did not
+            # happen or was undone, and the next row starts from a clean state.
+            # If it is dirty, an item is stranded there and every subsequent
+            # row would fail its precondition identically.
+            #
+            # Measured cost of not making this distinction: three consecutive
+            # cycles each relisted row 1, failed on row 2, never attempted rows
+            # 3-10, and still counted as total failures -- which tripped the
+            # breaker on a run that was doing half its work. One poison row
+            # froze 80% of the shop.
+            left = len(targets) - position
+            if not dry_run and left and require_empty_work_tab(verbose=False):
+                say(f"Relisting {name!r} failed, but inventory tab {WORK_TAB} "
+                    f"is clean, so the failure is confined to this row - "
+                    f"continuing with {left} row(s) still to go.")
+                failed_rows.append(name)
+                continue
+            if not dry_run and left:
+                say(f"Relisting {name!r} failed AND inventory tab {WORK_TAB} is "
+                    "not clean, so every later row would fail the same way.")
             say(f"Relisting {name!r} failed - stopping; "
                 f"{len(targets) - position} row(s) not attempted.")
             return False
@@ -4917,8 +5026,18 @@ def relist_rows(
             "it is not reported as one.")
         return False
 
+    if failed_rows:
+        # A partial batch must not read as a clean one. It is still a success
+        # -- work was done and the remaining rows were reached, which is the
+        # whole point of continuing past a bad row -- but the rows that failed
+        # have to be named, or "All 10 rows processed" hides them.
+        say(f"\n{len(failed_rows)} row(s) failed and were skipped: "
+            + ", ".join(repr(n) for n in failed_rows))
+        say("Each was confined to its own row - the work tab stayed clean, so "
+            "the rest of the batch continued. They will be retried next cycle.")
     say(f"\nAll {len(targets)} row(s) processed"
-        + (f" ({worked} relisted)." if worked else "."))
+        + (f" ({worked} relisted" if worked else " (none relisted")
+        + (f", {len(failed_rows)} failed)." if failed_rows else ")."))
     return True
 
 
@@ -6110,6 +6229,12 @@ def ensure_calibrated(verbose: bool = True, required: bool = True) -> bool:
 
 LOG_DIR = SCRIPT_DIR / "logs"
 _log_handle = None
+# Set at import, not in start_run_log, so the duration covers the whole process
+# even on paths that never reach the logging setup -- an argument error, or an
+# exception during import of something below this point.
+_RUN_STARTED = time.monotonic()
+_RUN_STARTED_AT = datetime.now()
+_run_finished = False
 
 
 class _Tee:
@@ -6204,16 +6329,52 @@ def start_run_log(argv: list[str]) -> "Path | None":
         return None
 
 
+def _format_duration(seconds: float) -> str:
+    """A duration a human reads at a glance: '2h 14m 07s', '3m 21s', '4.2s'."""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    total = int(round(seconds))
+    hours, rest = divmod(total, 3600)
+    minutes, secs = divmod(rest, 60)
+    if hours:
+        return f"{hours}h {minutes:02d}m {secs:02d}s"
+    return f"{minutes}m {secs:02d}s"
+
+
 def finish_run_log(note: str = "") -> None:
-    """Close the run log with a final line, so a truncated file is obvious."""
-    if _log_handle is None:
+    """Report how long the run lasted, to the console AND the log.
+
+    Runs on EVERY termination -- a clean finish, sys.exit, Ctrl+C, an uncaught
+    exception -- because it is registered with atexit as well as being called
+    from the __main__ guard. `_run_finished` makes it idempotent so the two
+    routes cannot both print.
+
+    The duration is printed to the console even when there is no log file: the
+    question "how long did it actually run before it died?" is the first one
+    asked after any unattended failure, and until now the only way to answer it
+    was to subtract timestamps out of the frame index.
+
+    Deliberately never raises. This is the last thing a dying process does, and
+    an exception here would replace the real cause of death with its own.
+    """
+    global _run_finished
+    if _run_finished:
         return
+    _run_finished = True
     try:
-        _log_handle.write(
-            f"\n{'=' * 60}\nended     "
-            f"{datetime.now().isoformat(timespec='seconds')}"
-            + (f"  ({note})" if note else "") + "\n")
-        _log_handle.flush()
+        ended = datetime.now()
+        elapsed = time.monotonic() - _RUN_STARTED
+        line = (f"Ran for {_format_duration(elapsed)}  "
+                f"({_RUN_STARTED_AT:%H:%M:%S} -> {ended:%H:%M:%S})"
+                + (f"  [{note}]" if note else ""))
+        # print() already tees into the log, so writing `line` to the handle as
+        # well duplicated it in every file. Only the closing marker -- which is
+        # not printed to the console -- goes direct.
+        print(f"\n{line}")
+        if _log_handle is not None:
+            _log_handle.write(f"{'=' * 60}\n"
+                              f"ended     {ended.isoformat(timespec='seconds')}\n")
+            _log_handle.flush()
     except Exception:          # noqa: BLE001
         pass
 
@@ -6677,6 +6838,12 @@ if __name__ == "__main__":
     # parsing too -- a bad argument that exits is still something worth having
     # a record of -- and so the `finally` cannot be skipped by any of main()'s
     # many sys.exit() calls.
+    # atexit as well as the handlers below, so the duration is printed on
+    # paths that never reach them: os.abort, a sys.exit deep inside a library,
+    # or an exception raised while the __main__ guard itself is unwinding.
+    # finish_run_log is idempotent, so whichever fires first wins.
+    atexit.register(finish_run_log)
+
     _log_path = start_run_log(sys.argv)
     if _log_path:
         print(f"Logging this run to {_log_path}")

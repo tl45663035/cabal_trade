@@ -25,6 +25,14 @@ SUITES = [
     ("floors: both items",    HERE / "floor_siena_test.py",  []),
     ("floors: name fuzz",     HERE / "floor_fuzz_test.py",   []),
     ("floors: price paths",   HERE / "floor_paths_test.py",  []),
+    # The only coverage that drives the STATE MACHINE rather than the readers.
+    # It stubs the click/capture layer and runs cancel_item, register_item,
+    # relist_rows and run_loop through their failure paths for real -- the code
+    # that decides what happens after something goes wrong, which nothing else
+    # here touches. Four seconds, and it caught four defects the corpus suite
+    # structurally cannot see, because a recorded frame can only show a state
+    # the script actually reached.
+    ("failure paths",         HERE / "failpaths" / "run_all.py", []),
     ("corpus suite",          HERE / "suite_corpus.py",      []),
     ("read_rows baseline",    HERE / "baseline_rows.py",     ["check"]),
 ]
