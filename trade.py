@@ -2546,6 +2546,32 @@ def dialog_kind(source: Image.Image | Path | str) -> str | None:
     return None
 
 
+def dialog_present(source: Image.Image | Path | str | None = None) -> bool:
+    """Is ANY dialog on screen? Deliberately harder to fool than dialog_kind.
+
+    dialog_kind decides by reading the TITLE, and its own docstring records why
+    that is fragile: Tesseract's segmentation is crop-dependent and drops
+    ornate title glyphs at POPUP_REGION scale, so it returns None with a modal
+    plainly up. Every dialog also carries a Cancel button, which survives that
+    failure -- close_any_dialog already prefers the button finder for exactly
+    this reason, and says so.
+
+    Trusting dialog_kind alone to say "nothing is open" is what turned one bad
+    row into two dead cycles on 2026-08-04. The abort path asked it, got None
+    while the diagnostic one line earlier had read 'extension', closed nothing,
+    and left a modal covering the table. Escape could then not close the Trade
+    window, and every read for the rest of that cycle and the whole of the next
+    returned no rows.
+
+    Answering "is something open" with a false NO is the expensive direction.
+    A false YES only costs a harmless Cancel click.
+    """
+    shot = source if source is not None else grab()
+    if dialog_kind(shot) is not None:
+        return True
+    return dialog_button(shot, DISMISS_WORD) is not None
+
+
 def confirm_open_dialogs(settle: float = 0.8, verbose: bool = True) -> bool:
     """Click Confirmation through however many dialogs are stacked up.
 
@@ -3821,6 +3847,19 @@ def cancel_item(
                            key=lambda w: -w.conf)[:12]
             say("  strongest words in the dialog area: "
                 + ", ".join(f"{w.text!r}@{w.conf:.0f}" for w in words))
+            # The diagnostic frame has caught the dialog arriving late. On
+            # 2026-08-04 at 07:57 this probe read 'extension' on the line
+            # AFTER the wait gave up, and the run aborted regardless -- then
+            # left that dialog covering the table for the next two cycles.
+            #
+            # A fresh read of the exact dialog expected is evidence, not a
+            # guess: clicking a row's Change button opens this one and nothing
+            # else, and if the state is wrong anyway the next step's own
+            # require() catches it before anything commits.
+            if dialog_kind(probe) == "extension":
+                say("  ...but it IS up on a fresh frame: it arrived after the "
+                    "wait expired. Continuing rather than aborting.")
+                shot = probe
         require(shot is not None, "the Registration Extension dialog did not appear")
 
         cancel = await_dialog_button(DISMISS_WORD, timeout)
@@ -3914,7 +3953,11 @@ def cancel_item(
         if dry_run:
             say("[dry run] leaving the screen exactly as it is.")
             return False
-        if dialog_kind(grab()) is None:
+        # dialog_present, not dialog_kind: a title that failed to OCR read as
+        # "no dialog", so this branch announced "Nothing was changed" and left
+        # a modal sitting over the table. Everything after it -- the rest of
+        # the batch and the whole next cycle -- then failed to read any rows.
+        if not dialog_present():
             say("Nothing was changed.")
         elif close_any_dialog():
             say("Backed out of the open dialog; nothing was changed.")
@@ -5360,7 +5403,11 @@ def prepare_for_actions(verbose: bool = True) -> bool:
     # Escape back to the default state. Pressed one at a time and rechecked:
     # a blind second press would close a dialog and then open the system menu.
     for attempt in range(ESCAPE_ATTEMPTS):
-        if dialog_kind(grab()) is None:
+        # dialog_present, not dialog_kind: this is the other place a flaked
+        # title read let a modal survive into the next cycle, where it covered
+        # the table and produced "No listings visible" before a single row had
+        # been touched.
+        if not dialog_present():
             break
         say(f"Dialog still open - pressing Escape ({attempt + 1}).")
         press_escape()
