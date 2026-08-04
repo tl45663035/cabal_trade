@@ -20,6 +20,8 @@ SUITES = [
     ("4 run_loop",             "t4_run_loop.py"),
     ("5 crash signature",      "t5_crash_signature.py"),
     ("9 outage replay",        "t9_outage_replay.py"),
+    ("11 duplicate stacks",    "t11_duplicate_stacks.py"),
+    ("12 scrolling past 10",   "t12_scrolling.py"),
 ]
 
 FORENSICS = [

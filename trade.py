@@ -79,7 +79,7 @@ from pathlib import Path
 # in conversation: the row reads "Siena's Unbinding Stone", and dropping the
 # "'s" would cost similarity on every single match for no reason.
 ITEM_PRICE_FLOORS: tuple[tuple[str, str, int], ...] = (
-    ("vip", "Yekaterina VIP Membership", 110_000_000),
+    ("vip", "Yekaterina VIP Membership", 104_000_000),
     # 'siena' is the token rather than 'unbinding': the plain "Unbinding Stone"
     # is a different, far cheaper item, and 'unbinding' would hand it this
     # floor on the token route. 'siena' is 5 characters and unique to this
@@ -2895,6 +2895,87 @@ def scroll_one(down: bool, before: list[Row], timeout: float = 8.0,
     return after, shift
 
 
+# Rows to move in one verified step. Seven leaves exactly MIN_SCROLL_OVERLAP
+# rows in common between the two reads, which is the least that pins the offset
+# down. Larger steps leave nothing to match against and the offset becomes a
+# guess; one-at-a-time is safe but costs a full table read (~18s of OCR) per
+# row, which is minutes per listing once the shop is thirty deep.
+SCROLL_STEP = 7
+# Enough chunks to walk a full shop top to bottom, with headroom.
+MAX_SCROLL_CHUNKS = 8
+
+
+def scroll_chunk(notches: int, before: list[Row], timeout: float = 8.0,
+                 verbose: bool = True) -> tuple[list[Row] | None, int | None]:
+    """Move the view down by up to `notches` rows, verified against content.
+
+    Like scroll_one but in steps big enough to be affordable. `shift` is 0 when
+    the view is already at the bottom, which is how the caller learns it has
+    seen everything. A shift outside 0..notches means the wheel did something
+    unexpected, and the caller must stop rather than reinterpret it.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
+              (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
+    scroll_wheel(*centre, -abs(notches))
+    park_cursor()
+    after = await_rows(timeout)
+    if not after:
+        say("  the table could not be read after scrolling.")
+        return None, None
+    shift = measure_shift(before, after)
+    if shift is None:
+        say("  could not tell how far the view moved - refusing to guess "
+            "which listing is which.")
+        return after, None
+    if not 0 <= shift <= abs(notches):
+        say(f"  {abs(notches)} notch(es) moved the view {shift} rows - "
+            "stopping rather than reinterpreting it.")
+        return after, None
+    return after, shift
+
+
+def bring_into_view(ref: RowRef, timeout: float = 8.0,
+                    verbose: bool = True) -> list[Row] | None:
+    """Scroll until the listing `ref` names is on screen; return that view.
+
+    Walks down from the top in verified chunks. Deliberately does NOT take an
+    absolute position: relist() closes the Trade window after every row, so the
+    view is back at the top each time this is called, and a position measured
+    when the batch started is stale by the time later rows are reached --
+    cancelling one listing renumbers everything below it. Identity does not go
+    stale, so identity is what this searches by.
+
+    Returns the view containing the listing. If the whole shop is walked
+    without a match, returns the LAST view read rather than None, so the
+    caller's own locate_row reports 'missing' -- which means the listing sold,
+    a normal outcome. None is reserved for "the table could not be read",
+    which is not.
+    """
+    rows = scroll_to_end(up=True, timeout=timeout, verbose=verbose)
+    if not rows:
+        return None
+
+    def holds(view: list[Row]) -> bool:
+        live = [r for r in view if r.action in ("change", "receive")]
+        return locate_row(live, ref)[0] is not None
+
+    for _ in range(MAX_SCROLL_CHUNKS):
+        if holds(rows):
+            return rows
+        after, shift = scroll_chunk(SCROLL_STEP, rows, timeout=timeout,
+                                    verbose=verbose)
+        if after is None or shift is None:
+            return None
+        rows = after
+        if shift == 0:
+            break                       # clamped: the bottom is on screen
+    return rows
+
+
 def enumerate_listings(timeout: float = 8.0,
                        verbose: bool = True) -> list[tuple[int, Row]] | None:
     """Every listing in the shop, paired with its absolute position.
@@ -4392,65 +4473,110 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 say("The table did not finish refreshing after Receive - stopping.")
                 return FAILED
 
-            # Poll before concluding the listing is gone. A single failed
-            # lookup is not evidence of a sale being fully collected -- it may
-            # just be a table mid-refresh -- and treating it as such would skip
-            # an uncollected sale.
+            # What happened is decided by COUNTING the rows that look like this
+            # one, not by identifying which row is which.
             #
-            # The lookup goes by full identity, not by name: with two stacks of
-            # the same item listed, matching on the name alone finds two rows,
-            # gives up, and declares a stack that never sold to be collected.
-            # Collecting a PARTIAL sale shrinks the quantity, so the ref's qty
-            # no longer matches. locate_row ignores a filter that matches
-            # nothing -- right for an unread value, wrong for one that really
-            # changed -- and then falls back to position among the remaining
-            # same-name rows. On this shop that picks the wrong stack outright:
-            # two rows carry 'Upgrade Core (Ultimate)' at 410,000, so after
-            # collecting part of the 220 stack it resolves to the untouched 162
-            # one and relists that instead, twice, leaving the remainder alone.
+            # Identity cannot answer this question. Two stacks may be identical
+            # in name, quantity AND price -- routine on this shop, which
+            # regularly holds two Force Core(High) at the same price -- and
+            # after collecting one, the survivor matches the ref perfectly.
+            # Asking "is my listing still there?" then gets a confident yes
+            # about a DIFFERENT stack:
             #
-            # So identify strictly here and refuse to guess. Not relisting a
-            # remainder this cycle costs one cycle; relisting the wrong stack
-            # costs two registration fees and leaves the sold-down stack stale.
-            ref = RowRef.of(target, rows)
-            remaining = None
-            note = ""
+            #   two identical stacks   -> exactly one match survives, read as
+            #                             "the click did not take", so the
+            #                             sibling is collected too. Two stacks
+            #                             pulled off the market for one sale.
+            #   three identical stacks -> two survive, locate_row says
+            #                             'ambiguous', the run stops with the
+            #                             collected item stranded in the work
+            #                             tab, and every later cycle then fails
+            #                             its empty-tab precondition.
+            #
+            # Both live runs on 2026-08-04 ended this way. Counting is immune:
+            # collecting a stack removes exactly one row from the family
+            # whether or not its siblings are distinguishable, and it still
+            # works when the QTY column is unreadable, which is precisely when
+            # identity matching is weakest.
+            def family(table: list[Row]) -> list[Row]:
+                """Live rows sharing this listing's name and price."""
+                pool = [r for r in match_rows(table, target.name)
+                        if r.action in ("change", "receive")]
+                if target.price is not None:
+                    # Mirror locate_row: a filter matching nothing is ignored
+                    # rather than allowed to empty the pool.
+                    priced = [r for r in pool if r.price == target.price]
+                    if priced:
+                        pool = priced
+                return pool
+
+            def quantities(pool: list[Row]) -> list:
+                return sorted((r.qty for r in pool),
+                              key=lambda q: (q is None, q))
+
+            before = quantities(family(rows))
+            after: list = []
+            after_rows: list[Row] = []
             saw_table = False
             deadline = time.monotonic() + max(timeout, TABLE_READ_BUDGET)
             while time.monotonic() < deadline:
                 rows_now = read_rows(grab())
                 if rows_now:
                     saw_table = True
-                    live = [r for r in rows_now
-                            if r.action in ("change", "receive")]
-                    remaining, note = locate_row(live, ref, strict=True)
-                    if remaining is not None:
+                    after_rows = family(rows_now)
+                    after = quantities(after_rows)
+                    if after != before:
                         break
                 time.sleep(0.8)
 
-            if remaining is None and not saw_table:
+            if not saw_table:
                 say("The table could not be read while checking for a "
                     "remainder - stopping rather than assuming it sold out.")
                 return FAILED
-            if remaining is None and note == "ambiguous":
-                say(f"After collecting, more than one row matches "
-                    f"{target.name!r} and they cannot be told apart - the "
-                    "remainder will be picked up next cycle rather than "
-                    "risking a relist of the wrong stack.")
-                return FAILED
-            if remaining is None:
+
+            # Multiset difference: what left the family, and what appeared.
+            unmatched = list(before)
+            gained = []
+            for value in after:
+                if value in unmatched:
+                    unmatched.remove(value)
+                else:
+                    gained.append(value)
+            lost = unmatched
+
+            if not lost and not gained:
+                say(f"Row {row} still shows Receive and the table is unchanged "
+                    f"- the click did not take; retrying.")
+                continue
+
+            if len(lost) == 1 and not gained:
                 say(f"{target.name!r} is no longer in the table - fully sold "
                     "and collected.")
                 return SOLD_OUT
 
-            row = remaining.index
-            if remaining.action == "receive":
-                say(f"Row {row} still shows Receive - the click did not take; "
-                    "retrying.")
-            else:
-                say(f"Quantity still listed at row {row} "
-                    f"[{remaining.action}] - continuing.")
-            continue
+            if len(lost) == 1 and len(gained) == 1:
+                # A partial sale: the stack shrank rather than vanishing. The
+                # remainder is the row carrying the quantity that appeared.
+                candidates = [r for r in after_rows if r.qty == gained[0]]
+                if len(candidates) != 1:
+                    say(f"A remainder of {gained[0]} appeared but "
+                        f"{len(candidates)} rows carry it, so which one is the "
+                        "remainder cannot be told - it will be picked up next "
+                        "cycle rather than relisting the wrong stack.")
+                    return FAILED
+                row = candidates[0].index
+                say(f"Partially sold: {lost[0]} -> {gained[0]} at row {row} "
+                    "- relisting the remainder.")
+                continue
+
+            # Anything else means the family changed in a way one collect does
+            # not explain -- another stack selling during the same few seconds,
+            # most likely. Saying so beats guessing.
+            say(f"The {target.name!r} listings changed in a way this collect "
+                f"does not explain (was {before}, now {after}) - leaving them "
+                "for the next cycle rather than acting on a table that moved "
+                "underneath us.")
+            return FAILED
 
         if target.action != "change":
             say(f"Row {row} shows '{target.action}', not 'Change' - nothing to relist.")
@@ -4890,6 +5016,15 @@ def relist_rows(
     row -- which is not always the one the item came from. Row numbers therefore
     shift during a batch, so each item is re-located by name immediately before
     it is relisted. Empty rows are skipped; any real failure stops the batch.
+
+    Rows beyond the visible ten are supported: the shop holds thirty, and a
+    sale sitting at row 25 was previously never collected because the loop
+    could not see it. Asking for one enumerates the shop once, then scrolls
+    each listing into view by identity before acting on it.
+
+    A batch that asks only for rows 1-10 takes none of that: no enumeration, no
+    scrolling, and the same single table read it always did. Scrolling costs a
+    table read per chunk, and the common case should not pay for the rare one.
     """
     def say(message: str) -> None:
         if verbose:
@@ -4909,13 +5044,43 @@ def relist_rows(
         say("No listings visible - is the Trade window open on the Register tab?")
         return False
 
+    # Rows past the first screen need the whole shop enumerated first, because
+    # their identity has to be taken from the full list: a RowRef built against
+    # ten visible rows counts its ordinal in the wrong pool.
+    #
+    # Rows 1-10 keep the cheap path exactly as it was -- one table read, no
+    # scrolling, no enumeration. Scrolling costs a table read per chunk (~18s
+    # of OCR each), so making every batch pay for it would slow the common case
+    # by minutes to serve a case it does not have.
+    beyond = [i for i in rows if i > len(snapshot)]
+    scrolling = bool(beyond)
     targets: list[tuple[int, RowRef, str]] = []
-    for index in rows:
-        if not 1 <= index <= len(snapshot):
-            say(f"Row {index} is out of range; {len(snapshot)} row(s) visible.")
+
+    if scrolling:
+        say(f"Row(s) {', '.join(str(i) for i in beyond)} are past the first "
+            f"screen of {len(snapshot)}; enumerating the whole shop.")
+        listings = enumerate_listings(timeout=timeout, verbose=verbose)
+        if listings is None:
+            say("The shop could not be enumerated, so rows past the first "
+                "screen cannot be addressed safely - stopping rather than "
+                "acting on a position that might be the wrong listing.")
             return False
-        row = snapshot[index - 1]
-        targets.append((index, RowRef.of(row, snapshot), row.action))
+        catalogue = [row for _, row in listings]
+        by_index = dict(listings)
+        for index in rows:
+            row = by_index.get(index)
+            if row is None:
+                say(f"Row {index} is out of range; the shop holds "
+                    f"{len(listings)} listing(s).")
+                return False
+            targets.append((index, RowRef.of(row, catalogue), row.action))
+    else:
+        for index in rows:
+            if not 1 <= index <= len(snapshot):
+                say(f"Row {index} is out of range; {len(snapshot)} row(s) visible.")
+                return False
+            row = snapshot[index - 1]
+            targets.append((index, RowRef.of(row, snapshot), row.action))
 
     say(f"Relisting {len(targets)} row(s), tracked by name, quantity and price:")
     for index, ref, action in targets:
@@ -4939,7 +5104,12 @@ def relist_rows(
         if not dry_run and not ensure_shop_ready(verbose=verbose):
             say("Could not reopen the Agent Shop - stopping.")
             return False
-        live = await_rows(timeout)
+        # Past the first screen the listing has to be scrolled to. Identity,
+        # not the index: the shop is reopened between rows so the view is back
+        # at the top, and earlier relists in this batch have renumbered
+        # everything below whatever they touched.
+        live = (bring_into_view(ref, timeout=timeout, verbose=verbose)
+                if scrolling else await_rows(timeout))
         # An unreadable table is not an empty shop. Without this guard the
         # chain launders "I cannot see the table" into "the item sold": an
         # empty read makes locate_row report 'missing', every row is skipped
@@ -5010,7 +5180,30 @@ def relist_rows(
         worked += 1
 
         if not dry_run and not wait_for_table(max(timeout, 20.0)):
-            say("The table did not finish refreshing - stopping.")
+            # This row's work is COMMITTED and already verified against the
+            # table. The wait exists only so the NEXT row does not read a
+            # mid-refresh table, so a timeout here says nothing about what was
+            # just done -- and throwing the batch away over it discards
+            # finished, confirmed relists.
+            #
+            # Measured cost: on 2026-08-04 rows 1 and 2 were relisted and both
+            # confirmed ("row 2 matches what was registered"), then this
+            # timeout abandoned rows 3-10 and scored the cycle a failure. The
+            # run had done exactly what it was asked and moved one step closer
+            # to the failure breaker for it.
+            #
+            # Same decidable test used for a failed row above: a clean work tab
+            # means nothing is stranded and the next row starts fresh.
+            left = len(targets) - position
+            if not left:
+                break                 # last row; there is nothing left to read
+            if require_empty_work_tab(verbose=False):
+                say(f"The table did not finish refreshing after {name!r}, but "
+                    f"the relist completed and inventory tab {WORK_TAB} is "
+                    f"clean - continuing with {left} row(s) still to go.")
+                continue
+            say(f"The table did not finish refreshing after {name!r} AND "
+                f"inventory tab {WORK_TAB} is not clean - stopping.")
             return False
 
     # A batch that did no work is not a success. Every row reporting "already
