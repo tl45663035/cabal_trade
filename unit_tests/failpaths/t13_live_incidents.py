@@ -161,6 +161,90 @@ with h:
 
 
 # ---------------------------------------------------------------------------
+section("05:13: a row that leaves a dialog up must not doom the batch")
+
+# The 2026-08-05 run, three identical cycles:
+#
+#   row 2 -> ABORTED: the dialog stayed open after Confirmation
+#            Trade window would not close with Escape
+#            ...continuing with 8 row(s) still to go
+#   row 3 -> The listings could not be read
+#
+# The work tab was clean, so the batch continued -- straight into a modal
+# covering the table. One bad row cost all eight remaining rows and the cycle,
+# every cycle, until the breaker stopped an 11-minute run.
+class StuckDialog(Harness):
+    """A row fails and leaves a confirmation dialog on screen."""
+
+    def __init__(self, *a, closes=True, **kw):
+        super().__init__(*a, **kw)
+        self.closes = closes
+
+    def install(self):
+        out = super().install()
+        real_close = trade.close_any_dialog
+
+        def close():
+            if not self.closes:
+                return False
+            self.dialog = None
+            return True
+
+        self.patch("close_any_dialog", close)
+        return out
+
+
+def fails_leaving_dialog(h, failing):
+    def fake(row, *a, expect=None, **kw):
+        name = expect.name if expect is not None else f"row {row}"
+        h.log("relist_call", row, expect=expect)
+        if name in failing:
+            h.dialog = "confirm"          # left on screen, covering the table
+            return trade.FAILED
+        return trade.RELISTED
+    return fake
+
+
+h = StuckDialog(rows=ten_rows(), panel=empty_panel())
+with h:
+    h.patch("relist", fails_leaving_dialog(h, {"Item 02"}))
+    ok, exc = run(trade.relist_rows, [1, 2, 3, 4])
+    check("stuck dialog: the batch carried on", ok is True,
+          f"got {ok!r} {exc!r}")
+    check("stuck dialog: the dialog was closed before continuing",
+          h.dialog is None,
+          f"still {h.dialog!r} -- it covers the table, so every later row "
+          f"fails its read")
+    check("stuck dialog: said it backed out",
+          h.said("backing out of it before continuing"), h.out()[-400:])
+    check("stuck dialog: every other row was still attempted",
+          acted(h) == ["Item 01", "Item 02", "Item 03", "Item 04"],
+          f"{acted(h)} -- this is the 8 rows the live run threw away")
+
+# ...but a dialog that will NOT close still stops the batch, because
+# continuing into it is guaranteed to fail.
+h = StuckDialog(rows=ten_rows(), panel=empty_panel(), closes=False)
+with h:
+    h.patch("relist", fails_leaving_dialog(h, {"Item 02"}))
+    ok, exc = run(trade.relist_rows, [1, 2, 3, 4])
+    check("unclosable dialog: batch stopped", ok is False, f"got {ok!r}")
+    check("unclosable dialog: stopped AT the bad row", len(acted(h)) == 2,
+          f"attempted {acted(h)}")
+    check("unclosable dialog: said why",
+          h.said("would fail its read") or h.said("not attempted"),
+          h.out()[-400:])
+
+# A failure with no dialog behaves exactly as before -- no new close attempt.
+h = StuckDialog(rows=ten_rows(), panel=empty_panel())
+with h:
+    h.patch("relist", relisted_after(h, {"Item 01"}))
+    ok, exc = run(trade.relist_rows, [1, 2, 3])
+    check("no dialog: still continues, without announcing a backout",
+          acted(h) == ["Item 01", "Item 02", "Item 03"]
+          and not h.said("backing out of it"),
+          f"{acted(h)} / {h.out()[-200:]}")
+
+
 section("the breaker: consecutive failures stop the run, successes reset it")
 
 h = Harness(rows=ten_rows(), panel=empty_panel())

@@ -5442,6 +5442,29 @@ def relist_rows(
             # froze 80% of the shop.
             left = len(targets) - position
             if not dry_run and left and require_empty_work_tab(verbose=False):
+                # A clean work tab is not the only precondition. A dialog left
+                # on screen covers the table, so every later row fails its read
+                # and the whole cycle is lost to one bad row anyway.
+                #
+                # Measured on 2026-08-05: three cycles in a row aborted on the
+                # same row with "the dialog stayed open after Confirmation",
+                # continued because the work tab was clean, and then failed the
+                # very next row on "the listings could not be read". Same
+                # cascade every time, 11 minutes to the breaker.
+                #
+                # close_any_dialog clicks CANCEL, never Confirmation, so it
+                # cannot commit anything the abort was unsure about -- which is
+                # why leaving the dialog up was over-cautious rather than safe.
+                if dialog_present():
+                    say("A dialog is still open after that failure; backing "
+                        "out of it before continuing.")
+                    if not close_any_dialog():
+                        say("...it would not close, and it covers the table, "
+                            "so every later row would fail its read - "
+                            "stopping instead.")
+                        say(f"Relisting {name!r} failed - stopping; "
+                            f"{left} row(s) not attempted.")
+                        return False
                 say(f"Relisting {name!r} failed, but inventory tab {WORK_TAB} "
                     f"is clean, so the failure is confined to this row - "
                     f"continuing with {left} row(s) still to go.")
