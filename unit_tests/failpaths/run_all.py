@@ -28,6 +28,7 @@ SUITES = [
     ("16 dialog blind spot",   "t16_dialog_blindspot.py"),
     ("17 late dialog",         "t17_late_dialog.py"),
     ("18 collect permutations", "t18_collect_permutations.py"),
+    ("19 maximise quantity",   "t19_maximise_quantity.py"),
 ]
 
 FORENSICS = [

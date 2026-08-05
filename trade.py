@@ -4050,7 +4050,7 @@ def register_item(
     price_floor: int = 0,
     floor_price: int | None = None,
     floor_reason: str = "",
-    maximise_qty: bool = False,
+    maximise_qty: bool | None = None,
     force_price: int | None = None,
     force_qty: int | None = None,
     expect_item: str | None = None,
@@ -4177,6 +4177,37 @@ def register_item(
         # It is not unverified, only verified later and by a better number: the
         # quantity the game settles on is recovered below from Net sales, which
         # the game computes itself and which OCRs cleanly.
+        # maximise_qty=None means "use the configured policy". Passing it
+        # explicitly is for callers that have already decided.
+        #
+        # This defaulted to False, so the two entry points read
+        # MAXIMISE_ALL_QUANTITIES differently: the relist path resolved it via
+        # wants_max_quantity() and maximised, while `--register R C` silently
+        # did not. A stack of six VIP passes listed as ONE, and the setting
+        # that was supposed to govern it had no effect on that path at all.
+        #
+        # The exclusion list can only be applied to an item the script can
+        # name. Where it cannot -- `--register` reads an inventory slot, not a
+        # listing -- an empty list is unambiguous and a non-empty one is not,
+        # so the ambiguous case is refused rather than guessed. That mirrors
+        # how pricing already treats an unnameable item.
+        if maximise_qty is None:
+            if force_qty:
+                # An explicit quantity settles it, so the policy and the
+                # exclusion list are moot -- refusing here would reject
+                # `--register R C --qty 6`, which states exactly what to do.
+                maximise_qty = False
+            elif expect_item:
+                maximise_qty = wants_max_quantity(expect_item)
+            else:
+                require(not (MAXIMISE_ALL_QUANTITIES and NO_MAX_QUANTITY_ITEMS),
+                        "cannot decide whether to maximise the quantity: the "
+                        "item in this slot cannot be named, so "
+                        f"NO_MAX_QUANTITY_ITEMS {NO_MAX_QUANTITY_ITEMS} cannot "
+                        "be checked against it. Pass --qty N or --max-qty to "
+                        "say which you want")
+                maximise_qty = MAXIMISE_ALL_QUANTITIES
+
         entry = force_qty if force_qty else (MAX_QTY_ENTRY if maximise_qty else None)
         if entry is not None:
             record("qty.before_typing", entry=entry, item=expect_item)
@@ -7147,7 +7178,12 @@ def main() -> None:
     if args.register is not None:
         try:
             ok = register_item(*args.register, dry_run=args.dry_run,
-                               maximise_qty=args.max_qty,
+                               # None, not False: absent means "use the
+                               # configured policy", which is what the relist
+                               # path does. Passing False here was the bug --
+                               # it overrode MAXIMISE_ALL_QUANTITIES with a
+                               # flag default and listed one unit of a stack.
+                               maximise_qty=True if args.max_qty else None,
                                price_floor=args.floor,
                                floor_reason="--floor" if args.floor else "",
                                force_price=args.price, force_qty=args.qty)
