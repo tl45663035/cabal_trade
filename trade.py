@@ -39,6 +39,7 @@ import ctypes.wintypes
 import io
 import json
 import math
+import os
 import re
 import shutil
 import subprocess
@@ -223,7 +224,19 @@ EXPECTED_ROWS = 10
 
 RECORD_ENABLED = False
 
-RECORD_LIMIT = 12000         # stop before filling the disk
+# How many frames to KEEP. Recording never stops; the oldest are pruned once
+# there are enough over this to be worth a sweep.
+#
+# A hard stop was worse than it looked. Recording halted at 12,000 frames and
+# said so once on stderr, so a 494-cycle run produced no diagnostic frames at
+# all -- and reconstructing what a failure actually looked like, from the
+# frames it left behind, is how every bug found on 2026-08-04/05 was found. The
+# newest frames are also the useful ones: they match the current build and the
+# current shop.
+RECORD_KEEP = 1000
+# Prune only when this many over the limit, so the index is rewritten in
+# batches rather than on nearly every frame.
+RECORD_PRUNE_SLACK = 100
 
 # ==========================================================================
 # END SETTINGS
@@ -1580,7 +1593,6 @@ def grab() -> Image.Image:
 RECORD_DIR = SCRIPT_DIR / "unit_tests" / "corpus"
 _last_shot: "Image.Image | None" = None
 _record_seq = 0
-_record_full = False
 
 
 def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
@@ -1596,8 +1608,8 @@ def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
     swallow it, and killed three consecutive cycles. Argument binding is the
     one failure this function cannot catch, so it must be made impossible.
     """
-    global _record_seq, _record_full
-    if not RECORD_ENABLED or _record_full:
+    global _record_seq
+    if not RECORD_ENABLED:
         return
     image = shot if shot is not None else _last_shot
     if image is None:
@@ -1612,20 +1624,17 @@ def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
             # then asserts one frame's recorded values against a different
             # image and reports confident, specific, wrong failures.
             #
-            # That matters because pruning is the natural response to hitting
-            # RECORD_LIMIT, i.e. exactly when someone is most likely to delete
-            # frames.
+            # That matters far more now that pruning is AUTOMATIC: frames are
+            # deleted from the front on every run, so "count" and "highest"
+            # diverge permanently rather than only when someone tidies up by
+            # hand. Continuing from the highest surviving number is what keeps
+            # a pruned corpus from having its newest frames overwritten.
             highest = 0
             for existing in RECORD_DIR.glob("run_*.png"):
                 digits = existing.stem[4:]
                 if digits.isdigit():
                     highest = max(highest, int(digits))
             _record_seq = highest
-        if _record_seq >= RECORD_LIMIT:
-            _record_full = True
-            print(f"Frame recording stopped at {RECORD_LIMIT} frames.",
-                  file=sys.stderr)
-            return
         _record_seq += 1
         name = f"run_{_record_seq:05d}.png"
         image.save(RECORD_DIR / name)
@@ -1660,8 +1669,77 @@ def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
             entry["ctx_" + key if key in ("file", "label", "at") else key] = value
         with (RECORD_DIR / "run_index.jsonl").open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, default=str) + "\n")
+        prune_recordings()
     except Exception:  # noqa: BLE001 - recording is never worth a failure
         pass
+
+
+def prune_recordings(keep: int = RECORD_KEEP,
+                     slack: int = RECORD_PRUNE_SLACK) -> int:
+    """Keep the newest `keep` frames; delete the rest and their index lines.
+
+    Returns how many frames were removed.
+
+    Frames and index MUST go together. A frame with no index line is an orphan
+    that no test can interpret; an index line with no frame makes the corpus
+    suite assert against a file that is not there, and the baseline report every
+    pruned frame as "in baseline, unreadable now". So the index is rewritten in
+    the same pass, keeping only the lines whose file survived.
+
+    Ordered by the SEQUENCE NUMBER in the name, not by mtime. The sequence is
+    the authority on age -- mtime is whatever the filesystem last recorded, and
+    a copy or a restore rewrites it.
+
+    Never raises: this runs inside record(), which must never be able to break
+    a run.
+    """
+    try:
+        frames = []
+        for path in RECORD_DIR.glob("run_*.png"):
+            digits = path.stem[4:]
+            if digits.isdigit():
+                frames.append((int(digits), path))
+        if len(frames) <= keep + slack:
+            return 0
+
+        frames.sort()
+        doomed = frames[:len(frames) - keep]
+        gone = set()
+        for _seq, path in doomed:
+            try:
+                path.unlink()
+                gone.add(path.name)
+            except OSError:
+                pass                       # locked by a reader; try again later
+        if not gone:
+            return 0
+
+        # Rewrite via a temp file and os.replace, which is atomic on Windows:
+        # a suite reading the index concurrently sees the old file or the new
+        # one, never a half-written one.
+        index = RECORD_DIR / "run_index.jsonl"
+        if index.exists():
+            tmp = index.with_suffix(".jsonl.tmp")
+            kept = 0
+            with index.open("r", encoding="utf-8", errors="replace") as src, \
+                    tmp.open("w", encoding="utf-8") as dst:
+                for line in src:
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    try:
+                        name = json.loads(stripped).get("file")
+                    except Exception:      # noqa: BLE001 - keep unparseable
+                        dst.write(line)
+                        kept += 1
+                        continue
+                    if name not in gone:
+                        dst.write(line)
+                        kept += 1
+            os.replace(tmp, index)
+        return len(gone)
+    except Exception:  # noqa: BLE001 - pruning is never worth a failure
+        return 0
 
 
 # --------------------------------------------------------------------------

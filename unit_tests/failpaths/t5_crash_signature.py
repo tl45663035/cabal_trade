@@ -224,13 +224,17 @@ TMP.mkdir(exist_ok=True)
 for stale in TMP.glob("*"):
     stale.unlink()
 
+# _record_full is gone: it was the "recording has stopped for good" latch, and
+# recording no longer stops -- it prunes to a rolling window instead. RECORD_KEEP
+# is saved in its place so this test's temporary corpus cannot be pruned out
+# from under it mid-assertion.
 saved = (trade.RECORD_DIR, trade.RECORD_ENABLED, trade._record_seq,
-         trade._record_full)
+         trade.RECORD_KEEP)
 try:
     trade.RECORD_DIR = TMP
     trade.RECORD_ENABLED = True
     trade._record_seq = 0
-    trade._record_full = False
+    trade.RECORD_KEEP = 10_000
     small = Image.new("RGB", (8, 8))
     trade.record("t.ok", small, note="written")
 
@@ -249,7 +253,7 @@ try:
                index.read_text(encoding="utf-8").splitlines()] if index.exists() else []
 finally:
     (trade.RECORD_DIR, trade.RECORD_ENABLED, trade._record_seq,
-     trade._record_full) = saved
+     trade.RECORD_KEEP) = saved
 
 check("5.4 a healthy record() writes an index line",
       any(e["label"] == "t.ok" for e in entries), str(entries))

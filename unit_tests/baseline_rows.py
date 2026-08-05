@@ -138,6 +138,7 @@ def main():
 
     old = json.loads(BASELINE.read_text())
     hard, name_junk, name_other, shape, new = [], [], [], [], []
+    pruned: list[str] = []
 
     for frame in sorted(set(old) | set(data)):
         a, b = old.get(frame), data.get(frame)
@@ -145,6 +146,18 @@ def main():
             new.append(frame)
             continue
         if b is None:
+            # A frame that is GONE is not a frame that reads differently. The
+            # recorder keeps a rolling window of the newest RECORD_KEEP frames
+            # and deletes the rest, so every baseline outlives some of the
+            # frames it was built from. Counting those as failures would make
+            # this suite go permanently red for doing exactly what it is meant
+            # to do.
+            #
+            # A frame still ON DISK that will not read is a different animal
+            # entirely, and still fails.
+            if not (CORPUS / frame).exists():
+                pruned.append(frame)
+                continue
             shape.append(f"{frame}: in baseline, unreadable now")
             continue
         if len(a) != len(b):
@@ -163,6 +176,10 @@ def main():
 
     print(f"  {'frames in baseline':38} {len(old):6,d}")
     print(f"  {'new since baseline (not differences)':38} {len(new):6,d}")
+    # Printed always, including zero, so a baseline quietly emptying itself is
+    # visible. Once this approaches 'frames in baseline' the comparison is
+    # running on almost nothing and wants re-saving.
+    print(f"  {'pruned since baseline (not differences)':38} {len(pruned):6,d}")
     print(f"  {'HARD changes':38} {len(hard):6,d}   <- must be 0")
     print(f"  {'row-count changes':38} {len(shape):6,d}   <- must be 0")
     print(f"  {'name changes, not junk removal':38} {len(name_other):6,d}   <- must be 0")

@@ -1,4 +1,4 @@
-"""Are the 'index stops mid-cycle' gaps missing RUN, or missing INDEX LINES?"""
+﻿"""Are the 'index stops mid-cycle' gaps missing RUN, or missing INDEX LINES?"""
 
 import sys as _sys
 from pathlib import Path as _Path
@@ -48,5 +48,6 @@ print("\nSize of the corpus and the free space it needs:")
 total = sum(p.stat().st_size for p in CORPUS.glob("run_*.png"))
 print(f"  {total / 2**30:.2f} GiB over {len(on_disk)} frames "
       f"({total / max(1, len(on_disk)) / 2**20:.1f} MiB each)")
-print(f"  RECORD_LIMIT is 12000 frames -> "
-      f"{total / max(1, len(on_disk)) * 12000 / 2**30:.1f} GiB at the cap")
+print(f"  recording now keeps a ROLLING window and prunes the oldest, so the "
+      f"corpus\n  settles at a fixed size instead of stopping dead at a cap")
+
