@@ -426,6 +426,11 @@ def move_mouse(x: int, y: int) -> bool:
     runs elevated, so a normal-integrity process cannot inject input while the
     game holds the foreground. Running this script as Administrator fixes it.
     """
+    # True, not False: a suppressed move has not been REFUSED, and callers
+    # treat False as UIPI blocking them and raise PermissionError. Reporting a
+    # dry run as a permissions failure would be a lie in the other direction.
+    if _suppressed(f"move the cursor to ({x}, {y})"):
+        return True
     make_dpi_aware()
     ctypes.windll.user32.SetCursorPos.restype = ctypes.c_int
     moved = bool(ctypes.windll.user32.SetCursorPos(int(x), int(y)))
@@ -1256,6 +1261,30 @@ VK_MENU = 0x12    # Alt. Module level: release_modifiers() needs it too.
 
 
 
+# When set, every input primitive below refuses to act. --dry-run sets it, so
+# a dry run cannot touch the game AT ALL rather than merely "not clicking".
+#
+# It was a per-call `dry_run` argument threaded through the acting functions,
+# and the scroll primitives were never given one. `--relist-rows all --dry-run`
+# therefore sent 40 wheel notches at the Trade window's centre. With that
+# window closed, the wheel goes to the game WORLD as a camera zoom -- which
+# moved the NPC out of the band find_npc searches and ended a live run that
+# had been healthy for 48 minutes, two cycles later, on "Lady Yekaterina is
+# not on screen".
+#
+# A flag checked inside the primitives cannot be forgotten by a new caller the
+# way an argument can, which is exactly how that gap arose.
+NO_INPUT = False
+
+
+def _suppressed(what: str) -> bool:
+    """True when input is being suppressed; says so once per action."""
+    if not NO_INPUT:
+        return False
+    print(f"[dry run] would {what} - suppressed, the game is not touched")
+    return True
+
+
 def cooldown(seconds: float | None = None) -> None:
     """Wait after an input action. Centralised so the pace is tunable."""
     time.sleep(ACTION_COOLDOWN if seconds is None else seconds)
@@ -1375,6 +1404,8 @@ def press_escape(settle: float = 0.5) -> None:
     Sends a scan code, not just a virtual key -- the game ignores virtual-key
     only events, which is why an earlier attempt at this appeared to do nothing.
     """
+    if _suppressed("press Escape"):
+        return
     _send(_key_event(VK_ESCAPE, up=False))
     try:
         time.sleep(0.05)
@@ -1391,6 +1422,9 @@ def type_number(value: int, per_key: float = TYPE_COOLDOWN,
     Paced at TYPE_COOLDOWN per keystroke -- slower than a burst, but the field
     drops characters when typed at machine speed.
     """
+    if _suppressed(f"type {value}"):
+        return
+
     def tap(vk: int) -> None:
         """Press and release, guaranteeing the release.
 
@@ -1431,6 +1465,12 @@ def scroll_wheel(x: int, y: int, notches: int, settle: float = 0.35) -> None:
     made the settle time unpredictable, which matters because the caller has
     to re-read the table afterwards to learn where it landed.
     """
+    # Checked FIRST, before the cursor moves. The wheel is the most dangerous
+    # primitive here precisely because it is not a click: with the Trade window
+    # closed it goes to the game world as a camera zoom, and nothing in the
+    # script would notice.
+    if _suppressed(f"scroll {notches:+d} notch(es) at ({x}, {y})"):
+        return
     make_dpi_aware()
     if not move_mouse(x, y):
         raise PermissionError(CURSOR_BLOCKED_HINT)
@@ -1451,6 +1491,8 @@ def click(x: int, y: int, settle: float = 0.15) -> None:
     Raises PermissionError if Windows refuses the cursor move, which is the
     reliable signal that UIPI is blocking us (see CURSOR_BLOCKED_HINT).
     """
+    if _suppressed(f"click ({x}, {y})"):
+        return
     make_dpi_aware()
     if not move_mouse(x, y):
         raise PermissionError(CURSOR_BLOCKED_HINT)
@@ -1469,6 +1511,8 @@ def click(x: int, y: int, settle: float = 0.15) -> None:
 
 def ctrl_click(x: int, y: int, settle: float = 0.15) -> None:
     """Ctrl+Left-click, which is how Cabal moves an item into the shop slot."""
+    if _suppressed(f"Ctrl+Click ({x}, {y})"):
+        return
     make_dpi_aware()
     if not move_mouse(x, y):
         raise PermissionError(CURSOR_BLOCKED_HINT)
@@ -3059,23 +3103,35 @@ def enumerate_listings(timeout: float = 8.0,
 
     found: list[tuple[int, Row]] = [(i + 1, r) for i, r in enumerate(rows)]
     top = 1                      # absolute index of screen row 1
+    # Stepped SCROLL_STEP rows at a time, not one.
+    #
+    # One row at a time costs a full table read -- ~18s of OCR -- per row, so a
+    # thirty-deep shop spent ten minutes just working out what was in it, and
+    # that was paid again on every cycle. A seven-row step still leaves the
+    # three overlapping rows measure_shift needs to pin the offset down, so it
+    # is exactly as verifiable and roughly five times cheaper: four reads for
+    # thirty rows instead of twenty.
+    #
+    # Verified against the recorded scroll probes on this shop: from the top,
+    # -7 notches moved the view exactly 7 rows, left 3 rows overlapping, and
+    # measure_shift returned a single unambiguous fit.
     steps = 0
-    # Bounded: the shop cannot hold more listings than this, and an unbounded
-    # loop here would scroll for ever if the shift ever read 1 without the
-    # view actually moving.
-    while steps < SCROLL_TO_END_NOTCHES:
+    while steps < MAX_SCROLL_CHUNKS:
         steps += 1
-        after, shift = scroll_one(True, rows, timeout=timeout, verbose=verbose)
+        after, shift = scroll_chunk(SCROLL_STEP, rows, timeout=timeout,
+                                    verbose=verbose)
         if after is None or shift is None:
             return None
         if shift == 0:
             break                # clamped: the bottom is on screen
         top += shift
         rows = after
-        # Only the row that just arrived at the bottom is new.
-        index = top + len(rows) - 1
-        if index > len(found):
-            found.append((index, rows[-1]))
+        # Every row the step brought into view is new, not just the last one:
+        # a seven-row step reveals up to seven rows at once.
+        for offset, row in enumerate(rows):
+            index = top + offset
+            if index > len(found):
+                found.append((index, row))
     else:
         say(f"  still scrolling after {steps} steps - refusing to continue.")
         return None
@@ -4996,8 +5052,24 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
     return FAILED
 
 
+ALL_ROWS_SPEC = "all"
+
+
+def wants_all_rows(specs: list[str] | None) -> bool:
+    """Is this spec the literal 'all' rather than a set of row numbers?
+
+    Separate from parse_row_spec because 'all' is not a row list that happens
+    to be long: the count is not known until the shop has been swept, and a
+    number written down now would be wrong the moment a listing sells.
+    """
+    return bool(specs) and len(specs) == 1 and \
+        str(specs[0]).strip().casefold() == ALL_ROWS_SPEC
+
+
 def parse_row_spec(specs: list[str]) -> list[int]:
     """Turn CLI row specs into row numbers: '1-10', '1,3,5' and '1 3 5' all work."""
+    if wants_all_rows(specs):
+        return []
     rows: list[int] = []
     for spec in specs:
         for chunk in str(spec).replace(",", " ").split():
@@ -5194,6 +5266,7 @@ def relist_rows(
     dry_run: bool = False,
     timeout: float = 8.0,
     verbose: bool = True,
+    all_rows: bool = False,
 ) -> bool:
     """Relist several rows, tracking each by name rather than by position.
 
@@ -5238,12 +5311,20 @@ def relist_rows(
     # of OCR each), so making every batch pay for it would slow the common case
     # by minutes to serve a case it does not have.
     beyond = [i for i in rows if i > len(snapshot)]
-    scrolling = bool(beyond)
+    scrolling = bool(beyond) or all_rows
     targets: list[tuple[int, RowRef, str]] = []
 
     if scrolling:
-        say(f"Row(s) {', '.join(str(i) for i in beyond)} are past the first "
-            f"screen of {len(snapshot)}; enumerating the whole shop.")
+        if all_rows:
+            # Every listing, however many there are. The shop holds thirty and
+            # the table shows ten, so this sweeps the whole list by scrolling
+            # and remembers what it saw, rather than being told a row count
+            # that would be wrong the moment a listing sells.
+            say("Relisting EVERY listing in the shop; sweeping it to see how "
+                "many there are.")
+        else:
+            say(f"Row(s) {', '.join(str(i) for i in beyond)} are past the "
+                f"first screen of {len(snapshot)}; enumerating the whole shop.")
         listings = enumerate_listings(timeout=timeout, verbose=verbose)
         if listings is None:
             say("The shop could not be enumerated, so rows past the first "
@@ -5251,14 +5332,24 @@ def relist_rows(
                 "acting on a position that might be the wrong listing.")
             return False
         catalogue = [row for _, row in listings]
-        by_index = dict(listings)
-        for index in rows:
-            row = by_index.get(index)
-            if row is None:
-                say(f"Row {index} is out of range; the shop holds "
-                    f"{len(listings)} listing(s).")
-                return False
-            targets.append((index, RowRef.of(row, catalogue), row.action))
+        if all_rows:
+            # Empty slots and Premium markers are carried through rather than
+            # filtered here: the loop below skips them by action, and dropping
+            # them now would renumber everything after them.
+            targets = [(index, RowRef.of(row, catalogue), row.action)
+                       for index, row in listings]
+            live = sum(1 for _, _, a in targets
+                       if a in ("change", "receive"))
+            say(f"Found {len(targets)} slot(s), {live} of them live.")
+        else:
+            by_index = dict(listings)
+            for index in rows:
+                row = by_index.get(index)
+                if row is None:
+                    say(f"Row {index} is out of range; the shop holds "
+                        f"{len(listings)} listing(s).")
+                    return False
+                targets.append((index, RowRef.of(row, catalogue), row.action))
     else:
         for index in rows:
             if not 1 <= index <= len(snapshot):
@@ -5458,7 +5549,13 @@ def run_sequence(actions: list[str], dry_run: bool = False, verbose: bool = True
                 ok = relist(int(args[0]), *slot,
                             dry_run=dry_run, verbose=verbose) != FAILED
             elif verb in ("relist-rows", "relist_rows") and args:
-                ok = relist_rows(parse_row_spec(args), dry_run=dry_run, verbose=verbose)
+                # 'all' has to be honoured HERE too, not only on the --relist-rows
+                # flag: --repeat drives this path, and that is where an
+                # unattended run lives. Parsing it as a row list would yield an
+                # empty list and quietly relist nothing.
+                ok = relist_rows(parse_row_spec(args), dry_run=dry_run,
+                                 verbose=verbose,
+                                 all_rows=wants_all_rows(args))
             elif verb == "clear" and not args:
                 ok = True if dry_run else clear_shop_slot(verbose=verbose)
             else:
@@ -6796,7 +6893,9 @@ def main() -> None:
                    help="show the listings currently visible")
     p.add_argument("--relist-rows", nargs="+", metavar="SPEC",
                    help="relist several rows, e.g. --relist-rows 1-10 or 1 3 5; "
-                        "each is tracked by name, since rows renumber as you go")
+                        "each is tracked by name, since rows renumber as you "
+                        "go. 'all' sweeps the whole shop by scrolling and "
+                        "relists every listing, however many there are")
     p.add_argument("--relist", type=int, nargs="+", metavar="N",
                    help="cancel a row then re-list it: --relist ROW [INV_ROW INV_COL]; "
                         "without a slot it follows the item to wherever it lands")
@@ -6939,6 +7038,18 @@ def main() -> None:
                        or args.relist_rows is not None
                        or args.do is not None
                        or args.repeat is not None)
+    # Suppress input at the SOURCE for a dry run, not just at the call sites
+    # that remembered to ask. Only commands that honour --dry-run at all are
+    # covered: --shot, --calibrate and friends are read-only anyway, and the
+    # ones that always click (--confirm, --clear) do not accept it.
+    #
+    # Without this, --dry-run meant "the acting functions do not click" while
+    # the scroll primitives underneath them still drove the game. That is how
+    # `--relist-rows all --dry-run` zoomed the camera and ended a live run.
+    if honours_dry_run and args.dry_run:
+        global NO_INPUT
+        NO_INPUT = True
+
     clicking = always_clicks or (honours_dry_run and not args.dry_run)
     if clicking and not is_elevated():
         sys.exit(
@@ -7153,10 +7264,11 @@ def main() -> None:
             wanted = parse_row_spec(args.relist_rows)
         except ValueError as exc:
             p.error(f"bad --relist-rows spec: {exc}")
-        if not wanted:
-            p.error("--relist-rows needs at least one row")
+        every = wants_all_rows(args.relist_rows)
+        if not wanted and not every:
+            p.error("--relist-rows needs at least one row, or 'all'")
         try:
-            ok = relist_rows(wanted, dry_run=args.dry_run)
+            ok = relist_rows(wanted, dry_run=args.dry_run, all_rows=every)
         except FatalAbort as exc:
             sys.exit(f"FATAL: {exc}")
         except (PermissionError, Aborted) as exc:

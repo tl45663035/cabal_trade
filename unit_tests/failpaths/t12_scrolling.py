@@ -151,6 +151,76 @@ with h:
     check("row 31: acted on nothing", targeted(h) == [], f"{targeted(h)}")
 
 
+section("'all' relists every listing, without being told how many")
+
+for size in (4, 12, 25, 30):
+    h = ScrollShop(shop_of(size))
+    with h:
+        h.patch("relist", spy(h))
+        ok, exc = run(trade.relist_rows, [], all_rows=True)
+        want = [f"Item {i:02d}" for i in range(1, size + 1)]
+        check(f"all/{size}: batch succeeded", ok is True, f"got {ok!r} {exc!r}")
+        check(f"all/{size}: every listing relisted, in order",
+              targeted(h) == want,
+              f"got {len(targeted(h))} of {size}: {targeted(h)}")
+
+# The point of 'all': the count is never stated, so a shop that changes size
+# between runs needs no edit.
+h = ScrollShop(shop_of(30))
+with h:
+    h.patch("relist", spy(h))
+    run(trade.relist_rows, [], all_rows=True)
+    check("all: no row number was needed", len(targeted(h)) == 30,
+          f"{len(targeted(h))}")
+
+# Empty slots and sold rows are part of the sweep, not gaps in it.
+h = ScrollShop(shop_of(20, **{"7": {"action": "register"},
+                              "15": {"action": "receive"}}))
+with h:
+    h.patch("relist", spy(h))
+    ok, exc = run(trade.relist_rows, [], all_rows=True)
+    check("all: succeeded with an empty slot and a sold row",
+          ok is True, f"got {ok!r} {exc!r}")
+    check("all: the empty slot was skipped, not relisted",
+          "Item 07" not in targeted(h), f"{targeted(h)}")
+    check("all: the sold row WAS acted on", "Item 15" in targeted(h),
+          f"{targeted(h)} -- a sale past row 10 is the money this mode exists "
+          f"to collect")
+    check("all: every other listing was relisted", len(targeted(h)) == 19,
+          f"{len(targeted(h))} of 19 expected")
+
+
+section("'all' parses from the command line and from --repeat")
+
+check("wants_all_rows('all')", trade.wants_all_rows(["all"]) is True, "")
+check("wants_all_rows('ALL')", trade.wants_all_rows(["ALL"]) is True,
+      "case must not matter")
+check("wants_all_rows('1-10')", trade.wants_all_rows(["1-10"]) is False, "")
+check("wants_all_rows of nothing", trade.wants_all_rows([]) is False, "")
+check("wants_all_rows('all','1')", trade.wants_all_rows(["all", "1"]) is False,
+      "'all' mixed with rows is not 'all'")
+check("parse_row_spec('all') is empty, not a crash",
+      trade.parse_row_spec(["all"]) == [],
+      f"{trade.parse_row_spec(['all'])!r}")
+check("parse_row_spec('1-3') still works",
+      trade.parse_row_spec(["1-3"]) == [1, 2, 3],
+      f"{trade.parse_row_spec(['1-3'])!r}")
+
+# --repeat drives run_sequence, which is where an unattended run lives. If
+# 'all' were parsed there as a row list it would be empty and relist nothing,
+# silently, for hours.
+h = ScrollShop(shop_of(14))
+with h:
+    h.patch("relist", spy(h))
+    ok, exc = run(trade.run_sequence, ["relist-rows all"])
+    check("--repeat 'relist-rows all': succeeded", ok is True,
+          f"got {ok!r} {exc!r}")
+    check("--repeat 'relist-rows all': relisted all 14",
+          len(targeted(h)) == 14,
+          f"{len(targeted(h))} -- parsed as a row list this would be 0 and "
+          f"the run would report success having done nothing")
+
+
 section("an indistinguishable shop is refused rather than guessed at")
 
 # Every listing identical: measure_shift cannot pin the offset down, so the
