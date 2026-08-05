@@ -389,6 +389,22 @@ class Harness:
             return
         self.panel["net_sales"] = value * qty + self.net_sales_extra
 
+    def _press_escape(self, *a, **k):
+        """Escape closes the Trade WINDOW, but not a dialog.
+
+        Modelled as a pure no-op before, which made every close_shop() in the
+        suite end with "the Trade window would not close with Escape" -- a
+        failure message on the happy path, and it hid the fact that nothing
+        was asserting the window ever closes at all.
+
+        Dialogs are excluded deliberately: close_any_dialog's docstring records
+        that the game ignores Escape there, which is why it walks the chain
+        with clicks instead.
+        """
+        self.log("press_escape")
+        if self.dialog is None:
+            self.trade_open = False
+
     def _type_number(self, value, *a, **k):
         self.log("type_number", value)
         field = getattr(self, "_focus_field", None)
@@ -563,7 +579,7 @@ class Harness:
 
         h = self
         t.type_number = self._type_number
-        t.press_escape = lambda *a, **k: h.log("press_escape")
+        t.press_escape = self._press_escape
         t.scroll_wheel = lambda x, y, n, **k: h.log("scroll_wheel", x, y, n)
         t.move_mouse = lambda x, y: (h.log("move_mouse", x, y) or True)
         t.make_dpi_aware = lambda: None

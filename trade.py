@@ -3851,6 +3851,18 @@ class FatalAbort(Exception):
     """
 
 
+class ShopEmpty(Exception):
+    """Every row asked for is an empty slot: there is nothing left to relist.
+
+    Deliberately NOT an Aborted subclass. Aborted means "this cycle did not
+    work, try again"; this means "the work is finished". A sold-out shop is a
+    success, and retrying it every cycle for the rest of a 500-minute run
+    achieves nothing but keeps the game awake and the cursor moving.
+
+    The loop catches this, closes the Agent Shop, and stops.
+    """
+
+
 def cancel_item(
     row: int,
     dry_run: bool = False,
@@ -5531,6 +5543,26 @@ def relist_rows(
     # genuinely empty in the snapshot do not count against this.
     actionable = sum(1 for _, _, action in targets
                      if action in ("change", "receive"))
+
+    # Nothing left to sell. Confirmed against a FRESH read before acting on it,
+    # because "every row is empty" is also what a table caught mid-refresh
+    # looks like, and ending a run on one bad frame would be worse than the
+    # pointless cycling this avoids.
+    if not dry_run and not actionable:
+        say(f"\nAll {len(targets)} row(s) read as empty slots. Re-reading to "
+            "be sure before treating the shop as sold out...")
+        again = await_rows(timeout)
+        live_now = [r for r in (again or [])
+                    if r.action in ("change", "receive")]
+        if again and not live_now:
+            raise ShopEmpty(
+                f"every one of the {len(targets)} row(s) is an empty slot - "
+                f"the shop has sold out, so there is nothing left to relist")
+        if live_now:
+            say(f"  the re-read found {len(live_now)} live row(s) after all - "
+                "the first read caught the table mid-refresh. Not stopping.")
+            return False
+
     if actionable and not worked:
         say(f"\nNone of the {actionable} live row(s) were relisted - every one "
             "read as already sold. That is not a successful cycle; stopping so "
@@ -5632,6 +5664,41 @@ def run_sequence(actions: list[str], dry_run: bool = False, verbose: bool = True
     return True
 
 
+def leave_shop(verbose: bool = True) -> bool:
+    """Put the game back to its default state: no dialog, no Trade window.
+
+    Called when a run is finishing on purpose rather than being retried. A run
+    that stops with the shop open leaves the character parked in a UI the next
+    thing to touch the machine has to clear -- and an open Trade window is
+    exactly what makes a later find_npc fail, because it covers the NPC.
+
+    Never raises: this runs at the end of a run that has already decided its
+    outcome, and an exception here would replace that outcome with a crash.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    try:
+        if dialog_present():
+            say("Closing the dialog left on screen...")
+            close_any_dialog()
+        for _ in range(ESCAPE_ATTEMPTS):
+            if not trade_window_open():
+                say("Agent Shop closed; the game is back to its default state.")
+                return True
+            press_escape()
+        if trade_window_open():
+            say("Note: the Trade window would not close with Escape - close it "
+                "by hand before the next run.")
+            return False
+        say("Agent Shop closed; the game is back to its default state.")
+        return True
+    except Exception as exc:  # noqa: BLE001 - tidying must not become the story
+        say(f"Note: could not tidy up the game window ({exc}).")
+        return False
+
+
 def prepare_for_actions(verbose: bool = True) -> bool:
     """Put the game into a state where a cycle can run.
 
@@ -5718,6 +5785,9 @@ def run_loop(
     end = time.monotonic() + minutes * 60.0
     cycle = succeeded = failures = consecutive = 0
     stopped = False
+    # Stopped because the work is DONE, as opposed to stopped because something
+    # broke. Only a sold-out shop sets it.
+    finished = False
 
     if every:
         cadence = (f"every {every:g} min for {minutes:g} min "
@@ -5773,6 +5843,20 @@ def run_loop(
                     consecutive += 1
                     say(f"\nCycle {cycle}: could not get the game ready - "
                         "will retry next cycle.")
+            except ShopEmpty as exc:
+                # The work is FINISHED, not failed. Cycling an empty shop for
+                # the rest of a 500-minute run relists nothing, keeps the
+                # machine awake and the cursor moving, and buries the moment
+                # the shop actually sold out in hours of identical log.
+                record("loop.stopped", reason="sold_out", detail=str(exc),
+                       cycle=cycle, consecutive=consecutive)
+                say(f"\nSOLD OUT: {exc}")
+                succeeded += 1
+                consecutive = 0
+                stopped = True
+                finished = True
+                leave_shop(verbose=verbose)
+                break
             except FatalAbort as exc:
                 record("loop.stopped", reason="fatal", detail=str(exc),
                        cycle=cycle, consecutive=consecutive)
@@ -5781,6 +5865,7 @@ def run_loop(
                 say("Terminating the loop; nothing further will be attempted.")
                 failures += 1
                 stopped = True
+                leave_shop(verbose=verbose)
                 break
             except PermissionError as exc:
                 record("loop.stopped", reason="permission", detail=str(exc),
@@ -5859,7 +5944,10 @@ def run_loop(
 
     say(f"\nDone: {cycle} cycle(s) run, {succeeded} succeeded, {failures} failed"
         + (f"; stopped early at cycle {cycle}." if stopped else "."))
-    return succeeded > 0 and not stopped
+    # `finished` separates "stopped because the work is done" from "stopped
+    # because something broke". Without it a sold-out shop -- the best possible
+    # outcome -- exits non-zero, because every early stop looked alike.
+    return finished or (succeeded > 0 and not stopped)
 
 
 # --------------------------------------------------------------------------
@@ -7311,6 +7399,12 @@ def main() -> None:
             p.error("--relist-rows needs at least one row, or 'all'")
         try:
             ok = relist_rows(wanted, dry_run=args.dry_run, all_rows=every)
+        except ShopEmpty as exc:
+            # A sold-out shop is a successful outcome, so exit 0 -- a caller
+            # scripting this must not read "finished" as "failed".
+            print(f"SOLD OUT: {exc}")
+            leave_shop()
+            sys.exit(0)
         except FatalAbort as exc:
             sys.exit(f"FATAL: {exc}")
         except (PermissionError, Aborted) as exc:

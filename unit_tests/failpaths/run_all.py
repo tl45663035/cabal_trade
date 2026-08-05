@@ -31,6 +31,7 @@ SUITES = [
     ("19 maximise quantity",   "t19_maximise_quantity.py"),
     ("20 dry run is inert",    "t20_dry_run_is_inert.py"),
     ("21 no market price",    "t21_no_market_price.py"),
+    ("22 sold out exit",       "t22_sold_out_exit.py"),
 ]
 
 FORENSICS = [
@@ -158,5 +159,6 @@ def main(include_forensics=True):
 
 if __name__ == "__main__":
     raise SystemExit(main("--no-forensics" not in sys.argv))
+
 
 
