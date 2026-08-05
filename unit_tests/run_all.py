@@ -34,6 +34,7 @@ SUITES = [
     ("row invariants",        HERE / "invariants_test.py",   []),
     ("row identity",          HERE / "identity_test.py",     []),
     ("floors on real screens", HERE / "floor_live_test.py",  []),
+    ("floor catalogue",       HERE / "floor_catalogue_test.py", []),
     ("layout replay",         HERE / "layout_replay_test.py", []),
     # The only coverage that drives the STATE MACHINE rather than the readers.
     # It stubs the click/capture layer and runs cancel_item, register_item,

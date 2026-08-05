@@ -85,6 +85,20 @@ ITEM_PRICE_FLOORS: tuple[tuple[str, str, int], ...] = (
     # floor on the token route. 'siena' is 5 characters and unique to this
     # item, so it is both a stronger target than 'vip' and a narrower one.
     ("siena", "Siena's Unbinding Stone", 71_000_000),
+    # 'gempack' rather than 'gem': plain "Force Gem" scores 0.593 against this
+    # catalogue name, which clears the 0.4 token bar, so the shorter token
+    # would hand a different item this floor. 'gempack' survives every damaged
+    # read measured (a clipped trailer, a dropped letter, 0-for-O) because the
+    # similarity route carries those.
+    #
+    # CAVEAT, measured not assumed: a DIFFERENT PACK SIZE inherits this floor
+    # and no token can prevent it. "Force Gem Package (x100)" scores 0.947
+    # against this name and "(x40)" scores 0.973, both far above the 0.75
+    # similarity bar -- they are nearly the same string. Only the x400 has ever
+    # been listed on this account, so it is latent; if a smaller pack is ever
+    # listed it would go up at 180,000,000, never sell, and pay a percentage
+    # fee on that figure. Give it its own entry before listing one.
+    ("gempack", "Force Gem Package (x400)", 180_000_000),
 )
 
 FALLBACK_PRICE = 10_000_000_000    # 10B, when the game suggests no price

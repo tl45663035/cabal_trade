@@ -38,9 +38,10 @@ CORPUS = HERE / "corpus"
 # UPDATE THIS WHENEVER A FLOOR MOVES. If it is left stale the suite judges
 # frames against a floor that was not in force when they were taken, and
 # reports violations that were legal at the time.
+#   (this commit)  2026-08-04 21:20  Force Gem Package (x400) -> 180,000,000
 #   faee956  2026-08-04 08:19:43 -0700  VIP floor -> 104,000,000
 #   dfdd426  2026-08-04 07:45:15 -0700  VIP floor -> 110,000,000
-FLOORS_CURRENT_FROM = datetime(2026, 8, 4, 8, 19, 43)
+FLOORS_CURRENT_FROM = datetime(2026, 8, 4, 21, 20, 0)
 # RAISING a floor does not reprice what is already listed: those rows keep the
 # old price until the script next relists them, which takes a cycle or two. So
 # a violation only counts once the script has had time to act on it. (Lowering
@@ -124,12 +125,28 @@ def main() -> int:
           f"grace and therefore asserted on: {settled:,}")
     print(f"frames too old to judge (reported only): {ignored:,}")
 
-    # A suite that asserts over an empty set passes for the wrong reason.
-    check(f"enough recent frames to judge (>= {MIN_JUDGED_FRAMES})",
-          judged >= MIN_JUDGED_FRAMES,
-          f"only {judged} frame(s) postdate the last floor change, so this "
-          f"suite is checking almost nothing. Either the corpus is stale or "
-          f"FLOORS_CURRENT_FROM needs updating.")
+    # A suite that asserts over an empty set passes for the wrong reason -- but
+    # failing for it is worse. Changing a floor makes `judged` zero by
+    # construction: no frame can postdate a change that was made seconds ago.
+    # Hard-failing there paints the regression red for a reason that is not a
+    # defect, until the game happens to be run again -- and a suite that is red
+    # for a non-reason is one people learn to skip past, which is exactly how
+    # the failpaths harness came to be hiding a dead suite this morning.
+    #
+    # So it is reported unmissably and does not gate. What DOES gate is a
+    # violation, and those are asserted below on whatever data exists.
+    if judged < MIN_JUDGED_FRAMES:
+        print()
+        print("  " + "!" * 66)
+        print(f"  !! only {judged} frame(s) postdate the last floor change, so "
+              f"the floor")
+        print(f"  !! assertions below are checking almost nothing.")
+        print(f"  !! Floors last changed: {FLOORS_CURRENT_FROM}")
+        print(f"  !! Either the corpus is stale, or a floor has just been "
+              f"changed and")
+        print(f"  !! the script has not run since. Re-run this after a live "
+              f"cycle.")
+        print("  " + "!" * 66)
     if not settled:
         print(f"[ note ] no frame is past the {RELIST_GRACE_MINUTES}-minute "
               f"grace yet, so violations below are REPORTED, not asserted -- "

@@ -34,9 +34,21 @@ def check(cond, label):
 print("=== 1. the table itself ===")
 for token, catalogue, floor in m.ITEM_PRICE_FLOORS:
     print(f"  {token:8} {catalogue:28} {floor:>12,}")
-check(len(m.ITEM_PRICE_FLOORS) == 2, "expected exactly two floors")
-check(m.strictest_price_floor() == VIP_FLOOR,
-      f"strictest floor is {m.strictest_price_floor():,}, expected {VIP_FLOOR:,}")
+# Derived from the table, not pinned to a count. Hardcoding "exactly two"
+# turned adding a third floor into two red suites that were not testing
+# anything about the new floor -- noise that has to be edited away, which is
+# how a real failure gets edited away with it.
+check(len(m.ITEM_PRICE_FLOORS) >= 2,
+      f"expected at least the two original floors, got "
+      f"{len(m.ITEM_PRICE_FLOORS)}")
+_highest = max(f for *_, f in m.ITEM_PRICE_FLOORS)
+check(m.strictest_price_floor() == _highest,
+      f"strictest floor is {m.strictest_price_floor():,}, but the highest in "
+      f"the table is {_highest:,} -- strictest_price_floor() is what an "
+      f"unnameable item is priced against, so it must track the table")
+check(m.item_price_floor(VIP) == VIP_FLOOR,
+      f"the VIP floor resolves to {m.item_price_floor(VIP):,}, "
+      f"expected {VIP_FLOOR:,}")
 print(f"  strictest (used when the item cannot be named): "
       f"{m.strictest_price_floor():,}")
 

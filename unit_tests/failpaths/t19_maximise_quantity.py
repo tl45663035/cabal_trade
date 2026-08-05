@@ -30,7 +30,16 @@ from harness import Harness, check, empty_panel, make_row, run, section, summary
 import trade
 
 ITEM = "Yekaterina VIP Membership Use Period: 30 days"
-PRICE = 110_000_000
+
+# Above the STRICTEST floor on the books, derived rather than pinned.
+#
+# `--register` loads an inventory slot, so the item cannot be named, and a
+# stated price below the dearest floored item is refused -- it might BE that
+# item. A literal here therefore stops being legal the moment a dearer floor is
+# added, and did: this suite went red across the board when the Force Gem
+# Package floor landed at 180M and its 110M price fell under it. Nothing was
+# wrong with the code; the test had pinned a number that the config owns.
+PRICE = max(f for *_, f in trade.ITEM_PRICE_FLOORS) + 1_000_000
 
 
 def fresh(qty=1, qty_max=6, **flags):

@@ -53,8 +53,12 @@ check("item_price_floor(VIP)", m.item_price_floor(VIP), FLOOR)
 # Call the REAL helper, not a reimplementation. This test mirrored the pricing
 # logic inline and therefore missed strictest_price_floor() raising ValueError
 # after ITEM_PRICE_FLOORS grew a third field -- a crash on every --price run.
-check("strictest_price_floor() runs and returns the floor",
-      m.strictest_price_floor(), FLOOR)
+# The HIGHEST floor in the table, which is not necessarily the VIP's -- it was
+# when this was written and stopped being so the moment a third, dearer item
+# was added. Derived, so the next addition does not turn this red for a reason
+# that has nothing to do with what it is testing.
+check("strictest_price_floor() runs and returns the table's highest",
+      m.strictest_price_floor(), max(f for *_, f in m.ITEM_PRICE_FLOORS))
 
 print("\n--- named VIP: the floor binds however low the market goes ---")
 # Relative to FLOOR, not literals: 118,999,999 was written here as "above the
