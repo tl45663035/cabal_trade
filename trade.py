@@ -3367,9 +3367,28 @@ def choose_price(
         rather than substituting a number.
     """
     if suggested <= 0:
-        # No lowest-current-price to take, so park it high rather than guess.
+        # No lowest-current-price to take.
+        #
+        # FALLBACK_PRICE is right for a FRESH listing: there is no previous
+        # price, and parking it high beats guessing low. On a RELIST there IS a
+        # previous price, and reaching for the fallback throws away the best
+        # information available.
+        #
+        # Measured on 2026-08-05: a "Craftsman's SIGMetal Headpiece (BL) + 15"
+        # the owner had listed at 85,000,000 was relisted at 10,000,000,000,
+        # where it cannot sell. The panel read `suggested [0, 0]` because the
+        # item is unique enough that nothing comparable was listed -- and an
+        # item with no comparable listing is exactly the one whose owner-chosen
+        # price is worth keeping.
+        #
+        # So: keep what it was listed at. The absolute floor still binds over
+        # it, and MIN_PLAUSIBLE_PRICE keeps a misread previous price from
+        # becoming the new one.
+        if floor_price and floor_price >= MIN_PLAUSIBLE_PRICE:
+            return max(floor_price, absolute_floor), \
+                f"no market price; keeping the previous {floor_price:,}"
         return max(FALLBACK_PRICE, absolute_floor), \
-            "no market price; using the fallback"
+            "no market price and no previous price; using the fallback"
 
     # An explicit --floor is the only thing that refuses outright.
     if price_floor and suggested < price_floor:
