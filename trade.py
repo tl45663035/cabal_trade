@@ -3713,6 +3713,21 @@ def require_empty_work_tab(verbose: bool = True) -> bool:
     return True
 
 
+def money(value: int | None, blank: str = "-") -> str:
+    """A price for display: grouped digits, or `blank` when there is none.
+
+    Exists because the inline form is a trap. Written as
+
+        f"{row.price if row.price is None else format(row.price, ',') :>14}"
+
+    the conditional yields None for an unpriced row and the width spec is then
+    applied to it -- TypeError, and only for rows that HAVE no price. --listings
+    scrolled the entire shop, enumerated all 30 rows, and then crashed on the
+    first empty slot while printing them.
+    """
+    return blank if value is None else format(value, ",")
+
+
 def usable_inventory_tabs() -> list[int]:
     """The 1-based tabs this account can put items in.
 
@@ -7425,7 +7440,21 @@ def main() -> None:
         # refusal is identical every time, and nothing the script does can free
         # a slot -- so it failed the same row every cycle until the breaker
         # stopped it. One line up front replaces an hour of that.
-        if clicking and not args.no_space_check:
+        # Only commands that WITHDRAW a listing. It is the cancelled stack
+        # coming back that needs the room -- a 250-item listing returns as ~64
+        # slots -- so gating anything else is over-broad.
+        #
+        # It was gated on `clicking`, which includes --listings and --scroll:
+        # both only move the view and read it, and neither can strand
+        # anything. --listings was refused for want of inventory space it does
+        # not use, on a screen where the Inventory panel was not even open.
+        #
+        # --register is excluded too: it lists FROM inventory, which frees
+        # slots rather than needing them.
+        withdraws = (args.cancel is not None or args.relist is not None
+                     or args.relist_rows is not None or args.do is not None
+                     or args.repeat is not None)
+        if withdraws and not args.no_space_check:
             if not require_inventory_space():
                 sys.exit(1)
     elif args.no_calibrate and clicking:
@@ -7511,7 +7540,7 @@ def main() -> None:
             if floor:
                 floors += 1
             print(f"{index:3d}  {row.action:8} {row.name[:44]:44} "
-                  f"{str(row.qty):>5} {row.price if row.price is None else format(row.price, ',') :>14}"
+                  f"{str(row.qty):>5} {money(row.price):>14}"
                   + (f"   floor {floor:,}" if floor else ""))
         live = [r for _, r in found if r.action in ("change", "receive")]
         print(f"\n{len(found)} listing(s), {len(live)} live, "

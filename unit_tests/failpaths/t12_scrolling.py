@@ -221,6 +221,40 @@ with h:
           f"the run would report success having done nothing")
 
 
+section("--listings must survive an UNPRICED row")
+
+# The reporting half of this feature, which crashed live: --listings scrolled
+# the whole shop, enumerated all 30 rows, and then raised TypeError printing
+# them, because an empty slot has no price and the inline conditional applied a
+# width spec to None. The scroll was perfect and the output was a traceback.
+check("money() formats a real price with grouping",
+      trade.money(80_000_000) == "80,000,000", f"{trade.money(80_000_000)!r}")
+check("money() renders no price as a blank marker",
+      trade.money(None) == "-", f"{trade.money(None)!r}")
+check("money(None) is a STRING, so a width spec applies to it",
+      isinstance(trade.money(None), str),
+      "the crash was `:>14` being applied to None")
+check("money() takes a width spec without raising",
+      f"{trade.money(None):>14}".strip() == "-", "")
+check("money() renders zero, not a blank",
+      trade.money(0) == "0",
+      f"{trade.money(0)!r} -- a sold-out row is priced 0 and really is 0")
+check("the blank marker is caller-chosen",
+      trade.money(None, blank="unread") == "unread", "")
+
+# Every row the enumerator can produce must format. An empty slot and a
+# Premium marker both arrive with price AND qty unset.
+for row in (make_row(1, "(empty)", action="register", price=None, qty=None),
+            make_row(2, "Premium Exclusive Slot", action="register",
+                     price=None, qty=None),
+            make_row(3, "Force Core(High)", price=217_000, qty=250),
+            make_row(4, "Siena's Unbinding Stone", action="receive",
+                     price=70_000_000, qty=0)):
+    line, exc = run(lambda r=row: f"{str(r.qty):>5} {trade.money(r.price):>14}")
+    check(f"formats a {row.action} row named {row.name[:22]!r}",
+          exc is None and line, f"{exc!r}")
+
+
 section("an indistinguishable shop is refused rather than guessed at")
 
 # Every listing identical: measure_shift cannot pin the offset down, so the
