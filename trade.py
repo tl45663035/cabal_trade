@@ -191,27 +191,20 @@ TESSERACT_TIMEOUT = 30.0
 # GAME AND INVENTORY
 # --------------------------------------------------------------------------
 
-# Inventory tabs this account can actually put things in. The last two are
-# premium, drawn with a padlock, and selecting one does nothing -- counting
-# them would report ~128 slots of space that cannot receive anything.
-PREMIUM_TAB_COUNT = 2
-
-# Free slots required before a run starts.
+# A startup free-inventory-space check lived here and was removed on
+# 2026-08-05.
 #
-# Cancelling a listing does not return it as one item: a 250-item stack comes
-# back as ~64 separate slots, and the game refuses the WHOLE cancellation
-# rather than partially withdrawing when it will not fit. That refusal is what
-# ended two runs on 2026-08-05 -- "the dialog stayed open after Confirmation",
-# identically, every cycle, until the breaker fired -- and no amount of retrying
-# can clear it, because nothing the script does frees a slot.
+# The intent was sound: the game refuses a cancellation outright when the
+# returning stack will not fit -- a 250-item listing comes back as ~64 slots --
+# and no amount of retrying clears it, so an hour can be spent failing the same
+# row. But the implementation could not read the inventory reliably. From
+# main() the panel was not open yet; moved into relist_rows after the shop was
+# open, select_inventory_tab(1) still failed, though tab 4 reads fine for
+# require_empty_work_tab.
 #
-# Checking once at startup turns an hour of identical failures into one line
-# before anything is touched.
-MIN_FREE_INVENTORY = 250
-# --no-space-check clears this. Checked once per process, at the start of the
-# first batch, not on every cycle.
-SPACE_CHECK_ENABLED = True
-_SPACE_CHECKED = False
+# Two placements, two refusals of runs that were perfectly healthy. Removed
+# rather than left half-working: a gate that stops good runs is worse than no
+# gate, and this one stopped them at startup where it is most expensive.
 
 GAME_TITLE_HINT = "PlayCabal"
 
@@ -3732,104 +3725,6 @@ def money(value: int | None, blank: str = "-") -> str:
     return blank if value is None else format(value, ",")
 
 
-def usable_inventory_tabs() -> list[int]:
-    """The 1-based tabs this account can put items in.
-
-    The premium tabs at the end are excluded: they are padlocked, selecting one
-    does nothing, and counting their slots as free space would promise room a
-    cancelled stack cannot actually go into.
-    """
-    return list(range(1, max(1, TAB_COUNT - PREMIUM_TAB_COUNT) + 1))
-
-
-def count_inventory_space(verbose: bool = True):
-    """(free, total, per_tab) across the usable tabs, or None if unreadable.
-
-    Judged by pixel spread per slot, the same test require_empty_work_tab uses
-    -- no OCR, so the whole sweep costs a tab click and a screenshot each.
-
-    Leaves whatever tab was selected before selected again: this runs at
-    startup, and silently moving the player's inventory to tab 6 would be a
-    rude way to answer a question about free space.
-    """
-    def say(message: str) -> None:
-        if verbose:
-            print(message)
-
-    origin = inventory_origin()
-    if origin is None:
-        say("The Inventory panel is not visible, so the free space cannot be "
-            "counted - open the inventory (I) and rerun.")
-        return None
-
-    started_on = active_inventory_tab(origin=origin)
-    per_tab: list[tuple[int, int, int]] = []
-    free = total = 0
-    capacity = GRID_SIZE * GRID_SIZE
-
-    for tab in usable_inventory_tabs():
-        if not select_inventory_tab(tab, origin):
-            say(f"Could not switch to inventory tab {tab}, so the free space "
-                "cannot be counted. The usual cause is the Inventory panel "
-                "being closed or covered - open it (I) and rerun.")
-            return None
-        park_cursor()
-        used = len(occupied_slots(grab(), origin))
-        per_tab.append((tab, used, capacity))
-        free += capacity - used
-        total += capacity
-
-    # Put it back where it was found.
-    if started_on and started_on != per_tab[-1][0]:
-        select_inventory_tab(started_on, origin)
-
-    return free, total, per_tab
-
-
-def require_inventory_space(minimum: int = MIN_FREE_INVENTORY,
-                            verbose: bool = True) -> bool:
-    """Refuse to start unless there is room for a cancelled stack to come back.
-
-    Returns True when there is enough, False when there is not OR when it could
-    not be counted. Failing closed is deliberate: the cost of stopping when
-    there was in fact room is one message, and the cost of starting when there
-    was not is an hour of identical refusals.
-    """
-    def say(message: str) -> None:
-        if verbose:
-            print(message)
-
-    counted = count_inventory_space(verbose=verbose)
-    if counted is None:
-        record("inventory.space_unreadable")
-        say("Could not read the inventory, so the free space before starting "
-            "is unknown - stopping rather than assuming.")
-        return False
-
-    free, total, per_tab = counted
-    say(f"Inventory: {free} of {total} slot(s) free across "
-        f"{len(per_tab)} usable tab(s) "
-        f"(tabs {TAB_COUNT - PREMIUM_TAB_COUNT + 1}-{TAB_COUNT} are premium "
-        "and not counted).")
-    for tab, used, capacity in per_tab:
-        say(f"    tab {tab}: {capacity - used:2d} free of {capacity}")
-
-    record("inventory.space", free=free, total=total, minimum=minimum,
-           tabs=", ".join(f"{t}:{c - u}" for t, u, c in per_tab))
-
-    if free < minimum:
-        say(f"\nOnly {free} free slot(s); {minimum} are needed before starting.")
-        say("Cancelling a listing does not return it as one item -- a 250-item "
-            "stack comes back as roughly 64 separate slots -- and the game "
-            "refuses the whole cancellation rather than partially withdrawing "
-            "when it will not fit.")
-        say("That refusal cannot be retried away: nothing the script does "
-            "frees a slot. Sell, store or delete items first.")
-        return False
-
-    return True
-
-
 def changed_slots(
     before: Image.Image,
     after: Image.Image,
@@ -5541,19 +5436,6 @@ def relist_rows(
             say("Aborting: the working inventory tab must be empty to start.")
             return False
 
-        # Free space, ONCE per process. The shop is open and the inventory is
-        # reachable by this point -- which is exactly what the check needs and
-        # what it did not have when it lived in main().
-        #
-        # Once, not per cycle: it costs a tab click and a screenshot per tab,
-        # and space only shrinks through a cancel this batch is about to make
-        # anyway. A run that starts with room and runs out mid-way is caught by
-        # the refused cancellation, not by re-counting.
-        global _SPACE_CHECKED
-        if SPACE_CHECK_ENABLED and not _SPACE_CHECKED:
-            _SPACE_CHECKED = True
-            if not require_inventory_space(verbose=verbose):
-                return False
 
     snapshot = await_rows(timeout)
     if not snapshot:
@@ -7303,9 +7185,6 @@ def main() -> None:
                    help="with --register, list at exactly this price")
     p.add_argument("--qty", type=int, default=None, metavar="N",
                    help="with --register, list exactly this quantity")
-    p.add_argument("--no-space-check", action="store_true",
-                   help=f"skip the startup check that at least "
-                        f"{MIN_FREE_INVENTORY} inventory slots are free")
     p.add_argument("--dry-run", action="store_true",
                    help="locate everything but do not click")
     args = p.parse_args()
@@ -7410,9 +7289,6 @@ def main() -> None:
         global NO_INPUT
         NO_INPUT = True
 
-    if args.no_space_check:
-        global SPACE_CHECK_ENABLED
-        SPACE_CHECK_ENABLED = False
 
     clicking = always_clicks or (honours_dry_run and not args.dry_run)
     if clicking and not is_elevated():

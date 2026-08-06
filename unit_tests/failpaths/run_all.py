@@ -1,4 +1,4 @@
-﻿"""Run every failure-path suite and summarise.
+"""Run every failure-path suite and summarise.
 
     py run_all.py
 
@@ -32,7 +32,6 @@ SUITES = [
     ("20 dry run is inert",    "t20_dry_run_is_inert.py"),
     ("21 no market price",    "t21_no_market_price.py"),
     ("22 sold out exit",       "t22_sold_out_exit.py"),
-    ("23 inventory space",    "t23_inventory_space.py"),
     ("24 frame pruning",      "t24_frame_pruning.py"),
 ]
 
