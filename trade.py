@@ -2165,8 +2165,30 @@ def open_trade_window(timeout: float = 15.0, verbose: bool = True) -> bool:
         seen: dict = {}
         label = find_npc(seen=seen)
         if label is None:
+            # RECORD THE FAILURE, not just the successes.
+            #
+            # This branch is the single most common way a run ends, and it
+            # left no frame at all. On 2026-08-05 the recording ran to
+            # 21:50:18 and the cycle died at 21:50:43 -- twenty-five seconds
+            # of the only thing worth seeing, with nothing on disk. The
+            # explanation had to be guessed from a screenshot taken after the
+            # fact, and the guess was wrong.
+            #
+            # The words are captured too. "She is not on screen" is
+            # indistinguishable between: she really is not there, the Trade
+            # window is clipping her nameplate (the plate reads
+            # "y Yekaterina (Agent Shop)" when it overlaps), the camera moved,
+            # or a disconnect dialog is covering the world. Only the text can
+            # tell those apart.
+            probe = grab()
+            words = sorted(find_words(probe, NPC_SEARCH_REGION, 25),
+                           key=lambda w: -w.conf)[:12]
+            strongest = ", ".join(f"{w.text!r}@{w.conf:.0f}" for w in words)
+            record("npc.not_found", probe, region=str(NPC_SEARCH_REGION),
+                   words=strongest, trade_open=trade_window_open(probe))
             say("Lady Yekaterina (Agent Shop) is not on screen - walk to "
                 "her before running this. Nothing was clicked.")
+            say(f"  strongest words where she should be: {strongest}")
             return False
         record("npc.found", seen.get("shot"), centre=str(label))
         say(f"Found 'Lady Yekaterina (Agent Shop)' at {label}; sweeping "
