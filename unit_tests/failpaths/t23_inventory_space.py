@@ -188,4 +188,75 @@ with h:
     check("tab switch fails: the gate REFUSES", ok is False, f"{ok!r}")
 
 
+# ===========================================================================
+section("the check runs where the inventory is REACHABLE")
+
+# It first ran in main(), straight after calibration -- before the game had
+# been prepared. The Inventory panel was not open, select_inventory_tab had
+# nothing to click, and every run was refused for "free space unknown" on a
+# game that was merely not ready. Failing closed was right; the position was
+# not.
+#
+# It now runs inside relist_rows, after ensure_shop_ready, which is where
+# require_empty_work_tab has always worked from.
+h = Inventory({t: 0 for t in tabs}, rows=rows(), panel=empty_panel())
+with h:
+    trade._SPACE_CHECKED = False
+    h.patch("relist", lambda *a, **k: trade.RELISTED)
+    ok, exc = run(trade.relist_rows, [1])
+    check("the batch reached the space check and passed it",
+          ok is True and h.said("slot(s) free"),
+          f"{ok!r} {exc!r} / {h.out()[:400]}")
+    check("the shop was opened BEFORE the inventory was read",
+          h.names().index("open_trade_window")
+          < h.names().index("select_inventory_tab"),
+          f"{h.names()[:8]} -- reading the inventory before the game is ready "
+          f"is what refused every run")
+
+# Once per process, not once per cycle: it costs a tab click and a screenshot
+# per tab, and space only shrinks through a cancel the batch is about to make.
+h = Inventory({t: 0 for t in tabs}, rows=rows(), panel=empty_panel())
+with h:
+    trade._SPACE_CHECKED = False
+    h.patch("relist", lambda *a, **k: trade.RELISTED)
+    run(trade.relist_rows, [1])
+    first = h.names().count("select_inventory_tab")
+    run(trade.relist_rows, [1])
+    second = h.names().count("select_inventory_tab") - first
+    check("the second batch does not re-count every tab",
+          second < first,
+          f"{first} tab selections then {second} -- re-counting every cycle "
+          f"is {len(tabs)} clicks and screenshots for a number that only "
+          f"changes when this batch itself cancels something")
+
+# A shop that will not open must not be reported as short of space.
+h = Inventory({t: 0 for t in tabs}, rows=rows(), panel=empty_panel())
+with h:
+    trade._SPACE_CHECKED = False
+    h.patch("open_trade_window", lambda *a, **k: False)
+    ok, exc = run(trade.relist_rows, [1])
+    check("shop will not open: refused before the space check",
+          ok is False and not h.said("slot(s) free"),
+          f"{ok!r} / {h.out()[-300:]}")
+
+# --no-space-check skips it entirely.
+h = Inventory({t: CAP for t in tabs}, rows=rows(), panel=empty_panel())
+with h:
+    trade._SPACE_CHECKED = False
+    saved = trade.SPACE_CHECK_ENABLED
+    try:
+        trade.SPACE_CHECK_ENABLED = False
+        h.patch("relist", lambda *a, **k: trade.RELISTED)
+        ok, exc = run(trade.relist_rows, [1])
+        check("--no-space-check: a FULL inventory still runs",
+              ok is True and not h.said("slot(s) free"),
+              f"{ok!r} / {h.out()[:300]}")
+    finally:
+        trade.SPACE_CHECK_ENABLED = saved
+        trade._SPACE_CHECKED = False
+
+check("the flag is left enabled for the suites after this one",
+      trade.SPACE_CHECK_ENABLED is True, f"{trade.SPACE_CHECK_ENABLED!r}")
+
+
 raise SystemExit(summary())

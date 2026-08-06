@@ -208,6 +208,10 @@ PREMIUM_TAB_COUNT = 2
 # Checking once at startup turns an hour of identical failures into one line
 # before anything is touched.
 MIN_FREE_INVENTORY = 250
+# --no-space-check clears this. Checked once per process, at the start of the
+# first batch, not on every cycle.
+SPACE_CHECK_ENABLED = True
+_SPACE_CHECKED = False
 
 GAME_TITLE_HINT = "PlayCabal"
 
@@ -3754,7 +3758,8 @@ def count_inventory_space(verbose: bool = True):
 
     origin = inventory_origin()
     if origin is None:
-        say("The Inventory panel is not visible - open it and rerun.")
+        say("The Inventory panel is not visible, so the free space cannot be "
+            "counted - open the inventory (I) and rerun.")
         return None
 
     started_on = active_inventory_tab(origin=origin)
@@ -3764,8 +3769,9 @@ def count_inventory_space(verbose: bool = True):
 
     for tab in usable_inventory_tabs():
         if not select_inventory_tab(tab, origin):
-            say(f"Could not switch to inventory tab {tab} - cannot count the "
-                "free space without seeing every tab.")
+            say(f"Could not switch to inventory tab {tab}, so the free space "
+                "cannot be counted. The usual cause is the Inventory panel "
+                "being closed or covered - open it (I) and rerun.")
             return None
         park_cursor()
         used = len(occupied_slots(grab(), origin))
@@ -5534,6 +5540,20 @@ def relist_rows(
         if not require_empty_work_tab(verbose=verbose):
             say("Aborting: the working inventory tab must be empty to start.")
             return False
+
+        # Free space, ONCE per process. The shop is open and the inventory is
+        # reachable by this point -- which is exactly what the check needs and
+        # what it did not have when it lived in main().
+        #
+        # Once, not per cycle: it costs a tab click and a screenshot per tab,
+        # and space only shrinks through a cancel this batch is about to make
+        # anyway. A run that starts with room and runs out mid-way is caught by
+        # the refused cancellation, not by re-counting.
+        global _SPACE_CHECKED
+        if SPACE_CHECK_ENABLED and not _SPACE_CHECKED:
+            _SPACE_CHECKED = True
+            if not require_inventory_space(verbose=verbose):
+                return False
 
     snapshot = await_rows(timeout)
     if not snapshot:
@@ -7390,6 +7410,10 @@ def main() -> None:
         global NO_INPUT
         NO_INPUT = True
 
+    if args.no_space_check:
+        global SPACE_CHECK_ENABLED
+        SPACE_CHECK_ENABLED = False
+
     clicking = always_clicks or (honours_dry_run and not args.dry_run)
     if clicking and not is_elevated():
         sys.exit(
@@ -7440,23 +7464,16 @@ def main() -> None:
         # refusal is identical every time, and nothing the script does can free
         # a slot -- so it failed the same row every cycle until the breaker
         # stopped it. One line up front replaces an hour of that.
-        # Only commands that WITHDRAW a listing. It is the cancelled stack
-        # coming back that needs the room -- a 250-item listing returns as ~64
-        # slots -- so gating anything else is over-broad.
+        # The free-space check does NOT live here.
         #
-        # It was gated on `clicking`, which includes --listings and --scroll:
-        # both only move the view and read it, and neither can strand
-        # anything. --listings was refused for want of inventory space it does
-        # not use, on a screen where the Inventory panel was not even open.
-        #
-        # --register is excluded too: it lists FROM inventory, which frees
-        # slots rather than needing them.
-        withdraws = (args.cancel is not None or args.relist is not None
-                     or args.relist_rows is not None or args.do is not None
-                     or args.repeat is not None)
-        if withdraws and not args.no_space_check:
-            if not require_inventory_space():
-                sys.exit(1)
+        # It did, and it refused every run outright: at this point only the
+        # layout is known. The Inventory panel may not be open yet, so
+        # select_inventory_tab has nothing to click, and the check failed
+        # closed on a game that was merely not ready rather than short of
+        # space. It now runs inside relist_rows, straight after
+        # ensure_shop_ready -- the same place require_empty_work_tab has always
+        # worked from, and the first moment the inventory is reliably there.
+        pass
     elif args.no_calibrate and clicking:
         screen = current_screen_size()
         if screen and tuple(screen) != REF_SCREEN:
