@@ -39,6 +39,7 @@ SUITES = [
     ("28 shop session",       "t28_shop_session.py"),
     ("29 sales tally",        "t29_sales_tally.py"),
     ("30 scroll drift",       "t30_scroll_drift.py"),
+    ("31 sweep end-to-end",   "t31_sweep_end_to_end.py"),
 ]
 
 FORENSICS = [

@@ -3163,14 +3163,33 @@ def measure_shift(before: list[Row], after: list[Row],
             return expected
         return 0
 
-    # Pass 1: the exact test, unchanged. When the table held still this is what
-    # answers, and it is the strongest evidence available -- every row in the
-    # overlap agreeing. Nothing below can override it.
+    # Only offsets the wheel could actually have produced are candidates.
+    #
+    # A downward scroll of N notches moves the view between 0 and N rows. It
+    # cannot move it UP, and it cannot overshoot. Searching the whole range
+    # anyway invented candidates that then made a perfectly determined shift
+    # look ambiguous -- recorded live on 2026-08-06 for a view that had moved
+    # exactly 3 rows with seven of them agreeing:
+    #
+    #     exact fits: [(3, 7), (-6, 4), (-7, 3)]
+    #
+    # Shifts of minus six and minus seven are nonsense: the wheel was asked to
+    # go down. They fit only the three or four mostly-empty rows at the screen
+    # edge, and their presence alone was enough for this to refuse and for the
+    # cycle to be lost. The bound already existed in scroll_chunk -- it checks
+    # `0 <= shift <= notches` -- but only AFTER the answer had been discarded.
+    candidates = (range(0, expected + 1) if expected is not None
+                  else range(-len(b), len(b) + 1))
+
+    # Pass 1: the exact test. When the table held still this is what answers,
+    # and it is the strongest evidence available -- every row in the overlap
+    # agreeing. Nothing below can override it.
     fits = []
-    for d in range(-len(b), len(b) + 1):
+    for shift in candidates:
+        d = -shift
         overlap = [(i, i + d) for i in range(len(b)) if 0 <= i + d < len(a)]
         if len(overlap) >= minimum and all(b[i] == a[j] for i, j in overlap):
-            fits.append(-d)
+            fits.append(shift)
     if len(fits) == 1:
         return fits[0]
 
@@ -3232,7 +3251,8 @@ def measure_shift(before: list[Row], after: list[Row],
     live_b = [name != "(empty)" for name in (r.name for r in before)]
 
     scored: list[tuple[int, int]] = []           # (informative matches, shift)
-    for d in range(-len(b), len(b) + 1):
+    for shift in candidates:
+        d = -shift
         overlap = [(i, i + d) for i in range(len(b)) if 0 <= i + d < len(a)]
         if len(overlap) < minimum:
             continue
@@ -3242,7 +3262,7 @@ def measure_shift(before: list[Row], after: list[Row],
         speaking = sum(1 for i, _ in agree if live_b[i])
         if speaking < SCROLL_MATCH_MIN_LIVE:
             continue                             # nothing distinctive agreed
-        scored.append((speaking, -d))
+        scored.append((speaking, shift))
     if not scored:
         return None
 
@@ -3571,6 +3591,7 @@ def _enumerate_at_step(step: int, timeout: float, verbose: bool,
     # second time at step 3 to get the same answer -- eight wasted table reads,
     # about two and a half minutes, on every cycle.
     steps = 0
+    barren = 0        # consecutive steps that revealed nothing new
     while steps < MAX_SCROLL_CHUNKS * SCROLL_STEP:
         steps += 1
         # Chosen per screen, not once: how far the view can move and still be
@@ -3589,20 +3610,42 @@ def _enumerate_at_step(step: int, timeout: float, verbose: bool,
         rows = after
         # Every row the step brought into view is new, not just the last one:
         # a seven-row step reveals up to seven rows at once.
+        was_named = sum(1 for _, r in found if r.name != "(empty)")
         for offset, row in enumerate(rows):
             index = top + offset
             if index > len(found):
                 found.append((index, row))
-        # The measured bottom, not an inferred one. `shift == 0` is kept only
-        # as a secondary signal and is no longer trusted on its own, because
-        # inside a run of empty slots it fires in the middle of the shop.
-        if [_row_key(r) for r in rows] == tail_keys:
+        grew = sum(1 for _, r in found if r.name != "(empty)") > was_named
+
+        # Two terminators, because neither covers the other.
+        #
+        # Content: the screen matches the measured bottom. Only trusted when
+        # that bottom is DISTINCTIVE -- a shop ending in fifteen empty slots
+        # has an all-empty bottom screen, and every all-empty screen on the way
+        # down matches it, so this alone stopped five rows early and reported
+        # 25 slots of 30.
+        #
+        # Growth: counted in LISTINGS, not rows. In a uniform tail the wheel
+        # is trusted over the pixels, so `top` keeps advancing past the real
+        # bottom and phantom empty rows keep being appended -- row growth never
+        # stops and the sweep runs to its limit. New listings do stop, and they
+        # are the only thing the caller acts on. Trailing empty slots past the
+        # last listing are unknowable by content and cost nothing to miss:
+        # relist skips them anyway. Three barren steps, so a lone unreadable
+        # frame cannot end the sweep.
+        barren = 0 if grew else barren + 1
+        at_tail = [_row_key(r) for r in rows] == tail_keys
+        # Reaching the measured bottom ends the sweep -- but only when that
+        # bottom is DISTINCTIVE. A shop ending in empty slots has an all-empty
+        # bottom screen, and every all-empty screen on the way down matches it,
+        # which stopped the sweep five rows early and reported 25 slots of 30.
+        #
+        # When the bottom is featureless, "at the tail" is necessary but not
+        # sufficient: also require that no new LISTING has appeared for three
+        # steps. Crossing a gap mid-shop cannot satisfy both, because there the
+        # tail still holds listings and an all-empty screen does not match it.
+        if at_tail and (len(set(tail_keys)) >= 2 or barren >= 3):
             break
-        if shift == 0:
-            say("  the view stopped moving before the bottom screen was "
-                "reached - refusing to report a partial shop as the whole "
-                "of it.")
-            return None
     else:
         say(f"  still scrolling after {steps} steps - refusing to continue.")
         return None

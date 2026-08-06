@@ -362,9 +362,14 @@ check("the sweep measures the bottom instead of inferring it",
       "tail_keys" in _src and "scroll_to_end(up=False" in _src,
       "without a measured bottom, a run of empty slots ends the sweep early "
       "and the rest of the shop is invisible")
-check("...and an early 0 is a failure, not a finished sweep",
-      "stopped moving before the bottom" in _src,
-      "a stuck view reported as 'done' is the silent truncation again")
+check("...and a shift of 0 never ends the sweep by itself",
+      "if shift == 0" not in _src,
+      "inside a run of empty slots a 0 arrives in the MIDDLE of the shop; "
+      "ending there is the silent truncation again")
+check("...the sweep ends on the tail, guarded for a featureless bottom",
+      "at_tail and (len(set(tail_keys)) >= 2 or barren" in _src,
+      "an all-empty bottom screen matches every all-empty screen above it, so "
+      "reaching it is necessary but not sufficient")
 
 # Both scroll sites must pass the wheel's request through.
 import inspect as _i
@@ -433,6 +438,58 @@ with h:
     run(trade.scroll_chunk, 7, rows10(), 8.0, False)
     check("the refusal is recorded", "scroll.refused_window_shut" in h.labels(),
           f"{h.labels()} -- a run that dies from this leaves no other trace")
+
+
+
+
+# ===========================================================================
+section("only offsets the wheel could have produced are candidates")
+
+# The failure that killed the 15:19 run. A downward scroll moves the view
+# between 0 and N rows -- never up, never past N. Searching the whole range
+# invented candidates that made a perfectly determined shift look ambiguous.
+# Recorded live for a view that had moved exactly 3, with SEVEN rows agreeing:
+#
+#     exact fits: [(3, 7), (-6, 4), (-7, 3)]
+#
+# Minus six and minus seven are nonsense -- the wheel was asked to go down.
+# They fit only the three or four mostly-empty rows at the screen edge, and
+# their presence alone was enough to refuse and lose the cycle. scroll_chunk
+# already bounded the result (`0 <= shift <= notches`), but only after
+# measure_shift had thrown the answer away.
+E = lambda i: mk(i, "(empty)", None, None, "register")
+
+MOVED_3_BEFORE = [E(1), E(2), E(3), E(4), mk(5, "Force Core(High)", 247, 215_000),
+                  E(6), mk(7, "Force Core(High)", 0, 215_000, "receive"), E(8),
+                  mk(9, "Force Core(High)", 250, 220_000), E(10)]
+MOVED_3_AFTER = [E(1), mk(2, "Force Core(High)", 247, 215_000), E(3),
+                 mk(4, "Force Core(High)", 0, 215_000, "receive"), E(5),
+                 mk(6, "Force Core(High)", 250, 220_000), E(7), E(8), E(9), E(10)]
+check("the recorded 3-row move is measured, not refused",
+      trade.measure_shift(MOVED_3_BEFORE, MOVED_3_AFTER, expected=3) == 3,
+      f"got {trade.measure_shift(MOVED_3_BEFORE, MOVED_3_AFTER, expected=3)!r}")
+
+MOVED_7_BEFORE = [E(i) for i in range(1, 8)] + [
+    mk(8, "Force Core(High)", 247, 215_000), E(9),
+    mk(10, "Force Core(High)", 0, 215_000, "receive")]
+MOVED_7_AFTER = [mk(1, "Force Core(High)", 247, 215_000), E(2),
+                 mk(3, "Force Core(High)", 0, 215_000, "receive"), E(4),
+                 mk(5, "Force Core(High)", 250, 220_000)] + [E(i) for i in range(6, 11)]
+check("the recorded 7-row move is measured, not refused",
+      trade.measure_shift(MOVED_7_BEFORE, MOVED_7_AFTER, expected=7) == 7,
+      f"got {trade.measure_shift(MOVED_7_BEFORE, MOVED_7_AFTER, expected=7)!r}")
+
+check("a shift beyond what was asked for is never returned",
+      all(trade.measure_shift(win(FULL, 0), win(FULL, off), expected=n) in (None, off)
+          for off, n in ((7, 7), (3, 3), (5, 5))),
+      "measure_shift must not answer with a move the wheel could not make")
+check("negative shifts are never candidates when a direction is known",
+      trade.measure_shift(win(FULL, 3), win(FULL, 0), expected=7) is None,
+      f"got {trade.measure_shift(win(FULL, 3), win(FULL, 0), expected=7)!r} -- "
+      f"that is the view moving UP, which a downward scroll cannot do")
+check("with no expectation the full range is still searched",
+      trade.measure_shift(win(FULL, 3), win(FULL, 0)) == -3,
+      f"got {trade.measure_shift(win(FULL, 3), win(FULL, 0))!r}")
 
 
 raise SystemExit(summary())
