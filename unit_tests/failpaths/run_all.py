@@ -33,6 +33,12 @@ SUITES = [
     ("21 no market price",    "t21_no_market_price.py"),
     ("22 sold out exit",       "t22_sold_out_exit.py"),
     ("24 frame pruning",      "t24_frame_pruning.py"),
+    ("25 strand recovery",    "t25_strand_recovery.py"),
+    ("26 collect by action",  "t26_collect_action.py"),
+    ("27 batch trim",         "t27_batch_trim.py"),
+    ("28 shop session",       "t28_shop_session.py"),
+    ("29 sales tally",        "t29_sales_tally.py"),
+    ("30 scroll drift",       "t30_scroll_drift.py"),
 ]
 
 FORENSICS = [
@@ -63,11 +69,20 @@ KNOWN_OPEN = {
     "4 run_loop":
         "an empty action list returns True, so a cycle that did nothing counts "
         "as a success and resets the consecutive-failure breaker",
-    "9 outage replay":
-        "the replayed outage still ends with the run stopped; the cause is "
-        "recorded now, but the recovery (clearing a stranded work tab) does "
-        "not exist",
 }
+# Closed 2026-08-06: "9 outage replay -- the recovery (clearing a stranded work
+# tab) does not exist". It exists now (recover_stranded_work_tab), t9 grew a 9d
+# for it, and t25 covers it directly.
+#
+# Two things were wrong with that entry beyond the missing fix. Its wording
+# described the recovery, but the check actually failing was about recording --
+# and trade.py had recorded worktab.not_empty since before the entry was
+# written. The check could not pass either way: 9c patched
+# require_empty_work_tab out and then asserted that it recorded a frame, so it
+# was measuring the stub. Same shape as the t6 NameError: a KNOWN_OPEN reason
+# written from an assumption rather than read off the suite's output, which
+# then survives every green run because nobody re-reads a line that is expected
+# to be there.
 
 # The FORENSICS scripts contain NO assertions -- they print what the recorded
 # index contains and always exit 0. They cannot fail, so showing them as

@@ -1,4 +1,4 @@
-"""Cabal Online automation: screen capture, Alz reading and Agent Shop trading.
+﻿"""Cabal Online automation: screen capture, Alz reading and Agent Shop trading.
 
 Everything lives here -- capture, OCR, input and the trade automation -- so
 there is one file to read and one to run.
@@ -156,7 +156,7 @@ QTY_CROSSCHECK_FRACTION = 0.10
 # Pace every input the script sends. The game is a live client with its own
 # animations and server round-trips; acting faster than a person can leaves it
 # behind and produces the "the click did nothing" failures.
-ACTION_COOLDOWN = 0.5   # after a move, a click or a key press
+ACTION_COOLDOWN = 0.5  # after a move, a click or a key press
 
 TYPE_COOLDOWN = 0.5     # between keystrokes while entering a value
 
@@ -211,7 +211,31 @@ GAME_TITLE_HINT = "PlayCabal"
 # The tab cancelled items are expected to land in. It must be empty before a
 # run: a large stack scatters across tabs, and pre-existing items there make it
 # impossible to tell which slots the cancel actually filled.
+# How long the Agent Shop may stay open before it is closed and reopened from
+# the NPC. relist() used to close it after EVERY row, which cost a walk back to
+# the NPC and a Register-tab open per listing.
+#
+# Measured over the 07:57 run of 2026-08-06 (1,093 recorded frames, 103.5 min,
+# 44 relists): tab.register_open 21.6 min across 50 opens at 25.9s each, plus
+# npc.found 6.5 min at 7.8s -- about 34s of pure overhead per row, a quarter of
+# the whole run, spent re-entering a shop it had just left.
+#
+# The reopen was never what kept the table fresh. _relist_cycle calls
+# refresh_table() on every attempt (that is what forces the client to REFETCH
+# rather than re-read its own stale copy), and relist_rows carries a RowRef and
+# re-locates the listing by identity before cancelling anything. The reopen sat
+# on top of both. Retiring the session periodically keeps a bounded version of
+# it -- a wedged or silently-closed window still gets rebuilt from the NPC --
+# without paying for it 24 times a cycle.
+SHOP_SESSION_SECONDS = 15 * 60
+_shop_open_since: float | None = None
+
 WORK_TAB = 4
+# Attempts to clear a stranded work tab before giving up. A strand is one
+# cancelled stack, so one listing normally clears it; the extra attempts cover
+# a stack the shop splits. Bounded because a strand that will not clear has to
+# stop the run -- looping on it forever is worse than the abort it replaces.
+STRAND_RECOVERY_ATTEMPTS = 3
 
 EXPECTED_ROWS = 10
 
@@ -2131,6 +2155,37 @@ def register_tab_open(source: Image.Image | None = None) -> bool:
     return find_phrase(image, "Register Item", REGISTER_PANEL) is not None
 
 
+def shop_session_age() -> float | None:
+    """Seconds the Agent Shop has been continuously open, or None if closed."""
+    if _shop_open_since is None:
+        return None
+    return time.monotonic() - _shop_open_since
+
+
+def shop_session_expired() -> bool:
+    """Whether the shop has been open long enough to be worth rebuilding.
+
+    Fails OPEN (returns True) when no session is recorded: "I do not know how
+    long this has been up" must mean "close it and start clean", never "keep
+    it open indefinitely".
+    """
+    age = shop_session_age()
+    return age is None or age >= SHOP_SESSION_SECONDS
+
+
+def note_shop_opened() -> None:
+    """Start the session clock, if one is not already running."""
+    global _shop_open_since
+    if _shop_open_since is None:
+        _shop_open_since = time.monotonic()
+
+
+def note_shop_closed() -> None:
+    """The shop is closed; the next open starts a fresh session."""
+    global _shop_open_since
+    _shop_open_since = None
+
+
 def open_trade_window(timeout: float = 15.0, verbose: bool = True) -> bool:
     """Make sure the Trade window is open on the Register tab.
 
@@ -2151,6 +2206,7 @@ def open_trade_window(timeout: float = 15.0, verbose: bool = True) -> bool:
             time.sleep(0.5)
 
     if register_tab_open():
+        note_shop_opened()
         return True
 
     if not trade_window_open():
@@ -2243,6 +2299,7 @@ def open_trade_window(timeout: float = 15.0, verbose: bool = True) -> bool:
     record("shop.opened", attempts=index)
 
     if register_tab_open():
+        note_shop_opened()
         return True
 
     tabs = find_text(grab(), REGISTER_TAB_WORD, TRADE_REGION)
@@ -2256,6 +2313,7 @@ def open_trade_window(timeout: float = 15.0, verbose: bool = True) -> bool:
         say("The Register tab did not open.")
         return False
     record("tab.register_open")
+    note_shop_opened()
     return True
 
 
@@ -3032,6 +3090,18 @@ class RowRef:
 SCROLL_TO_END_NOTCHES = 40
 # Rows that must overlap before an offset is believed.
 MIN_SCROLL_OVERLAP = 3
+# When the exact test finds nothing, how much of the overlap must still agree
+# before an offset is a candidate at all, and by how many rows the best
+# candidate must beat the runner-up before it is believed.
+#
+# The margin is the safety-critical one. A threshold alone would accept the
+# best of two near-identical candidates, and picking the wrong offset means
+# cancelling the wrong listing -- much worse than losing a cycle. Requiring
+# daylight between first and second place is what refuses instead.
+SCROLL_MATCH_RATIO = 0.6
+SCROLL_MATCH_MARGIN = 2
+# Distinctive (non-empty) rows that must agree before an offset is believed.
+SCROLL_MATCH_MIN_LIVE = 2
 
 
 def _row_key(row: Row) -> tuple:
@@ -3040,7 +3110,8 @@ def _row_key(row: Row) -> tuple:
 
 
 def measure_shift(before: list[Row], after: list[Row],
-                  minimum: int = MIN_SCROLL_OVERLAP) -> int | None:
+                  minimum: int = MIN_SCROLL_OVERLAP,
+                  expected: int | None = None) -> int | None:
     """How many rows the view moved down, or None if it cannot be told.
 
     Returns EVERY offset that fits and refuses unless exactly one does. With
@@ -3052,12 +3123,109 @@ def measure_shift(before: list[Row], after: list[Row],
     a = [_row_key(r) for r in after]
     if not b or not a:
         return None
+
+    # The bottom clamp, for a screen of nothing but empty slots. At the bottom
+    # the wheel moves nothing, so the two reads are identical -- and with every
+    # row interchangeable the exact test finds many fits and the expected-shift
+    # rule below would report movement that never happened, sweeping until the
+    # chunk limit.
+    #
+    # Restricted to all-empty screens deliberately. A screen of identical
+    # LISTINGS is also identical either side of a scroll that really moved, and
+    # there answering 0 would end the sweep early and hide every listing below
+    # it. That case must keep refusing, which is what the exact test does.
+    if b == a and all(r.name == "(empty)" for r in before):
+        return 0
+
+    # Pass 1: the exact test, unchanged. When the table held still this is what
+    # answers, and it is the strongest evidence available -- every row in the
+    # overlap agreeing. Nothing below can override it.
     fits = []
     for d in range(-len(b), len(b) + 1):
         overlap = [(i, i + d) for i in range(len(b)) if 0 <= i + d < len(a)]
         if len(overlap) >= minimum and all(b[i] == a[j] for i, j in overlap):
             fits.append(-d)
-    return fits[0] if len(fits) == 1 else None
+    if len(fits) == 1:
+        return fits[0]
+
+    if fits:
+        # Several offsets fit perfectly. Usually that is real ambiguity and the
+        # only safe answer is to refuse -- but there is one case where it is
+        # not, and it is the case that stopped this shop dead.
+        #
+        # Once the view is inside a long run of empty slots, EVERY offset fits,
+        # because empty rows are indistinguishable. Recorded live on
+        # 2026-08-06, mid-sweep:
+        #
+        #     exact fits: [(7,3), (6,4), (5,5), (4,6), (3,7), (2,8), (1,9)]
+        #
+        # No step size helps; the rows carry no information at any scale. But
+        # the wheel does: a notch moves one row, validated against the recorded
+        # probes. So when the overlap is made up ENTIRELY of empty slots, the
+        # content has no opinion and the mechanism does -- take the shift that
+        # was asked for, provided it is one of the offsets that fits.
+        #
+        # This cannot mislabel a listing: every row it skips over is empty by
+        # construction. The moment one nameable row enters the overlap, the
+        # exact test discriminates again and this branch stops applying.
+        if expected is not None and expected in fits:
+            overlap = [i for i in range(len(b))
+                       if 0 <= i - expected < len(a)]
+            if overlap and all(before[i].name == "(empty)" for i in overlap):
+                return expected
+        return None          # genuinely ambiguous: refuse, do not fall through
+
+    # Pass 2: the table moved under us.
+    #
+    # `all()` means ONE changed row anywhere in the overlap makes the true
+    # offset match nothing, and then nothing matches at all -- not ambiguity,
+    # zero candidates. Each of these is routine here and each was enough on its
+    # own: a quantity misreading (140 -> 120 and 130 -> 30 both recorded on the
+    # 07:57 run of 2026-08-06), a listing selling during the ~18s scroll, or
+    # this script's own repricing between the two reads.
+    #
+    # It cost cycles 5 and 6 of that run outright, and the breaker stopped a
+    # run that was otherwise working.
+    #
+    # So: score the offsets and take the best, but only when it is BOTH mostly
+    # right and clearly ahead of the runner-up. Guessing between two close
+    # candidates is how the wrong listing gets cancelled, which is far worse
+    # than losing a cycle -- the margin below is what keeps that from
+    # happening, and it is checked against the runner-up, not against a
+    # threshold.
+    # Only DISTINCTIVE rows vote. An empty slot is identical to every other
+    # empty slot, so a block of them fits at any offset and manufactures
+    # candidates out of nothing.
+    #
+    # This is not hypothetical. Scoring plain matches on the real cycle-6 shop
+    # -- which had seven consecutive empty rows -- returned 5 for a view that
+    # had actually moved 7, because five empties lined up against five others.
+    # A wrong offset cancels the wrong listing, which is the one outcome worth
+    # losing any number of cycles to avoid, so an empty row is worth no
+    # evidence at all here.
+    live_b = [name != "(empty)" for name in (r.name for r in before)]
+
+    scored: list[tuple[int, int]] = []           # (informative matches, shift)
+    for d in range(-len(b), len(b) + 1):
+        overlap = [(i, i + d) for i in range(len(b)) if 0 <= i + d < len(a)]
+        if len(overlap) < minimum:
+            continue
+        agree = [(i, j) for i, j in overlap if b[i] == a[j]]
+        if len(agree) < SCROLL_MATCH_RATIO * len(overlap):
+            continue                             # mostly disagrees; not this offset
+        speaking = sum(1 for i, _ in agree if live_b[i])
+        if speaking < SCROLL_MATCH_MIN_LIVE:
+            continue                             # nothing distinctive agreed
+        scored.append((speaking, -d))
+    if not scored:
+        return None
+
+    scored.sort(reverse=True)
+    best, shift = scored[0]
+    runner_up = scored[1][0] if len(scored) > 1 else 0
+    if best - runner_up < SCROLL_MATCH_MARGIN:
+        return None
+    return shift
 
 
 def scroll_to_end(up: bool, timeout: float = 8.0,
@@ -3103,7 +3271,9 @@ def scroll_one(down: bool, before: list[Row], timeout: float = 8.0,
     if not after:
         say("  the table could not be read after scrolling.")
         return None, None
-    shift = measure_shift(before, after)
+    # `expected` is how many rows the wheel was asked to move, consulted
+    # only where the rows themselves cannot decide -- see measure_shift.
+    shift = measure_shift(before, after, expected=1)
     if shift is None:
         say("  could not tell how far the view moved - refusing to guess "
             "which listing is which.")
@@ -3122,6 +3292,10 @@ def scroll_one(down: bool, before: list[Row], timeout: float = 8.0,
 # guess; one-at-a-time is safe but costs a full table read (~18s of OCR) per
 # row, which is minutes per listing once the shop is thirty deep.
 SCROLL_STEP = 7
+# The fallback step when a 7-row sweep cannot be measured. Smaller steps leave
+# more rows overlapping (3 -> 7 of a 10-row screen), which is what survives a
+# drifted row or an overlap landing inside a block of empty slots.
+SCROLL_STEP_FALLBACK = 3
 # Enough chunks to walk a full shop top to bottom, with headroom.
 MAX_SCROLL_CHUNKS = 8
 
@@ -3147,7 +3321,9 @@ def scroll_chunk(notches: int, before: list[Row], timeout: float = 8.0,
     if not after:
         say("  the table could not be read after scrolling.")
         return None, None
-    shift = measure_shift(before, after)
+    # `expected` is how many rows the wheel was asked to move, consulted
+    # only where the rows themselves cannot decide -- see measure_shift.
+    shift = measure_shift(before, after, expected=abs(notches))
     if shift is None:
         say("  could not tell how far the view moved - refusing to guess "
             "which listing is which.")
@@ -3184,10 +3360,21 @@ def bring_into_view(ref: RowRef, timeout: float = 8.0,
         live = [r for r in view if r.action in ("change", "receive")]
         return locate_row(live, ref)[0] is not None
 
-    for _ in range(MAX_SCROLL_CHUNKS):
+    # Same step rule as the sweep, and for the same reason: a screen whose tail
+    # is empty gives measure_shift an overlap of interchangeable rows, several
+    # offsets fit it equally, and it refuses.
+    #
+    # Fixing only enumerate_listings left this path unfixed, and it failed
+    # identically on the very first cycle of the 11:50 run -- row 15, "could
+    # not tell how far the view moved". Every scroll site needs the rule, not
+    # just the one the failure was first traced to.
+    steps = 0
+    while steps < MAX_SCROLL_CHUNKS * SCROLL_STEP:
+        steps += 1
         if holds(rows):
             return rows
-        after, shift = scroll_chunk(SCROLL_STEP, rows, timeout=timeout,
+        step = informative_step(rows, SCROLL_STEP)
+        after, shift = scroll_chunk(step, rows, timeout=timeout,
                                     verbose=verbose)
         if after is None or shift is None:
             return None
@@ -3212,6 +3399,63 @@ def enumerate_listings(timeout: float = 8.0,
         if verbose:
             print(message)
 
+    # A failed chunk has already moved the view, so there is no recovering the
+    # offset in place -- the only way back is the top. A step of 7 leaves just
+    # 3 rows overlapping, and 3 is the whole evidence base: one row drifting
+    # (an OCR misread, a sale landing mid-scroll) or an overlap that falls
+    # inside a block of empty slots leaves measure_shift nothing to work with.
+    #
+    # That is what ended the 07:57 run of 2026-08-06 -- cycles 5 and 6 both
+    # died here, and the breaker stopped a run that was otherwise fine. So the
+    # cheap step is tried first and a smaller one is the fallback: 3 rows a
+    # step leaves 7 overlapping, which survives drift and reaches across the
+    # empties. It costs more reads, and it only costs them on a shop that has
+    # already refused the cheap path.
+    for step in (SCROLL_STEP, SCROLL_STEP_FALLBACK):
+        found = _enumerate_at_step(step, timeout, verbose, say)
+        if found is not None:
+            return found
+        if step != SCROLL_STEP_FALLBACK:
+            say(f"  retrying the sweep {SCROLL_STEP_FALLBACK} row(s) at a "
+                f"time, so more rows overlap to match on.")
+    return None
+
+
+def informative_step(rows: list[Row], want: int) -> int:
+    """The largest step up to `want` that leaves something distinctive behind.
+
+    The overlap is the only evidence measure_shift has, and empty slots are
+    interchangeable -- an overlap made entirely of them fits at several offsets
+    at once, so the sweep refuses and the cycle is lost.
+
+    Measured on the live shop of 2026-08-06, whose top screen was six listings
+    then four empty slots. A 7-row step left an overlap of three empty rows and
+
+        exact fits (shift, overlap): [(7, 3), (6, 4)]
+
+    -- two offsets, both perfectly consistent, no way to choose. Stepping 4
+    instead keeps rows 5 and 6 in view, and they name themselves.
+
+    Shrinking the step costs extra reads, so it is only shrunk as far as it has
+    to be, and only on a screen whose tail is empty.
+    """
+    n = len(rows)
+    ceiling = min(want, max(1, n - MIN_SCROLL_OVERLAP))
+    for step in range(ceiling, 0, -1):
+        overlap = rows[step:]
+        if len(overlap) < MIN_SCROLL_OVERLAP:
+            continue
+        if sum(1 for r in overlap if r.name != "(empty)") >= SCROLL_MATCH_MIN_LIVE:
+            return step
+    # Nothing distinctive anywhere: the view is inside a dead stretch of empty
+    # slots. Step small so that if the offset can be pinned down at all, it is
+    # pinned down here rather than after skipping over the far edge.
+    return 1
+
+
+def _enumerate_at_step(step: int, timeout: float, verbose: bool,
+                       say) -> list[tuple[int, Row]] | None:
+    """One full sweep of the shop, stepping up to `step` rows at a time."""
     rows = scroll_to_end(up=True, timeout=timeout, verbose=verbose)
     if not rows:
         return None
@@ -3231,9 +3475,17 @@ def enumerate_listings(timeout: float = 8.0,
     # -7 notches moved the view exactly 7 rows, left 3 rows overlapping, and
     # measure_shift returned a single unambiguous fit.
     steps = 0
-    while steps < MAX_SCROLL_CHUNKS:
+    while steps < MAX_SCROLL_CHUNKS * (SCROLL_STEP // max(step, 1) or 1):
         steps += 1
-        after, shift = scroll_chunk(SCROLL_STEP, rows, timeout=timeout,
+        # Chosen per screen, not once: how far the view can move and still be
+        # measurable depends on where the empty slots are, and that changes as
+        # the sweep descends.
+        this_step = informative_step(rows, step)
+        if this_step != step:
+            say(f"  stepping {this_step} instead of {step} - the last "
+                f"{len(rows) - this_step} row(s) of this screen include "
+                f"something nameable to match on.")
+        after, shift = scroll_chunk(this_step, rows, timeout=timeout,
                                     verbose=verbose)
         if after is None or shift is None:
             return None
@@ -3745,6 +3997,187 @@ def money(value: int | None, blank: str = "-") -> str:
     first empty slot while printing them.
     """
     return blank if value is None else format(value, ",")
+
+
+# --------------------------------------------------------------------------
+# Sales tally
+# --------------------------------------------------------------------------
+#
+# What sold, and for how much, measured the only way the game will tell us.
+#
+# The table cannot answer it. A row's QTY column shows what is STILL on sale,
+# and collecting the proceeds does not change it -- the same fact behind the
+# collect-by-action fix. So "how many sold" is not readable from the listing
+# either before or after.
+#
+# The Alz balance is. Reading it either side of a Receive gives the credit for
+# that sale exactly, and dividing by the listing's unit price recovers the
+# quantity. The division is its own check: a remainder means the two readings
+# do not describe one clean sale at that price, and the quantity is then left
+# unclaimed rather than guessed.
+SALES: list[dict] = []
+
+
+def note_sale(item: str, price: int | None, proceeds: int | None) -> None:
+    """Record one collected sale for the end-of-run tally.
+
+    Never raises and never blocks a relist: a tally is bookkeeping, and losing
+    a line of it must not cost a listing.
+    """
+    qty = None
+    if proceeds and price and proceeds > 0 and price > 0:
+        if proceeds % price == 0:
+            qty = proceeds // price
+    SALES.append({"item": item, "price": price, "proceeds": proceeds,
+                  "qty": qty})
+    try:
+        record("sale.collected", item=item, price=price, proceeds=proceeds,
+               qty=qty)
+    except Exception:  # noqa: BLE001 - bookkeeping must not break a relist
+        pass
+
+
+def sales_report() -> str:
+    """The end-of-run tally, as printable text. Empty when nothing sold."""
+    if not SALES:
+        return ""
+
+    by_item: dict[str, dict] = {}
+    for sale in SALES:
+        entry = by_item.setdefault(sale["item"],
+                                   {"n": 0, "qty": 0, "gross": 0,
+                                    "unmeasured": 0})
+        entry["n"] += 1
+        if sale["proceeds"]:
+            entry["gross"] += sale["proceeds"]
+        else:
+            entry["unmeasured"] += 1
+        if sale["qty"]:
+            entry["qty"] += sale["qty"]
+
+    gross = sum(e["gross"] for e in by_item.values())
+    unmeasured = sum(e["unmeasured"] for e in by_item.values())
+
+    lines = ["", "=" * 74,
+             f"SOLD THIS RUN: {len(SALES)} collection(s), "
+             f"{gross:,} Alz gross", "=" * 74,
+             f"  {'item':42} {'sales':>5} {'qty':>7} {'gross':>14}",
+             "  " + "-" * 70]
+    for name, e in sorted(by_item.items(), key=lambda kv: -kv[1]["gross"]):
+        shown = name if len(name) <= 42 else name[:39] + "..."
+        qty = f"{e['qty']:,}" if e["qty"] else "-"
+        lines.append(f"  {shown:42} {e['n']:>5} {qty:>7} {e['gross']:>14,}")
+    lines.append("  " + "-" * 70)
+    lines.append(f"  {'TOTAL':42} {len(SALES):>5} "
+                 f"{sum(e['qty'] for e in by_item.values()):>7,} "
+                 f"{gross:>14,}")
+    if unmeasured:
+        # Said out loud rather than folded into the total. An Alz reading needs
+        # the Inventory panel open; when it is not, get_alz returns 0, and a
+        # sale silently counted as 0 Alz would understate the gross with
+        # nothing on screen to say so.
+        lines.append(f"\n  {unmeasured} sale(s) could not be measured (the Alz "
+                     f"balance was unreadable), so the gross above is a floor, "
+                     f"not the whole of it.")
+    return "\n".join(lines)
+
+
+def recover_stranded_work_tab(timeout: float = 8.0,
+                              verbose: bool = True) -> bool:
+    """List whatever is sitting in the work tab back onto the shop.
+
+    The work tab is reserved for items a cancel returns, so anything in it at
+    the START of a batch is a strand: a cancel that committed and whose re-list
+    did not. Refusing to start on a dirty tab is correct -- the before/after
+    diff cannot tell which slots a NEW cancel filled -- but it is also terminal,
+    because nothing else the script does ever clears it. Three cycles later the
+    breaker stops the run, and the item is still there.
+
+    Priced at the STRICTEST floor on the books, deliberately not at the market.
+    An item cannot be named from an inventory slot, so its own floor cannot be
+    looked up, and listing an unnameable item at whatever the market says is
+    exactly how a VIP goes out under its floor. Too high is the safe direction.
+
+    Being too high is also temporary, which is what makes this work: once the
+    stack is back in the shop, the ordinary relist path reads its name off the
+    TABLE, looks up its real floor, and re-prices it at market on the next
+    cycle. One overpriced cycle buys back a run that would otherwise have died.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    origin = inventory_origin()
+    if origin is None:
+        say("  the Inventory panel is not visible, so the strand cannot be "
+            "cleared automatically.")
+        return False
+    if not select_inventory_tab(WORK_TAB, origin):
+        say(f"  could not switch to inventory tab {WORK_TAB}.")
+        return False
+
+    # A floor, never a market read. 0 floors configured is the only case with
+    # nothing to fall back on, and there FALLBACK_PRICE parks it instead --
+    # unsellable for one cycle, which the next cycle corrects.
+    price = strictest_price_floor() or FALLBACK_PRICE
+    say(f"  re-listing the stranded stack at {price:,} Alz (the strictest "
+        "floor on the books) - it cannot be named from an inventory slot, so "
+        "its own floor cannot be looked up. The next cycle reads the name off "
+        "the table and re-prices it properly.")
+
+    # Bounded, and requires PROGRESS. A strand that will not clear must stop
+    # the run rather than be retried for ever -- which is the failure this is
+    # replacing, not one to reproduce.
+    for attempt in range(1, STRAND_RECOVERY_ATTEMPTS + 1):
+        park_cursor()
+        occupied = occupied_slots(grab(), origin)
+        if not occupied:
+            say(f"  inventory tab {WORK_TAB} is clear.")
+            return True
+        row, col = occupied[0]
+        say(f"  attempt {attempt}/{STRAND_RECOVERY_ATTEMPTS}: "
+            f"{len(occupied)} slot(s) in use; listing slot ({row},{col}).")
+        record("strand.recovering", tab=WORK_TAB, occupied=len(occupied),
+               slot=f"{row},{col}", price=price, attempt=attempt)
+        try:
+            listed = register_item(row, col, timeout=timeout, verbose=verbose,
+                                   force_price=price, maximise_qty=True)
+        except (Aborted, PermissionError) as exc:
+            say(f"  could not list it: {exc}")
+            return False
+        if not listed:
+            say("  the re-listing did not complete.")
+            return False
+        if not select_inventory_tab(WORK_TAB, origin):
+            return False
+
+    park_cursor()
+    still = occupied_slots(grab(), origin)
+    if still:
+        say(f"  {len(still)} slot(s) still in use after "
+            f"{STRAND_RECOVERY_ATTEMPTS} attempts - stopping rather than "
+            "retrying for ever.")
+        return False
+    return True
+
+
+def ensure_work_tab_empty(timeout: float = 8.0, verbose: bool = True) -> bool:
+    """The work-tab precondition, clearing a strand rather than dying on one.
+
+    Only for the START of a batch. The mid-batch work-tab checks must keep
+    using require_empty_work_tab: there a dirty tab means the row just relisted
+    stranded something, which is a real failure to report, not one to paper
+    over. Here it means a PREVIOUS run died, and the item has been sitting
+    there ever since.
+    """
+    if require_empty_work_tab(verbose=verbose):
+        return True
+    if verbose:
+        print("Trying to clear it - anything in the work tab at the start of a "
+              "batch is a cancel that never got re-listed.")
+    if not recover_stranded_work_tab(timeout=timeout, verbose=verbose):
+        return False
+    return require_empty_work_tab(verbose=verbose)
 
 
 def changed_slots(
@@ -4743,7 +5176,19 @@ def relist(
             print(message)
 
     def close_shop() -> None:
-        """Leave the shop closed, so the next cycle starts from the NPC.
+        """Retire the shop session once it is old enough, else leave it open.
+
+        This used to close unconditionally, so every row walked back to the NPC
+        and reopened the Register tab: ~34s per listing, 25 of the 103 minutes
+        measured on the 07:57 run of 2026-08-06. Freshness never depended on it
+        -- _relist_cycle refreshes the table on every attempt, and the caller
+        re-locates the listing by identity before cancelling.
+
+        Keeping it BOUNDED rather than dropping it: a window that has been open
+        for a quarter of an hour may have been closed by the game, moved to
+        another tab, or wedged behind a dialog, and rebuilding from the NPC is
+        the one recovery that fixes all three. Fifteen minutes of that risk
+        costs one reopen; fifteen minutes of reopens costs about ten.
 
         Never raises. This runs in a `finally`, so an exception escaping here
         would REPLACE an in-flight FatalAbort -- the caller would then see an
@@ -4753,13 +5198,24 @@ def relist(
         if dry_run:
             return
         try:
+            if not shop_session_expired():
+                age = shop_session_age() or 0.0
+                say(f"Leaving the Agent Shop open ({age / 60:.1f} min into a "
+                    f"{SHOP_SESSION_SECONDS / 60:g} min session).")
+                return
             for _ in range(ESCAPE_ATTEMPTS):
                 if not trade_window_open():
+                    note_shop_closed()
                     return
                 press_escape()
             if trade_window_open():
                 say("Note: the Trade window would not close with Escape.")
+            note_shop_closed()
         except Exception as exc:  # noqa: BLE001 - must not mask the real error
+            # The session clock is cleared even here. An unknown window state
+            # must not be treated as a live session: the next open then starts
+            # from the NPC, which is the safe direction.
+            note_shop_closed()
             say(f"Note: could not close the Trade window ({exc}).")
 
     try:
@@ -4788,7 +5244,8 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             if not open_trade_window(verbose=verbose):
                 say("Could not open the Agent Shop on the Register tab.")
                 return FAILED
-            if attempt == 1 and not require_empty_work_tab(verbose=verbose):
+            if attempt == 1 and not ensure_work_tab_empty(timeout=timeout,
+                                                          verbose=verbose):
                 say("Aborting: the working inventory tab must be empty to start.")
                 return FAILED
             if not refresh_table(timeout=max(timeout, 20.0), verbose=verbose):
@@ -4846,6 +5303,15 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 say(f"Still sold on the final attempt ({attempts}) - stopping.")
                 return FAILED
 
+            # The balance BEFORE the credit lands. get_alz returns 0 rather
+            # than raising when the Inventory panel is closed or the digits do
+            # not read, so 0 means "unknown" here and never "broke" -- treating
+            # it as a real balance would invent a sale worth the whole purse.
+            try:
+                alz_before = get_alz(grab()) or None
+            except Exception:  # noqa: BLE001 - a tally must not cost a listing
+                alz_before = None
+
             click(*target.change)
 
             # Collecting raises "Confirm Receipt", whose accept button reads
@@ -4865,6 +5331,29 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
 
             say(f"Waiting {RECEIVE_WAIT:g}s for the sale to settle...")
             time.sleep(RECEIVE_WAIT)
+
+            # Read the credit before the table work below: this is the only
+            # window in which the delta is attributable to THIS sale and
+            # nothing else. A registration fee later in the same relist would
+            # otherwise be netted off it.
+            proceeds = None
+            try:
+                alz_after = get_alz(grab()) or None
+                if alz_before and alz_after and alz_after > alz_before:
+                    proceeds = alz_after - alz_before
+            except Exception:  # noqa: BLE001 - a tally must not cost a listing
+                proceeds = None
+            note_sale(target.name, target.price, proceeds)
+            if proceeds:
+                sold = (proceeds // target.price
+                        if target.price and proceeds % target.price == 0
+                        else None)
+                say(f"Collected {proceeds:,} Alz"
+                    + (f" ({sold:,} x {target.price:,})" if sold else ""))
+            else:
+                say("Collected (the Alz balance did not read, so this sale is "
+                    "counted but not measured).")
+
             if not wait_for_table(max(timeout, 20.0)):
                 say("The table did not finish refreshing after Receive - stopping.")
                 return FAILED
@@ -4916,17 +5405,55 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             # collect look like a failing one in the log.
             refresh_table(timeout=timeout, verbose=False)
 
+            # "Receive" means there are proceeds waiting to be collected. It
+            # does NOT mean the listing sold out, and the quantity column shows
+            # what is STILL on sale -- which collecting does not change. Only
+            # the action flips, receive -> change.
+            #
+            # So a partial sale leaves the family's quantities byte-identical,
+            # collect_delta returns (lost=[], gained=[]), and the multiset test
+            # below reads a collect that WORKED as "the click did not take".
+            # Measured over the 07:57 run of 2026-08-06: 10 of 10 recorded
+            # retries went receive -> change with the quantity identical either
+            # side. The multiset never had the answer -- the action did, in the
+            # same frame, unread.
+            #
+            # Checked at the same index rather than by name alone: with two
+            # identical stacks a fully-sold row vanishes and its sibling shifts
+            # up into this slot, and that sibling matches on every field. The
+            # multiset test catches that case first (lost=[q]) and this one is
+            # consulted only when nothing moved, so the shift cannot reach here
+            # -- but the fields are compared anyway, because "nothing moved" is
+            # exactly the reading a stale frame produces too.
+            def collected(table: list[Row]) -> Row | None:
+                if not 1 <= row <= len(table):
+                    return None
+                here = table[row - 1]
+                if here.action != "change":
+                    return None
+                if (_canonical(here.name) != _canonical(target.name)
+                        or here.price != target.price
+                        or here.qty != target.qty):
+                    return None
+                return here
+
             after: list = []
             after_rows: list[Row] = []
+            after_table: list[Row] = []
             saw_table = False
             deadline = time.monotonic() + max(timeout, TABLE_READ_BUDGET)
             while time.monotonic() < deadline:
                 rows_now = read_rows(grab())
                 if rows_now:
                     saw_table = True
+                    after_table = rows_now
                     after_rows = family(rows_now)
                     after = quantities(after_rows)
-                    if after != before:
+                    # Either signal ends the wait. Without the second one a
+                    # partial sale polls the entire budget for a change in the
+                    # quantities that cannot happen, ~40s per collect, and then
+                    # concludes the click failed.
+                    if after != before or collected(rows_now) is not None:
                         break
                 time.sleep(0.8)
 
@@ -4939,6 +5466,15 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             lost, gained = collect_delta(before, after)
 
             if not lost and not gained:
+                # The quantities agreeing is the EXPECTED reading for a partial
+                # sale, not evidence of anything. Ask the action.
+                settled = collected(after_table)
+                if settled is not None:
+                    say(f"Collected. Row {row} went from Receive to Change "
+                        f"with {settled.qty} still listed - relisting the "
+                        f"remainder.")
+                    continue
+
                 # Says what was MEASURED. The old wording claimed the row
                 # "still shows Receive", which this code never checked -- and
                 # it was wrong every time it printed during the 08:27 run,
@@ -4946,9 +5482,11 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 # client's copy of the table was stale.
                 priced = (f"at {target.price:,} " if target.price is not None
                           else "")
+                shows = (after_table[row - 1].action
+                         if 1 <= row <= len(after_table) else "nothing")
                 say(f"The {target.name!r} listings {priced}are unchanged "
-                    f"after collecting ({before}) - the click did not take; "
-                    f"retrying.")
+                    f"after collecting ({before}) and row {row} still shows "
+                    f"{shows!r} - the click did not take; retrying.")
                 continue
 
             if len(lost) == 1 and not gained:
@@ -5454,7 +5992,7 @@ def relist_rows(
         if not ensure_shop_ready(verbose=verbose):
             say("Could not open the Agent Shop to read the listings.")
             return False
-        if not require_empty_work_tab(verbose=verbose):
+        if not ensure_work_tab_empty(timeout=timeout, verbose=verbose):
             say("Aborting: the working inventory tab must be empty to start.")
             return False
 
@@ -5519,6 +6057,45 @@ def relist_rows(
                 return False
             row = snapshot[index - 1]
             targets.append((index, RowRef.of(row, snapshot), row.action))
+
+    # Listings consolidate upward, and RELISTING is what drives it -- not
+    # sales. Cancelling frees a slot; the re-registration then lands in the
+    # LOWEST empty slot rather than the one it came from. So every cycle pulls
+    # listings toward the top and pushes the empties to the bottom, and a shop
+    # asked for 1-24 that holds 19 listings settles at 1-19.
+    #
+    # Measured on the 07:57 run of 2026-08-06: "Siena's Unbinding Stone" went
+    # row 24 -> 17 -> 12 over three cycles, and Force Core(Highest) went from
+    # six slots to two. It converges over cycles rather than happening at once,
+    # which is why a short window looks like scattered gaps instead of a clean
+    # split.
+    #
+    # That convergence is exactly why only the TAIL is trimmed, never a gap
+    # higher up. Mid-table empties are slots not yet reclaimed, with live
+    # listings still below them: on cycle 3 the empties were rows 13, 14, 17,
+    # 21 and 24, and cutting at the FIRST of those would have dropped nine live
+    # listings. Everything after the LAST live row is empty for a structural
+    # reason, and that is the only part safe to leave out.
+    #
+    # Recomputed from a fresh read every cycle, so this tracks the convergence
+    # as it happens and is not a one-way ratchet: list something new and the
+    # range grows back by itself.
+    if targets:
+        last_live = 0
+        for position, (_, _, action) in enumerate(targets, start=1):
+            if action in ("change", "receive"):
+                last_live = position
+        # last_live == 0 means every slot is empty. Left alone deliberately --
+        # the sold-out check after the loop needs the full target list to tell
+        # "the shop is finished" from "this batch had nothing in it".
+        if last_live and last_live < len(targets):
+            trimmed = targets[last_live:]
+            targets = targets[:last_live]
+            say(f"The shop has consolidated: the last {len(trimmed)} slot(s) "
+                f"({trimmed[0][0]}-{trimmed[-1][0]}) are empty, so this batch "
+                f"is rows {targets[0][0]}-{targets[-1][0]} instead.")
+            record("batch.trimmed", kept=len(targets), dropped=len(trimmed),
+                   last_live_row=targets[-1][0], first_empty=trimmed[0][0])
 
     say(f"Relisting {len(targets)} row(s), tracked by name, quantity and price:")
     for index, ref, action in targets:
@@ -5810,6 +6387,10 @@ def leave_shop(verbose: bool = True) -> bool:
         if verbose:
             print(message)
 
+    # Whatever happens below, the session is over. Leaving the clock running
+    # would let the NEXT run inherit a session it never opened and skip the
+    # rebuild from the NPC on its first row.
+    note_shop_closed()
     try:
         if dialog_present():
             say("Closing the dialog left on screen...")
@@ -6072,6 +6653,27 @@ def run_loop(
         stopped = True
     finally:
         keep_awake(False)
+        # Tidy up on EVERY exit, not just a sold-out shop.
+        #
+        # A run that dies with the Trade window open leaves the character
+        # parked in a UI, and an open Trade window covers the NPC -- so the
+        # next run's find_npc fails and it dies before doing anything. That is
+        # how a single failure became a dead afternoon: the 07:57 run of
+        # 2026-08-06 stopped at the breaker and left the shop open and scrolled
+        # mid-list, which is exactly the state the next run cannot start from.
+        #
+        # In the `finally` so it also covers Ctrl+C, the duration expiring, and
+        # a FatalAbort.
+        #
+        # Guarded even though leave_shop is itself written never to raise. An
+        # exception escaping HERE would replace an in-flight FatalAbort with an
+        # ordinary crash, and the whole point of a FatalAbort is that a human
+        # looks at it -- the tidying must never be able to hide why the run
+        # stopped.
+        try:
+            leave_shop(verbose=verbose)
+        except Exception as exc:      # noqa: BLE001 - must not mask the outcome
+            say(f"Note: could not tidy up the game window ({exc}).")
 
     say(f"\nDone: {cycle} cycle(s) run, {succeeded} succeeded, {failures} failed"
         + (f"; stopped early at cycle {cycle}." if stopped else "."))
@@ -7102,6 +7704,16 @@ def finish_run_log(note: str = "") -> None:
         return
     _run_finished = True
     try:
+        # The tally FIRST, and in its own try: it is the part most worth having
+        # after a Ctrl+C, and a fault formatting it must not cost the duration
+        # line that every post-mortem starts from.
+        try:
+            report = sales_report()
+            if report:
+                print(report)
+        except Exception:      # noqa: BLE001
+            pass
+
         ended = datetime.now()
         elapsed = time.monotonic() - _RUN_STARTED
         line = (f"Ran for {_format_duration(elapsed)}  "
@@ -7550,18 +8162,23 @@ def main() -> None:
         every = wants_all_rows(args.relist_rows)
         if not wanted and not every:
             p.error("--relist-rows needs at least one row, or 'all'")
+        # `finally`, so a failure tidies up exactly as a success does. Left
+        # open, the Trade window covers the NPC and the NEXT run cannot even
+        # find her -- one failed batch otherwise blocks every later one.
         try:
             ok = relist_rows(wanted, dry_run=args.dry_run, all_rows=every)
         except ShopEmpty as exc:
             # A sold-out shop is a successful outcome, so exit 0 -- a caller
             # scripting this must not read "finished" as "failed".
             print(f"SOLD OUT: {exc}")
-            leave_shop()
             sys.exit(0)
         except FatalAbort as exc:
             sys.exit(f"FATAL: {exc}")
         except (PermissionError, Aborted) as exc:
             sys.exit(f"Blocked: {exc}")
+        finally:
+            if not args.dry_run:
+                leave_shop()
         sys.exit(0 if ok else 1)
 
     if args.relist:

@@ -20,6 +20,41 @@ import trade
 
 ITEM = "Force Core(Highest)"
 
+# Captured before any Harness installs its stubs. 9c/9d put these BACK, so the
+# real functions run and the claims about them are testable.
+#
+# The earlier 9c replaced require_empty_work_tab wholesale and then asserted
+# that it recorded a frame. It never could: the assertion was measuring the
+# stub, not the function, so the "no frame on disk" finding stayed open for as
+# long as the test existed and no fix to trade.py could ever have closed it.
+# trade.py has recorded worktab.not_empty since the day that was written.
+REAL_REQUIRE = trade.require_empty_work_tab
+REAL_RECOVER = trade.recover_stranded_work_tab
+REAL_ENSURE = trade.ensure_work_tab_empty
+
+
+def drive_work_tab_by_slots(h, strand, clears):
+    """Run the REAL work-tab code, with the strand modelled in one place.
+
+    Everything below the API under test stays stubbed (no capture, no OCR, no
+    input); the only thing this decides is what the inventory grid contains.
+    require_empty_work_tab, recover_stranded_work_tab and ensure_work_tab_empty
+    all then run for real, and agree with each other by construction -- which
+    the old split model did not.
+    """
+    h.patch("require_empty_work_tab", REAL_REQUIRE)
+    h.patch("recover_stranded_work_tab", REAL_RECOVER)
+    h.patch("ensure_work_tab_empty", REAL_ENSURE)
+    h.patch("occupied_slots", lambda *a, **k: list(strand))
+
+    def register(row, col, **kw):
+        h.log("register_item", row, col)
+        if clears["yes"]:
+            strand.clear()
+            return True
+        return False
+    h.patch("register_item", register)
+
 
 def build(loaded_qty):
     h = Harness(rows=[make_row(1, ITEM, price=207_988, qty=230)],
@@ -71,44 +106,24 @@ note("9b", "the strand announcement and relist.stranded frame at "
 
 
 # ---------------------------------------------------------------------------
-section("9c. the consequence: every later cycle dies before it records anything")
+section("9c. a strand that CANNOT be cleared still stops the run")
+# The historical outcome, and still the right one: if the stack will not go
+# back on the shop, starting a cycle would diff a dirty tab and could pick up
+# an unrelated item. Stopping is correct. What was wrong was that this was the
+# ONLY outcome -- see 9d.
 h = build(64)
-stranded = {"yes": False}
-
-
-def work_tab_reflects_the_strand(h):
-    def patched(verbose=True):
-        h.log("require_empty_work_tab")
-        if stranded["yes"]:
-            if verbose:
-                trade.print(f"Inventory tab {trade.WORK_TAB} is not empty - "
-                            "233 slot(s) in use")
-            return False
-        return True
-    return patched
-
+strand = [(r, c) for r in range(1, 9) for c in range(1, 9)]   # 64 slots, as logged
+clears = {"yes": False}
 
 with h:
-    h.patch("require_empty_work_tab", work_tab_reflects_the_strand(h))
-
-    original_register = trade.register_item
-
-    def register_then_strand(*a, **k):
-        result = original_register(*a, **k)
-        if not result:
-            stranded["yes"] = True
-        return result
-    h.patch("register_item", register_then_strand)
-
+    drive_work_tab_by_slots(h, strand, clears)
     ok, exc = run(trade.run_loop, ["relist-rows 1"], 5.0, 0.0)
 
 cycles = h.out().count("===== cycle ")
 labels = h.labels()
-after_strand = labels[labels.index("relist.stranded") + 1:] if \
-    "relist.stranded" in labels else labels
 
 print(f"  cycles run: {cycles}")
-print(f"  labels recorded AFTER the strand: {after_strand}")
+print(f"  labels recorded: {sorted(set(labels))}")
 check("9c the run stops", "stopped early" in h.out(), h.out()[-300:])
 check(f"9c after exactly MAX_CONSECUTIVE_FAILURES="
       f"{trade.MAX_CONSECUTIVE_FAILURES} cycles (the strand cycle is the "
@@ -117,21 +132,47 @@ check(f"9c after exactly MAX_CONSECUTIVE_FAILURES="
 check("9c the breaker explains itself", h.said("cycles have failed in a row"),
       h.out()[-500:])
 
-blind = [lab for lab in after_strand
+# The blind window that made the 3 August outage invisible: the index's last
+# entry was tab.register_open at 19:56:48, then nothing for five hours. The
+# failing STEP now writes its own frame, so the reason is on disk and not only
+# in a printed line the operator never saw.
+blind = [lab for lab in labels
          if lab not in ("cycle.start", "cycle.end", "loop.stopped")]
-check("9c the failing cycles record NOTHING of their own", blind == [],
-      f"recorded: {blind}")
-note("9c the blind window",
-     "require_empty_work_tab (trade.py:3181-3213) returns False without a "
-     "single record(), and relist_rows returns before refresh_table -- so a "
-     "cycle that dies there leaves no frame at all. In the build that ran on "
-     "3 August that made the entire 5-hour outage invisible: the index's last "
-     "entry is tab.register_open at 19:56:48. The cycle.start/cycle.end/"
-     "loop.stopped entries added since (trade.py:5020, 5094, 5101) now bound "
-     "the gap, but the failing STEP still records nothing.")
+check("9c the cycle that cannot start records WHY",
+      "worktab.not_empty" in labels,
+      f"recorded: {sorted(set(blind))} -- require_empty_work_tab is the single "
+      f"most likely cycle-killer; if it writes no frame the operator gets a "
+      f"printed line and nothing on disk")
+check("9c the recovery attempt is recorded too",
+      "strand.recovering" in labels, f"{sorted(set(blind))}")
+check("9c it says how much was stranded",
+      (h.rec("worktab.not_empty") or {}).get("occupied") == 64,
+      f"{h.rec('worktab.not_empty')}")
+check("9c it did try to clear it before giving up",
+      "register_item" in h.names(),
+      "stopping without attempting the recovery is the old behaviour")
 
-check("9c a cycle that cannot start records why", bool(blind),
-      "require_empty_work_tab is the single most likely cycle-killer and it "
-      "writes no frame; the operator gets a printed line and nothing on disk")
+
+# ---------------------------------------------------------------------------
+section("9d. a strand that CAN be cleared no longer ends the run")
+# This is the finding that stayed open longest: "the cause is recorded now, but
+# the recovery does not exist." It exists now, and this is the same replay with
+# the one thing changed that the fix changes.
+h = build(64)
+strand = [(r, c) for r in range(1, 9) for c in range(1, 9)]
+clears = {"yes": True}
+
+with h:
+    drive_work_tab_by_slots(h, strand, clears)
+    h.patch("relist", lambda *a, **k: trade.RELISTED)
+    ok, exc = run(trade.relist_rows, [1])
+
+check("9d the batch runs instead of aborting", ok is True, f"{ok!r} {exc!r}")
+check("9d the work tab was cleared", strand == [], f"{len(strand)} slot(s) left")
+check("9d the strand was re-listed", "register_item" in h.names(), f"{h.names()}")
+check("9d it did not print the abort", not h.said("must be empty to start"),
+      h.out()[-300:])
+check("9d and it is on the record", "strand.recovering" in h.labels(),
+      str(sorted(set(h.labels()))))
 
 raise SystemExit(summary())
