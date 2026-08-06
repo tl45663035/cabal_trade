@@ -136,13 +136,13 @@ check("a completely different table refuses",
       trade.measure_shift(win(FULL, 0), scrambled) is None,
       f"got {trade.measure_shift(win(FULL, 0), scrambled)!r}")
 
-# A table of rows that are ALL identical fits everywhere equally.
+# Identical reads report 0 -- "nothing moved" -- even when the rows are
+# interchangeable. The protection against acting on that is no longer here: a 0
+# arriving before the measured bottom is rejected by the sweep as a stuck view.
 same = [mk(i + 1, "Force Core(High)", 250, 215_000) for i in range(10)]
-got = trade.measure_shift(same, same[:])
-check("an all-identical table refuses (every offset fits equally)",
-      got is None,
-      f"got {got!r} -- with nothing to tell the rows apart, any offset is as "
-      f"good as any other, and acting on one cancels an arbitrary listing")
+check("an all-identical table reports 0, not a guess",
+      trade.measure_shift(same, same[:]) == 0,
+      f"got {trade.measure_shift(same, same[:])!r}")
 
 # Majority-changed: below the ratio, so not a candidate at all.
 heavy = win(FULL, 7)
@@ -165,10 +165,15 @@ section("the margin: a close second place must refuse")
 # the one intended. Only the margin refuses here.
 period = [mk(i, f"Item {(i - 1) % 5:02d}", 10 + ((i - 1) % 5),
              100_000 + ((i - 1) % 5)) for i in range(1, 31)]
+# The two screens are byte-identical, so this reports 0 even though the view
+# really moved 5. It is the one reading the pixels support, and it is SAFE
+# rather than correct: the sweep sees 0 before the measured bottom, calls the
+# view stuck, and fails instead of mislabelling five listings.
 got = trade.measure_shift(win(period, 0), win(period, 5))
-check("a shop that repeats every 5 rows refuses", got is None,
-      f"got {got!r} -- offsets 0 and 5 are indistinguishable, and guessing "
-      f"between them cancels the wrong stack")
+check("a shop repeating every 5 rows reports 0 rather than guessing 5",
+      got == 0,
+      f"got {got!r} -- guessing 5 would cancel a stack five rows from the one "
+      f"intended; 0 is refused upstream as a stuck view")
 
 check(f"the margin is at least 2 rows", trade.SCROLL_MATCH_MARGIN >= 2,
       f"SCROLL_MATCH_MARGIN={trade.SCROLL_MATCH_MARGIN} -- a margin of 1 would "
@@ -189,9 +194,16 @@ check("exact wins outright", exact == 4, f"got {exact!r}")
 # And where the exact test finds SEVERAL, that is real ambiguity -- the
 # fallback must not be used to break the tie.
 twins = [mk(i, "Force Core(High)", 250, 215_000) for i in range(1, 11)]
-check("exact ambiguity refuses instead of falling through",
-      trade.measure_shift(twins, twins[:]) is None,
+check("identical twins report 0 rather than falling through to scoring",
+      trade.measure_shift(twins, twins[:]) == 0,
       f"got {trade.measure_shift(twins, twins[:])!r}")
+# Real ambiguity -- different content, several offsets fitting -- must still
+# refuse. That guarantee has not moved.
+_dead = [mk(1, "Siena's Unbinding Stone", 1, 75_000_000)] +         [mk(i, "(empty)", None, None, "register") for i in range(2, 11)]
+_next = [mk(i, "(empty)", None, None, "register") for i in range(1, 10)] +         [mk(10, "Force Core(Highest)", 0, 200_000, "receive")]
+check("genuine ambiguity still refuses",
+      trade.measure_shift(_dead, _next) is None,
+      f"got {trade.measure_shift(_dead, _next)!r}")
 
 
 
@@ -316,23 +328,43 @@ check("a nameable row in the overlap is not overridden by the wheel",
 
 # The bottom clamp: the wheel is asked to move but nothing does. This must
 # report 0, or the sweep believes it is descending and never terminates.
+# An all-empty screen reads identically whether the view moved or not, so
+# content has no opinion and the wheel is the better witness. Answering 0 here
+# wedges the sweep inside the gap -- the live shop did exactly that at 14:5x
+# with a fifteen-row run of empty slots.
 ALL_EMPTY = [mk(i, "(empty)", None, None, "register") for i in range(1, 11)]
-check("an unmoved view reports 0 even when every row is empty",
-      trade.measure_shift(ALL_EMPTY, ALL_EMPTY[:], expected=7) == 0,
-      f"got {trade.measure_shift(ALL_EMPTY, ALL_EMPTY[:], expected=7)!r} -- "
-      f"the bottom clamp is how the sweep learns it has seen everything; "
-      f"reporting movement here sweeps forever")
+check("identical all-empty reads follow the wheel, not the pixels",
+      trade.measure_shift(ALL_EMPTY, ALL_EMPTY[:], expected=7) == 7,
+      f"got {trade.measure_shift(ALL_EMPTY, ALL_EMPTY[:], expected=7)!r}")
+check("...and report 0 when no shift was requested",
+      trade.measure_shift(ALL_EMPTY, ALL_EMPTY[:]) == 0,
+      f"got {trade.measure_shift(ALL_EMPTY, ALL_EMPTY[:])!r}")
+check("a screen with ANY nameable row still reports 0",
+      trade.measure_shift(TOP, TOP[:], expected=7) == 0,
+      f"got {trade.measure_shift(TOP, TOP[:], expected=7)!r} -- a real move "
+      f"would have changed it, so advancing the index would mislabel rows")
 check("...and an unmoved view of distinct listings reports 0 too",
       trade.measure_shift(FULL[:10], FULL[:10], expected=7) == 0,
       "distinct rows pin d=0 on their own, with no clamp rule needed")
-# A screen of IDENTICAL listings is also identical either side of a scroll that
-# really moved. Answering 0 there would end the sweep early and hide every
-# listing below it, so the clamp rule must not reach that case.
+# Two identical reads report 0 -- "nothing moved" -- whatever the rows hold,
+# and the wheel's request must NOT override that. Claiming movement the pixels
+# deny would advance the absolute index past rows that never scrolled by.
 ident = [mk(i, "Force Core(High)", 250, 215_000) for i in range(1, 11)]
-check("identical listings still refuse, clamp rule or not",
-      trade.measure_shift(ident, ident[:], expected=7) is None,
-      f"got {trade.measure_shift(ident, ident[:], expected=7)!r} -- these may "
-      f"have scrolled; calling it 'bottom' truncates the shop silently")
+check("identical reads report 0, not the requested shift",
+      trade.measure_shift(ident, ident[:], expected=7) == 0,
+      f"got {trade.measure_shift(ident, ident[:], expected=7)!r}")
+# 0 means "nothing moved", NEVER "the bottom". The sweep decides the bottom by
+# reaching the screen it measured, so a 0 arriving early is a stuck view and is
+# reported as a failure -- not as a finished shop.
+import inspect as _ins
+_src = _ins.getsource(trade._enumerate_at_step)
+check("the sweep measures the bottom instead of inferring it",
+      "tail_keys" in _src and "scroll_to_end(up=False" in _src,
+      "without a measured bottom, a run of empty slots ends the sweep early "
+      "and the rest of the shop is invisible")
+check("...and an early 0 is a failure, not a finished sweep",
+      "stopped moving before the bottom" in _src,
+      "a stuck view reported as 'done' is the silent truncation again")
 
 # Both scroll sites must pass the wheel's request through.
 import inspect as _i

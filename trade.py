@@ -3124,17 +3124,43 @@ def measure_shift(before: list[Row], after: list[Row],
     if not b or not a:
         return None
 
-    # The bottom clamp, for a screen of nothing but empty slots. At the bottom
-    # the wheel moves nothing, so the two reads are identical -- and with every
-    # row interchangeable the exact test finds many fits and the expected-shift
-    # rule below would report movement that never happened, sweeping until the
-    # chunk limit.
+    # Two identical reads mean the content did not change. Reported honestly as
+    # 0, and NOT overridden by the expected-shift rule below -- claiming the
+    # view moved when the pixels say otherwise would advance the absolute index
+    # past rows that never scrolled by, mislabelling every listing after them.
     #
-    # Restricted to all-empty screens deliberately. A screen of identical
-    # LISTINGS is also identical either side of a scroll that really moved, and
-    # there answering 0 would end the sweep early and hide every listing below
-    # it. That case must keep refusing, which is what the exact test does.
-    if b == a and all(r.name == "(empty)" for r in before):
+    # What 0 does NOT mean is "the bottom". A screen of empty slots scrolled
+    # within a run of empty slots reads identically to one that did not move at
+    # all, so treating 0 as the end of the shop stops the sweep in the middle
+    # of it. That is exactly what happened on 2026-08-06: enumerate_listings
+    # reported 14 slots and 4 live while eight listings sat below the gap, four
+    # of them sold and uncollected, and the run relisted the top of the shop
+    # for forty minutes without ever seeing them -- silently, because a
+    # truncated sweep and a complete one look identical to the caller.
+    #
+    # So the bottom is established by scrolling to it and comparing against it
+    # (in _enumerate_at_step), and 0 only ever means "nothing moved". A 0 that
+    # arrives before the bottom screen is a stuck view, and is reported as a
+    # failure rather than as a finished sweep.
+    if b == a:
+        # Identical reads mean one of two things, and which one depends on what
+        # is on the screen.
+        #
+        # If ANY row is nameable, a real move would have changed the view, so
+        # nothing moved and 0 is the honest answer -- and it must not be
+        # overridden by the wheel, or the absolute index advances past rows
+        # that never scrolled by and every listing after them is mislabelled.
+        #
+        # If every row is an empty slot, the two reads are identical whether
+        # the view moved or not, and content has no opinion at all. The wheel
+        # does: a notch moves a row. Answering 0 there wedges the sweep in the
+        # middle of the gap -- "the view stopped moving before the bottom
+        # screen was reached" -- which is what this shop did at 14:5x with a
+        # fifteen-row run of empty slots. Nothing is mislabelled by advancing,
+        # because every row being stepped over is empty by construction, and
+        # the sweep still stops at the measured bottom screen rather than here.
+        if expected and all(r.name == "(empty)" for r in before):
+            return expected
         return 0
 
     # Pass 1: the exact test, unchanged. When the table held still this is what
@@ -3489,12 +3515,43 @@ def informative_step(rows: list[Row], want: int) -> int:
 def _enumerate_at_step(step: int, timeout: float, verbose: bool,
                        say) -> list[tuple[int, Row]] | None:
     """One full sweep of the shop, stepping up to `step` rows at a time."""
+    # Establish the bottom by GOING there, before sweeping down to it.
+    #
+    # The terminator used to be "measure_shift said the view did not move".
+    # Inside a run of empty slots that is indistinguishable from the view
+    # having moved, so the sweep stopped in the middle of the shop and reported
+    # what it had as the whole thing. On 2026-08-06 that returned 14 slots and
+    # 4 live while eight listings sat below the gap -- four of them sold and
+    # uncollected, including 27,000,000 Alz of Shape Cartridge -- and the run
+    # relisted the top of the shop for forty minutes without ever seeing them.
+    #
+    # A truncated sweep and a complete one look identical to the caller, so
+    # this cannot be left to be noticed: the sweep now ends when it REACHES the
+    # screen the shop actually ends on, which is measured, not inferred.
+    tail = scroll_to_end(up=False, timeout=timeout, verbose=verbose)
+    if not tail:
+        return None
+    tail_keys = [_row_key(r) for r in tail]
+
     rows = scroll_to_end(up=True, timeout=timeout, verbose=verbose)
     if not rows:
         return None
 
     found: list[tuple[int, Row]] = [(i + 1, r) for i, r in enumerate(rows)]
     top = 1                      # absolute index of screen row 1
+    if [_row_key(r) for r in rows] == tail_keys:
+        # The top read the same as the bottom. Normally that means the shop is
+        # one screen deep -- but if every row on the screen is identical, a
+        # thirty-deep shop reads exactly the same way, and returning ten rows
+        # here would be the truncation this whole function exists to prevent.
+        # Content cannot separate the two cases, so refuse rather than pick.
+        if len(set(tail_keys)) < 2:
+            say("  every row on screen reads alike, so the top and the bottom "
+                "of the shop cannot be told apart - refusing to report this "
+                "as the whole shop.")
+            return None
+        say(f"  {len(found)} listing(s) in the shop (all on the first screen)")
+        return found
     # Stepped SCROLL_STEP rows at a time, not one.
     #
     # One row at a time costs a full table read -- ~18s of OCR -- per row, so a
@@ -3507,8 +3564,14 @@ def _enumerate_at_step(step: int, timeout: float, verbose: bool,
     # Verified against the recorded scroll probes on this shop: from the top,
     # -7 notches moved the view exactly 7 rows, left 3 rows overlapping, and
     # measure_shift returned a single unambiguous fit.
+    # Budgeted on the SMALLEST step the sweep might take, not the nominal one.
+    # informative_step drops to 1 row inside a gap of empty slots, so a
+    # nominally 7-row sweep can need twenty-odd iterations; budgeting for eight
+    # made the first pass run out and fail, and the whole shop was then swept a
+    # second time at step 3 to get the same answer -- eight wasted table reads,
+    # about two and a half minutes, on every cycle.
     steps = 0
-    while steps < MAX_SCROLL_CHUNKS * (SCROLL_STEP // max(step, 1) or 1):
+    while steps < MAX_SCROLL_CHUNKS * SCROLL_STEP:
         steps += 1
         # Chosen per screen, not once: how far the view can move and still be
         # measurable depends on where the empty slots are, and that changes as
@@ -3522,8 +3585,6 @@ def _enumerate_at_step(step: int, timeout: float, verbose: bool,
                                     verbose=verbose)
         if after is None or shift is None:
             return None
-        if shift == 0:
-            break                # clamped: the bottom is on screen
         top += shift
         rows = after
         # Every row the step brought into view is new, not just the last one:
@@ -3532,6 +3593,16 @@ def _enumerate_at_step(step: int, timeout: float, verbose: bool,
             index = top + offset
             if index > len(found):
                 found.append((index, row))
+        # The measured bottom, not an inferred one. `shift == 0` is kept only
+        # as a secondary signal and is no longer trusted on its own, because
+        # inside a run of empty slots it fires in the middle of the shop.
+        if [_row_key(r) for r in rows] == tail_keys:
+            break
+        if shift == 0:
+            say("  the view stopped moving before the bottom screen was "
+                "reached - refusing to report a partial shop as the whole "
+                "of it.")
+            return None
     else:
         say(f"  still scrolling after {steps} steps - refusing to continue.")
         return None
