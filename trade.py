@@ -3228,6 +3228,30 @@ def measure_shift(before: list[Row], after: list[Row],
     return shift
 
 
+def table_scrollable(verbose: bool = True) -> bool:
+    """Whether wheel notches will reach the listings rather than the camera.
+
+    With the Trade window shut the wheel is a CAMERA ZOOM, and scroll_to_end
+    sends forty notches. On 2026-08-06 that zoomed the view so far in that the
+    NPC left the screen entirely, so the next two cycles could not find her,
+    the breaker stopped the run, and the camera had to be wound back by hand --
+    from one row whose scroll happened a moment after the window closed.
+
+    Cheap, and checked at the wheel rather than at the callers: every scroll
+    site has to be covered, and the earlier fix that patched only
+    enumerate_listings and not bring_into_view is exactly how a half-covered
+    rule fails. The one input in this script that damages state the script
+    cannot see is worth a screen read before every use.
+    """
+    if trade_window_open():
+        return True
+    if verbose:
+        print("  the Trade window is not open - refusing to scroll, the wheel "
+              "would zoom the camera instead of moving the listings.")
+    record("scroll.refused_window_shut")
+    return False
+
+
 def scroll_to_end(up: bool, timeout: float = 8.0,
                   verbose: bool = True) -> list[Row] | None:
     """Drive the view to the top (up) or bottom, and return what is showing.
@@ -3238,6 +3262,9 @@ def scroll_to_end(up: bool, timeout: float = 8.0,
     def say(message: str) -> None:
         if verbose:
             print(message)
+
+    if not table_scrollable(verbose=verbose):
+        return None
 
     centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
               (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
@@ -3262,6 +3289,9 @@ def scroll_one(down: bool, before: list[Row], timeout: float = 8.0,
     def say(message: str) -> None:
         if verbose:
             print(message)
+
+    if not table_scrollable(verbose=verbose):
+        return None, None
 
     centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
               (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
@@ -3312,6 +3342,9 @@ def scroll_chunk(notches: int, before: list[Row], timeout: float = 8.0,
     def say(message: str) -> None:
         if verbose:
             print(message)
+
+    if not table_scrollable(verbose=verbose):
+        return None, None
 
     centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
               (TRADE_REGION[1] + TRADE_REGION[3]) // 2)

@@ -342,4 +342,65 @@ for fn in (trade.scroll_chunk, trade.scroll_one):
           f"{fn.__name__} drops the request, so the rule above never fires")
 
 
+
+
+# ===========================================================================
+section("the wheel never reaches the camera")
+
+# With the Trade window shut the wheel is a CAMERA ZOOM, and scroll_to_end
+# sends forty notches. On 2026-08-06 that zoomed the view so far in that the
+# NPC left the screen: the next two cycles could not find her, the breaker
+# stopped the run, and the camera had to be wound back by hand. One row scrolled
+# a moment after the window closed was enough.
+#
+# Damage the script cannot see or undo, from an input it sends routinely -- so
+# the guard is at the wheel, not at the callers. A rule only some callers follow
+# is how the earlier step fix failed: it covered enumerate_listings and missed
+# bring_into_view.
+from harness import Harness, empty_panel, make_row, run
+
+def rows10():
+    return [make_row(i, f"Item {i:02d}", price=100_000 + i, qty=10 + i)
+            for i in range(1, 11)]
+
+
+for name, call in (
+    ("scroll_to_end", lambda: trade.scroll_to_end(up=True, verbose=False)),
+    ("scroll_one",    lambda: trade.scroll_one(True, rows10(), verbose=False)),
+    ("scroll_chunk",  lambda: trade.scroll_chunk(7, rows10(), verbose=False)),
+):
+    h = Harness(rows=rows10(), panel=empty_panel(), verbose=False)
+    with h:
+        h.trade_open = False                 # the window is shut
+        run(call)
+        wheels = [c for c in h.calls if c[0] == "scroll_wheel"]
+        check(f"{name} sends no wheel input with the window shut",
+              wheels == [],
+              f"{len(wheels)} wheel event(s) -- these would have zoomed the "
+              f"camera and put the NPC off screen")
+
+    h = Harness(rows=rows10(), panel=empty_panel(), verbose=False)
+    with h:
+        h.trade_open = True                  # the window is open
+        run(call)
+        wheels = [c for c in h.calls if c[0] == "scroll_wheel"]
+        check(f"{name} still scrolls when the window IS open", len(wheels) >= 1,
+              f"{len(wheels)} wheel event(s) -- the guard must not block "
+              f"ordinary scrolling")
+
+h = Harness(rows=rows10(), panel=empty_panel(), verbose=False)
+with h:
+    h.trade_open = False
+    ok, exc = run(trade.scroll_to_end, True, 8.0, False)
+    check("a refused scroll reports failure rather than pretending",
+          ok is None, f"got {ok!r}")
+
+h = Harness(rows=rows10(), panel=empty_panel(), verbose=False)
+with h:
+    h.trade_open = False
+    run(trade.scroll_chunk, 7, rows10(), 8.0, False)
+    check("the refusal is recorded", "scroll.refused_window_shut" in h.labels(),
+          f"{h.labels()} -- a run that dies from this leaves no other trace")
+
+
 raise SystemExit(summary())
