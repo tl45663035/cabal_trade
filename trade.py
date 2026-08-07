@@ -100,6 +100,41 @@ ITEM_PRICE_FLOORS: tuple[tuple[str, str, int], ...] = (
     # listed it would go up at 180,000,000, never sell, and pay a percentage
     # fee on that figure. Give it its own entry before listing one.
     ("gempack", "Force Gem Package (x400)", 180_000_000),
+    # These two differ by four characters, score 0.909 against each other, and
+    # so ALWAYS match each other's entry. item_price_floor takes the clearly
+    # better match rather than the higher floor for exactly this pair -- under
+    # the old max() rule the 24,000,000 item inherited the 44,000,000 floor and
+    # would never have sold.
+    #
+    # Both carry the SAME token on purpose. A token exists to rescue a name
+    # clipped by a misjudged column, and clipping is precisely what removes the
+    # "(High)"/"(Highest)" that tells these apart -- so a token of
+    # "epicboosterhighest" would rescue nothing. "epicboost" matches both,
+    # the two then score alike, and the margin rule falls back to the higher
+    # floor. It is deliberately shorter than the shared prefix "epicbooster":
+    # at that length a read clipped to "Epic Boost" no longer contains the
+    # token, only the shorter (High) entry stayed a candidate, and the floor
+    # came back 24,000,000 for a 44,000,000 item.
+    #
+    # A clipped read is therefore floored at 44,000,000: too high for
+    # the cheaper item, which only costs a cycle, rather than too low for the
+    # dearer one, which sells it 20,000,000 short.
+    #
+    # Verified live on 2026-08-06: both were listed at the time, reading
+    # "Epic Booster (Highest)" at 54,797,776 and "Epic Booster (High)" at
+    # 25,000,000, so the catalogue spelling here is the game's own.
+    #
+    # ONE RESIDUAL COLLISION, measured not assumed. A "(Highest)" clipped at
+    # exactly the character before "est)" reads as "Epic Booster (High", whose
+    # folded key IS the (High) entry -- identical strings, so no name-based rule
+    # can separate them, and this one takes 24,000,000. Every other clip length
+    # from 4 to 22 characters is safe (0 or 44,000,000), as is every glyph
+    # substitution tried. Forcing that string to 44,000,000 would mean the
+    # (High) item ALWAYS carried the dearer floor and never sold, which defeats
+    # the entry entirely -- so the collision is accepted and recorded here
+    # rather than traded for a permanent failure to sell.
+    ("epicboost", "Epic Booster (Highest)", 44_000_000),
+    ("epicboost", "Epic Booster (High)", 24_000_000),
 )
 
 FALLBACK_PRICE = 10_000_000_000    # 10B, when the game suggests no price
@@ -3851,6 +3886,15 @@ FLOOR_TOKEN_MIN_SIMILARITY = 0.40
 # The standing instruction on floors is unambiguous, and the second failure
 # costs nothing but a listing nobody buys. Raise this only if that changes.
 FLOOR_LENGTH_RATIO = 0.0
+# How much better one catalogue entry must score than the next before it is
+# believed outright. Two entries within this of each other are treated as
+# indistinguishable, and the HIGHEST of their floors is used.
+#
+# Sized against the pair it exists for: "Epic Booster (High)" scores 1.000
+# against its own entry and 0.909 against "(Highest)" -- a gap of 0.091, so a
+# clean read is decided correctly. A damaged "Epic Booster (Highes)" scores
+# 0.971 and 0.938, a gap of 0.034, and is correctly refused as ambiguous.
+FLOOR_MATCH_MARGIN = 0.05
 
 # How many single Escape presses to try when backing out to a clean state.
 ESCAPE_ATTEMPTS = 3
@@ -3947,7 +3991,7 @@ def item_price_floor(name: str) -> int:
     if not key:
         return 0
 
-    best = 0
+    candidates: list[tuple[float, int]] = []      # (similarity, floor)
     for token, catalogue, floor in ITEM_PRICE_FLOORS:
         reference = _floor_key(catalogue)
         if not reference:
@@ -3965,8 +4009,63 @@ def item_price_floor(name: str) -> int:
         long_enough = len(key) >= len(reference) * FLOOR_LENGTH_RATIO
         if (ratio >= FLOOR_NAME_SIMILARITY and long_enough) or (
                 token_hit and ratio >= FLOOR_TOKEN_MIN_SIMILARITY):
-            best = max(best, floor)
-    return best
+            candidates.append((ratio, floor, reference))
+    if not candidates:
+        return 0
+
+    # An exact read decides outright. "epicboosterhigh" IS the (High) entry, so
+    # the fact that it is also a prefix of the (Highest) entry is irrelevant.
+    exact = [floor for _, floor, reference in candidates if key == reference]
+    if exact:
+        return max(exact)
+
+    # A read that is a PREFIX of two entries is a truncation that cannot tell
+    # them apart, and similarity actively misleads here: clipped to
+    # "epicbooster", it scores 0.846 against (High) and 0.759 against
+    # (Highest), so the margin rule below would confidently pick the CHEAPER
+    # floor and list a 44,000,000 item at 24,000,000. The name column does clip,
+    # so this is the read that must not be trusted.
+    # More generally: when two catalogue entries are PREFIX-RELATED -- one name
+    # begins with the other, as "Epic Booster (High)" does with
+    # "(Highest)" -- an inexact read cannot choose between them, and the
+    # similarity scores actively favour the wrong one. The leading-window
+    # comparison above scores key[:len(reference)] against each entry, so a read
+    # clipped to "Epic Booster (Highe" matches the SHORTER name perfectly
+    # (1.000) and the longer one at 0.941, and would take the cheaper floor for
+    # what is probably the dearer item.
+    #
+    # Any inexact read touching a prefix-related pair therefore takes the
+    # higher floor.
+    prefix_related = [
+        floor for _, floor, reference in candidates
+        if any(other != reference
+               and (other.startswith(reference) or reference.startswith(other))
+               for _, _, other in candidates)
+    ]
+    if len(prefix_related) >= 2:
+        return max(prefix_related)
+
+    # Several entries can match one name, and taking max() of their floors --
+    # which this did -- is right only when they cannot be told apart.
+    #
+    # "Epic Booster (High)" and "Epic Booster (Highest)" differ by four
+    # characters and score 0.909 against each other, so both always match. Under
+    # max() the cheaper item inherited the dearer floor: the 24,000,000 item
+    # would have gone up at 44,000,000 and never sold.
+    #
+    # So the clearly-better match wins. "Clearly" is the whole safety argument:
+    # an exact read scores 1.000 against its own entry and 0.909 against its
+    # twin, a gap of 0.091, while a DAMAGED read closes that gap -- "Epic
+    # Booster (Highes)" scores 0.971 and 0.938, a gap of 0.034. Below the margin
+    # the two are not distinguishable, and ambiguity falls back to the highest
+    # floor. Too high only fails to sell; too low sells a 44M item for 24M.
+    candidates.sort(key=lambda c: (-c[0], -c[1]))
+    best_ratio, best_floor, _ = candidates[0]
+    rivals = [floor for ratio, floor, _ in candidates[1:]
+              if best_ratio - ratio < FLOOR_MATCH_MARGIN]
+    if rivals:
+        return max([best_floor] + rivals)
+    return best_floor
 
 
 def strictest_price_floor() -> int:
@@ -6821,6 +6920,20 @@ def run_loop(
             leave_shop(verbose=verbose)
         except Exception as exc:      # noqa: BLE001 - must not mask the outcome
             say(f"Note: could not tidy up the game window ({exc}).")
+        except BaseException:
+            # A SECOND Ctrl+C, arriving while this very tidy-up runs. It is not
+            # an Exception, so the clause above never saw it, and on 2026-08-06
+            # at 19:32 it escaped mid-leave_shop and left the Agent Shop open
+            # with nothing said about it.
+            #
+            # Honoured rather than swallowed -- someone pressing Ctrl+C during
+            # the shutdown wants out now, and holding them here to tidy would be
+            # the wrong way round. But it is announced first, because "the shop
+            # may still be open" is the one fact that decides whether the next
+            # run can find the NPC at all.
+            say("Interrupted while closing the Agent Shop - it may still be "
+                "open. Close it by hand, or the next run cannot see the NPC.")
+            raise
 
     say(f"\nDone: {cycle} cycle(s) run, {succeeded} succeeded, {failures} failed"
         + (f"; stopped early at cycle {cycle}." if stopped else "."))

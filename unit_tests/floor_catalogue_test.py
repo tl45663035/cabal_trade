@@ -69,9 +69,17 @@ def main() -> int:
         check(f"{label!r} -> {floor:,}", got == floor, f"got {got:,}")
 
     print("\n--- 1b. ...and keeps it through OCR damage ---")
+    # NEVER BELOW the entry's floor, rather than exactly equal to it.
+    #
+    # Equality was right while every catalogue name was distinct. It is wrong
+    # for a prefix-related pair: "Epic Booster (High)" and "(Highest)" cannot be
+    # told apart once damaged, so the lookup deliberately returns the HIGHER of
+    # the two. Asserting equality here demanded the cheaper floor for a read
+    # that might be either item -- that is, it demanded exactly the underpricing
+    # this whole area exists to prevent.
     for token, label, floor in floors:
         lost = [(why, bad) for why, bad in damaged(label)
-                if m.item_price_floor(bad) != floor]
+                if m.item_price_floor(bad) < floor]
         check(f"{token}: survives every damaged read", not lost,
               "; ".join(f"{why}: {bad!r} -> "
                         f"{m.item_price_floor(bad):,}" for why, bad in lost))

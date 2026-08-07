@@ -23,6 +23,7 @@ SUITES = [
     ("record guard",          HERE / "record_guard_test.py", []),
     ("pure suite",            HERE / "suite_pure.py",        []),
     ("floors: both items",    HERE / "floor_siena_test.py",  []),
+    ("floors: epic boosters", HERE / "floor_booster_test.py", []),
     ("floors: name fuzz",     HERE / "floor_fuzz_test.py",   []),
     ("floors: price paths",   HERE / "floor_paths_test.py",  []),
     # These three replay what the script really saw, from baseline_rows.json,

@@ -261,4 +261,38 @@ with h:
 fresh_session()
 
 
+
+
+# ===========================================================================
+section("a Ctrl+C during the tidy-up is announced, not swallowed")
+
+# On 2026-08-06 at 19:32 a second Ctrl+C landed while run_loop's finally was
+# inside leave_shop. KeyboardInterrupt is not an Exception, so the guard there
+# never saw it: it escaped mid-tidy and the Agent Shop was left open with
+# nothing said. An open Trade window covers the NPC, so the next run cannot
+# start -- that one fact has to reach the operator.
+h = Harness(rows=rows(), panel=empty_panel(), verbose=False)
+with h:
+    fresh_session()
+
+    def interrupted_tidy(*a, **k):
+        raise KeyboardInterrupt
+
+    h.patch("leave_shop", interrupted_tidy)
+    h.patch("prepare_for_actions", lambda *a, **k: True)
+    h.patch("run_sequence", lambda *a, **k: True)
+    ok, exc = run(trade.run_loop, ["relist-rows 1-10"], 5.0, 0.0)
+
+    check("the interrupt is honoured, not swallowed",
+          isinstance(exc, KeyboardInterrupt),
+          f"got {exc!r} -- someone pressing Ctrl+C during shutdown wants out "
+          f"now; holding them there to tidy is the wrong way round")
+    check("...but the operator is told the shop may still be open",
+          h.said("may still be open"), h.out()[-300:])
+    check("...and told what it costs", h.said("cannot see the NPC"),
+          h.out()[-300:])
+
+fresh_session()
+
+
 raise SystemExit(summary())
