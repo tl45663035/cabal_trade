@@ -5,12 +5,25 @@
 A FAIL here is a FINDING, not a broken test: each check states what the code
 should do, so a failure is a place where trade.py does something else.
 """
+import os
 import subprocess
+import tempfile
 import sys
 import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+
+# Point the sales ledger at a scratch file before any suite starts.
+#
+# These suites replay the collect path FOR REAL, and note_sale() writes a row
+# wherever SALES_DB points -- which, left alone, is the user's live ledger.
+# Measured on 2026-08-07: 1,163 of its 1,168 rows were this suite, so every
+# "what did I make today" total had been counting replayed corpus frames as
+# income. Set here as well as in the parent runner, so running this file
+# directly is safe too.
+os.environ.setdefault("CABAL_SALES_DB",
+                      str(Path(tempfile.gettempdir()) / "cabal_test_sales.db"))
 
 SUITES = [
     ("harness smoke",          "smoke.py"),

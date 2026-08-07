@@ -7,6 +7,8 @@ then a summary table gives per-suite wall time so it is obvious where the
 budget goes -- which, on this project, is always OCR.
 """
 
+import os
+import tempfile
 import subprocess
 import sys
 import time
@@ -52,6 +54,19 @@ SUITES = [
     ("corpus suite",          HERE / "suite_corpus.py",      []),
     ("read_rows baseline",    HERE / "baseline_rows.py",     ["check"]),
 ]
+
+
+# Point the sales ledger at a scratch file BEFORE any suite starts.
+#
+# The failure-path suites replay the collect path for real, and note_sale()
+# writes a row wherever SALES_DB points. Left alone, that is the user's live
+# ledger: 1,163 of its 1,168 rows on 2026-08-07 were this suite, and every
+# "what did I make today" total had been counting them as income.
+#
+# Set in os.environ, not on the module, because each suite runs as its own
+# subprocess and inherits the environment but not our globals.
+_SALES_SCRATCH = Path(tempfile.gettempdir()) / "cabal_test_sales.db"
+os.environ["CABAL_SALES_DB"] = str(_SALES_SCRATCH)
 
 
 def main():

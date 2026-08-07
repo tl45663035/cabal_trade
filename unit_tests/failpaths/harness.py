@@ -24,6 +24,26 @@ from __future__ import annotations
 
 import sys as _sys
 from pathlib import Path as _Path
+
+# Redirect the sales ledger BEFORE trade is imported, because trade resolves
+# SALES_DB once at import time from this variable.
+#
+# The docstring above says nothing here writes to the project directory. That
+# was not true: these suites replay the collect path for real, note_sale()
+# writes a row wherever SALES_DB points, and only t29 redirected it -- for its
+# own cases only. Measured on 2026-08-07, the live ledger held 1,168 rows of
+# which 1,163 were this suite, arriving in a recognisable burst of
+# 2+6+1+80+18+18 rows inside 45 seconds. Every "what did I make today" total
+# had been counting replayed corpus frames as income.
+#
+# Set HERE rather than in run_all.py so it holds for a suite run on its own,
+# which is how the last 18 junk rows got in after run_all.py was fixed.
+import os as _os
+import tempfile as _tempfile
+
+_os.environ.setdefault(
+    "CABAL_SALES_DB",
+    str(_Path(_tempfile.gettempdir()) / "cabal_test_sales.db"))
 _ROOT = _Path(__file__).resolve().parent.parent.parent
 _sys.path.insert(0, str(_ROOT))
 import io

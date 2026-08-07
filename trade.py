@@ -1562,16 +1562,29 @@ def buy_cheapest_set(item_slot: int,
         say(f"Slot {item_slot} has no paired Set slot; nothing to compare.")
         return False
 
-    item_offers = run_favourite_search(item_slot, verbose=verbose)
-    item_best = cheapest_listing(item_offers)
-    if item_best is None:
-        say("No offers for the loose item, so there is nothing to compare "
-            "against - refusing to buy blind.")
-        return False
-
     for attempt in range(1, attempts + 1):
         if attempt > 1:
             say(f"\n=== buy attempt {attempt}/{attempts} ===")
+
+        # BOTH sides are searched again on every attempt, not just the Set.
+        #
+        # The loose-item price used to be read once, before the loop, and
+        # reused. A retry only happens because the row we wanted was bought out
+        # from under us -- which is precisely the moment the market is moving,
+        # and precisely when a baseline measured a minute ago is least worth
+        # trusting. Judging a fresh Set price against a stale item price can
+        # invent a saving that no longer exists.
+        #
+        # The search is also what makes "row 1" mean anything: the Purchase tab
+        # never clears its results, so rows left on screen from an earlier
+        # search look exactly like fresh ones.
+        item_best = cheapest_listing(
+            run_favourite_search(item_slot, verbose=verbose))
+        if item_best is None:
+            say("No offers for the loose item, so there is nothing to compare "
+                "against - refusing to buy blind.")
+            return False
+
         set_offers = run_favourite_search(set_slot, verbose=verbose)
         # Row 1 on both sides: the table is sorted Price: Low to High, so the
         # first row IS the cheapest, and comparing anything else would judge
@@ -5729,7 +5742,20 @@ SALES: list[dict] = []
 #
 # SQLite because it is in the standard library, survives a killed process, and
 # can be read while a run is still going.
-SALES_DB = SCRIPT_DIR / "sales.db"
+# Overridable by environment, so a test run cannot write into the real ledger.
+#
+# It could, and did. The failure-path suites replay the collect path for real,
+# which calls note_sale(), which writes a row -- and only t29 redirected the
+# database, for its own cases. Measured on 2026-08-07: of 1,168 rows in the
+# live ledger, 1,163 were the regression suite, arriving in a recognisable
+# burst of 2+6+1+80+18+18 rows within 45 seconds, eight times over. Five rows
+# were real. Every "what did I make today" answer since has been counting
+# recorded corpus frames as income.
+#
+# An environment variable rather than a module global because run_all.py starts
+# each suite as a SUBPROCESS: a global set in the parent would not survive, and
+# that is exactly the kind of gap that let this run for a day unnoticed.
+SALES_DB = Path(os.environ.get("CABAL_SALES_DB") or (SCRIPT_DIR / "sales.db"))
 _sales_db_ready = False
 
 

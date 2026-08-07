@@ -241,4 +241,65 @@ with h:
           f"{len(clicks)} click(s) -- the guard must not block ordinary work")
 
 
+section("every attempt re-searches BOTH sides, and only row 1 is ever bought")
+# A retry happens because the row we wanted was bought out from under us --
+# which is exactly when the market is moving and a baseline measured a minute
+# ago is least worth trusting. The loose-item price used to be read once,
+# before the retry loop, and reused: a fresh Set price judged against a stale
+# item price can invent a saving that no longer exists.
+#
+# The search is also what makes "row 1" mean anything at all. The Purchase tab
+# never clears its results, so rows left from an earlier search look exactly
+# like fresh ones.
+
+
+class _Market:
+    """Counts searches per favourite slot and records which row was bought."""
+
+    def __init__(self, sold_out_times=0):
+        self.searches, self.bought = [], []
+        self.sold_out_times = sold_out_times
+
+    def search(self, slot, settle=3.0, tries=2, verbose=True):
+        self.searches.append(slot)
+        if slot % 2 == 0:                      # the Set slot: cheaper per item
+            return [trade.Offer(1, "Force Core Set (High) X 10", 1_870_000, 10, 340),
+                    trade.Offer(2, "Force Core Set (High) X 10", 1_900_000, 10, 416)]
+        return [trade.Offer(1, "Force Core(High)", 209_800, 1, 340)]
+
+    def buy(self, offer, timeout=8.0, verbose=True):
+        self.bought.append(offer.row)
+        if len(self.bought) <= self.sold_out_times:
+            return False, "the listing sold out before the click"
+        return True, ""
+
+
+for _sold_out in (0, 1, 2):
+    _m = _Market(_sold_out)
+    _saved = (trade.run_favourite_search, trade.buy_offer,
+              trade.favourite_set_slot)
+    trade.run_favourite_search, trade.buy_offer = _m.search, _m.buy
+    trade.favourite_set_slot = lambda s: s + 1
+    try:
+        _ok = trade.buy_cheapest_set(7, verbose=False)
+    finally:
+        (trade.run_favourite_search, trade.buy_offer,
+         trade.favourite_set_slot) = _saved
+
+    _tries = min(_sold_out + 1, trade.BUY_RETRY_ATTEMPTS)
+    check(f"{_sold_out} sold-out: the buy still succeeds", _ok is True,
+          f"got {_ok!r}")
+    check(f"{_sold_out} sold-out: both sides searched on every attempt",
+          _m.searches == [7, 8] * _tries,
+          f"got {_m.searches}, wanted {[7, 8] * _tries}")
+    check(f"{_sold_out} sold-out: the item side is never reused stale",
+          _m.searches.count(7) == _tries,
+          f"the loose item was searched {_m.searches.count(7)} time(s) "
+          f"across {_tries} attempt(s)")
+    check(f"{_sold_out} sold-out: only row 1 is ever bought",
+          set(_m.bought) == {1}, f"rows {_m.bought}")
+    check(f"{_sold_out} sold-out: one buy click per attempt",
+          len(_m.bought) == _tries, f"{len(_m.bought)} buy(s)")
+
+
 raise SystemExit(summary())

@@ -33,6 +33,9 @@ unit_tests/failpaths/_recdir/
 # Live sales ledger: one row per collection, written as it happens.
 # Account data -- item names, prices and proceeds from a real shop.
 sales.db
+# Backups of the same, taken before pruning it.
+sales.db.bak
+sales.db.*
 
 # Output of calibrate_probe.py: screenshots and OCR dumps of a live
 # session. Generated on demand and sent by hand when diagnosing a
