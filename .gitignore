@@ -34,5 +34,8 @@ unit_tests/failpaths/_recdir/
 # Account data -- item names, prices and proceeds from a real shop.
 sales.db
 
-# Output of calibrate_probe.py: a full screenshot of a live session.
+# Output of calibrate_probe.py: screenshots and OCR dumps of a live
+# session. Generated on demand and sent by hand when diagnosing a
+# machine that cannot calibrate.
 calibrate_probe.png
+calibrate_probe_out/
