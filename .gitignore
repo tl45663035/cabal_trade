@@ -29,3 +29,10 @@ logs/
 # Scratch directory the failure-path harness records into while it runs.
 # Regenerated on every run; never part of the corpus.
 unit_tests/failpaths/_recdir/
+
+# Live sales ledger: one row per collection, written as it happens.
+# Account data -- item names, prices and proceeds from a real shop.
+sales.db
+
+# Output of calibrate_probe.py: a full screenshot of a live session.
+calibrate_probe.png

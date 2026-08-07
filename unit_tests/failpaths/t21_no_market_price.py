@@ -104,12 +104,22 @@ check("fallback still respects the floor",
 section("a real market reading is unaffected")
 
 # The whole point is that this only changes the no-market path. If a market
-# price exists it wins, exactly as before.
+# price exists it wins -- but no longer to any depth: RELATIVE_PRICE_FLOOR now
+# clamps a relist to 90% of what the item is currently listed at. This suite
+# used to assert the opposite ("a large drop is reported, never overridden"),
+# which was the rule before the ratchet was added.
 price, why = trade.choose_price(437_569, floor_price=85_000_000)
-check("market price beats the previous price", price == 437_569,
-      f"got {price:,} -- taking the lowest current price is the rule, and a "
-      f"large drop is reported, never overridden")
-check("no explanation needed when the market was used", why == "", f"{why!r}")
+check("a market 99% below the listed price is clamped, not obeyed",
+      price == 76_500_000,
+      f"got {price:,} -- 437,569 against a listed 85,000,000 is far likelier "
+      f"to be a clipped read than a real market")
+check("...and the reason names the ratchet",
+      "10% below the listed" in why, f"{why!r}")
+
+# An ordinary market move is still taken verbatim.
+price, why = trade.choose_price(80_000_000, floor_price=85_000_000)
+check("a market within 10% is used unchanged", price == 80_000_000 and why == "",
+      f"got {price:,} {why!r}")
 
 price, why = trade.choose_price(50_000, floor_price=85_000_000,
                                 absolute_floor=VIP_FLOOR)

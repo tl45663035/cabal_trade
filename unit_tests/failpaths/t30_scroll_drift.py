@@ -492,4 +492,66 @@ check("with no expectation the full range is still searched",
       f"got {trade.measure_shift(win(FULL, 3), win(FULL, 0))!r}")
 
 
+
+
+# ===========================================================================
+section("a lying window detector must not let the wheel through")
+
+# The live failure of 2026-08-07. trade_window_open() is a text search inside
+# TRADE_WINDOW_SEARCH, and the 3D world can supply those glyphs. close_shop
+# pressed Escape, asked it, was told the window was still open, and warned
+# "the Trade window would not close with Escape" -- when it had closed. Two
+# reads later the scroll guard asked the same detector, believed it, and forty
+# notches zoomed the camera until the NPC left the screen. The next two cycles
+# could not find her and the breaker stopped the run.
+#
+# panel_covers_trade_area() compares two frames a moment apart: the world
+# animates, an opaque panel does not. It cannot be fooled by stray glyphs, and
+# open_trade_window already requires BOTH before claiming the shop is open.
+from harness import Harness as _H, empty_panel as _ep, make_row as _mk, run as _run
+
+def _rows10():
+    return [_mk(i, f"Item {i:02d}", price=100_000 + i, qty=10 + i)
+            for i in range(1, 11)]
+
+
+for name, call in (
+    ("scroll_to_end", lambda: trade.scroll_to_end(up=True, verbose=False)),
+    ("scroll_one",    lambda: trade.scroll_one(True, _rows10(), verbose=False)),
+    ("scroll_chunk",  lambda: trade.scroll_chunk(7, _rows10(), verbose=False)),
+):
+    h = _H(rows=_rows10(), panel=_ep(), verbose=False)
+    with h:
+        h.trade_open = True                       # the OCR check LIES
+        h.patch("panel_covers_trade_area", lambda *a, **k: False)  # world animates
+        _run(call)
+        wheels = [c for c in h.calls if c[0] == "scroll_wheel"]
+        check(f"{name}: a false 'window open' alone does not open the gate",
+              wheels == [],
+              f"{len(wheels)} wheel event(s) -- this is the camera-zoom "
+              f"failure exactly")
+
+    h = _H(rows=_rows10(), panel=_ep(), verbose=False)
+    with h:
+        h.trade_open = True
+        h.patch("panel_covers_trade_area", lambda *a, **k: True)
+        _run(call)
+        wheels = [c for c in h.calls if c[0] == "scroll_wheel"]
+        check(f"{name}: both signals agreeing still scrolls normally",
+              len(wheels) >= 1, f"{len(wheels)} wheel event(s)")
+
+h = _H(rows=_rows10(), panel=_ep(), verbose=False)
+with h:
+    h.trade_open = True
+    h.patch("panel_covers_trade_area", lambda *a, **k: False)
+    _run(trade.scroll_chunk, 7, _rows10(), 8.0, False)
+    check("the refusal is recorded even when the OCR check was fooled",
+          "scroll.refused_window_shut" in h.labels(), f"{h.labels()}")
+
+import inspect as _i2
+check("table_scrollable requires the motion probe, not just the text search",
+      "panel_covers_trade_area()" in _i2.getsource(trade.table_scrollable),
+      "one detector that the game world can spoof is not a guard")
+
+
 raise SystemExit(summary())

@@ -243,4 +243,168 @@ trade._run_finished = False
 clear()
 
 
+
+
+# ===========================================================================
+section("a reading larger than the listing could be worth is refused")
+
+# From a live run on 2026-08-06 the report printed:
+#
+#   Yekaterina VIP Membership   1 sale       -   1,662,294,744
+#   Epic Booster (Highest)      1 sale      16     876,764,416
+#   TOTAL                                        2,539,059,160
+#
+# The VIP sells for about 106,000,000, and the Booster stack held EIGHT at
+# 54,797,776 -- yet 876,764,416 divided by that price exactly, so the report
+# confidently claimed sixteen units from a stack of eight. An exact division is
+# not evidence of anything when the numerator is wrong.
+#
+# Root cause was get_alz reading the shop's "...has been sold for N" overlay
+# instead of the balance. This is the second line of defence: the row on screen
+# carries the price and the quantity, so the most a sale can be worth is known
+# exactly.
+
+class Inflated(Harness):
+    """A collect where the Alz reading jumps by more than the stack is worth."""
+
+    def __init__(self, credit, qty=8, price=54_797_776, **kw):
+        super().__init__(rows=[make_row(1, "Epic Booster (Highest)",
+                                        action="receive", price=price, qty=qty)],
+                         panel=empty_panel(), **kw)
+        self.balance = 500_000_000
+        self.credit = credit
+
+    def install(self):
+        super().install()
+        h = self
+        trade.get_alz = lambda *a, **k: h.balance
+        return self
+
+    def _collect(self):
+        self.balance += self.credit
+        row = self.rows[0]
+        self.rows[0] = make_row(row.index, row.name, action="change",
+                                price=row.price, qty=row.qty)
+
+
+clear()
+h = Inflated(credit=876_764_416)            # exactly 2x an 8-stack at that price
+with h:
+    h.patch("cancel_item", lambda *a, **k: True)
+    h.patch("register_item", lambda *a, **k: True)
+    run(trade.relist, 1, None, None, False, 8.0, True)
+
+check("the implausible figure is not booked",
+      trade.SALES and trade.SALES[0]["proceeds"] is None,
+      f"{trade.SALES!r} -- 876,764,416 is twice what 8 x 54,797,776 can yield")
+check("...the sale is still counted", len(trade.SALES) == 1, f"{trade.SALES!r}")
+check("...and it says why", h.said("cannot be right"), h.out()[-400:])
+check("...and it is on the record", h.rec("sale.implausible") is not None,
+      f"{h.labels()}")
+check("...so the report calls the gross a floor",
+      "could not be measured" in trade.sales_report(), trade.sales_report())
+
+clear()
+h = Inflated(credit=8 * 54_797_776)         # the whole stack sold: exactly at the ceiling
+with h:
+    h.patch("cancel_item", lambda *a, **k: True)
+    h.patch("register_item", lambda *a, **k: True)
+    run(trade.relist, 1, None, None, False, 8.0, True)
+check("a sale worth exactly the whole stack IS booked",
+      trade.SALES and trade.SALES[0]["proceeds"] == 8 * 54_797_776,
+      f"{trade.SALES!r} -- the ceiling is inclusive; selling out is normal")
+check("...with the quantity derived", trade.SALES[0]["qty"] == 8,
+      f"{trade.SALES!r}")
+
+clear()
+h = Inflated(credit=3 * 54_797_776)         # a partial sale, well under the ceiling
+with h:
+    h.patch("cancel_item", lambda *a, **k: True)
+    h.patch("register_item", lambda *a, **k: True)
+    run(trade.relist, 1, None, None, False, 8.0, True)
+check("an ordinary partial sale is unaffected",
+      trade.SALES and trade.SALES[0]["proceeds"] == 3 * 54_797_776,
+      f"{trade.SALES!r}")
+
+clear()
+
+
+
+
+# ===========================================================================
+section("every collection is written to the database as it happens")
+
+# The end-of-run report was the only place this lived, and a tally held in
+# memory is worth nothing if the process never reaches its last line. On
+# 2026-08-06 one run was stopped by Ctrl+C, one by the failure breaker, and one
+# by a crash inside the tidy-up itself. A committed row survives all three.
+import sqlite3
+import tempfile
+from pathlib import Path as _Path
+
+_tmp = _Path(tempfile.mkdtemp()) / "sales_test.db"
+_real_db, _real_ready = trade.SALES_DB, trade._sales_db_ready
+trade.SALES_DB, trade._sales_db_ready = _tmp, False
+try:
+    clear()
+    trade.note_sale("Force Core(High)", 210_000, 6_300_000)
+    trade.note_sale("Epic Booster (Highest)", 54_797_776, None,
+                    "implausible reading 876,764,416 > ceiling 438,382,208")
+
+    check("the database file is created on first use", _tmp.exists(),
+          f"{_tmp}")
+
+    rows = trade.sales_since(hours=1)
+    check("both collections are already on disk", len(rows) == 2,
+          f"{rows!r} -- written at the collect, not at the end of the run")
+
+    # Read with a SEPARATE connection: proves the rows are committed, not
+    # sitting in an open transaction that a killed process would lose.
+    conn = sqlite3.connect(_tmp)
+    got = conn.execute("SELECT item, price, proceeds, qty, note FROM sales"
+                       " ORDER BY id").fetchall()
+    conn.close()
+    check("...and committed, readable by another connection", len(got) == 2,
+          f"{got!r}")
+    check("a measured sale stores its proceeds and quantity",
+          got[0] == ("Force Core(High)", 210_000, 6_300_000, 30, None),
+          f"{got[0]!r}")
+    check("an unmeasured sale is still stored, with the reason",
+          got[1][0] == "Epic Booster (Highest)" and got[1][2] is None
+          and "implausible" in (got[1][4] or ""),
+          f"{got[1]!r} -- 'why is this blank' has to be answerable later")
+
+    # Timestamps store to the second, so a sub-second window still contains a
+    # row written this second -- my first version of this asserted otherwise
+    # and failed for that reason, not because the window was broken. Test it
+    # with a row that really is old.
+    conn = sqlite3.connect(_tmp)
+    with conn:
+        conn.execute("INSERT INTO sales (at, item, price, proceeds, qty)"
+                     " VALUES ('2020-01-01T00:00:00', 'Ancient', 1, 1, 1)")
+    conn.close()
+    check("sales_since excludes rows outside its window",
+          all(r[1] != "Ancient" for r in trade.sales_since(hours=24)),
+          f"{trade.sales_since(hours=24)!r}")
+    check("...and includes them when the window is wide enough",
+          any(r[1] == "Ancient" for r in trade.sales_since(hours=None)),
+          "hours=None means all time")
+    check("sales_since(None) returns everything",
+          len(trade.sales_since(hours=None)) == 3, "two recent plus the old one")
+
+    # Bookkeeping must never be able to cost a listing.
+    trade.SALES_DB = _Path("Z:/nonexistent/dir/sales.db")
+    trade._sales_db_ready = False
+    clear()
+    ok, exc = run(trade.note_sale, "Force Core(High)", 210_000, 1_000_000)
+    check("an unwritable database does not raise", exc is None, repr(exc))
+    check("...and the sale is still held in memory for the report",
+          len(trade.SALES) == 1, f"{trade.SALES!r}")
+    check("...and sales_since degrades to empty rather than throwing",
+          trade.sales_since(hours=1) == [], "")
+finally:
+    trade.SALES_DB, trade._sales_db_ready = _real_db, _real_ready
+    clear()
+
+
 raise SystemExit(summary())

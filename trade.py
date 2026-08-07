@@ -42,6 +42,7 @@ import math
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
@@ -99,7 +100,7 @@ ITEM_PRICE_FLOORS: tuple[tuple[str, str, int], ...] = (
     # been listed on this account, so it is latent; if a smaller pack is ever
     # listed it would go up at 180,000,000, never sell, and pay a percentage
     # fee on that figure. Give it its own entry before listing one.
-    ("gempack", "Force Gem Package (x400)", 180_000_000),
+    ("gempack", "Force Gem Package (x400)", 175_000_000),
     # These two differ by four characters, score 0.909 against each other, and
     # so ALWAYS match each other's entry. item_price_floor takes the clearly
     # better match rather than the higher floor for exactly this pair -- under
@@ -156,6 +157,23 @@ MIN_PLAUSIBLE_PRICE = 1_000
 # A market price below this fraction of the listed price is reported as a NOTE
 # and then listed at anyway.
 SUSPECT_PRICE_FRACTION = 0.5
+
+# A relist may not drop below this fraction of what the item is CURRENTLY
+# listed at. Listed at 200,000, the lowest a relist can go is 180,000.
+#
+# This is the brake that was missing. "Take the lowest current price, whatever
+# it is" is right when the reading is right, and catastrophic when it is not:
+# an unfloored item whose market read clipped to 999 was listed at 999, and
+# nothing in the chain questioned it -- MIN_PLAUSIBLE_PRICE guards the table
+# read, not the market suggestion, and SUSPECT_PRICE_FRACTION only printed a
+# note. Only items in ITEM_PRICE_FLOORS were protected at all.
+#
+# Deliberately a RATCHET, not a hard floor. A genuine crash is still followed,
+# 10% per relist, converging on the market over several cycles -- 200,000
+# against a real market of 100,000 walks 180,000 -> 162,000 -> 145,800 and so
+# on. That is the trade: a real drop costs a few cycles of being slightly over
+# the market, and a misread costs 10% instead of everything.
+RELATIVE_PRICE_FLOOR = 0.90
 
 # --------------------------------------------------------------------------
 # WHAT GETS RELISTED
@@ -350,6 +368,12 @@ def find_tesseract() -> str | None:
     return None
 
 
+# The balance is one line of text. A mask box taller than this fraction of
+# ALZ_REGION is an overlaid system message, not a balance -- measured at 34%
+# for every clean read and 79% for every overlaid one.
+ALZ_MAX_TEXT_HEIGHT = 0.5
+
+
 def _isolate_digits(
     image: Image.Image, region: tuple[int, int, int, int]
 ) -> tuple[Image.Image, tuple[int, int, int, int]] | None:
@@ -376,6 +400,27 @@ def _isolate_digits(
     # Trim to the actual glyphs so panel edges do not skew the OCR.
     bbox = ImageOps.invert(mask).getbbox()
     if not bbox:
+        return None
+
+    # The balance is ONE line of text. Anything taller is not the balance.
+    #
+    # The Agent Shop prints "[item] x250 registered on ... has been sold for
+    # 50,000,000" straight over this region, in the same bright colour, and it
+    # prints it exactly when a listing sells -- which is the window the sales
+    # tally measures. Recorded on 2026-08-06: run_18730 read 103,000,000 and
+    # run_18534 read 0 off that overlay, neither being any number in the
+    # message; --psm 7 had mashed two lines together.
+    #
+    # The separation is geometric and clean. Every clean balance measured 19px
+    # of this 56px region (34%); every overlaid frame measured 44px (79%).
+    # find_alz already refuses a box that fills the region, but its bar is
+    # "95% of BOTH axes" and the overlay is 94% x 79%, so it slipped under.
+    #
+    # This matters twice over: inventory_origin derives the slot grid from this
+    # box, and the overlay moved it 32px against a 74px SLOT_PITCH -- which is
+    # the "Ctrl+Clicks into the open world" failure find_alz's own comment
+    # records.
+    if (bbox[3] - bbox[1]) > (crop.height * ALZ_MAX_TEXT_HEIGHT):
         return None
 
     prepared = ImageOps.expand(mask.crop(bbox), border=60, fill=255).convert("RGB")
@@ -2244,6 +2289,18 @@ def open_trade_window(timeout: float = 15.0, verbose: bool = True) -> bool:
         note_shop_opened()
         return True
 
+    # Bound BEFORE the branch, because the branch is skipped in the one case
+    # this function most needs to handle: the Trade window already open but
+    # showing the wrong tab. `index` used to be bound only inside the block
+    # below, so record("shop.opened", attempts=index) raised UnboundLocalError
+    # and killed the cycle -- and the Register-tab recovery immediately after
+    # it, which is the entire fix for that state, was unreachable.
+    #
+    # Every cycle goes through here (prepare_for_actions, ensure_shop_ready,
+    # _relist_cycle), so it stops three cycles in a row and trips the breaker.
+    # Reached by opening the Purchase tab by hand, or by close_shop leaving the
+    # window up when a dialog blocks Escape.
+    index = 0
     if not trade_window_open():
         # Try each offset from the label in turn, re-locating the label every
         # time: a miss lands on the ground, which walks the character and moves
@@ -3324,7 +3381,27 @@ def table_scrollable(verbose: bool = True) -> bool:
     rule fails. The one input in this script that damages state the script
     cannot see is worth a screen read before every use.
     """
-    if trade_window_open():
+    # BOTH signals, because they fail differently and the OCR one failed live.
+    #
+    # trade_window_open() is a text search: it looks for a marker word inside
+    # TRADE_WINDOW_SEARCH. The 3D world can supply those glyphs, so it returns
+    # True with no window there. On 2026-08-07 close_shop pressed Escape, asked
+    # this same function, was told the window was still open, and warned "the
+    # Trade window would not close with Escape" -- when in fact it had closed.
+    # Two reads later this guard asked the same lying detector, let the scroll
+    # through, and forty notches zoomed the camera until the NPC left the
+    # screen. Two cycles then failed to find her and the breaker stopped the
+    # run.
+    #
+    # panel_covers_trade_area() cannot be fooled that way: it compares two
+    # frames a moment apart, and the world animates while an opaque panel does
+    # not. It is the probe open_trade_window already pairs with the OCR check
+    # before it will claim the shop is open, so requiring both here is the same
+    # standard, applied to the one input that damages state the script can
+    # neither see nor undo.
+    #
+    # Costs ~0.8s a scroll. A wrecked camera costs the rest of the run.
+    if trade_window_open() and panel_covers_trade_area():
         return True
     if verbose:
         print("  the Trade window is not open - refusing to scroll, the wheel "
@@ -3954,14 +4031,36 @@ def choose_price(
             f"suggested {suggested:,} is below the --floor {price_floor:,}"
         )
 
+    # A relist may not fall more than 10% below what the item is listed at now.
+    #
+    # Only meaningful when the previous price is itself trustworthy, so it is
+    # gated on MIN_PLAUSIBLE_PRICE -- otherwise a misread previous price would
+    # set the floor, and one bad read would poison the next.
+    #
+    # Rounded UP, so the result is never a hair under the intended fraction.
+    relative = 0
+    if floor_price and floor_price >= MIN_PLAUSIBLE_PRICE:
+        relative = -(-floor_price * int(RELATIVE_PRICE_FLOOR * 100) // 100)
+
     # DO NOT REMOVE. Per-item absolute floors bind unconditionally -- a VIP is
     # never listed below ITEM_PRICE_FLOORS regardless of what the market says.
     # This outranks "always take the lowest current price": that rule decides
     # WHICH market figure to use, this one decides how low the listing may go.
-    if absolute_floor and suggested < absolute_floor:
-        return absolute_floor, (
-            f"market {suggested:,} is below the {absolute_floor:,} floor for "
-            "this item; listing at the floor"
+    #
+    # Whichever of the two bounds is higher wins, and the reason names the one
+    # that actually bound -- an absolute floor and a 10% ratchet fail for
+    # different causes and the log has to tell them apart.
+    guard = max(absolute_floor, relative)
+    if guard and suggested < guard:
+        if guard == absolute_floor and absolute_floor >= relative:
+            return absolute_floor, (
+                f"market {suggested:,} is below the {absolute_floor:,} floor "
+                "for this item; listing at the floor"
+            )
+        return relative, (
+            f"market {suggested:,} is more than "
+            f"{100 - int(RELATIVE_PRICE_FLOOR * 100)}% below the listed "
+            f"{floor_price:,}; listing at {relative:,}"
         )
 
     return suggested, ""
@@ -4263,9 +4362,117 @@ def money(value: int | None, blank: str = "-") -> str:
 # unclaimed rather than guessed.
 SALES: list[dict] = []
 
+# Every collection is written to SQLite the moment it happens, not summed up
+# and printed at the end.
+#
+# The end-of-run report is the wrong and only place this used to live. Of the
+# runs on 2026-08-06, one was stopped by Ctrl+C, one by the failure breaker and
+# one by a crash inside the tidy-up -- and a tally held in memory is worth
+# nothing if the process does not reach its own last line. It also cannot
+# answer "what did I make today", because each run only ever knew about itself.
+#
+# SQLite because it is in the standard library, survives a killed process, and
+# can be read while a run is still going.
+SALES_DB = SCRIPT_DIR / "sales.db"
+_sales_db_ready = False
 
-def note_sale(item: str, price: int | None, proceeds: int | None) -> None:
-    """Record one collected sale for the end-of-run tally.
+
+def sales_db() -> "sqlite3.Connection | None":
+    """The sales database, created on first use. None if it cannot be opened.
+
+    Never raises: bookkeeping must not be able to cost a listing.
+    """
+    global _sales_db_ready
+    try:
+        conn = sqlite3.connect(SALES_DB, timeout=5.0)
+        if not _sales_db_ready:
+            conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS sales (
+                    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                    at       TEXT    NOT NULL,
+                    run      TEXT,
+                    item     TEXT    NOT NULL,
+                    price    INTEGER,
+                    proceeds INTEGER,
+                    qty      INTEGER,
+                    note     TEXT
+                );
+                CREATE INDEX IF NOT EXISTS sales_at  ON sales (at);
+                CREATE INDEX IF NOT EXISTS sales_run ON sales (run);
+                """
+            )
+            conn.commit()
+            _sales_db_ready = True
+        return conn
+    except Exception:  # noqa: BLE001 - a tally must never cost a listing
+        return None
+
+
+def record_sale_row(item: str, price: int | None, proceeds: int | None,
+                    qty: int | None, note: str = "") -> bool:
+    """Append one collection to the database. True if it was written.
+
+    Committed immediately and the connection closed, so a process killed a
+    second later still leaves the row behind. That is the entire point.
+    """
+    conn = sales_db()
+    if conn is None:
+        return False
+    try:
+        with conn:
+            conn.execute(
+                "INSERT INTO sales (at, run, item, price, proceeds, qty, note)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (datetime.now().isoformat(timespec="seconds"),
+                 _RUN_STARTED_AT.isoformat(timespec="seconds"),
+                 item, price, proceeds, qty, note or None),
+            )
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def sales_since(hours: float | None = 24.0, limit: int = 500) -> list[tuple]:
+    """Rows from the database, newest first. Empty if it cannot be read."""
+    conn = sales_db()
+    if conn is None:
+        return []
+    try:
+        if hours is None:
+            rows = conn.execute(
+                "SELECT at, item, price, proceeds, qty, note FROM sales"
+                " ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        else:
+            cutoff = datetime.fromtimestamp(
+                time.time() - hours * 3600).isoformat(timespec="seconds")
+            rows = conn.execute(
+                "SELECT at, item, price, proceeds, qty, note FROM sales"
+                " WHERE at >= ? ORDER BY id DESC LIMIT ?",
+                (cutoff, limit)).fetchall()
+        return list(rows)
+    except Exception:  # noqa: BLE001
+        return []
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def note_sale(item: str, price: int | None, proceeds: int | None,
+              note: str = "") -> None:
+    """Record one collected sale -- to the database first, then in memory.
+
+    Written to SQLite HERE, at the moment of the collect, rather than summed up
+    and printed at the end. Every run on 2026-08-06 ended in a way that could
+    have lost an in-memory tally: Ctrl+C, the failure breaker, and a crash
+    inside the tidy-up itself. A row already committed survives all three.
 
     Never raises and never blocks a relist: a tally is bookkeeping, and losing
     a line of it must not cost a listing.
@@ -4277,9 +4484,13 @@ def note_sale(item: str, price: int | None, proceeds: int | None) -> None:
     SALES.append({"item": item, "price": price, "proceeds": proceeds,
                   "qty": qty})
     try:
-        record("sale.collected", item=item, price=price, proceeds=proceeds,
-               qty=qty)
+        stored = record_sale_row(item, price, proceeds, qty, note)
     except Exception:  # noqa: BLE001 - bookkeeping must not break a relist
+        stored = False
+    try:
+        record("sale.collected", item=item, price=price, proceeds=proceeds,
+               qty=qty, stored=stored)
+    except Exception:  # noqa: BLE001
         pass
 
 
@@ -4582,11 +4793,35 @@ def read_register_panel(source: Image.Image | Path | str) -> dict:
     # hunting for digits: a "0 Alz" row contains no digits at all, and a row
     # that is simply missed must not be confused with one that reads zero.
     words = find_words(image, PRICE_ROWS, PRICE_MIN_CONF)
+    # A row that came back empty is re-read with the confidence bar dropped.
+    #
+    # The SELECTED row renders in gold, and Tesseract scores it 0.0 while
+    # returning the text exactly right. On 2026-08-06 that discarded a
+    # perfectly legible "1,500,000Alz" at y=513 twice, register_item aborted
+    # AFTER the cancel had committed, and 'SIGmetal Suit (DM)' was stranded and
+    # then re-listed by the strand recovery at 180,000,000 -- the strictest
+    # floor -- against a real market price of 1,500,000. The run then died on
+    # consecutive failures. Both recorded frames read:
+    #
+    #     conf>=15: [('1,822,160Alz', 91.9, 477)]
+    #     conf>=0 : [('1,822,160Alz', 91.9, 477), ('1,500,000Alz', 0.0, 513)]
+    #
+    # Only consulted when the bar has already lost the row, so a frame that
+    # reads correctly today cannot change. _price_value is the real validator
+    # -- it rejects anything that is not a plausible price -- and the
+    # confidence number was never doing that job.
+    lenient: list | None = None
     prices: list[tuple[int, int]] = []
     for expected_y in (PRICE_TOP_Y, PRICE_BOTTOM_Y):
         on_row = [w for w in words
                   if abs(w.centre[1] - expected_y) <= PRICE_ROW_Y_TOL
                   and w.centre[0] < PRICE_TEXT_MAX_X]
+        if not on_row:
+            if lenient is None:
+                lenient = find_words(image, PRICE_ROWS, 0.0)
+            on_row = [w for w in lenient
+                      if abs(w.centre[1] - expected_y) <= PRICE_ROW_Y_TOL
+                      and w.centre[0] < PRICE_TEXT_MAX_X]
         if not on_row:
             continue
         text = "".join(w.text for w in sorted(on_row, key=lambda w: w.left))
@@ -5228,9 +5463,15 @@ def register_item(
             # overridden: the rule is to take the lowest current price.
             if (floor_price and suggested > 0
                     and suggested < floor_price * SUSPECT_PRICE_FRACTION):
+                # Reports the RAW market read, which is no longer what gets
+                # listed -- RELATIVE_PRICE_FLOOR clamps the drop to 10%. This
+                # used to end "listing at the market price anyway", which the
+                # ratchet made untrue.
                 say(f"NOTE: market {suggested:,} is only "
                     f"{suggested / floor_price:.1%} of the previous "
-                    f"{floor_price:,} - listing at the market price anyway.")
+                    f"{floor_price:,} - a drop that large is as likely to be a "
+                    f"misread as a real market, so it is listed at "
+                    f"{price:,} instead.")
 
         # The last gate before anything is clicked, and it covers every branch
         # above. MIN_PLAUSIBLE_PRICE previously guarded only the price read off
@@ -5583,13 +5824,48 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             # nothing else. A registration fee later in the same relist would
             # otherwise be netted off it.
             proceeds = None
+            reject = ""
             try:
                 alz_after = get_alz(grab()) or None
                 if alz_before and alz_after and alz_after > alz_before:
                     proceeds = alz_after - alz_before
             except Exception:  # noqa: BLE001 - a tally must not cost a listing
                 proceeds = None
-            note_sale(target.name, target.price, proceeds)
+
+            # A sale cannot be worth more than the listing was. The row on
+            # screen carries both numbers, so the ceiling is known exactly.
+            #
+            # Without it the report printed, from a live run on 2026-08-06:
+            #
+            #   Yekaterina VIP Membership   1 sale       -   1,662,294,744
+            #   Epic Booster (Highest)      1 sale      16     876,764,416
+            #   TOTAL                                        2,539,059,160
+            #
+            # The VIP sells for about 106,000,000 and the Booster stack held
+            # EIGHT at 54,797,776 -- yet 876,764,416 divided by that price
+            # exactly, so the report confidently claimed sixteen units from a
+            # stack of eight. Both came from get_alz reading the shop's own
+            # "...has been sold for N" overlay instead of the balance, which it
+            # prints at the very moment of a sale. That root cause is fixed in
+            # _isolate_digits; this is the second line of defence, because a
+            # tally that cannot be trusted is worse than no tally.
+            #
+            # Rejected rather than clamped: the number is evidence the reading
+            # was wrong, not evidence of a smaller sale. The sale is still
+            # counted, and the report already says how many went unmeasured.
+            if proceeds and target.price and target.qty:
+                ceiling = target.price * target.qty
+                if proceeds > ceiling:
+                    say(f"  the Alz balance moved {proceeds:,}, more than the "
+                        f"{ceiling:,} this listing could be worth "
+                        f"({target.qty} x {target.price:,}) - not booking a "
+                        f"figure that cannot be right.")
+                    record("sale.implausible", item=target.name,
+                           proceeds=proceeds, ceiling=ceiling)
+                    reject = (f"implausible reading {proceeds:,} > ceiling "
+                              f"{ceiling:,}")
+                    proceeds = None
+            note_sale(target.name, target.price, proceeds, reject)
             if proceeds:
                 sold = (proceeds // target.price
                         if target.price and proceeds % target.price == 0
@@ -6506,9 +6782,23 @@ def relist_rows(
         say(f"\nAll {len(targets)} row(s) read as empty slots. Re-reading to "
             "be sure before treating the shop as sold out...")
         again = await_rows(timeout)
-        live_now = [r for r in (again or [])
+        # An unreadable re-read is neither "sold out" nor "fine". It used to be
+        # neither branch below, so it fell through to the success return at the
+        # end: the cycle reported "All N row(s) processed (none relisted)",
+        # counted as a green cycle, and reset the consecutive-failure breaker.
+        # A modal or a tooltip over the table produces exactly this, for the
+        # whole duration -- the run then claims success for hours having done
+        # nothing, and exits 0.
+        #
+        # The same rule as the first read, 130 lines up: an unreadable table is
+        # not an empty shop.
+        if not again:
+            say("  the re-read could not be read at all - treating this as a "
+                "failed cycle rather than a sold-out shop.")
+            return False
+        live_now = [r for r in again
                     if r.action in ("change", "receive")]
-        if again and not live_now:
+        if not live_now:
             raise ShopEmpty(
                 f"every one of the {len(targets)} row(s) is an empty slot - "
                 f"the shop has sold out, so there is nothing left to relist")
@@ -8059,6 +8349,10 @@ def main() -> None:
                         "recovery a failed cycle performs")
     p.add_argument("--words", action="store_true",
                    help="dump every word OCR sees in the trade window")
+    p.add_argument("--sales", nargs="?", const="24", metavar="HOURS",
+                   help="print collections recorded in sales.db over the last "
+                        "N hours (default 24, 'all' for everything). Reads the "
+                        "database only -- safe while a run is going.")
     p.add_argument("--listings", action="store_true",
                    help="scroll the whole shop and list every listing with " 
                         "its absolute position (reads and scrolls only)")
@@ -8084,6 +8378,33 @@ def main() -> None:
     args = p.parse_args()
 
     # Read-only commands first: these need no elevation and no game state.
+    if args.sales:
+        # Reads the database only -- no capture, no input. Safe to run while a
+        # run is going, which is the point: the rows are committed as each
+        # collection happens rather than at the end.
+        spec = str(args.sales).strip().lower()
+        hours = None if spec in ("all", "0") else float(spec)
+        rows = sales_since(hours=hours, limit=2000)
+        window = "all time" if hours is None else f"the last {hours:g}h"
+        if not rows:
+            print(f"No collections recorded in {window} ({SALES_DB}).")
+            sys.exit(0)
+        gross = sum(r[3] or 0 for r in rows)
+        unmeasured = sum(1 for r in rows if not r[3])
+        print(f"{len(rows)} collection(s) over {window}, "
+              f"{gross:,} Alz measured")
+        print(f"{'when':20} {'item':34} {'qty':>6} {'proceeds':>15}")
+        print("-" * 78)
+        for at, item, price, proceeds, qty, note in rows:
+            shown = item if len(item) <= 34 else item[:31] + "..."
+            print(f"{at:20} {shown:34} {(qty if qty else '-')!s:>6} "
+                  f"{(format(proceeds, ',') if proceeds else '-'):>15}"
+                  + (f"   [{note}]" if note else ""))
+        if unmeasured:
+            print(f"\n{unmeasured} of these could not be measured, so the "
+                  f"gross above is a floor, not the whole of it.")
+        sys.exit(0)
+
     if args.monitors:
         make_dpi_aware()
         with open_capture() as sct:
