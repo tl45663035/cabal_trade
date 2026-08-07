@@ -41,6 +41,9 @@ SUITES = [
     ("30 scroll drift",       "t30_scroll_drift.py"),
     ("31 sweep end-to-end",   "t31_sweep_end_to_end.py"),
     ("32 relative price floor", "t32_relative_price_floor.py"),
+    ("33 buying",             "t33_buying.py"),
+    ("35 buying golden",      "t35_buying_golden.py"),
+    ("34 buying matrix",      "t34_buying_matrix.py"),
 ]
 
 FORENSICS = [

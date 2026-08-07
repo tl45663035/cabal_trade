@@ -283,6 +283,1326 @@ GAME_TITLE_HINT = "PlayCabal"
 SHOP_SESSION_SECONDS = 15 * 60
 _shop_open_since: float | None = None
 
+# --------------------------------------------------------------------------
+# Saved searches on the Purchase tab ("Favorites")
+# --------------------------------------------------------------------------
+#
+# Ten slots along the bottom of the Trade window. Clicking one runs its saved
+# search immediately -- no typing, no autocomplete, no Search button.
+#
+# That last point is what makes them worth using. Typing a name leaves Search
+# DISABLED until a suggestion is picked out of the autocomplete dropdown, and
+# a failed search leaves the PREVIOUS results on screen, so "rows are present"
+# proves nothing. A favourite is one click and cannot half-work.
+#
+# Positions are an exact arithmetic series -- 656 + 57n reproduces all ten
+# measured centres to within 10px, and the ends (656 and 1169) land dead on.
+# Held as a point plus a pitch so calibration scales them like every other
+# coordinate; a hardcoded list would be wrong on any other resolution.
+FAVOURITE_FIRST = (656, 1014)
+FAVOURITE_PITCH = 57
+FAVOURITE_COUNT = 10
+
+# What each slot searches for, read off the live shop on 2026-08-07 by clicking
+# every slot and recording the filters and the first result it returned.
+#
+# The layout is deliberate and pairs up: slot N is the item, slot N+1 is its
+# SET version. Worth preserving if the favourites are ever re-saved, because
+# the pairing is what lets a caller ask for "the Set of X" without a second
+# lookup table.
+#
+# The spellings are the GAME's, transcribed exactly, including its own
+# inconsistency about the space before the bracket: "Force Core(High)" has
+# none, "Force Core (Ultimate)" does. Anything matching against these has to
+# tolerate that -- item_price_floor's folding already does.
+FAVOURITE_SLOTS: dict[int, str] = {
+    1:  "Force Core(Highest)",
+    2:  "Force Core Set (Highest)",
+    3:  "Upgrade Core(Highest)",
+    4:  "Upgrade Core Set (Highest)",
+    5:  "Force Core (Ultimate)",
+    6:  "Force Core Set (Ultimate)",
+    7:  "Force Core(High)",
+    8:  "Force Core Set (High)",
+    9:  "Upgrade Core (Ultimate)",
+    10: "Upgrade Core Set (Ultimate)",
+}
+
+
+def favourite_slot_point(slot: int) -> tuple[int, int]:
+    """Screen position of favourite slot `slot` (1-based)."""
+    if not 1 <= slot <= FAVOURITE_COUNT:
+        raise ValueError(f"favourite slot {slot} is outside 1..{FAVOURITE_COUNT}")
+    x, y = FAVOURITE_FIRST
+    return (x + (slot - 1) * FAVOURITE_PITCH, y)
+
+
+def favourite_for(item: str) -> int | None:
+    """The slot that searches for `item`, or None.
+
+    Matched on the same folded key the price floors use, so the game's own
+    spacing inconsistency around the bracket cannot cause a miss.
+    """
+    want = _floor_key(item_name(item))
+    if not want:
+        return None
+    for slot, name in FAVOURITE_SLOTS.items():
+        if _floor_key(item_name(name)) == want:
+            return slot
+    return None
+
+
+def favourite_set_slot(slot: int) -> int | None:
+    """The slot holding the SET version of the item in `slot`, or None.
+
+    The favourites are saved in pairs -- item, then its Set -- so this is the
+    next slot along, confirmed rather than assumed.
+    """
+    partner = slot + 1
+    name = FAVOURITE_SLOTS.get(slot, "")
+    other = FAVOURITE_SLOTS.get(partner, "")
+    if name and other and "set" in _floor_key(other) and \
+            _floor_key(other).replace("set", "") == _floor_key(name):
+        return partner
+    return None
+
+
+# --------------------------------------------------------------------------
+# Converting Sets into Cores at the NPC vendor
+# --------------------------------------------------------------------------
+#
+# This is the other half of the arbitrage. A Set converts to a Core ONE FOR
+# ONE at the vendor, and on the Agent Shop a Set is reliably cheaper per item
+# than the Core it becomes -- 187,278 against 209,800 on 2026-08-07. Buy Sets,
+# convert, hold Cores.
+#
+# The vendor's Shop window carries a 4x5 block of exchange entries in its lower
+# right. Read off the live window by hovering every cell:
+#
+#     row 1   Force Core SET     (paid for with Force Cores)      CORE -> SET
+#     row 2   Force Core         (paid for with Force Core Sets)  SET -> CORE
+#     row 3   Upgrade Core SET   (paid for with Upgrade Cores)    CORE -> SET
+#     row 4   Upgrade Core       (paid for with Upgrade Core Sets) SET -> CORE
+#
+# Only rows 2 and 4 are the direction we want. Rows 1 and 3 are the same trade
+# run backwards and would undo the profit, so they are recorded here precisely
+# so nothing clicks them by accident.
+#
+# Columns are the grade, left to right. Confirmed individually: c1 "Upgrade
+# Core(Low)" paying "Upgrade Core Set (Low) 13 / 1", c2 "(Medium) 7 / 1", c3
+# "(High) 7 / 1", c4 "(Highest) 7 / 1", c5 Ultimate. The "13 / 1" is HOW MANY
+# ARE HELD over the cost -- the cost is always 1, which is what makes it a
+# one-for-one exchange.
+#
+# Clicking these is not like the Agent Shop:
+#     plain click   Immediate Purchase -- buys ONE, at once
+#     Alt + click   Mass Purchase, which asks for a quantity
+#     Ctrl + click  links the item into chat
+# So a stray click here spends something immediately. Nothing may click this
+# grid without knowing exactly which cell it is on.
+CONVERT_COLS = (252, 317, 381, 448, 512)      # Low, Medium, High, Highest, Ultimate
+CONVERT_ROWS = (1066, 1133, 1197, 1258)       # set / core / set / core
+CONVERT_GRADES = ("Low", "Medium", "High", "Highest", "Ultimate")
+# The maximum a single Agent Shop row can hold, so it is the most worth
+# converting in one go.
+CONVERT_QUANTITY = 250
+
+# (row, col) -> (what the cell gives you, what it costs). Rows 2 and 4 only:
+# the SET -> CORE direction.
+CONVERT_TO_CORE = {
+    (2, i + 1): (f"Force Core({g})" if g != "Ultimate" else "Force Core (Ultimate)",
+                 f"Force Core Set ({g})")
+    for i, g in enumerate(CONVERT_GRADES)
+}
+CONVERT_TO_CORE.update({
+    (4, i + 1): (f"Upgrade Core({g})" if g != "Ultimate"
+                 else "Upgrade Core (Ultimate)",
+                 f"Upgrade Core Set ({g})")
+    for i, g in enumerate(CONVERT_GRADES)
+})
+# The reverse direction, recorded so it is never clicked by mistake.
+CONVERT_TO_SET = {(1, i + 1) for i in range(5)} | {(3, i + 1) for i in range(5)}
+
+
+def convert_cell_point(row: int, col: int) -> tuple[int, int]:
+    """Screen position of a conversion cell (1-based row and column)."""
+    if not 1 <= row <= len(CONVERT_ROWS) or not 1 <= col <= len(CONVERT_COLS):
+        raise ValueError(f"conversion cell ({row},{col}) is off the grid")
+    return (CONVERT_COLS[col - 1], CONVERT_ROWS[row - 1])
+
+
+# The Shop window's title and its two tabs. Measured on a live capture: "Shop"
+# at y~163, the "Normal"/"Repurchase" tabs at y~204, all three reading at 96%+.
+# The first attempt at this stopped at y=200 and clipped the tabs off entirely,
+# so the check found nothing on a frame where the window was plainly open.
+SHOP_WINDOW_TITLE = (0, 150, 580, 240)
+CONVERT_TIP_REGION = (0, 740, 900, 1400)     # where the item tooltip renders
+
+
+def vendor_shop_open(source: "Image.Image | None" = None) -> bool:
+    """True when the NPC vendor's Shop window is up, on the Normal tab.
+
+    Distinct from the Agent Shop entirely. This is the window whose lower-right
+    block exchanges Sets for Cores, and a plain click in it is an IMMEDIATE
+    purchase with no confirmation -- so nothing may click here on the strength
+    of coordinates alone.
+    """
+    shot = source if source is not None else grab()
+    words = {w.text.casefold()
+             for w in find_words(shot, SHOP_WINDOW_TITLE, 25) if w.conf >= 45}
+    # All three, not any one. "Shop" alone appears in other windows; the
+    # Normal/Repurchase pair is what makes this the NPC vendor rather than the
+    # Agent Shop, and the vendor is the only window where a click spends
+    # something without asking.
+    return {"shop", "normal", "repurchase"} <= words
+
+
+# The vendor tooltip does not appear all at once. Measured on a live hover: the
+# item name and the "Price" LABEL draw first, and the price VALUE line arrives a
+# beat later -- so a frame grabbed at 0.95s reads a tooltip that is plainly up
+# and plainly missing the one line the check depends on. Four retries at 0.95s
+# each all caught the same half-drawn state, because retrying at a delay that is
+# too short just reproduces it.
+#
+# So the wait grows with each try instead of repeating. The same hover read
+# cleanly at 1.2s.
+CONVERT_TIP_SETTLES = (1.3, 1.8, 2.3, 3.0)
+
+
+def _warm_text_image(image: "Image.Image",
+                     region: tuple[int, int, int, int]) -> "Image.Image":
+    """Just the RED and ORANGE text in `region`, bright-on-dark for OCR.
+
+    Greyscale throws warm text away. Two measured cases, both of which refused
+    a conversion that was perfectly valid:
+
+      * an unaffordable price is drawn RED. "Force Core Set (High) 0 / 1" came
+        back from OCR as 'ee', where the identical line in white a minute
+        earlier read at 96%. Pure red has a luminance around 54 against a panel
+        around 30, so autocontrast has almost nothing to stretch.
+      * an item tooltip's TITLE is drawn ORANGE over a translucent panel with
+        the game world showing through. "Force Core Set (High)" read as
+        "Force Core" -- the grade, which is the one part that must not be lost,
+        sat over the brightest branches.
+
+    Subtracting the brighter of green and blue from red leaves both standing
+    and flattens everything else: white and grey text have all three channels
+    roughly equal and cancel to nothing.
+
+    The 0-held case matters especially, because 0 is not an error, it is the
+    ANSWER -- "there is nothing left to convert". Losing it turns a clean
+    finish into "could not read the tooltip", which reads like a fault and
+    hides a completed job.
+    """
+    r, g, b = image.crop(region).convert("RGB").split()
+    return ImageChops.subtract(r, ImageChops.lighter(g, b))
+
+
+def _price_from_lines(text: list[str]) -> tuple[str, int | None, int | None]:
+    """The payment line and its held/cost figures, from tooltip lines."""
+    for i, line in enumerate(text):
+        if line.casefold().startswith("price") and i + 1 < len(text):
+            price_line = text[i + 1]
+            found = re.search(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)", price_line)
+            if found:
+                return (price_line,
+                        int(found.group(1).replace(",", "")),
+                        int(found.group(2).replace(",", "")))
+            return price_line, None, None
+    return "", None, None
+
+
+def _tooltip_lines(shot: "Image.Image",
+                   region: tuple[int, int, int, int]) -> list[str]:
+    """Readable lines in `region`, top to bottom, each left to right."""
+    words = [w for w in find_words(shot, region, 25) if w.conf >= 40]
+    lines: dict = {}
+    for w in words:
+        lines.setdefault(round(w.centre[1] / 16), []).append(w)
+    out = []
+    for key in sorted(lines):
+        joined = " ".join(w.text for w in sorted(lines[key],
+                                                 key=lambda w: w.centre[0]))
+        if joined.strip():
+            out.append(joined.strip())
+    return out
+
+
+def hover_tooltip(x: int, y: int, settle: float | None = None,
+                  attempts: int | None = None,
+                  need_price: bool = True,
+                  region: tuple[int, int, int, int] | None = None) -> dict:
+    """Hover a conversion cell and read what it actually offers.
+
+    Hovering is the whole safety story here. The Agent Shop asks before it
+    takes money; this vendor does not, so the cell has to be identified BEFORE
+    it is clicked rather than after. Returns what the tooltip says, and the
+    caller compares that against what it meant to buy.
+
+    'held' is the first half of the "13 / 1" on the price line -- how many of
+    the paying item are in the inventory. 'cost' is the second, and it is 1 for
+    every entry in this grid, which is what makes the exchange one-for-one.
+    """
+    focus_game()
+    look = CONVERT_TIP_REGION if region is None else region
+
+    waits = list(CONVERT_TIP_SETTLES) if settle is None else [settle]
+    if attempts is not None:
+        waits = (waits * attempts)[:max(1, attempts)]
+
+    def attempt(wait: float) -> dict:
+        # Approach from elsewhere: a move to the pixel the cursor already
+        # occupies raises no event, and the tooltip never appears.
+        move_mouse(x - 140, y - 140)
+        time.sleep(0.18)
+        move_mouse(x, y)
+        time.sleep(wait)
+        shot = grab()
+        text = _tooltip_lines(shot, look)
+        price_line, held, cost = _price_from_lines(text)
+
+        # A second pass over the warm-coloured text, which greyscale loses. It
+        # runs whenever the first pass could not answer the question being
+        # asked: a missing price (drawn red when unaffordable), or an item
+        # title (drawn orange) that the caller needs by name. Its coordinates
+        # come back relative to the crop, which does not matter -- only the
+        # text is wanted.
+        if held is None or not need_price:
+            warm = _warm_text_image(shot, look)
+            warm_text = _tooltip_lines(warm, (0, 0, warm.width, warm.height))
+            for line in warm_text:
+                if line not in text:
+                    text.append(line)
+            if held is None:
+                w_line, w_held, w_cost = _price_from_lines(warm_text)
+                if w_held is not None:
+                    price_line, held, cost = w_line, w_held, w_cost
+
+        return {"lines": text, "price_line": price_line,
+                "held": held, "cost": cost, "point": (x, y)}
+
+    # Retry a miss on a fresh hover, waiting longer each time. A tooltip is not
+    # a transient thing: while the cursor sits still the game keeps drawing it,
+    # so "no price line" means the hover did not register or the frame was
+    # caught mid-draw, not that the cell has nothing to say.
+    #
+    # Two real misses on one live run, both of which refused a conversion that
+    # was perfectly valid:
+    #   12:42  ['?', 'w.', '4 Zone']            -- no tooltip at all, world text
+    #   12:47  [..., 'Force Core(High)', 'Price'] -- up, but half drawn
+    # The second is why the waits escalate: four tries at the same 0.95s
+    # reproduced the identical half-drawn frame four times.
+    #
+    # The same reasoning await_dialog_button already applies to dialogs, and
+    # the asymmetry is the same: a retry costs a second, while giving up
+    # strands a conversion the caller has to notice and restart by hand.
+    def good(tip: dict) -> bool:
+        # An inventory slot has no price line at all, so what counts as a
+        # successful read depends on what is being hovered.
+        if need_price:
+            return bool(tip["price_line"]) and tip["held"] is not None
+        return bool(tip["lines"])
+
+    best = attempt(waits[0])
+    for wait in waits[1:]:
+        if good(best):
+            break
+        # Park between tries so the next move genuinely re-enters the cell.
+        move_mouse(x - 300, y - 300)
+        time.sleep(0.25)
+        best = attempt(wait)
+    return best
+
+
+def read_convert_tooltip(row: int, col: int, settle: float | None = None,
+                         attempts: int | None = None) -> dict:
+    """Hover a conversion cell and read what it actually offers."""
+    return hover_tooltip(*convert_cell_point(row, col),
+                         settle=settle, attempts=attempts, need_price=True)
+
+
+def convert_cell_matches(row: int, col: int, tip: dict) -> bool:
+    """Does the tooltip describe the cell we think we are on?
+
+    Both halves are checked. The name alone would pass on the CORE->SET cell
+    directly above, which names the same item and is the losing side of the
+    trade; the price line is what tells the two apart.
+    """
+    gives, costs = CONVERT_TO_CORE.get((row, col), ("", ""))
+    if not gives:
+        return False
+    named = any(_names_agree(line, gives) for line in tip.get("lines", []))
+    return named and _names_agree(tip.get("price_line", ""), costs)
+
+
+def _convert_name_key(text: str) -> str:
+    """An item name from the vendor UI, reduced to a comparable key.
+
+    Removes the trailing "held / cost" figures the vendor appends to a payment
+    line, and any decoration before the name, then folds the rest the way the
+    floor lookup does.
+
+    The leading strip is not cosmetic. _floor_key folds OCR lookalikes, and it
+    maps '[' onto 'i' -- so a stray bracket picked up beside the text becomes a
+    LETTER rather than vanishing, and '[ Force Core Set (High)' keys as
+    'iforcecoresethigh'. Measured on the red-text pass, where the panel border
+    reads as a bracket: the name was perfect and the comparison still failed.
+    """
+    cleaned = re.sub(r"\d[\d,]*\s*/\s*\d[\d,]*\s*$", "", text.strip())
+    cleaned = re.sub(r"^[^A-Za-z]+", "", cleaned)
+    return _floor_key(item_name(cleaned))
+
+
+def _names_agree(observed: str, expected: str) -> bool:
+    """Is `observed` the same item as `expected`? EQUALITY, never containment.
+
+    "Force Core(Highest)" CONTAINS "Force Core(High)", so a containment test
+    accepts a Highest dialog for a High request and converts the dearer item.
+    The identical trap in the price-floor lookup once had a 24,000,000 item
+    inheriting a 44,000,000 floor: the grades in this game are prefixes of one
+    another by design -- Low, Medium, High, Highest, Ultimate -- so nothing
+    that tells them apart may match on a substring.
+
+    The cost of being strict is a refusal on a damaged read, which is the
+    direction this file always chooses. A refusal wastes a cycle; a wrong match
+    spends the wrong items, and there is no confirmation step to catch it.
+    """
+    return bool(observed) and _convert_name_key(observed) == _floor_key(
+        item_name(expected))
+
+
+def convert_cell_for(core_name: str) -> "tuple[int, int] | None":
+    """The cell that turns Sets INTO `core_name`, or None.
+
+    Only ever returns a SET -> CORE cell. Asking for a Set by name returns
+    None rather than the cell that would make one, because converting the
+    other way is the losing side of the same trade.
+    """
+    want = _floor_key(item_name(core_name))
+    for (row, col), (gives, _costs) in CONVERT_TO_CORE.items():
+        if _floor_key(item_name(gives)) == want:
+            return (row, col)
+    return None
+
+
+# --------------------------------------------------------------------------
+# The inventory panel, as a witness for the conversion
+# --------------------------------------------------------------------------
+#
+# The tooltip says how many Sets are held; the inventory shows where they went.
+# Those are independent, and the second one survives what the first does not --
+# the vendor draws an unaffordable price in RED, which greyscale nearly erases,
+# so the tooltip goes quiet at exactly the moment a conversion finishes. Pixels
+# in a slot do not care what colour the text was.
+#
+# The convention is the operator's: the work tab holds the Sets, the stack sits
+# in the first slot, and the Cores land in the second. So a conversion that
+# worked leaves slot (1,2) occupied when it started empty -- a yes/no that owes
+# nothing to OCR.
+#
+# The geometry deliberately lives elsewhere. inventory_origin() anchors the
+# panel by the Alz box's COLOUR, with the ornate title only as a fallback, and
+# slot_centre_at/tab_centre/occupied_slots/active_inventory_tab all hang off
+# that anchor. An earlier draft of this section measured absolute coordinates
+# off a screenshot instead, which was worse in the way that matters: it would
+# have gone on clicking confidently after the window moved, and it silently
+# redefined INVENTORY_TITLE_REGION out from under the layout scaler.
+# NOTE: this is the same tab as WORK_TAB, which is defined further down and
+# which require_empty_work_tab() insists is EMPTY before a relist run starts.
+# The two uses do not overlap in time -- converting is a manual operation and
+# relisting is the unattended loop -- but tab 4 must be cleared out before a
+# relist run, or that check will refuse to start. Spelled as a literal rather
+# than as WORK_TAB only because WORK_TAB is declared later in the file; the
+# test suite asserts the two agree so they cannot drift apart silently.
+CONVERT_INVENTORY_TAB = 4
+CONVERT_SET_SLOT = (1, 1)
+CONVERT_CORE_SLOT = (1, 2)
+
+
+def slot_tip_region(x: int, y: int) -> tuple[int, int, int, int]:
+    """Where an inventory slot's tooltip renders, relative to the slot.
+
+    LEFT of the panel and slightly above the cursor -- nowhere near
+    CONVERT_TIP_REGION, which covers the shop grid's tooltips in the opposite
+    corner of the screen. Reading a slot through the shop's region returned
+    fragments of the game world and refused a conversion whose Sets were
+    plainly sitting in the slot.
+
+    Derived from the hover point rather than fixed, so it follows whichever
+    slot is being read. Measured on a live hover of slot (1,1): the tooltip
+    occupied x 1538-1883, y 301-490 for a slot centred at (1981, 293).
+    """
+    return (max(0, x - 560), max(0, y - 70), max(1, x - 20), y + 430)
+
+
+def read_slot_tooltip(row: int, col: int, settle: float | None = None) -> dict:
+    """Hover an inventory slot and read what is in it.
+
+    Identity, not just occupancy. occupied_slots() answers "is something
+    there", which cannot tell a Set from anything else that happens to sit in
+    that slot -- and running against the wrong tab would put SOMETHING in slot
+    (1,1) every time. The name is what makes the check mean anything.
+    """
+    x, y = slot_centre(row, col)
+    return hover_tooltip(x, y, settle=settle, need_price=False,
+                         region=slot_tip_region(x, y))
+
+
+# The Purchase Item dialog that Alt+click opens. Measured off a live capture at
+# 2560x1440 on 2026-08-07:
+#
+#     +-------------- Purchase Item --------------+
+#     |  Force Core(High)                         |   <- what you GET
+#     |  Purchase QTY   [   1   ] / 55   [^v]     |   <- typed / maximum
+#     |  Purchase Price  Force Core Set (High) 55/1|  <- what you PAY, held/cost
+#     |                        [ OK ]  [ Cancel ] |
+#     +-------------------------------------------+
+#
+# This dialog is worth far more than the tooltip that preceded it. It names the
+# Core it will hand over AND the Set it will take, in the same "held / cost"
+# form, and it does so AFTER the click has selected a cell but BEFORE anything
+# is spent. That makes it the last and best place to check that the right cell
+# was hit -- so the verification lives here rather than resting on the hover.
+#
+# The maximum beside the QTY field is how many of the paying Set are held, so
+# it is also the answer to "how many can this convert", read from the game
+# rather than assumed.
+CONVERT_DIALOG_REGION = (975, 470, 1570, 945)
+CONVERT_DLG_ITEM = (1000, 538, 1420, 576)
+CONVERT_DLG_PRICE = (1160, 650, 1520, 692)
+# The QTY field is split deliberately. Reading the whole field would take in
+# the "/ 55" maximum, and then a quantity that never landed reads as a success
+# whenever the typed value happens to equal the maximum -- which is the common
+# case here, since 250 clamps to the maximum nearly every time. The typed value
+# has to be read on its own for the check to mean anything.
+CONVERT_DLG_QTY_VALUE = (1163, 592, 1252, 630)
+CONVERT_DLG_QTY_MAX = (1268, 594, 1338, 628)
+# Right of the "/", left of the spinner arrows: including the spinner turned
+# "55" into "554" on a real frame.
+CONVERT_CONFIRM_WORD = "OK"
+CONVERT_CANCEL_WORD = "Cancel"
+CONVERT_DIALOG_TIMEOUT = 8.0
+
+
+def mass_purchase_open(
+    source: "Image.Image | None" = None,
+) -> "tuple[Word, Word] | None":
+    """(OK, Cancel) if the Purchase Item dialog is up, else None.
+
+    Both buttons are required, and so is the "Purchase QTY" label. "OK" is two
+    characters and turns up in ordinary UI text all over this game; a lone
+    confirm word is not evidence of a dialog, and a false positive here clicks
+    a coordinate inside a vendor window -- the one place in this file where a
+    stray click spends something with no confirmation at all.
+
+    The title is deliberately NOT what identifies it. It reads as
+    "Purchaseltem" on a clean frame (ornate glyphs, capital-I as lowercase-l),
+    and dialog_kind's docstring already records what happens when a modal is
+    identified by a title this UI renders badly.
+    """
+    shot = source if source is not None else grab()
+    ok = find_text(shot, CONVERT_CONFIRM_WORD, CONVERT_DIALOG_REGION, 40.0)
+    cancel = find_text(shot, CONVERT_CANCEL_WORD, CONVERT_DIALOG_REGION, 40.0)
+    qty = find_text(shot, "QTY", CONVERT_DIALOG_REGION, 40.0)
+    if not ok or not cancel or not qty:
+        return None
+    return ok[-1], cancel[-1]
+
+
+def mass_purchase_details(source: "Image.Image | None" = None) -> dict:
+    """What the Purchase Item dialog says it is about to do.
+
+    Returns the item it gives, the payment line, the typed quantity and the
+    maximum. Every one of these is read from the dialog itself, so a caller can
+    confirm the trade against what it intended without trusting the click that
+    opened it.
+    """
+    shot = source if source is not None else grab()
+
+    def line(region: tuple[int, int, int, int]) -> str:
+        words = [w for w in find_words(shot, region, 25) if w.conf >= 30]
+        return " ".join(w.text for w in sorted(words, key=lambda w: w.centre[0]))
+
+    price_line = line(CONVERT_DLG_PRICE)
+    held = cost = None
+    match = re.search(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)", price_line)
+    if match:
+        held = int(match.group(1).replace(",", ""))
+        cost = int(match.group(2).replace(",", ""))
+    return {
+        "item": line(CONVERT_DLG_ITEM),
+        "price_line": price_line,
+        "held": held,
+        "cost": cost,
+        "qty": read_number(shot, CONVERT_DLG_QTY_VALUE),
+        "qty_max": read_number(shot, CONVERT_DLG_QTY_MAX),
+    }
+
+
+def mass_purchase_matches(row: int, col: int, detail: dict) -> bool:
+    """Does the open dialog describe the cell we meant to click?
+
+    Both halves again: the Core given and the Set taken. The CORE -> SET cell
+    directly above names the same item, and only the payment line separates
+    them.
+    """
+    gives, costs = CONVERT_TO_CORE.get((row, col), ("", ""))
+    if not gives:
+        return False
+    # Equality on both, for the reason _names_agree spells out: the Highest
+    # dialog contains the High name, and containment would convert the wrong
+    # grade with nothing on screen to say so.
+    return (_names_agree(detail.get("item", ""), gives)
+            and _names_agree(detail.get("price_line", ""), costs))
+
+
+def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
+                  verbose: bool = True, execute: bool = True) -> dict:
+    """Exchange Sets for Cores at the vendor, in one Mass Purchase.
+
+    The trade is one-for-one and the vendor charges no Alz, so this is pure
+    upside on top of the Agent Shop spread: a Set bought at 187,278 becomes a
+    Core worth 209,800. `quantity` is typed as-is and the game clamps it to
+    what is actually held, which is why CONVERT_QUANTITY is simply 250 -- the
+    most a shop row can hold -- rather than something read off the panel first.
+
+    Every step is verified before the next one commits, in this order:
+
+      1. the vendor's Shop window is open, on the Normal tab
+      2. the name resolves to a SET -> CORE cell (a Set name resolves to
+         nothing, so the reverse trade cannot be reached through this function)
+      3. the Inventory is on the work tab, the Sets are in slot (1,1), and the
+         landing slot (1,2) is EMPTY -- an occupied one would make the count at
+         the end read as success whatever happened
+      4. the Shop window is still open, re-checked at the instant of the click
+      5. Alt+click the cell, and the Purchase Item dialog must appear
+      6. the dialog must name the Core being given AND the Set being taken --
+         by EQUALITY, since "Force Core(Highest)" contains "Force Core(High)"
+      7. the typed quantity must read back from the field as the clamped value
+      8. the Shop window is checked once more, then OK
+      9. the newly filled inventory slots are counted
+
+    Steps 6, 7 and 9 are the ones that matter. The grid's coordinates are fixed
+    furniture and are trusted as such; what is never trusted is that a click
+    landed where it was aimed, which is why the dialog is read after the click
+    and before the money moves.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    def require(condition: bool, reason: str) -> None:
+        if not condition:
+            raise Aborted(reason)
+
+    cell = convert_cell_for(core_name)
+    require(cell is not None,
+            f"{core_name!r} is not something the vendor converts Sets into. "
+            "Set names resolve to nothing on purpose: converting Cores into "
+            "Sets is the losing side of this trade.")
+    row, col = cell
+    require((row, col) not in CONVERT_TO_SET,
+            f"cell r{row}c{col} is a CORE -> SET cell and must never be clicked")
+    gives, costs = CONVERT_TO_CORE[(row, col)]
+
+    require(focus_game(), "could not bring Cabal to the foreground")
+    require(vendor_shop_open(),
+            "the vendor's Shop window is not open on the Normal tab. This "
+            "function clicks inside a shop, where a click spends something "
+            "with no confirmation, so it will not act on an unrecognised "
+            "screen.")
+
+    say(f"Converting Sets -> {gives} (r{row}c{col}, paying with {costs})")
+
+    # A Purchase Item dialog left over from a previous attempt -- or from a
+    # human hand -- covers part of the window and would swallow the hover the
+    # next step depends on. Clear it before starting rather than reading a
+    # tooltip that cannot appear.
+    stale = mass_purchase_open()
+    if stale is not None:
+        say("  a Purchase Item dialog was already open; cancelling it first")
+        click(*stale[1].centre)
+        time.sleep(0.5)
+        if mass_purchase_open() is not None:
+            press_escape()
+            time.sleep(0.3)
+        require(mass_purchase_open() is None,
+                "a Purchase Item dialog is open and will not close. Refusing "
+                "to click the grid underneath an unrecognised modal.")
+
+    # ---- the inventory, checked before anything is spent -------------------
+    # Tab 4 holds the Sets, slot (1,1) is the stack, slot (1,2) is where the
+    # Cores arrive. Verified here so the after-check has a baseline, and so a
+    # conversion never runs against a tab that is showing something else.
+    origin = inventory_origin()
+    require(origin is not None,
+            "the Inventory panel is not open, so there is no way to see where "
+            "the Cores end up. Open it before converting.")
+    require(select_inventory_tab(CONVERT_INVENTORY_TAB, origin),
+            f"could not put the Inventory on tab {CONVERT_INVENTORY_TAB}. The "
+            "slot checks below only mean anything on the tab that holds the "
+            "Sets, so there is nothing safe to do without it.")
+
+    filled = set(occupied_slots(grab(), origin))
+    require(CONVERT_SET_SLOT in filled,
+            f"inventory slot {CONVERT_SET_SLOT} looks empty")
+    require(CONVERT_CORE_SLOT not in filled,
+            f"inventory slot {CONVERT_CORE_SLOT} is already occupied. It is "
+            "the landing slot for the converted Cores, and an occupied one "
+            "makes the after-check meaningless -- it would read as success "
+            "whatever happened. Clear it first.")
+    say(f"  inventory tab {CONVERT_INVENTORY_TAB}: {CONVERT_SET_SLOT} holds "
+        f"{costs}, {CONVERT_CORE_SLOT} is clear")
+
+    # No pre-click reading. The grid is fixed furniture -- every cell has been
+    # where the map says it is on every frame captured -- and the tooltip that
+    # used to be consulted here was the least reliable thing in the sequence:
+    # it draws its name and price label before its price VALUE, renders the
+    # name in orange over moving game art, and turns the price red once the
+    # last Set is spent. It refused three consecutive valid conversions, and
+    # each refusal cost four OCR passes and ten seconds.
+    #
+    # What replaces it is not nothing. The Purchase Item dialog names both the
+    # Core it will hand over and the Set it will take, and it does so AFTER the
+    # click that selects a cell but BEFORE anything is spent -- which is a
+    # strictly better place to check, because it describes the trade the game
+    # is actually about to make rather than the one under the cursor.
+    if not execute:
+        return {"cell": (row, col), "gives": gives, "costs": costs,
+                "would_convert": quantity, "converted": 0}
+
+    # Re-checked HERE, immediately before the click, not only at the top of the
+    # function -- a check is only true at the instant it is taken, and the
+    # inventory work above takes seconds. The Shop window can be closed by
+    # hand, by a death, or by an Escape meant for something else, and the click
+    # about to be sent goes to whatever is underneath.
+    #
+    # This is the lesson purchase_ready() already encodes for the Purchase tab,
+    # learned when a capture script guarded once and then clicked 80 times,
+    # walking the character across the map.
+    require(vendor_shop_open(),
+            "the vendor's Shop window closed before the click. Nothing was "
+            "clicked.")
+
+    x, y = convert_cell_point(row, col)
+    alt_click(x, y)
+
+    deadline = time.monotonic() + CONVERT_DIALOG_TIMEOUT
+    buttons = None
+    while buttons is None and time.monotonic() < deadline:
+        buttons = mass_purchase_open()
+        if buttons is None:
+            time.sleep(0.4)
+    if buttons is None:
+        # Nothing to cancel as far as we can tell, but Escape is free and the
+        # alternative is leaving an unrecognised modal over the shop.
+        press_escape()
+        raise Aborted(
+            "the Purchase Item dialog did not appear after Alt+click. Nothing "
+            "was confirmed. If Alt+click is not the gesture on this client, "
+            "the plain click is an IMMEDIATE purchase and must NOT be "
+            "substituted for it.")
+    confirm, cancel = buttons
+
+    def bail(reason: str) -> None:
+        """Cancel the dialog, then abort. Never leaves the modal up."""
+        try:
+            click(*cancel.centre)
+            time.sleep(0.4)
+            if mass_purchase_open() is not None:
+                press_escape()
+        except Exception:  # noqa: BLE001 - the abort reason matters more
+            press_escape()
+        park_cursor()
+        raise Aborted(reason)
+
+    # ---- the dialog's own account of the trade, before anything is spent ----
+    detail = mass_purchase_details()
+    if not mass_purchase_matches(row, col, detail):
+        bail(f"the Purchase Item dialog is not the trade that was intended. "
+             f"Expected {gives} paid for with {costs}; the dialog says "
+             f"{detail.get('item')!r} paid for with "
+             f"{detail.get('price_line')!r}. Cancelled without buying.")
+    if detail.get("cost") not in (None, 1):
+        bail(f"the dialog prices this at {detail['cost']} per conversion, not "
+             "1. Every cell in this grid is a one-for-one exchange, so a "
+             "different cost means it is not the trade it was mapped as.")
+
+    limit = detail.get("qty_max")
+    if limit is None:
+        bail("could not read the QTY maximum from the dialog, so there is no "
+             "way to know what the typed quantity will clamp to. Cancelled.")
+    # The dialog's maximum IS the held count -- it is how many of the paying
+    # Set the game will let you spend -- so this doubles as the "is there
+    # anything to convert" check that used to come from the tooltip.
+    # bail(), not require(). Everything from here on runs with the dialog OPEN,
+    # and require() raises straight past the cancel -- leaving a modal over the
+    # shop for the next caller to trip on. That is the exact failure that
+    # turned one bad row into two dead cycles on 2026-08-04.
+    if limit <= 0:
+        bail(f"the dialog offers a maximum of {limit} - no {costs} to convert")
+
+    expected = min(quantity, limit)
+    # Cores do not stack, so each one needs a slot of its own -- 250 of them
+    # need 250 free slots, and one tab holds 63 beyond the Set stack. The
+    # overflow is not lost; it lands on a later tab. But it lands where the
+    # count at the end cannot see it, so what is COUNTABLE here is capped at
+    # the free space on this tab, and the run says so rather than reporting a
+    # shortfall it caused itself.
+    free = GRID_SIZE * GRID_SIZE - len(filled)
+    countable = min(expected, free)
+    say(f"  typing {quantity} into a field that maxes at {limit} "
+        f"-> expecting {expected}")
+    if expected > free:
+        say(f"  note: only {free} free slot(s) on tab {CONVERT_INVENTORY_TAB}; "
+            f"Cores beyond that land on a later tab and are not counted here")
+
+    # Click the field before typing. The default value looks focused, but
+    # "looks focused" is exactly the assumption that sends keystrokes to the
+    # game world instead of the widget.
+    click((CONVERT_DLG_QTY_VALUE[0] + CONVERT_DLG_QTY_VALUE[2]) // 2,
+          (CONVERT_DLG_QTY_VALUE[1] + CONVERT_DLG_QTY_VALUE[3]) // 2)
+    # Six backspaces clear any quantity this field holds without paying the
+    # typing cooldown for a long tail of no-ops.
+    type_number(quantity, clear_first=True, clear=6)
+    time.sleep(0.35)
+
+    landed = mass_purchase_details().get("qty")
+    if landed != expected:
+        bail(f"typed {quantity} expecting the field to settle at {expected}, "
+             f"but it reads {landed}. The keystrokes may have gone somewhere "
+             "else entirely. Cancelled without buying.")
+
+    # And once more before the click that actually spends the Sets. The dialog
+    # being up is not by itself proof the shop is still behind it.
+    if not vendor_shop_open():
+        bail("the vendor's Shop window is no longer open behind the dialog. "
+             "Cancelled without buying.")
+
+    say(f"  quantity {expected} confirmed in the field; purchasing")
+    click(*confirm.centre)
+    time.sleep(0.8)
+
+    # The dialog should be gone. If it is not, something rejected the purchase
+    # and the held count below will say so anyway -- but leaving it open would
+    # strand every later step, so it gets closed either way.
+    if mass_purchase_open() is not None:
+        press_escape()
+        time.sleep(0.3)
+
+    # ---- what actually arrived, counted in slots ---------------------------
+    # Cores do not stack, so each one takes a slot of its own -- which makes
+    # "how many converted" a COUNT of newly occupied slots rather than anything
+    # read off the screen. That is better than the tooltip it replaces in three
+    # ways: it cannot be defeated by text colour, it measures the result rather
+    # than inferring it from a before/after subtraction, and it is right even
+    # when the game clamps the purchase to the free space available.
+    filled_after = set(occupied_slots(grab(), origin))
+    park_cursor()
+    arrived = filled_after - filled
+    converted = len(arrived)
+    landed = CONVERT_CORE_SLOT in filled_after
+
+    if arrived:
+        where = sorted(arrived)
+        say(f"  new Cores landed in {len(where)} slot(s) on tab "
+            f"{CONVERT_INVENTORY_TAB}: {where[0]} to {where[-1]}"
+            + (f" -- e.g. {where[:6]}" if len(where) > 1 else ""))
+    if converted == countable and landed:
+        extra = "" if countable == expected else f" (+{expected - countable} on later tabs)"
+        say(f"  converted {converted} x {costs} -> {gives}{extra}")
+    elif converted:
+        # Not an abort: the purchase has already happened, and raising here
+        # would report zero progress for a conversion that partly went through.
+        say(f"  WARNING: expected {countable} on this tab but {converted} "
+            "slot(s) filled. Nothing further was clicked.")
+    else:
+        say("  WARNING: no new inventory slots were filled. The purchase may "
+            "not have gone through.")
+
+    return {"cell": (row, col), "gives": gives, "costs": costs,
+            "expected": expected, "countable": countable,
+            "converted": converted, "arrived": sorted(arrived),
+            "landed": landed, "verified": converted == countable and landed}
+
+
+# --------------------------------------------------------------------------
+# Buying on the Purchase tab
+# --------------------------------------------------------------------------
+#
+# A Set is the same cores sold as one bundle, and it is usually cheaper PER
+# CORE than the loose item. Measured on 2026-08-07: Force Core(High) at 209,800
+# each against Force Core Set (High) at 187,278 each -- 22,522 a core.
+#
+# Two things about these rows have to be got right or the arithmetic is
+# nonsense. The Set's name carries its size ("X 62") and the Price column is
+# the price of the WHOLE bundle, so the per-core figure is price/N. And the
+# sort is by that bundle total, NOT per core -- so the first row is the
+# cheapest LISTING and need not be the cheapest core. Both were confirmed
+# against the live shop, where every Set row divided to the same 187,278.
+PURCHASE_ROW_TOP = 340
+PURCHASE_ROW_PITCH = 76
+PURCHASE_ROWS = 8
+PURCHASE_NAME_MAX_X = 700          # the Name cell ends before the QTY column
+PURCHASE_PRICE_X = (900, 1080)     # the Price cell
+PURCHASE_BUY_X = 1124              # the per-row Buy button
+# How much cheaper per item a Set must be before it is worth buying.
+PRICE_DIFF_FLOOR = 10_000
+SET_SAVING_THRESHOLD = PRICE_DIFF_FLOOR      # older name, kept for callers
+# A listing can sell to somebody else between reading it and clicking Buy. The
+# confirm dialog then refuses to complete: it neither closes nor takes any Alz.
+# That is not an error to stop on -- it is the ordinary race of a live market --
+# so the buy cancels, re-runs the search and takes whatever is cheapest now.
+BUY_RETRY_ATTEMPTS = 3
+# A row priced below this fraction of the median is treated as a clipped read,
+# not a bargain. Genuine rows in one Set search agreed to within 1.15 Alz.
+PRICE_OUTLIER_FLOOR = 0.5
+
+_PACK_SIZE = re.compile(r"\bX\s*([\d,]+)\s*$")
+# The confirm dialog reorders the pack into the middle of the name -- "Force
+# Core Set X 62 (High)" against the row's "Force Core Set (High) X 62" -- so
+# comparing the two needs it stripped from anywhere, not just the end.
+_PACK_ANYWHERE = re.compile(r"\bX\s*[\d,]+")
+
+
+def pack_size(name: str) -> int:
+    """How many items one listing of `name` contains. 1 when it is not a Set."""
+    m = _PACK_SIZE.search(name.strip())
+    if not m:
+        return 1
+    try:
+        return max(1, int(m.group(1).replace(",", "")))
+    except ValueError:
+        return 1
+
+
+@dataclass(frozen=True)
+class Offer:
+    """One row of the Purchase results."""
+    row: int                # 1-based screen row
+    name: str
+    price: int              # what the whole listing costs
+    pack: int               # how many items that buys
+    y: int
+
+    @property
+    def unit(self) -> float:
+        return self.price / self.pack
+
+
+def read_purchase_rows(source: "Image.Image | None" = None) -> list[Offer]:
+    """Every readable row of the Purchase results, top to bottom."""
+    shot = source if source is not None else grab()
+    offers: list[Offer] = []
+    for i in range(PURCHASE_ROWS):
+        y = PURCHASE_ROW_TOP + i * PURCHASE_ROW_PITCH
+        # Starts at 250, not 240: the category tree on the left bleeds into the
+        # band and prefixed names with its own text ("of L Force Core Set...").
+        band = (250, y - 24, 1235, y + 24)
+        words = [w for w in find_words(shot, band, 20) if w.conf >= 55]
+        if not words:
+            continue
+        name = " ".join(w.text for w in sorted(
+            (w for w in words if w.centre[0] < PURCHASE_NAME_MAX_X),
+            key=lambda w: w.centre[0])).strip()
+        price = None
+        for w in words:
+            if PURCHASE_PRICE_X[0] < w.centre[0] < PURCHASE_PRICE_X[1]:
+                digits = re.sub(r"[^\d]", "", w.text)
+                if digits.isdigit() and len(digits) >= 4:
+                    price = int(digits)
+        if not name or price is None or price < MIN_PLAUSIBLE_PRICE:
+            continue
+        offers.append(Offer(row=i + 1, name=name, price=price,
+                            pack=pack_size(name), y=y))
+    return offers
+
+
+def cheapest_per_unit(offers: list[Offer]) -> "Offer | None":
+    """The offer with the lowest price PER ITEM.
+
+    Not offers[0]: the table sorts by the listing total, so on a Set search the
+    first row is the smallest bundle rather than the best value.
+
+    A row far below the rest is DISCARDED rather than taken as a bargain. A
+    clipped price read looks exactly like the find of the day: on 2026-08-07
+    row 8 read 444,281 for 39 items -- 11,391 each against 187,278 everywhere
+    else -- because the leading "7," of 7,444,281 was lost. Every genuine row
+    in that table agreed to within 1.15 Alz, so a row at 6% of its neighbours
+    is a misread, and acting on it would put a real 7,444,281 through on the
+    strength of a number that was never there.
+    """
+    if not offers:
+        return None
+    if len(offers) >= 3:
+        units = sorted(o.unit for o in offers)
+        median = units[len(units) // 2]
+        credible = [o for o in offers if o.unit >= median * PRICE_OUTLIER_FLOOR]
+        if credible:
+            offers = credible
+    return min(offers, key=lambda o: o.unit)
+
+
+def credible_offers(offers: list[Offer]) -> list[Offer]:
+    """Offers with a believable price. See cheapest_per_unit for why."""
+    if len(offers) < 3:
+        return list(offers)
+    units = sorted(o.unit for o in offers)
+    median = units[len(units) // 2]
+    kept = [o for o in offers if o.unit >= median * PRICE_OUTLIER_FLOOR]
+    return kept or list(offers)
+
+
+def cheapest_listing(offers: list[Offer]) -> "Offer | None":
+    """The FIRST row. The table is already sorted Price: Low to High.
+
+    Deliberately no cleverness. Two earlier versions tried to improve on the
+    game's own ordering and both were wrong:
+
+      * "smallest total" bought the worst value in the table -- the totals ran
+        11.6M, 23.2M, 29.8M ... then 5.7M last, because the sort is per ITEM;
+      * "lowest per item" compared floats, and the per-item figure is a bundle
+        price divided by a pack size, so it carries a rounding remainder that
+        is not a price. 187,278.000 beat 187,278.226 and cost 8,614,760 Alz
+        more outlay to save 38 Alz across the stack.
+
+    The sort is the game's answer to "which is cheapest" and it does not need
+    reinterpreting. What still protects the purchase is downstream, where it
+    belongs: buy_offer compares the confirm dialog's own price against the row
+    before confirming, so a clipped read -- which sorts to the top precisely
+    BECAUSE it is too small -- is caught by the price that actually matters
+    rather than by second-guessing the order here.
+    """
+    return offers[0] if offers else None
+
+
+def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
+    """The Confirm Purchase dialog, or None.
+
+    Its own reader because dialog_kind() cannot see it -- the title reads
+    'Confirm Purchase' and is not among DIALOG_KINDS, so dialog_present()
+    returns False with it plainly on screen. Anything relying on that would
+    read the table it covers as an empty shop.
+    """
+    shot = source if source is not None else grab()
+    words = [w for w in find_words(shot, (700, 400, 1700, 950), 20)
+             if w.conf >= 45]
+    text = " ".join(w.text for w in words)
+    if "Purchase" not in text:
+        return None
+    buttons = {}
+    for w in words:
+        label = w.text.strip().lower()
+        if label in ("buy", "cancel") and w.centre[1] > 800:
+            buttons[label] = w.centre
+    if "buy" not in buttons:
+        return None
+    price = None
+    for w in words:
+        digits = re.sub(r"[^\d]", "", w.text)
+        if digits.isdigit() and len(digits) >= 6:
+            price = int(digits)
+    return {"buy": buttons["buy"], "cancel": buttons.get("cancel"),
+            "price": price, "text": text}
+
+
+def offers_match_slot(slot: int, offers: list[Offer]) -> bool:
+    """Do these rows actually belong to the item favourite `slot` searches for?
+
+    The Purchase tab does NOT clear its results when a search fails to run, so
+    "there are rows on screen" proves nothing about which search produced them.
+    Measured on 2026-08-07: a click on the loose-item slot did not take, the
+    previous Set results stayed up, and the comparison read the Set against
+    ITSELF -- item 187,278.00/each, set 187,278.00/each, saving 0. It refused
+    to buy for the right-looking reason and the wrong actual one, which is the
+    failure mode that hides worst.
+
+    A Set's name contains its parent's, so the direction matters: rows for
+    "Force Core Set (High)" all contain "Force Core(High)" once folded. The
+    test is therefore exact on the folded key, not a substring.
+    """
+    want = FAVOURITE_SLOTS.get(slot)
+    if not want:
+        return False
+    key = _floor_key(item_name(want))
+    hits = 0
+    for offer in offers:
+        # Strip the pack suffix before comparing: "... X 62" is the listing,
+        # not the item.
+        bare = _PACK_SIZE.sub("", offer.name).strip()
+        if _floor_key(item_name(bare)) == key:
+            hits += 1
+    return hits >= max(1, len(offers) // 2)
+
+
+PURCHASE_TAB_MARKERS = ("Category", "Function")
+PURCHASE_SORT_REGION = (820, 178, 1080, 212)
+
+
+def purchase_tab_open(source: "Image.Image | None" = None) -> bool:
+    """True when the Trade window is showing the PURCHASE tab.
+
+    Distinct from register_tab_open: the two tabs share a window, and clicking
+    a Purchase-tab coordinate while the Register tab is up hits the listings
+    table instead of the search controls.
+    """
+    shot = source if source is not None else grab()
+    hits = sum(1 for marker in PURCHASE_TAB_MARKERS
+               if find_text(shot, marker, TRADE_REGION))
+    return hits >= len(PURCHASE_TAB_MARKERS)
+
+
+def purchase_sorted_low_to_high(source: "Image.Image | None" = None) -> bool:
+    """True when the results are sorted Price: Low to High.
+
+    Every price decision assumes it -- "row 1 is the cheapest" is only true
+    under this sort. Read rather than assumed, because the control is a
+    dropdown a human can change and nothing else would notice.
+    """
+    shot = source if source is not None else grab()
+    words = [w for w in find_words(shot, PURCHASE_SORT_REGION, 20)
+             if w.conf >= 45]
+    text = " ".join(w.text for w in words).casefold()
+    return "low" in text and "price" in text
+
+
+def purchase_ready(verbose: bool = True) -> bool:
+    """Every precondition for clicking anything on the Purchase tab.
+
+    Checked BEFORE each click, not once at the start of a sweep. On 2026-08-07
+    a capture loop verified the Trade window once and then clicked favourite
+    coordinates eighty times; the window closed partway through and every later
+    click went into the 3D world as a move order. The character walked away
+    from the NPC, an item tooltip opened, and the run was lost -- from clicks
+    that were correct for a window that was no longer there.
+
+    Both window signals are required. trade_window_open() is a text search and
+    the world can supply those glyphs; panel_covers_trade_area() compares two
+    frames and a UI panel does not animate. The pair is what open_trade_window
+    itself trusts.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    shot = grab()
+    if not trade_window_open(shot):
+        say("  the Trade window is not open - refusing to click, the game "
+            "world is underneath.")
+        record("purchase.not_ready", reason="window_shut")
+        return False
+    if not panel_covers_trade_area():
+        say("  the Trade window reads as open but the area is still moving - "
+            "that is the world, not a panel. Refusing to click.")
+        record("purchase.not_ready", reason="area_animating")
+        return False
+    if not purchase_tab_open(shot):
+        say("  the Trade window is not on the Purchase tab - refusing to "
+            "click Purchase-tab coordinates on another tab.")
+        record("purchase.not_ready", reason="wrong_tab")
+        return False
+    if not purchase_sorted_low_to_high(shot):
+        say("  the results are not sorted Price: Low to High, so 'row 1 is "
+            "the cheapest' does not hold. Refusing.")
+        record("purchase.not_ready", reason="wrong_sort")
+        return False
+    return True
+
+
+def run_favourite_search(slot: int, settle: float = 3.0, tries: int = 2,
+                         verbose: bool = True) -> list[Offer]:
+    """Click favourite `slot` and return what it found, or [] if it did not run.
+
+    Returns EMPTY rather than whatever happens to be on screen when the search
+    cannot be confirmed. Stale rows read as a real answer are worse than no
+    answer: they look exactly like a successful search of a different item.
+    """
+    for attempt in range(1, tries + 1):
+        # Re-checked EVERY time, not once per sweep. The window can close
+        # between one click and the next, and a favourite coordinate with no
+        # window under it is a move order into the game world.
+        if not purchase_ready(verbose=verbose):
+            return []
+        x, y = favourite_slot_point(slot)
+        focus_game()
+        # Approach from above so the pointer ENTERS the button: a move to the
+        # pixel the cursor already occupies raises no event, and the control is
+        # then never armed.
+        move_mouse(x, y - 45)
+        time.sleep(0.2)
+        click(x, y)
+        time.sleep(settle)
+        park_cursor()
+        time.sleep(0.4)
+        offers = read_purchase_rows()
+        if offers and offers_match_slot(slot, offers):
+            if verbose:
+                print(f"  slot {slot} ({FAVOURITE_SLOTS.get(slot, '?')}): "
+                      f"{len(offers)} offer(s)")
+            return offers
+        if verbose:
+            sample = offers[0].name if offers else "(nothing)"
+            print(f"  slot {slot}: the results still show {sample!r} - the "
+                  f"search did not run (attempt {attempt}/{tries})")
+    return []
+
+
+def buy_offer(offer: Offer, timeout: float = 8.0,
+              verbose: bool = True) -> tuple[bool, str]:
+    """Buy one listing. Returns (bought, why).
+
+    The Alz balance is the proof, not the click: a listing can sell to somebody
+    else between being read and being clicked, and the Confirm Purchase dialog
+    then simply refuses -- it neither closes nor takes any money. Watching for
+    the dialog to go away is not enough either, so the balance is compared
+    before and after and a purchase is only claimed when it actually moved.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    if not purchase_ready(verbose=verbose):
+        return False, "the Purchase tab was not ready to be clicked"
+    before = get_alz(grab()) or None
+    focus_game()
+    # Select the row, then press its Buy. Approached from a different point so
+    # the pointer genuinely ENTERS the button: move_mouse to a pixel the cursor
+    # already occupies generates no move event, and the game then never arms
+    # the control.
+    move_mouse(500, offer.y - 40)
+    time.sleep(0.2)
+    click(500, offer.y)
+    time.sleep(0.8)
+    move_mouse(PURCHASE_BUY_X, offer.y - 40)
+    time.sleep(0.2)
+    click(PURCHASE_BUY_X, offer.y)
+    time.sleep(1.5)
+
+    dialog = purchase_confirm()
+    if dialog is None:
+        # No dialog and no purchase: whatever the Buy click hit, it was not the
+        # button. Do NOT click again blind.
+        return False, "the Confirm Purchase dialog did not appear"
+
+    def refuse(why: str) -> tuple[bool, str]:
+        say(f"  {why} - cancelling rather than buying it.")
+        record("buy.refused", item=offer.name, price=offer.price, why=why)
+        if dialog and dialog.get("cancel"):
+            cx, cy = dialog["cancel"]
+            move_mouse(cx, cy + 60)
+            time.sleep(0.2)
+            click(cx, cy)
+            time.sleep(1.0)
+        return False, why
+
+    # The dialog states the real price. If it disagrees with the row that was
+    # chosen, the row was misread or the table moved -- either way, do not buy.
+    if dialog["price"] and dialog["price"] != offer.price:
+        return refuse(f"the dialog says {dialog['price']:,} but the row read "
+                      f"{offer.price:,}")
+
+    # And it must name the item that was chosen. The price alone is not enough:
+    # two different items can carry the same figure, and the row that was
+    # clicked is not necessarily the row the game acted on -- a listing selling
+    # underneath shifts everything up.
+    #
+    # Compared with the pack stripped from BOTH sides, because the dialog
+    # reorders it: the row reads "Force Core Set (High) X 62" and the dialog
+    # says "Force Core Set X 62 (High)".
+    wanted = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", offer.name)))
+    shown = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", dialog["text"])))
+    if wanted and wanted not in shown:
+        return refuse(f"the dialog does not name {offer.name!r} "
+                      f"(it reads {dialog['text'][:70]!r})")
+
+    say(f"  confirming {offer.name!r} at {offer.price:,} Alz")
+    bx, by = dialog["buy"]
+    move_mouse(bx, by + 60)
+    time.sleep(0.25)
+    click(bx, by)
+    time.sleep(2.5)
+    park_cursor()
+    time.sleep(1.0)
+
+    after = get_alz(grab()) or None
+    if before and after and before - after == offer.price:
+        record("buy.completed", item=offer.name, price=offer.price,
+               pack=offer.pack)
+        return True, ""
+    if purchase_confirm() is not None:
+        # Still open: the listing went while we were deciding.
+        say("  the dialog would not complete - the listing was taken by "
+            "somebody else. Cancelling and searching again.")
+        dialog = purchase_confirm()
+        if dialog and dialog["cancel"]:
+            click(*dialog["cancel"])
+            time.sleep(1.0)
+        return False, "sold out before the purchase completed"
+    if before and after and before == after:
+        return False, "the dialog closed but no Alz was spent"
+    return False, (f"the balance moved {(before or 0) - (after or 0):,}, "
+                   f"not the {offer.price:,} expected")
+
+
+def buy_cheapest_set(item_slot: int,
+                     threshold: int = PRICE_DIFF_FLOOR,
+                     attempts: int = BUY_RETRY_ATTEMPTS,
+                     verbose: bool = True) -> bool:
+    """Buy one Set of the item in favourite `item_slot`, if it is worth it.
+
+    Compares the loose item against its Set PER ITEM, and buys the cheapest
+    Set listing only when the saving clears `threshold`.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    set_slot = favourite_set_slot(item_slot)
+    if set_slot is None:
+        say(f"Slot {item_slot} has no paired Set slot; nothing to compare.")
+        return False
+
+    item_offers = run_favourite_search(item_slot, verbose=verbose)
+    item_best = cheapest_listing(item_offers)
+    if item_best is None:
+        say("No offers for the loose item, so there is nothing to compare "
+            "against - refusing to buy blind.")
+        return False
+
+    for attempt in range(1, attempts + 1):
+        if attempt > 1:
+            say(f"\n=== buy attempt {attempt}/{attempts} ===")
+        set_offers = run_favourite_search(set_slot, verbose=verbose)
+        # Row 1 on both sides: the table is sorted Price: Low to High, so the
+        # first row IS the cheapest, and comparing anything else would judge
+        # the deal on a listing the buy is not going to take.
+        set_best = cheapest_listing(set_offers)
+        if set_best is None:
+            say("No Set offers on screen.")
+            return False
+
+        saving = item_best.unit - set_best.unit
+        say(f"  item {item_best.unit:>12,.2f}/each   "
+            f"set {set_best.unit:>12,.2f}/each   "
+            f"saving {saving:>10,.2f}/each")
+        if saving < threshold:
+            say(f"  saving is under the {threshold:,} threshold - not buying.")
+            return False
+
+        target = set_best          # row 1, the same row the saving was judged on
+        say(f"  buying row {target.row}: {target.name!r} at "
+            f"{target.price:,} for {target.pack} ({target.unit:,.2f} each)")
+        bought, why = buy_offer(target, verbose=verbose)
+        if bought:
+            say(f"  BOUGHT {target.name!r} for {target.price:,} Alz.")
+            return True
+        say(f"  not bought: {why}")
+        if "sold out" not in why:
+            return False
+    say(f"Gave up after {attempts} attempts - the listings kept selling first.")
+    return False
+
+
 WORK_TAB = 4
 # Attempts to clear a stranded work tab before giving up. A strand is one
 # cancelled stack, so one listing normally clears it; the extra attempts cover
@@ -1665,6 +2985,42 @@ def ctrl_click(x: int, y: int, settle: float = 0.15) -> None:
         time.sleep(0.25)
     finally:
         _release_key(VK_CONTROL)
+        time.sleep(0.08)
+    cooldown()
+
+
+def alt_click(x: int, y: int, settle: float = 0.15) -> None:
+    """Alt+Left-click, which opens the vendor's Mass Purchase dialog.
+
+    Same shape as ctrl_click, and the same reasoning: the modifier is held well
+    either side of the button because the game samples modifier state on its own
+    frame tick.
+
+    Alt carries an extra hazard Ctrl does not. If the Alt goes down but the
+    click is refused, Windows has a bare Alt press, which activates the window
+    menu; and if Alt is dropped while down, every later click in this file
+    becomes an Alt+click -- which in a vendor window is a purchase dialog rather
+    than the intended button. Both releases are therefore in `finally`, and
+    release_modifiers() at the start of a cycle is the backstop.
+    """
+    if _suppressed(f"Alt+Click ({x}, {y})"):
+        return
+    make_dpi_aware()
+    if not move_mouse(x, y):
+        raise PermissionError(CURSOR_BLOCKED_HINT)
+    time.sleep(settle)
+
+    _send(_key_event(VK_MENU, up=False))
+    try:
+        time.sleep(0.25)
+        _send(_mouse_event(MOUSEEVENTF_LEFTDOWN))
+        try:
+            time.sleep(0.12)
+        finally:
+            _release_left_button()
+        time.sleep(0.25)
+    finally:
+        _release_key(VK_MENU)
         time.sleep(0.08)
     cooldown()
 
@@ -4702,7 +6058,19 @@ def active_inventory_tab(
     brightness = []
     for tab in range(1, TAB_COUNT + 1):
         cx, cy = tab_centre(origin, tab)
-        cell = image.crop((cx - 20, cy - 12, cx + 20, cy + 12)).convert("L")
+        # Sample the RAISED TOP EDGE, not the numerals. The selected tab is
+        # drawn taller, so this band is panel on the active tab and background
+        # on every other one -- which is a much larger difference than the
+        # slight brightening of the numerals themselves.
+        #
+        # Measured over the numerals, the active tab beat the median by 11.4 on
+        # one frame and 7.1 on another; over this band, by 22.3 and 23.9. That
+        # 7.1 cleared TAB_ACTIVE_MARGIN and returned tab 8 for a frame where
+        # tab I was plainly the raised one -- a CONFIDENT wrong answer, which
+        # select_inventory_tab would take as "already on the right tab" and
+        # skip the click. Checked against 40 recorded run frames: identical
+        # verdict on every one, with a wider margin on all of them.
+        cell = image.crop((cx - 22, cy - 25, cx + 22, cy - 15)).convert("L")
         data = list(getattr(cell, "get_flattened_data", cell.getdata)())
         brightness.append((sum(data) / len(data), tab))
 

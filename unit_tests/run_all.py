@@ -37,6 +37,10 @@ SUITES = [
     ("floors on real screens", HERE / "floor_live_test.py",  []),
     ("floor catalogue",       HERE / "floor_catalogue_test.py", []),
     ("layout replay",         HERE / "layout_replay_test.py", []),
+    # The vendor grid. Mostly refusals: this is the only surface in the file
+    # where a plain click spends items with no confirmation, so the tests that
+    # matter assert that nothing is clicked when anything is unverified.
+    ("convert_cores",         HERE / "convert_cores_test.py", []),
     # The only coverage that drives the STATE MACHINE rather than the readers.
     # It stubs the click/capture layer and runs cancel_item, register_item,
     # relist_rows and run_loop through their failure paths for real -- the code
