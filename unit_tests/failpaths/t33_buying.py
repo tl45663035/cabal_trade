@@ -267,7 +267,7 @@ class _Market:
                     trade.Offer(2, "Force Core Set (High) X 10", 1_900_000, 10, 416)]
         return [trade.Offer(1, "Force Core(High)", 209_800, 1, 340)]
 
-    def buy(self, offer, timeout=8.0, verbose=True):
+    def buy(self, offer, want=1, timeout=8.0, verbose=True):
         self.bought.append(offer.row)
         if len(self.bought) <= self.sold_out_times:
             return False, "the listing sold out before the click"

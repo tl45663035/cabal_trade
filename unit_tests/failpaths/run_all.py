@@ -77,17 +77,39 @@ FORENSICS = [
 # signal that the work landed.
 KNOWN_OPEN = {
     "1 cancel_item":
-        "cancel_item returns one False for 'nothing happened' and 'committed "
-        "but unverified'; the recorded committed flag means only that the "
-        "click was sent",
-    "2 register_item":
-        "the identity cross-check is skipped entirely when the panel's qty_max "
-        "reads None, which is the case its own docstring calls common -- so it "
-        "fails OPEN after the cancel is irreversible",
-    "4 run_loop":
-        "an empty action list returns True, so a cycle that did nothing counts "
-        "as a success and resets the consecutive-failure breaker",
+        "PARTLY FIXED 2026-08-08: cancel_item now takes a `report` "
+        "out-parameter carrying `committed`, and _relist_cycle retries a row "
+        "only when it is explicitly False -- so a missed dialog no longer "
+        "costs the row. What remains is 1d's wording: the suite wants a "
+        "definitive 'the game did NOT accept the cancellation' and the code "
+        "deliberately hedges, because the game can stack confirmation dialogs "
+        "after accepting one. Making the message definitive would be "
+        "overclaiming, so this stays open rather than being satisfied.",
 }
+# Closed 2026-08-08:
+#
+#   "2 register_item -- the identity cross-check is skipped entirely when the
+#    panel's qty_max reads None". Two changes: the panel is re-read once before
+#    concluding the field is unreadable, and when it still cannot be read the
+#    skip is announced and recorded (register.qty_unverified) instead of
+#    happening silently. It is NOT made fatal -- the cancel has already
+#    committed by then, so aborting strands the stack, and a strand now
+#    terminates the run. sanity_check still reads the listing back afterwards,
+#    which is the check that actually proves identity.
+#
+#   Note the entry's wording never matched the check that failed. 2h was about
+#   report["committed"] being set on the statement AFTER the confirm click, so
+#   a click that delivered its button-down and then raised left a live listing
+#   reported as uncommitted. Fixed by marking it BEFORE the click: `committed`
+#   answers "may this be retried", and once the click is attempted the answer
+#   is no. The same trap the file already documents -- a KNOWN_OPEN reason
+#   written from an assumption rather than read off the suite's output.
+#
+#   "4 run_loop -- an empty action list returns True". run_sequence now returns
+#   False for an empty list and says why: reaching it with no actions is a
+#   caller error, not a completed cycle, and counting it as success reset the
+#   very breaker that exists to stop a loop doing nothing.
+
 # Closed 2026-08-06: "9 outage replay -- the recovery (clearing a stranded work
 # tab) does not exist". It exists now (recover_stranded_work_tab), t9 grew a 9d
 # for it, and t25 covers it directly.

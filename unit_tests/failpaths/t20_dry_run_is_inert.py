@@ -127,10 +127,19 @@ before = with_no_input(False)
 try:
     with Spy() as spy:
         trade.move_mouse = lambda x, y: True      # no real cursor, ever
+        # scroll_wheel now refuses unless the wheel would reach the listings
+        # table. That precondition lives INSIDE the primitive on purpose -- a
+        # guard a caller can skip is not a guard, and forty notches into the
+        # game world once zoomed the camera until the NPC left the screen. It
+        # has its own tests; this section is about suppression being
+        # conditional, so the precondition is satisfied rather than exercised.
+        real_scrollable = trade.table_scrollable
+        trade.table_scrollable = lambda verbose=True: True
         try:
             REAL["scroll_wheel"](600, 400, -3)
         finally:
             trade.move_mouse = REAL["move_mouse"]
+            trade.table_scrollable = real_scrollable
         check("scroll_wheel sends one event per notch", len(spy.events) == 3,
               f"{len(spy.events)} event(s) for 3 notches -- suppression has to "
               f"be conditional, or the script can never act at all")

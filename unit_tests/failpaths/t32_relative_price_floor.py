@@ -1,4 +1,4 @@
-"""A relist may not fall more than 10% below what the item is listed at now.
+"""A relist may not fall more than RELATIVE_PRICE_FLOOR below the listed price.
 
 Before this, the only brake on a falling price was a per-item entry in
 ITEM_PRICE_FLOORS. Everything else took "the lowest current price, whatever it
@@ -13,12 +13,13 @@ the market price anyway. So an unfloored item was one clipped OCR read away
 from being given away.
 
 It is a RATCHET, not a hard floor, and that distinction is the whole design: a
-genuine crash is still followed at 10% per relist, converging on the market
+genuine crash is still followed a step per relist, converging on the market
 over several cycles. A real drop costs a few cycles slightly above the market;
-a misread costs 10% instead of everything.
+a misread costs one step instead of everything.
 """
 from harness import check, section, summary
 
+import math
 import trade
 
 PREV = 200_000
@@ -29,25 +30,46 @@ def price(market, previous=PREV, absolute=0):
     return trade.choose_price(market, 0, previous or None, absolute)
 
 
+# The bound the ratchet actually imposes, derived rather than typed. Every
+# expectation below is expressed through this, so retuning
+# RELATIVE_PRICE_FLOOR moves the suite with the code instead of breaking it.
+def ratchet(listed):
+    """The lowest a relist may go, given what it is listed at now."""
+    pct = int(trade.RELATIVE_PRICE_FLOOR * 100)
+    return -(-listed * pct // 100)
+
+
+DROP = 100 - int(trade.RELATIVE_PRICE_FLOOR * 100)
+FLOOR_200K = ratchet(200_000)
+
+
 # ===========================================================================
 section("the boundary")
 
-check(f"RELATIVE_PRICE_FLOOR is {FLOOR}", abs(FLOOR - 0.90) < 1e-9, f"{FLOOR}")
+# The VALUE is an operator setting, so it is not pinned -- what must hold is
+# that it is a sane ratchet: below 1 (or it forbids every drop) and well above
+# 0 (or it forbids nothing). Tightened 0.90 -> 0.95 on 2026-08-07 after a VIP
+# fell 9.47% in one relist, which the old bound allowed.
+check(f"RELATIVE_PRICE_FLOOR is a ratchet, not a no-op ({FLOOR})",
+      0.5 < FLOOR < 1.0, f"{FLOOR}")
+check("...and the drop it permits is a whole number of percent",
+      abs(FLOOR * 100 - round(FLOOR * 100)) < 1e-9,
+      f"{FLOOR} -- the guard arithmetic uses int(FLOOR * 100)")
 
-got, why = price(180_000)
-check("exactly 90% is allowed through untouched", got == 180_000 and not why,
+got, why = price(FLOOR_200K)
+check(f"exactly {int(trade.RELATIVE_PRICE_FLOOR * 100)}% is allowed through untouched", got == FLOOR_200K and not why,
       f"{got:,} {why!r}")
 
 got, why = price(179_999)
-check("a hair under is clamped to the floor", got == 180_000,
+check("a hair under is clamped to the floor", got == FLOOR_200K,
       f"{got:,} -- the user's example: listed 200k, floor 180k")
-check("...and says which bound applied", "10% below the listed" in why, why)
+check("...and says which bound applied", f"{DROP}% below the listed" in why, why)
 
 got, _ = price(150_000)
-check("a 25% drop is clamped", got == 180_000, f"{got:,}")
+check("a 25% drop is clamped", got == FLOOR_200K, f"{got:,}")
 
 got, _ = price(999)
-check("a clipped misread is clamped, not obeyed", got == 180_000,
+check("a clipped misread is clamped, not obeyed", got == FLOOR_200K,
       f"{got:,} -- 999 was listed verbatim before this")
 
 got, why = price(250_000)
@@ -76,15 +98,15 @@ for previous in (200_000, 105_999_999, 54_797_776, 1_001, 333_333, 7):
 section("it composes with the absolute per-item floors")
 
 got, why = price(50_000_000, previous=120_000_000, absolute=104_000_000)
-check("the HIGHER of the two bounds wins", got == 108_000_000,
-      f"{got:,} -- 10% of 120,000,000 is 108,000,000, above the 104,000,000 "
+check("the HIGHER of the two bounds wins", got == ratchet(120_000_000),
+      f"{got:,} -- the ratchet on 120,000,000 is {ratchet(120_000_000):,}, above the 104,000,000 "
       f"floor, so the ratchet binds")
 check("...and the reason names the ratchet, not the floor",
-      "10% below the listed" in why, why)
+      f"{DROP}% below the listed" in why, why)
 
 got, why = price(100_000_000, previous=105_999_999, absolute=104_000_000)
 check("the absolute floor wins when it is higher", got == 104_000_000,
-      f"{got:,} -- 10% of 105,999,999 is 95,399,999, below the floor")
+      f"{got:,} -- the ratchet on 105,999,999 is {ratchet(105_999_999):,}, below the floor")
 check("...and the reason names the floor",
       "floor for this item" in why, why)
 
@@ -124,7 +146,12 @@ for _ in range(20):
         break
 check("a real crash is followed, not blocked", steps[-1] == 100_000,
       f"{steps} -- a hard floor would have stopped at 180,000 forever")
-check("...taking several cycles, not one", 4 <= len(steps) <= 12,
+# Derived from the ratchet rate, not hardcoded: halving the step doubles the
+# cycles, so a fixed bound fails when RELATIVE_PRICE_FLOOR is retuned -- for a
+# reason that has nothing to do with correctness. What must hold is that it
+# converges in the number of steps the rate implies, and not in one.
+_want = math.ceil(math.log(0.5) / math.log(trade.RELATIVE_PRICE_FLOOR))
+check("...taking several cycles, not one", _want <= len(steps) <= _want + 3,
       f"{len(steps)} cycles: {steps}")
 check("...and never rising on the way down",
       all(b <= a for a, b in zip(steps, steps[1:])), f"{steps}")

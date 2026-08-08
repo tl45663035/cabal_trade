@@ -37,6 +37,7 @@ import csv
 import ctypes
 import ctypes.wintypes
 import io
+import itertools
 import json
 import math
 import os
@@ -101,41 +102,47 @@ ITEM_PRICE_FLOORS: tuple[tuple[str, str, int], ...] = (
     # listed it would go up at 180,000,000, never sell, and pay a percentage
     # fee on that figure. Give it its own entry before listing one.
     ("gempack", "Force Gem Package (x400)", 175_000_000),
-    # These two differ by four characters, score 0.909 against each other, and
-    # so ALWAYS match each other's entry. item_price_floor takes the clearly
-    # better match rather than the higher floor for exactly this pair -- under
-    # the old max() rule the 24,000,000 item inherited the 44,000,000 floor and
-    # would never have sold.
+    # "Epic Booster (High)" was catalogued here at 24,000,000 and was removed
+    # on 2026-08-07 at the operator's request. Only the Highest grade is
+    # listed now.
     #
-    # Both carry the SAME token on purpose. A token exists to rescue a name
-    # clipped by a misjudged column, and clipping is precisely what removes the
-    # "(High)"/"(Highest)" that tells these apart -- so a token of
-    # "epicboosterhighest" would rescue nothing. "epicboost" matches both,
-    # the two then score alike, and the margin rule falls back to the higher
-    # floor. It is deliberately shorter than the shared prefix "epicbooster":
-    # at that length a read clipped to "Epic Boost" no longer contains the
-    # token, only the shorter (High) entry stayed a candidate, and the floor
-    # came back 24,000,000 for a 44,000,000 item.
+    # What that changed, measured rather than assumed:
     #
-    # A clipped read is therefore floored at 44,000,000: too high for
-    # the cheaper item, which only costs a cycle, rather than too low for the
-    # dearer one, which sells it 20,000,000 short.
+    #     read                       was           now
+    #     Epic Booster (High)        24,000,000    44,000,000
+    #     Epic Booster (Highest)     44,000,000    44,000,000
+    #     "Epic Booster (High"       24,000,000    44,000,000
+    #     "Epic Booster (Highes)"    44,000,000    44,000,000
     #
-    # Verified live on 2026-08-06: both were listed at the time, reading
-    # "Epic Booster (Highest)" at 54,797,776 and "Epic Booster (High)" at
-    # 25,000,000, so the catalogue spelling here is the game's own.
+    # Every Epic Booster read, clean or clipped, now takes 44,000,000. Two
+    # consequences, one good and one to know about:
     #
-    # ONE RESIDUAL COLLISION, measured not assumed. A "(Highest)" clipped at
-    # exactly the character before "est)" reads as "Epic Booster (High", whose
-    # folded key IS the (High) entry -- identical strings, so no name-based rule
-    # can separate them, and this one takes 24,000,000. Every other clip length
-    # from 4 to 22 characters is safe (0 or 44,000,000), as is every glyph
-    # substitution tried. Forcing that string to 44,000,000 would mean the
-    # (High) item ALWAYS carried the dearer floor and never sold, which defeats
-    # the entry entirely -- so the collision is accepted and recorded here
-    # rather than traded for a permanent failure to sell.
+    #  * the residual collision is gone. The two names differ by four
+    #    characters and score 0.909 against each other, so they always matched
+    #    each other's entry; a "(Highest)" clipped at exactly the character
+    #    before "est)" read as "Epic Booster (High", which IS the (High) key --
+    #    identical strings, separable by no name-based rule -- and took
+    #    24,000,000 for a 44,000,000 item. With one entry there is nothing left
+    #    to confuse it with.
+    #
+    #  * a genuine (High) listing would now carry a floor above its own value.
+    #    It was reading 25,000,000 live on 2026-08-06, so at a 44,000,000 floor
+    #    it would go up and never sell. That is the safe direction -- too high
+    #    costs a cycle, too low sells the dearer grade 20,000,000 short.
+    #
+    #    That cost is accepted, not overlooked: the operator has retired the
+    #    (High) grade and will not be listing it again. The entry is not
+    #    waiting to be restored. If that ever changes, add it back at
+    #    24,000,000 AND restore the best-match and collision tests from git
+    #    history -- they are what proved the two grades could be told apart,
+    #    and floor_booster_test fails on purpose if the entry returns without
+    #    them.
+    #
+    # The token stays "epicboost", deliberately shorter than the shared prefix
+    # "epicbooster": a read clipped to "Epic Boost" still contains it, and a
+    # token exists to rescue exactly the clipped reads the similarity route
+    # cannot. The catalogue spelling is the game's own, verified live.
     ("epicboost", "Epic Booster (Highest)", 44_000_000),
-    ("epicboost", "Epic Booster (High)", 24_000_000),
 )
 
 FALLBACK_PRICE = 10_000_000_000    # 10B, when the game suggests no price
@@ -159,7 +166,7 @@ MIN_PLAUSIBLE_PRICE = 1_000
 SUSPECT_PRICE_FRACTION = 0.5
 
 # A relist may not drop below this fraction of what the item is CURRENTLY
-# listed at. Listed at 200,000, the lowest a relist can go is 180,000.
+# listed at. Listed at 200,000, the lowest a relist can go is 190,000.
 #
 # This is the brake that was missing. "Take the lowest current price, whatever
 # it is" is right when the reading is right, and catastrophic when it is not:
@@ -169,11 +176,16 @@ SUSPECT_PRICE_FRACTION = 0.5
 # note. Only items in ITEM_PRICE_FLOORS were protected at all.
 #
 # Deliberately a RATCHET, not a hard floor. A genuine crash is still followed,
-# 10% per relist, converging on the market over several cycles -- 200,000
-# against a real market of 100,000 walks 180,000 -> 162,000 -> 145,800 and so
-# on. That is the trade: a real drop costs a few cycles of being slightly over
-# the market, and a misread costs 10% instead of everything.
-RELATIVE_PRICE_FLOOR = 0.90
+# 5% per relist, converging on the market over several cycles -- 200,000
+# against a real market of 100,000 walks 190,000 -> 180,500 -> 171,475 and so
+# on. That is the trade: a real drop costs more cycles of sitting over the
+# market, and a misread costs 5% instead of everything.
+#
+# Tightened from 0.90 on 2026-08-07 after a Yekaterina VIP went 115,988,564 ->
+# 104,999,999 in one relist. That was a 9.47% drop and so WITHIN the old
+# allowance -- the guard did not fail, it was simply set wider than intended.
+# At 0.95 the same relist is refused: the bound becomes 110,189,136.
+RELATIVE_PRICE_FLOOR = 0.95
 
 # --------------------------------------------------------------------------
 # WHAT GETS RELISTED
@@ -209,9 +221,50 @@ QTY_CROSSCHECK_FRACTION = 0.10
 # Pace every input the script sends. The game is a live client with its own
 # animations and server round-trips; acting faster than a person can leaves it
 # behind and produces the "the click did nothing" failures.
-ACTION_COOLDOWN = 0.5  # after a move, a click or a key press
+#
+# Lowered from 0.5 to 0.1 on 2026-08-07 at the operator's request. It is paid
+# after EVERY move, click and key press -- roughly twenty per relisted row --
+# so the saving is about eight seconds a row, a minute and a half on a ten-row
+# cycle.
+#
+# The trade is real and this is the first knob to turn back if the symptoms
+# return: a click that selects nothing, a Cancel or Register button that reads
+# as missing because the panel is still animating, a quantity field that keeps
+# its old value. Those are what the 0.5 was measured to avoid. Nothing here
+# fails silently -- every one of them aborts the row with a reason -- so a bad
+# value shows up as refusals rather than as wrong prices.
+ACTION_COOLDOWN = 0.3  # after a move, a click or a key press
 
-TYPE_COOLDOWN = 0.5     # between keystrokes while entering a value
+# Between keystrokes while entering a value. Lowered from 0.5 to 0.1 on
+# 2026-08-07 with ACTION_COOLDOWN, at the operator's request.
+#
+# This is the riskier of the two -- type_number's docstring records that the
+# field DROPS CHARACTERS when typed at machine speed, which is why it was
+# paced at all. A price of 111,250,000 is nine keystrokes, so the saving is
+# about 3.6 seconds per registration.
+#
+# What makes it survivable is that a dropped digit cannot become a wrong
+# listing: the price is read back and the registration aborts with "price did
+# not take" if it disagrees, and the quantity is cross-checked against the
+# field before Register is pressed. So the failure mode is a refused row with a
+# reason, not an item sold at a tenth of its price. If refusals with those two
+# messages start appearing, this is the value to raise first.
+# REVERTED to 0.5 on 2026-08-07, the same evening it was lowered to 0.1.
+#
+# It failed on the first live conversion: "typing 250 into a field that maxes
+# at 53 -> expecting 53 ... but it reads 5". Two of the three keystrokes were
+# lost. That is precisely what type_number's docstring says this value exists
+# to prevent, and the measured-safe figure is 0.5.
+#
+# The guard behaved exactly as designed -- the field was read back, the
+# mismatch was caught, and the conversion cancelled without spending the Sets
+# -- so the cost was a lost round rather than a wrong purchase. But a value
+# that aborts runs is not a saving: typing is a handful of numbers per row,
+# while the abort cost the whole restock.
+#
+# ACTION_COOLDOWN stays at 0.1: every click, move and tab switch in that same
+# run landed correctly. It is only the KEYSTROKE pacing this field cannot take.
+TYPE_COOLDOWN = 0.3     # between keystrokes while entering a value
 
 # Shortest turnaround between loop cycles, so `--every 0` cannot spin a core
 # when a cycle happens to do no work at all.
@@ -230,6 +283,33 @@ RELIST_ATTEMPTS = 3
 # identical call three times for a key-up, so this was an asymmetry, not a
 # policy. Real UIPI blocking fails every attempt and still raises.
 SEND_ATTEMPTS = 4
+
+# How many "_2", "_3" suffixes a capture will try before giving up on finding
+# an unused filename. See _free_path.
+CAPTURE_SUFFIX_LIMIT = 100
+
+# How many times a modifier key-up is re-sent before it is reported as stuck.
+#
+# The worst outcome in the file: a dropped Ctrl-up leaves every later click a
+# Ctrl+Click, which is the item-MOVE gesture, and a dropped Alt-up leaves them
+# Alt+Clicks. Retried rather than trusted, and the retry is cheap because it
+# only ever runs when the first attempt already reported failure.
+RELEASE_ATTEMPTS = 3
+
+# How many times the NPC is looked for before the search is given up.
+#
+# She is found by OCR of her floating name, which the game animates and which
+# other players walk in front of. A miss is usually transient.
+NPC_FIND_RETRIES = 4
+
+# How many dialogs deep close_any_dialog will go. A confirmation can be stacked
+# on a confirmation, and each Escape reveals the next.
+CLOSE_DIALOG_TRIES = 4
+
+# How many times the inventory grid's anchor is re-measured before giving up.
+# Found by the Alz box's COLOUR rather than by OCR, so a failure here usually
+# means the panel is genuinely not open rather than that the read flaked.
+INVENTORY_ORIGIN_RETRIES = 3
 
 # Consecutive failed cycles before the loop gives up. Retrying only helps if
 # something might change between attempts; a stranded item in the work tab, for
@@ -342,8 +422,20 @@ def favourite_for(item: str) -> int | None:
 
     Matched on the same folded key the price floors use, so the game's own
     spacing inconsistency around the bracket cannot cause a miss.
+
+    The pack marker is stripped FIRST. Table names carry it -- a listed row
+    reads "Force Core (Ultimate) X 250", not "Force Core (Ultimate)" -- and
+    this lookup is exact equality, so without the strip a listed row resolves
+    to no slot at all. That silently deleted the never-below-cost floor on the
+    only path that repeats: set_behind() returned "", purchase_cost_basis()
+    returned 0, and listing_floor() fell back to the catalogue, which is 0 for
+    a Core. The floor worked on the fresh listing (clean name from the vendor)
+    and vanished on every relist after it -- so the holding could be walked
+    below cost 5% at a time, which is exactly what the floor exists to stop.
+    item_price_floor survives the marker because it matches fuzzily; this one
+    does not, and every other name comparison in this file strips it first.
     """
-    want = _floor_key(item_name(item))
+    want = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", item)))
     if not want:
         return None
     for slot, name in FAVOURITE_SLOTS.items():
@@ -779,6 +871,18 @@ CONVERT_DLG_QTY_VALUE = (1163, 592, 1252, 630)
 CONVERT_DLG_QTY_MAX = (1268, 594, 1338, 628)
 # Right of the "/", left of the spinner arrows: including the spinner turned
 # "55" into "554" on a real frame.
+# The buttons get their OWN crop. Tesseract's segmentation is crop-dependent,
+# and the whole-dialog region reads the item, the QTY row and the price line
+# and then simply stops before the buttons -- on one live frame it produced
+# "... Force Core Set (High) 12/1" and found neither OK nor Cancel, while a
+# whole-screen search found both at the coordinates the region covers.
+#
+# That made mass_purchase_open() report NO DIALOG with the dialog plainly up,
+# so a perfectly good conversion aborted with "the Purchase Item dialog did not
+# appear after Alt+click" -- twice, on two separate live runs.
+#
+# Verified on both the frame that failed and the original golden capture.
+CONVERT_DIALOG_BUTTONS = (1150, 880, 1560, 940)
 CONVERT_CONFIRM_WORD = "OK"
 CONVERT_CANCEL_WORD = "Cancel"
 CONVERT_DIALOG_TIMEOUT = 8.0
@@ -801,8 +905,8 @@ def mass_purchase_open(
     identified by a title this UI renders badly.
     """
     shot = source if source is not None else grab()
-    ok = find_text(shot, CONVERT_CONFIRM_WORD, CONVERT_DIALOG_REGION, 40.0)
-    cancel = find_text(shot, CONVERT_CANCEL_WORD, CONVERT_DIALOG_REGION, 40.0)
+    ok = find_text(shot, CONVERT_CONFIRM_WORD, CONVERT_DIALOG_BUTTONS, 40.0)
+    cancel = find_text(shot, CONVERT_CANCEL_WORD, CONVERT_DIALOG_BUTTONS, 40.0)
     qty = find_text(shot, "QTY", CONVERT_DIALOG_REGION, 40.0)
     if not ok or not cancel or not qty:
         return None
@@ -856,8 +960,40 @@ def mass_purchase_matches(row: int, col: int, detail: dict) -> bool:
             and _names_agree(detail.get("price_line", ""), costs))
 
 
+def core_slot_candidates(before: set, after: set) -> list:
+    """Slots on the work tab that may now hold the converted Cores, best first.
+
+    Taken from the tab's occupancy before and after the conversion, because a
+    Core cannot be told from a Set by looking at pixels -- but the SPACES can,
+    and they are enough:
+
+      1. occupied now, empty before. Nothing else was added during the
+         conversion, so whatever is there is a Core. This is the normal case.
+
+      2. occupied both before and after. Ordinarily this is a Set stack that
+         merely shrank -- but it is ALSO what a fully consumed stack looks like
+         once a Core drops into the slot it just freed.
+
+    The second case is why a plain set difference is not enough. Sets stack to
+    999, so a 1,250-Set purchase occupies TWO slots -- (1,1) with 999 and (1,2)
+    with 251 -- and Cores start landing at (1,3). Convert the 999 and slot
+    (1,1) empties and refills with a Core in the same breath: it is in both
+    readings, so the difference misses it entirely. With the first stack gone,
+    the next conversion's Cores can land in (1,1) with nothing new appearing at
+    all, and the difference comes back EMPTY for a conversion that worked.
+
+    Ordered rather than filtered: the caller loads a candidate and
+    register_item refuses it if the name is wrong, so a wrong guess costs a
+    retry rather than a mislisting.
+    """
+    fresh = sorted(after - before)
+    persisted = sorted(after & before)
+    return fresh + persisted
+
+
 def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
-                  verbose: bool = True, execute: bool = True) -> dict:
+                  verbose: bool = True, execute: bool = True,
+                  require_layout: bool = True) -> dict:
     """Exchange Sets for Cores at the vendor, in one Mass Purchase.
 
     The trade is one-for-one and the vendor charges no Alz, so this is pure
@@ -944,15 +1080,41 @@ def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
             "Sets, so there is nothing safe to do without it.")
 
     filled = set(occupied_slots(grab(), origin))
-    require(CONVERT_SET_SLOT in filled,
-            f"inventory slot {CONVERT_SET_SLOT} looks empty")
-    require(CONVERT_CORE_SLOT not in filled,
-            f"inventory slot {CONVERT_CORE_SLOT} is already occupied. It is "
-            "the landing slot for the converted Cores, and an occupied one "
-            "makes the after-check meaningless -- it would read as success "
-            "whatever happened. Clear it first.")
-    say(f"  inventory tab {CONVERT_INVENTORY_TAB}: {CONVERT_SET_SLOT} holds "
-        f"{costs}, {CONVERT_CORE_SLOT} is clear")
+    if require_layout:
+        # The hand-driven convention: Sets parked in the first slot, Cores
+        # landing in the second. Checked because it is what the operator set
+        # up, and a tab that does not look like it is a tab we do not
+        # understand.
+        require(CONVERT_SET_SLOT in filled,
+                f"inventory slot {CONVERT_SET_SLOT} looks empty")
+        require(CONVERT_CORE_SLOT not in filled,
+                f"inventory slot {CONVERT_CORE_SLOT} is already occupied. It "
+                "is the landing slot for the converted Cores, and an occupied "
+                "one makes the after-check meaningless -- it would read as "
+                "success whatever happened. Clear it first.")
+        say(f"  inventory tab {CONVERT_INVENTORY_TAB}: {CONVERT_SET_SLOT} "
+            f"holds {costs}, {CONVERT_CORE_SLOT} is clear")
+    else:
+        # Driven by the restock pipeline, where Sets land wherever the game put
+        # them and the tab fills and empties as batches cycle through. The
+        # layout cannot be asserted, but the MEASUREMENT still holds: whatever
+        # is occupied now is the baseline, and anything new afterwards arrived
+        # from this conversion.
+        free = GRID_SIZE * GRID_SIZE - len(filled)
+        # A FULL work tab is not a reason to refuse. The game fills the first
+        # free slot in the whole inventory, so Cores simply land on a later tab
+        # -- and list_cores looks there when the work tab yields nothing.
+        #
+        # It does cost the count its meaning: with nothing landing here,
+        # `converted` reads 0 for a conversion that worked. Said out loud, and
+        # progress is measured by what was LISTED anyway.
+        if free <= 0:
+            say(f"  inventory tab {CONVERT_INVENTORY_TAB} is full; the Cores "
+                "will land on a later tab and this tab's count will read 0. "
+                "The listing quantity is what counts them.")
+        else:
+            say(f"  inventory tab {CONVERT_INVENTORY_TAB}: {len(filled)} "
+                f"slot(s) used, {free} free")
 
     # No pre-click reading. The grid is fixed furniture -- every cell has been
     # where the map says it is on every frame captured -- and the tooltip that
@@ -983,6 +1145,33 @@ def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
     require(vendor_shop_open(),
             "the vendor's Shop window closed before the click. Nothing was "
             "clicked.")
+    # And on the right PAGE. The grid coordinates describe the Dungeon tab; on
+    # any other tab they point at whatever that page happens to show, and this
+    # is a window where a plain click buys outright.
+    showing = active_vendor_tab()
+    if showing != CONVERT_VENDOR_TAB:
+        # One re-read before refusing. active_vendor_tab returns None unless a
+        # tab leads the median by VENDOR_TAB_MARGIN, and open_npc_shop had just
+        # confirmed this tab moments earlier -- so a single ambiguous frame is
+        # far likelier than the page having changed underneath us.
+        #
+        # Measured 2026-08-08 12:04: "Dungeon tab is showing" followed
+        # immediately by "a tab I cannot identify", throwing away a conversion
+        # of 270 Sets the run had already paid for.
+        #
+        # Still refuses if the second read disagrees too. This is the gate on a
+        # window where a plain click buys outright, so the cost of being wrong
+        # is not symmetric -- one retry, then stop.
+        time.sleep(0.5)
+        again = active_vendor_tab()
+        if again == CONVERT_VENDOR_TAB:
+            say(f"  the vendor tab read as {showing or 'unidentifiable'} and "
+                f"then as {again!r} - taking the second reading.")
+            showing = again
+    require(showing == CONVERT_VENDOR_TAB,
+            f"the vendor Shop is showing {showing or 'a tab I cannot identify'}"
+            f", not {CONVERT_VENDOR_TAB}. The conversion grid is only on that "
+            "tab; these coordinates mean something else here.")
 
     x, y = convert_cell_point(row, col)
     alt_click(x, y)
@@ -1051,6 +1240,16 @@ def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
     # shortfall it caused itself.
     free = GRID_SIZE * GRID_SIZE - len(filled)
     countable = min(expected, free)
+    if free <= 0:
+        # Nothing can be counted here, so do not claim a shortfall that is only
+        # a blind spot: the verdict comes from the listing instead.
+        countable = 0
+    # The Mass Purchase dialog as it OPENS, before anything is typed. This is
+    # the frame that proves what the vendor was offering and at what limit --
+    # the one thing no log line can reconstruct after the fact.
+    record("convert.dialog", item=core_name, cell=f"r{row}c{col}",
+           limit=limit, asked=quantity, expected=expected, free=free)
+
     say(f"  typing {quantity} into a field that maxes at {limit} "
         f"-> expecting {expected}")
     if expected > free:
@@ -1068,6 +1267,11 @@ def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
     time.sleep(0.35)
 
     landed = mass_purchase_details().get("qty")
+    # After typing, before confirming. When the read-back disagrees this is the
+    # evidence of what the field actually showed -- and "typed 250, it reads 5"
+    # is a real failure that happened on 2026-08-07 at a 0.1s keystroke pace.
+    record("convert.typed", item=core_name, typed=quantity,
+           expected=expected, landed=landed)
     if landed != expected:
         bail(f"typed {quantity} expecting the field to settle at {expected}, "
              f"but it reads {landed}. The keystrokes may have gone somewhere "
@@ -1080,6 +1284,7 @@ def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
              "Cancelled without buying.")
 
     say(f"  quantity {expected} confirmed in the field; purchasing")
+    record("convert.confirming", item=core_name, quantity=expected)
     click(*confirm.centre)
     time.sleep(0.8)
 
@@ -1097,11 +1302,26 @@ def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
     # ways: it cannot be defeated by text colour, it measures the result rather
     # than inferring it from a before/after subtraction, and it is right even
     # when the game clamps the purchase to the free space available.
+    # Back to the work tab before counting. The count is the whole verdict --
+    # Cores do not stack, so newly filled slots ARE the number converted -- and
+    # it only means anything on the tab the baseline was taken from. A purchase
+    # can leave the panel showing somewhere else entirely.
+    select_inventory_tab(CONVERT_INVENTORY_TAB, origin)
     filled_after = set(occupied_slots(grab(), origin))
     park_cursor()
     arrived = filled_after - filled
     converted = len(arrived)
-    landed = CONVERT_CORE_SLOT in filled_after
+    # "Cores visibly arrived in slots that were empty." Deliberately the
+    # NARROW reading: a Core dropping into a slot the Sets just vacated is
+    # indistinguishable from the Set stack merely shrinking, so counting that
+    # as arrival would report success for a conversion that did nothing.
+    #
+    # It therefore UNDER-reports in exactly the freed-slot case, which is why
+    # restock_core measures progress by what was LISTED rather than by this --
+    # register_item's quantity counts every matching Core in the inventory and
+    # cannot be fooled by where they landed.
+    landed = bool(filled_after - filled)
+    candidates = core_slot_candidates(filled, filled_after)
 
     if arrived:
         where = sorted(arrived)
@@ -1123,6 +1343,9 @@ def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
     return {"cell": (row, col), "gives": gives, "costs": costs,
             "expected": expected, "countable": countable,
             "converted": converted, "arrived": sorted(arrived),
+            "candidates": candidates,
+            "occupied_before": sorted(filled),
+            "occupied_after": sorted(filled_after),
             "landed": landed, "verified": converted == countable and landed}
 
 
@@ -1143,26 +1366,141 @@ def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
 PURCHASE_ROW_TOP = 340
 PURCHASE_ROW_PITCH = 76
 PURCHASE_ROWS = 8
+# The Confirm Purchase dialog, measured on the live client on 2026-08-07 and
+# kept as unit_tests/corpus/goldens/purchase_confirm_qty48.png.
+#
+#     Confirm Purchase
+#       Force Core Set (Highest) X 1
+#       Purchase QTY   [1] / 48
+#       Purchase Price      190,190 Alz
+#             [ Buy ]   [ Cancel ]
+#
+# Each region is its own crop rather than one dialog-wide read. That is not
+# tidiness: mass_purchase_open had to be given a separate button crop because
+# the whole-dialog read returned every word EXCEPT the buttons, and the same
+# thing happens here -- a read of the full dialog returns the words jumbled
+# out of order, while the tight crops are exact.
+#
+# QTY_VALUE is the fussiest of them. It holds a single digit next to a text
+# cursor, and Tesseract returns nothing at all from a crop a few pixels wider:
+# (1150, 665, 1220, 705) reads '', (1152, 668, 1218, 702) reads '1'. Measured,
+# not guessed -- four crops were tried and one worked. Do not "tidy" these
+# numbers.
+PURCHASE_DIALOG_REGION = (1000, 545, 1575, 895)
+PURCHASE_DLG_ITEM = (1030, 600, 1330, 645)
+PURCHASE_DLG_QTY_VALUE = (1152, 668, 1218, 702)
+PURCHASE_DLG_QTY_MAX = (1215, 665, 1280, 705)
+# Widened leftward on 2026-08-08. It was measured against a 190,190 price and
+# was too narrow for a nine-digit one: on run_28604 a 450,000,000 dialog read
+# as 50,000,000, the leading digit falling outside the crop.
+#
+# That failed CLOSED -- buy_offer compares the dialog against listings x row
+# price and refuses on a mismatch -- so it blocked legitimate large purchases
+# rather than allowing wrong ones. Still a bug, and one only a golden frame of
+# a big-ticket dialog could show: every frame captured before that day had a
+# six-digit price and passed.
+#
+# Left edge 1150 rather than 1230: 1200 was enough for 450,000,000, and the
+# margin covers a ten-digit figure without reaching the "Purchase Price" label.
+PURCHASE_DLG_PRICE = (1150, 712, 1380, 758)
+PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
+
 PURCHASE_NAME_MAX_X = 700          # the Name cell ends before the QTY column
 PURCHASE_PRICE_X = (900, 1080)     # the Price cell
 PURCHASE_BUY_X = 1124              # the per-row Buy button
 # How much cheaper per item a Set must be before it is worth buying.
 PRICE_DIFF_FLOOR = 10_000
 SET_SAVING_THRESHOLD = PRICE_DIFF_FLOOR      # older name, kept for callers
+
+# Per-item overrides of that floor, keyed by the game's own spelling.
+#
+# One threshold for every item assumes every item has the same opportunity
+# cost, and they do not. Measured on 2026-08-08, Force Core(High)'s spread ran
+# from -16,157 to +5,811 across ten checks: it never once cleared 10,000, so it
+# never restocked, while being the biggest seller on the account -- 713 units
+# and 148,141,000 Alz of revenue, all of it now gone from the shop.
+#
+# Set deliberately low for the two items where turnover matters more than
+# margin. Stock that does not move earns nothing at all, and a 5,000 spread on
+# an item that sells is worth more than a 10,000 spread on one that sits.
+#
+# The keys are checked against the real slot map at startup by
+# validate_price_diff_floors(), because a typo here reads as "this item is
+# back on the 10,000 floor" -- the quiet direction, which is exactly how the
+# original ENABLE_BUYING typo would have silently disabled an item.
+PRICE_DIFF_FLOOR_BY_ITEM: dict[str, int] = {
+    "Upgrade Core(Highest)": 5_000,
+    "Force Core(High)":      5_000,
+}
+
+
+def price_diff_floor_for(item: str) -> int:
+    """The saving an item's Set must clear before it is worth buying.
+
+    Matched on the same folded key the rest of the file uses, so the game's
+    inconsistent spacing before the bracket -- and a pack marker on a table
+    name -- cannot cause a miss and silently restore the default.
+    """
+    want = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", item or "")))
+    if not want:
+        return PRICE_DIFF_FLOOR
+    for name, floor in PRICE_DIFF_FLOOR_BY_ITEM.items():
+        if _floor_key(item_name(name)) == want:
+            return int(floor)
+    return PRICE_DIFF_FLOOR
+
+
+def validate_price_diff_floors() -> None:
+    """Refuse a key that names nothing, rather than ignoring it.
+
+    An unmatched key is not a no-op: it means the operator asked for a lower
+    threshold on an item that then quietly kept the 10,000 one, and the only
+    evidence would be a restock that never fires.
+    """
+    known = {_floor_key(item_name(n)) for n in FAVOURITE_SLOTS.values()}
+    for name in PRICE_DIFF_FLOOR_BY_ITEM:
+        if _floor_key(item_name(name)) not in known:
+            raise ValueError(
+                f"PRICE_DIFF_FLOOR_BY_ITEM names {name!r}, which is not a "
+                "favourite. Known: "
+                + ", ".join(sorted(FAVOURITE_SLOTS.values())))
 # A listing can sell to somebody else between reading it and clicking Buy. The
 # confirm dialog then refuses to complete: it neither closes nor takes any Alz.
 # That is not an error to stop on -- it is the ordinary race of a live market --
 # so the buy cancels, re-runs the search and takes whatever is cheapest now.
 BUY_RETRY_ATTEMPTS = 3
+
+# How many times a favourite slot is clicked before its search is given up on.
+#
+# The Purchase tab does NOT clear its results when a click fails to take, so a
+# search that did not run leaves the PREVIOUS item's rows on screen -- which is
+# why run_favourite_search returns empty rather than whatever is displayed, and
+# why it is worth retrying rather than accepting the first answer.
+#
+# Raised from 2 to 5 on 2026-08-08. Two was enough most of the time -- the live
+# logs show "the search did not run (attempt 1/2)" followed by a clean read --
+# but a slot that misses twice ends the whole restock for that Core, and the
+# retry costs one click and a settle against a purchase worth tens of millions.
+FAVOURITE_SEARCH_TRIES = 5
 # A row priced below this fraction of the median is treated as a clipped read,
 # not a bargain. Genuine rows in one Set search agreed to within 1.15 Alz.
 PRICE_OUTLIER_FLOOR = 0.5
 
-_PACK_SIZE = re.compile(r"\bX\s*([\d,]+)\s*$")
+# Case-insensitive. The game draws "X 250", but Tesseract returns a
+# lowercase "x" often enough to matter and both failures are severe. A
+# missed marker here makes pack_size fall back to 1, so a 250-Set bundle
+# is recorded as ONE item and purchase_cost_basis reads the whole bundle
+# price as the per-item cost -- a floor 250x too high, which quietly stops
+# everything from selling.
+_PACK_SIZE = re.compile(r"\bX\s*([\d,]+)\s*$", re.IGNORECASE)
 # The confirm dialog reorders the pack into the middle of the name -- "Force
 # Core Set X 62 (High)" against the row's "Force Core Set (High) X 62" -- so
 # comparing the two needs it stripped from anywhere, not just the end.
-_PACK_ANYWHERE = re.compile(r"\bX\s*[\d,]+")
+# Likewise case-insensitive. A missed marker here leaves "x 62" glued to
+# the name, and every lookup that strips the pack before comparing --
+# the cost floor via favourite_for, the dialog name check in buy_offer,
+# the search receipt -- silently misses instead of matching.
+_PACK_ANYWHERE = re.compile(r"\bX\s*[\d,]+", re.IGNORECASE)
 
 
 def pack_size(name: str) -> int:
@@ -1181,13 +1519,23 @@ class Offer:
     """One row of the Purchase results."""
     row: int                # 1-based screen row
     name: str
-    price: int              # what the whole listing costs
-    pack: int               # how many items that buys
+    price: int              # what ONE of these listings costs
+    pack: int               # how many items one listing holds ("X 28" -> 28)
     y: int
+    # How many identical listings are on offer at this price -- the table's
+    # middle column. Defaults to 1 so every existing caller and test keeps
+    # working, and because one is the only count that is certainly safe: it is
+    # what the script assumed before this column was read at all.
+    available: int = 1
 
     @property
     def unit(self) -> float:
         return self.price / self.pack
+
+    @property
+    def stock(self) -> int:
+        """Items obtainable from this row: pack size x how many are offered."""
+        return self.pack * max(1, self.available)
 
 
 def read_purchase_rows(source: "Image.Image | None" = None) -> list[Offer]:
@@ -1213,8 +1561,35 @@ def read_purchase_rows(source: "Image.Image | None" = None) -> list[Offer]:
                     price = int(digits)
         if not name or price is None or price < MIN_PLAUSIBLE_PRICE:
             continue
+
+        # The count column, between the name and the price.
+        #
+        # Read from the words already fetched where possible, then rescued with
+        # a targeted pass: a LONE DIGIT in this narrow cell returns no words
+        # from the bulk pass at any confidence, which is the same failure
+        # read_rows documents for the shop table's quantity column (~30% of
+        # cells). Since most counts are 1, the rescue is the common path here
+        # rather than the exception.
+        cell = (PURCHASE_NAME_MAX_X, y - 24, PURCHASE_PRICE_X[0], y + 24)
+        available = None
+        digits = sorted((w for w in words
+                         if PURCHASE_NAME_MAX_X < w.centre[0]
+                         < PURCHASE_PRICE_X[0]),
+                        key=lambda w: w.centre[0])
+        if digits:
+            joined = re.sub(r"[^\d]", "", "".join(w.text for w in digits))
+            if joined.isdigit():
+                available = int(joined)
+        if available is None:
+            available = read_number(shot, cell, 30.0)
+        # Falls back to 1, never to 0 or None. This number decides how much is
+        # bought, so an unreadable cell must mean "assume the least" -- which
+        # is exactly the behaviour before the column was read.
+        if not available or available < 1:
+            available = 1
+
         offers.append(Offer(row=i + 1, name=name, price=price,
-                            pack=pack_size(name), y=y))
+                            pack=pack_size(name), y=y, available=available))
     return offers
 
 
@@ -1297,13 +1672,30 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
             buttons[label] = w.centre
     if "buy" not in buttons:
         return None
-    price = None
-    for w in words:
-        digits = re.sub(r"[^\d]", "", w.text)
-        if digits.isdigit() and len(digits) >= 6:
-            price = int(digits)
+    # The price from its OWN crop first. The sweep below takes the last
+    # >=6-digit word anywhere in a 1000x550 region, which was fine while the
+    # quantity was always 1 -- now that the quantity is typed, the total
+    # changes and the figure has to come from the cell that shows it.
+    price = read_number(shot, PURCHASE_DLG_PRICE, 40.0)
+    if price is None:
+        for w in words:
+            digits = re.sub(r"[^\d]", "", w.text)
+            if digits.isdigit() and len(digits) >= 6:
+                price = int(digits)
+
+    # "Purchase QTY [n] / max". Two crops, because they behave differently:
+    # the max reads from an ordinary word pass, the value is a lone digit that
+    # needs read_number's psm-7/psm-10 fallbacks.
+    qty = read_number(shot, PURCHASE_DLG_QTY_VALUE, 30.0)
+    qty_max = None
+    max_words = [w.text for w in find_words(shot, PURCHASE_DLG_QTY_MAX, 20)
+                 if w.conf >= 30]
+    digits = re.sub(r"[^\d]", "", "".join(max_words))
+    if digits.isdigit():
+        qty_max = int(digits)
+
     return {"buy": buttons["buy"], "cancel": buttons.get("cancel"),
-            "price": price, "text": text}
+            "price": price, "text": text, "qty": qty, "qty_max": qty_max}
 
 
 def offers_match_slot(slot: int, offers: list[Offer]) -> bool:
@@ -1338,6 +1730,29 @@ def offers_match_slot(slot: int, offers: list[Offer]) -> bool:
 PURCHASE_TAB_MARKERS = ("Category", "Function")
 PURCHASE_SORT_REGION = (820, 178, 1080, 212)
 
+# The sort dropdown itself, and the list it drops down.
+#
+# Measured on the reference display with the list open: the closed control sits
+# at y~187, and the two options land at y~219 ("By Price:Low to High") and
+# y~255 ("By Price:High to Low"), pitch 36. The list is drawn OVER the offers
+# table -- the table's own header row sits at y~256, under the second option --
+# which is why the options are located by reading rather than by that pitch.
+PURCHASE_SORT_BUTTON = (930, 195)
+# Starts exactly where PURCHASE_SORT_REGION ends. Overlapping the two by even a
+# few pixels lets the CLOSED control's own label bleed into the "is the menu
+# open" read, which would answer yes with the menu shut -- and then a click
+# aimed at a menu row lands on the offers table underneath.
+PURCHASE_SORT_OPTIONS = (790, 212, 1120, 285)
+
+# The direction word immediately after "Price:". Both option labels contain
+# BOTH "low" and "high", so a substring test cannot tell them apart; the order
+# is the whole signal.
+_SORT_DIRECTION = re.compile(r"price\s*:?\s*(low|high)", re.IGNORECASE)
+
+# Open, pick, verify. Three tries because the failure this recovers from is a
+# dropped click, and a dropped click is uncorrelated with the next one.
+PURCHASE_SORT_TRIES = 3
+
 
 def purchase_tab_open(source: "Image.Image | None" = None) -> bool:
     """True when the Trade window is showing the PURCHASE tab.
@@ -1358,12 +1773,150 @@ def purchase_sorted_low_to_high(source: "Image.Image | None" = None) -> bool:
     Every price decision assumes it -- "row 1 is the cheapest" is only true
     under this sort. Read rather than assumed, because the control is a
     dropdown a human can change and nothing else would notice.
+
+    The direction is the word straight after "Price:", and nothing else will
+    do. This used to ask `"low" in text and "price" in text`, which is true of
+    "By Price:High to Low" as well -- the two labels are anagrams as far as a
+    substring test is concerned. That check only ever refused the wrong sort
+    because OCR clipped the trailing "Low" off the end of the control, so it
+    was a crop doing the work, not the condition. The same shape of bug as
+    "Force Core(Highest)" containing "Force Core(High)", in the one place where
+    getting it wrong buys the most expensive offer on the board believing it to
+    be the cheapest.
+
+    Fails closed: an unread direction, or no "Price:" at all, is False.
     """
     shot = source if source is not None else grab()
     words = [w for w in find_words(shot, PURCHASE_SORT_REGION, 20)
              if w.conf >= 45]
-    text = " ".join(w.text for w in words).casefold()
-    return "low" in text and "price" in text
+    text = " ".join(w.text for w in words)
+    match = _SORT_DIRECTION.search(text)
+    if match is None:
+        return False
+    return match.group(1).casefold() == "low"
+
+
+def _sort_option_rows(source: "Image.Image | None" = None) -> dict:
+    """Where each sort option sits, read from the open dropdown.
+
+    Returns {"low": (x, y), "high": (x, y)} for whichever options are legible,
+    empty when the list is not open. The offers table shows through the same
+    band, so the discriminator is a row naming BOTH directions -- the table's
+    own header row is "QTY | Price | ...", which names neither.
+    """
+    shot = source if source is not None else grab()
+    words = [w for w in find_words(shot, PURCHASE_SORT_OPTIONS, 20)
+             if w.conf >= 45]
+    rows: dict = {}
+    for line in _text_lines(words):
+        text = " ".join(w.text for w in line)
+        match = _SORT_DIRECTION.search(text)
+        if match is None:
+            continue
+        lowered = text.casefold()
+        if "low" not in lowered or "high" not in lowered:
+            # Half a label. Clicking a row we only partly read is how a menu
+            # click lands on the offers table underneath it.
+            continue
+        left = min(w.left for w in line)
+        right = max(w.right for w in line)
+        top = min(w.top for w in line)
+        bottom = max(w.bottom for w in line)
+        rows[match.group(1).casefold()] = ((left + right) // 2,
+                                           (top + bottom) // 2)
+    return rows
+
+
+# How long the menu is given to appear after the control is clicked. The menu
+# is drawn by the game, not animated in, so this is a click-registration
+# allowance rather than a fade.
+SORT_OPTIONS_TIMEOUT = 2.0
+
+
+def _wait_for_sort_options(timeout: float = SORT_OPTIONS_TIMEOUT) -> dict:
+    """The sort menu once it is legible, or {} if it never becomes legible."""
+    deadline = time.monotonic() + timeout
+    while True:
+        rows = _sort_option_rows()
+        if "low" in rows:
+            return rows
+        if time.monotonic() >= deadline:
+            return rows
+        time.sleep(0.2)
+
+
+def set_purchase_sort_low_to_high(verbose: bool = True) -> bool:
+    """Put the sort on Price: Low to High, and confirm it landed.
+
+    purchase_ready() has always CHECKED this and refused when it was wrong,
+    which meant a dropdown left on "High to Low" -- by a human, or by the game
+    remembering it across a session -- silently blocked every purchase for the
+    rest of the run. That is what happened on 2026-08-08: fifteen buy attempts,
+    every one refused at the sort check, zero Sets bought. A guard with no
+    remedy is just a way to fail quietly for hours.
+
+    Idempotent, and safe to call with the list already open: the state is read
+    before anything is clicked, at every step.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    for attempt in range(1, PURCHASE_SORT_TRIES + 1):
+        shot = grab()
+        if not trade_window_open(shot):
+            say("  the Trade window is not open - refusing to click the sort "
+                "control, the game world is underneath.")
+            record("sort.not_ready", reason="window_shut")
+            return False
+        if not purchase_tab_open(shot):
+            say("  not on the Purchase tab - the sort control does not exist "
+                "on the other tab.")
+            record("sort.not_ready", reason="wrong_tab")
+            return False
+
+        rows = _sort_option_rows(shot)
+        if not rows:
+            # The list is shut. Whether the sort is already right does not
+            # matter yet -- opening is how we get a legible answer, and the
+            # click is a no-op if it turns out to be.
+            if purchase_sorted_low_to_high(shot):
+                say("  the sort is already Price: Low to High.")
+                return True
+            say(f"  the sort is not Price: Low to High; opening the dropdown "
+                f"(try {attempt} of {PURCHASE_SORT_TRIES}).")
+            if not panel_covers_trade_area():
+                say("  the Trade area is still moving - that is the world, "
+                    "not a panel. Refusing to click.")
+                record("sort.not_ready", reason="area_animating")
+                return False
+            click(*PURCHASE_SORT_BUTTON)
+            # Polled, not slept at. A single 0.4s wait read an empty menu on
+            # the first live try and a populated one on the second, which is
+            # the signature of a fixed delay sitting right on the boundary --
+            # it would have been a coin flip on every run.
+            rows = _wait_for_sort_options()
+
+        target = rows.get("low")
+        if target is None:
+            say("  the dropdown did not open, or 'Price: Low to High' was not "
+                "legible in it - not clicking a row I cannot read.")
+            record("sort.option_unread", seen=sorted(rows))
+            continue
+
+        say(f"  selecting 'Price: Low to High' at {target}.")
+        click(*target)
+        time.sleep(0.4)
+        if purchase_sorted_low_to_high():
+            say("  the sort now reads Price: Low to High.")
+            record("sort.set", attempt=attempt)
+            return True
+        say("  the sort still does not read Price: Low to High.")
+
+    say(f"  could not set the sort to Price: Low to High in "
+        f"{PURCHASE_SORT_TRIES} tries.")
+    record("sort.failed", tries=PURCHASE_SORT_TRIES)
+    return False
 
 
 def purchase_ready(verbose: bool = True) -> bool:
@@ -1409,7 +1962,67 @@ def purchase_ready(verbose: bool = True) -> bool:
     return True
 
 
-def run_favourite_search(slot: int, settle: float = 3.0, tries: int = 2,
+# The ONLY sanctioned way to buy: press a favourite slot, take row 1, press
+# Buy. Anything else is refused.
+#
+# Recorded as a receipt rather than assumed, because "the caller surely
+# searched first" is the kind of assumption that holds until a new code path
+# does not. The receipt carries which slot ran, when, and what its first row
+# was -- so buy_offer can check that the row it is about to buy is the row that
+# search actually produced, and not one left on screen from before. The
+# Purchase tab never clears its results, so a stale row looks exactly like a
+# fresh one.
+BUY_ROW = 1
+# How long a search stays good for. Long enough to cover the compare-and-click
+# that follows it, short enough that a listing cannot have been replaced twice
+# over in the meantime.
+SEARCH_RECEIPT_SECONDS = 90.0
+_LAST_SEARCH: dict | None = None
+
+
+def note_favourite_search(slot: int, offers: list) -> None:
+    """Record that `slot` was searched and what came back at row 1."""
+    global _LAST_SEARCH
+    _LAST_SEARCH = {
+        "slot": slot,
+        "at": time.monotonic(),
+        "first": offers[0].name if offers else "",
+    }
+
+
+def search_receipt_for(offer) -> str:
+    """"" if `offer` may be bought, else why it may not.
+
+    Enforces the sequence rather than trusting it: the offer has to be ROW 1 of
+    a favourite search that ran moments ago and produced this very listing.
+    """
+    if offer.row != BUY_ROW:
+        return (f"row {offer.row} is not row {BUY_ROW}; only the first row of "
+                "a favourite search may be bought")
+    if _LAST_SEARCH is None:
+        return "no favourite search has run, so there is no row 1 to speak of"
+    age = time.monotonic() - _LAST_SEARCH["at"]
+    if age > SEARCH_RECEIPT_SECONDS:
+        return (f"the last favourite search was {age:.0f}s ago; too old to "
+                "trust that these rows are still the ones it found")
+    if not _LAST_SEARCH["first"]:
+        # A search that found nothing must not authorise anything. Left as a
+        # skipped comparison, a blank receipt read as "no disagreement" and
+        # allowed the buy -- which is the failure this whole receipt exists to
+        # prevent, arrived at from the other side.
+        return "the last favourite search returned no rows at all"
+    shown = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", _LAST_SEARCH["first"])))
+    wanted = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", offer.name)))
+    if not shown or not wanted:
+        return "either the search or the offer has no readable name"
+    if shown != wanted:
+        return (f"row 1 of the last search was {_LAST_SEARCH['first']!r}, not "
+                f"{offer.name!r}")
+    return ""
+
+
+def run_favourite_search(slot: int, settle: float = 3.0,
+                         tries: int = FAVOURITE_SEARCH_TRIES,
                          verbose: bool = True) -> list[Offer]:
     """Click favourite `slot` and return what it found, or [] if it did not run.
 
@@ -1439,6 +2052,7 @@ def run_favourite_search(slot: int, settle: float = 3.0, tries: int = 2,
             if verbose:
                 print(f"  slot {slot} ({FAVOURITE_SLOTS.get(slot, '?')}): "
                       f"{len(offers)} offer(s)")
+            note_favourite_search(slot, offers)
             return offers
         if verbose:
             sample = offers[0].name if offers else "(nothing)"
@@ -1447,7 +2061,7 @@ def run_favourite_search(slot: int, settle: float = 3.0, tries: int = 2,
     return []
 
 
-def buy_offer(offer: Offer, timeout: float = 8.0,
+def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
               verbose: bool = True) -> tuple[bool, str]:
     """Buy one listing. Returns (bought, why).
 
@@ -1463,6 +2077,16 @@ def buy_offer(offer: Offer, timeout: float = 8.0,
 
     if not purchase_ready(verbose=verbose):
         return False, "the Purchase tab was not ready to be clicked"
+
+    # The sequence, enforced. A Buy is only ever allowed as the third step of
+    # "favourite slot -> row 1 -> Buy", and a failure here means the code
+    # reached this function some other way -- which is a wrong map, not a
+    # transient, so buying stops for the run.
+    wrong = search_receipt_for(offer)
+    if wrong:
+        halt_buying(f"a Buy was attempted outside the sanctioned sequence: "
+                    f"{wrong}")
+        return False, wrong
     before = get_alz(grab()) or None
     focus_game()
     # Select the row, then press its Buy. Approached from a different point so
@@ -1482,7 +2106,16 @@ def buy_offer(offer: Offer, timeout: float = 8.0,
     if dialog is None:
         # No dialog and no purchase: whatever the Buy click hit, it was not the
         # button. Do NOT click again blind.
+        record("buy.no_dialog", item=offer.name, price=offer.price)
         return False, "the Confirm Purchase dialog did not appear"
+
+    # The last frame before real Alz moves, and the only step in the buying
+    # path that was never captured -- the recorder fired at buy.completed,
+    # AFTER the click. So the one dialog whose layout decides how much is spent
+    # had no golden frame, and its quantity field could not be mapped without
+    # driving the live game to look at it.
+    record("buy.dialog", item=offer.name, price=offer.price,
+           pack=offer.pack, available=offer.available)
 
     def refuse(why: str) -> tuple[bool, str]:
         say(f"  {why} - cancelling rather than buying it.")
@@ -1495,11 +2128,61 @@ def buy_offer(offer: Offer, timeout: float = 8.0,
             time.sleep(1.0)
         return False, why
 
-    # The dialog states the real price. If it disagrees with the row that was
-    # chosen, the row was misread or the table moved -- either way, do not buy.
-    if dialog["price"] and dialog["price"] != offer.price:
-        return refuse(f"the dialog says {dialog['price']:,} but the row read "
-                      f"{offer.price:,}")
+    # ---- how many of this listing to take -------------------------------
+    #
+    # The dialog has a quantity field -- "Purchase QTY [1] / 48" -- and nothing
+    # used it. Every purchase took ONE listing and searched again, so a row
+    # offering 48 identical Sets at 190,190 each cost 48 searches and 48
+    # dialogs to drain, and RESTOCK_MAX_BUYS stopped it long before the target.
+    #
+    # The field counts LISTINGS, not items. A row reading "X 28" with a max of
+    # 2 is two bundles of 28, so the items obtained are `take * offer.pack` and
+    # the price is `take * offer.price`.
+    limit = dialog.get("qty_max")
+    if not limit or limit < 1:
+        # Unreadable max: take one. This decides how much money moves, so an
+        # unreadable field must mean the smallest possible order, which is
+        # exactly what the code did before the field was read at all.
+        say("  the dialog's quantity limit did not read - taking one listing.")
+        limit = 1
+    take = max(1, min(int(want), int(limit), max(1, offer.available)))
+
+    if take > 1:
+        say(f"  taking {take} of the {limit} listing(s) on offer")
+        # Click the field before typing. "It looks focused" is exactly the
+        # assumption that sends keystrokes into the game world instead of the
+        # widget -- the same reasoning as the vendor's Mass Purchase dialog.
+        click((PURCHASE_DLG_QTY_VALUE[0] + PURCHASE_DLG_QTY_VALUE[2]) // 2,
+              (PURCHASE_DLG_QTY_VALUE[1] + PURCHASE_DLG_QTY_VALUE[3]) // 2)
+        type_number(take, clear_first=True, clear=6)
+        time.sleep(0.35)
+
+        dialog = purchase_confirm()
+        if dialog is None:
+            return False, ("the Confirm Purchase dialog vanished while the "
+                           "quantity was being typed")
+        landed = dialog.get("qty")
+        if landed != take:
+            # Do NOT fall back to buying whatever it does say. The keystrokes
+            # may have gone somewhere else entirely, and the figure on screen
+            # is what the game will charge for.
+            return refuse(f"typed {take} into the quantity field but it reads "
+                          f"{landed}")
+
+    # What this order should now cost, which is NOT the row's listed price once
+    # more than one listing is being taken.
+    expected = offer.price * take
+
+    # The dialog states the real price. If it disagrees with what the row and
+    # the quantity imply, the row was misread or the table moved -- either way,
+    # do not buy.
+    if dialog["price"] and dialog["price"] != expected:
+        # NOT permanent. A price that has moved is an ordinary race: the
+        # listing changed between reading the row and opening the dialog, and
+        # the next search sees the new one. Only a NAME mismatch means the map
+        # is wrong.
+        return refuse(f"the dialog says {dialog['price']:,} but {take} x "
+                      f"{offer.price:,} is {expected:,}")
 
     # And it must name the item that was chosen. The price alone is not enough:
     # two different items can carry the same figure, and the row that was
@@ -1509,13 +2192,53 @@ def buy_offer(offer: Offer, timeout: float = 8.0,
     # Compared with the pack stripped from BOTH sides, because the dialog
     # reorders it: the row reads "Force Core Set (High) X 62" and the dialog
     # says "Force Core Set X 62 (High)".
+    # The grade has to be checked EXACTLY, not by containment. _floor_key
+    # folds "Force Core Set (High)" to forcecoresethigh and "...(Highest)" to
+    # forcecoresethighest -- and the first is a SUBSTRING of the second, so
+    # "wanted in shown" waves a Highest dialog through for a High order. That
+    # is the grade-prefix trap _names_agree (see mass_purchase_matches) was
+    # written to close, and this is the one place in the file where real Alz
+    # moves with no further confirmation.
+    #
+    # Equality is not available here: dialog["text"] is the whole joined
+    # dialog, not an item name. So instead every OTHER item on the favourites
+    # whose key CONTAINS this one -- i.e. every grade this order could be
+    # confused with -- is checked, and the order is refused if one of them is
+    # what the dialog actually names.
     wanted = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", offer.name)))
     shown = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", dialog["text"])))
+    confusable = sorted(
+        {key for key in (_floor_key(item_name(other))
+                         for other in FAVOURITE_SLOTS.values())
+         if key != wanted and wanted and wanted in key},
+        key=len, reverse=True)
+    if any(key in shown for key in confusable):
+        halt_buying(
+            f"the Confirm Purchase dialog names a different grade than "
+            f"{offer.name!r} -- the favourite slots and the shop disagree")
+        return False, (f"the dialog names a longer grade than {offer.name!r}: "
+                       f"{dialog['text'][:80]!r}")
     if wanted and wanted not in shown:
+        # PERMANENT. Every other refusal in this function is a "not this row,
+        # not right now" -- sold out, price moved, dialog missing -- and
+        # retrying is the right answer. This one is different in kind: the
+        # dialog names what the game is ABOUT to sell us, one click from
+        # committing, and it is not what we chose. That means the mapping
+        # between what we searched for and what we are looking at is wrong, and
+        # no amount of retrying fixes a wrong map -- it just gives it more
+        # chances to buy the wrong thing.
+        #
+        # Measured: a stale FAVOURITE_SLOTS had slot 3 returning SIGMetal
+        # Headpiece while the script believed it was Upgrade Core(Highest).
+        # That was caught earlier, at the search; if it ever gets this far,
+        # buying stops for the run rather than being tried again.
+        halt_buying(f"the Confirm Purchase dialog named something other than "
+                    f"{offer.name!r} -- the item mapping cannot be trusted")
         return refuse(f"the dialog does not name {offer.name!r} "
                       f"(it reads {dialog['text'][:70]!r})")
 
-    say(f"  confirming {offer.name!r} at {offer.price:,} Alz")
+    say(f"  confirming {take} x {offer.name!r} "
+        f"({take * offer.pack} item(s)) at {expected:,} Alz")
     bx, by = dialog["buy"]
     move_mouse(bx, by + 60)
     time.sleep(0.25)
@@ -1525,9 +2248,15 @@ def buy_offer(offer: Offer, timeout: float = 8.0,
     time.sleep(1.0)
 
     after = get_alz(grab()) or None
-    if before and after and before - after == offer.price:
-        record("buy.completed", item=offer.name, price=offer.price,
-               pack=offer.pack)
+    if before and after and before - after == expected:
+        record("buy.completed", item=offer.name, price=expected,
+               pack=offer.pack * take, took=take)
+        # The spend recorded is what the BALANCE moved by, which this branch
+        # has just proved equals the listed price. Recording the measured
+        # figure rather than the expected one keeps the ledger tied to the
+        # account rather than to what the script believed.
+        note_purchase(offer.name, expected, before - after,
+                      offer.pack * take)
         return True, ""
     if purchase_confirm() is not None:
         # Still open: the listing went while we were deciding.
@@ -1540,27 +2269,75 @@ def buy_offer(offer: Offer, timeout: float = 8.0,
         return False, "sold out before the purchase completed"
     if before and after and before == after:
         return False, "the dialog closed but no Alz was spent"
+
+    if not before or not after:
+        # The dialog is GONE -- the branch above returned if it was still up --
+        # so the confirm click was taken and the Alz has moved. What failed is
+        # the measurement: get_alz returns 0 when the balance does not read,
+        # which `or None` turns into None here, and one occluded frame or one
+        # misread glyph in a twelve-digit figure is enough.
+        #
+        # This used to fall through to the "balance moved 0" refusal, which
+        # spent the money and wrote NOTHING to the ledger. That is the worst of
+        # the three possible outcomes, because purchase_cost_basis reads the
+        # ledger: a purchase missing from it drags the average cost DOWN, and
+        # the Cores it produced are then relisted below what was paid for them
+        # -- the single thing the never-below-cost floor exists to prevent.
+        #
+        # So it is recorded, at the listed price, and marked as unmeasured. The
+        # two ways to be wrong are not symmetric: recording a purchase that did
+        # not happen puts the floor too HIGH, which stops a sale; failing to
+        # record one that did puts it too LOW, which makes a loss. The ledger
+        # errs toward the first.
+        say("  the Alz balance did not read, so this purchase is recorded at "
+            "its listed price rather than a measured one.")
+        record("buy.unmeasured", item=offer.name, price=expected,
+               pack=offer.pack * take, before=before, after=after)
+        note_purchase(offer.name, expected, expected, offer.pack * take,
+                      note="unmeasured: the Alz balance did not read")
+        return True, ""
+
     return False, (f"the balance moved {(before or 0) - (after or 0):,}, "
-                   f"not the {offer.price:,} expected")
+                   f"not the {expected:,} expected")
 
 
-def buy_cheapest_set(item_slot: int,
-                     threshold: int = PRICE_DIFF_FLOOR,
-                     attempts: int = BUY_RETRY_ATTEMPTS,
-                     verbose: bool = True) -> bool:
-    """Buy one Set of the item in favourite `item_slot`, if it is worth it.
+def buy_cheapest_set_detail(item_slot: int,
+                            threshold: "int | None" = None,
+                            attempts: int = BUY_RETRY_ATTEMPTS,
+                            verbose: bool = True,
+                            still_wanted: int | None = None) -> dict:
+    """Buy one Set listing of the item in `item_slot`, if it is worth it.
 
     Compares the loose item against its Set PER ITEM, and buys the cheapest
     Set listing only when the saving clears `threshold`.
+
+    Returns the offer that was taken as well as the verdict, because a caller
+    accumulating toward a target needs to know how many Sets the bundle held --
+    a listing is "X 62", not one Set, so counting purchases would count wrong.
     """
     def say(message: str) -> None:
         if verbose:
             print(message)
 
+    # Resolved from the ITEM, not bound at import. A default argument is
+    # evaluated once when the function is defined, so a per-item table could
+    # never reach it -- every caller would silently get the global floor.
+    if threshold is None:
+        threshold = price_diff_floor_for(FAVOURITE_SLOTS.get(item_slot, ""))
+
+    def outcome(bought: bool, why: str = "", offer=None, saving=None,
+                taken: int = 0) -> dict:
+        # `taken` is ITEMS, not listings and not orders. One order can now take
+        # several identical listings from the same row -- "X 1" with 48 on
+        # offer is 48 Sets in a single purchase -- so a caller accumulating
+        # toward a target cannot infer it from the offer alone.
+        return {"bought": bought, "why": why, "offer": offer,
+                "saving": saving, "slot": item_slot, "taken": taken}
+
     set_slot = favourite_set_slot(item_slot)
     if set_slot is None:
         say(f"Slot {item_slot} has no paired Set slot; nothing to compare.")
-        return False
+        return outcome(False, "no paired Set slot")
 
     for attempt in range(1, attempts + 1):
         if attempt > 1:
@@ -1583,7 +2360,7 @@ def buy_cheapest_set(item_slot: int,
         if item_best is None:
             say("No offers for the loose item, so there is nothing to compare "
                 "against - refusing to buy blind.")
-            return False
+            return outcome(False, "no offers for the loose item")
 
         set_offers = run_favourite_search(set_slot, verbose=verbose)
         # Row 1 on both sides: the table is sorted Price: Low to High, so the
@@ -1592,28 +2369,1468 @@ def buy_cheapest_set(item_slot: int,
         set_best = cheapest_listing(set_offers)
         if set_best is None:
             say("No Set offers on screen.")
-            return False
+            return outcome(False, "no Set offers")
 
         saving = item_best.unit - set_best.unit
         say(f"  item {item_best.unit:>12,.2f}/each   "
             f"set {set_best.unit:>12,.2f}/each   "
             f"saving {saving:>10,.2f}/each")
         if saving < threshold:
-            say(f"  saving is under the {threshold:,} threshold - not buying.")
-            return False
+            say(f"  saving is under the {threshold:,} threshold"
+                + (" (a per-item floor)"
+                   if threshold != PRICE_DIFF_FLOOR else "")
+                + " - not buying.")
+            return outcome(False, f"saving {saving:,.2f} under threshold",
+                           saving=saving)
 
         target = set_best          # row 1, the same row the saving was judged on
-        say(f"  buying row {target.row}: {target.name!r} at "
-            f"{target.price:,} for {target.pack} ({target.unit:,.2f} each)")
-        bought, why = buy_offer(target, verbose=verbose)
+
+        # Is this ONE order too big for what is left to buy? The answer is
+        # to stop, not to take row 2.
+        #
+        # Measured against the EFFECTIVE target, not the RESTOCK_TARGET
+        # constant. still_wanted is (BUY_TARGET - bought), and --buy-target
+        # moves BUY_TARGET; reading the constant here put the two on different
+        # scales and broke the ceiling in BOTH directions. With
+        # --buy-target 250, still_wanted stays >= 100 until 150 are held, so
+        # every order up to that point counted as "first" and the exemption
+        # re-opened the 428,142,429 Alz single-click runaway this rule exists
+        # to prevent. With --buy-target 50, still_wanted starts below 100 so
+        # the first order was never exempt, and a market of large bundles
+        # would never be traded at all.
+        target_now = BUY_TARGET or RESTOCK_TARGET
+        first_order = (still_wanted is not None
+                       and still_wanted >= target_now)
+        # Two limits, and which one applies depends on where the holding is.
+        #
+        #   below RESTOCK_TARGET  the minimum is not met, and meeting it comes
+        #                         first. Any bundle is taken, whatever its
+        #                         size: 100 held + a 999 bundle is allowed,
+        #                         because refusing leaves the shop short and
+        #                         the market may offer nothing smaller.
+        #
+        #   at or above it        size discipline applies: the total including
+        #                         this order must stay within BUY_MAXIMUM.
+        #                         240 + 999 is refused, 240 + 200 is taken.
+        # `still_wanted` counts down from BUY_MAXIMUM (buy_sets_until runs to
+        # the soft maximum, not to the minimum -- stopping at 200 would make
+        # "at 240, next bundle is 200, buy it" unreachable), so `held` is
+        # simply how many are already in the bag.
+        held = (target_now - still_wanted) if still_wanted is not None else 0
+        below_minimum = held < RESTOCK_TARGET
+        if (BUY_NEVER_EXCEED_TARGET and still_wanted is not None
+                and not below_minimum
+                and held + target.pack > BUY_MAXIMUM):
+            say(f"  {held} Sets held, which meets the {RESTOCK_TARGET} "
+                f"minimum; "
+                f"row 1 holds {target.pack} and {held + target.pack} would "
+                f"pass the {BUY_MAXIMUM} maximum - stopping here.")
+            return outcome(False,
+                           f"row 1 bundle of {target.pack} would take the "
+                           f"total to {held + target.pack}, past the "
+                           f"{BUY_MAXIMUM} maximum",
+                           saving=saving)
+
+        # How many of this row's identical listings to take in one order.
+        #
+        # The Purchase table's middle column is a COUNT: "Force Core Set
+        # (Highest) X 1" with 48 beside it is forty-eight separate one-Set
+        # listings at the same price, and the Confirm Purchase dialog will sell
+        # all of them in a single transaction. Taking one and searching again
+        # cost 48 searches and 48 dialogs to drain that row, and the restock's
+        # buy budget ran out long before the target.
+        #
+        # Rounded DOWN against the target, not up: `first_order` already allows
+        # one deliberate overshoot when nothing is held, and past that the
+        # never-exceed rule applies to the whole order rather than to the
+        # bundle size alone.
+        # How many of this row's identical listings to take.
+        #
+        # Rounded UP against what is still wanted, because the target is a
+        # minimum: taking one listing FEWER than it takes to reach it just
+        # means another search, another dialog and another cycle of the same
+        # decision.
+        #
+        # Below the minimum nothing bounds this but the row itself -- that is
+        # what "hard limit" means. At or above it, the order is trimmed so the
+        # total lands within BUY_MAXIMUM.
+        want = max(1, target.available)
+        if still_wanted is not None:
+            want = min(want, max(1, -(-still_wanted // max(1, target.pack))))
+        if not below_minimum:
+            room = max(0, BUY_MAXIMUM - held)
+            want = max(1, min(want, max(1, room // max(1, target.pack))))
+
+        # Can this actually be paid for? Checked before the click, because a
+        # refusal from the game is harder to read than a number we already
+        # have -- and because running out is permanent for this run.
+        # Priced for the WHOLE order, not one listing of it. Checking
+        # affordability against a single 190,190 listing and then spending
+        # 9,129,120 on forty-eight of them is how a run discovers it is out of
+        # Alz from the game's refusal rather than from a number it already had.
+        order_price = target.price * want
+        can_pay = affordable(order_price)
+        if can_pay is False:
+            halt_buying(f"cannot afford {want} x {target.name!r} at "
+                        f"{order_price:,} Alz")
+            return outcome(False, "out of Alz", saving=saving)
+
+        say(f"  buying row {target.row}: {target.name!r} x{want} of "
+            f"{target.available} on offer -> {want * target.pack} Sets for "
+            f"{order_price:,} ({target.unit:,.2f} each)")
+        bought, why = buy_offer(target, want=want, verbose=verbose)
         if bought:
-            say(f"  BOUGHT {target.name!r} for {target.price:,} Alz.")
-            return True
+            say(f"  BOUGHT {want * target.pack} x {target.name!r} for "
+                f"{order_price:,} Alz.")
+            return outcome(True, offer=target, saving=saving,
+                           taken=want * target.pack)
         say(f"  not bought: {why}")
         if "sold out" not in why:
-            return False
+            return outcome(False, why, saving=saving)
+
     say(f"Gave up after {attempts} attempts - the listings kept selling first.")
+    return outcome(False, "the listings kept selling first")
+
+
+def buy_cheapest_set(item_slot: int,
+                     threshold: "int | None" = None,
+                     attempts: int = BUY_RETRY_ATTEMPTS,
+                     verbose: bool = True) -> bool:
+    """Whether a Set of `item_slot` was bought. See buy_cheapest_set_detail."""
+    return buy_cheapest_set_detail(item_slot, threshold=threshold,
+                                   attempts=attempts, verbose=verbose)["bought"]
+
+
+# --------------------------------------------------------------------------
+# RESTOCK: sold out -> buy Sets -> convert to Cores -> list them
+# --------------------------------------------------------------------------
+#
+# Enabled by --buy. The three stages are deliberately separate functions, so a
+# failure in one is visible as itself rather than as "restock failed", and so
+# each can be driven by hand while the others are trusted.
+#
+#   1. a managed Core with no rows left in the shop has sold out, so buy Sets
+#      until RESTOCK_TARGET are held -- always row 1, re-searching every time
+#   2. leave the Agent Shop, press N for the vendor, convert Sets -> Cores
+#   3. list the Cores, which is what FREES THE INVENTORY AGAIN
+#
+# Step 3 is not merely bookkeeping. Cores do not stack: 250 of them occupy 250
+# slots, which is four tabs' worth, and the inventory would be full long before
+# a 250-Set purchase finished converting. Listing after each batch returns
+# those slots, which is what lets the loop run to completion at all -- so the
+# convert/list pair repeats rather than converting everything up front.
+# The HARD minimum. A restock keeps buying until it holds at least this
+# many Sets, and while it is short of them NO order is refused for being too
+# big -- see BUY_MAXIMUM. Being under-stocked is the failure that costs a
+# trading day; being over-stocked costs some Alz sitting in Cores.
+RESTOCK_TARGET = 200
+
+# The SOFT maximum. Once the minimum is met, an order is only taken while the
+# total including it stays within this. It is soft in exactly one sense: an
+# order taken to REACH the minimum may carry the holding straight past it
+# (100 + 999 = 1,099 is allowed), because the hard limit wins. Nothing else may.
+BUY_MAXIMUM = 500
+# How many Sets a restock accumulates before converting.
+#
+# Not the same as CONVERT_QUANTITY: a shop row holds 250 and a conversion asks
+# for 250, but the amount of CAPITAL a single restock commits is a separate
+# decision. 100 Sets is roughly 43M at the Ultimate price -- a position worth
+# taking without tying up the balance, where 250 was 107M and a 999 bundle was
+# 428M.
+#
+# The first order of a restock is exempt from the ceiling (see
+# BUY_NEVER_EXCEED_TARGET): row 1 is the cheapest per item, and refusing a
+# large bundle when nothing is held means never trading at all.
+
+# Ceiling on the number of purchase TRANSACTIONS in one restock -- not on the
+# quantity and not on the money, both of which BUY_MAXIMUM bounds.
+#
+# Largely vestigial since the Confirm Purchase dialog's quantity field was
+# wired up on 2026-08-08. Each order used to take exactly ONE listing, so
+# accumulating a target from bundles genuinely needed a dozen; now a single
+# order can drain a whole row (48 listings at once, measured), and reaching the
+# minimum usually takes one to four.
+#
+# What it bounds today is TIME: an order is two favourite searches, a dialog
+# and a confirm, so fifteen of them is ten to fifteen minutes of a cycle. The
+# case where it still binds is a market offering only tiny lots -- fifteen
+# orders of two Sets each falls well short of the minimum. That is no longer a
+# failure: the carry registry remembers what was bought and the next cycle
+# resumes rather than starting over.
+RESTOCK_MAX_BUYS = 15
+
+# How far past what is still needed a SINGLE order may go.
+#
+# Buying stops at the first order that reaches the target, and it always takes
+# row 1 whatever size that row is -- so a 999-Set bundle can land on top of an
+# almost-met target. Measured on 2026-08-07: with 213 of 250 Sets held, row 1
+# was a 999 bundle at 428,142,429 Alz and the run took it. Per item it was a
+# fine trade (16,429 saving each); as a position it was 82% of everything spent
+# that session, committed in one click.
+#
+# The rule, as it stands after 2026-08-08: RESTOCK_TARGET is a HARD MINIMUM
+# and BUY_MAXIMUM a soft maximum. Below the minimum any bundle is taken --
+# meeting it comes first, and refusing a large row can leave the shop empty.
+# At or above it, an order is taken only while the total including it stays
+# within BUY_MAXIMUM.
+#
+# The earlier version held every order to the target itself, which refused the
+# order that would FINISH a restock: live that evening, 53 of 100 held and row
+# 1 offering exactly the 76 needed, the run declined and stopped at 53.
+#
+# Declined rather than stepping to row 2, because "always buy row 1" is what
+# keeps row 1 meaning the cheapest -- taking row 2 would quietly reintroduce
+# the bug that once paid 8,614,760 more to save 38 Alz.
+#
+# Measured on 2026-08-07, before this existed: with 213 of 250 Sets held, row 1
+# was a 999 bundle at 428,142,429 Alz and the run took it -- 1,212 Sets against
+# a target of 250, and 82% of everything spent that session committed in one
+# click. Per item it was a fine trade; as a position it was not one anybody
+# chose.
+#
+# The cost is that a target is rarely met exactly: 62-Set bundles stop at 248.
+# That is the intended trade -- slightly under is a rounding error, four
+# hundred million over is not.
+#
+# ONE exception, and it is what makes the rule workable: the FIRST order of a
+# restock is taken whatever its size. Row 1 is the cheapest per item, and if
+# the market is only offering big bundles then refusing them means never
+# trading at all -- the restock would decline every cycle and the shop would
+# stay empty. Having nothing is worse than having a surplus. Every order after
+# the first is held to the target, which is where the runaway actually
+# happened: 213 held, then a 999 bundle on top.
+BUY_NEVER_EXCEED_TARGET = True
+
+# Superseded by RESTOCK_TARGET (hard minimum) and BUY_MAXIMUM (soft maximum),
+# which say the same thing in absolute numbers instead of a multiplier. Kept
+# defined because a factor is easier to reason about when the two limits are
+# being retuned, and removing a name that tests import is a separate change.
+BUY_OVERSHOOT_FACTOR = BUY_MAXIMUM / RESTOCK_TARGET
+
+# Runaway guard on convert/list rounds -- NOT the expected number of them.
+#
+# What actually ends the loop is progress: it stops when every bought Set has
+# been listed, or when a round converts nothing. Counting rounds ahead of time
+# does not work, and the arithmetic that looked obvious was wrong twice over:
+#
+#   * a purchase OVERSHOOTS. Buying stops at the first order that reaches the
+#     target and a Set stacks to 999, so a 250 target routinely lands near
+#     1,250 and can be a single 999 bundle.
+#   * a round does not convert CONVERT_QUANTITY. It converts as many as there
+#     are free inventory slots, which is 63 on a tab -- so 999 Sets is sixteen
+#     rounds, not four.
+#
+# A budget derived from "bought / 250" therefore truncated at 378 of 999 and
+# left 621 Sets stranded in the bag, silently. This cap only exists so a round
+# that makes one unit of progress forever cannot run all night.
+RESTOCK_MAX_ROUNDS = 40
+
+# Candidate inventory slots tried when listing the converted Cores. Occupancy
+# cannot tell a Core from a Set, so the first guess is not always right -- see
+# core_slot_candidates. Bounded because each miss costs a load and a refusal.
+CORE_SLOT_TRIES = 4
+
+# The most a single Set stack holds, which is why the overshoot happens at all.
+SET_STACK_MAX = 999
+
+# Whether the resupply runs BEFORE the relisting or after it.
+#
+# Before, as of 2026-08-08. Restocking last meant the rows it created were
+# absent from the snapshot the relist worked from, so they were priced once at
+# creation and never repriced -- which is the whole reason widen_for_restocks
+# exists, a mechanism that anchors on max(rows) rather than where listings
+# actually land and grows monotonically because nothing gave it back.
+#
+# The cost of going first: sold rows have not been collected yet, so they still
+# hold a row in `receive` state and the capacity check sees the shop as fuller
+# than it will be. That errs toward declining a restock that would have fitted,
+# never the reverse, and core_row_counts already ignores `receive` rows so a
+# sold-out Core is still correctly detected.
+RESTOCK_BEFORE_RELIST = True
+
+BUY_ENABLED = False
+# The runtime target, separate from the RESTOCK_TARGET constant so --buy
+# can change it without shadowing the default the CLI advertises.
+# The runtime accumulation target: the SOFT maximum, not the minimum.
+# A restock keeps buying while the total is under this, and the hard minimum
+# decides whether an over-sized bundle may be taken on the way.
+BUY_TARGET = BUY_MAXIMUM
+
+# Rows this run's restocks have ADDED to the shop.
+#
+# A restock lists Cores into the LOWEST EMPTY row. The row that sold out is
+# empty -- that is why the restock ran -- so the first new listing usually
+# lands back inside the range being swept. The rest do not: a 1,250-Set
+# purchase makes five listings, and once the freed row is taken the remaining
+# four go to the end of the shop.
+#
+# `--relist-rows 6-17` would then never touch them again: they would sit at
+# whatever the market was the moment they were created, never repriced, for
+# the rest of the run. So the sweep widens by however many rows were made.
+BUY_ADDED_ROWS = 0
+
+# What the last full sweep concluded, and when.
+#
+# One enumerate_listings is THREE traversals of the shop -- to the bottom to
+# find the end, back to the top, then down again in steps -- and it doubles if
+# the step has to fall back. Doing that every cycle to re-learn a fact that has
+# not changed is most of the time an unattended run spends.
+#
+# So the answer is remembered. It is only re-taken when it might have moved:
+# after a restock lists something, or after CORE_STOCK_TTL, whichever comes
+# first. A Core VISIBLE on the first screen never needs a sweep at all -- that
+# is checked before this cache is even consulted.
+CORE_STOCK_TTL = 600.0
+_UNLISTED_CACHE: dict | None = None
+
+
+def note_unlisted(slots: list[int]) -> None:
+    """Remember which Cores a full sweep found no row for."""
+    global _UNLISTED_CACHE
+    _UNLISTED_CACHE = {"slots": list(slots), "at": time.monotonic()}
+
+
+def forget_unlisted() -> None:
+    """Drop the cache: the shop has changed and the answer may have too."""
+    global _UNLISTED_CACHE
+    _UNLISTED_CACHE = None
+
+
+# Sets a restock has PAID FOR but not yet turned into a listed Core.
+#
+# A restock that buys and then cannot list -- the vendor unreachable, the Agent
+# Shop refusing to close, the round guard tripping, an exception anywhere in
+# between -- leaves Sets in the bag. Nothing about the SHOP changes in that
+# case: the Core is still unlisted, so the next cycle asks the same question,
+# gets the same answer, and buys a SECOND target on top of the first. At about
+# 43M a target and RESTOCK_MAX_BUYS orders a pass, that is the most expensive
+# path in this file, and it repeats every cycle for as long as the underlying
+# problem lasts. Neither halt_buying nor the row-capacity pause catches it --
+# the first only fires on an unaffordable price or a bad name, and the second
+# only counts rows the shop already has.
+#
+# So what was bought is remembered per favourite slot, and a restock that finds
+# stock carried over CONVERTS AND LISTS IT instead of buying more. The bag is
+# the record; this is just the script's knowledge of it.
+#
+# Deliberately process-lifetime and not persisted: a new run cannot know
+# whether the bag was emptied by hand between runs, and a stale carry would
+# stop a legitimate purchase forever. Within one run it is authoritative.
+_CARRIED_SETS: dict[int, int] = {}
+
+
+def carried_sets(slot: int) -> int:
+    """Sets bought for `slot` that have not become listed Cores yet."""
+    return max(0, int(_CARRIED_SETS.get(slot, 0)))
+
+
+def note_carried_sets(slot: int, count: int) -> None:
+    """Record that `count` Sets for `slot` are in the bag, unlisted."""
+    if count > 0:
+        _CARRIED_SETS[slot] = int(count)
+    else:
+        _CARRIED_SETS.pop(slot, None)
+
+
+def clear_carried(slot: int) -> None:
+    """Everything bought for `slot` has been listed."""
+    _CARRIED_SETS.pop(slot, None)
+
+
+def carried_total() -> int:
+    """Sets held across every slot that a restock still owes a listing for."""
+    return sum(carried_sets(slot) for slot in list(_CARRIED_SETS))
+
+
+def cached_unlisted(missing: list[int]) -> "list[int] | None":
+    """The remembered verdict for `missing`, or None if a sweep is needed.
+
+    Only usable when the cache covers every Core being asked about: a Core the
+    last sweep never considered has no remembered answer, and guessing one
+    would be the difference between buying and not.
+    """
+    if _UNLISTED_CACHE is None:
+        return None
+    if time.monotonic() - _UNLISTED_CACHE["at"] > CORE_STOCK_TTL:
+        return None
+    known = set(_UNLISTED_CACHE["slots"])
+    # Everything now missing from the first screen must have been accounted
+    # for by that sweep -- either it said unlisted, or it said listed further
+    # down. It can only say the former; the latter is "not in this list".
+    return [s for s in missing if s in known]
+
+
+def note_rows_added(count: int) -> None:
+    """Widen future sweeps by `count` rows, so new listings keep being priced."""
+    global BUY_ADDED_ROWS
+    if count > 0:
+        BUY_ADDED_ROWS += count
+
+
+def note_shop_depth(rows_now: int, swept_to: int) -> None:
+    """Give back widening the shop has since absorbed.
+
+    BUY_ADDED_ROWS only ever grew, and nothing gave it back when the rows it
+    was tracking sold. But listings CONSOLIDATE UPWARD -- this file measured
+    Siena's Unbinding Stone going row 24 -> 17 -> 12 over three cycles -- so
+    the rows a restock added are reabsorbed within a few cycles while the
+    counter still claims them.
+
+    The cost is not cosmetic. Once the widened range runs past the ten visible
+    rows, `beyond` is non-empty, `scrolling` is True, and EVERY cycle pays a
+    full enumerate_listings -- three traversals of the shop, about two minutes
+    of OCR -- to address rows that no longer exist. The widened rows are then
+    silently skipped as `added_rows`, so the cost never appears as an error.
+
+    Called with what the shop actually holds after a sweep. Anything the sweep
+    reached that is not there any more is not worth widening for.
+    """
+    global BUY_ADDED_ROWS
+    if rows_now < 0 or swept_to <= 0:
+        return
+    # Only ever shrinks. Growth stays note_rows_added's job, so a bad read here
+    # cannot invent extra rows to sweep -- it can only stop sweeping ones that
+    # are gone, which the next restock re-adds anyway.
+    spare = max(0, swept_to - rows_now)
+    if spare and BUY_ADDED_ROWS:
+        BUY_ADDED_ROWS = max(0, BUY_ADDED_ROWS - spare)
+
+
+def widen_for_restocks(rows: "list[int] | None",
+                       available: int) -> "tuple[list[int], int]":
+    """Extend a row list to cover rows added by restocks. (rows, how many).
+
+    Clamped to what the shop actually holds. Asking for a row that does not
+    exist fails the WHOLE batch -- and a widening meant to catch new listings
+    must never be the thing that stops the sweep.
+    """
+    if not rows or not BUY_ADDED_ROWS:
+        return list(rows or []), 0
+    top = max(rows)
+    extra = [r for r in range(top + 1, top + 1 + BUY_ADDED_ROWS)
+             if r <= available]
+    if not extra:
+        return list(rows), 0
+    return sorted(set(rows) | set(extra)), len(extra)
+
+# Which Cores the restock pipeline is allowed to buy. One line per type, and
+# every one of them OFF unless it has been switched on deliberately.
+#
+# A table rather than a flag because this decides where money goes. Adding a
+# favourite slot should not quietly enrol it in automatic buying, and reading
+# this list should answer "what can this run spend on?" without tracing code.
+#
+# The keys are the game's own spellings, taken from FAVOURITE_SLOTS -- including
+# its inconsistency about the space before the bracket. A key that does not
+# match a managed Core is a mistake, not a no-op, and enabled_buying_slots()
+# raises rather than silently ignoring it.
+ENABLE_BUYING: dict[str, bool] = {
+    "Force Core(High)":        True,
+    "Force Core(Highest)":     True,
+    "Force Core (Ultimate)":   True,
+    "Upgrade Core(Highest)":   True,
+    "Upgrade Core (Ultimate)": True,
+}
+
+
+def enabled_buying_slots() -> tuple[int, ...]:
+    """Favourite slots ENABLE_BUYING switches on, as slot numbers.
+
+    Resolved through favourite_for, so the table is checked against the real
+    slot map every time rather than trusted. A typo in a key would otherwise
+    read as "this Core is disabled", which is the quiet direction: the restock
+    silently never fires and the shop just runs dry.
+    """
+    out = []
+    for name, on in ENABLE_BUYING.items():
+        slot = favourite_for(name)
+        if slot is None or slot not in managed_core_slots():
+            raise ValueError(
+                f"ENABLE_BUYING names {name!r}, which is not a managed Core. "
+                "Managed: "
+                + ", ".join(FAVOURITE_SLOTS[s] for s in managed_core_slots()))
+        if on:
+            out.append(slot)
+    return tuple(sorted(out))
+
+
+# Set once the account cannot afford what it is trying to buy, and never
+# cleared. Running out of Alz is not a transient condition the way a sold-out
+# row is: the money only comes back when something SELLS, and until then every
+# further attempt walks the whole pipeline -- switch tabs, run two searches,
+# read the market -- to reach the same refusal. Worse, a half-funded restock
+# buys some Sets and cannot buy the rest, leaving them in the bag for a later
+# cycle to buy MORE on top of.
+#
+# Process-lifetime, deliberately. A run that stops buying says so once and
+# keeps relisting, which is the useful half of the job; the next run starts
+# fresh and re-checks.
+BUY_HALTED = False
+BUY_HALT_REASON = ""
+
+
+def halt_buying(reason: str) -> None:
+    """Stop all further buying for the rest of this run."""
+    global BUY_HALTED, BUY_HALT_REASON
+    if not BUY_HALTED:
+        BUY_HALTED = True
+        BUY_HALT_REASON = reason
+        print(f"\nBUYING HALTED for the rest of this run: {reason}")
+        # The advice has to follow the cause. It used to say "restart once
+        # there is Alz again" unconditionally, which is nonsense for a halt
+        # caused by the item mapping being wrong -- and following it would
+        # restart straight back into buying the wrong thing.
+        print("Relisting continues, untouched.")
+        if "afford" in reason:
+            print("Restart once something has sold and there is Alz again.")
+        else:
+            print("Check FAVOURITE_SLOTS against the game's saved searches "
+                  "before restarting: a name mismatch means the script and "
+                  "the shop disagree about what is being bought.")
+        record("buy.halted", reason=reason)
+
+
+def affordable(price: int, source: "Image.Image | None" = None) -> bool | None:
+    """Whether `price` can be paid. None when the balance cannot be read.
+
+    None rather than False on an unreadable balance, and the caller proceeds:
+    halting is PERMANENT, so doing it on a misread would silently disable
+    buying for a whole run. A genuinely short purchase fails at the game's own
+    hands a moment later, which is recoverable; a false halt is not.
+    """
+    try:
+        held = get_alz(source if source is not None else grab())
+    except Exception:  # noqa: BLE001 - an unreadable balance is not a verdict
+        return None
+    if not held:
+        return None
+    return held >= price
+
+
+def leave_for_restock(verbose: bool = True) -> None:
+    """Put the game back in its default state before the refill starts.
+
+    Relisting and refilling are different jobs in different windows: relisting
+    works the Agent Shop's Register tab, refilling works its Purchase tab and
+    then the NPC vendor two windows away. Running the second straight out of
+    the first left the Agent Shop open for the whole restock -- and an open
+    Trade window is exactly what makes a later find_npc() fail, because it
+    covers the NPC.
+
+    Everything downstream reopens what it needs: open_purchase_tab opens the
+    Trade window when it is shut, and the conversion closes it again anyway to
+    reach the vendor. So the only cost is one close, and what is bought is a
+    known state at the boundary -- if the refill fails, it fails from the
+    default state rather than from whatever the last row left behind.
+
+    Never raises. A refill that cannot start is a missed opportunity; a relist
+    batch turned into a failure by its own tidying is not.
+    """
+    try:
+        if trade_window_open():
+            leave_shop(verbose=verbose)
+    except Exception as exc:  # noqa: BLE001 - tidying must not fail a batch
+        if verbose:
+            print(f"  (could not close the Agent Shop first: {exc})")
+
+
+# The client's "Disconnected" modal. Measured from the live frame of the
+# 2026-08-08 04:31 drop: the title reads at (1280, 576) and its OK button at
+# (1281, 817), both at 96% confidence.
+#
+# Centred, so the region deliberately excludes the chat panel at the bottom
+# left -- players type "disconnected" at each other constantly, and a chat line
+# must never stop a run.
+DISCONNECT_REGION = (980, 545, 1590, 860)
+
+
+def game_disconnected(source: "Image.Image | None" = None) -> bool:
+    """True when the client is showing its disconnect modal.
+
+    TWO words are required, not one. "Disconnected" alone appears in the title
+    AND in the body, but it also appears in the game's own system messages; the
+    pairing with "server" is what makes this specific to the modal. Being wrong
+    in this direction is expensive -- a false positive stops an otherwise
+    healthy unattended run.
+    """
+    try:
+        shot = source if source is not None else grab()
+        words = [w.text.casefold()
+                 for w in find_words(shot, DISCONNECT_REGION, 20)
+                 if w.conf >= 60]
+    except Exception:  # noqa: BLE001 - a detector must not raise
+        return False
+    text = " ".join(words)
+    return "disconnected" in text and "server" in text
+
+
+def restock_is_armed() -> bool:
+    """Whether a relist sweep should do any restock work at all.
+
+    Both halves matter, and the second is not redundant. With --buy given but
+    every ENABLE_BUYING entry off there is nothing that COULD be bought, so the
+    pass must cost NOTHING -- not "run and decide to do nothing", which still
+    pays for a full table read every cycle. A shop of Cores, VIP memberships
+    and Gem packs then relists at exactly the speed it did before this feature
+    existed.
+    """
+    if BUY_HALTED:
+        return False
+    return bool(BUY_ENABLED) and bool(enabled_buying_slots())
+
+
+def managed_core_slots() -> list[int]:
+    """Favourite slots holding a loose Core that has a paired Set slot.
+
+    These are the items the restock pipeline looks after. A Set slot is not one
+    of them: buying a Set is the MEANS, and the Core is what gets listed.
+    """
+    out = []
+    for slot, name in sorted(FAVOURITE_SLOTS.items()):
+        if "set" in _floor_key(item_name(name)):
+            # Belt and braces. favourite_set_slot() already returns None for a
+            # Set slot -- a Set has no Set of its own -- so this line changes
+            # nothing today. Kept because the cost of the pairing rule being
+            # loosened later is that the pipeline buys Sets in order to list
+            # Sets, which is the trade run backwards.
+            continue
+        if favourite_set_slot(slot) is not None:
+            out.append(slot)
+    return out
+
+
+def core_row_counts(listings: list) -> dict[int, int]:
+    """How many shop rows each managed Core occupies, keyed by favourite slot.
+
+    Matched by EQUALITY on the folded name, never containment: "Force
+    Core(Highest)" contains "Force Core(High)", and counting one as the other
+    would report a sold-out item as still stocked -- or restock one that is
+    fine. Every grade in this game is a prefix of another.
+    """
+    counts = {slot: 0 for slot in managed_core_slots()}
+    for row in listings:
+        # A row in `receive` state has SOLD. It carries its name until the
+        # proceeds are collected, so counting it as stock reported a sold-out
+        # Core as still listed -- and if the relist sweep does not reach that
+        # row (a shop of 25 rows swept 6-17, say) it stays in `receive`
+        # indefinitely and the Core is never restocked at all. rows_in_use,
+        # which counts the same table for capacity, has always filtered on
+        # action; this did not.
+        #
+        # Anything OTHER than an explicit "receive" counts, including an action
+        # that did not read. That is the deliberate direction: treating an
+        # unreadable row as sold would buy 250 Sets of something that never ran
+        # out, while treating it as stocked costs at most one cycle of waiting.
+        if getattr(row, "action", None) == "receive":
+            continue
+        # Strip any "X 30" pack marker before comparing. Equality is what keeps
+        # the grades apart, but it is unforgiving of anything else on the line,
+        # and a name that fails to match reads as SOLD OUT -- which spends
+        # money restocking something that never ran out. The grade itself is
+        # still compared exactly, so this cannot blur High into Highest.
+        name = _PACK_ANYWHERE.sub(" ", getattr(row, "name", None) or "")
+        # No `break` on the first hit. With equality at most one slot can
+        # match, so breaking is only an optimisation -- but it also HIDES the
+        # case where two match, which is exactly what a sloppier comparison
+        # would cause. Counting them all turns that into a visible double
+        # count instead of an answer that silently depends on dict order.
+        for slot in counts:
+            if _names_agree(name, FAVOURITE_SLOTS[slot]):
+                counts[slot] += 1
+    return counts
+
+
+def unlisted_core_slots(listings: list) -> list[int]:
+    """Managed Cores with no row anywhere in the shop.
+
+    An ABSOLUTE count, and it must be taken over all thirty rows rather than
+    the ten on screen -- "not in the top ten" is a completely different
+    statement, and acting on it buys 250 Sets of something sitting on row 11.
+    Measured on the live shop: three of five managed Cores read as absent from
+    the visible table alone.
+
+    Absolute rather than a before/after transition, because a Core that is
+    enabled for buying and has NEVER been listed still wants stocking. The
+    transition form could only ever restock something it had already seen, so a
+    newly enabled Core would sit there forever.
+    """
+    return [slot for slot, n in sorted(core_row_counts(listings).items())
+            if n < 1]
+
+
+# The vendor's category tabs. Opening the shop with N lands on Normal, and the
+# SET <-> CORE exchange block lives under DUNGEON -- so the grid coordinates
+# describe a page that is not showing until this is clicked.
+#
+# Standing at Peddler Unon the strip has two tabs and the conversions are
+# already up, which is how the grid was mapped in the first place and why this
+# was missed: the first live conversion Alt+clicked a cell that was showing
+# something else entirely.
+VENDOR_TAB_REGION = (0, 150, 620, 240)
+VENDOR_TABS = ("Normal", "Dungeon", "Repurchase")
+CONVERT_VENDOR_TAB = "Dungeon"
+# The raised top edge of the selected tab, same principle as the inventory
+# strip. Measured on two live frames: the selected tab reads ~69 here against
+# ~27-32 for the others, a 37-level gap, where a band over the labels
+# themselves separates by about 12.
+VENDOR_TAB_BAND = (176, 188)
+VENDOR_TAB_MARGIN = 12.0
+
+
+def vendor_tab_point(name: str,
+                     source: "Image.Image | None" = None) -> "tuple[int, int] | None":
+    """Where to click a vendor category tab, found by its label."""
+    shot = source if source is not None else grab()
+    hits = find_text(shot, name, VENDOR_TAB_REGION, 40.0)
+    return hits[0].centre if hits else None
+
+
+def active_vendor_tab(source: "Image.Image | None" = None) -> "str | None":
+    """Which vendor category tab is selected, or None if it cannot be told.
+
+    None rather than a guess: this gates a click into a shop where a plain
+    click buys something outright.
+    """
+    shot = source if source is not None else grab()
+    grey = shot.convert("L")
+    px = grey.load()
+    top, bottom = VENDOR_TAB_BAND
+    scores = []
+    for name in VENDOR_TABS:
+        point = vendor_tab_point(name, shot)
+        if point is None:
+            continue
+        cx = point[0]
+        vals = [px[x, y]
+                for x in range(max(0, cx - 25), min(grey.width, cx + 25))
+                for y in range(top, bottom)]
+        scores.append((sum(vals) / len(vals), name))
+    if len(scores) < 2:
+        return None
+    scores.sort(reverse=True)
+    if scores[0][0] - scores[1][0] < VENDOR_TAB_MARGIN:
+        return None
+    return scores[0][1]
+
+
+def open_vendor_tab(name: str = CONVERT_VENDOR_TAB, timeout: float = 8.0,
+                    verbose: bool = True) -> bool:
+    """Select a vendor category tab and confirm it took.
+
+    A tab click cannot buy anything -- it changes the page -- so this is the
+    one click in the vendor window that is safe to make on a label match alone.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    # ALWAYS click, even when the tab already looks selected.
+    #
+    # The alternative is to trust active_vendor_tab() and skip -- but that
+    # reading gates a click into a window where a PLAIN click buys outright,
+    # and clicking a tab cannot buy anything at all. So the cheap, safe action
+    # is unconditional and the expensive, unsafe one is what gets verified.
+    # A misread that says "already on Dungeon" would otherwise leave the grid
+    # showing the Normal page while the code believed otherwise, which is
+    # exactly how the first live conversion Alt+clicked the wrong cell.
+    # POLL for the label, do not read once.
+    #
+    # vendor_shop_open() is satisfied by the window's title, which draws before
+    # its tabs do -- so a single find_text here reads a window that is open and
+    # not yet finished. Measured on 2026-08-08: two consecutive cycles failed
+    # at this line ("could not find the 'Dungeon' tab") on a window whose tabs
+    # sit exactly where a golden frame of a WORKING conversion has them, at
+    # (195, 205). Nothing had moved; the read was simply early.
+    #
+    # It cost 270 bought Sets two cycles of not being converted, and the tab
+    # click itself is the one click in this window that cannot buy anything --
+    # so waiting for it is free.
+    point = None
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        point = vendor_tab_point(name)
+        if point is not None:
+            break
+        time.sleep(0.4)
+    if point is None:
+        say(f"  could not find the {name!r} tab in the vendor Shop after "
+            f"{timeout:g}s.")
+        seen = [t for t in VENDOR_TABS if vendor_tab_point(t) is not None]
+        say(f"  tabs that DID read: {seen or 'none'} -- if none, the window "
+            f"was still drawing or is not the vendor Shop; if some, only this "
+            f"label failed to OCR.")
+        return False
+    say(f"  selecting the {name} tab at {point}")
+    click(*point)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if active_vendor_tab() == name:
+            say(f"  {name} tab is showing.")
+            return True
+        time.sleep(0.4)
+    say(f"  the {name} tab did not take.")
     return False
+
+
+def open_npc_shop(timeout: float = 10.0, verbose: bool = True) -> bool:
+    """Close the Agent Shop and open the vendor's Shop window with N.
+
+    The vendor window is the same one, in the same place, whether it was opened
+    by walking up to Peddler Unon or by the key -- which is what lets the
+    conversion grid keep its fixed coordinates.
+
+    The Agent Shop is closed FIRST and confirmed closed. Both windows open at
+    once would have the Trade window covering the grid, and a click aimed at a
+    conversion cell would land on whatever the Trade window is showing there.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    # Already open? Then do NOT press N. It is a TOGGLE: pressing it on an
+    # open window closes it, and the poll below would then catch the window
+    # mid-close, report it open, and hand a disappearing window to the tab
+    # lookup.
+    #
+    # But close the Agent Shop first even so. The early return here used to
+    # skip that entirely, leaving both windows up -- and this function's own
+    # docstring says why that is wrong: the Trade window covers the grid, so a
+    # click aimed at a conversion cell lands on whatever the Trade window
+    # happens to be showing there. TRADE_REGION (10, 30, 1235, 1065) covers
+    # the whole grid and the tab strip with it.
+    if vendor_shop_open():
+        if trade_window_open():
+            say("The vendor Shop is already open, but so is the Agent Shop - "
+                "closing that first; it covers the grid.")
+            leave_shop(verbose=verbose)
+            if trade_window_open():
+                say("  the Agent Shop would not close; refusing to convert "
+                    "underneath it.")
+                return False
+        return open_vendor_tab(verbose=verbose)
+
+    if trade_window_open():
+        say("Closing the Agent Shop before opening the vendor...")
+        leave_shop(verbose=verbose)
+        if trade_window_open():
+            say("  the Agent Shop would not close; not opening the vendor on "
+                "top of it.")
+            return False
+
+    say("Opening the vendor Shop (N)...")
+    press_key(VK_N, settle=0.6, what="N")
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if vendor_shop_open():
+            say("  vendor Shop is open.")
+            # The exchanges are under Dungeon, so select it -- but NOT
+            # because N lands on Normal. It does not: measured on 2026-08-08,
+            # pressing N opened the window already showing Dungeon, because the
+            # game remembers the last tab used. open_vendor_tab clicks
+            # unconditionally anyway, which is why that wrong assumption never
+            # caused a failure.
+            #
+            # Worth stating because the tab lookup is the step that DID fail
+            # twice that day, and the reason was the region rather than the
+            # tab: TRADE_REGION (10, 30, 1235, 1065) covers VENDOR_TAB_REGION
+            # (0, 150, 620, 240), and trade_window_open() is a text search that
+            # reports "closed" while the panel is still fading. N then opens
+            # the vendor underneath what is left of the Agent Shop, and the
+            # tab label is read through it. open_vendor_tab polls for that
+            # reason.
+            return open_vendor_tab(verbose=verbose)
+        time.sleep(0.4)
+    say("  the vendor Shop did not open.")
+    return False
+
+
+def close_npc_shop(verbose: bool = True) -> bool:
+    """Shut the vendor window and confirm it. Escape, then check."""
+    for _ in range(ESCAPE_ATTEMPTS):
+        if not vendor_shop_open():
+            return True
+        press_escape()
+    closed = not vendor_shop_open()
+    if not closed and verbose:
+        print("  the vendor Shop would not close.")
+    return closed
+
+
+# The Agent Shop holds thirty rows. Every restock ADDS rows -- one per 250
+# Cores listed -- so a shop that is nearly full has to stop buying before it
+# buys something it cannot list.
+SHOP_ROW_CAPACITY = 30
+
+
+def whole_shop_listings(timeout: float = 8.0,
+                        verbose: bool = True) -> list | None:
+    # Reads the LISTINGS table, which only exists on the Register tab, and
+    # reaches rows past the first screen by scrolling. Left on the Purchase
+    # tab, that scroll moves the OFFERS instead -- and the whole buying design
+    # rests on row 1 being the cheapest, so shifting the offers quietly breaks
+    # it. table_scrollable() now refuses that outright; switching here is what
+    # lets the work actually happen rather than merely being declined.
+    """Every row in the shop, all thirty of them. None if it cannot be read.
+
+    None rather than a short list: a partial read is exactly the input that
+    makes a stocked Core look absent and buys 250 Sets of it.
+    """
+    if not register_tab_open() and not open_trade_window(
+            timeout=max(timeout, 15.0), verbose=verbose):
+        return None
+    listings = enumerate_listings(timeout=timeout, verbose=verbose)
+    if listings is None:
+        return None
+    return [row for _, row in listings]
+
+
+def shop_rows_used(timeout: float = 8.0,
+                   verbose: bool = True) -> int | None:
+    """How many of the shop's thirty rows hold a live listing. None if unread.
+
+    Enumerated rather than read off the screen: ten rows are visible and thirty
+    exist, and the whole question here is how close the SHOP is to full.
+    """
+    # Same reason as whole_shop_listings: this enumerates, enumerating
+    # scrolls, and scrolling belongs on the Register tab.
+    if not register_tab_open() and not open_trade_window(
+            timeout=max(timeout, 15.0), verbose=verbose):
+        return None
+    listings = enumerate_listings(timeout=timeout, verbose=verbose)
+    if listings is None:
+        return None
+    return sum(1 for _, row in listings
+               if getattr(row, "action", None) in ("change", "receive"))
+
+
+def restock_rows_needed(target: int = RESTOCK_TARGET) -> int:
+    """Rows a restock of `target` Sets could occupy, worst case.
+
+    A listing holds CONVERT_QUANTITY, so the row count is the Set count divided
+    by it -- but the Set count OVERSHOOTS the target, because buying stops at
+    the first order that reaches it and a Set stacks to SET_STACK_MAX. Sized
+    for that worst case: 250 asked for, 999 arriving on top, is five rows.
+    """
+    # Two worst cases, whichever is larger:
+    #
+    #   * one Set short of the minimum, then a full 999 stack on top -- the
+    #     hard limit permits exactly this, and it is the bigger of the two;
+    #   * the soft maximum, reached exactly.
+    worst = max(RESTOCK_TARGET - 1 + SET_STACK_MAX, BUY_MAXIMUM)
+    return max(1, -(-worst // max(1, CONVERT_QUANTITY)))
+
+
+def open_purchase_tab(timeout: float = 10.0, verbose: bool = True) -> bool:
+    """Put the Trade window on the Purchase tab, and confirm it got there.
+
+    open_trade_window() is the Register-tab counterpart and every other caller
+    in this file wants that one; buying is the only thing that needs this side,
+    which is why it did not exist until a live restock refused with "the Trade
+    window is not on the Purchase tab". The refusal was right -- purchase_ready
+    would not click Purchase-tab coordinates on the Register tab -- but nothing
+    had ever switched.
+
+    The tab is found by its LABEL rather than a fixed point: the two tabs sit
+    side by side and clicking a remembered coordinate that has drifted lands on
+    the other one, which is the Register tab and a completely different set of
+    buttons.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    if purchase_tab_open():
+        return set_purchase_sort_low_to_high(verbose=verbose)
+
+    if not trade_window_open():
+        say("  the Trade window is shut; opening it first.")
+        if not open_trade_window(timeout=max(timeout, 15.0), verbose=verbose):
+            return False
+        if purchase_tab_open():
+            return set_purchase_sort_low_to_high(verbose=verbose)
+
+    label = find_phrase(grab(), PURCHASE_TAB_WORD, TRADE_WINDOW_SEARCH)
+    if label is None:
+        say(f"  could not find the {PURCHASE_TAB_WORD!r} tab to click.")
+        return False
+
+    say(f"  switching to the {PURCHASE_TAB_WORD} tab at {label}")
+    click(*label)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if purchase_tab_open():
+            say("  Purchase tab is open.")
+            return set_purchase_sort_low_to_high(verbose=verbose)
+        time.sleep(0.4)
+    say("  the Purchase tab did not open.")
+    return False
+
+
+def buy_sets_until(item_slot: int,
+                   target: int = RESTOCK_TARGET,
+                   max_buys: int = RESTOCK_MAX_BUYS,
+                   threshold: "int | None" = None,
+                   verbose: bool = True) -> dict:
+    """Buy Sets of the item in `item_slot` until `target` of them are held.
+
+    One listing is a bundle of `pack` Sets, so reaching 250 normally takes
+    several purchases. Every one of them re-searches both favourites and takes
+    ROW 1 -- see buy_cheapest_set for why that is not negotiable.
+
+    Stops early, and says so, when the saving stops clearing `threshold`. A
+    restock that cannot be done profitably is not worth doing: the whole point
+    of the pipeline is the spread between a Set and the Core it becomes.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    # Resolved HERE as well as inside buy_cheapest_set_detail, so a concrete
+    # number is what travels down. Passing None along works for the real
+    # function -- it resolves its own default -- but it leaks an unresolved
+    # sentinel into every caller and stub in between, and the first thing any
+    # of them does with a threshold is compare it.
+    if threshold is None:
+        threshold = price_diff_floor_for(FAVOURITE_SLOTS.get(item_slot, ""))
+
+    bought = 0
+    orders = []
+    for attempt in range(1, max_buys + 1):
+        if bought >= target:
+            break
+        if BUY_HALTED:
+            say(f"  buying is halted: {BUY_HALT_REASON}")
+            break
+        say(f"\n-- buy {attempt}/{max_buys}: {bought}/{target} Sets held --")
+        result = buy_cheapest_set_detail(item_slot, threshold=threshold,
+                                         verbose=verbose,
+                                         still_wanted=target - bought)
+        if not result["bought"]:
+            say(f"  stopping: {result['why']}")
+            break
+        offer = result["offer"]
+        # What the ORDER obtained, which is no longer the bundle size: one
+        # order can take several identical listings from the same row.
+        got = int(result.get("taken") or offer.pack)
+        bought += got
+        orders.append(offer)
+        say(f"  +{got} Sets ({bought}/{target})")
+
+    if bought < target:
+        say(f"  bought {bought} of the {target} wanted "
+            f"({len(orders)} order(s)).")
+    else:
+        say(f"  target met: {bought} Sets in {len(orders)} order(s).")
+    return {"slot": item_slot, "bought": bought, "target": target,
+            "orders": orders}
+
+
+def list_cores(core_name: str, slots, timeout: float = 8.0,
+               verbose: bool = True) -> dict:
+    """Register every held Core of one type into an empty shop row.
+
+    `slots` is an ordered list of candidate positions -- see
+    core_slot_candidates. They are TRIED IN TURN because occupancy alone
+    cannot tell a Core from a Set: the first candidate is usually right, and
+    register_item refuses a slot whose item is not `core_name`, so a wrong
+    guess costs a retry rather than listing the wrong thing.
+
+    Registering maximises the quantity, and the panel's maximum counts every
+    matching item in the INVENTORY -- not just the visible tab -- so one
+    registration lists the whole batch as a single row, and hands all those
+    slots back.
+
+    Returns the quantity the game actually listed, which is the honest measure
+    of how much of the batch is done. The alternative -- counting newly filled
+    inventory slots -- only sees one tab, and 250 Cores do not fit on one tab:
+    they spill onto later ones, where a slot count would miss them and report a
+    finished conversion as barely started.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    if isinstance(slots, tuple) and len(slots) == 2 and isinstance(slots[0], int):
+        slots = [slots]                       # a single (row, col) still works
+    slots = list(slots or [])
+    if not slots:
+        return {"ok": False, "qty": 0, "why": "no candidate slot to list from"}
+
+    if not open_trade_window(timeout=max(timeout, 15.0), verbose=verbose):
+        say("  could not open the Agent Shop to list the Cores.")
+        return {"ok": False, "qty": 0, "why": "the Agent Shop would not open"}
+
+    why = ""
+    tried_any = False
+    for attempt, slot in enumerate(slots[:CORE_SLOT_TRIES], start=1):
+        tried_any = True
+        say(f"Listing {core_name} from inventory slot {slot} "
+            f"(candidate {attempt}/{min(len(slots), CORE_SLOT_TRIES)})...")
+        report: dict = {}
+        try:
+            ok = register_item(*slot, timeout=timeout, verbose=verbose,
+                               maximise_qty=True, expect_item=core_name,
+                               report=report)
+        except Aborted as exc:
+            # register_item refuses a slot holding something else, which is
+            # exactly what a wrong candidate looks like. Try the next one.
+            why = str(exc)
+            say(f"  slot {slot} does not hold {core_name}: {exc}")
+            continue
+        qty = int(report.get("qty") or 0)
+        if ok:
+            say(f"  listed {qty} x {core_name}.")
+            return {"ok": True, "qty": qty, "why": "", "slot": slot}
+        why = "the registration did not complete"
+    # Nothing on the work tab held them. Bought Sets do not always land on
+    # CONVERT_INVENTORY_TAB -- the game fills the first free slot in the whole
+    # inventory, so a full work tab sends them elsewhere, and the Cores they
+    # become follow. Looking only where they were EXPECTED would fail a
+    # conversion that worked perfectly.
+    #
+    # Searched last, and only on failure, because it costs a tab switch and a
+    # slot read per tab.
+    say(f"  not on tab {CONVERT_INVENTORY_TAB}; looking on the other tabs.")
+    origin = inventory_origin()
+    if origin is None:
+        return {"ok": False, "qty": 0,
+                "why": why or "the Inventory panel is not open"}
+    for tab in range(1, TAB_COUNT + 1):
+        if tab == CONVERT_INVENTORY_TAB:
+            continue                      # already tried, above
+        if not select_inventory_tab(tab, origin):
+            continue
+        here = occupied_slots(grab(), origin)
+        if not here:
+            continue
+        for slot in here[:CORE_SLOT_TRIES]:
+            report = {}
+            try:
+                ok = register_item(*slot, timeout=timeout, verbose=verbose,
+                                   maximise_qty=True, expect_item=core_name,
+                                   report=report)
+            except Aborted as exc:
+                why = str(exc)
+                continue
+            if ok:
+                qty = int(report.get("qty") or 0)
+                say(f"  listed {qty} x {core_name} from tab {tab} slot {slot}.")
+                return {"ok": True, "qty": qty, "why": "", "slot": slot,
+                        "tab": tab}
+    return {"ok": False, "qty": 0,
+            "why": why or ("no slot on any tab held the Cores"
+                           if tried_any else "no candidate slot to list from")}
+
+
+def restock_core(item_slot: int,
+                 target: int = RESTOCK_TARGET,
+                 max_rounds: int = RESTOCK_MAX_ROUNDS,
+                 verbose: bool = True,
+                 rows_used: int | None = None) -> dict:
+    """The whole pipeline for one sold-out Core: buy, convert, list.
+
+    Returns what happened at each stage rather than a bare bool, because the
+    three stages fail for completely different reasons and a caller deciding
+    whether to try again needs to know which one stopped.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    core = FAVOURITE_SLOTS.get(item_slot, "")
+    result = {"slot": item_slot, "core": core, "bought": 0,
+              "converted": 0, "listed": 0, "rounds": 0,
+              # Registrations made, and how much the shop actually GREW. They
+              # are NOT the same: a restock runs because something sold out, so
+              # there is an empty row waiting, and the first listing refills it
+              # rather than extending the shop. Five listings from a one-gap
+              # start grow the shop by four.
+              "rows_listed": 0, "rows_grown": 0, "why": ""}
+    if not core or convert_cell_for(core) is None:
+        result["why"] = f"slot {item_slot} ({core!r}) is not a convertible Core"
+        say(f"  {result['why']}")
+        return result
+
+    say(f"\n{'=' * 70}\nRESTOCK {core} (favourite slot {item_slot})\n{'=' * 70}")
+
+    # ---- 0. is there room to put the result? -----------------------------
+    # Every restock ADDS rows: one per CONVERT_QUANTITY Cores listed, and up to
+    # five once the purchase overshoots. Buying first and discovering the shop
+    # is full afterwards strands the Cores in the inventory with nowhere to go
+    # -- and the next cycle would see the same empty slot and buy MORE on top
+    # of them. So the question is "will the result fit", not "is it full now".
+    # Reuse the caller's count when it has one. Each enumeration scrolls the
+    # whole shop up and down -- about twenty seconds of OCR -- and the caller
+    # has just done exactly that to decide this restock was needed. Fetching it
+    # again asks the same question twice and looks, from the outside, like the
+    # script pacing the shop doing nothing.
+    used = rows_used if rows_used is not None else shop_rows_used(verbose=False)
+    need = restock_rows_needed(target)
+    if used is None:
+        result["why"] = ("could not count the shop's rows, so there is no way "
+                         "to know whether the result would fit")
+        say(f"  {result['why']}")
+        return result
+    if used + need > SHOP_ROW_CAPACITY:
+        result["why"] = (f"paused: {used}/{SHOP_ROW_CAPACITY} rows used and a "
+                         f"restock needs up to {need} more. Sell or clear some "
+                         "rows first.")
+        say(f"  {result['why']}")
+        return result
+    say(f"  shop has {used}/{SHOP_ROW_CAPACITY} rows used; a restock needs up "
+        f"to {need} more")
+
+    # ---- 1. buy ---------------------------------------------------------
+    # Buying happens on the PURCHASE tab; everything else in this file works on
+    # Register. Nothing switched, so the first live attempt refused with "the
+    # Trade window is not on the Purchase tab" -- correctly, but only after
+    # getting all the way here.
+    # Already holding Sets this slot owes a listing for? Convert and list
+    # THOSE, and buy nothing at all. See _CARRIED_SETS: a restock that bought
+    # and then failed to list leaves the SHOP looking exactly as it did
+    # before, so without this the next cycle asks the same question, gets the
+    # same answer, and buys a second target on top of the first.
+    carried = carried_sets(item_slot)
+    if carried > 0:
+        say(f"  {carried} Set(s) bought by an earlier restock are still in "
+            "the bag and unlisted -- converting and listing those rather "
+            "than buying more.")
+        purchase = {"bought": carried}
+        result["bought"] = carried
+        result["resumed"] = True
+    else:
+        if not open_purchase_tab(verbose=verbose):
+            result["why"] = "could not reach the Purchase tab to buy"
+            say(f"  {result['why']}")
+            return result
+
+        # Buy onto the work tab, so the Sets arrive where the conversion step
+        # already looks. convert_cores counts what lands on
+        # CONVERT_INVENTORY_TAB and nowhere else, so Sets bought against a
+        # different tab would be invisible to it -- the count would read as
+        # "nothing arrived" for a purchase that went through perfectly.
+        inv = inventory_origin()
+        if inv is None:
+            result["why"] = ("the Inventory panel is not open, so there is "
+                             "nowhere known to buy onto")
+            say(f"  {result['why']}")
+            return result
+        if not select_inventory_tab(CONVERT_INVENTORY_TAB, inv):
+            result["why"] = (f"could not put the Inventory on tab "
+                             f"{CONVERT_INVENTORY_TAB} before buying")
+            say(f"  {result['why']}")
+            return result
+        say(f"  buying onto inventory tab {CONVERT_INVENTORY_TAB}")
+
+        purchase = buy_sets_until(item_slot, target=target, verbose=verbose)
+        result["bought"] = purchase["bought"]
+        if purchase["bought"] <= 0:
+            result["why"] = "no Sets were bought"
+            return result
+
+        # Banked BEFORE anything else can fail. Everything from here on --
+        # opening the vendor, converting, listing -- can abort, and by this
+        # point the Sets are paid for and in the bag. Recording the debt now
+        # is what stops the next cycle repeating the purchase.
+        note_carried_sets(item_slot, purchase["bought"])
+
+    # ---- 2 and 3, interleaved -------------------------------------------
+    # Convert a batch, list it, repeat, until every Set bought has become a
+    # listed Core. The listing is what frees the slots the next batch needs, so
+    # these cannot be separated: converting everything first would fill the
+    # inventory and stall.
+    #
+    # The round budget comes from the purchase, not from a constant. Buying
+    # stops at the first order that REACHES the target, and a Set stacks to
+    # 999 -- so a 250 target routinely lands around 1,250, which is five rounds
+    # at CONVERT_QUANTITY each. A fixed ceiling would strand the remainder in
+    # the bag, unconverted and unlisted, with nothing saying so.
+    # Back to the work tab before converting. Tab 4 is the default and every
+    # count in this pipeline is taken there; buying can leave the panel
+    # somewhere else, and a conversion measured against the wrong tab reads as
+    # "nothing arrived" for a purchase that went through perfectly.
+    inv = inventory_origin()
+    if inv is not None:
+        select_inventory_tab(CONVERT_INVENTORY_TAB, inv)
+
+    say(f"  {purchase['bought']} Sets to convert, up to {CONVERT_QUANTITY} a "
+        f"round, until they are all listed")
+    for rnd in range(1, max_rounds + 1):
+        result["rounds"] = rnd
+        say(f"\n-- round {rnd}: convert then list --")
+        if not open_npc_shop(verbose=verbose):
+            result["why"] = "could not open the vendor Shop"
+            break
+        try:
+            conv = convert_cores(core, quantity=CONVERT_QUANTITY,
+                                 verbose=verbose, require_layout=False)
+        except Aborted as exc:
+            result["why"] = f"conversion stopped: {exc}"
+            say(f"  {result['why']}")
+            break
+        result["converted"] += conv["converted"]
+        candidates = conv.get("candidates") or []
+
+        # NOT a terminator on its own. `converted` counts newly filled slots on
+        # CONVERT_INVENTORY_TAB, and convert_cores says out loud that the count
+        # reads 0 for a conversion that WORKED in two ordinary cases: a full
+        # work tab (the Cores land on tab 5+, where this count cannot see them)
+        # and a Set stack that empties into the slot its own Cores then fill.
+        # Breaking here spent the Sets, produced the Cores, and never listed
+        # them -- discarding exactly the cases core_slot_candidates exists to
+        # survive, and reporting it as the benign "nothing converted".
+        #
+        # So the round only ends early when there is nothing even to attempt.
+        # Whether progress was made is decided below, by the LISTING.
+        if conv["converted"] <= 0 and not candidates:
+            result["why"] = "nothing converted this round"
+            break
+
+        close_npc_shop(verbose=verbose)
+        listing = list_cores(core, candidates, verbose=verbose)
+        if not listing["ok"]:
+            if conv["converted"] <= 0:
+                # Nothing arrived on the work tab AND nothing could be listed
+                # from the slots that were already there. The Sets are gone or
+                # the inventory cannot be read; either way another round
+                # repeats the same no-op.
+                result["why"] = "nothing converted this round"
+            else:
+                result["why"] = ("the converted Cores could not be listed: "
+                                 f"{listing['why']}")
+            break
+        result["listed"] += listing["qty"]
+        result["rows_listed"] += 1
+        say(f"  round {rnd}: converted {conv['converted']}, listed "
+            f"{listing['qty']} -- {result['listed']}/{purchase['bought']} done")
+
+        # Progress is measured by what was LISTED, not by what the conversion
+        # counted. The conversion counts newly filled slots on one tab, and a
+        # 250-Core batch spills onto later tabs where those slots are invisible
+        # -- so it under-reports, and a loop trusting it would keep going after
+        # the Sets had all been spent.
+        if result["listed"] >= purchase["bought"]:
+            break
+
+    close_npc_shop(verbose=False)
+
+    # Measure the growth rather than infer it. Counting registrations
+    # over-states it by however many empty rows were waiting, and counting the
+    # gaps would mean reasoning about where the game chose to put things --
+    # whereas the occupied-row count answers it directly.
+    if result["rows_listed"]:
+        after_rows = shop_rows_used(verbose=False)
+        if after_rows is not None:
+            result["rows_grown"] = max(0, after_rows - used)
+            say(f"  shop went {used} -> {after_rows} rows "
+                f"({result['rows_listed']} listing(s), "
+                f"{result['rows_grown']} of them new rows)")
+
+    # Settle the debt. What was bought and not listed stays on the books, so
+    # the next pass resumes here instead of buying the same target again; what
+    # was listed is done with. This is the only place the carry is cleared, and
+    # it is deliberately driven by `listed` -- the figure measured from the
+    # SHOP -- rather than by the conversion count, which under-reports.
+    outstanding = max(0, result["bought"] - result["listed"])
+    note_carried_sets(item_slot, outstanding)
+    if outstanding and not result["why"]:
+        say(f"  {outstanding} Set(s) remain in the bag; the next restock pass "
+            "will convert those rather than buying more.")
+
+    if result["listed"] < result["bought"] and not result["why"]:
+        # Hit the runaway guard with work still outstanding. Said out loud:
+        # Sets left in the bag are invisible otherwise, and the next cycle
+        # would see the shop still empty and buy MORE on top of them.
+        result["why"] = (f"stopped at the {max_rounds}-round guard with "
+                         f"{result['bought'] - result['listed']} Set(s) still "
+                         "unconverted -- they are in the inventory, not lost")
+    say(f"\n{core}: bought {result['bought']}, converted "
+        f"{result['converted']}, listed {result['listed']}"
+        + (f" -- {result['why']}" if result["why"] else ""))
+    return result
+
+
+def rows_in_use(listings: list) -> int:
+    """How many of the given rows hold a live listing. No screen access."""
+    return sum(1 for row in listings
+               if getattr(row, "action", None) in ("change", "receive"))
+
+
+def restock_sold_out_slots(slots: list[int], verbose: bool = True,
+                           rows_used: "int | None" = None) -> list[dict]:
+    """Restock these slots directly, without re-reading the shop.
+
+    Used when the last sweep's verdict is still good: the expensive part is
+    finding out WHICH Cores are unlisted, and that answer was already paid for.
+
+    `rows_used` is passed in when the caller already counted -- which it must
+    when the Agent Shop is closed between phases, because counting rows means
+    reading the shop and a shut window cannot be read.
+    """
+    allowed = enabled_buying_slots()
+    wanted = [s for s in slots if s in allowed]
+    if not wanted:
+        return []
+    return _restock_each(wanted, rows_used=rows_used, verbose=verbose)
+
+
+def restock_sold_out(listings: list, verbose: bool = True) -> list[dict]:
+    """Restock every enabled Core the shop is not currently listing.
+
+    `listings` must cover the WHOLE shop, not one screen -- see
+    unlisted_core_slots for why that distinction costs money.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    allowed = enabled_buying_slots()
+    empty = unlisted_core_slots(listings)
+    slots = [s for s in empty if s in allowed]
+    ignored = [s for s in empty if s not in allowed]
+    if ignored:
+        # Named rather than silently dropped. "Sold out but not bought" is a
+        # decision, and a run that makes it without saying so looks identical
+        # to one that never noticed.
+        say("Sold out but buying is OFF for: "
+            + ", ".join(FAVOURITE_SLOTS[s] for s in ignored))
+    if not slots:
+        return []
+    say(f"\nSold out, restocking: "
+        + ", ".join(FAVOURITE_SLOTS[s] for s in slots))
+    return _restock_each(slots, rows_used=rows_in_use(listings),
+                         verbose=verbose)
+
+
+def _restock_each(slots: list[int], rows_used: int | None,
+                  verbose: bool = True) -> list[dict]:
+    """Restock each slot in turn, keeping the row count in step as it goes."""
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    done = []
+    # Each restock adds rows, so the count the next one sees has to include
+    # them -- without going back to the shop to find out.
+    shop_grew = 0
+    for slot in slots:
+        outcome = restock_core(
+            slot, target=BUY_TARGET, verbose=verbose,
+            rows_used=None if rows_used is None else rows_used + shop_grew)
+        done.append(outcome)
+        # Listing something changes the shop, so the remembered verdict about
+        # what is unlisted no longer holds.
+        if int(outcome.get("rows_listed") or 0):
+            forget_unlisted()
+        grew = int(outcome.get("rows_grown") or 0)
+        shop_grew += grew
+        if grew:
+            # Each new row is one future sweeps must cover, or it is created
+            # once and never repriced again -- see BUY_ADDED_ROWS.
+            note_rows_added(grew)
+            say(f"  the shop grew by {grew} row(s); sweeps now widen by "
+                f"{BUY_ADDED_ROWS}")
+    return done
 
 
 WORK_TAB = 4
@@ -1767,6 +3984,15 @@ def _isolate_digits(
     return prepared, source_box
 
 
+# A per-CALL suffix for the scratch crop get_alz writes.
+#
+# The PID alone is not quite enough: two calls in flight at once inside
+# one process share it, and the first to finish deletes the file the
+# second is still reading. trade.py is single-threaded so that is latent
+# rather than live -- but the name costs nothing and removes the shared
+# resource entirely rather than narrowing it.
+_ALZ_TMP_SEQ = itertools.count(1)
+
 def get_alz(
     source: Image.Image | Path | str,
     region: tuple[int, int, int, int] | None = None,
@@ -1803,7 +4029,23 @@ def get_alz(
         return 0
     prepared, _ = found
 
-    tmp = debug_path or (SCRIPT_DIR / ".alz_tmp.png")
+    # Unique per process. This was a single fixed path, so two processes
+    # calling get_alz raced on one file: A writes it, B's `finally: unlink()`
+    # deletes it, and A's Tesseract reports "cannot read input file ...
+    # .alz_tmp.png: No such file or directory" -- or worse, A reads B's crop
+    # and books a balance from a different moment.
+    #
+    # Observed for real on 2026-08-08: a test suite running alongside the live
+    # script produced exactly that error twice, inside a registration, and the
+    # balance reads it broke are the ones that decide whether a sale is
+    # measured and what a registration fee cost. The window is small and it is
+    # hit constantly, because every relist reads the balance several times.
+    #
+    # os.getpid() rather than a lock: the processes are independent runs, a
+    # lock between them would serialise OCR for no benefit, and a per-process
+    # name removes the shared resource entirely.
+    tmp = debug_path or (SCRIPT_DIR /
+                         f".alz_tmp_{os.getpid()}_{next(_ALZ_TMP_SEQ)}.png")
     try:
         prepared.save(tmp)
         result = subprocess.run(
@@ -1824,8 +4066,14 @@ def get_alz(
         print(f"Alz: skipped, could not run Tesseract ({exc})", file=sys.stderr)
         return 0
     finally:
-        if debug_path is None and tmp.exists():
-            tmp.unlink()
+        # missing_ok: the exists() check above is a race of its own, and a
+        # cleanup that raises would replace a readable balance with a
+        # FileNotFoundError traceback out of a bookkeeping helper.
+        if debug_path is None:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
 
     if result.returncode != 0:
         print(f"Alz: skipped, Tesseract failed ({result.stderr.strip()})", file=sys.stderr)
@@ -2001,10 +4249,15 @@ def resolve_monitor(sct, choice: str) -> tuple[dict, str]:
 
 def unique_path(path: Path) -> Path:
     """Avoid clobbering an existing file: timestamps only resolve to a second,
-    so two captures inside the same second would otherwise collide."""
+    so two captures inside the same second would otherwise collide.
+
+    Bounded by CAPTURE_SUFFIX_LIMIT rather than looping forever: a hundred
+    collisions in one second means something is wrong with the clock or the
+    path, and silently spinning is worse than returning a name that overwrites.
+    """
     if not path.exists():
         return path
-    for n in range(2, 100):
+    for n in range(2, CAPTURE_SUFFIX_LIMIT):
         candidate = path.with_name(f"{path.stem}_{n}{path.suffix}")
         if not candidate.exists():
             return candidate
@@ -2148,6 +4401,48 @@ REF_ANCHORS: tuple[tuple[str, tuple[int, int]], ...] = (
     ("Selling", (331, 982)),    # footer, bottom left
     ("Refresh", (1119, 981)),   # button, bottom right
 )
+# A SECOND TIER: chrome that only exists on the REGISTER tab.
+#
+# Calibration runs from prepare_for_actions right after open_trade_window,
+# which lands on Register, so these are available in the normal case -- and
+# absent, harmlessly, when calibrating from the Purchase tab. Never required:
+# MIN_ANCHORS_AFTER_DROP counts the whole set, so a missing optional anchor
+# costs nothing.
+#
+# Measured on twelve 2560x1440 reference-layout frames and validated against
+# _anchor_centre itself. Each was found on 10 of 10 frames with 0px drift and
+# lands exactly on the value below.
+#
+# Three candidates that looked perfect in a token scan were rejected by that
+# validation, because the matcher is case-insensitive, matches by SUBSTRING,
+# and discards a word seen twice:
+#
+#   "Quantity"  also matches "Quantity)" in "(Price x Quantity)"
+#   "sales"     matches "Net sales" AND "Sales Fee"
+#   "Sales"     likewise
+#
+# "VANGUARD" reads 10/10 at 0px too, and is rejected by judgement: it is the
+# VALUE of "Adjust fee", not chrome, and a value can change.
+#
+# "Purchase" is the Purchase TAB LABEL, read from the Register tab. An older
+# comment says it never reads at 1440p because the game draws its FPS overlay
+# across that tab; it read 10/10 here. Optional is exactly the right tier for
+# something that may or may not be covered -- if the overlay returns, it is
+# simply not found.
+REF_ANCHORS_EXTRA: tuple[tuple[str, tuple[int, int]], ...] = (
+    ("Purchase", (128, 67)),     # tab label, top left
+    ("Item", (142, 122)),        # "Register Item", panel header
+    ("Status", (1010, 119)),     # column header, upper right
+    ("Period", (55, 869)),       # panel label, lower left
+    ("Expired", (503, 982)),     # footer
+    ("Sold", (674, 980)),        # footer
+    ("Total", (863, 980)),       # "Total Quantity", footer
+)
+
+# Both tiers together, which is what the fit actually consumes.
+REF_ANCHORS_ALL: tuple[tuple[str, tuple[int, int]], ...] = (
+    REF_ANCHORS + REF_ANCHORS_EXTRA)
+
 # How far apart two anchors must be before their separation is trusted to
 # measure a scale. Below this, OCR jitter of a few pixels dominates.
 MIN_ANCHOR_BASELINE = 300.0
@@ -2792,7 +5087,8 @@ def _send(event: _Input, attempts: int = SEND_ATTEMPTS) -> None:
     raise PermissionError(CURSOR_BLOCKED_HINT)
 
 
-def _release(event: _Input, what: str, attempts: int = 3) -> bool:
+def _release(event: _Input, what: str,
+             attempts: int = RELEASE_ATTEMPTS) -> bool:
     """Release an input, retrying, and say so loudly if it will not go.
 
     Called from `finally` blocks, so it must not raise -- raising would mask
@@ -2861,6 +5157,30 @@ VK_ESCAPE = 0x1B
 # Backspaces sent before typing a value: enough to clear the widest price the
 # field holds, without paying the typing cooldown for a long tail of no-ops.
 CLEAR_KEYSTROKES = 13
+
+
+VK_N = 0x4E     # opens the NPC Shop window from anywhere in the world
+
+
+def press_key(vk: int, settle: float = 0.5, what: str = "") -> None:
+    """Tap one key, guaranteeing the release.
+
+    Same shape as press_escape, which is the only reason that function is not
+    written in terms of this one: it is load-bearing on every abort path and
+    not worth disturbing.
+
+    A key left down triggers Windows auto-repeat into whatever gains focus
+    next, so the release is in a `finally`.
+    """
+    if _suppressed(f"press {what or hex(vk)}"):
+        return
+    _send(_key_event(vk, up=False))
+    try:
+        time.sleep(0.05)
+    finally:
+        _release_key(vk)
+    time.sleep(settle)
+    cooldown()
 
 
 def press_escape(settle: float = 0.5) -> None:
@@ -2936,6 +5256,24 @@ def scroll_wheel(x: int, y: int, notches: int, settle: float = 0.35) -> None:
     # script would notice.
     if _suppressed(f"scroll {notches:+d} notch(es) at ({x}, {y})"):
         return
+
+    # The guard lives HERE, in the primitive, not in the callers.
+    #
+    # table_scrollable's own docstring has always claimed it was "checked at
+    # the wheel rather than at the callers" -- and it was not. Three of the
+    # four call sites checked it; `--scroll` did not, and any new one would
+    # have to remember. That is the same shape as the bug the docstring was
+    # written about, where patching enumerate_listings and not bring_into_view
+    # left half the rule uncovered.
+    #
+    # It refuses when the Trade window is shut (the wheel becomes a camera
+    # zoom) and when the PURCHASE tab is showing (the wheel moves the offers,
+    # so "always buy row 1" quietly stops meaning the cheapest listing).
+    if not table_scrollable(verbose=True):
+        raise Aborted(
+            f"refusing to scroll {notches:+d} notch(es) at ({x}, {y}): the "
+            "listings table is not what the wheel would reach")
+
     make_dpi_aware()
     if not move_mouse(x, y):
         raise PermissionError(CURSOR_BLOCKED_HINT)
@@ -3016,8 +5354,39 @@ def alt_click(x: int, y: int, settle: float = 0.15) -> None:
     than the intended button. Both releases are therefore in `finally`, and
     release_modifiers() at the start of a cycle is the backstop.
     """
+    # The precondition is checked BEFORE the suppression early-return, so it
+    # holds in a dry run too -- and, more importantly, so a TEST can exercise
+    # it with input fully suppressed.
+    #
+    # With the order reversed, the only way to reach this guard was to turn
+    # NO_INPUT off. That is fine while the guard exists and catastrophic when a
+    # mutation run deletes it: the mutant then really does Alt+click four
+    # coordinates in the game world, and the character walks off. That
+    # happened. A safety check that can only be tested with the safety off is
+    # not testable.
+    #
+    # The vendor window must be open, checked HERE rather than by the caller.
+    #
+    # Alt+click exists for exactly one thing -- the SET/CORE grid in the
+    # vendor's Dungeon tab -- and those coordinates sit low and left, which
+    # with no window there is bare ground. A click on the ground is
+    # click-to-move, so the character walks off; the run then fails somewhere
+    # unrelated, having also moved the NPC out of every position the rest of
+    # the file expects.
+    #
+    # That happened: a diagnostic script PRINTED vendor_shop_open() and clicked
+    # regardless, and the character walked away mid-test. convert_cores checks
+    # this twice and would have refused -- but a guard a caller can skip is not
+    # a guard, which is the same lesson NO_INPUT and the scroll_wheel camera
+    # zoom already taught this file.
+    if not vendor_shop_open():
+        raise Aborted(
+            f"refusing Alt+Click at ({x}, {y}): the vendor Shop is not open, "
+            "so this would land in the game world and walk the character")
+
     if _suppressed(f"Alt+Click ({x}, {y})"):
         return
+
     make_dpi_aware()
     if not move_mouse(x, y):
         raise PermissionError(CURSOR_BLOCKED_HINT)
@@ -3425,6 +5794,40 @@ NPC_NAME_FRAGMENT = "katerina"
 # the resulting blind click landed in the game world -- which moves the
 # character or interacts with whatever happens to be under it.
 NPC_TITLE_FRAGMENT = "agentshop"
+# The same two things, matched per WORD rather than as one joined string.
+#
+# The joined form demands that no unrelated word interleaves and that no glyph
+# slips, and live OCR breaks both: "(Agent" ... "Yekaterina" ... "Shop)" hides
+# `agentshop`, and "Yekaterima" hides `katerina`. Each defeated a different
+# half of the test on consecutive cycles.
+NPC_NAME_WORD = "yekaterina"
+NPC_TITLE_WORDS = ("agent", "shop")
+# How close a single word must be to count. 0.80 accepts one slipped glyph in
+# ten characters ("yekaterima" scores 0.90) and still rejects unrelated names:
+# the Warehouse keeper this must never latch onto scores far below it.
+NPC_WORD_SIMILARITY = 0.80
+
+
+def _npc_label_words(line: "list[Word]") -> "tuple[bool, bool]":
+    """(name seen, title seen) among the words of one OCR line.
+
+    Per word and fuzzy, because the failure this replaces was not a missing
+    nameplate -- it was a present one, read at 96% confidence, that the joined
+    substring test could not see.
+    """
+    texts = [_normalise(w.text) for w in line]
+    texts = [t for t in texts if t]
+    name = _mentions(texts, NPC_NAME_WORD, NPC_WORD_SIMILARITY)
+    # A word may carry the whole name with punctuation attached, or the OCR may
+    # keep "ladyyekaterina" together; substring covers those without loosening
+    # the fuzzy bar for everything else.
+    if not name:
+        name = any(NPC_NAME_FRAGMENT in t for t in texts)
+    title = all(
+        _mentions(texts, want, NPC_WORD_SIMILARITY)
+        or any(want in t for t in texts)
+        for want in NPC_TITLE_WORDS)
+    return name, title
 # Only the middle of the screen. The NPC's name also appears in the top
 # target-nameplate banner, the chat log in the bottom-left and the sale
 # notifications in the bottom-right -- none of which are the NPC.
@@ -3501,7 +5904,7 @@ TRADE_WINDOW_SEARCH = (0, 0, 1700, 700)
 
 
 def find_npc(
-    source: Image.Image | None = None, retries: int = 4,
+    source: Image.Image | None = None, retries: int = NPC_FIND_RETRIES,
     seen: dict | None = None,
 ) -> tuple[int, int] | None:
     """Centre of the Agent Shop NPC's floating name label, or None.
@@ -3528,16 +5931,39 @@ def find_npc(
     def label_centre(image: Image.Image, region=None) -> tuple[int, int] | None:
         for line in _text_lines(find_words(image, region or NPC_SEARCH_REGION, 25)):
             joined = _normalise("".join(w.text for w in line))
-            if NPC_NAME_FRAGMENT not in joined or NPC_TITLE_FRAGMENT not in joined:
-                continue
+            strict = (NPC_NAME_FRAGMENT in joined
+                      and NPC_TITLE_FRAGMENT in joined)
+            if not strict:
+                # The joined test is the fast path and stays first. When it
+                # fails, ask again per word before giving up: on 2026-08-08
+                # three cycles refused a nameplate whose words had just been
+                # read at 96% -- once because a glyph slipped, once because
+                # OCR interleaved the name between "(Agent" and "Shop)".
+                name_seen, title_seen = _npc_label_words(line)
+                if not (name_seen and title_seen):
+                    continue
             # Only the words spelling the label. The nameplate sits at the same
             # height as the Trade window's first row, so the OCR line also held
             # that row's price, status and Change button; measuring across all
             # of it reported a centre ~190px left of the NPC, and every click
             # in the sweep landed on the table.
-            window = _minimal_window(line, (NPC_NAME_FRAGMENT, NPC_TITLE_FRAGMENT))
+            window = _minimal_window(line, (NPC_NAME_FRAGMENT,
+                                            NPC_TITLE_FRAGMENT))
             if window is None:
-                continue
+                # Matched per word, so the joined-fragment span will not be
+                # found either. Fall back to the span between the first and
+                # last word that looks like part of the label -- still a
+                # MINIMAL window, so the Trade window's first row (which shares
+                # this y band) is excluded exactly as before.
+                wanted = (NPC_NAME_WORD,) + NPC_TITLE_WORDS
+                idx = [i for i, w in enumerate(line)
+                       if any(_mentions([_normalise(w.text)], want,
+                                        NPC_WORD_SIMILARITY)
+                              or want in _normalise(w.text)
+                              for want in wanted)]
+                if not idx:
+                    continue
+                window = line[min(idx):max(idx) + 1]
             return _span_centre(window)
         return None
 
@@ -4312,10 +6738,21 @@ def confirm_open_dialogs(settle: float = 0.8, verbose: bool = True) -> bool:
         click(*button.centre)
         confirmed += 1
         time.sleep(settle)
-    return await_dialog(None, timeout=6.0) is not None
+    # dialog_present(), not await_dialog(None). await_dialog compares
+    # dialog_kind(shot) == None, and dialog_kind is documented as returning
+    # None with a modal plainly on screen -- which is the entire reason
+    # dialog_present exists. Confirming "the dialog is gone" with the reader
+    # that cannot see dialogs made this return True over a covered table.
+    deadline = time.monotonic() + 6.0
+    while time.monotonic() < deadline:
+        if not dialog_present():
+            return True
+        time.sleep(0.3)
+    return False
 
 
-def close_any_dialog(settle: float = 0.7, tries: int = 4) -> bool:
+def close_any_dialog(settle: float = 0.7,
+                     tries: int = CLOSE_DIALOG_TRIES) -> bool:
     """Back out of any open dialog without changing anything.
 
     Both dialogs carry a Cancel button. On the confirmation dialog it closes
@@ -4331,7 +6768,17 @@ def close_any_dialog(settle: float = 0.7, tries: int = 4) -> bool:
             break
         click(*button.centre)
         time.sleep(settle)
-    return await_dialog(None, timeout=6.0) is not None
+    # dialog_present(), not await_dialog(None). await_dialog compares
+    # dialog_kind(shot) == None, and dialog_kind is documented as returning
+    # None with a modal plainly on screen -- which is the entire reason
+    # dialog_present exists. Confirming "the dialog is gone" with the reader
+    # that cannot see dialogs made this return True over a covered table.
+    deadline = time.monotonic() + 6.0
+    while time.monotonic() < deadline:
+        if not dialog_present():
+            return True
+        time.sleep(0.3)
+    return False
 
 
 def _normalise(text: str) -> str:
@@ -4770,12 +7217,38 @@ def table_scrollable(verbose: bool = True) -> bool:
     # neither see nor undo.
     #
     # Costs ~0.8s a scroll. A wrecked camera costs the rest of the run.
-    if trade_window_open() and panel_covers_trade_area():
+    if not (trade_window_open() and panel_covers_trade_area()):
+        if verbose:
+            print("  the Trade window is not open - refusing to scroll, the "
+                  "wheel would zoom the camera instead of moving the "
+                  "listings.")
+        record("scroll.refused_window_shut")
+        return False
+
+    # And on the REGISTER tab specifically.
+    #
+    # The two checks above ask "is the Trade window up" and "is an opaque panel
+    # covering the area" -- and the PURCHASE tab satisfies both. Nothing told
+    # the tabs apart, so a listings-table scroll could fire while the buy tab
+    # was showing, which scrolls the OFFERS instead.
+    #
+    # That is worse than wasted motion. The whole buying design rests on row 1
+    # being the cheapest listing; scroll the offers and row 1 is whatever
+    # happens to be at the top now, so "always buy row 1" silently starts
+    # meaning something else. Seen live on 2026-08-07: a restock left the
+    # Purchase tab showing, the next restock's capacity check enumerated the
+    # shop, and the wheel went to the offers.
+    #
+    # Checked here rather than at the callers for the reason the docstring
+    # already gives: every scroll site has to be covered, and a half-covered
+    # rule is how the last one failed.
+    if register_tab_open():
         return True
     if verbose:
-        print("  the Trade window is not open - refusing to scroll, the wheel "
-              "would zoom the camera instead of moving the listings.")
-    record("scroll.refused_window_shut")
+        print("  the Trade window is on the Purchase tab - refusing to scroll, "
+              "the wheel would move the OFFERS and row 1 would stop meaning "
+              "the cheapest one.")
+    record("scroll.refused_wrong_tab")
     return False
 
 
@@ -4856,6 +7329,12 @@ SCROLL_STEP_FALLBACK = 3
 # Enough chunks to walk a full shop top to bottom, with headroom.
 MAX_SCROLL_CHUNKS = 8
 
+# How many identical consecutive views mean bring_into_view has hit the bottom.
+#
+# Two, not one: a single repeat can be a table that had not finished redrawing,
+# and re-reading is cheap next to the 28 minutes the unbounded loop costs.
+BRING_INTO_VIEW_STALE = 2
+
 
 def scroll_chunk(notches: int, before: list[Row], timeout: float = 8.0,
                  verbose: bool = True) -> tuple[list[Row] | None, int | None]:
@@ -4929,6 +7408,20 @@ def bring_into_view(ref: RowRef, timeout: float = 8.0,
     # not tell how far the view moved". Every scroll site needs the rule, not
     # just the one the failure was first traced to.
     steps = 0
+    # Two terminators, because `shift == 0` alone cannot see the bottom of a
+    # shop whose last screen is empty slots. measure_shift refuses to return 0
+    # for a uniform screen -- it returns `expected` instead, deliberately --
+    # so at the clamp the notch does nothing, the view does not change, and
+    # the loop reports movement that did not happen. Left as it was, that runs
+    # the full budget: a table read per step, roughly 28 minutes, for a row
+    # that has already sold.
+    #
+    # So the view itself is watched. Two consecutive reads that are identical
+    # mean the wheel is achieving nothing, whatever measure_shift says about
+    # it. _enumerate_at_step has had this guard (its `barren` counter) since a
+    # sweep truncated mid-shop; this path never got it.
+    unchanged = 0
+    previous = [_row_key(r) for r in rows]
     while steps < MAX_SCROLL_CHUNKS * SCROLL_STEP:
         steps += 1
         if holds(rows):
@@ -4939,13 +7432,138 @@ def bring_into_view(ref: RowRef, timeout: float = 8.0,
         if after is None or shift is None:
             return None
         rows = after
+
+        current = [_row_key(r) for r in rows]
+        if current == previous:
+            unchanged += 1
+            if unchanged >= BRING_INTO_VIEW_STALE:
+                # The bottom, or a wheel that is not reaching the table. Either
+                # way the listing is not going to appear, and the caller reads
+                # a returned view with no match as "it sold" -- which is the
+                # right answer here and a normal outcome.
+                if verbose:
+                    print(f"  the view stopped changing after {steps} step(s) "
+                          "- treating this as the bottom of the shop.")
+                break
+        else:
+            unchanged = 0
+        previous = current
+
         if shift == 0:
             break                       # clamped: the bottom is on screen
     return rows
 
 
+# The last COMPLETE enumeration, and when it was taken.
+#
+# One enumeration walks all thirty rows with a table read per step -- minutes,
+# and more when the overlap thins and the step drops to 1. A cycle used to pay
+# for two of them seconds apart: restock_sold_out sweeps to find sold-out
+# Cores, then the relist enumerates again to reach rows past the first screen.
+# When the restock buys nothing, the second walk returns exactly what the first
+# did.
+#
+# Dropped by ANY commit. A cancellation shifts every row below it up by one, so
+# a stale catalogue is not merely old -- it names row N and means row N+1, in
+# the function that cancels listings. The TTL covers what invalidation cannot
+# observe: somebody else buying a listing while we are between passes.
+_SHOP_CATALOGUE: "dict | None" = None
+
+# Long enough to span one cycle's two passes, short enough that it is never
+# doing the work of a second cycle. This exists to remove a duplicate read, not
+# to skip reads generally.
+SHOP_CATALOGUE_TTL = 90.0
+
+
+def note_shop_changed(why: str = "") -> None:
+    """Forget the enumerated shop: a row has been added, removed, or moved."""
+    global _SHOP_CATALOGUE
+    if _SHOP_CATALOGUE is not None:
+        _SHOP_CATALOGUE = None
+        record("shop.catalogue_dropped", why=why or "unspecified")
+
+
+def cached_shop_catalogue() -> "list[tuple[int, Row]] | None":
+    """The last enumeration if it is still trustworthy, else None."""
+    if not _SHOP_CATALOGUE:
+        return None
+    if time.monotonic() - _SHOP_CATALOGUE["at"] > SHOP_CATALOGUE_TTL:
+        return None
+    return list(_SHOP_CATALOGUE["rows"])
+
+
+def note_shop_catalogue(rows: "list[tuple[int, Row]]") -> None:
+    """Remember a COMPLETE enumeration. A partial read must never reach here.
+
+    enumerate_listings returns None rather than a short list precisely so that
+    a half-read shop cannot be mistaken for a whole one; caching is downstream
+    of that check for the same reason.
+    """
+    global _SHOP_CATALOGUE
+    _SHOP_CATALOGUE = {"rows": list(rows), "at": time.monotonic()}
+
+
+def _rows_agree(seen: "list[Row]", kept: "list[Row]") -> bool:
+    """Same listings, same order.
+
+    Compared on name and action, never price. A price is re-read from the row
+    before anything is done with it; a NAME in the wrong position is the
+    failure that cancels a listing nobody named.
+    """
+    if len(seen) != len(kept):
+        return False
+    return all(a.name == b.name and a.action == b.action
+               for a, b in zip(seen, kept))
+
+
+def _catalogue_confirmed(remembered: "list[tuple[int, Row]]",
+                         timeout: float,
+                         say) -> bool:
+    """Check a remembered catalogue against BOTH ends of the live table.
+
+    Invalidation only knows about changes this process made. A listing bought
+    by another player vanishes with no notification, and every row below it
+    moves up one -- turning a remembered "row 7" into a pointer at row 8.
+
+    The top screen alone cannot catch that, and the reason is worth stating
+    because the first version of this check got it wrong: a thirty-row
+    catalogue and a twelve-row shop have the SAME first ten rows, so comparing
+    the overlap passes and the cache is believed. The length is the load-
+    bearing part, and only the bottom of the table carries it.
+
+    So both ends are read. Two scrolls and two table reads, against a sweep
+    that walks all thirty rows a few at a time -- and it ends at the top, which
+    is where enumerate_listings promises to leave the table.
+    """
+    kept = [row for _, row in remembered]
+
+    bottom = scroll_to_end(up=False, timeout=timeout, verbose=False)
+    if bottom is None:
+        say("  the table would not scroll to the bottom, so a remembered "
+            "shop read cannot be confirmed - re-reading.")
+        return False
+    if not _rows_agree(bottom, kept[-len(bottom):] if bottom else []):
+        say("  the bottom of the shop no longer matches the remembered read - "
+            "listings have moved. Re-reading rather than acting on stale "
+            "positions.")
+        return False
+
+    top = scroll_to_end(up=True, timeout=timeout, verbose=False)
+    if top is None:
+        say("  the table would not scroll back to the top, so its row numbers "
+            "cannot be trusted - re-reading.")
+        return False
+    if not _rows_agree(top, kept[:len(top)]):
+        say("  the top of the shop no longer matches the remembered read - "
+            "listings have moved. Re-reading rather than acting on stale "
+            "positions.")
+        return False
+    return True
+
+
 def enumerate_listings(timeout: float = 8.0,
-                       verbose: bool = True) -> list[tuple[int, Row]] | None:
+                       verbose: bool = True,
+                       allow_cache: bool = False) -> list[tuple[int, Row]] | None:
     """Every listing in the shop, paired with its absolute position.
 
     Walks from the top one row at a time. Absolute index 1 is the first
@@ -4954,10 +7572,43 @@ def enumerate_listings(timeout: float = 8.0,
     Returns None rather than a partial list if the view is ever lost: a
     half-enumerated shop is indistinguishable from a complete one to the
     caller, and acting on it would act on the wrong listings.
+
+    allow_cache is OPT-IN, and defaults to off, because the two ends of the
+    table cannot actually prove a thirty-row catalogue: two shops with the same
+    first ten and last ten rows can differ anywhere in between -- a block of
+    empty slots in the middle is exactly that shape, and it is a shape this
+    shop really takes. Verifying the middle IS the sweep.
+
+    So the cache is not a general optimisation. It is passed by the ONE caller
+    that has independent grounds to believe nothing changed: the relist,
+    running seconds after the restock's own sweep in the same cycle. See
+    _SHOP_CATALOGUE.
     """
     def say(message: str) -> None:
         if verbose:
             print(message)
+
+    if allow_cache:
+        remembered = cached_shop_catalogue()
+        if remembered is not None:
+            # A remembered catalogue is never returned on trust. It is checked
+            # against both ends of the live table first, and abandoned if it
+            # disagrees -- see _catalogue_confirmed for why the top alone is
+            # not enough.
+            #
+            # That check also restores this function's other promise: the
+            # finally below leaves the table AT THE TOP, and callers act on
+            # positions that assume it. Returning early without it would hand
+            # back row numbers measured against a view somebody else had
+            # scrolled, in the function whose results are used to CANCEL
+            # listings.
+            if _catalogue_confirmed(remembered, timeout, say):
+                say(f"  reusing the shop read from moments ago "
+                    f"({len(remembered)} row(s)); both ends of the table "
+                    f"still match it.")
+                record("shop.catalogue_reused", rows=len(remembered))
+                return remembered
+            note_shop_changed("the live table disagreed with the catalogue")
 
     # A failed chunk has already moved the view, so there is no recovering the
     # offset in place -- the only way back is the top. A step of 7 leaves just
@@ -4971,14 +7622,38 @@ def enumerate_listings(timeout: float = 8.0,
     # step leaves 7 overlapping, which survives drift and reaches across the
     # empties. It costs more reads, and it only costs them on a shop that has
     # already refused the cheap path.
-    for step in (SCROLL_STEP, SCROLL_STEP_FALLBACK):
-        found = _enumerate_at_step(step, timeout, verbose, say)
-        if found is not None:
-            return found
-        if step != SCROLL_STEP_FALLBACK:
-            say(f"  retrying the sweep {SCROLL_STEP_FALLBACK} row(s) at a "
-                f"time, so more rows overlap to match on.")
-    return None
+    # Whatever happens below, the table is left AT THE TOP.
+    #
+    # The sweep walks downward and returns from wherever it stopped, which is
+    # near the bottom. Every later read -- await_rows, read_rows, the snapshot
+    # relist_rows builds its targets from -- reads the ten rows currently
+    # DISPLAYED and numbers them 1..10. So after a sweep, "relist rows 1-5"
+    # silently meant rows 21-25: it would cancel and re-price listings the
+    # operator never named.
+    #
+    # Nothing else restored it: the only scroll_to_end(up=True) calls in this
+    # file are inside this sweep's own internals, and the relist path has none.
+    # Restoring it HERE, in a finally, means every exit -- success, failure,
+    # or an exception on the way -- leaves the table where callers assume.
+    try:
+        for step in (SCROLL_STEP, SCROLL_STEP_FALLBACK):
+            found = _enumerate_at_step(step, timeout, verbose, say)
+            if found is not None:
+                # Only a COMPLETE sweep is remembered. _enumerate_at_step
+                # returns None rather than a short list when it loses the
+                # view, and that distinction is the whole reason a cached
+                # answer can be trusted at all.
+                note_shop_catalogue(found)
+                return found
+            if step != SCROLL_STEP_FALLBACK:
+                say(f"  retrying the sweep {SCROLL_STEP_FALLBACK} row(s) at a "
+                    f"time, so more rows overlap to match on.")
+        return None
+    finally:
+        try:
+            scroll_to_end(up=True, timeout=timeout, verbose=False)
+        except Exception:  # noqa: BLE001 - never mask the sweep's own outcome
+            pass
 
 
 def informative_step(rows: list[Row], want: int) -> int:
@@ -5281,7 +7956,16 @@ QTY_INPUT = (90, 651)              # the editable number in "N / MAX"
 # The separator in "N / MAX" OCRs badly -- '/' comes back as '[' at ~33%
 # confidence -- so this field needs a lower bar than the rest of the UI.
 QTY_MIN_CONF = 15.0
-LOAD_ATTEMPTS = 3
+# How many times an inventory slot is Ctrl+Clicked to load it into the shop
+# slot before the row is given up on.
+#
+# Raised from 3 to 5 on 2026-08-08. Safe to retry, and the loop says why: a
+# Ctrl+Click commits nothing, the panel is re-read after each attempt, and the
+# loop breaks the moment it reports loaded -- so a retry after a click that
+# actually worked cannot happen. The click is swallowed fairly often when the
+# game takes focus back after a dialog closes, and the cost of giving up is a
+# failed row in a batch, three of which stop the run.
+LOAD_ATTEMPTS = 5
 
 
 def wants_max_quantity(name: str) -> bool:
@@ -5400,7 +8084,8 @@ def choose_price(
             f"suggested {suggested:,} is below the --floor {price_floor:,}"
         )
 
-    # A relist may not fall more than 10% below what the item is listed at now.
+    # A relist may not fall more than a set fraction below what the item is
+    # listed at now -- see RELATIVE_PRICE_FLOOR for the size and why.
     #
     # Only meaningful when the previous price is itself trustworthy, so it is
     # gated on MIN_PLAUSIBLE_PRICE -- otherwise a misread previous price would
@@ -5417,8 +8102,8 @@ def choose_price(
     # WHICH market figure to use, this one decides how low the listing may go.
     #
     # Whichever of the two bounds is higher wins, and the reason names the one
-    # that actually bound -- an absolute floor and a 10% ratchet fail for
-    # different causes and the log has to tell them apart.
+    # that actually bound -- an absolute floor and the relative ratchet fail
+    # for different causes and the log has to tell them apart.
     guard = max(absolute_floor, relative)
     if guard and suggested < guard:
         if guard == absolute_floor and absolute_floor >= relative:
@@ -5433,6 +8118,90 @@ def choose_price(
         )
 
     return suggested, ""
+
+
+def set_behind(core_name: str) -> str:
+    """The Set that converts into `core_name`, or "" if it is not a Core."""
+    slot = favourite_for(core_name)
+    if slot is None:
+        return ""
+    partner = favourite_set_slot(slot)
+    return FAVOURITE_SLOTS.get(partner, "") if partner else ""
+
+
+def purchase_cost_basis(name: str) -> int:
+    """What was paid per item for the Sets behind `name`. 0 if none were.
+
+    A relist may never price a Core below what its Sets cost. The market can
+    move against a position -- Force Core (Ultimate) was bought at 428,571 a
+    Set and the loose Core fell to 386,831 within the hour -- and "take the
+    lowest current price" would then sell the whole holding at a loss, one
+    relist at a time, with every other guard satisfied.
+
+    Weighted by quantity rather than taking the last purchase or the largest:
+    it is the average cost of the goods actually held, which is the figure a
+    loss is measured against. Rounded UP, so the floor is never a hair under
+    what was paid.
+
+    Read from the ledger rather than memory so it spans runs -- stock bought
+    yesterday is sold today, and a per-process tally would forget the cost the
+    moment the run that paid it ended.
+    """
+    wanted = set_behind(name)
+    if not wanted:
+        return 0
+    conn = sales_db()
+    if conn is None:
+        return 0
+    try:
+        rows = conn.execute(
+            "SELECT item, price, qty FROM purchases "
+            "WHERE price > 0 AND qty > 0").fetchall()
+    except Exception:  # noqa: BLE001 - bookkeeping must never block a listing
+        return 0
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+    key = _floor_key(item_name(wanted))
+    spent = held = 0
+    for item, price, qty in rows:
+        # The ledger stores the listing's name, which carries its pack marker
+        # ("X 999"). Compare on the folded name with that stripped, the same
+        # way every other name comparison in this file does.
+        if _floor_key(item_name(_PACK_ANYWHERE.sub(" ", item))) == key:
+            spent += int(price)
+            held += int(qty)
+    if not held:
+        return 0
+    return -(-spent // held)
+
+
+def listing_floor(name: str) -> tuple[int, str]:
+    """The lowest price `name` may be listed at, and which rule set it.
+
+    Two independent minimums, and the higher wins:
+
+      ITEM_PRICE_FLOORS    what the operator says the item is worth
+      purchase_cost_basis  what was actually PAID for it
+
+    The second exists because the market can move against a position after it
+    is bought. Force Core (Ultimate) was bought at 428,571 a Set and the loose
+    Core fell to 386,831 within the hour; without this, "take the lowest
+    current price" would sell the whole holding below cost, one relist at a
+    time, with every other guard satisfied. The 5% ratchet limits how FAST a
+    price falls, not how far.
+
+    Returned together with its reason so the log can say which rule bound --
+    an operator floor and a cost floor fail for different causes.
+    """
+    catalogue = item_price_floor(name)
+    cost = purchase_cost_basis(name)
+    if cost > catalogue:
+        return cost, "what its Sets were bought for"
+    return catalogue, "the floor set for this item"
 
 
 def item_price_floor(name: str) -> int:
@@ -5559,7 +8328,8 @@ ALZ_TO_TITLE = (-241, -718)
 
 
 def inventory_origin(
-    source: Image.Image | None = None, retries: int = 3
+    source: Image.Image | None = None,
+    retries: int = INVENTORY_ORIGIN_RETRIES,
 ) -> tuple[int, int] | None:
     """Anchor for the inventory grid, expressed as the title's centre.
 
@@ -5731,6 +8501,11 @@ def money(value: int | None, blank: str = "-") -> str:
 # unclaimed rather than guessed.
 SALES: list[dict] = []
 
+# Money OUT, the other half of the ledger. Without it every "what did I make"
+# figure was a gross rather than a profit -- the tally only ever counted
+# collections.
+PURCHASES: list[dict] = []
+
 # Every collection is written to SQLite the moment it happens, not summed up
 # and printed at the end.
 #
@@ -5782,6 +8557,42 @@ def sales_db() -> "sqlite3.Connection | None":
                 );
                 CREATE INDEX IF NOT EXISTS sales_at  ON sales (at);
                 CREATE INDEX IF NOT EXISTS sales_run ON sales (run);
+
+                -- Purchases live in their own table rather than as a signed
+                -- row in `sales`. A separate table needs no migration of the
+                -- rows already there, and the two are genuinely different
+                -- shapes: a sale has proceeds that may be unmeasurable, a
+                -- purchase has a spend verified against the balance.
+                CREATE TABLE IF NOT EXISTS purchases (
+                    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+                    at    TEXT    NOT NULL,
+                    run   TEXT,
+                    item  TEXT    NOT NULL,
+                    price INTEGER,
+                    spend INTEGER,
+                    qty   INTEGER,
+                    note  TEXT
+                );
+                CREATE INDEX IF NOT EXISTS purchases_at  ON purchases (at);
+                CREATE INDEX IF NOT EXISTS purchases_run ON purchases (run);
+
+                -- What this script put ON the market, and how much of it.
+                --
+                -- Needed because a sale is measured by the balance moving, and
+                -- the only bound on how large that move could legitimately be
+                -- is how much the listing held. The TABLE cannot supply it:
+                -- the QTY column shows what is STILL on sale, so after a
+                -- partial sale it is the remainder, not the original. Using it
+                -- as the ceiling rejected every partial sale on the books.
+                CREATE TABLE IF NOT EXISTS registrations (
+                    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+                    at    TEXT    NOT NULL,
+                    run   TEXT,
+                    item  TEXT    NOT NULL,
+                    price INTEGER,
+                    qty   INTEGER
+                );
+                CREATE INDEX IF NOT EXISTS reg_item ON registrations (item);
                 """
             )
             conn.commit()
@@ -5820,7 +8631,19 @@ def record_sale_row(item: str, price: int | None, proceeds: int | None,
             pass
 
 
-def sales_since(hours: float | None = 24.0, limit: int = 500) -> list[tuple]:
+# How many ledger rows a report will read, and the window it defaults to.
+#
+# A cap rather than no cap because the table grows without bound; named because
+# a silent truncation looks exactly like a quiet week. sales_report says how
+# many rows it summarised, so hitting the cap is visible rather than implied.
+SALES_REPORT_HOURS = 24.0
+SALES_REPORT_LIMIT = 500
+# The --sales command asks for more, since a human ran it deliberately.
+SALES_QUERY_LIMIT = 2000
+
+
+def sales_since(hours: "float | None" = SALES_REPORT_HOURS,
+                limit: int = SALES_REPORT_LIMIT) -> list[tuple]:
     """Rows from the database, newest first. Empty if it cannot be read."""
     conn = sales_db()
     if conn is None:
@@ -5845,6 +8668,57 @@ def sales_since(hours: float | None = 24.0, limit: int = 500) -> list[tuple]:
             conn.close()
         except Exception:  # noqa: BLE001
             pass
+
+
+def record_purchase_row(item: str, price: int | None, spend: int | None,
+                        qty: int | None, note: str = "") -> bool:
+    """Append one purchase to the database. True if it was written."""
+    conn = sales_db()
+    if conn is None:
+        return False
+    try:
+        with conn:
+            conn.execute(
+                "INSERT INTO purchases (at, run, item, price, spend, qty, note)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (datetime.now().isoformat(timespec="seconds"),
+                 _RUN_STARTED_AT.isoformat(timespec="seconds"),
+                 item, price, spend, qty, note or None))
+        return True
+    except Exception:  # noqa: BLE001 - bookkeeping must not cost a purchase
+        return False
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def note_purchase(item: str, price: int | None, spend: int | None,
+                  qty: int | None, note: str = "") -> None:
+    """Record one completed purchase -- database first, then memory.
+
+    Same reasoning as note_sale: written at the moment it happens, so a run
+    killed a second later still leaves the row behind. Without this half, the
+    ledger only ever counted money coming IN, and every "what did I make"
+    figure was a gross, not a profit.
+
+    `spend` is the figure the BALANCE moved by, not the listed price. They are
+    equal on the happy path -- buy_offer refuses to claim a purchase unless
+    they match -- but recording the measured one means the ledger can never
+    drift from the account.
+    """
+    PURCHASES.append({"item": item, "price": price, "spend": spend,
+                      "qty": qty})
+    try:
+        stored = record_purchase_row(item, price, spend, qty, note)
+    except Exception:  # noqa: BLE001
+        stored = False
+    try:
+        record("buy.recorded", item=item, price=price, spend=spend, qty=qty,
+               stored=stored)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def note_sale(item: str, price: int | None, proceeds: int | None,
@@ -5874,6 +8748,275 @@ def note_sale(item: str, price: int | None, proceeds: int | None,
                qty=qty, stored=stored)
     except Exception:  # noqa: BLE001
         pass
+
+
+# Nothing here any more: see sale_rejection. An unregistered listing falls
+# back to the STRICT rule rather than to a generous constant, because a
+# generous one accepted the Epic Booster reading (876,764,416 = 16 x 54,797,776
+# from a stack of 8), which is half the reason the ceiling exists.
+
+
+def note_registration(item: str, price: int | None, qty: int | None) -> None:
+    """Record that `qty` of `item` were put on the market at `price`."""
+    if not item or not price or not qty:
+        return
+    conn = sales_db()
+    if conn is None:
+        return
+    try:
+        with conn:
+            conn.execute(
+                "INSERT INTO registrations (at, run, item, price, qty)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (datetime.now().isoformat(timespec="seconds"),
+                 _RUN_STARTED_AT.isoformat(timespec="seconds"),
+                 item, int(price), int(qty)))
+    except Exception:  # noqa: BLE001 - bookkeeping must not cost a listing
+        pass
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def registered_qty(item: str, price: int | None) -> "int | None":
+    """The largest quantity of `item` this script ever listed at `price`.
+
+    Largest rather than latest: the same stack can be relisted several times as
+    it sells down, and the ceiling has to cover the biggest it ever was.
+    Matched on the folded key so the game's spacing around the bracket, and the
+    pack marker on a table name, cannot cause a miss.
+    """
+    if not item or not price:
+        return None
+    wanted = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", item)))
+    if not wanted:
+        return None
+    conn = sales_db()
+    if conn is None:
+        return None
+    try:
+        best = None
+        for name, qty in conn.execute(
+                "SELECT item, qty FROM registrations WHERE price = ? "
+                "AND qty > 0", (int(price),)):
+            if _floor_key(item_name(_PACK_ANYWHERE.sub(" ", name))) != wanted:
+                continue
+            if best is None or int(qty) > best:
+                best = int(qty)
+        return best
+    except Exception:  # noqa: BLE001
+        return None
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def sale_rejection(proceeds: "int | None", price: "int | None",
+                   still_listed: "int | None",
+                   listed_units: "int | None" = None) -> str:
+    """Why this collection cannot be a real sale of this listing. "" if it can.
+
+    Pure arithmetic, no screen and no database, so the rule can be tested
+    directly -- the reason the original version of this check went three months
+    without anyone noticing it discarded every partial sale.
+
+    Two independent tests, because the two bad readings on record fail
+    differently:
+
+      * A sale is a whole number of units at the listed price. The VIP that
+        booked 1,662,294,744 against a 106,000,000 item divides to 15.68 --
+        no quantity of it was ever sold.
+      * A sale cannot be more units than the listing HELD. `still_listed` is
+        not that number: the QTY column shows what REMAINS, so on a partial
+        sale it is the leftovers, and using it as the ceiling rejected every
+        partial sale on the books. `listed_units` -- what this script recorded
+        registering -- is the real bound.
+
+        Where there is no registration on file the bound falls back to
+        `still_listed`, i.e. the old strict rule. That is deliberate and it is
+        not symmetric with the case above: a generous fallback accepted the
+        Epic Booster reading of 876,764,416 (exactly 16 x 54,797,776, from a
+        stack that held 8), which is one of the two incidents this function
+        exists for. So a listing the pipeline registered gets its partial
+        sales measured; one made by hand, or before the registrations table,
+        is treated as strictly as it always was.
+
+    The figure is REJECTED, not clamped: it is evidence the reading was wrong,
+    not evidence of a smaller sale. The sale still counts, unmeasured.
+    """
+    if not proceeds or proceeds <= 0:
+        return ""
+    if not price or price <= 0:
+        return ""
+    if proceeds % price:
+        return (f"{proceeds:,} is not a whole number of units at "
+                f"{price:,} each ({proceeds / price:.2f})")
+    units = proceeds // price
+    # The LARGER of the two, not one or the other. Both are lower bounds on
+    # what the listing held, and the ceiling has to clear both:
+    #
+    #   * still_listed is what the row showed when it was read. On a PARTIAL
+    #     sale that is the remainder and says little; on a FULL sale it is the
+    #     whole stack, and everything on sale sold. Live on 2026-08-07 a row
+    #     reading x250 sold exactly 250 x 209,999 -- so treating this as an
+    #     upper bound rejected a real, complete sale.
+    #
+    #   * listed_units is what this script recorded registering. It is keyed on
+    #     (name, price), which is NOT unique on this shop -- five identical
+    #     Force Core (Ultimate) stacks at 445,000 was the ordinary state that
+    #     day -- so a 200-stack registered earlier became the ceiling for the
+    #     250-stack that actually sold, and 52,499,750 of real income was
+    #     thrown away. Taking the max stops one stack capping another.
+    #
+    # Neither alone is right; the max of them is wrong only in the direction of
+    # accepting a large sale, and the whole-units test above is what catches
+    # the readings this function exists for.
+    bound = max(max(0, still_listed or 0), listed_units or 0)
+    if units > bound:
+        return (f"{proceeds:,} is {units:,} units at {price:,}, more than the "
+                f"{bound:,} this listing could have held")
+    return ""
+
+
+def all_time_totals() -> "tuple[int, int, int, int] | None":
+    """(sales, proceeds, purchases, spend) over the whole database, or None.
+
+    Read from SQLite rather than memory so it spans every run, which is the
+    only window over which profit means much: stock bought on Monday is sold on
+    Tuesday, so a single run's proceeds and spend are rarely about the same
+    items.
+    """
+    conn = sales_db()
+    if conn is None:
+        return None
+    try:
+        sales_n, proceeds = conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(proceeds), 0) FROM sales").fetchone()
+        # COUNT only real purchases, SUM every outflow.
+        #
+        # Registration fees live in this table too -- they are money out and
+        # belong in spend -- but they are written with qty = 0 so they stay out
+        # of purchase_cost_basis, which selects on `qty > 0`. Counting them as
+        # "purchases" would report one per listing per cycle and drown the
+        # figure the operator actually wants.
+        buys_n, = conn.execute(
+            "SELECT COUNT(*) FROM purchases WHERE qty > 0").fetchone()
+        spend, = conn.execute(
+            "SELECT COALESCE(SUM(spend), 0) FROM purchases").fetchone()
+        return int(sales_n), int(proceeds), int(buys_n), int(spend)
+    except Exception:  # noqa: BLE001 - bookkeeping must never raise
+        return None
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def cost_of_goods_sold() -> "tuple[int, int, int]":
+    """(cost of units sold, units priced, units with no recorded cost).
+
+    Profit is takings less what the SOLD units cost -- not less everything ever
+    spent. Buying 1,212 Sets that are still sitting on the shop is not a loss;
+    it is stock. Conflating the two made the report worse the better the
+    restocking worked.
+
+    Units whose cost is unknown are counted separately rather than valued at
+    zero and folded in silently. Most of what has sold on this account was
+    bought before the purchases ledger existed, so treating those as free would
+    overstate profit by exactly the amount nobody can account for -- and a
+    figure that flatters itself where the data is missing is the same mistake
+    in the other direction.
+    """
+    conn = sales_db()
+    if conn is None:
+        return 0, 0, 0
+    try:
+        cost = priced = unpriced = 0
+        for item, qty in conn.execute(
+                "SELECT item, qty FROM sales WHERE qty > 0 AND proceeds > 0"):
+            unit = purchase_cost_basis(item)
+            if unit > 0:
+                cost += unit * int(qty)
+                priced += int(qty)
+            else:
+                unpriced += int(qty)
+        return cost, priced, unpriced
+    except Exception:  # noqa: BLE001 - bookkeeping must never raise
+        return 0, 0, 0
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def profit_report() -> str:
+    """This run's money in, money out, and the difference. Empty if neither.
+
+    Two figures are given and they answer different questions:
+
+      THIS RUN   what this process collected and spent. Useful for "did that
+                 session go well", but the two halves need not concern the same
+                 items -- a run can sell stock bought yesterday and buy stock
+                 that sells tomorrow, so the difference can be wildly negative
+                 on a run that did nothing wrong.
+
+      ALL TIME   the same over every run in the database. This is the figure
+                 that actually means profit, because over enough runs the
+                 buying and the selling are about the same goods.
+
+    Said out loud rather than folded together, because reporting one run's
+    difference AS profit would be a number that looks authoritative and is not.
+    """
+    gross = sum(s["proceeds"] or 0 for s in SALES)
+    spend = sum(p["spend"] or 0 for p in PURCHASES)
+    if not SALES and not PURCHASES:
+        return ""
+
+    net = gross - spend
+    lines = ["", "=" * 74,
+             f"THIS RUN: {len(SALES)} collection(s) in {gross:,} Alz, "
+             f"{len(PURCHASES)} purchase(s) out {spend:,} Alz",
+             f"          net {net:+,} Alz",
+             "=" * 74]
+
+    totals = all_time_totals()
+    if totals:
+        sales_n, all_gross, buys_n, all_spend = totals
+        cogs, priced, unpriced = cost_of_goods_sold()
+        # What has been paid for and NOT yet sold. Everything spent, less the
+        # cost of the units that have left -- so a restock that just bought
+        # 1,212 Sets shows as stock rather than as a loss.
+        held = max(0, all_spend - cogs)
+        lines += [
+            f"  ALL TIME  {sales_n} collection(s)  in  {all_gross:>18,} Alz",
+            f"            {buys_n} purchase(s)    out {all_spend:>18,} Alz",
+            "  " + "-" * 70,
+            f"  {'REALISED':22} {all_gross - cogs:>+29,} Alz",
+            f"    takings {all_gross:,} less the {cogs:,} those units cost",
+        ]
+        if unpriced:
+            lines.append(
+                f"    NOTE: {unpriced:,} of the {priced + unpriced:,} units "
+                f"sold have no recorded purchase, so their cost is not in "
+                f"that figure. Most were bought before the ledger existed.")
+        lines += [
+            f"  {'INVENTORY (at cost)':22} {held:>29,} Alz",
+            "    paid for and not yet sold - stock, not a loss",
+            "  " + "-" * 70,
+            f"  {'CASH FLOW':22} {all_gross - all_spend:>+29,} Alz",
+            "    every Alz in less every Alz out, including stock still held",
+        ]
+        if len(SALES) and not len(PURCHASES):
+            lines.append("  (this run bought nothing, so its own net is just "
+                         "the takings)")
+    lines.append("")
+    return "\n".join(lines)
 
 
 def sales_report() -> str:
@@ -5925,6 +9068,16 @@ def recover_stranded_work_tab(timeout: float = 8.0,
                               verbose: bool = True) -> bool:
     """List whatever is sitting in the work tab back onto the shop.
 
+    NO LONGER CALLED AUTOMATICALLY as of 2026-08-08. ensure_work_tab_empty now
+    raises FatalAbort on a dirty tab instead of invoking this, because pricing
+    an item that cannot be named means pricing it at the strictest floor on the
+    books -- 175,000,000 -- and that is real money committed to a guess.
+
+    Kept rather than deleted: it is the only code that knows how to clear a
+    strand, and a future version could call it deliberately with a NAME to
+    price against, which is the missing piece that made it dangerous. Left
+    unreachable, not left running.
+
     The work tab is reserved for items a cancel returns, so anything in it at
     the START of a batch is a strand: a cancel that committed and whose re-list
     did not. Refusing to start on a dirty tab is correct -- the before/after
@@ -5945,6 +9098,31 @@ def recover_stranded_work_tab(timeout: float = 8.0,
     def say(message: str) -> None:
         if verbose:
             print(message)
+
+    # Not if the restock pipeline is mid-flight. WORK_TAB and
+    # CONVERT_INVENTORY_TAB are the same tab (4), chosen deliberately -- it is
+    # the game's default and every count in the pipeline is taken there. The
+    # comment on WORK_TAB used to say the two uses "do not overlap in time,
+    # because converting is a manual operation"; that stopped being true when
+    # --buy shipped, and restock_core now buys and converts on this tab inside
+    # the unattended loop.
+    #
+    # So what looks like a strand may be a restock's working stock: a stack of
+    # Force Core Sets bought at 187,278 each. This function prices what it
+    # finds at strictest_price_floor(), which is 175,000,000 -- correct for an
+    # unnameable strand, catastrophic for raw material. It would consume a shop
+    # row, pay a registration fee on the inflated figure, and then the next
+    # cycle would read the name off the table and offer the pipeline's own
+    # Sets to the market at cost.
+    #
+    # The carry registry is what tells the two apart, and the restock resumes
+    # from it on the next pass -- so refusing here loses nothing.
+    outstanding = carried_total()
+    if outstanding:
+        say(f"  the work tab holds {outstanding} Set(s) a restock has already "
+            "paid for and still owes a listing -- leaving them for the "
+            "restock to convert rather than listing them as a strand.")
+        return False
 
     origin = inventory_origin()
     if origin is None:
@@ -6001,22 +9179,35 @@ def recover_stranded_work_tab(timeout: float = 8.0,
 
 
 def ensure_work_tab_empty(timeout: float = 8.0, verbose: bool = True) -> bool:
-    """The work-tab precondition, clearing a strand rather than dying on one.
+    """The work-tab precondition. A dirty tab STOPS THE RUN.
 
-    Only for the START of a batch. The mid-batch work-tab checks must keep
-    using require_empty_work_tab: there a dirty tab means the row just relisted
-    stranded something, which is a real failure to report, not one to paper
-    over. Here it means a PREVIOUS run died, and the item has been sitting
-    there ever since.
+    This used to try to recover: list whatever was in the tab at
+    strictest_price_floor() -- 175,000,000, because an inventory slot cannot be
+    named -- and let the next cycle read the name off the table and re-price
+    it. That is the only path in this file that can commit real money to a
+    decision nobody made, and it fires exactly when the script is already
+    confused about what is where.
+
+    Measured on 2026-08-08: it reached for 175,000,000 twice against 54
+    Upgrade Core (Ultimate) worth 469,469 each, and was saved only by the
+    client being disconnected at the time.
+
+    So it refuses instead, and the refusal is FATAL rather than per-cycle: a
+    strand does not clear itself, so retrying it every cycle just spends the
+    breaker's budget arriving at the same place. A human clears the tab in a
+    minute; a wrong listing costs a row, a registration fee and a position
+    nobody chose.
+
+    Raises FatalAbort. Never returns False -- the only outcomes are "the tab is
+    clean" and "stop".
     """
     if require_empty_work_tab(verbose=verbose):
         return True
-    if verbose:
-        print("Trying to clear it - anything in the work tab at the start of a "
-              "batch is a cancel that never got re-listed.")
-    if not recover_stranded_work_tab(timeout=timeout, verbose=verbose):
-        return False
-    return require_empty_work_tab(verbose=verbose)
+    raise FatalAbort(
+        f"inventory tab {WORK_TAB} is not empty. Everything in it is stock "
+        "this script cannot name from a slot, so it cannot be priced safely "
+        "-- clear it by hand (list it, or move it to another tab) and start "
+        "again. Nothing has been listed or cancelled.")
 
 
 def changed_slots(
@@ -6307,6 +9498,7 @@ def cancel_item(
     timeout: float = 8.0,
     verbose: bool = True,
     expect: "RowRef | None" = None,
+    report: "dict | None" = None,
 ) -> bool:
     """Cancel the listing on table row `row` (1-based, as displayed).
 
@@ -6330,6 +9522,18 @@ def cancel_item(
     def require(condition: bool, reason: str) -> None:
         if not condition:
             raise Aborted(reason)
+
+    # Filled in for the caller, because False alone cannot be acted on.
+    #
+    # A cancel that failed WITHOUT committing left the listing on the market
+    # and is safe to retry; one that committed and could not be verified is
+    # not, because a second attempt would withdraw a second listing. Both
+    # returned a bare False, so every caller had to assume the second -- and
+    # two rows were skipped on 2026-08-08 for aborts that recorded
+    # committed=False, meaning the Change click had produced no dialog at all.
+    if report is not None:
+        report.setdefault("committed", False)
+        report.setdefault("reason", "")
 
     committed = False
     try:
@@ -6465,6 +9669,11 @@ def cancel_item(
         say(f"{CONFIRM_WORD} button at {confirm.centre} (conf {confirm.conf:.0f})")
         click(*confirm.centre)
         committed = True
+        # A cancellation shifts every row below it up by one, so the remembered
+        # catalogue now names rows it does not mean. Dropped on the click being
+        # SENT, not on it being confirmed: if we are unsure whether the shop
+        # changed, the safe answer is that it did.
+        note_shop_changed("cancel committed")
         require(await_dialog(None, timeout) is not None,
                 "the dialog stayed open after Confirmation")
 
@@ -6486,6 +9695,9 @@ def cancel_item(
         # cancellations the log calls refused. Reading costs one screenshot and
         # no clicks, so it still happens before any recovery input.
         still = dialog_kind(grab()) if committed else None
+        if report is not None:
+            report["committed"] = committed
+            report["reason"] = str(exc)
         record("cancel.aborted", reason=str(exc), row=row, committed=committed,
                dialog_after=still,
                accepted=None if not committed else (still != "confirm"))
@@ -6663,6 +9875,43 @@ def register_item(
         # The loaded stack should hold as many as the cancelled listing did.
         # This is a cheap consistency check, not proof of identity -- that is
         # sanity_check()'s job, after the listing exists and can be read back.
+        # One re-read before concluding the field is unreadable. The comment
+        # further down calls this "the worst OCR target on the panel", and a
+        # second look costs a screenshot and no clicks -- far cheaper than
+        # silently skipping the only identity check available before the
+        # listing goes live.
+        if (expect_item and expect_qty is not None
+                and panel["qty_max"] is None):
+            time.sleep(0.4)
+            again = read_register_panel(grab())
+            if again.get("loaded") and again.get("qty_max") is not None:
+                say(f"  the quantity field re-read as {again['qty_max']} "
+                    "(it was unreadable a moment ago).")
+                panel = again
+
+        if (expect_item and expect_qty is not None
+                and panel["qty_max"] is None):
+            # Loud, recorded, and NOT an abort.
+            #
+            # The cancel has already committed, so refusing here strands the
+            # stack -- and a strand terminates the run. Trading a possible
+            # mis-list for a guaranteed stop is the wrong way round.
+            #
+            # But a check that quietly does not happen is worse than one that
+            # fails, because the output reads exactly like a verified listing.
+            # sanity_check reads the result back off the table afterwards,
+            # which is the check that actually proves identity; this one is
+            # only a cheap early warning, and its absence is now visible.
+            say(f"WARNING: the panel's quantity field did not read, so the "
+                f"cross-check against the cancelled listing's {expect_qty} "
+                f"could NOT be performed. The listing will still be verified "
+                f"against the table afterwards.")
+            record("register.qty_unverified", item=expect_item,
+                   expect_qty=expect_qty, row=row, col=col,
+                   qty_text=panel.get("qty_text"))
+            if report is not None:
+                report["qty_unverified"] = True
+
         if expect_item and expect_qty is not None and panel["qty_max"] is not None:
             # Exact equality here stranded a 233-item stack and stopped a
             # five-hour run. The table's QTY column read 233 as 230 -- one
@@ -6685,23 +9934,57 @@ def register_item(
             loaded = panel["qty_max"]
             slack = max(QTY_CROSSCHECK_ABSOLUTE,
                         int(expect_qty * QTY_CROSSCHECK_FRACTION))
-            if loaded != expect_qty and abs(loaded - expect_qty) <= slack:
+
+            # A LOWER BOUND, not equality. These are two different quantities:
+            #
+            #   expect_qty  what the CANCELLED LISTING held
+            #   loaded      what the panel offers, which is everything you own
+            #               of this item across the WHOLE inventory -- a
+            #               Ctrl+Click gathers matching items from every tab,
+            #               not only the slots the cancel just filled
+            #
+            # They are equal only while nothing else of that item is held
+            # anywhere. Measured on 2026-08-08 in a single run: Epic Booster
+            # returned 6 slots and loaded 6, returned 8 and loaded 8 -- then
+            # Force Core (Ultimate) returned 5 and loaded 12, because seven
+            # more sat on later tabs. That is not an anomaly, it is what the
+            # restock pipeline produces: a 250-Core conversion spills past
+            # tab 4 by design.
+            #
+            # It aborted AFTER the cancel committed, stranding five Cores in
+            # the work tab -- which now stops the following run outright.
+            #
+            # Owning MORE than the listing held is ordinary and is allowed.
+            # Owning FEWER is the case worth refusing: the stack that was just
+            # cancelled should be in the inventory, so a shortfall means it is
+            # not all there, or the wrong slot was picked up.
+            if loaded >= expect_qty:
+                if loaded > expect_qty:
+                    say(f"NOTE: the panel offers {loaded} but the cancelled "
+                        f"listing held {expect_qty}. The extra are the same "
+                        "item held elsewhere in the inventory, which the shop "
+                        "slot gathers; continuing.")
+                    # `if report is not None`, not `report and`: every caller
+                    # passes a fresh {}, which is FALSY, so the truthiness form
+                    # never executed once.
+                    if report is not None:
+                        report["qty_extra"] = (expect_qty, loaded)
+            elif expect_qty - loaded <= slack:
                 say(f"NOTE: the panel holds {loaded} but the table said "
-                    f"{expect_qty} (within {slack}). The panel field is the "
-                    "more reliable read, so continuing with it - the table's "
-                    "QTY column is narrow and misreads a digit occasionally.")
-                # `if report is not None`, not `report and`: every caller
-                # passes a fresh {}, which is FALSY, so the truthiness form
-                # never executed once. Every other write in this function
-                # already gets this right.
+                    f"{expect_qty} (short by {expect_qty - loaded}, within "
+                    f"{slack}). The panel field is the more reliable read, so "
+                    "continuing with it - the table's QTY column is narrow and "
+                    "misreads a digit occasionally.")
                 if report is not None:
                     report["qty_disagreement"] = (expect_qty, loaded)
             else:
-                require(loaded == expect_qty,
-                        f"loaded {loaded} of an item but the cancelled listing "
-                        f"held {expect_qty} - off by {abs(loaded - expect_qty)}, "
-                        f"more than the {slack} tolerated, so this is probably "
-                        "not the same item")
+                require(False,
+                        f"the shop slot offers only {loaded} but the cancelled "
+                        f"listing held {expect_qty} - short by "
+                        f"{expect_qty - loaded}, more than the {slack} "
+                        f"tolerated. The cancelled stack should be in the "
+                        f"inventory, so either it is not all there or this is "
+                        f"the wrong slot")
 
         # ---- step 2: quantity, settled before pricing -----------------------
         # The suggested price is per item and Net sales is price x quantity, so
@@ -6776,7 +10059,12 @@ def register_item(
         # relist cycle passes no name, so `--register` and `do register` listed
         # floor-bearing items with no floor at all.
         if expect_item:
-            absolute_floor = item_price_floor(expect_item)
+            # See listing_floor: the operator's floor and what was paid,
+            # whichever is higher.
+            absolute_floor, floor_reason_text = listing_floor(expect_item)
+            if absolute_floor:
+                say(f"Floor for this item: {absolute_floor:,} Alz "
+                    f"({floor_reason_text})")
         else:
             # The item cannot be named here, so its floor cannot be looked up.
             #
@@ -6928,6 +10216,23 @@ def register_item(
         require(shot is not None, "no confirmation dialog appeared after Register")
 
         # ---- step 5: confirm through every dialog; this commits -------------
+        # The balance, before the commit, so the registration FEE can be
+        # measured. The game charges a percentage of the asking price to put
+        # something on the market, and it charges it here rather than netting
+        # it off the proceeds -- every measured sale in the ledger divides
+        # exactly by its unit price, so what arrives on a sale is gross.
+        #
+        # It was never recorded anywhere, which made PROFIT overstate by the
+        # whole fee bill -- and the bill is charged on every row of every
+        # cycle, so it is the most FREQUENT outflow in the system rather than
+        # a rounding error.
+        alz_before_fee = None
+        if not dry_run:
+            try:
+                alz_before_fee = get_alz(grab()) or None
+            except Exception:  # noqa: BLE001 - a tally must not cost a listing
+                alz_before_fee = None
+
         # Driven by the button finder, which polls: a single dialog_kind() read
         # can flake to None and end the chain with a dialog still up.
         for step in range(1, MAX_CONFIRM_STEPS + 1):
@@ -6943,15 +10248,30 @@ def register_item(
                 break  # nothing left to confirm
             say(f"{CONFIRM_WORD} {step} at {confirm.centre} "
                 f"(conf {confirm.conf:.0f})")
-            click(*confirm.centre)
-            committed = True
-            # Recorded HERE, not after the loop: in the single-dialog case this
-            # click IS the commit, and an exception later in the loop (a
-            # refused click, a failed grab) would otherwise carry the listing's
-            # existence away with it -- the caller would be told "input was
-            # refused" and nothing about a possibly-live, unverified listing.
+            # Marked BEFORE the click, not after.
+            #
+            # `committed` answers one question for the caller: may this be
+            # retried? Once a Confirmation click has been ATTEMPTED the answer
+            # is no, because click() delivers the button-down and can then
+            # raise -- a refused SendInput, a hook, a desktop switch -- landing
+            # in the one-statement window between the click and the flag. The
+            # listing exists, `committed` reads False, no register.aborted is
+            # written, and the caller is handed an exception with no report at
+            # all. Narrow, but it is the same shape as the cancel-side gap, and
+            # both of them mislead in the dangerous direction.
+            #
+            # Setting it first is wrong only when the click was refused outright
+            # and nothing was sent -- in which case input is blocked entirely
+            # and the run is stopping anyway. Assume committed and be
+            # occasionally over-cautious; never assume clean and re-list twice.
             if report is not None:
                 report["committed"] = True
+            click(*confirm.centre)
+            committed = True
+            # A new listing joins the table, so the remembered catalogue is
+            # short by one and every index after it is wrong. Same reasoning as
+            # the cancel path: dropped on the click being sent.
+            note_shop_changed("registration committed")
             time.sleep(0.8)
 
         # Record what was committed BEFORE the checks below can abort. Both of
@@ -6963,6 +10283,38 @@ def register_item(
             report["qty"] = qty
             report["total"] = panel["net_sales"]
             report["committed"] = True
+
+        if committed and not dry_run:
+            # What went on the market. This is the only place that knows both
+            # the quantity and the price, and sale_rejection needs it later to
+            # tell a partial sale from a bad reading.
+            note_registration(expect_item or "", price, qty)
+
+            # And what it cost to put it there. Bounded before it is believed:
+            # a balance that moved UP is a sale landing in the same window, and
+            # a "fee" larger than the asking price is a misread, not a charge.
+            try:
+                alz_after_fee = get_alz(grab()) or None
+            except Exception:  # noqa: BLE001
+                alz_after_fee = None
+            if alz_before_fee and alz_after_fee and alz_before_fee > alz_after_fee:
+                fee = alz_before_fee - alz_after_fee
+                asking = (price or 0) * (qty or 0)
+                if asking and fee > asking:
+                    say(f"  the balance fell {fee:,} during the commit, more "
+                        f"than the {asking:,} asked - not booking that as a "
+                        "fee.")
+                else:
+                    say(f"  registration fee: {fee:,} Alz")
+                    # qty=0 and price=0 keep it OUT of purchase_cost_basis,
+                    # which selects on `price > 0 AND qty > 0`. That is
+                    # deliberate: the floor the operator asked for is "never
+                    # below what the Sets cost", and fees are not part of what
+                    # the goods cost. They are part of PROFIT, which sums
+                    # spend over every row, so this reaches the report without
+                    # moving the floor.
+                    note_purchase(f"registration fee: {expect_item or 'item'}",
+                                  0, fee, 0, note="Agent Shop registration fee")
 
         require(await_dialog(None, timeout) is not None,
                 f"a confirmation dialog is still open after {MAX_CONFIRM_STEPS} steps")
@@ -7247,18 +10599,26 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             # Rejected rather than clamped: the number is evidence the reading
             # was wrong, not evidence of a smaller sale. The sale is still
             # counted, and the report already says how many went unmeasured.
-            if proceeds and target.price and target.qty:
-                ceiling = target.price * target.qty
-                if proceeds > ceiling:
-                    say(f"  the Alz balance moved {proceeds:,}, more than the "
-                        f"{ceiling:,} this listing could be worth "
-                        f"({target.qty} x {target.price:,}) - not booking a "
-                        f"figure that cannot be right.")
-                    record("sale.implausible", item=target.name,
-                           proceeds=proceeds, ceiling=ceiling)
-                    reject = (f"implausible reading {proceeds:,} > ceiling "
-                              f"{ceiling:,}")
-                    proceeds = None
+            # The ceiling is built from what was REGISTERED, not from the
+            # quantity still on sale. target.qty is the remainder -- the
+            # comment further down says so -- so using it made the ceiling
+            # `leftovers x price`, which is unrelated to the credit that just
+            # landed. Every partial sale failed it. Measured on the live
+            # ledger before this was fixed: 3 of 18 sales rejected, worth
+            # 129,813,000 Alz, and the run's PROFIT line showed a loss because
+            # of it. A fully-sold listing passed, because then the remainder
+            # IS the whole stack -- which is why it went unnoticed.
+            listed_units = registered_qty(target.name, target.price)
+            reject = sale_rejection(proceeds, target.price, target.qty,
+                                    listed_units)
+            if reject:
+                say(f"  the Alz balance moved {proceeds:,}, which cannot be "
+                    f"right for this listing: {reject}. Counting the sale but "
+                    "not the figure.")
+                record("sale.implausible", item=target.name,
+                       proceeds=proceeds, why=reject,
+                       listed_units=listed_units, still_listed=target.qty)
+                proceeds = None
             note_sale(target.name, target.price, proceeds, reject)
             if proceeds:
                 sold = (proceeds // target.price
@@ -7508,8 +10868,35 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
 
         # Hand the identity down, not just the number: cancel_item re-reads the
         # table and would otherwise cancel whatever now sits at this index.
+        cancel_report: dict = {}
         if not cancel_item(row, dry_run=dry_run, timeout=timeout, verbose=verbose,
-                           expect=RowRef.of(target, rows)):
+                           expect=RowRef.of(target, rows),
+                           report=cancel_report):
+            if game_disconnected():
+                say("The game has DISCONNECTED - the client is showing 'You "
+                    "have been disconnected from the server'. Nothing below "
+                    "is a script fault; log back in and start again.")
+                return FAILED
+
+            # A cancel that never COMMITTED is safe to try again: the Change
+            # click produced no dialog, nothing was confirmed, and the listing
+            # is still on the market exactly as it was.
+            #
+            # This used to be indistinguishable from "committed but could not
+            # be verified", so every failure was treated as the dangerous one
+            # and the row was abandoned. Measured on 2026-08-08: two rows were
+            # skipped for aborts that recorded committed=False -- both of them
+            # a missed dialog, both of them retryable.
+            #
+            # Retrying a COMMITTED cancel is what must never happen: it would
+            # withdraw a SECOND listing. So the retry is gated on the positive
+            # evidence of not-committed, never on the absence of evidence -- an
+            # empty report means the old behaviour.
+            if cancel_report.get("committed") is False and attempt < attempts:
+                say("The cancel did not commit - nothing was withdrawn and the "
+                    "listing is untouched, so this row can be tried again.")
+                continue
+
             # Deliberately not "nothing will be listed": cancel_item returns
             # False both when nothing happened AND when it committed but could
             # not verify, and it has just printed which. Asserting the stronger
@@ -7912,6 +11299,36 @@ def relist_rows(
             say("Aborting: the working inventory tab must be empty to start.")
             return False
 
+        # Resupply FIRST, so anything it lists is in the table this batch then
+        # reads -- priced with everything else instead of once at creation and
+        # never again.
+        #
+        # It leaves the game in its default state on the way out and reopens
+        # what it needs, so the shop has to be re-opened afterwards.
+        if RESTOCK_BEFORE_RELIST:
+            restock_pass(timeout=timeout, verbose=verbose)
+            # Two attempts, because the resupply is OPPORTUNISTIC and must not
+            # be able to fail the batch it runs before.
+            #
+            # That property was explicit while restocking ran last -- "a market
+            # that will not sell must not turn a successful relist batch into a
+            # failed one and trip the run's failure breaker" -- and moving it
+            # first quietly lost it: one unreachable NPC and the whole cycle
+            # failed with 270 bought Sets unlisted.
+            if not ensure_shop_ready(verbose=verbose):
+                say("The Agent Shop did not reopen after the resupply; "
+                    "closing anything left over and trying once more.")
+                try:
+                    close_npc_shop(verbose=verbose)
+                except Exception:  # noqa: BLE001
+                    pass
+                if not ensure_shop_ready(verbose=verbose):
+                    say("Still could not reopen the Agent Shop - nothing can "
+                        "be relisted without it.")
+                    return False
+            if not ensure_work_tab_empty(timeout=timeout, verbose=verbose):
+                say("Aborting: the resupply left something in the work tab.")
+                return False
 
     snapshot = await_rows(timeout)
     if not snapshot:
@@ -7926,6 +11343,24 @@ def relist_rows(
     # scrolling, no enumeration. Scrolling costs a table read per chunk (~18s
     # of OCR each), so making every batch pay for it would slow the common case
     # by minutes to serve a case it does not have.
+    # Widen for anything this run's restocks added to the shop. Those listings
+    # go to the LOWEST EMPTY row, so the first one usually lands back in range
+    # -- but a restock makes up to five, and the rest go to the end. Without
+    # this they are created once and never repriced again.
+    #
+    # Clamped to SHOP_ROW_CAPACITY rather than to the ten on screen: the widened
+    # rows are past the first screen by definition, and the scrolling branch
+    # below is what addresses them. An unreachable row would fail the batch, so
+    # widening can only ever propose rows the shop could actually hold.
+    added_rows: set[int] = set()
+    if not all_rows and BUY_ADDED_ROWS:
+        asked = set(rows or [])
+        rows, widened = widen_for_restocks(rows, SHOP_ROW_CAPACITY)
+        added_rows = set(rows) - asked
+        if widened:
+            say(f"Widening this sweep by {widened} row(s) to cover listings "
+                f"the restocks added: now rows {min(rows)}-{max(rows)}.")
+
     beyond = [i for i in rows if i > len(snapshot)]
     scrolling = bool(beyond) or all_rows
     targets: list[tuple[int, RowRef, str]] = []
@@ -7941,13 +11376,31 @@ def relist_rows(
         else:
             say(f"Row(s) {', '.join(str(i) for i in beyond)} are past the "
                 f"first screen of {len(snapshot)}; enumerating the whole shop.")
-        listings = enumerate_listings(timeout=timeout, verbose=verbose)
+        # The one place a remembered sweep is accepted. With
+        # RESTOCK_BEFORE_RELIST the restock has just swept this same shop,
+        # seconds ago, silently -- it calls whole_shop_listings(verbose=False),
+        # which is why cycle 1 of the 14:02 run paid for two full traversals
+        # and only printed one. When the restock bought nothing, the second
+        # walk returns exactly what the first did.
+        #
+        # Still verified at both ends before it is believed, and dropped
+        # outright by any registration or cancellation. See enumerate_listings.
+        listings = enumerate_listings(timeout=timeout, verbose=verbose,
+                                      allow_cache=True)
         if listings is None:
             say("The shop could not be enumerated, so rows past the first "
                 "screen cannot be addressed safely - stopping rather than "
                 "acting on a position that might be the wrong listing.")
             return False
         catalogue = [row for _, row in listings]
+
+        # Give back widening the shop has since absorbed. Listings consolidate
+        # upward as things sell, so rows a restock added are reabsorbed within
+        # a few cycles -- and while BUY_ADDED_ROWS still claims them, every
+        # cycle pays a full three-traversal enumeration to reach rows that are
+        # no longer there. See note_shop_depth.
+        note_shop_depth(rows_in_use(catalogue), len(catalogue))
+
         if all_rows:
             # Empty slots and Premium markers are carried through rather than
             # filtered here: the loop below skips them by action, and dropping
@@ -7962,6 +11415,14 @@ def relist_rows(
             for index in rows:
                 row = by_index.get(index)
                 if row is None:
+                    if index in added_rows:
+                        # A widened row that turned out not to exist. The
+                        # widening is a guess at where restocked listings went,
+                        # bounded by SHOP_ROW_CAPACITY rather than by what the
+                        # shop actually holds -- so it must be able to overshoot
+                        # harmlessly. Failing here would let a bookkeeping
+                        # guess stop a sweep the operator asked for.
+                        continue
                     say(f"Row {index} is out of range; the shop holds "
                         f"{len(listings)} listing(s).")
                     return False
@@ -7969,6 +11430,8 @@ def relist_rows(
     else:
         for index in rows:
             if not 1 <= index <= len(snapshot):
+                if index in added_rows:
+                    continue          # see the scrolling branch above
                 say(f"Row {index} is out of range; {len(snapshot)} row(s) visible.")
                 return False
             row = snapshot[index - 1]
@@ -8216,10 +11679,92 @@ def relist_rows(
             + ", ".join(repr(n) for n in failed_rows))
         say("Each was confined to its own row - the work tab stayed clean, so "
             "the rest of the batch continued. They will be retried next cycle.")
+
+    if not RESTOCK_BEFORE_RELIST and not dry_run:
+        restock_pass(timeout=timeout, verbose=verbose)
     say(f"\nAll {len(targets)} row(s) processed"
         + (f" ({worked} relisted" if worked else " (none relisted")
         + (f", {len(failed_rows)} failed)." if failed_rows else ")."))
+
     return True
+
+
+def restock_pass(timeout: float = 8.0, verbose: bool = True) -> None:
+    """Buy, convert and list whatever has sold out. Never raises.
+
+    Split out of relist_rows so it can run BEFORE the relisting rather than
+    after it. Restocking last meant the rows it created were absent from the
+    snapshot the relist worked from, so they were priced once and never
+    repriced -- which is the entire reason widen_for_restocks exists. Running
+    first, they are simply in the table when it is read.
+
+    Failures are reported and swallowed. Restocking is opportunistic extra
+    work; a market that will not sell must not turn a successful relist batch
+    into a failed one and trip the run's failure breaker.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    # Nothing enabled means nothing runs -- not even the extra table read.
+    # See restock_is_armed.
+    if not restock_is_armed():
+        return
+    try:
+            # A cheap look first. The question is "is any enabled Core
+            # missing", and a Core VISIBLE on the first screen is answer
+            # enough -- no sweep can make it more listed than it already is.
+            # Only a Core that is absent from those ten rows needs the whole
+            # shop read, because only then is "not here" ambiguous between
+            # "sold out" and "further down".
+            #
+            # Worth the extra table read: enumerating scrolls the shop end to
+            # end, about twenty seconds, and doing it every cycle to confirm
+            # something already on screen is the waste that made the run look
+            # like it was pacing the rows doing nothing.
+            visible = await_rows(timeout)
+            missing = [slot for slot, n in core_row_counts(visible).items()
+                       if n < 1 and slot in enabled_buying_slots()]
+            if not missing:
+                say("Every Core that can be bought is already listed on the "
+                    "first screen; no shop sweep needed.")
+                return
+            say("Not on the first screen: "
+                + ", ".join(FAVOURITE_SLOTS[s] for s in missing)
+                + " - sweeping the shop to see if they are further down.")
+            remembered = cached_unlisted(missing)
+            if remembered is not None:
+                say("Using the last shop sweep rather than repeating it "
+                    f"({len(remembered)} Core(s) still unlisted).")
+                # Counted while the shop is still open -- see leave_for_restock.
+                rows_now = shop_rows_used(verbose=False)
+                leave_for_restock(verbose=verbose)
+                restock_sold_out_slots(remembered, verbose=verbose,
+                                       rows_used=rows_now)
+                return
+            everything = whole_shop_listings(timeout=timeout, verbose=False)
+            if everything is None:
+                say("\nRestock skipped: the shop could not be enumerated, and "
+                    "a partial read is what makes a stocked item look absent.")
+            else:
+                note_unlisted(unlisted_core_slots(everything))
+                leave_for_restock(verbose=verbose)
+                restock_sold_out(everything, verbose=verbose)
+    except Exception as exc:          # noqa: BLE001 - opportunistic only
+        say(f"\nRestock pass did not run: {exc}")
+    finally:
+        # The vendor window must not survive this, whatever went wrong inside.
+        #
+        # It covers nothing useful and the caller's next act is to look for the
+        # NPC. On 2026-08-08 a conversion aborted, the vendor Shop stayed up,
+        # Lady Yekaterina could not be found, and a batch that had just bought
+        # 270 Sets relisted nothing at all.
+        try:
+            if vendor_shop_open():
+                say("  closing the vendor Shop before handing back.")
+                close_npc_shop(verbose=verbose)
+        except Exception:  # noqa: BLE001 - tidying must not raise
+            pass
 
 
 def run_sequence(actions: list[str], dry_run: bool = False, verbose: bool = True) -> bool:
@@ -8234,6 +11779,19 @@ def run_sequence(actions: list[str], dry_run: bool = False, verbose: bool = True
     def say(message: str) -> None:
         if verbose:
             print(message)
+
+    # An empty list is not a successful run of nothing.
+    #
+    # It used to return True, so a cycle that did no work counted as a success,
+    # reset the consecutive-failure breaker, and kept an unattended loop alive
+    # indefinitely doing nothing at all -- the breaker exists precisely to stop
+    # that. Reaching here with no actions means the caller built the list
+    # wrong, which is a fault to report rather than a no-op to wave through.
+    if not actions:
+        say("No actions to run - that is a caller error, not a completed "
+            "cycle, so it is reported as a failure rather than resetting the "
+            "failure breaker.")
+        return False
 
     for position, spec in enumerate(actions, start=1):
         parts = spec.split()
@@ -8549,6 +12107,27 @@ def run_loop(
             # added to stop.
             record("cycle.end", cycle=cycle, consecutive=consecutive,
                    succeeded=succeeded, failures=failures)
+
+            # A disconnect is not a failure to retry -- it is the end of the
+            # session. Checked only after a cycle has FAILED, so a healthy run
+            # never pays for the OCR: on 2026-08-08 the drop cost three cycles
+            # of "the table could not be read" and "slot did not load", every
+            # line true and none of them the reason.
+            #
+            # No click reaches the server while this is up, so the breaker's
+            # remaining budget would be spent proving that three more times.
+            if consecutive and game_disconnected():
+                record("loop.stopped", reason="disconnected", cycle=cycle)
+                say("\nThe GAME HAS DISCONNECTED - the client is showing "
+                    "'You have been disconnected from the server'.")
+                say("Nothing this script does can reach the server until you "
+                    "click OK and log back in, so it is stopping here rather "
+                    "than retrying.")
+                say(f"Anything in inventory tab {WORK_TAB} is safe; the next "
+                    "run will pick it up.")
+                stopped = True
+                break
+
             if consecutive >= MAX_CONSECUTIVE_FAILURES:
                 # THE entry that was missing. This breaker fired correctly at
                 # 19:56 one night, printed an accurate diagnosis, and left no
@@ -8674,6 +12253,54 @@ _TRADE_FRAME_GEOMETRY = {
     # and exact here; that is the right way round.
     "POPUP_REGION": "box",
     "NPC_SEARCH_REGION": "box",
+    # The vendor Shop and the Purchase tab.
+    #
+    # These are not in the Trade window's frame -- the vendor window is its own
+    # panel at the left edge, and the Purchase tab is a different page of the
+    # Trade window -- but they are mapped through it for the same reason
+    # POPUP_REGION is, above: scaling the MEASURED value is exact on the
+    # reference machine and approximate elsewhere, which is the right way
+    # round. Deriving them from the client rect instead would change behaviour
+    # on the one setup known to work.
+    #
+    # Before this they were in no table at all, so apply_layout left them at
+    # their 2560x1440 values on every machine. A successfully calibrated
+    # 1920x1080 run therefore reached alt_click(252, 1066) -- a Mass Purchase
+    # gesture at coordinates belonging to a different screen, in the one window
+    # where a stray click spends Alz. The guards would most likely have failed
+    # closed, because vendor_shop_open() reads an equally uncalibrated band,
+    # but that is luck rather than design.
+    "SHOP_WINDOW_TITLE": "box",
+    "CONVERT_TIP_REGION": "box",
+    "CONVERT_DIALOG_REGION": "box",
+    "CONVERT_DLG_ITEM": "box",
+    "CONVERT_DLG_PRICE": "box",
+    "CONVERT_DLG_QTY_VALUE": "box",
+    "CONVERT_DLG_QTY_MAX": "box",
+    "CONVERT_DIALOG_BUTTONS": "box",
+    "VENDOR_TAB_REGION": "box",
+    "PURCHASE_SORT_REGION": "box",
+    "PURCHASE_SORT_BUTTON": "point",
+    "PURCHASE_SORT_OPTIONS": "box",
+    "CONVERT_COLS": "xs",
+    "CONVERT_ROWS": "ys",
+    "VENDOR_TAB_BAND": "ypair",
+    "FAVOURITE_FIRST": "point",
+    "FAVOURITE_PITCH": "len",
+    "PURCHASE_ROW_TOP": "y",
+    "PURCHASE_ROW_PITCH": "len",
+    "PURCHASE_BUY_X": "x",
+    # The Confirm Purchase dialog, added when its quantity field was wired up.
+    # Same reasoning as everything above it: these are absolute coordinates
+    # measured on one 2560x1440 machine, and one of them is CLICKED to focus a
+    # field before digits are typed into it.
+    "PURCHASE_DIALOG_REGION": "box",
+    "PURCHASE_DLG_ITEM": "box",
+    "PURCHASE_DLG_QTY_VALUE": "box",
+    "PURCHASE_DLG_QTY_MAX": "box",
+    "PURCHASE_DLG_PRICE": "box",
+    "PURCHASE_DIALOG_BUTTONS": "box",
+    "DISCONNECT_REGION": "box",
     "TRADE_WINDOW_SEARCH": "box",
     "NPC_EXCLUDE_ZONES": "boxes",
     # Anchored on the Inventory panel, not the Trade window, but mapped the
@@ -8737,6 +12364,12 @@ def _capture_reference_geometry() -> None:
             value = value - oy
         elif kind == "xpair":
             value = (value[0] - ox, value[1] - ox)
+        elif kind == "xs":
+            value = tuple(v - ox for v in value)
+        elif kind == "ys":
+            value = tuple(v - oy for v in value)
+        elif kind == "ypair":
+            value = (value[0] - oy, value[1] - oy)
         elif kind == "boxes":
             value = tuple((b[0] - ox, b[1] - oy, b[2] - ox, b[3] - oy)
                           for b in value)
@@ -8784,6 +12417,12 @@ def apply_layout(layout: "Layout") -> None:
             value = layout.y(ref)
         elif kind == "xpair":
             value = (layout.x(ref[0]), layout.x(ref[1]))
+        elif kind == "xs":
+            value = tuple(layout.x(v) for v in ref)
+        elif kind == "ys":
+            value = tuple(layout.y(v) for v in ref)
+        elif kind == "ypair":
+            value = (layout.y(ref[0]), layout.y(ref[1]))
         elif kind == "boxes":
             value = tuple(_clamp_box(layout.box(b), layout.screen) for b in ref)
         else:  # len
@@ -8998,7 +12637,7 @@ def measure_layout(image: Image.Image | None = None,
                 break
 
     found: list[tuple[str, tuple[int, int], tuple[int, int]]] = []
-    for phrase, ref_point in REF_ANCHORS:
+    for phrase, ref_point in REF_ANCHORS_ALL:
         centre = None
         used = 0
         for n, (ws, ls) in enumerate(attempts):
@@ -9046,7 +12685,9 @@ def measure_layout(image: Image.Image | None = None,
             say("     can be concluded from this frame -- check the messages")
             say("     above and that Tesseract is installed.")
             return None
-        say(f"  anchors found      {len(found)} of {len(REF_ANCHORS)}")
+        say(f"  anchors found      {len(found)} of {len(REF_ANCHORS_ALL)} "
+            f"({len(REF_ANCHORS)} required, {len(REF_ANCHORS_EXTRA)} "
+            f"Register-tab only)")
         for phrase, centre, ref in found:
             say(f"    {phrase!r:12} at {centre}   reference {ref}")
         missing = [p for p, _ in REF_ANCHORS if p not in {f[0] for f in found}]
@@ -9655,6 +13296,11 @@ def finish_run_log(note: str = "") -> None:
             report = sales_report()
             if report:
                 print(report)
+            # Money out as well as in. Printed after the per-item breakdown so
+            # the last thing on screen is the figure that matters.
+            money = profit_report()
+            if money:
+                print(money)
         except Exception:      # noqa: BLE001
             pass
 
@@ -9767,6 +13413,15 @@ def main() -> None:
                    help="with --register, list at exactly this price")
     p.add_argument("--qty", type=int, default=None, metavar="N",
                    help="with --register, list exactly this quantity")
+    p.add_argument("--buy", action="store_true",
+                   help="restock sold-out Cores: buy Sets, convert them, "
+                        "list the result (see RESTOCK_TARGET)")
+    p.add_argument("--buy-target", type=int, default=RESTOCK_TARGET,
+                   metavar="N",
+                   help=f"Sets to accumulate per restock (default "
+                        f"{RESTOCK_TARGET}; NOT one row's worth -- a row holds "
+                        f"{CONVERT_QUANTITY}, and buying overshoots because a "
+                        f"Set stacks to {SET_STACK_MAX})")
     p.add_argument("--dry-run", action="store_true",
                    help="locate everything but do not click")
     args = p.parse_args()
@@ -9778,7 +13433,7 @@ def main() -> None:
         # collection happens rather than at the end.
         spec = str(args.sales).strip().lower()
         hours = None if spec in ("all", "0") else float(spec)
-        rows = sales_since(hours=hours, limit=2000)
+        rows = sales_since(hours=hours, limit=SALES_QUERY_LIMIT)
         window = "all time" if hours is None else f"the last {hours:g}h"
         if not rows:
             print(f"No collections recorded in {window} ({SALES_DB}).")
@@ -9897,6 +13552,34 @@ def main() -> None:
     if honours_dry_run and args.dry_run:
         global NO_INPUT
         NO_INPUT = True
+
+    # --buy is a module flag rather than an argument threaded through
+    # relist_rows, for the same reason NO_INPUT is: a new caller cannot forget
+    # to pass a global. It spends real money, so it is off unless asked for.
+    if args.buy:
+        global BUY_ENABLED, BUY_TARGET
+        BUY_ENABLED = True
+        BUY_TARGET = args.buy_target
+        # Which Cores may be bought is ENABLE_BUYING's business, not a flag's.
+        # Checked here so a typo in that table stops the run at the start,
+        # rather than reading as "this Core is disabled" and quietly never
+        # restocking anything.
+        allowed = enabled_buying_slots()
+        # Same reasoning for the per-item saving floors: an unmatched key there
+        # reads as "this item is back on the default", which is invisible.
+        validate_price_diff_floors()
+        scope = (", ".join(FAVOURITE_SLOTS[s] for s in allowed)
+                 if allowed else "NOTHING (every entry in ENABLE_BUYING is off)")
+        print(f"--buy is ON for {scope}: a sell-out triggers buy -> convert "
+              f"-> list, holding a minimum of {RESTOCK_TARGET} Sets and no "
+              f"more than {BUY_MAXIMUM}.")
+        # Spelled out per item, because they now differ. A single figure in the
+        # banner while the code used several would be worse than none.
+        print("  saving required per item: "
+              + ", ".join(
+                  f"{FAVOURITE_SLOTS[s]} {price_diff_floor_for(FAVOURITE_SLOTS[s]):,}"
+                  for s in allowed)
+              + f" (default {PRICE_DIFF_FLOOR:,})")
 
 
     clicking = always_clicks or (honours_dry_run and not args.dry_run)
@@ -10166,6 +13849,12 @@ def main() -> None:
             sys.exit(f"FATAL: {exc}")
         except (PermissionError, Aborted) as exc:
             sys.exit(f"Blocked: {exc}")
+        finally:
+            # An open Trade window covers the NPC, and a find_npc that fails is
+            # how one bad exit becomes a dead afternoon. --relist-rows has had
+            # this since the incident; these paths never did.
+            if not args.dry_run:
+                leave_shop()
         print(f"outcome: {outcome}")
         sys.exit(0 if outcome != FAILED else 1)
 
@@ -10180,6 +13869,12 @@ def main() -> None:
             sys.exit(f"FATAL: {exc}")
         except (PermissionError, Aborted) as exc:
             sys.exit(f"Blocked: {exc}")
+        finally:
+            # An open Trade window covers the NPC, and a find_npc that fails is
+            # how one bad exit becomes a dead afternoon. --relist-rows has had
+            # this since the incident; these paths never did.
+            if not args.dry_run:
+                leave_shop()
         sys.exit(0 if ok else 1)
 
     if args.register is not None:
@@ -10198,6 +13893,12 @@ def main() -> None:
             sys.exit(f"FATAL: {exc}")
         except (PermissionError, Aborted) as exc:
             sys.exit(f"Blocked: {exc}")
+        finally:
+            # An open Trade window covers the NPC, and a find_npc that fails is
+            # how one bad exit becomes a dead afternoon. --relist-rows has had
+            # this since the incident; these paths never did.
+            if not args.dry_run:
+                leave_shop()
         sys.exit(0 if ok else 1)
 
     if args.cancel is None:
@@ -10210,6 +13911,10 @@ def main() -> None:
         ok = cancel_item(args.cancel, dry_run=args.dry_run)
     except PermissionError as exc:
         sys.exit(f"Blocked: {exc}")
+    finally:
+        # See above: an open Trade window is what breaks the NEXT run.
+        if not args.dry_run:
+            leave_shop()
     sys.exit(0 if ok else 1)
 
 

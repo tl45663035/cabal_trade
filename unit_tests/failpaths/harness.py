@@ -522,6 +522,17 @@ class Harness:
     def _trade_window_open(self, source=None):
         return self.trade_open
 
+    def _register_tab_open(self, source=None):
+        """The Register tab, which the bench treats as part of "window open".
+
+        table_scrollable requires this as well as trade_window_open() and
+        panel_covers_trade_area(): the wheel must be over the listings table,
+        and the Purchase tab is a different page where scrolling is forbidden
+        outright. The bench's open_trade_window puts the window on Register, so
+        this follows trade_open. A suite modelling the wrong tab patches it.
+        """
+        return self.trade_open
+
     def _wait_for_table(self, timeout=20.0, poll=1.0):
         self.log("wait_for_table")
         return self.table_refreshes
@@ -572,6 +583,7 @@ class Harness:
         "find_text": "_find_text", "find_words": "_find_words",
         "dialog_button": "_dialog_button",
         "trade_window_open": "_trade_window_open",
+        "register_tab_open": "_register_tab_open",
         "wait_for_table": "_wait_for_table",
         "open_trade_window": "_open_trade_window",
         "require_empty_work_tab": "_require_empty_work_tab",

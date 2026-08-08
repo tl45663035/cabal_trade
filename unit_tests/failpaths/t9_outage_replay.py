@@ -106,14 +106,23 @@ note("9b", "the strand announcement and relist.stranded frame at "
 
 
 # ---------------------------------------------------------------------------
-section("9c. a strand that CANNOT be cleared still stops the run")
-# The historical outcome, and still the right one: if the stack will not go
-# back on the shop, starting a cycle would diff a dirty tab and could pick up
-# an unrelated item. Stopping is correct. What was wrong was that this was the
-# ONLY outcome -- see 9d.
+section("9c/9d. a strand stops the run IMMEDIATELY -- rule changed 2026-08-08")
+# These two sections used to assert opposite halves of a recovery that no
+# longer runs. 9c: a strand that cannot be cleared stops the run after
+# MAX_CONSECUTIVE_FAILURES cycles. 9d: a strand that CAN be cleared is
+# re-listed and the batch continues.
+#
+# The recovery priced what it found at strictest_price_floor() -- 175,000,000,
+# because an item in an inventory slot cannot be named -- and on 2026-08-08 it
+# reached for that twice against 54 Upgrade Core (Ultimate) worth 469,469 each.
+# It was stopped only by the client being disconnected. The operator's rule is
+# now: always terminate if tab 4 is not empty.
+#
+# So both outcomes collapse into one, and it happens on the FIRST cycle rather
+# than the third: there is nothing to attempt, so there is nothing to retry.
 h = build(64)
-strand = [(r, c) for r in range(1, 9) for c in range(1, 9)]   # 64 slots, as logged
-clears = {"yes": False}
+strand = [(r, c) for r in range(1, 9) for c in range(1, 9)]
+clears = {"yes": True}          # even a CLEARABLE strand now stops the run
 
 with h:
     drive_work_tab_by_slots(h, strand, clears)
@@ -121,58 +130,31 @@ with h:
 
 cycles = h.out().count("===== cycle ")
 labels = h.labels()
-
 print(f"  cycles run: {cycles}")
 print(f"  labels recorded: {sorted(set(labels))}")
-check("9c the run stops", "stopped early" in h.out(), h.out()[-300:])
-check(f"9c after exactly MAX_CONSECUTIVE_FAILURES="
-      f"{trade.MAX_CONSECUTIVE_FAILURES} cycles (the strand cycle is the "
-      f"first of them)",
-      cycles == trade.MAX_CONSECUTIVE_FAILURES, f"{cycles} cycles")
-check("9c the breaker explains itself", h.said("cycles have failed in a row"),
-      h.out()[-500:])
 
-# The blind window that made the 3 August outage invisible: the index's last
-# entry was tab.register_open at 19:56:48, then nothing for five hours. The
-# failing STEP now writes its own frame, so the reason is on disk and not only
-# in a printed line the operator never saw.
-blind = [lab for lab in labels
-         if lab not in ("cycle.start", "cycle.end", "loop.stopped")]
+check("9c the run stops", "stopped" in h.out(), h.out()[-400:])
+check("9c on the FIRST cycle, not after three",
+      cycles == 1,
+      f"{cycles} cycles -- a strand does not clear itself, so retrying it "
+      f"twice more only spends the breaker's budget arriving at the same "
+      f"place")
 check("9c the cycle that cannot start records WHY",
       "worktab.not_empty" in labels,
-      f"recorded: {sorted(set(blind))} -- require_empty_work_tab is the single "
-      f"most likely cycle-killer; if it writes no frame the operator gets a "
-      f"printed line and nothing on disk")
-check("9c the recovery attempt is recorded too",
-      "strand.recovering" in labels, f"{sorted(set(blind))}")
+      f"recorded: {sorted(set(labels))} -- this is the single most likely "
+      f"cycle-killer, and the 3 August outage was invisible because it wrote "
+      f"no frame")
 check("9c it says how much was stranded",
       (h.rec("worktab.not_empty") or {}).get("occupied") == 64,
       f"{h.rec('worktab.not_empty')}")
-check("9c it did try to clear it before giving up",
-      "register_item" in h.names(),
-      "stopping without attempting the recovery is the old behaviour")
+check("9c NOTHING was listed",
+      "register_item" not in h.names(),
+      f"{h.names()} -- listing an unnameable item at the strictest floor is "
+      f"exactly what this change removed")
+check("9c the strand is left for a human",
+      len(strand) == 64, f"{len(strand)} slot(s) left")
+check("9c and the reason reaches the operator",
+      h.said("not empty") or h.said("tab"), h.out()[-400:])
 
-
-# ---------------------------------------------------------------------------
-section("9d. a strand that CAN be cleared no longer ends the run")
-# This is the finding that stayed open longest: "the cause is recorded now, but
-# the recovery does not exist." It exists now, and this is the same replay with
-# the one thing changed that the fix changes.
-h = build(64)
-strand = [(r, c) for r in range(1, 9) for c in range(1, 9)]
-clears = {"yes": True}
-
-with h:
-    drive_work_tab_by_slots(h, strand, clears)
-    h.patch("relist", lambda *a, **k: trade.RELISTED)
-    ok, exc = run(trade.relist_rows, [1])
-
-check("9d the batch runs instead of aborting", ok is True, f"{ok!r} {exc!r}")
-check("9d the work tab was cleared", strand == [], f"{len(strand)} slot(s) left")
-check("9d the strand was re-listed", "register_item" in h.names(), f"{h.names()}")
-check("9d it did not print the abort", not h.said("must be empty to start"),
-      h.out()[-300:])
-check("9d and it is on the record", "strand.recovering" in h.labels(),
-      str(sorted(set(h.labels()))))
 
 raise SystemExit(summary())

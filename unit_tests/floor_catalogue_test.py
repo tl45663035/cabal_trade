@@ -71,12 +71,18 @@ def main() -> int:
     print("\n--- 1b. ...and keeps it through OCR damage ---")
     # NEVER BELOW the entry's floor, rather than exactly equal to it.
     #
-    # Equality was right while every catalogue name was distinct. It is wrong
-    # for a prefix-related pair: "Epic Booster (High)" and "(Highest)" cannot be
-    # told apart once damaged, so the lookup deliberately returns the HIGHER of
-    # the two. Asserting equality here demanded the cheaper floor for a read
-    # that might be either item -- that is, it demanded exactly the underpricing
+    # Equality was right while every catalogue name was distinct. It became
+    # wrong when a prefix-related PAIR was catalogued: "Epic Booster (High)"
+    # and "(Highest)" cannot be told apart once damaged, so the lookup returns
+    # the HIGHER of the two, and asserting equality here demanded the cheaper
+    # floor for a read that might be either item -- exactly the underpricing
     # this whole area exists to prevent.
+    #
+    # The (High) entry was removed on 2026-08-07, so no such pair is catalogued
+    # at the moment. "Never below" stays anyway: it is the property that
+    # actually matters, it costs nothing while names are distinct, and the next
+    # near-name added to the catalogue would silently reintroduce the problem
+    # if this had been tightened back to equality in the meantime.
     for token, label, floor in floors:
         lost = [(why, bad) for why, bad in damaged(label)
                 if m.item_price_floor(bad) < floor]

@@ -57,8 +57,17 @@ h = fresh(load_as={"qty": 64, "qty_max": 64})
 ok, exc, report = call(h)
 
 check("2b returns False", ok is False, f"got {ok!r}")
+# The cross-check became a LOWER BOUND on 2026-08-08. It used to demand
+# equality, but expect_qty is what the LISTING held while qty_max is what the
+# panel offers -- everything owned of that item across the whole inventory,
+# because a Ctrl+Click gathers matching items from every tab. Owning MORE is
+# ordinary (a 250-Core conversion spills past tab 4 by design); owning FEWER is
+# the case worth refusing, and is what this section exercises: 100 cancelled,
+# 64 offered.
 check("2b aborted on the quantity cross-check",
-      h.said("not the same item"), h.out()[-400:])
+      h.said("offers only") or h.said("not the same item"), h.out()[-400:])
+check("2b and said how big the shortfall was",
+      h.said("short by"), h.out()[-400:])
 check("2b nothing was listed", len(h.rows) == 1)
 check("2b told the caller the slot is still occupied",
       h.said("still sitting in the shop slot"), h.out()[-400:])

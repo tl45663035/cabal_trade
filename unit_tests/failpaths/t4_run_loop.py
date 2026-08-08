@@ -117,32 +117,43 @@ check("4e said the workstation is locked", h.said("workstation is locked"),
 
 
 # ---------------------------------------------------------------------------
-section("4f. a cycle that 'succeeds' having done nothing")
-# (i) an empty action list
+section("4f. a cycle that did nothing is not a success")
+# FIXED 2026-08-08. run_sequence returned True for an empty action list and
+# run_loop counted it as a succeeded cycle, so a loop with nothing to do stayed
+# green for hours AND reset the consecutive-failure breaker -- the breaker that
+# exists to stop exactly that.
+#
+# The two checks that used to assert the bug ("produces green cycles",
+# "reports overall success") are gone rather than inverted: they described the
+# defect, and a defect that no longer exists should not leave a test asserting
+# its symptoms.
 h = fresh()
 with h:
     ok, exc = run(trade.run_loop, [], 0.05, 0.0)
-green = h.out().count("All 0 action(s) completed")
-check("4f an empty action list produces green cycles", green >= 1, str(green))
-check("4f run_loop reports overall success", ok is True, f"got {ok!r}")
-if ok is True:
-    note("4f run_loop cannot tell 'nothing to do' from 'work done'",
-         "run_sequence returns True for an empty action list (trade.py:4907) "
-         "and run_loop counts it as a succeeded cycle (trade.py:5049-5051). "
-         "relist_rows grew an explicit guard for exactly this shape of "
-         "false-green (trade.py:4824-4832); run_sequence and run_loop did not.")
 check("4f a cycle that did no work must not count as a success", ok is not True,
-      "an 8-hour run of empty cycles reports 'succeeded'")
+      f"got {ok!r} -- an 8-hour run of empty cycles used to report 'succeeded'")
+check("4f and it says why rather than failing silently",
+      h.said("No actions to run") or h.said("caller error"),
+      h.out()[-400:])
 
-# (ii) a table of empty rows: relist_rows skips them all and returns True
+# (ii) a table of empty rows. DIFFERENT, and still True on purpose: the shop
+# genuinely having nothing to relist is a legitimate outcome, not a caller
+# error. Kept beside 4f because the two look alike and are not.
 h = fresh(rows=[make_row(1, "(empty)", action="register", price=None, qty=None),
                 make_row(2, "(empty)", action="register", price=None, qty=None)])
 with h:
     ok2, exc = run(trade.relist_rows, [1, 2])
-check("4f2 relist_rows returns True for an all-empty shop", ok2 is True,
-      f"got {ok2!r}")
-note("4f2", "legitimate (nothing to relist), but combined with 4f it means a "
-     "run whose shop went empty reports success every cycle for hours")
+# An all-empty shop raises ShopEmpty, and that IS the success signal: main()
+# catches it, prints "SOLD OUT" and exits 0, precisely so that scripting this
+# does not read "finished" as "failed". The old assertion here wanted True and
+# had been failing since before 2026-08-08 -- a stale expectation, not a defect.
+check("4f2 an all-empty shop signals SOLD OUT rather than failing",
+      isinstance(exc, trade.ShopEmpty),
+      f"got {ok2!r} / {exc!r}")
+check("4f2 and ShopEmpty is deliberately not an Aborted",
+      not isinstance(exc, trade.Aborted),
+      "Aborted means 'this cycle did not work'; selling out is the best "
+      "possible outcome and must not trip the failure breaker")
 
 
 # ---------------------------------------------------------------------------

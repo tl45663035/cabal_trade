@@ -46,3 +46,11 @@ calibrate_probe_out/
 # Purchase-tab frames used by the buying tests: screenshots of a live
 # market, with the account's own balance and listings in them.
 unit_tests/corpus/buying/
+
+# Labelled golden frames captured alongside a live session by
+# capture_goldens.py. Same reason as the rest of the corpus: they are
+# screenshots of a real account's shop, inventory and balance.
+unit_tests/corpus/goldens/
+
+# Per-process scratch crops written by get_alz.
+.alz_tmp*.png

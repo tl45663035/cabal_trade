@@ -45,8 +45,19 @@ sys.path.insert(0, str(_ROOT))
 
 import trade as m  # noqa: E402
 
+# NOTHING in this suite may touch the game, and this is set at IMPORT so no
+# section can forget it. A test that turned it off to reach a guard is how a
+# mutation run -- which deletes that guard by design -- Alt+clicked four
+# coordinates into the game world and walked the character across the map.
+m.NO_INPUT = True
+
 fails = []
 count = 0
+# Image sections that did not run because the frame was not on disk. The
+# corpus is gitignored -- it is live session data -- so this is the normal
+# state everywhere except the machine that captured it. Counted so the summary
+# cannot imply the pixels were checked when they were not.
+skipped = []
 _quiet = "-v" not in sys.argv
 
 
@@ -332,6 +343,11 @@ class Sim:
     def vendor_shop_open(self, source=None):
         return self.shop_open
 
+    def active_vendor_tab(self, source=None):
+        # The conversion grid only exists on the Dungeon tab; on any other page
+        # these coordinates point at something else entirely.
+        return m.CONVERT_VENDOR_TAB if self.shop_open else None
+
     def grab(self):
         self.log.append(("grab",))
         return "screenshot"
@@ -438,6 +454,7 @@ def run(sim, name="Force Core(High)", quantity=250, execute=True):
     patches = {
         "focus_game": sim.focus_game,
         "vendor_shop_open": sim.vendor_shop_open,
+        "active_vendor_tab": sim.active_vendor_tab,
         "alt_click": sim.alt_click,
         "mass_purchase_open": sim.mass_purchase_open,
         "mass_purchase_details": sim.mass_purchase_details,
@@ -793,6 +810,64 @@ for label, s, name in NO_CLICK_CASES[:6]:
 
 
 # ==========================================================================
+section("alt_click refuses on its own, without help from its caller")
+# ==========================================================================
+
+# The guard lives in the PRIMITIVE, not in the caller.
+#
+# Alt+click exists for one thing: the SET/CORE grid, whose coordinates sit low
+# and left. With no vendor window there that is bare ground, and a click on the
+# ground is click-to-move -- the character walks off, and the NPC every other
+# part of this file looks for goes with it.
+#
+# It happened. A diagnostic script PRINTED vendor_shop_open() and clicked
+# regardless; convert_cores checks it twice and would have refused, but a guard
+# a caller can skip is not a guard. Same lesson as NO_INPUT, and as the
+# scroll_wheel camera zoom before it.
+_saved_open = m.vendor_shop_open
+try:
+    # NO_INPUT stays ON throughout. alt_click checks this precondition BEFORE
+    # its suppression early-return precisely so it can be tested with input
+    # suppressed -- see the comment there.
+    m.vendor_shop_open = lambda source=None: False
+    refused = False
+    try:
+        m.alt_click(*m.convert_cell_point(2, 3))
+    except m.Aborted:
+        refused = True
+    except Exception:
+        refused = False
+    check(refused,
+          "alt_click refuses when the vendor Shop is shut, even though the "
+          "caller never asked it to check")
+
+    # And it refuses BEFORE moving the cursor: a move alone is harmless, but
+    # the refusal has to come from the state, not from the click failing.
+    for point in [m.convert_cell_point(2, 3), m.convert_cell_point(4, 1),
+                  (10, 10), (2000, 1300)]:
+        raised = False
+        try:
+            m.alt_click(*point)
+        except m.Aborted:
+            raised = True
+        except Exception:
+            raised = False
+        check(raised, f"alt_click at {point} is refused with the shop shut")
+
+    # With the shop open it does NOT refuse -- the guard must not block the
+    # ordinary work it exists to allow.
+    m.vendor_shop_open = lambda source=None: True
+    allowed = True
+    try:
+        m.alt_click(*m.convert_cell_point(2, 3))
+    except m.Aborted:
+        allowed = False
+    check(allowed, "and it does not refuse when the vendor Shop IS open")
+finally:
+    m.vendor_shop_open = _saved_open
+
+
+# ==========================================================================
 section("golden frame (skipped if the capture is not present)")
 # ==========================================================================
 
@@ -809,9 +884,19 @@ if GOLDEN.exists():
     check(buttons is not None, "the Purchase Item dialog is recognised")
     if buttons:
         ok, cancel = buttons
-        check(ok.centre == (1285, 909), f"OK at (1285, 909), got {ok.centre}")
-        check(cancel.centre == (1467, 909),
-              f"Cancel at (1467, 909), got {cancel.centre}")
+        # Within a few pixels, not exactly. This is an OCR centroid, and it
+        # moves by a pixel when the crop it was read from changes -- which it
+        # did when the buttons were given their own tighter region. A click
+        # tolerates that; an equality assertion does not, and would fail for a
+        # reason that has nothing to do with correctness.
+        def near(got, want, slack=4):
+            return (abs(got[0] - want[0]) <= slack
+                    and abs(got[1] - want[1]) <= slack)
+
+        check(near(ok.centre, (1285, 909)),
+              f"OK is within a few px of (1285, 909), got {ok.centre}")
+        check(near(cancel.centre, (1467, 909)),
+              f"Cancel is within a few px of (1467, 909), got {cancel.centre}")
         check(ok.centre[0] < cancel.centre[0], "OK sits left of Cancel")
 
     d = m.mass_purchase_details(shot)
@@ -835,6 +920,7 @@ if GOLDEN.exists():
                       f"the real dialog does not match r{r}c{c}")
 else:
     print(f"  (no golden frame at {GOLDEN}; image checks skipped)")
+    skipped.append("golden frame at {GOLDEN}")
 
 # -- the tooltip, in both colours -------------------------------------------
 # The vendor draws an affordable price in white and an unaffordable one in RED,
@@ -881,6 +967,7 @@ if all(p.exists() for p, _, _ in TIP_FRAMES):
           "fallback is load-bearing rather than decorative")
 else:
     print("  (no tooltip frames in the corpus; colour checks skipped)")
+    skipped.append("tooltip frames in the corpus")
 
 # -- the inventory readers, on real frames ----------------------------------
 # Ground truth read off the tab strip by eye: the selected tab is drawn RAISED.
@@ -964,6 +1051,7 @@ if all(p.exists() for p, _, _ in INV_FRAMES):
           f"({min(fulls) - max(empties):.1f} grey levels), not a hair")
 else:
     print("  (no inventory frames in the corpus; slot checks skipped)")
+    skipped.append("inventory frames in the corpus")
 
 # -- an inventory slot's tooltip, which is ORANGE on a translucent panel -----
 # The title is the only line carrying the GRADE, and greyscale loses it: a live
@@ -1008,6 +1096,7 @@ if SLOT_TIP.exists():
           f"the slot tooltip region {reg} is the right way round")
 else:
     print("  (no slot tooltip frame in the corpus; title checks skipped)")
+    skipped.append("slot tooltip frame in the corpus")
 
 # The conversion tab and the relist work tab are the same tab. That is a real
 # coupling -- require_empty_work_tab() refuses to start a relist run while tab
@@ -1050,11 +1139,67 @@ if NEGATIVE:
               f"{frame.name} has no Purchase Item dialog on it")
 else:
     print("  (no non-vendor frames in the corpus; negative checks skipped)")
+    skipped.append("non-vendor frames in the corpus")
+
+
+# ==========================================================================
+section("the listings scroll never reaches the Purchase tab")
+# ==========================================================================
+
+# The wheel is the one input that damages state the script cannot see, and it
+# had two guards: "is the Trade window up" and "is an opaque panel covering the
+# area". The PURCHASE tab satisfies both, so a listings-table scroll could fire
+# while the buy tab was showing -- which scrolls the OFFERS.
+#
+# That is worse than wasted motion. The entire buying design rests on row 1
+# being the cheapest listing; move the offers and row 1 becomes whatever is at
+# the top now, so "always buy row 1" silently starts meaning something else.
+# Seen live on 2026-08-07: a restock left the Purchase tab showing and the next
+# capacity check enumerated the shop.
+_saved_scroll = (m.trade_window_open, m.panel_covers_trade_area,
+                 m.register_tab_open, m.record)
+try:
+    m.record = lambda *a, **k: None
+    m.trade_window_open = lambda src=None: True
+    m.panel_covers_trade_area = lambda *a, **k: True
+
+    m.register_tab_open = lambda src=None: True
+    check(m.table_scrollable(verbose=False) is True,
+          "the listings table scrolls on the Register tab, as it must")
+
+    m.register_tab_open = lambda src=None: False
+    check(m.table_scrollable(verbose=False) is False,
+          "but NOT on the Purchase tab -- that wheel would move the offers "
+          "and row 1 would stop meaning the cheapest one")
+
+    # The older guard still holds: no window at all is still a camera zoom.
+    m.trade_window_open = lambda src=None: False
+    m.register_tab_open = lambda src=None: True
+    check(m.table_scrollable(verbose=False) is False,
+          "and a shut window is still refused -- the wheel would zoom the "
+          "camera and lose the NPC")
+
+    m.trade_window_open = lambda src=None: True
+    m.panel_covers_trade_area = lambda *a, **k: False
+    check(m.table_scrollable(verbose=False) is False,
+          "and so is a window the motion probe cannot confirm")
+finally:
+    (m.trade_window_open, m.panel_covers_trade_area, m.register_tab_open,
+     m.record) = _saved_scroll
 
 
 # ==========================================================================
 print(f"\n{'=' * 60}")
-print(f"convert_cores: {count} checks, {len(fails)} failed")
+print(f"convert_cores: {count} checks, {len(fails)} failed"
+      + (f", {len(skipped)} IMAGE SECTION(S) SKIPPED" if skipped else ""))
+if skipped:
+    # Named, not just counted. These are the only checks in the file that
+    # touch real pixels, and a mutation to the tooltip geometry is caught by
+    # nothing else -- so a green run without them is a weaker claim, and it
+    # should say so rather than read the same as a full one.
+    print("  no corpus frames for: " + "; ".join(skipped))
+    print("  -> the OCR geometry was NOT exercised. Run "
+          "unit_tests/capture_goldens.py to record frames.")
 if fails:
     for f in fails[:25]:
         print(f"  FAIL  {f}")

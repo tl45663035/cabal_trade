@@ -43,6 +43,29 @@ SUITES = [
     # where a plain click spends items with no confirmation, so the tests that
     # matter assert that nothing is clicked when anything is unverified.
     ("convert_cores",         HERE / "convert_cores_test.py", []),
+    # The --buy pipeline: sold out -> buy Sets -> convert -> list. Mostly about
+    # the ORDER the three stages run in and when the next one is allowed to
+    # start, since each stage has its own suite already.
+    ("restock (--buy)",       HERE / "restock_test.py",      []),
+    # The four functions a coverage audit found with no test at all --
+    # purchase_confirm (which buy_offer refuses on) and the tooltip readers.
+    ("buying/convert gaps",   HERE / "buying_gaps_test.py",  []),
+    # The defects a ten-agent review found that the suites above did NOT catch,
+    # and the guards that now stop them. Every section drives the real function
+    # rather than a stub, because the reason the others missed these was that
+    # they could not have failed: they restated the rule under test, derived
+    # both sides of a boundary from the function being bounded, or only ever
+    # supplied inputs that already satisfied the check.
+    ("review fixes",          HERE / "review_fixes_test.py", []),
+    # The resupply flow replayed against real screenshots taken while it ran.
+    # Its strongest checks are cross-reader: purchase_confirm reads a centred
+    # dialog and read_purchase_rows reads the table behind it, and the price
+    # they find must agree though they share no region and no code.
+    ("flow goldens",          HERE / "flow_goldens_test.py", []),
+    # Reverts each of those fixes in memory and re-runs the suites, so a fix
+    # with no test behind it is reported rather than assumed. Slow -- it builds
+    # trade.py sixteen times -- so it is not in the default run; invoke it
+    # directly with `py unit_tests/mutation_check.py` after changing a guard.
     # The only coverage that drives the STATE MACHINE rather than the readers.
     # It stubs the click/capture layer and runs cancel_item, register_item,
     # relist_rows and run_loop through their failure paths for real -- the code

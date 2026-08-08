@@ -207,13 +207,25 @@ def fake_buy(target, **kw):
 
 
 real_search, real_buy = trade.run_favourite_search, trade.buy_offer
+# affordable() reads the Alz balance off the SCREEN. Left real, this section
+# OCR'd the desktop to decide whether each case passed -- and a low read called
+# halt_buying(), which latches for the rest of the process and failed every
+# case after it. This matrix is about the saving comparison; whether the
+# account can cover the price is t33's subject.
+real_afford = trade.affordable
 trade.run_favourite_search, trade.buy_offer = fake_search, fake_buy
+trade.affordable = lambda price, source=None: True
 try:
-    threshold = trade.SET_SAVING_THRESHOLD
     for item_slot in ITEM_SLOTS:
         set_slot = item_slot + 1
         item_name = trade.FAVOURITE_SLOTS[item_slot]
         set_name = trade.FAVOURITE_SLOTS[set_slot]
+        # PER ITEM, not one global figure. Upgrade Core(Highest) and Force
+        # Core(High) were dropped to 5,000 on 2026-08-08 because they turn over
+        # faster than they earn -- stock that does not move earns nothing at
+        # all. A single SET_SAVING_THRESHOLD here asserted the old rule and
+        # reported the new one as eight failures.
+        threshold = trade.price_diff_floor_for(item_name)
         for item_unit in UNITS:
             for saving in (-50_000, -1, 0, 1, threshold - 1, threshold,
                            threshold + 1, 22_522, 100_000):
@@ -225,6 +237,11 @@ try:
                 bought.clear()
                 fake[item_slot] = [offer(1, item_name, item_unit)]
                 fake[set_slot] = [offer(1, f"{set_name} X {pack}", set_unit * pack)]
+                # BUY_HALTED is process-lifetime by design -- a wrong item map
+                # must not be retried. That makes it poison inside a matrix:
+                # one halted case silently turns every later one into "buying
+                # is off". Cleared per case so each is independent.
+                trade.BUY_HALTED, trade.BUY_HALT_REASON = False, ""
                 got = trade.buy_cheapest_set(item_slot, verbose=False)
                 want = saving >= threshold
                 expect(f"slot {item_slot} saving {saving:,} -> "
@@ -236,7 +253,7 @@ try:
                        f"{'one' if want else 'nothing'}",
                        len(bought) == (1 if want else 0),
                        f"bought {len(bought)}")
-                if want:
+                if want and bought:
                     expect(f"slot {item_slot} saving {saving:,}: bought row 1",
                            bought[0].row == 1, f"row {bought[0].row}")
                     expect(f"slot {item_slot} saving {saving:,}: correct qty",
@@ -288,16 +305,25 @@ try:
                        got == (saving >= thr), f"returned {got}")
 finally:
     trade.run_favourite_search, trade.buy_offer = real_search, real_buy
+    trade.affordable = real_afford
 
 
 # ===========================================================================
 section("F. how many: exactly one listing, of the size shown")
 
+# Same reasoning as section E: affordable() reads the Alz balance off the
+# SCREEN, and a 250-pack at 200,000 each is 50,000,000 -- more than a desktop
+# OCR read usually produces, so it called halt_buying(), which latches for the
+# rest of the process and failed every case after it. Whether the account can
+# cover a price is t33's subject; this section is about how MANY listings a
+# purchase takes, and at what size.
 trade.run_favourite_search, trade.buy_offer = fake_search, fake_buy
+trade.affordable = lambda price, source=None: True
 try:
     for item_slot in ITEM_SLOTS:
         for pack in PACKS:
             fake.clear(); bought.clear()
+            trade.BUY_HALTED, trade.BUY_HALT_REASON = False, ""
             fake[item_slot] = [offer(1, trade.FAVOURITE_SLOTS[item_slot], 300_000)]
             fake[item_slot + 1] = [
                 offer(1, f"{trade.FAVOURITE_SLOTS[item_slot+1]} X {pack}",
@@ -316,6 +342,7 @@ try:
                        bought[0].price == 200_000 * pack, f"{bought[0].price:,}")
 finally:
     trade.run_favourite_search, trade.buy_offer = real_search, real_buy
+    trade.affordable = real_afford
 
 
 print(f"\n{'-' * 74}")

@@ -104,22 +104,46 @@ check("fallback still respects the floor",
 section("a real market reading is unaffected")
 
 # The whole point is that this only changes the no-market path. If a market
-# price exists it wins -- but no longer to any depth: RELATIVE_PRICE_FLOOR now
-# clamps a relist to 90% of what the item is currently listed at. This suite
+# price exists it wins -- but no longer to any depth: RELATIVE_PRICE_FLOOR
+# clamps a relist to 95% of what the item is currently listed at. This suite
 # used to assert the opposite ("a large drop is reported, never overridden"),
-# which was the rule before the ratchet was added.
+# which was the rule before the ratchet was added, and then asserted 90%, which
+# was the rule before the operator tightened it to 5%.
+#
+# The figures below are written out rather than computed from
+# RELATIVE_PRICE_FLOOR on purpose. Deriving both sides from the constant is how
+# a test comes to agree with whatever the code does -- an audit of this tree
+# found the row-capacity boundary doing exactly that, and the function it
+# guarded could return a constant 1 with every suite still green.
 price, why = trade.choose_price(437_569, floor_price=85_000_000)
 check("a market 99% below the listed price is clamped, not obeyed",
-      price == 76_500_000,
+      price == 80_750_000,
       f"got {price:,} -- 437,569 against a listed 85,000,000 is far likelier "
       f"to be a clipped read than a real market")
 check("...and the reason names the ratchet",
-      "10% below the listed" in why, f"{why!r}")
+      "5% below the listed" in why, f"{why!r}")
 
 # An ordinary market move is still taken verbatim.
-price, why = trade.choose_price(80_000_000, floor_price=85_000_000)
-check("a market within 10% is used unchanged", price == 80_000_000 and why == "",
+price, why = trade.choose_price(81_000_000, floor_price=85_000_000)
+check("a market within 5% is used unchanged", price == 81_000_000 and why == "",
       f"got {price:,} {why!r}")
+
+# The edge the constant actually defines, from both sides. 95% of 85,000,000 is
+# exactly 80,750,000: at it, the market is obeyed; a single Alz under, the
+# ratchet takes over and the answer is the same 80,750,000 either way -- which
+# is what makes this the boundary rather than a cliff.
+price, why = trade.choose_price(80_750_000, floor_price=85_000_000)
+check("exactly 5% below is not a drop worth clamping",
+      price == 80_750_000 and why == "", f"got {price:,} {why!r}")
+price, why = trade.choose_price(80_749_999, floor_price=85_000_000)
+check("one Alz further down IS clamped", price == 80_750_000 and why != "",
+      f"got {price:,} {why!r}")
+
+# A drop that used to be allowed under the 10% rule is now refused. Stated
+# explicitly because it is the behaviour change the operator asked for.
+price, why = trade.choose_price(78_000_000, floor_price=85_000_000)
+check("an 8% drop was permitted at 10% and is clamped at 5%",
+      price == 80_750_000 and why != "", f"got {price:,} {why!r}")
 
 price, why = trade.choose_price(50_000, floor_price=85_000_000,
                                 absolute_floor=VIP_FLOOR)

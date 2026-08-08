@@ -210,11 +210,35 @@ with h:
     h.patch("read_rows", shift_on_second_read(h))
     outcome, exc = run(trade.relist, 1, None, None, False, 8.0, True,
                        expect=ref)
-check("3e3 a shift inside cancel_item is caught, nothing cancelled",
-      outcome == trade.FAILED and "cancel.committed" not in h.labels(),
-      f"{outcome!r} labels={h.labels()}")
-check("3e3 explained why", h.said("nothing was cancelled")
-      or h.said("Cancel did not complete"), h.out()[-400:].replace("\n", " | "))
+# The shift is caught on attempt 1 and RECOVERED on attempt 2 -- behaviour
+# changed 2026-08-08 when cancel_item started reporting whether it committed.
+#
+# Attempt 1 detects that the row moved and aborts BEFORE the Change click, so
+# nothing is cancelled and `committed` is False. That is now visible to the
+# caller, which re-reads the table, re-locates the item by identity at its new
+# position, and relists it. Previously every such abort returned one bare
+# False, indistinguishable from "committed but unverified", so the caller had
+# to assume the dangerous case and abandon the row.
+#
+# The safety property is unchanged, and the third check is what asserts it:
+# recovering must not mean relisting whatever slid into row 1.
+_labels = h.labels()
+check("3e3 the shift is caught before anything is cancelled",
+      "cancel.aborted" in _labels
+      and (("cancel.committed" not in _labels)
+           or _labels.index("cancel.aborted") < _labels.index("cancel.committed")),
+      f"labels={_labels}")
+check("3e3 and the retry recovers the row instead of losing it",
+      outcome == trade.RELISTED,
+      f"{outcome!r} -- a cancel that never committed left the listing on the "
+      f"market untouched, so trying again is free and correct")
+check("3e3 the item relisted is the one that was asked for",
+      not any(r.name == OTHER and r.price == 410_000 for r in h.rows),
+      f"{[(r.name, r.price) for r in h.rows]}")
+check("3e3 explained the abort",
+      h.said("did not commit") or h.said("nothing was cancelled")
+      or h.said("Cancel did not complete"),
+      h.out()[-400:].replace(chr(10), " | "))
 
 
 # ---------------------------------------------------------------------------
