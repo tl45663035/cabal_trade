@@ -1441,6 +1441,15 @@ SET_SAVING_THRESHOLD = PRICE_DIFF_FLOOR      # older name, kept for callers
 PRICE_DIFF_FLOOR_BY_ITEM: dict[str, int] = {
     "Upgrade Core(Highest)": 5_000,
     "Force Core(High)":      5_000,
+    # Added 2026-08-08 at the operator's request. NOTE the grade: this is
+    # (Highest), a DIFFERENT item from "Force Core(High)" on the line above,
+    # and "Force Core(High)" is a substring of it. That containment is the
+    # recurring bug in this file -- it has already cost a wrong purchase check
+    # and a wrong sort guard -- so both entries are spelled in full and
+    # price_diff_floor_for matches on an exact folded key rather than a
+    # prefix. Both happen to be 5,000 now, which would hide a mix-up; the
+    # tests assert them independently for that reason.
+    "Force Core(Highest)":   5_000,
 }
 
 
@@ -2928,7 +2937,15 @@ ENABLE_BUYING: dict[str, bool] = {
     "Force Core(High)":        True,
     "Force Core(Highest)":     True,
     "Force Core (Ultimate)":   True,
-    "Upgrade Core(Highest)":   False,
+    # Switched on 2026-08-08 at the operator's request. Its saving threshold is
+    # already 5,000 in PRICE_DIFF_FLOOR_BY_ITEM, so it only buys on half the
+    # spread the default asks for.
+    #
+    # NOTE the grade, as everywhere in this file: this is Upgrade Core
+    # (HIGHEST), slot 3, paired with "Upgrade Core Set (Highest)" in slot 4.
+    # It is a different item from "Upgrade Core (Ultimate)" in slot 9, which
+    # was already on.
+    "Upgrade Core(Highest)":   True,
     "Upgrade Core (Ultimate)": True,
 }
 
@@ -7475,7 +7492,8 @@ def scroll_chunk(notches: int, before: list[Row], timeout: float = 8.0,
 
 
 def bring_into_view(ref: RowRef, timeout: float = 8.0,
-                    verbose: bool = True) -> list[Row] | None:
+                    verbose: bool = True,
+                    hint: "int | None" = None) -> list[Row] | None:
     """Scroll until the listing `ref` names is on screen; return that view.
 
     Walks down from the top in verified chunks. Deliberately does NOT take an
@@ -7497,14 +7515,79 @@ def bring_into_view(ref: RowRef, timeout: float = 8.0,
     caller's own locate_row reports 'missing' -- which means the listing sold,
     a normal outcome. None is reserved for "the table could not be read",
     which is not.
+
+    The listing is often ALREADY on screen, and that case is answered without
+    scrolling at all. `scrolling` in relist_rows is a batch-level flag -- one
+    row past the first screen sends every row down this path -- so on
+    `--relist-rows 1-12` the ten rows that were already visible each paid a
+    full scroll-to-top plus a table read to rediscover where they already
+    were. Measured on the 18:33 run of 2026-08-08: about 24s of silent work at
+    the head of every row, roughly 2.5 minutes of a 22-minute cycle.
     """
+    def holds(view: list[Row]) -> bool:
+        live = [r for r in view if r.action in ("change", "receive")]
+        return locate_row(live, ref)[0] is not None
+
+    # Look before moving. One table read against a scroll plus a table read,
+    # and it is the common case on any batch that includes the first screen.
+    #
+    # Safe because the answer is the same object either way: this returns a
+    # VIEW, and the caller locates `ref` inside it by identity. A view that
+    # already holds the listing is exactly as valid as one scrolled to from the
+    # top -- the position the caller clicks is relative to the view it is
+    # given, not to the top of the shop.
+    here = await_rows(timeout)
+    if here and holds(here):
+        if verbose:
+            print("  the listing is already on screen; no scrolling needed.")
+        return here
+
     rows = scroll_to_end(up=True, timeout=timeout, verbose=verbose)
     if not rows:
         return None
 
-    def holds(view: list[Row]) -> bool:
-        live = [r for r in view if r.action in ("change", "receive")]
-        return locate_row(live, ref)[0] is not None
+    # Go STRAIGHT to where the shop read said it was, rather than stepping
+    # there a screen at a time.
+    #
+    # relist_rows has just enumerated the whole shop, so it knows this listing
+    # was at absolute row `hint`. Stepping rediscovers that from scratch: on
+    # the 18:33 run of 2026-08-08 the walk spent 93s in `stepping 3 instead
+    # of 7` and `stepping 1 instead of 7`, because the step shrinks whenever a
+    # screen's tail is empty and there is nothing distinctive to match on.
+    #
+    # The jump is deliberately NOT shift-verified, and it does not need to be.
+    # scroll_chunk verifies its movement because the caller numbers rows from
+    # it; nothing is numbered from this. The DESTINATION is verified instead,
+    # by identity, and a miss falls back to the same verified walk that would
+    # have run anyway -- so the worst case is one wasted scroll.
+    #
+    # On duplicate stacks it is an improvement rather than a risk. The walk
+    # stops at the first screen holding ANY matching row, so with identical
+    # Cores at rows 10, 12 and 13, asking for row 12 lands on row 10 today.
+    # locate_row's own comment calls that survivable; aiming at the row the
+    # catalogue named is simply closer to what was asked for.
+    if hint is not None and rows:
+        jump = hint - len(rows)
+        if jump > 0 and table_scrollable(verbose=False):
+            if verbose:
+                print(f"  the shop read put {ref.name!r} at row {hint}; "
+                      f"scrolling {jump} row(s) straight there instead of "
+                      f"stepping.")
+            centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
+                      (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
+            scroll_wheel(*centre, -jump)
+            park_cursor()
+            landed = await_rows(timeout)
+            if landed and holds(landed):
+                return landed
+            # Stale catalogue, or the wheel did not land. Back to a known
+            # origin and walk it properly.
+            if verbose:
+                print("  the jump did not land on it; walking from the top.")
+            record("bring_into_view.jump_missed", item=ref.name, hint=hint)
+            rows = scroll_to_end(up=True, timeout=timeout, verbose=verbose)
+            if not rows:
+                return None
 
     # Same step rule as the sweep, and for the same reason: a screen whose tail
     # is empty gives measure_shift an overlap of interchangeable rows, several
@@ -11671,7 +11754,12 @@ def relist_rows(
         # not the index: the shop is reopened between rows so the view is back
         # at the top, and earlier relists in this batch have renumbered
         # everything below whatever they touched.
-        live = (bring_into_view(ref, timeout=timeout, verbose=verbose)
+        # `index` is where the shop read found this listing. Passed as a
+        # HINT, never as a position to act on: earlier relists in this batch
+        # renumber everything below whatever they touched, so it is a place to
+        # look first, and identity is still what decides.
+        live = (bring_into_view(ref, timeout=timeout, verbose=verbose,
+                                hint=index)
                 if scrolling else await_rows(timeout))
         # An unreadable table is not an empty shop. Without this guard the
         # chain launders "I cannot see the table" into "the item sold": an

@@ -106,6 +106,29 @@ MUTATIONS = [
      '''    if not COST_FLOOR_ON_RELIST:
         return 0, "no floor"'''),
 
+    ("bring_into_view scrolls anyway",
+     "the early return goes, so a listing already on screen is rediscovered by "
+     "scrolling to the top -- ~24s of silent work at the head of every row",
+     '''    here = await_rows(timeout)
+    if here and holds(here):
+        if verbose:
+            print("  the listing is already on screen; no scrolling needed.")
+        return here
+
+''',
+     ''''''),
+
+    ("the positional hint is ignored",
+     "bring_into_view stops jumping to where the shop read said the listing "
+     "was, and goes back to stepping there a screen at a time -- 93s of "
+     "\"stepping N instead of 7\" on the 18:33 run",
+     '''    if hint is not None and rows:
+        jump = hint - len(rows)
+        if jump > 0 and table_scrollable(verbose=False):''',
+     '''    if False:
+        jump = 0
+        if False:'''),
+
     ("sort direction by substring",
      "purchase_sorted_low_to_high goes back to looking for 'low' anywhere in "
      "the control, so 'By Price:High to Low' reads as ready to buy and row 1 "
@@ -211,7 +234,8 @@ MUTATIONS = [
 ]
 
 SUITES = ["review_fixes_test.py", "buying_gaps_test.py", "restock_test.py",
-          "convert_cores_test.py", "sort_control_test.py"]
+          "convert_cores_test.py", "sort_control_test.py",
+          "bring_into_view_test.py"]
 
 
 def build(source):

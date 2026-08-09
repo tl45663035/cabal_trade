@@ -1166,6 +1166,80 @@ m._sales_db_ready = False
 
 
 # ==========================================================================
+section("the per-item saving thresholds resolve to the right ITEM")
+# ==========================================================================
+#
+# "Force Core(High)" is a SUBSTRING of "Force Core(Highest)". That containment
+# is the recurring bug in this file -- it has already produced a wrong purchase
+# check and a wrong sort guard -- and both entries now sit in
+# PRICE_DIFF_FLOOR_BY_ITEM at the SAME value, which means a mix-up between them
+# would be completely invisible in the output.
+#
+# So they are asserted for INDEPENDENCE rather than for their values: each key
+# is moved on its own and the other must not follow. That is a property no
+# amount of reading the table can confirm, and it survives the two being set to
+# the same number again tomorrow.
+_saved_table = dict(m.PRICE_DIFF_FLOOR_BY_ITEM)
+try:
+    PAIRS = [("Force Core(Highest)", "Force Core(High)"),
+             ("Force Core(High)", "Force Core(Highest)")]
+    for moved, other in PAIRS:
+        m.PRICE_DIFF_FLOOR_BY_ITEM.clear()
+        m.PRICE_DIFF_FLOOR_BY_ITEM.update(_saved_table)
+        m.PRICE_DIFF_FLOOR_BY_ITEM[moved] = 7_777
+        check(m.price_diff_floor_for(moved) == 7_777,
+              f"moving {moved!r} moves it, got "
+              f"{m.price_diff_floor_for(moved):,}")
+        check(m.price_diff_floor_for(other) == _saved_table[other],
+              f"and does NOT move {other!r}: expected "
+              f"{_saved_table[other]:,}, got {m.price_diff_floor_for(other):,} "
+              f"-- the two grades are being confused")
+
+    # An item with no entry falls back to the default, and moving a neighbour
+    # must not drag it along either.
+    m.PRICE_DIFF_FLOOR_BY_ITEM.clear()
+    m.PRICE_DIFF_FLOOR_BY_ITEM.update(_saved_table)
+    m.PRICE_DIFF_FLOOR_BY_ITEM["Force Core(Highest)"] = 7_777
+    check(m.price_diff_floor_for("Force Core (Ultimate)") == m.PRICE_DIFF_FLOOR,
+          f"an item with no override keeps the default "
+          f"{m.PRICE_DIFF_FLOOR:,}, got "
+          f"{m.price_diff_floor_for('Force Core (Ultimate)'):,}")
+finally:
+    m.PRICE_DIFF_FLOOR_BY_ITEM.clear()
+    m.PRICE_DIFF_FLOOR_BY_ITEM.update(_saved_table)
+
+check(m.PRICE_DIFF_FLOOR_BY_ITEM == _saved_table, "the table was restored")
+
+# The shipped values, stated once. A threshold decides where money goes, so a
+# silent change to one is worth a failing test rather than a quiet difference
+# in behaviour on the next run.
+for _item, _want in (("Force Core(Highest)", 5_000),
+                     ("Force Core(High)", 5_000),
+                     ("Upgrade Core(Highest)", 5_000),
+                     ("Force Core (Ultimate)", 10_000),
+                     ("Upgrade Core (Ultimate)", 10_000)):
+    check(m.price_diff_floor_for(_item) == _want,
+          f"{_item} requires a {_want:,} saving, got "
+          f"{m.price_diff_floor_for(_item):,}")
+
+# The game's spacing before the bracket is inconsistent, and a table name
+# carries a pack marker. Neither may restore the default silently.
+for _variant in ("Force Core (Highest)", "Force Core(Highest) X 250",
+                 "force core(highest)"):
+    check(m.price_diff_floor_for(_variant) == 5_000,
+          f"{_variant!r} still resolves to 5,000, got "
+          f"{m.price_diff_floor_for(_variant):,}")
+
+# Every key must name a real managed Core. A typo reads as "this item is back
+# on the default" -- the quiet direction.
+try:
+    m.validate_price_diff_floors()
+    check(True, "every PRICE_DIFF_FLOOR_BY_ITEM key matches a managed Core")
+except Exception as _exc:  # noqa: BLE001
+    check(False, f"validate_price_diff_floors() raised: {_exc}")
+
+
+# ==========================================================================
 print(f"\n{'=' * 60}")
 print(f"buying/convert gaps: {count} checks, {len(fails)} failed")
 if fails:
