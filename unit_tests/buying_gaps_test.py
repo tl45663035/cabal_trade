@@ -500,8 +500,38 @@ if totals:
 # The two halves are independent.
 m.SALES.clear()
 m.PURCHASES.clear()
-check(m.profit_report() == "",
-      "a run that neither bought nor sold reports nothing at all")
+
+# A quiet run still reports the STANDING position, and only goes silent when
+# the ledger is empty too.
+#
+# This used to assert the opposite -- "a run that neither bought nor sold
+# reports nothing at all" -- and that is how a 35-minute run on 2026-08-08
+# ended with no money figures at all: it relisted fourteen rows, bought nothing
+# because the savings were under threshold, collected nothing, and so suppressed
+# the ALL TIME block as well. That block comes from the database and is true
+# whatever the current run did; a quiet run is exactly when it is worth seeing.
+_saved_totals = m.all_time_totals
+try:
+    m.all_time_totals = lambda: None
+    check(m.profit_report() == "",
+          "with an empty ledger AND a quiet run, there is nothing to say")
+
+    m.all_time_totals = lambda: (43, 1_162_810_873, 26, 716_151_240)
+    out = m.profit_report()
+    check(out != "",
+          "but a quiet run with history still reports the standing position")
+    check("ALL TIME" in out,
+          f"and that position is the ALL TIME block, got {out!r}")
+    check("1,162,810,873" in out,
+          "with the real takings in it, not this run's zero")
+    check("nothing collected and nothing bought" in out,
+          f"while saying plainly that THIS run did neither, got {out!r}")
+    # The quiet-run line must not claim a net of +0, which reads as a real
+    # measurement of a break-even session rather than an absence of one.
+    check("net +0" not in out,
+          f"a quiet run must not report a net figure at all, got {out!r}")
+finally:
+    m.all_time_totals = _saved_totals
 
 m.SALES.append({"item": "X", "price": 1, "proceeds": 5_000_000, "qty": 1})
 out = m.profit_report()
@@ -1011,8 +1041,18 @@ check("floor" in _ratchet_below_cost[1],
 # rule is "the highest floor", not "cost always".
 _ratchet_above_cost = m.choose_price(1, floor_price=600_000,
                                      absolute_floor=COST)
-check(_ratchet_above_cost[0] == 570_000,
-      f"listed at 600,000, the 5% ratchet (570,000) is above cost and binds "
+# Derived from the constant, not typed. This said 570,000 -- the 5% bound --
+# and retuning the ratchet to 1% on 2026-08-08 turned a working guard into a
+# failing test, for a reason that had nothing to do with what it checks: that
+# the HIGHER of the two bounds binds.
+_pct = int(m.RELATIVE_PRICE_FLOOR * 100)
+_ratchet_600k = -(-600_000 * _pct // 100)
+check(_ratchet_600k > COST,
+      f"the scenario needs the ratchet ({_ratchet_600k:,}) ABOVE cost "
+      f"({COST:,}), or it is not testing which one binds")
+check(_ratchet_above_cost[0] == _ratchet_600k,
+      f"listed at 600,000, the {100 - _pct}% ratchet ({_ratchet_600k:,}) is "
+      f"above cost and binds "
       f"instead, got {_ratchet_above_cost[0]:,}")
 check(_ratchet_above_cost[0] > COST,
       "which is still never below what was paid")
@@ -1020,16 +1060,96 @@ check(_ratchet_above_cost[0] > COST,
 # listing_floor is what register_item actually calls: the two minimums
 # combined. Tested here because a floor that is computed and then not consulted
 # is indistinguishable from no floor at all.
-_floor, _why = m.listing_floor(CORE_ULT)
-check(_floor == COST,
-      f"listing_floor returns the cost basis when it is the higher, got "
-      f"{_floor:,}")
-check("bought" in _why, f"and says which rule bound, got {_why!r}")
-check(m.listing_floor("Yekaterina VIP Membership")[0]
-      == m.item_price_floor("Yekaterina VIP Membership"),
-      "an item with no purchases falls back to its catalogue floor")
-check(m.listing_floor("Nothing At All")[0] == 0,
-      "and an item with neither has no floor")
+#
+# The cost half is behind COST_FLOOR_ON_RELIST, which is OFF by default, so it
+# is switched on explicitly here rather than assumed. The mechanism still has
+# to work when asked for -- a flag that turns something off is only half the
+# feature.
+_saved_cost_floor = m.COST_FLOOR_ON_RELIST
+try:
+    m.COST_FLOOR_ON_RELIST = True
+    _floor, _why = m.listing_floor(CORE_ULT)
+    check(_floor == COST,
+          f"listing_floor returns the cost basis when it is the higher, got "
+          f"{_floor:,}")
+    check("bought" in _why, f"and says which rule bound, got {_why!r}")
+    check(m.listing_floor("Yekaterina VIP Membership")[0]
+          == m.item_price_floor("Yekaterina VIP Membership"),
+          "an item with no purchases falls back to its catalogue floor")
+    check(m.listing_floor("Nothing At All")[0] == 0,
+          "and an item with neither has no floor")
+
+    # --- and with the flag OFF, which is the default -----------------------
+    m.COST_FLOOR_ON_RELIST = False
+    _off, _off_why = m.listing_floor(CORE_ULT)
+    check(_off == m.item_price_floor(CORE_ULT),
+          f"with the cost floor off, only the operator's catalogue floor "
+          f"applies, got {_off:,}")
+    check(_off < COST,
+          f"which is genuinely below what was paid ({COST:,}) -- otherwise "
+          f"this check proves nothing about the flag")
+    check("bought" not in _off_why,
+          f"and the reason no longer cites the purchase, got {_off_why!r}")
+
+    # --- the two rules the operator stated on 2026-08-08 -------------------
+    #
+    #   "the absolute price floor for my unique items stay the same, and they
+    #    always applied no matter what. no flags for those. The price floor of
+    #    relisting/resupplying only apply for cores"
+    #
+    # Rule 1: every ITEM_PRICE_FLOORS entry keeps its floor in BOTH flag
+    # positions. Not a sample -- the whole catalogue, so adding an entry does
+    # not add an untested one.
+    for _token, _catalogue_name, _floor in m.ITEM_PRICE_FLOORS:
+        _want = m.item_price_floor(_catalogue_name)
+        check(_want >= _floor,
+              f"{_catalogue_name} resolves to its own catalogue floor "
+              f"({_want:,} vs {_floor:,})")
+        for _state in (True, False):
+            m.COST_FLOOR_ON_RELIST = _state
+            _got, _ = m.listing_floor(_catalogue_name)
+            check(_got >= _floor,
+                  f"{_catalogue_name} keeps its {_floor:,} floor with "
+                  f"COST_FLOOR_ON_RELIST={_state}, got {_got:,}")
+
+    # Rule 2: the cost floor reaches CORES ONLY. It is scoped by set_behind --
+    # a name resolves to a favourite slot, that slot has a paired Set slot, and
+    # only Cores do. So the scoping is real, but it is a CONSEQUENCE of how the
+    # favourite slots are arranged rather than a stated rule: put a non-Core in
+    # a slot with a partner and the cost floor would silently start binding on
+    # it. This is what says otherwise.
+    for _token, _catalogue_name, _floor in m.ITEM_PRICE_FLOORS:
+        check(m.set_behind(_catalogue_name) == "",
+              f"{_catalogue_name} is not a Core, so nothing converts into it "
+              f"and it must have no Set behind it -- got "
+              f"{m.set_behind(_catalogue_name)!r}")
+        check(m.purchase_cost_basis(_catalogue_name) == 0,
+              f"{_catalogue_name} must never acquire a cost basis; the "
+              f"relist/resupply floor is for Cores only")
+
+    for _other in ("Epic Booster (High)", "Force Gem Package (x400)",
+                   "Craftsman's SIGMetal Headpiece (BL) + 15",
+                   "Some Item Nobody Has Ever Listed"):
+        check(m.purchase_cost_basis(_other) == 0,
+              f"{_other} is not a Core, so it has no cost floor")
+
+    # And the converse, so the rule is not satisfied by the floor reaching
+    # nothing at all: every managed Core CAN carry one.
+    _core_names = [n for slot, n in m.FAVOURITE_SLOTS.items()
+                   if m.favourite_set_slot(slot) is not None]
+    check(len(_core_names) >= 4,
+          f"expected several managed Cores, found {_core_names}")
+    for _core in _core_names:
+        check(m.set_behind(_core) != "",
+              f"{_core} is a Core and must have a Set behind it")
+finally:
+    m.COST_FLOOR_ON_RELIST = _saved_cost_floor
+
+check(m.COST_FLOOR_ON_RELIST is _saved_cost_floor,
+      "the flag was restored")
+check(m.COST_FLOOR_ON_RELIST is False,
+      "and its shipped default is OFF, which is what was asked for on "
+      "2026-08-08")
 
 # An unreadable ledger must not invent a floor, nor block a listing.
 _saved_db = m.sales_db

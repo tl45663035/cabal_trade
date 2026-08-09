@@ -77,6 +77,35 @@ MUTATIONS = [
      'if before and after and before - after == expected:',
      'if before and after:'),
 
+    ("cost floor escapes the Cores",
+     "set_behind stops answering \"not a Core\", so the relist/resupply cost "
+     "floor starts binding on unique items too -- the operator's rule is that "
+     "it applies to Cores ONLY",
+     '''    slot = favourite_for(core_name)
+    if slot is None:
+        return ""''',
+     '''    slot = favourite_for(core_name)
+    if slot is None:
+        return core_name'''),
+
+    ("cost floor ignores its flag",
+     "listing_floor applies the purchase cost regardless of "
+     "COST_FLOOR_ON_RELIST, so turning the floor off does nothing and a "
+     "position whose market has fallen still refuses to move",
+     '''    if not COST_FLOOR_ON_RELIST:
+        return catalogue, "the floor set for this item"
+    cost = purchase_cost_basis(name)''',
+     '''    cost = purchase_cost_basis(name)'''),
+
+    ("the flag takes the VIP floor with it",
+     "switching the cost floor off also drops ITEM_PRICE_FLOORS, so a VIP "
+     "lists at the market -- the operator's floors are absolute and are NOT "
+     "behind this flag",
+     '''    if not COST_FLOOR_ON_RELIST:
+        return catalogue, "the floor set for this item"''',
+     '''    if not COST_FLOOR_ON_RELIST:
+        return 0, "no floor"'''),
+
     ("sort direction by substring",
      "purchase_sorted_low_to_high goes back to looking for 'low' anywhere in "
      "the control, so 'By Price:High to Low' reads as ready to buy and row 1 "

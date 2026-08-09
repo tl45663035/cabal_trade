@@ -50,6 +50,7 @@ import time
 import traceback
 from dataclasses import dataclass
 from datetime import datetime
+import datetime as _dt
 from pathlib import Path
 
 # ==========================================================================
@@ -166,7 +167,7 @@ MIN_PLAUSIBLE_PRICE = 1_000
 SUSPECT_PRICE_FRACTION = 0.5
 
 # A relist may not drop below this fraction of what the item is CURRENTLY
-# listed at. Listed at 200,000, the lowest a relist can go is 190,000.
+# listed at. Listed at 200,000, the lowest a relist can go is 198,000.
 #
 # This is the brake that was missing. "Take the lowest current price, whatever
 # it is" is right when the reading is right, and catastrophic when it is not:
@@ -176,16 +177,25 @@ SUSPECT_PRICE_FRACTION = 0.5
 # note. Only items in ITEM_PRICE_FLOORS were protected at all.
 #
 # Deliberately a RATCHET, not a hard floor. A genuine crash is still followed,
-# 5% per relist, converging on the market over several cycles -- 200,000
-# against a real market of 100,000 walks 190,000 -> 180,500 -> 171,475 and so
-# on. That is the trade: a real drop costs more cycles of sitting over the
-# market, and a misread costs 5% instead of everything.
+# 1% per relist, converging on the market over many cycles -- 200,000 against a
+# real market of 100,000 walks 198,000 -> 196,020 -> 194,060 and so on, and
+# takes 69 relists to halve. That is the trade: a real drop costs more cycles
+# of sitting over the market, and a misread costs 1% instead of everything.
 #
-# Tightened from 0.90 on 2026-08-07 after a Yekaterina VIP went 115,988,564 ->
-# 104,999,999 in one relist. That was a 9.47% drop and so WITHIN the old
-# allowance -- the guard did not fail, it was simply set wider than intended.
-# At 0.95 the same relist is refused: the bound becomes 110,189,136.
-RELATIVE_PRICE_FLOOR = 0.95
+# History, because the number has moved twice and the reasons differ:
+#
+#   0.90            the original allowance.
+#   0.90 -> 0.95    2026-08-07, after a Yekaterina VIP went 115,988,564 ->
+#                   104,999,999 in ONE relist. A 9.47% drop, so WITHIN the old
+#                   allowance -- the guard did not fail, it was set wider than
+#                   intended. At 0.95 that relist is refused at 110,189,136.
+#   0.95 -> 0.99    2026-08-08, at the operator's request, and now carrying
+#                   more weight than before: COST_FLOOR_ON_RELIST was turned
+#                   off the same day, so the managed Cores have no absolute
+#                   floor at all (their ITEM_PRICE_FLOORS entry is 0). This
+#                   ratchet is the only thing left limiting a descent on them,
+#                   and 1% a cycle is a slow enough walk to notice.
+RELATIVE_PRICE_FLOOR = 0.99
 
 # --------------------------------------------------------------------------
 # WHAT GETS RELISTED
@@ -2648,6 +2658,96 @@ SET_STACK_MAX = 999
 # sold-out Core is still correctly detected.
 RESTOCK_BEFORE_RELIST = True
 
+# --------------------------------------------------------------------------
+# SERVER WAR SCHEDULE
+# --------------------------------------------------------------------------
+#
+# Wars start every three hours on the SERVER clock, at the same times every day
+# of the week. From the server's published schedule for LVL 200-200:
+#
+#     01:00 IP    04:00 TG    07:00 MC    10:00 TG
+#     13:00 IP    16:00 TG    19:00 MC    22:00 TG
+#
+# (IP = Ingens Proelium, TG = Tierra Gloriosa, MC = Memoria Chrysos. Sunday
+# 16:00 is a Flag War, still a TG.) Which war it is does not matter here -- the
+# lag does, and it arrives when one ENDS and the server empties the
+# battlefield at once.
+WAR_START_HOURS = (1, 4, 7, 10, 13, 16, 19, 22)
+WAR_MINUTES = 30
+
+# Stop this long BEFORE the war ends, and stay stopped this long in total.
+# So a war ending at 04:30 means quiet from 04:29 to 04:34.
+WAR_QUIET_BEFORE_END = 60
+WAR_QUIET_SECONDS = 300
+
+# How long one relist row might take, so a row is not STARTED that would run
+# into the quiet window. Measured on the 17:24 run of 2026-08-08: 10m35s for
+# five rows, ~127s each. Rounded up, because overrunning the window is the
+# thing this exists to prevent and finishing early costs nothing.
+WAR_ROW_ALLOWANCE = 150.0
+
+# The same question at a cycle boundary. A cycle is many rows, so waiting for
+# a whole one to fit would idle for far longer than the window itself; the
+# check before each ROW is what actually keeps work out of it, and this only
+# stops a cycle beginning inside one.
+WAR_CYCLE_ALLOWANCE = 0.0
+
+# The server clock in the game HUD, bottom left: gold "HH:MM" on a dark panel.
+#
+# Narrow on purpose. Measured across 100 saved frames: this crop reads at
+# conf 96, and widening it by ten pixels in any direction reads NOTHING --
+# Tesseract's segmentation changes with the crop, the same way
+# PURCHASE_DLG_QTY_VALUE does. Do not tidy the numbers.
+SERVER_CLOCK_REGION = (20, 1275, 120, 1310)
+
+# A reading is HH:MM with no seconds, so a clock that says 04:29 is anywhere in
+# that minute. Every decision below therefore assumes the LATEST time the
+# reading allows, which errs toward stopping early -- the safe direction, and
+# at most one minute of lost work.
+SERVER_CLOCK_UNCERTAINTY = 59
+
+# How long a reading stays good before it is taken again. time.monotonic()
+# does the timekeeping in between; this only guards against the server's clock
+# moving under us, or a reading having been wrong.
+SERVER_CLOCK_RESYNC = 1800.0
+
+# An arbitrary fixed date for the server clock to hang off.
+#
+# NOT today's date, and that is the point: this machine keeps bad time, so the
+# war schedule is built to never ask it. Only the time of day matters -- the
+# schedule is the same every day of the week -- and this exists solely to give
+# war_quiet_window a datetime it can add days to. A leap year with no daylight
+# saving anywhere in it, so no date arithmetic below can land on a missing or
+# repeated hour.
+SERVER_CLOCK_EPOCH = _dt.datetime(2024, 1, 3)
+
+# Does a relist refuse to price below what the stock COST?
+#
+# Off. Turned off deliberately on 2026-08-08: "if we bought at 100k and current
+# lowest price is 99k, we use 100k floor -- remove this". The operator would
+# rather move stock at the market than hold it waiting for a price that may not
+# come back, which is the same call as "I rather move more revenue than not
+# moving at all".
+#
+# What it protected against is real and is written up in purchase_cost_basis:
+# Force Core (Ultimate) was bought at 428,571 a Set and the loose Core fell to
+# 386,831 within the hour, and "take the lowest current price" would then sell
+# the whole holding at a loss one relist at a time. With this off, that is an
+# outcome the operator has chosen rather than one the script fell into. The 5%
+# ratchet still limits how FAST a price can fall, and --min-price still sets a
+# hard bound per run.
+#
+# What this does NOT touch, in either position:
+#
+#   ITEM_PRICE_FLOORS   the operator's own floors, VIP items included. Those
+#                       are absolute and are not a flag. listing_floor still
+#                       applies them, and the higher of the two still wins
+#                       whenever this is on.
+#   profit reporting    cost_of_goods_sold reads purchase_cost_basis directly.
+#                       Accounting says what was paid regardless of what
+#                       pricing does with it.
+COST_FLOOR_ON_RELIST = False
+
 BUY_ENABLED = False
 # The runtime target, separate from the RESTOCK_TARGET constant so --buy
 # can change it without shadowing the default the CLI advertises.
@@ -2828,7 +2928,7 @@ ENABLE_BUYING: dict[str, bool] = {
     "Force Core(High)":        True,
     "Force Core(Highest)":     True,
     "Force Core (Ultimate)":   True,
-    "Upgrade Core(Highest)":   True,
+    "Upgrade Core(Highest)":   False,
     "Upgrade Core (Ultimate)": True,
 }
 
@@ -7379,11 +7479,18 @@ def bring_into_view(ref: RowRef, timeout: float = 8.0,
     """Scroll until the listing `ref` names is on screen; return that view.
 
     Walks down from the top in verified chunks. Deliberately does NOT take an
-    absolute position: relist() closes the Trade window after every row, so the
-    view is back at the top each time this is called, and a position measured
-    when the batch started is stale by the time later rows are reached --
-    cancelling one listing renumbers everything below it. Identity does not go
-    stale, so identity is what this searches by.
+    absolute position: a position measured when the batch started is stale by
+    the time later rows are reached, because cancelling one listing renumbers
+    everything below it. Identity does not go stale, so identity is what this
+    searches by.
+
+    It re-establishes the TOP first because that is a known origin for a
+    verified walk, not because the view was reset for it. This used to say
+    "relist() closes the Trade window after every row, so the view is back at
+    the top each time" -- that stopped being true when close_shop() became
+    bounded by shop_session_expired(), and the window now normally stays open
+    across the whole batch. The comment outlived the behaviour and was still
+    being quoted as a reason on 2026-08-08.
 
     Returns the view containing the listing. If the whole shop is walked
     without a match, returns the LAST view read rather than None, so the
@@ -7422,9 +7529,19 @@ def bring_into_view(ref: RowRef, timeout: float = 8.0,
     # sweep truncated mid-shop; this path never got it.
     unchanged = 0
     previous = [_row_key(r) for r in rows]
+    walked = 0
     while steps < MAX_SCROLL_CHUNKS * SCROLL_STEP:
         steps += 1
         if holds(rows):
+            # Reported, because this walk used to be entirely SILENT and that
+            # made it invisible in exactly the investigation it mattered for:
+            # on 2026-08-08 a log grep found "0 scroll operations" while the
+            # operator was watching the rows scroll on screen. The enumeration
+            # announces its stepping; this path never did, so its cost was
+            # attributed to whatever printed next.
+            if verbose and walked:
+                print(f"  walked {walked} row(s) down in {steps - 1} step(s) "
+                      f"to reach {ref.name!r}.")
             return rows
         step = informative_step(rows, SCROLL_STEP)
         after, shift = scroll_chunk(step, rows, timeout=timeout,
@@ -7432,6 +7549,7 @@ def bring_into_view(ref: RowRef, timeout: float = 8.0,
         if after is None or shift is None:
             return None
         rows = after
+        walked += shift
 
         current = [_row_key(r) for r in rows]
         if current == previous:
@@ -8196,8 +8314,34 @@ def listing_floor(name: str) -> tuple[int, str]:
 
     Returned together with its reason so the log can say which rule bound --
     an operator floor and a cost floor fail for different causes.
+
+    The two rules are NOT symmetric, and the asymmetry is the operator's,
+    stated on 2026-08-08:
+
+      "the absolute price floor for my unique items stay the same, and they
+       always applied no matter what. no flags for those. The price floor of
+       relisting/resupplying only apply for cores"
+
+    So:
+
+      ITEM_PRICE_FLOORS    always. Not behind COST_FLOOR_ON_RELIST, not behind
+                           anything, and not a tunable. A VIP is never listed
+                           below its floor whatever else is switched off.
+      purchase_cost_basis  Cores only, and only when COST_FLOOR_ON_RELIST is
+                           on (it ships OFF).
+
+    The "Cores only" half is enforced by purchase_cost_basis via set_behind:
+    a name resolves to a favourite slot, and only a Core's slot has a paired
+    Set slot. That is a real constraint but an INDIRECT one -- it holds because
+    of how FAVOURITE_SLOTS happens to be arranged, so putting a non-Core in a
+    slot with a partner would quietly extend the cost floor to it.
+    buying_gaps_test asserts both halves against the whole ITEM_PRICE_FLOORS
+    catalogue rather than a sample, so adding an entry cannot add an untested
+    one.
     """
     catalogue = item_price_floor(name)
+    if not COST_FLOOR_ON_RELIST:
+        return catalogue, "the floor set for this item"
     cost = purchase_cost_basis(name)
     if cost > catalogue:
         return cost, "what its Sets were bought for"
@@ -8975,17 +9119,32 @@ def profit_report() -> str:
     """
     gross = sum(s["proceeds"] or 0 for s in SALES)
     spend = sum(p["spend"] or 0 for p in PURCHASES)
-    if not SALES and not PURCHASES:
+    totals = all_time_totals()
+
+    # Only silent when there is genuinely nothing anywhere -- a fresh ledger.
+    #
+    # This used to return here whenever THIS RUN was quiet, which suppressed
+    # the ALL TIME block as well, and that block comes from the database and is
+    # true regardless of what the current run did. So a 35-minute run that
+    # relisted fourteen rows, bought nothing because the savings were under
+    # threshold, and collected nothing, ended with no money figures at all --
+    # on 2026-08-08 the operator asked where they had gone. A quiet run is
+    # exactly when the standing position is worth seeing.
+    if not SALES and not PURCHASES and not totals:
         return ""
 
     net = gross - spend
-    lines = ["", "=" * 74,
-             f"THIS RUN: {len(SALES)} collection(s) in {gross:,} Alz, "
-             f"{len(PURCHASES)} purchase(s) out {spend:,} Alz",
-             f"          net {net:+,} Alz",
-             "=" * 74]
+    if SALES or PURCHASES:
+        lines = ["", "=" * 74,
+                 f"THIS RUN: {len(SALES)} collection(s) in {gross:,} Alz, "
+                 f"{len(PURCHASES)} purchase(s) out {spend:,} Alz",
+                 f"          net {net:+,} Alz",
+                 "=" * 74]
+    else:
+        lines = ["", "=" * 74,
+                 "THIS RUN: nothing collected and nothing bought.",
+                 "=" * 74]
 
-    totals = all_time_totals()
     if totals:
         sales_n, all_gross, buys_n, all_spend = totals
         cogs, priced, unpriced = cost_of_goods_sold()
@@ -10146,9 +10305,11 @@ def register_item(
             if (floor_price and suggested > 0
                     and suggested < floor_price * SUSPECT_PRICE_FRACTION):
                 # Reports the RAW market read, which is no longer what gets
-                # listed -- RELATIVE_PRICE_FLOOR clamps the drop to 10%. This
-                # used to end "listing at the market price anyway", which the
-                # ratchet made untrue.
+                # listed -- RELATIVE_PRICE_FLOOR clamps the drop. This used to
+                # end "listing at the market price anyway", which the ratchet
+                # made untrue. The size is deliberately not restated here: it
+                # has moved twice, and this comment said 10% while the constant
+                # said 5%.
                 say(f"NOTE: market {suggested:,} is only "
                     f"{suggested / floor_price:.1%} of the previous "
                     f"{floor_price:,} - a drop that large is as likely to be a "
@@ -11486,6 +11647,14 @@ def relist_rows(
     failed_rows: list[str] = []
     for position, (index, ref, action) in enumerate(targets, start=1):
         name = ref.name
+
+        # Checked BETWEEN rows, never inside one. A row is cancel-then-relist,
+        # and the item sits loose in the inventory in between -- stopping there
+        # would strand it, which is the failure ensure_work_tab_empty exists to
+        # catch on the next cycle. The allowance keeps a row from being STARTED
+        # that would still be running when the window opens.
+        avoid_warlag(allowance=WAR_ROW_ALLOWANCE, verbose=verbose)
+
         say(f"\n########## {position}/{len(targets)}: row {index} - {name!r} ##########")
 
         if action == "register" or name == "(empty)":
@@ -11860,6 +12029,190 @@ def run_sequence(actions: list[str], dry_run: bool = False, verbose: bool = True
     return True
 
 
+# HH:MM anywhere in the crop, with whatever junk glyph OCR appended.
+# Anchored on the colon rather than on the string ends: '23:48"' and '19:28 7'
+# are correct readings with a trailing artefact, and they are the common case
+# rather than the exception.
+#
+# The lookbehind is load-bearing. Without it, the misread '43:21' matches at
+# the '3' and yields 03:21 -- a perfectly plausible time, in range, two hours
+# from the truth, and enough to move the whole war schedule. The range check
+# below cannot catch that because 03:21 IS a valid time. No matching lookahead
+# on the minutes, though: '23:489' is a correct 23:48 with a junk digit stuck
+# on the end, and that is a reading worth keeping.
+_SERVER_CLOCK_TEXT = re.compile(r"(?<!\d)([0-2]?\d)\s*[:.]\s*([0-5]\d)")
+
+# (monotonic when read, server datetime it read). The local clock does the
+# timekeeping between syncs; this is only the anchor.
+_SERVER_CLOCK_SYNC: "tuple[float, _dt.datetime] | None" = None
+
+
+def read_server_clock(source: "Image.Image | None" = None,
+                      verbose: bool = False) -> "_dt.time | None":
+    """The server clock from the HUD, or None if it did not read cleanly.
+
+    Range-checked rather than trusted: a misread digit turned 13:21 into 43:21
+    on one of the saved frames, and an hour of 43 would move the whole war
+    schedule if it were believed.
+    """
+    shot = source if source is not None else grab()
+    words = [w for w in find_words(shot, SERVER_CLOCK_REGION, 20)
+             if w.conf >= 40]
+    text = " ".join(w.text for w in words)
+    match = _SERVER_CLOCK_TEXT.search(text)
+    if match is None:
+        if verbose:
+            print(f"  the server clock did not read ({text!r}).")
+        return None
+    hour, minute = int(match.group(1)), int(match.group(2))
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        if verbose:
+            print(f"  the server clock read {hour}:{minute:02d}, which is not "
+                  f"a time - ignoring it.")
+        record("warlag.clock_absurd", text=text, hour=hour, minute=minute)
+        return None
+    return _dt.time(hour, minute)
+
+
+def sync_server_clock(verbose: bool = False) -> bool:
+    """Anchor the server clock. True if it took.
+
+    THE COMPUTER'S CLOCK IS NOT CONSULTED, deliberately. The operator's machine
+    keeps bad time, and every dependency on it here would be a silent one: a
+    wrong wall clock does not raise, it just makes the script stop for a war
+    that is not happening and work through one that is.
+
+    So there are exactly two inputs. The TIME OF DAY comes from the game's own
+    HUD, which is the server's own clock and the only authority that matters.
+    ELAPSED time between readings comes from time.monotonic(), which counts
+    seconds since an arbitrary point and is unaffected by the wall clock being
+    wrong, by NTP correcting it, by a manual change, or by daylight saving.
+
+    The date attached below is a fixed arbitrary epoch, not today. Only the
+    time of day means anything -- the war schedule is identical every day of
+    the week -- and the epoch exists purely so the arithmetic in
+    war_quiet_window has a datetime to add days to. Using date.today() here
+    would drag the machine's calendar back into a calculation that does not
+    need it.
+    """
+    global _SERVER_CLOCK_SYNC
+    reading = read_server_clock(verbose=verbose)
+    if reading is None:
+        return False
+    # The reading names a MINUTE, so the true second is unknown. Taking the
+    # END of that minute makes every "have we reached the quiet window"
+    # question answer YES slightly early rather than slightly late.
+    stamped = SERVER_CLOCK_EPOCH + _dt.timedelta(
+        hours=reading.hour, minutes=reading.minute,
+        seconds=SERVER_CLOCK_UNCERTAINTY)
+    _SERVER_CLOCK_SYNC = (time.monotonic(), stamped)
+    if verbose:
+        print(f"  server clock reads {reading.hour:02d}:{reading.minute:02d} "
+              f"(read from the game, not from this machine).")
+    record("warlag.clock_synced", server=stamped.strftime("%H:%M"))
+    return True
+
+
+def server_now(resync: bool = True,
+               verbose: bool = False) -> "_dt.datetime | None":
+    """Server time now, from the last sync plus elapsed local time.
+
+    None only when the clock has never been read successfully. After one good
+    reading this keeps working through every later OCR failure, which is the
+    point: a dialog covering the corner must not silently switch the war
+    schedule off.
+    """
+    global _SERVER_CLOCK_SYNC
+    stale = (_SERVER_CLOCK_SYNC is None
+             or time.monotonic() - _SERVER_CLOCK_SYNC[0] > SERVER_CLOCK_RESYNC)
+    if stale and resync:
+        sync_server_clock(verbose=verbose)
+    if _SERVER_CLOCK_SYNC is None:
+        return None
+    at, stamped = _SERVER_CLOCK_SYNC
+    return stamped + _dt.timedelta(seconds=time.monotonic() - at)
+
+
+def war_quiet_window(after: "_dt.datetime") -> "tuple[_dt.datetime, _dt.datetime]":
+    """The quiet window in force at `after`, or the next one to come.
+
+    Returns (start, end) in the same frame as `after` -- server time. The
+    window brackets the END of a war, not its start: that is when the server
+    empties and the lag lands.
+    """
+    best: "tuple[_dt.datetime, _dt.datetime] | None" = None
+    # Yesterday and tomorrow as well as today: a war ending at 22:30 has a
+    # window running to 22:34, and one at 01:00 belongs to the next day when
+    # asked at 23:50.
+    for day in (-1, 0, 1):
+        midnight = (after + _dt.timedelta(days=day)).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        for hour in WAR_START_HOURS:
+            ends = midnight + _dt.timedelta(hours=hour, minutes=WAR_MINUTES)
+            start = ends - _dt.timedelta(seconds=WAR_QUIET_BEFORE_END)
+            end = start + _dt.timedelta(seconds=WAR_QUIET_SECONDS)
+            if end <= after:
+                continue                      # already over
+            if best is None or start < best[0]:
+                best = (start, end)
+    assert best is not None                   # the loop spans three days
+    return best
+
+
+def avoid_warlag(allowance: float = 0.0, verbose: bool = True) -> float:
+    """Stop and wait if a war is about to end. Returns seconds waited.
+
+    `allowance` is how long the caller is about to spend before it can stop
+    again -- one relist row is about two minutes -- so work is not STARTED that
+    would run into the window. Called at row and cycle boundaries only: a row
+    is cancel-then-relist, and pausing between those halves would leave the
+    item sitting in the inventory unlisted.
+
+    The game is put back to its default state first, so nothing is left open
+    across the lag.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    now = server_now(verbose=verbose)
+    if now is None:
+        say("  the server clock has never read, so the war schedule cannot be "
+            "followed this run.")
+        return 0.0
+
+    start, end = war_quiet_window(now)
+    if now < start and (start - now).total_seconds() > allowance:
+        return 0.0
+
+    wait = (end - now).total_seconds()
+    if wait <= 0:
+        return 0.0
+
+    reason = ("a war ends in "
+              f"{(start + _dt.timedelta(seconds=WAR_QUIET_BEFORE_END) - now).total_seconds() / 60:.1f} min"
+              if now < start else "a war has just ended")
+    say(f"\nWAR LAG: {reason} (server {now:%H:%M:%S}). Going to the default "
+        f"state and waiting {wait / 60:.1f} min, until server "
+        f"{end:%H:%M:%S}.")
+    record("warlag.pausing", server=now.strftime("%H:%M:%S"),
+           until=end.strftime("%H:%M:%S"), seconds=round(wait, 1),
+           allowance=allowance)
+
+    try:
+        leave_shop(verbose=verbose)
+    except Exception as exc:  # noqa: BLE001 - the wait matters more
+        say(f"  could not close the shop before waiting ({exc}); waiting "
+            "anyway.")
+
+    deadline = time.monotonic() + wait
+    while time.monotonic() < deadline:
+        time.sleep(min(5.0, deadline - time.monotonic()))
+    say(f"WAR LAG: done waiting; resuming where it left off.")
+    record("warlag.resumed", seconds=round(wait, 1))
+    return wait
+
+
 def leave_shop(verbose: bool = True) -> bool:
     """Put the game back to its default state: no dialog, no Trade window.
 
@@ -12008,6 +12361,11 @@ def run_loop(
             cycle += 1
             started = time.monotonic()
             say(f"\n===== cycle {cycle} at {datetime.now():%H:%M:%S} =====")
+
+            # Also at the cycle boundary, so a run that starts inside a window
+            # waits rather than walking into it. The per-row check above is
+            # what keeps work out of the window once a cycle is under way.
+            avoid_warlag(allowance=WAR_CYCLE_ALLOWANCE, verbose=verbose)
             # A gap in the index is only diagnostic if the boundaries are in
             # it. A cycle.start with no cycle.end means it died mid-cycle; a
             # cycle.end with no following start means the loop exited, and
@@ -13175,6 +13533,50 @@ class _Tee:
     def __init__(self, stream, handle):
         self._stream = stream
         self._handle = handle
+        self._started = time.monotonic()
+        self._last = self._started
+        self._at_line_start = True
+
+    def _prefix(self) -> str:
+        """`[ elapsed +delta]` for the line about to be written.
+
+        Both figures come from time.monotonic(), never the wall clock. This
+        machine keeps bad time, and a duration computed from a clock that jumps
+        is worse than no duration at all -- it looks authoritative and is
+        wrong. monotonic() is unaffected by the clock being wrong, by NTP
+        correcting it, or by daylight saving.
+
+        `elapsed` is seconds since the log opened; `delta` is seconds since the
+        previous line, which is what actually answers "how long did that step
+        take" -- the gap BEFORE a line is the work that produced it.
+        """
+        now = time.monotonic()
+        delta = now - self._last
+        self._last = now
+        return f"[{now - self._started:8.1f} +{delta:6.1f}] "
+
+    def _stamped(self, text: str) -> str:
+        """`text` with a timing prefix on each line that starts one.
+
+        Applied to the FILE only, never to the console: the console is read
+        live and the prefixes would just be noise, and -- more importantly --
+        the failpath suites capture stdout and assert on exact wording. Adding
+        eighteen characters to every captured line would break them for a
+        reason that has nothing to do with what they test.
+
+        Written a line at a time rather than per write() call because print()
+        emits the text and the newline separately, so "is this the start of a
+        line" is state, not something a single call can see.
+        """
+        out = []
+        for piece in text.splitlines(keepends=True):
+            if self._at_line_start and piece.strip():
+                # Blank separator lines are left bare. There are a lot of them
+                # and a stamped empty line is just a wall of brackets.
+                out.append(self._prefix())
+            out.append(piece)
+            self._at_line_start = piece.endswith(("\n", "\r"))
+        return "".join(out)
 
     def write(self, text):
         self._stream.write(text)
@@ -13183,7 +13585,7 @@ class _Tee:
         except Exception:      # noqa: BLE001 - a console that will not flush
             pass               # must not stop the log being written
         try:
-            self._handle.write(text)
+            self._handle.write(self._stamped(text))
             self._handle.flush()
         except Exception:      # noqa: BLE001 - logging never breaks the run
             pass
@@ -13232,6 +13634,9 @@ def start_run_log(argv: list[str]) -> "Path | None":
             f"script    {Path(__file__).resolve()}\n"
             f"python    {sys.version.split()[0]}\n"
             f"cwd       {Path.cwd()}\n"
+            f"timing    [elapsed +delta] seconds, from a MONOTONIC clock.\n"
+            f"          delta is the gap since the previous line -- i.e. how\n"
+            f"          long the step that produced this line took.\n"
             f"{'=' * 60}\n")
         _log_handle.flush()
         sys.stdout = _Tee(sys.stdout, _log_handle)
@@ -13413,6 +13818,14 @@ def main() -> None:
                    help="with --register, list at exactly this price")
     p.add_argument("--qty", type=int, default=None, metavar="N",
                    help="with --register, list exactly this quantity")
+    p.add_argument("--cost-floor", dest="cost_floor", action="store_true",
+                   default=None,
+                   help="refuse to relist below what the stock cost "
+                        f"(default: {'on' if COST_FLOOR_ON_RELIST else 'off'})")
+    p.add_argument("--no-cost-floor", dest="cost_floor", action="store_false",
+                   help="allow relisting below what the stock cost, so a "
+                        "position whose market has fallen still moves. Does "
+                        "NOT affect ITEM_PRICE_FLOORS, which always apply")
     p.add_argument("--buy", action="store_true",
                    help="restock sold-out Cores: buy Sets, convert them, "
                         "list the result (see RESTOCK_TARGET)")
@@ -13553,6 +13966,16 @@ def main() -> None:
         global NO_INPUT
         NO_INPUT = True
 
+    # A module flag rather than a threaded argument, same reasoning as --buy
+    # below. `default=None` on the pair is what makes "not mentioned" distinct
+    # from "explicitly off", so the constant stays the single place the default
+    # lives instead of being restated in the parser.
+    # Assigned through globals() rather than a `global` statement because the
+    # parser above already READS this constant to print its own default, and a
+    # `global` declaration may not follow a use in the same function.
+    if args.cost_floor is not None:
+        globals()["COST_FLOOR_ON_RELIST"] = bool(args.cost_floor)
+
     # --buy is a module flag rather than an argument threaded through
     # relist_rows, for the same reason NO_INPUT is: a new caller cannot forget
     # to pass a global. It spends real money, so it is off unless asked for.
@@ -13568,18 +13991,37 @@ def main() -> None:
         # Same reasoning for the per-item saving floors: an unmatched key there
         # reads as "this item is back on the default", which is invisible.
         validate_price_diff_floors()
-        scope = (", ".join(FAVOURITE_SLOTS[s] for s in allowed)
-                 if allowed else "NOTHING (every entry in ENABLE_BUYING is off)")
-        print(f"--buy is ON for {scope}: a sell-out triggers buy -> convert "
-              f"-> list, holding a minimum of {RESTOCK_TARGET} Sets and no "
-              f"more than {BUY_MAXIMUM}.")
-        # Spelled out per item, because they now differ. A single figure in the
-        # banner while the code used several would be worse than none.
-        print("  saving required per item: "
-              + ", ".join(
-                  f"{FAVOURITE_SLOTS[s]} {price_diff_floor_for(FAVOURITE_SLOTS[s]):,}"
-                  for s in allowed)
-              + f" (default {PRICE_DIFF_FLOOR:,})")
+
+        # Every managed Core, ON and off alike, with a count.
+        #
+        # The banner used to name only the enabled ones, which answers "what
+        # will this spend on" but not "what did I think would be spending".
+        # Those differ exactly when something is off by accident, and a Core
+        # switched off reads identically to a Core that never sells -- the shop
+        # simply runs dry and nothing says why. An off row costs one line and
+        # makes that visible at the top of the log, where it is read.
+        managed = managed_core_slots()
+        print(f"--buy is ON: {len(allowed)} of {len(managed)} managed Core(s) "
+              f"enabled for resupply. A sell-out triggers buy -> convert -> "
+              f"list, holding a minimum of {RESTOCK_TARGET} Sets and no more "
+              f"than {BUY_MAXIMUM}.")
+        for slot in managed:
+            name = FAVOURITE_SLOTS[slot]
+            if slot in allowed:
+                # The saving is per item and they differ, so it is spelled out
+                # per row. A single figure in the banner while the code used
+                # several would be worse than none.
+                saving = price_diff_floor_for(name)
+                print(f"    ON   slot {slot:>2}  {name:26} "
+                      f"saving required {saving:>9,}"
+                      + ("" if saving == PRICE_DIFF_FLOOR
+                         else f"  (default {PRICE_DIFF_FLOOR:,})"))
+            else:
+                print(f"    off  slot {slot:>2}  {name:26} "
+                      f"ENABLE_BUYING is False; it will never be restocked")
+        if not allowed:
+            print("    NOTHING will be bought: every entry in ENABLE_BUYING "
+                  "is off, so --buy has no effect this run.")
 
 
     clicking = always_clicks or (honours_dry_run and not args.dry_run)

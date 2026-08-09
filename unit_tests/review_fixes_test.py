@@ -23,6 +23,7 @@ wherever a literal is knowable, and always include the case that used to pass.
 
 NOTHING here touches the game.
 """
+import math
 import os
 import sys
 import tempfile
@@ -308,22 +309,50 @@ check(m.pack_size("Force Core Set (High) X 250") == 250,
 check(m.pack_size("Yekaterina VIP Membership") == 1,
       "and an item with no marker is one item")
 
-# The floor still binds, and still binds through choose_price.
-floor, why_floor = m.listing_floor("Force Core (Ultimate) X 250")
-check(floor == CLEAN,
-      f"listing_floor on a table name returns the cost, got {floor:,}")
-check("bought" in why_floor or "Sets" in why_floor,
-      f"and says it came from what was paid, got {why_floor!r}")
-price, _ = m.choose_price(100_000, floor_price=600_000, absolute_floor=floor)
-check(price >= CLEAN, f"a collapsed market cannot price under cost ({price:,})")
+# The floor still binds, and still binds through choose_price -- when it is
+# switched on. COST_FLOOR_ON_RELIST ships OFF (see the constant), so this asks
+# for it rather than assuming it: the point of this section is that the pack
+# marker is stripped before the cost is looked up, and that has to keep working
+# for anyone who turns the floor back on.
+_saved_cf = m.COST_FLOOR_ON_RELIST
+try:
+    m.COST_FLOOR_ON_RELIST = True
+    floor, why_floor = m.listing_floor("Force Core (Ultimate) X 250")
+    check(floor == CLEAN,
+          f"listing_floor on a table name returns the cost, got {floor:,}")
+    check("bought" in why_floor or "Sets" in why_floor,
+          f"and says it came from what was paid, got {why_floor!r}")
+    price, _ = m.choose_price(100_000, floor_price=600_000,
+                              absolute_floor=floor)
+    check(price >= CLEAN,
+          f"a collapsed market cannot price under cost ({price:,})")
 
-# Thirty relists against a collapsed market converge ON cost, not through it.
-# The 5% ratchet limits the SPEED of a fall; only this limits the depth.
-price = 600_000
-for _ in range(30):
+    # The pack marker still has to be stripped with the flag OFF, because
+    # item_price_floor runs down the same path -- and THAT is the floor a VIP
+    # depends on. The 2026-08-07 bug deleted both at once.
+    m.COST_FLOOR_ON_RELIST = False
+    check(m.listing_floor("Force Core (Ultimate) X 250")[0]
+          == m.item_price_floor("Force Core (Ultimate) X 250"),
+          "with the cost floor off, the catalogue floor is what is left")
+finally:
+    m.COST_FLOOR_ON_RELIST = _saved_cf
+
+# Enough relists against a collapsed market converge ON cost, not through it.
+# The ratchet limits the SPEED of a fall; only the floor limits the DEPTH.
+#
+# The iteration count is derived from the ratchet rather than typed. It was 30,
+# which was ample at 5% and not enough at 1% -- so retuning the ratchet on
+# 2026-08-08 made this report a floor failure when the floor was working
+# perfectly and the loop simply had not finished falling yet.
+_start = 600_000
+_needed = math.ceil(math.log(CLEAN / _start)
+                    / math.log(m.RELATIVE_PRICE_FLOOR))
+price = _start
+for _ in range(_needed + 5):
     price, _ = m.choose_price(100_000, floor_price=price, absolute_floor=floor)
 check(price == CLEAN,
-      f"thirty relists settle exactly at cost {CLEAN:,}, got {price:,}")
+      f"{_needed + 5} relists settle exactly at cost {CLEAN:,}, got "
+      f"{price:,}")
 
 # No false positives: an item that is not a Core still has no cost floor.
 check(m.set_behind("Yekaterina VIP Membership X 6") == "",

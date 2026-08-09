@@ -104,9 +104,20 @@ check("the HIGHER of the two bounds wins", got == ratchet(120_000_000),
 check("...and the reason names the ratchet, not the floor",
       f"{DROP}% below the listed" in why, why)
 
-got, why = price(100_000_000, previous=105_999_999, absolute=104_000_000)
-check("the absolute floor wins when it is higher", got == 104_000_000,
-      f"{got:,} -- the ratchet on 105,999,999 is {ratchet(105_999_999):,}, below the floor")
+# Derived, not typed. The point of this case is a previous price whose
+# RATCHET lands below the absolute floor, and 105,999,999 only did that while
+# the ratchet was 5%: at 1% its bound is 104,940,000, above the floor, so the
+# case silently stopped testing what it names. Sit it halfway between the
+# floor and the highest previous price whose ratchet still clears it, and it
+# holds at any rate.
+_VIP = 104_000_000
+_prev_below = int(_VIP + (_VIP / FLOOR - _VIP) * 0.5)
+assert ratchet(_prev_below) < _VIP < _prev_below, (
+    f"the scenario must put the ratchet BELOW the floor: "
+    f"ratchet({_prev_below:,}) = {ratchet(_prev_below):,} vs {_VIP:,}")
+got, why = price(100_000_000, previous=_prev_below, absolute=_VIP)
+check("the absolute floor wins when it is higher", got == _VIP,
+      f"{got:,} -- the ratchet on {_prev_below:,} is {ratchet(_prev_below):,}, below the floor")
 check("...and the reason names the floor",
       "floor for this item" in why, why)
 
@@ -138,8 +149,13 @@ check("no market and no previous still parks at the fallback",
 # ===========================================================================
 section("the ratchet converges on a genuine crash")
 
+# The step budget is derived too. A 5% ratchet halves in 14 cycles and a 1%
+# ratchet takes 69, so a hardcoded range(20) does not test a slower ratchet --
+# it just fails to reach the market and reports a convergence bug that is not
+# there.
+_want = math.ceil(math.log(0.5) / math.log(trade.RELATIVE_PRICE_FLOOR))
 listed, steps = 200_000, []
-for _ in range(20):
+for _ in range(_want + 5):
     listed, why = trade.choose_price(100_000, 0, listed, 0)
     steps.append(listed)
     if not why:
@@ -150,7 +166,6 @@ check("a real crash is followed, not blocked", steps[-1] == 100_000,
 # cycles, so a fixed bound fails when RELATIVE_PRICE_FLOOR is retuned -- for a
 # reason that has nothing to do with correctness. What must hold is that it
 # converges in the number of steps the rate implies, and not in one.
-_want = math.ceil(math.log(0.5) / math.log(trade.RELATIVE_PRICE_FLOOR))
 check("...taking several cycles, not one", _want <= len(steps) <= _want + 3,
       f"{len(steps)} cycles: {steps}")
 check("...and never rising on the way down",

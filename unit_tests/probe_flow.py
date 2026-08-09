@@ -137,6 +137,36 @@ def main() -> int:
         note(BAD, "the client is disconnected",
              "everything below reads a frozen screen")
 
+    # ---------------------------------------------------------------- 0c
+    head("0c. SERVER CLOCK -- what avoid_warlag() reads")
+    # Checked on its own because it is the one region here that is NOT part of
+    # the Trade window. It is a HUD element in the bottom-left of the SCREEN,
+    # mapped through the Trade window's frame like SHOP_WINDOW_TITLE and the
+    # vendor regions -- exact on the reference display and approximate
+    # anywhere else. On a machine that never presses N and never buys, this is
+    # the one new coordinate still worth confirming, because the war schedule
+    # silently stops working if it does not read.
+    #
+    # The crop is also narrow and Tesseract is crop-sensitive here: widening it
+    # ten pixels reads nothing at all. So a blank result means "wrong place",
+    # not "no clock".
+    note(OK, "SERVER_CLOCK_REGION", f"{m.SERVER_CLOCK_REGION}")
+    _clock = m.read_server_clock(source=shot)
+    if _clock is not None:
+        note(OK, "server clock reads", f"{_clock.hour:02d}:{_clock.minute:02d}")
+        _start, _end = m.war_quiet_window(
+            m.SERVER_CLOCK_EPOCH + m._dt.timedelta(hours=_clock.hour,
+                                                   minutes=_clock.minute))
+        note(OK, "next quiet window",
+             f"{_start:%H:%M} -> {_end:%H:%M} server "
+             f"(war ends {_start + m._dt.timedelta(seconds=m.WAR_QUIET_BEFORE_END):%H:%M})")
+    else:
+        _raw = [w.text for w in m.find_words(shot, m.SERVER_CLOCK_REGION, 20)]
+        note(WARN, "server clock did NOT read",
+             f"raw OCR {_raw!r} -- avoid_warlag() cannot follow the war "
+             f"schedule without this. If the corner looks right on screen, the "
+             f"crop needs re-measuring for this display.")
+
     # ---------------------------------------------------------------- 1
     head("1. FAVOURITE SLOTS -- where a search is clicked")
     note(OK, "geometry", f"first={m.FAVOURITE_FIRST} pitch={m.FAVOURITE_PITCH}")

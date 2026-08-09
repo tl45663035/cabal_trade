@@ -115,35 +115,54 @@ section("a real market reading is unaffected")
 # a test comes to agree with whatever the code does -- an audit of this tree
 # found the row-capacity boundary doing exactly that, and the function it
 # guarded could return a constant 1 with every suite still green.
+#
+# The cost of that choice is that retuning the ratchet breaks this section, and
+# on 2026-08-08 (0.95 -> 0.99) it broke six checks at once, each reporting a
+# clamp failure that was not one. So the constant is PINNED here instead: one
+# check that names the operator's setting, and the literals below are the
+# arithmetic for that setting. Retuning it now fails ONE check that says
+# exactly what to do, rather than six that say the ratchet is broken.
+check(f"the ratchet is the operator's 1% ({trade.RELATIVE_PRICE_FLOOR})",
+      trade.RELATIVE_PRICE_FLOOR == 0.99,
+      f"{trade.RELATIVE_PRICE_FLOOR} -- if this was retuned deliberately, "
+      f"update the literals in this section together with it: they are "
+      f"{int(trade.RELATIVE_PRICE_FLOOR * 100)}% of 85,000,000 and the Alz "
+      f"either side of it. They are written out rather than derived so this "
+      f"suite cannot silently agree with whatever the code does.")
+
 price, why = trade.choose_price(437_569, floor_price=85_000_000)
 check("a market 99% below the listed price is clamped, not obeyed",
-      price == 80_750_000,
+      price == 84_150_000,
       f"got {price:,} -- 437,569 against a listed 85,000,000 is far likelier "
       f"to be a clipped read than a real market")
 check("...and the reason names the ratchet",
-      "5% below the listed" in why, f"{why!r}")
+      "1% below the listed" in why, f"{why!r}")
 
 # An ordinary market move is still taken verbatim.
-price, why = trade.choose_price(81_000_000, floor_price=85_000_000)
-check("a market within 5% is used unchanged", price == 81_000_000 and why == "",
+price, why = trade.choose_price(84_500_000, floor_price=85_000_000)
+check("a market within 1% is used unchanged", price == 84_500_000 and why == "",
       f"got {price:,} {why!r}")
 
-# The edge the constant actually defines, from both sides. 95% of 85,000,000 is
-# exactly 80,750,000: at it, the market is obeyed; a single Alz under, the
-# ratchet takes over and the answer is the same 80,750,000 either way -- which
+# The edge the constant actually defines, from both sides. 99% of 85,000,000 is
+# exactly 84,150,000: at it, the market is obeyed; a single Alz under, the
+# ratchet takes over and the answer is the same 84,150,000 either way -- which
 # is what makes this the boundary rather than a cliff.
-price, why = trade.choose_price(80_750_000, floor_price=85_000_000)
-check("exactly 5% below is not a drop worth clamping",
-      price == 80_750_000 and why == "", f"got {price:,} {why!r}")
-price, why = trade.choose_price(80_749_999, floor_price=85_000_000)
-check("one Alz further down IS clamped", price == 80_750_000 and why != "",
+price, why = trade.choose_price(84_150_000, floor_price=85_000_000)
+check("exactly 1% below is not a drop worth clamping",
+      price == 84_150_000 and why == "", f"got {price:,} {why!r}")
+price, why = trade.choose_price(84_149_999, floor_price=85_000_000)
+check("one Alz further down IS clamped", price == 84_150_000 and why != "",
       f"got {price:,} {why!r}")
 
-# A drop that used to be allowed under the 10% rule is now refused. Stated
-# explicitly because it is the behaviour change the operator asked for.
+# Drops that earlier settings allowed are now refused. Stated explicitly
+# because each one is a behaviour change the operator asked for: 10% -> 5% on
+# 2026-08-07, then 5% -> 1% on 2026-08-08.
 price, why = trade.choose_price(78_000_000, floor_price=85_000_000)
-check("an 8% drop was permitted at 10% and is clamped at 5%",
-      price == 80_750_000 and why != "", f"got {price:,} {why!r}")
+check("an 8% drop was permitted at 10% and is clamped at 1%",
+      price == 84_150_000 and why != "", f"got {price:,} {why!r}")
+price, why = trade.choose_price(81_000_000, floor_price=85_000_000)
+check("a 4.7% drop was permitted at 5% and is clamped at 1%",
+      price == 84_150_000 and why != "", f"got {price:,} {why!r}")
 
 price, why = trade.choose_price(50_000, floor_price=85_000_000,
                                 absolute_floor=VIP_FLOOR)
