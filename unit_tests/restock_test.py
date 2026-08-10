@@ -1,4 +1,4 @@
-"""The --buy restock pipeline: sold out -> buy Sets -> convert -> list.
+﻿"""The --buy restock pipeline: sold out -> buy Sets -> convert -> list.
 
 Three stages that each spend something, chained. The tests here are mostly
 about the CHAIN rather than the stages: each stage has its own suite, and what
@@ -194,7 +194,7 @@ check(SLOTS[0] in m.unlisted_core_slots(deep[:10]),
 _saved_enum = (m.enumerate_listings, m.register_tab_open)
 try:
     m.register_tab_open = lambda source=None: True
-    m.enumerate_listings = lambda timeout=8.0, verbose=True: None
+    m.enumerate_listings = lambda timeout=8.0, verbose=True, stop_after=None: None
     check(m.whole_shop_listings(verbose=False) is None,
           "an unreadable shop is None, NOT an empty list -- [] would read as "
           "'nothing is listed' and buy every enabled Core at once")
@@ -203,14 +203,14 @@ try:
 
     rows = [Row("Force Core(High)"), Row("Epic Booster (Highest)")]
     m.enumerate_listings = (
-        lambda timeout=8.0, verbose=True: list(enumerate(rows, start=1)))
+        lambda timeout=8.0, verbose=True, stop_after=None: list(enumerate(rows, start=1)))
     got = m.whole_shop_listings(verbose=False)
     check(got is not None and len(got) == 2,
           f"a good read returns the rows, got {got}")
     check([r.name for r in got] == [r.name for r in rows],
           "with the index stripped, since only the names are counted")
 
-    m.enumerate_listings = lambda timeout=8.0, verbose=True: []
+    m.enumerate_listings = lambda timeout=8.0, verbose=True, stop_after=None: []
     check(m.whole_shop_listings(verbose=False) == [],
           "a genuinely empty shop IS an empty list -- distinct from unreadable")
 finally:
@@ -991,17 +991,17 @@ section("whole_shop_listings: a failed read is None, never an empty shop")
 _saved_enum = (m.enumerate_listings, m.register_tab_open)
 try:
     m.register_tab_open = lambda source=None: True
-    m.enumerate_listings = lambda timeout=8.0, verbose=True: None
+    m.enumerate_listings = lambda timeout=8.0, verbose=True, stop_after=None: None
     check(m.whole_shop_listings(verbose=False) is None,
           "an unreadable shop is None, NOT an empty list")
 
     rows = [Row("Force Core(High)"), Row("Epic Booster (Highest)")]
     m.enumerate_listings = (
-        lambda timeout=8.0, verbose=True: list(enumerate(rows, start=1)))
+        lambda timeout=8.0, verbose=True, stop_after=None: list(enumerate(rows, start=1)))
     got = m.whole_shop_listings(verbose=False)
     check(got is not None and len(got) == 2, f"a good read returns rows, got {got}")
 
-    m.enumerate_listings = lambda timeout=8.0, verbose=True: []
+    m.enumerate_listings = lambda timeout=8.0, verbose=True, stop_after=None: []
     check(m.whole_shop_listings(verbose=False) == [],
           "a genuinely empty shop IS an empty list -- distinct from unreadable")
 finally:

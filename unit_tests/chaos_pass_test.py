@@ -325,19 +325,26 @@ try:
     check(allowances and all(a == m.chaos_row_allowance() for a in allowances),
           f"it must ask for the derived chaos allowance "
           f"({m.chaos_row_allowance():.0f}s), got {allowances}")
-    # The DERIVED allowance, not the bare WAR_CHAOS_ALLOWANCE floor. The floor
-    # is only the lower bound; chaos_row_allowance() adds the buy loop and the
-    # craft queue on top. Comparing the floor worked only while a relist row
-    # reserved less than 300s -- raising WAR_ROW_ALLOWANCE to 400 (6.8% of real
-    # rows exceeded 150s, worst 911s) made the old form fail on a chaos
-    # allowance that had actually gone UP.
-    check(m.chaos_row_allowance() > m.WAR_ROW_ALLOWANCE,
-          f"a chaos row ({m.chaos_row_allowance():.0f}s) must reserve more "
-          f"than a relist row ({m.WAR_ROW_ALLOWANCE:g}s): it also buys across "
-          f"many orders and crafts a queue that scales with the quantity")
-    check(m.WAR_CHAOS_ALLOWANCE >= m.CRAFT_SETTLE_MAX,
-          f"and must cover the craft ceiling ({m.CRAFT_SETTLE_MAX:g}s) it may "
-          f"spend waiting, or it can start a row it cannot finish")
+    # THE OPERATOR'S FLAT MARGIN, not a derived reservation.
+    #
+    # These used to assert that a chaos row reserved more than a relist row and
+    # covered CRAFT_SETTLE_MAX -- i.e. that the allowance was sized to the work
+    # so a started row could FINISH before the war window. The operator
+    # overrode that on 2026-08-10 ("I want it to stop -1min only"), so every
+    # allowance is now WAR_STOP_MARGIN.
+    #
+    # What is pinned instead is that the override is real and uniform: a
+    # derived figure creeping back would change war behaviour silently. The
+    # cost of the override is recorded in chaos_row_allowance's own comment --
+    # the sequence actually needs ~660s at K=100, so a row CAN now be started
+    # inside a window it cannot finish.
+    check(m.chaos_row_allowance() == m.WAR_STOP_MARGIN,
+          f"the chaos allowance is the operator's flat margin "
+          f"({m.WAR_STOP_MARGIN:g}s), got {m.chaos_row_allowance():.0f}s")
+    check(m.WAR_ROW_ALLOWANCE == m.WAR_STOP_MARGIN
+          and m.WAR_RESTOCK_ALLOWANCE == m.WAR_STOP_MARGIN,
+          "and every other allowance uses the same margin, so one knob moves "
+          "them together")
     check(len([e for e in g.events if e[0] == "warlag"]) == ks.count("buy"),
           f"once per row started, got {allowances} for {ks.count('buy')} buys")
 
@@ -993,17 +1000,24 @@ for bad in ("--chaos-rows must be at least 1",
 # at 30s per 100, K=1000 crafts for 300s, which is the entire old constant.
 _saved_k = m.CHAOS_BUY_QUANTITY
 try:
+    # FLAT BY INSTRUCTION, AND THE COST IS NAMED.
+    #
+    # This block asserted the allowance grew with K, because the craft alone
+    # does: at 30s per 100, K=1000 crafts for 300s. The operator's flat 60s
+    # margin means it no longer does, so what is pinned is the flatness -- and
+    # the gap is reported rather than hidden, because it is exactly how long a
+    # chaos row can overrun the war window by.
     for k in (100, 250, 1000, 5000):
         m.CHAOS_BUY_QUANTITY = k
-        check(m.chaos_row_allowance() > m.craft_settle_seconds(k),
-              f"at K={k} the allowance ({m.chaos_row_allowance():.0f}s) must "
-              f"exceed the craft alone ({m.craft_settle_seconds(k):.0f}s), or a "
-              f"row is started that cannot finish before the war window")
-    m.CHAOS_BUY_QUANTITY = 100
-    small = m.chaos_row_allowance()
-    m.CHAOS_BUY_QUANTITY = 5000
-    check(m.chaos_row_allowance() > small,
-          "and it must grow with K rather than staying constant")
+        check(m.chaos_row_allowance() == m.WAR_STOP_MARGIN,
+              f"at K={k} the allowance is the flat margin, got "
+              f"{m.chaos_row_allowance():.0f}s")
+    m.CHAOS_BUY_QUANTITY = 1000
+    _short_by = m.craft_settle_seconds(1000) - m.chaos_row_allowance()
+    check(_short_by > 0,
+          f"at K=1000 the craft alone ({m.craft_settle_seconds(1000):.0f}s) "
+          f"exceeds the allowance by {_short_by:.0f}s -- recorded so the "
+          f"override's cost is visible, not asserted away")
 finally:
     m.CHAOS_BUY_QUANTITY = _saved_k
 

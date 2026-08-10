@@ -105,7 +105,17 @@ check("forget_unlisted()" in receive_branch,
 # third of the cycle cannot be silent, or there is no way to tell scrolling
 # from retrying from stuck.
 pass_src = inspect.getsource(m.restock_pass)
-check("whole_shop_listings(timeout=timeout, verbose=verbose)" in pass_src,
+# Asserted on the ARGUMENT of the real CALL, not on a one-line text shape.
+#
+# Two things broke the old form: the call now also passes stop_after so it
+# wraps across lines, and the name appears in a COMMENT further up, so a naive
+# split lands on prose instead of code. Find the invocations that actually
+# pass arguments.
+import re as _re
+_calls = [c for c in _re.findall(r"whole_shop_listings\(([^)]*)\)", pass_src)
+          if "timeout" in c]
+check(_calls, "restock_pass must actually call whole_shop_listings")
+check(all("verbose=verbose" in c for c in _calls),
       "the sweep must inherit the caller's verbosity, not be hardcoded silent")
 check("verbose=False)" not in pass_src.split("whole_shop_listings")[1][:60],
       "and must not be pinned to verbose=False again")
@@ -309,14 +319,26 @@ check("r.index in set(scope)" in scoped,
 # reported the scoped path as broken when it was not.
 after_scope = pass_src3.split('record("restock.scoped"')[-1]     .split("if BUY_NO_SWEEP:")[0]
 check("cached_rows_used()" in after_scope,
-      "the scoped path must try the remembered count FIRST -- that is the "
-      "case where it does no reading at all")
-walk_part = after_scope.split("if rows_now is None:")[1]
-check("whole_shop_listings" in walk_part,
-      "and when it must walk, it must take the SWEEP: shop_rows_used is the "
-      "same traversal and returns only an integer")
-check("note_rows_used(" in walk_part and "note_unlisted(" in walk_part,
-      "and must seed BOTH caches from that one walk, so no later cycle repeats it")
+      "the scoped path must use the remembered count, never re-derive it")
+
+# THE SCOPED PATH NO LONGER WALKS AT ALL.
+#
+# It used to fall back to a full sweep when no count was remembered, because
+# the capacity gate needed one. Once the RANGE became the ceiling that stopped
+# being true: the gate is
+#     used + need > used + free_inside
+# so `used` cancels out, and what bounds a scoped restock is the free rows
+# inside the range -- already known from the first screen.
+#
+# Walking rows 11-30 to answer a question about rows 1-10 cost 90s+, and up to
+# 54.5s for a single step on a sparse shop. The branch is gone rather than
+# skipped, so this pins its absence.
+check("whole_shop_listings" not in after_scope,
+      "a scoped restock must not sweep: the whole-shop count cancels out of "
+      "its own capacity gate")
+check("no sweep" in after_scope,
+      "and it must say so, or a reader cannot tell a fast path from a "
+      "missing one")
 check("restock_sold_out_slots" in after_scope,
       "it must still restock what it decided was missing, or scoping quietly "
       "turns --buy off instead of speeding it up")

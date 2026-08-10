@@ -36,6 +36,7 @@ import atexit
 import csv
 import ctypes
 import ctypes.wintypes
+import dataclasses as _dc
 import io
 import itertools
 import json
@@ -478,6 +479,17 @@ CHAOS_SLOTS = frozenset({CHAOS_CORE_SLOT, CHAOS_SET_SLOT})
 # the lower it goes the more of it those two absorb. At 10,000 on a ~720,000
 # Core the flow runs on about 1.4% of spread.
 CHAOS_MARGIN_FLOOR = 10_000
+
+# How much to shave off a chaos bundle's listing price, at the operator's
+# instruction: "for the min price, make it -1 ... whatever price - 1".
+#
+# Several sellers sit on the same round number, so one Alz is enough to be
+# first in the list without giving anything away -- on a ~145,000,000 bundle it
+# is 0.0000007% of the price.
+#
+# register_item clamps it back above the cost floor and MIN_PLAUSIBLE_PRICE, so
+# it can never be the thing that lists below what the Cores cost.
+CHAOS_UNDERCUT = 1
 
 # Set by --chaos. Off unless asked for, like BUY_ENABLED: it spends money.
 CHAOS_ENABLED = False
@@ -3228,14 +3240,29 @@ WAR_QUIET_SECONDS = 300
 # retries, which is exactly the half-done state the guard exists to prevent.
 # _relist_cycle retries up to 3 times INSIDE one row, and the old figure was
 # sized from a single untroubled row.
-WAR_ROW_ALLOWANCE = 400.0
+# How long before the quiet window the script stops starting new work.
+#
+# 60s at the operator's instruction: "I want it to stop -1min only."
+#
+# THIS IS A DEADLINE, NOT A COURTESY. The allowance is not "pause a bit early"
+# -- it is "do not START something that cannot finish". Measured 2026-08-10:
+# 6.8% of relist rows took longer than 150s and the worst took 911s; a restock
+# is ~585s of buying alone at RESTOCK_MAX_BUYS; a chaos row measured 295.6s
+# and can reach ~850s. At 60s, work that is admitted will routinely still be
+# running when the window opens -- mid-cancel, mid-conversion, or with
+# paid-for Sets in the bag, which is the strand these numbers were sized to
+# prevent.
+#
+# Raise WAR_STOP_MARGIN to go back to sizing by operation.
+WAR_STOP_MARGIN = 60.0
+WAR_ROW_ALLOWANCE = WAR_STOP_MARGIN
 # One chaos row is far longer than one relist row: a buy, a craft queue that
 # scales with the quantity, a compress, a shop reopen and a registration. It is
 # also the one sequence in this file that must NOT be interrupted partway --
 # stopping between the buy and the listing leaves paid-for Cores sitting in the
 # work tab. So chaos asks for the whole craft ceiling plus the fixed steps
 # around it, and simply does not start a row it cannot finish before the lag.
-WAR_CHAOS_ALLOWANCE = 300.0      # the floor; chaos_row_allowance() scales it
+WAR_CHAOS_ALLOWANCE = WAR_STOP_MARGIN      # the floor; chaos_row_allowance() scales it
 
 # Measured 2026-08-10: five chaos buy orders spanned 181.1 -> 324.6, about 29s
 # each, and the whole row from first margin read to listed took 295.6s against
@@ -3261,7 +3288,7 @@ CHAOS_FIXED_SECONDS = 150.0
 # ~585s of buying before a single conversion round; a plainly reachable 8-order
 # 3-round restock is ~595s. Overshooting the allowance costs idle time;
 # undershooting it runs a conversion during the lag with paid-for Sets in hand.
-WAR_RESTOCK_ALLOWANCE = 900.0
+WAR_RESTOCK_ALLOWANCE = WAR_STOP_MARGIN
 
 
 def chaos_row_allowance() -> float:
@@ -3288,9 +3315,16 @@ def chaos_row_allowance() -> float:
     CHAOS_BUY_QUANTITY plus one row's depth, so the craft term is sized from a
     generous multiple rather than from K exactly.
     """
-    buying = CHAOS_BUY_ORDERS * CHAOS_ORDER_SECONDS
-    crafting = craft_settle_seconds(CHAOS_BUY_QUANTITY * 2)
-    return max(WAR_CHAOS_ALLOWANCE, buying + crafting + CHAOS_FIXED_SECONDS)
+    # THE FLAT MARGIN, at the operator's instruction ("stop -1min only").
+    #
+    # The derived figure is kept here rather than deleted, because it is what
+    # the sequence actually costs: CHAOS_BUY_ORDERS * CHAOS_ORDER_SECONDS of
+    # buying, plus the craft settle, plus CHAOS_FIXED_SECONDS of compress,
+    # reopen and registration -- ~660s at K=100. Reserving 60s instead means a
+    # chaos row can be started inside a window it has no chance of finishing,
+    # and chaos_pass's own comment is blunt about the cost: once the Cores are
+    # bought the sequence HAS to reach the listing.
+    return WAR_STOP_MARGIN
 
 # The same question at a cycle boundary. A cycle is many rows, so waiting for
 # a whole one to fit would idle for far longer than the window itself; the
@@ -4131,7 +4165,8 @@ SHOP_ROW_CAPACITY = 30
 
 
 def whole_shop_listings(timeout: float = 8.0,
-                        verbose: bool = True) -> list | None:
+                        verbose: bool = True,
+                        stop_after: "int | None" = None) -> list | None:
     # Reads the LISTINGS table, which only exists on the Register tab, and
     # reaches rows past the first screen by scrolling. Left on the Purchase
     # tab, that scroll moves the OFFERS instead -- and the whole buying design
@@ -4146,7 +4181,8 @@ def whole_shop_listings(timeout: float = 8.0,
     if not register_tab_open() and not open_trade_window(
             timeout=max(timeout, 15.0), verbose=verbose):
         return None
-    listings = enumerate_listings(timeout=timeout, verbose=verbose)
+    listings = enumerate_listings(timeout=timeout, verbose=verbose,
+                                  stop_after=stop_after)
     if listings is None:
         return None
     return [row for _, row in listings]
@@ -5015,6 +5051,143 @@ OCR_CACHE_ENABLED = True
 # image and returns [(text, left, top, right, bottom, conf), ...] in that
 # image's own pixels; the caller maps them back to screen coordinates.
 OCR_BACKEND = None
+
+# The alternative engines, behind --ocr-engine. Both run IN PROCESS, which is
+# the point: the measured cost of a Tesseract read is ~121ms average and most
+# of that is spawning tesseract.exe, not recognising anything -- a 71ms
+# quantity-field crop against 142ms for a whole table region says the fixed
+# overhead dominates.
+#
+# rapidocr runs PaddleOCR's own models through ONNX Runtime at ~50MB;
+# paddleocr pulls paddlepaddle, numpy and opencv, roughly 1GB. Neither is
+# installed by default, and this file otherwise needs only PIL and a Tesseract
+# binary -- so both are opt-in and absent means "fall back to Tesseract",
+# never an error.
+_OCR_ENGINES: dict = {}
+
+
+def _load_rapidocr():
+    """RapidOCR, or None if it is not installed."""
+    from rapidocr_onnxruntime import RapidOCR  # noqa: PLC0415
+    engine = RapidOCR()
+
+    def read(image, min_conf=0.0):
+        # AS A NUMPY ARRAY. RapidOCR rejects a PIL Image outright
+        # (LoadImageError), and because the seam swallows a failing backend
+        # rather than stopping the run, that turned into "reads nothing very
+        # quickly" -- a benchmark showing 10x the speed and 0 correct reads.
+        import numpy as _np  # noqa: PLC0415
+        result, _ = engine(_np.array(image.convert("RGB")))
+        out = []
+        for box, text, score in (result or []):
+            conf = float(score) * 100.0
+            if conf < min_conf:
+                continue
+            xs = [pt[0] for pt in box]
+            ys = [pt[1] for pt in box]
+            out.append((str(text), int(min(xs)), int(min(ys)),
+                        int(max(xs)), int(max(ys)), conf))
+        return out
+    return read
+
+
+def _load_paddleocr():
+    """PaddleOCR, or None if it is not installed.
+
+    oneDNN is disabled deliberately. With it on, paddlepaddle 3.3.1 on this
+    Windows CPU build loads the models and then dies inside execution:
+
+        NotImplementedError: ConvertPirAttribute2RuntimeAttribute not support
+          [pir::ArrayAttribute<pir::DoubleAttribute>]
+          (at ...onednn/onednn_instruction.cc:118)
+
+    Turning it off costs some CPU throughput and makes it run at all.
+    """
+    from paddleocr import PaddleOCR  # noqa: PLC0415
+    # Constructor arguments differ across PaddleOCR majors -- 3.x dropped
+    # show_log and use_angle_cls. Try the modern form first and fall back,
+    # rather than pinning a version this repo does not otherwise depend on.
+    try:
+        engine = PaddleOCR(lang="en", enable_mkldnn=False)
+    except Exception:  # noqa: BLE001
+        engine = PaddleOCR(use_angle_cls=False, lang="en", show_log=False)
+
+    def read(image, min_conf=0.0):
+        import numpy as _np  # noqa: PLC0415
+        arr = _np.array(image.convert("RGB"))
+        try:
+            result = engine.ocr(arr)
+        except TypeError:
+            result = engine.ocr(arr, cls=False)
+
+        out = []
+        for page in (result or []):
+            # 3.x returns OCRResult dicts keyed rec_texts/rec_scores/rec_boxes;
+            # 2.x returned [[box, (text, score)], ...]. Handle both, because
+            # the version is not pinned anywhere in this repo.
+            if isinstance(page, dict):
+                texts = page.get("rec_texts") or []
+                scores = page.get("rec_scores") or []
+                boxes = page.get("rec_boxes") or page.get("rec_polys") or []
+                for i, text in enumerate(texts):
+                    conf = float(scores[i]) * 100.0 if i < len(scores) else 0.0
+                    if conf < min_conf:
+                        continue
+                    box = boxes[i] if i < len(boxes) else None
+                    if box is None:
+                        continue
+                    flat = _np.array(box).reshape(-1)
+                    if flat.size == 4:
+                        l, t, r, b = (float(v) for v in flat)
+                    else:
+                        pts = _np.array(box).reshape(-1, 2)
+                        l, t = pts[:, 0].min(), pts[:, 1].min()
+                        r, b = pts[:, 0].max(), pts[:, 1].max()
+                    out.append((str(text), int(l), int(t), int(r), int(b), conf))
+                continue
+            for entry in (page or []):
+                try:
+                    box, (text, score) = entry
+                except Exception:  # noqa: BLE001
+                    continue
+                conf = float(score) * 100.0
+                if conf < min_conf:
+                    continue
+                xs = [pt[0] for pt in box]
+                ys = [pt[1] for pt in box]
+                out.append((str(text), int(min(xs)), int(min(ys)),
+                            int(max(xs)), int(max(ys)), conf))
+        return out
+    return read
+
+
+def select_ocr_engine(name: str, verbose: bool = True) -> bool:
+    """Point OCR_BACKEND at `name`. False if it could not be loaded.
+
+    Falling back rather than failing: an engine that will not import must not
+    stop a run that Tesseract can serve perfectly well.
+    """
+    global OCR_BACKEND
+    if not name or name == "tesseract":
+        OCR_BACKEND = None
+        return True
+    loaders = {"rapid": _load_rapidocr, "paddle": _load_paddleocr}
+    loader = loaders.get(name)
+    if loader is None:
+        if verbose:
+            print(f"  unknown OCR engine {name!r}; staying on Tesseract.")
+        return False
+    try:
+        OCR_BACKEND = _OCR_ENGINES.setdefault(name, loader())
+        if verbose:
+            print(f"  OCR engine: {name} (in process, no subprocess per read)")
+        return True
+    except Exception as exc:  # noqa: BLE001 - an absent engine is not fatal
+        OCR_BACKEND = None
+        if verbose:
+            print(f"  {name} is not available ({type(exc).__name__}); "
+                  f"staying on Tesseract.")
+        return False
 
 
 def _cache_key(source, region, min_conf, scale, kind):
@@ -5930,6 +6103,33 @@ def find_words(
         min(image.width, region[2]), min(image.height, region[3]),
     )
     prepared = _prep_for_text(image, region, scale)
+
+    # THE ENGINE SEAM. Everything above is cropping and upscaling, which any
+    # engine wants; everything below is Tesseract's subprocess protocol. An
+    # alternative backend reads the SAME prepared image and returns words in
+    # its pixels, and the mapping back to screen coordinates below is shared.
+    if OCR_BACKEND is not None:
+        _t0 = time.monotonic()
+        try:
+            raw = OCR_BACKEND(prepared, min_conf)
+        except Exception:  # noqa: BLE001 - a failing engine must not stop a run
+            raw = []
+        _note_ocr(f"backend:{getattr(OCR_BACKEND, '__name__', 'custom')}",
+                  time.monotonic() - _t0)
+        words = []
+        for text, wl, wt, wr, wb, conf in raw:
+            if not str(text).strip():
+                continue
+            words.append(Word(
+                text=str(text).strip(),
+                left=region[0] + int(wl / max(1, scale)),
+                top=region[1] + int(wt / max(1, scale)),
+                right=region[0] + int(wr / max(1, scale)),
+                bottom=region[1] + int(wb / max(1, scale)),
+                conf=float(conf)))
+        if _key is not None:
+            _OCR_CACHE[_key] = list(words)
+        return words
 
     buf = io.BytesIO()
     prepared.save(buf, "PNG")
@@ -9233,7 +9433,9 @@ def bring_into_view(ref: RowRef, timeout: float = 8.0,
 
 
 def enumerate_listings(timeout: float = 8.0,
-                       verbose: bool = True) -> list[tuple[int, Row]] | None:
+                       verbose: bool = True,
+                       stop_after: "int | None" = None
+                       ) -> list[tuple[int, Row]] | None:
     """Every listing in the shop, paired with its absolute position.
 
     Walks from the top one row at a time. Absolute index 1 is the first
@@ -9282,7 +9484,8 @@ def enumerate_listings(timeout: float = 8.0,
     # or an exception on the way -- leaves the table where callers assume.
     try:
         for step in (SCROLL_STEP, SCROLL_STEP_FALLBACK):
-            found = _enumerate_at_step(step, timeout, verbose, say)
+            found = _enumerate_at_step(step, timeout, verbose, say,
+                                       stop_after=stop_after)
             if found is not None:
                 return found
             if step != SCROLL_STEP_FALLBACK:
@@ -9329,8 +9532,19 @@ def informative_step(rows: list[Row], want: int) -> int:
 
 
 def _enumerate_at_step(step: int, timeout: float, verbose: bool,
-                       say) -> list[tuple[int, Row]] | None:
-    """One full sweep of the shop, stepping up to `step` rows at a time."""
+                       say, stop_after: "int | None" = None
+                       ) -> list[tuple[int, Row]] | None:
+    """One sweep of the shop, stepping up to `step` rows at a time.
+
+    `stop_after` bounds it to the rows actually being asked about. A restock
+    scoped to rows 1-17 only needs to see 17 rows, and walking all thirty to
+    answer that cost MINUTES: the sweep pays a full table read per step, and
+    informative_step collapses the step to one or two rows on a sparse shop.
+    Measured 2026-08-10, one step alone took 54.5s and the walk had not
+    finished 246 seconds later.
+
+    None means the whole shop, which is what the unscoped callers want.
+    """
     # Establish the bottom by GOING there, before sweeping down to it.
     #
     # The terminator used to be "measure_shift said the view did not move".
@@ -9389,6 +9603,18 @@ def _enumerate_at_step(step: int, timeout: float, verbose: bool,
     steps = 0
     barren = 0        # consecutive steps that revealed nothing new
     while steps < MAX_SCROLL_CHUNKS * SCROLL_STEP:
+        # STOP AT THE ROWS BEING ASKED ABOUT, AND NOT ONE FURTHER.
+        #
+        # `top` is the absolute index of screen row 1, so once top plus a
+        # screen covers stop_after, everything requested has been seen.
+        # Walking on pays a full table read per row to learn about rows nobody
+        # asked about -- which is what made a rows 1-17 restock walk all thirty
+        # and sit there for minutes (one step alone took 54.5s, and the sweep
+        # had not finished 246 seconds later).
+        if stop_after is not None and top + EXPECTED_ROWS - 1 >= stop_after:
+            say(f"  rows 1-{stop_after} are covered; stopping here rather "
+                f"than walking the rest of the shop.")
+            break
         steps += 1
         # Chosen per screen, not once: how far the view can move and still be
         # measurable depends on where the empty slots are, and that changes as
@@ -11990,6 +12216,7 @@ def register_item(
     force_price: int | None = None,
     force_qty: int | None = None,
     expect_item: str | None = None,
+    undercut: int = 0,
     expect_qty: int | None = None,
     report: dict | None = None,
 ) -> bool:
@@ -12389,6 +12616,15 @@ def register_item(
                 if not floor_reason:
                     floor_reason = "half the week average"
 
+            # UNDERCUT, at the operator's instruction for chaos bundles:
+            # "for the min price, make it -1 ... whatever price - 1".
+            #
+            # Applied to the CHOSEN price, then re-floored below, so it can
+            # shave the market by one Alz but never step under the cost floor
+            # -- undercutting into a loss would defeat the floor's whole
+            # purpose. It also forces the typed path rather than the radio
+            # button, because the radio can only select a price the panel is
+            # already offering.
             price, why = choose_price(suggested, price_floor, floor_price,
                                       absolute_floor)
             if why and floor_reason:
@@ -12419,11 +12655,38 @@ def register_item(
                 f"refusing to list at {price:,} Alz, below the "
                 f"{MIN_PLAUSIBLE_PRICE:,} plausibility floor - the price was "
                 "probably misread")
+        # THE UNDERCUT, APPLIED LAST AND RE-FLOORED.
+        #
+        # Shaving the market by `undercut` puts this listing first among equals
+        # -- the operator's reason for it on chaos bundles, where several
+        # sellers sit on the same round number. It is applied AFTER the floors
+        # are computed and then clamped back above them, so it can never be the
+        # thing that lists below cost.
+        if undercut and price > 0:
+            floor_now = max(absolute_floor or 0, MIN_PLAUSIBLE_PRICE)
+            lowered = max(price - undercut, floor_now)
+            if lowered != price:
+                say(f"  undercutting {price:,} by {price - lowered:,} to "
+                    f"{lowered:,} Alz")
+                price = lowered
+                why = f"{why}, undercut by {undercut:,}"
+            else:
+                say(f"  not undercutting: {price:,} is already at the floor")
+
+        require(price >= MIN_PLAUSIBLE_PRICE,
+                f"refusing to list at {price:,} Alz after the undercut, below "
+                f"the {MIN_PLAUSIBLE_PRICE:,} plausibility floor")
         require(not absolute_floor or price >= absolute_floor,
                 f"refusing to list at {price:,} Alz, below the "
                 f"{absolute_floor:,} floor for this item")
 
-        if price == suggested and price_y is not None and price > 0:
+        # An undercut price is never one the panel offers, so it must be typed.
+        if undercut:
+            say(f"Listing at {price:,} Alz - {why}")
+            click((PRICE_FIELD[0] + PRICE_FIELD[2]) // 2,
+                  (PRICE_FIELD[1] + PRICE_FIELD[3]) // 2)
+            type_number(price)
+        elif price == suggested and price_y is not None and price > 0:
             record("price.before_select", price=price, y=price_y)
             click(PANEL_RADIO_X, price_y)
         else:
@@ -12437,6 +12700,32 @@ def register_item(
         panel = read_register_panel(grab())
         require(panel["net_sales"] > 0,
                 f"price did not take - net sales is still {panel['net_sales']}")
+
+        # READ THE PRICE BACK BEFORE CONFIRMING, at the operator's instruction:
+        # "after entering that new price, double check to see if entered
+        # correctly, then press confirm".
+        #
+        # Net sales is the game's own price x quantity, so it is the honest
+        # witness: if the field holds a different number from the one typed,
+        # net_sales will not divide by the intended price. That is a stronger
+        # check than reading the price box, which is small text sharing a line
+        # with a caret -- the same field family that read "20" as "204" twice
+        # in one run.
+        #
+        # RETRIED, because the panel is read the instant the digits land and
+        # the game has not always recomputed net sales yet -- exactly the stale
+        # first read that made the Purchase dialog cancel valid orders.
+        for _ in range(QTY_READBACK_TRIES):
+            if panel["net_sales"] % price == 0:
+                break
+            time.sleep(QTY_READBACK_PAUSE)
+            panel = read_register_panel(grab())
+        require(panel["net_sales"] % price == 0,
+                f"the price on screen is not {price:,}: net sales "
+                f"{panel['net_sales']:,} does not divide by it, so the field "
+                f"holds something else. Nothing has been registered")
+        say(f"  price verified on screen: {price:,} Alz "
+            f"(net sales {panel['net_sales']:,})")
 
         # Net sales is the game's own price x quantity, so dividing it by the
         # price just set recovers the quantity the game actually holds. That is
@@ -15081,12 +15370,43 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
         return True
 
     try:
-        listings = await_rows(timeout)
+        want = set(scope or [])
+
+        # ONE SCREEN IS NOT THE SHOP -- COUNT OVER THE WHOLE RANGE.
+        #
+        # await_rows reads the ten VISIBLE rows and does not scroll, and the
+        # chaos target is decided from that count. With a range wider than a
+        # screen, bundles living on rows 11+ are simply not seen.
+        #
+        # Measured live 2026-08-10 on --relist-rows 1-17: at t=14.8, with the
+        # table freshly at the top, it read "3 live bundle(s) ... at target".
+        # At t=936.9, after the batch had worked down the range and the view
+        # had scrolled, it read "1 live bundle(s)", concluded it was 2 short,
+        # and bought, crafted and listed a FOURTH bundle against a target of 3.
+        #
+        # Bounded by the range, not the shop: stop_after=max(want) walks only
+        # as far as the rows this batch manages -- the same bound restock_pass
+        # uses -- so a 1-17 batch reads about one extra screen rather than all
+        # thirty.
+        # enumerate_listings, NOT whole_shop_listings: the latter drops the
+        # absolute position, and chaos_rows_in filters r.index against the
+        # scope's ABSOLUTE row numbers. A row carrying its screen position
+        # would be matched against the wrong boundary -- the same
+        # screen-vs-absolute confusion that made the restock read every Core
+        # as sold out past row 10.
+        listings = None
+        if want and max(want) > EXPECTED_ROWS:
+            walked = enumerate_listings(timeout=timeout, verbose=False,
+                                        stop_after=max(want))
+            if walked:
+                listings = [_dc.replace(row, index=absolute)
+                            for absolute, row in walked]
+        if listings is None:
+            listings = await_rows(timeout)
         if not listings:
             say("Chaos: the listings could not be read; skipping this pass.")
             return False
 
-        want = set(scope or [])
         rows = chaos_rows_in(listings, want)
         if want:
             say(f"Chaos is looking at rows {min(want)}-{max(want)} only.")
@@ -15259,6 +15579,25 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
             paid = 0          # Alz actually spent
             paid_units = 0    # Cores actually received
             lost = 0          # consecutive orders that would not complete
+            # CHAOS HONOURS THE BUYING HALT TOO.
+            #
+            # halt_buying is the process-lifetime stop for "the script's map of
+            # what it is buying disagrees with the game" -- a wrong grade in
+            # the confirm dialog, a Buy outside the sanctioned sequence, or
+            # running out of Alz. It is consulted by restock_is_armed() and by
+            # the Cores path, and chaos never asked.
+            #
+            # So on 2026-08-10 the halt fired at t=981 and chaos went on to
+            # spend ~187,000,000 Alz across three more orders. Those purchases
+            # were individually sound -- each re-searched and passed its own
+            # receipt check -- but they ran while the run was flagged unsafe to
+            # buy, on the pipeline that commits the most per click.
+            if BUY_HALTED:
+                say(f"Chaos: buying is halted for this run ({BUY_HALT_REASON}) "
+                    f"- not buying Cores.")
+                record("chaos.buy_halted", why=BUY_HALT_REASON)
+                return False
+
             for order in range(1, CHAOS_BUY_ORDERS + 1):
                 if got >= CHAOS_BUY_QUANTITY:
                     break
@@ -15275,12 +15614,21 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # old, so the gate's is still valid here; the loop's own
                 # re-search remains mandatory for every order after it, because
                 # by then row 1 really has changed.
-                if order == 1 and gate_offers:
-                    offers = gate_offers
-                    gate_offers = None
-                else:
-                    offers = run_favourite_search(CHAOS_CORE_SLOT,
-                                                  verbose=False)
+                # REVERTED: order 1 no longer reuses the gate's search.
+                #
+                # It saved ~9s and broke the sanctioned-sequence guard.
+                # chaos_margin_now searches BOTH slots -- Core, then Set -- so
+                # the last search note_favourite_search recorded is the SET
+                # one. buy_offer validates the offer against that note, saw a
+                # Chaos Core offered against a 'Chaos Core Set X 1' search,
+                # and correctly refused -- then halt_buying shut buying down
+                # for the whole run, which is what it is for.
+                #
+                # Caught live 2026-08-10 at 14:01:44 (frames run_41262/41263).
+                # Reusing the offers is still sound in principle; it needs the
+                # gate to re-note the Core search as the current one, and that
+                # is not worth the risk on this path for nine seconds.
+                offers = run_favourite_search(CHAOS_CORE_SLOT, verbose=False)
                 if not offers:
                     say(f"Chaos: no Core offers left after {got} of "
                         f"{CHAOS_BUY_QUANTITY}.")
@@ -15526,6 +15874,7 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                                    maximise_qty=True,
                                    cost_floor=cost_floor,
                                    expect_item=FAVOURITE_SLOTS[CHAOS_SET_SLOT],
+                                   undercut=CHAOS_UNDERCUT,
                                    report=report)
             if listed:
                 # Recorded only on success, and with the price it actually went
@@ -15710,52 +16059,28 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
                 record("restock.scoped", slots=str(missing),
                        scope=f"{min(scope)}-{max(scope)}")
 
-                rows_now = cached_rows_used()
-                if rows_now is None:
-                    # IF WE MUST ENUMERATE, TAKE THE SWEEP.
-                    #
-                    # The capacity gate needs a row count, and with nothing
-                    # remembered the only way to get one is to walk the table.
-                    # But shop_rows_used() and whole_shop_listings() are the
-                    # SAME walk -- and the sweep answers both questions from
-                    # it, while the count answers one. Measured 2026-08-09,
-                    # taking only the count cost 232 seconds and learned a
-                    # single integer.
-                    #
-                    # So the sweep is taken instead, for the same one walk, and
-                    # its verdict is used for the missing list too: it is
-                    # strictly better than the scoped guess and costs nothing
-                    # extra now that it has been paid for. Scoping still does
-                    # what it is for -- from the next cycle the count is
-                    # remembered and no walk happens at all.
-                    say("  no row count is remembered, so the table has to be "
-                        "read once. Taking the full sweep rather than just a "
-                        "count -- it is the same walk and answers more.")
-                    swept = whole_shop_listings(timeout=timeout,
-                                                verbose=verbose)
-                    if swept is not None:
-                        # THE COUNT ONLY. The sweep's verdict about which Cores
-                        # are listed elsewhere is deliberately NOT used here.
-                        #
-                        # An earlier version did use it, and it was wrong about
-                        # the operator's intent: "if i relist 1-4 ... if the
-                        # item doesn't exist there, go resupply those,
-                        # regardless of what's in bottom rows". The scoped
-                        # decision is the decision. A Core sitting below the
-                        # boundary is outside what this batch manages, and
-                        # letting it veto a resupply makes the boundary
-                        # meaningless -- the shelf inside rows 1-4 stays empty
-                        # because stock exists somewhere the batch will never
-                        # touch.
-                        #
-                        # note_unlisted is still fed, because the UNSCOPED path
-                        # (a batch over all rows) asks a different question and
-                        # that answer is genuinely useful to it.
-                        note_rows_used(rows_in_use(swept))
-                        note_unlisted(unlisted_core_slots(swept))
-                        rows_now = rows_in_use(swept)
-                    else:
-                        rows_now = shop_rows_used(verbose=False)
+                # A SCOPED RESTOCK DOES NOT NEED THE WHOLE-SHOP COUNT.
+                #
+                # The capacity gate, once the range became the ceiling, is
+                #     used + need > used + free_inside
+                # -- `used` cancels out. What bounds a scoped restock is the
+                # free rows INSIDE the range, and those are already known from
+                # the first screen. Walking rows 11-30 to answer a question
+                # about rows 1-10 was pure cost: the sweep pays a full table
+                # read per step, measured at 90s+ and up to 54.5s for a single
+                # step on a sparse shop.
+                #
+                # It was needed before the confinement fix, when a restock
+                # listed into the lowest empty row anywhere and the 30-row
+                # count genuinely bounded it. Nothing removed the sweep when
+                # that stopped being true.
+                #
+                # 0 rather than None: None means "could not count", which the
+                # gate refuses on. The figure is unused on this path.
+                say("  scoped to rows "
+                    f"{min(scope)}-{max(scope)}, so the whole-shop row count "
+                    "is not needed - no sweep.")
+                rows_now = cached_rows_used() or 0
                 leave_for_restock(verbose=verbose)
                 restock_sold_out_slots(missing, verbose=verbose,
                                        rows_used=rows_now,
@@ -15818,7 +16143,13 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
             # stuck. A step that can cost a third of a cycle has to say what
             # it is doing.
             sweep_started = time.monotonic()
-            everything = whole_shop_listings(timeout=timeout, verbose=verbose)
+            # ONLY AS FAR AS THE RANGE. The question is whether a Core is
+            # listed inside the rows this batch manages, so the walk stops
+            # there. Everything past it is rows nobody asked about, paid for
+            # at a full table read each.
+            everything = whole_shop_listings(
+                timeout=timeout, verbose=verbose,
+                stop_after=(max(scope) if scope else None))
             say(f"  the shop sweep took "
                 f"{time.monotonic() - sweep_started:.0f}s.")
             if everything is None:
@@ -17800,6 +18131,14 @@ def main() -> None:
                         "inventory (last tab, slot 1x7) instead of finding the "
                         "NPC by OCR. Much faster and cannot miss, but the key "
                         "only exists on a premium account")
+    p.add_argument("--ocr-engine", choices=("tesseract", "rapid", "paddle"),
+                   default="tesseract",
+                   help="which OCR engine reads the screen. 'rapid' and "
+                        "'paddle' run IN PROCESS, which removes the ~121ms "
+                        "process spawn that dominates a Tesseract read; "
+                        "neither is installed by default and an absent engine "
+                        "falls back to Tesseract rather than failing. Pair "
+                        "with --ocr-profile to compare them")
     p.add_argument("--ocr-profile", action="store_true",
                    help="print, at the end of the run, every Tesseract launch "
                         "attributed to the reader that asked for it -- calls, "
@@ -18097,6 +18436,9 @@ def main() -> None:
         print(f"--premium is ON: the Agent Shop opens from the key at tab "
               f"{PREMIUM_SHOP_KEY_TAB} slot ({row},{col}), not by finding the "
               f"NPC. No OCR sweep and no offset guessing.")
+
+    if getattr(args, "ocr_engine", "tesseract") != "tesseract":
+        select_ocr_engine(args.ocr_engine, verbose=True)
 
     if args.ocr_profile:
         globals()["OCR_PROFILE"] = True
