@@ -16234,6 +16234,25 @@ def run_loop(
         while time.monotonic() < end:
             cycle += 1
             started = time.monotonic()
+            # THE OCR BILL SO FAR, EVERY CYCLE -- not only at exit.
+            #
+            # A force-killed run never reaches any Python handler, so an
+            # exit-time report is lost exactly when it is most wanted: the
+            # 11:44 and 12:15 runs were both stopped that way and both lost
+            # their numbers. Printed per cycle, the log always holds the bill
+            # for every cycle that finished, however the process dies.
+            if OCR_PROFILE and cycle > 1:
+                _rep = ocr_profile_report()
+                if _rep:
+                    say(_rep)
+                    _c = ocr_cache_stats()
+                    _served = _c.get("hits", 0)
+                    _asked = _served + _c.get("misses", 0)
+                    if _asked:
+                        say(f"  cache: {_served} of {_asked} reads served "
+                            f"without a launch "
+                            f"({100.0 * _served / _asked:.0f}%)")
+
             say(f"\n===== cycle {cycle} at {datetime.now():%H:%M:%S} =====")
 
             # Also at the cycle boundary, so a run that starts inside a window
