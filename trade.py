@@ -4910,6 +4910,110 @@ EXPECTED_ROWS = 10
 
 RECORD_ENABLED = False
 
+# --------------------------------------------------------------------------
+# OCR PROFILE
+# --------------------------------------------------------------------------
+# Every Tesseract launch in the program, counted and timed, attributed to the
+# function that asked for it.
+#
+# OCR is essentially the whole cost of a cycle -- a full table read was
+# measured at 18-23s -- and until now nobody could say WHERE it goes. There are
+# 49 call sites of the three primitives across 19 readers, and a static count
+# says nothing useful: read_number retries with two page-segmentation modes, so
+# one call can be two launches, and read_rows' cost scales with the rows on
+# screen.
+#
+# Counting at the subprocess is the only honest measure: it is the process
+# launch that costs, not the Python call. --ocr-profile prints the table at the
+# end of a run, worst total first.
+_OCR_STATS: dict = {}
+OCR_PROFILE = False
+
+# --------------------------------------------------------------------------
+# THE OCR SEAM
+# --------------------------------------------------------------------------
+# Every character this program reads comes through find_words or read_number,
+# and both now go through here first. Two jobs:
+#
+#   1. NEVER ASK THE SAME QUESTION OF THE SAME SCREENSHOT TWICE. Measured
+#      2026-08-10: four reader calls on ONE frame cost 22 Tesseract launches
+#      and 2.7s, because read_rows, purchase_confirm, read_register_panel and
+#      dialog_kind each crop and launch independently, and buy_offer calls
+#      purchase_confirm up to four times around a single dialog. A launch is
+#      ~121ms average and most of that is process startup, not recognition.
+#
+#   2. KEEP THE ENGINE SWAPPABLE. Nothing above this line knows what reads the
+#      pixels. Point OCR_BACKEND at something else -- an in-process Tesseract
+#      binding, RapidOCR, PaddleOCR -- and every reader follows, with the
+#      profiler and the cache still measuring it.
+#
+# The cache is keyed on the grab() SERIAL, not on pixels: hashing a 2560x1440
+# frame costs more than the launch it would save, and identity is the honest
+# key anyway. A source with no serial (a Path, or a corpus frame opened
+# directly) is keyed on its string, which is stable for the replay suites.
+_FRAME_SERIAL = 0
+_OCR_CACHE: dict = {}
+OCR_CACHE_ENABLED = True
+# Set to a callable to replace the engine. None means the bundled Tesseract.
+# It takes (PIL.Image, min_conf) over an ALREADY-CROPPED, already-upscaled
+# image and returns [(text, left, top, right, bottom, conf), ...] in that
+# image's own pixels; the caller maps them back to screen coordinates.
+OCR_BACKEND = None
+
+
+def _cache_key(source, region, min_conf, scale, kind):
+    """What identifies this read, or None when it must not be cached."""
+    if not OCR_CACHE_ENABLED:
+        return None
+    if isinstance(source, Image.Image):
+        serial = getattr(source, "_cabal_frame", None)
+        if serial is None:
+            return None
+    else:
+        serial = f"path:{source}"
+    return (serial, tuple(region) if region else None, min_conf, scale, kind)
+
+
+def forget_ocr_cache() -> None:
+    """Drop every cached read. Cheap, and never wrong to call."""
+    _OCR_CACHE.clear()
+
+
+def ocr_cache_stats() -> dict:
+    """How much the cache is actually saving."""
+    return dict(_OCR_CACHE_STATS)
+
+
+_OCR_CACHE_STATS = {"hits": 0, "misses": 0}
+
+
+
+def _note_ocr(who: str, seconds: float) -> None:
+    """One Tesseract launch by `who`, taking `seconds`."""
+    entry = _OCR_STATS.setdefault(who, {"calls": 0, "seconds": 0.0})
+    entry["calls"] += 1
+    entry["seconds"] += seconds
+
+
+def ocr_profile_report() -> str:
+    """The OCR bill for this run, worst total first. '' when nothing ran."""
+    if not _OCR_STATS:
+        return ""
+    rows = sorted(_OCR_STATS.items(), key=lambda kv: -kv[1]["seconds"])
+    calls = sum(v["calls"] for _, v in rows)
+    total = sum(v["seconds"] for _, v in rows)
+    out = ["", "OCR PROFILE -- every Tesseract launch this run",
+           f"  {'caller':28}{'calls':>8}{'seconds':>10}{'avg ms':>9}{'share':>8}"]
+    for who, v in rows:
+        share = (100.0 * v["seconds"] / total) if total else 0.0
+        avg = (1000.0 * v["seconds"] / v["calls"]) if v["calls"] else 0.0
+        out.append(f"  {who:28}{v['calls']:>8}{v['seconds']:>10.1f}"
+                   f"{avg:>9.0f}{share:>7.1f}%")
+    out.append(f"  {'TOTAL':28}{calls:>8}{total:>10.1f}"
+               f"{(1000.0 * total / calls) if calls else 0:>9.0f}{100.0:>7.1f}%")
+    return chr(10).join(out)
+
+
 # Set by --debug-frames. A frame after EVERY input the script sends -- click,
 # ctrl+click, alt+click, right click, Escape, and each typed number -- not just
 # at the points record() is already called from.
@@ -5121,6 +5225,7 @@ def get_alz(
                          f".alz_tmp_{os.getpid()}_{next(_ALZ_TMP_SEQ)}.png")
     try:
         prepared.save(tmp)
+        _ocr_t0 = time.monotonic()
         result = subprocess.run(
             [
                 tesseract, str(tmp), "stdout",
@@ -5131,6 +5236,7 @@ def get_alz(
             text=True,
             timeout=TESSERACT_TIMEOUT,
         )
+        _note_ocr('get_alz', time.monotonic() - _ocr_t0)
     except subprocess.TimeoutExpired:
         print(f"Alz: skipped, Tesseract did not respond within "
               f"{TESSERACT_TIMEOUT:g}s", file=sys.stderr)
@@ -5740,6 +5846,16 @@ def find_words(
     """
     if scale is None:
         scale = max(2, min(6, int(round(2 / max(_ocr_reference_scale(), 0.34)))))
+    # CACHED ON THE FRAME. See the OCR seam above: the same question of the
+    # same screenshot is answered once. buy_offer alone asks purchase_confirm
+    # up to four times around one dialog.
+    _key = _cache_key(source, region, min_conf, scale, "words")
+    if _key is not None and _key in _OCR_CACHE:
+        _OCR_CACHE_STATS["hits"] += 1
+        return list(_OCR_CACHE[_key])
+    if _key is not None:
+        _OCR_CACHE_STATS["misses"] += 1
+
     tesseract = find_tesseract()
     if tesseract is None:
         # Degrade like the timeout and non-zero-exit paths below rather than
@@ -5765,12 +5881,14 @@ def find_words(
     # measured AROUND this call, so a wedged tesseract.exe would hang the run
     # forever with no timeout able to fire.
     try:
+        _ocr_t0 = time.monotonic()
         result = subprocess.run(
             [tesseract, "stdin", "stdout", "--psm", "11", "tsv"],
             input=buf.getvalue(),
             capture_output=True,
             timeout=TESSERACT_TIMEOUT,
         )
+        _note_ocr('find_words', time.monotonic() - _ocr_t0)
     except subprocess.TimeoutExpired:
         print(f"Tesseract did not respond within {TESSERACT_TIMEOUT:g}s; "
               "treating this frame as unreadable.", file=sys.stderr)
@@ -5825,6 +5943,8 @@ def find_words(
             bottom=region[1] + (top + height) // scale,
             conf=conf,
         ))
+    if _key is not None:
+        _OCR_CACHE[_key] = list(words)
     return words
 
 
@@ -5861,6 +5981,34 @@ def _ink_box(prepared: Image.Image, threshold: int = 128):
 
 
 def read_number(
+    source: "Image.Image | Path | str",
+    region: "tuple[int, int, int, int]",
+    min_conf: float = 0.0,
+) -> "int | None":
+    """The number in `region`, cached against the frame it came from.
+
+    A thin seam over _read_number_uncached, which has several return paths at
+    different depths -- wrapping the boundary cannot miss one, and patching
+    each return did.
+
+    Worth caching harder than find_words: read_number retries with a second
+    page-segmentation mode, so ONE call is often TWO Tesseract launches.
+    Measured 2026-08-10, four reader calls on a single frame produced 8
+    launches from here alone.
+    """
+    _key = _cache_key(source, region, min_conf, None, "number")
+    if _key is not None and _key in _OCR_CACHE:
+        _OCR_CACHE_STATS["hits"] += 1
+        return _OCR_CACHE[_key]
+    if _key is not None:
+        _OCR_CACHE_STATS["misses"] += 1
+    value = _read_number_uncached(source, region, min_conf)
+    if _key is not None:
+        _OCR_CACHE[_key] = value
+    return value
+
+
+def _read_number_uncached(
     source: Image.Image | Path | str,
     region: tuple[int, int, int, int],
     min_conf: float = 0.0,
@@ -5878,6 +6026,7 @@ def read_number(
     screenshot -- widening the crop would pull in the neighbouring column's
     digits, and this cell's neighbour is the price.
     """
+
     words = sorted(find_words(source, region, min_conf), key=lambda w: w.left)
     value = _digits("".join(w.text for w in words))
     if value is not None:
@@ -5913,11 +6062,13 @@ def read_number(
     buf = io.BytesIO()
     prepared.save(buf, "PNG")
     try:
+        _ocr_t0 = time.monotonic()
         result = subprocess.run(
             [tesseract, "stdin", "stdout", "--psm", "7",
              "-c", "tessedit_char_whitelist=0123456789,"],
             input=buf.getvalue(), capture_output=True, timeout=TESSERACT_TIMEOUT,
         )
+        _note_ocr('read_number', time.monotonic() - _ocr_t0)
     except (subprocess.TimeoutExpired, OSError):
         return None
     if result.returncode == 0:
@@ -5937,10 +6088,12 @@ def read_number(
     # 2. A wrong quantity is worse than an unread one -- it is what the
     # duplicate handling and sanity_check both key on.
     try:
+        _ocr_t0 = time.monotonic()
         result = subprocess.run(
             [tesseract, "stdin", "stdout", "--psm", "10"],
             input=buf.getvalue(), capture_output=True, timeout=TESSERACT_TIMEOUT,
         )
+        _note_ocr('read_number', time.monotonic() - _ocr_t0)
     except (subprocess.TimeoutExpired, OSError):
         return None
     if result.returncode != 0:
@@ -6594,9 +6747,31 @@ def alt_click(x: int, y: int, settle: float = 0.15) -> None:
 
 
 def grab() -> Image.Image:
-    global _last_shot
+    """A fresh screenshot, stamped so OCR results can be cached against it.
+
+    The stamp is what makes the read cache safe. Two calls asking the same
+    question of the SAME screenshot must give the same answer, and two calls
+    against different screenshots must not share one -- so the cache is keyed
+    on a serial that only a new grab() can advance, never on the image
+    contents. Identity, not equality: a re-read of an unchanged screen is a
+    genuinely new observation and must still cost a launch.
+    """
+    global _last_shot, _FRAME_SERIAL
     png, _, _, _, _ = take_screenshot()
     _last_shot = Image.open(io.BytesIO(png))
+    # THE PREVIOUS FRAME'S READS ARE DEAD THE MOMENT A NEW ONE ARRIVES.
+    #
+    # Nothing ever re-reads an old screenshot -- the readers are always asked
+    # about the current one -- so keeping them would be an unbounded leak on a
+    # run that grabs thousands of frames, for entries that can never be hit.
+    # Clearing here also means the cache can only ever answer about the frame
+    # in hand, which is the property that makes it safe.
+    _OCR_CACHE.clear()
+    _FRAME_SERIAL += 1
+    try:
+        _last_shot._cabal_frame = _FRAME_SERIAL
+    except Exception:  # noqa: BLE001 - a cache stamp must never break a grab
+        pass
     return _last_shot
 
 
