@@ -9673,6 +9673,10 @@ def enumerate_listings(timeout: float = 8.0,
     # Restoring it HERE, in a finally, means every exit -- success, failure,
     # or an exception on the way -- leaves the table where callers assume.
     try:
+        # Measure the wheel once before walking. It pays for itself on the
+        # first stride: without it the walk re-derives the shift from content
+        # at every step and collapses to one row wherever the rows repeat.
+        calibrate_scroll(timeout=timeout, verbose=verbose)
         for step in (SCROLL_STEP, SCROLL_STEP_FALLBACK):
             found = _enumerate_at_step(step, timeout, verbose, say,
                                        stop_after=stop_after)
@@ -9687,6 +9691,75 @@ def enumerate_listings(timeout: float = 8.0,
             scroll_to_end(up=True, timeout=timeout, verbose=False)
         except Exception:  # noqa: BLE001 - never mask the sweep's own outcome
             pass
+
+
+# WHAT ONE WHEEL NOTCH MOVES, MEASURED ONCE.
+#
+# The sweep used to re-derive this at EVERY step: scroll, read the whole table,
+# run measure_shift to work out how far it went. When the overlap held fewer
+# than two distinctive rows -- routine on a shop with runs of identical Core
+# rows and empty slots -- informative_step dropped the step to ONE ROW, so it
+# paid a full ~9s table read per row. Measured 2026-08-10: 134 seconds to walk
+# 25 rows, with eight consecutive "stepping 1 instead of 7".
+#
+# But the wheel does not change. One notch moves a fixed number of rows for the
+# life of the window, so it is a CALIBRATION, not a per-step measurement: learn
+# it once, then scroll a known distance and read once per stride.
+#
+# None until measured. 0 means "measured and the table would not move", which
+# is a different fact and must not be retried as though unmeasured.
+_SCROLL_ROWS_PER_NOTCH: "float | None" = None
+
+
+def forget_scroll_calibration() -> None:
+    """Drop it: the window moved, so the wheel may not mean the same thing."""
+    global _SCROLL_ROWS_PER_NOTCH
+    _SCROLL_ROWS_PER_NOTCH = None
+
+
+def scroll_rows_per_notch() -> "float | None":
+    """How many table rows one wheel notch moves. None if unknown."""
+    return _SCROLL_ROWS_PER_NOTCH
+
+
+def calibrate_scroll(timeout: float = 8.0, verbose: bool = True) -> "float | None":
+    """Measure one notch against the table. Returns rows-per-notch, or None.
+
+    Deliberately measured at the TOP of the table, where a scroll cannot be
+    clamped by the end of the list -- measuring against a clamped scroll would
+    teach the sweep that the wheel does less than it does, and it would then
+    skip rows for the rest of the run.
+    """
+    global _SCROLL_ROWS_PER_NOTCH
+
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    if _SCROLL_ROWS_PER_NOTCH is not None:
+        return _SCROLL_ROWS_PER_NOTCH
+    try:
+        if not table_scrollable(verbose=False):
+            return None
+        before = await_rows(timeout)
+        if not before:
+            return None
+        after, shift = scroll_chunk(1, before, timeout=timeout, verbose=False)
+        if not after or not shift:
+            # 0 or None: either it would not move or it could not be measured.
+            # Neither is a ratio, and guessing one would be worse than paying
+            # for the old per-step measurement.
+            return None
+        _SCROLL_ROWS_PER_NOTCH = float(shift)
+        say(f"  one wheel notch moves {shift} row(s); the sweep can step by "
+            f"content instead of re-measuring every row.")
+        record("scroll.calibrated", rows_per_notch=shift)
+        # Put the view back where it was found.
+        scroll_chunk(-1, after, timeout=timeout, verbose=False)
+        return _SCROLL_ROWS_PER_NOTCH
+    except Exception as exc:  # noqa: BLE001 - a calibration is an optimisation
+        say(f"  could not calibrate the wheel ({exc}); measuring per step.")
+        return None
 
 
 def informative_step(rows: list[Row], want: int) -> int:
@@ -9713,7 +9786,28 @@ def informative_step(rows: list[Row], want: int) -> int:
         overlap = rows[step:]
         if len(overlap) < MIN_SCROLL_OVERLAP:
             continue
-        if sum(1 for r in overlap if r.name != "(empty)") >= SCROLL_MATCH_MIN_LIVE:
+        # DISTINCTIVE, NOT MERELY NAMED.
+        #
+        # This counted rows whose NAME was not "(empty)", which treats twelve
+        # identical "Force Core(High)" rows as twelve pieces of evidence when
+        # they are one. measure_shift keys on (name, price, qty, action), so
+        # what makes a row useful for pinning an offset is being UNIQUE by that
+        # key within the overlap -- and identical rows are exactly what it
+        # already refuses to choose between.
+        #
+        # Counting the wrong thing is why the step collapsed to 1 on a shop
+        # with runs of identical Core rows: the old test passed, the offset was
+        # then ambiguous anyway, and informative_step shrank the step until
+        # something distinctive appeared. Measured 2026-08-10: eight
+        # consecutive "stepping 1 instead of 7" and 134s to walk 25 rows.
+        #
+        # Counting uniqueness instead lets it take the full stride wherever the
+        # rows really do identify themselves -- price and quantity differ even
+        # when the name does not -- and shrink only where they genuinely do
+        # not.
+        keys = [_row_key(r) for r in overlap if r.name != "(empty)"]
+        distinctive = sum(1 for k in keys if keys.count(k) == 1)
+        if distinctive >= SCROLL_MATCH_MIN_LIVE:
             return step
     # Nothing distinctive anywhere: the view is inside a dead stretch of empty
     # slots. Step small so that if the offset can be pinned down at all, it is
@@ -9810,7 +9904,31 @@ def _enumerate_at_step(step: int, timeout: float, verbose: bool,
         # measurable depends on where the empty slots are, and that changes as
         # the sweep descends.
         this_step = informative_step(rows, step)
-        if this_step != step:
+
+        # THE WHEEL IS CALIBRATED, SO THE CONTENT DOES NOT HAVE TO IDENTIFY
+        # ITSELF.
+        #
+        # informative_step shrinks the stride until the overlap holds rows
+        # measure_shift can tell apart -- and on a shop with runs of identical
+        # Core rows it never can, so the stride collapses to ONE ROW and the
+        # walk pays a full ~9s table read per row. That is the 134-second walk.
+        #
+        # But a shrunken stride is only needed when the shift must be DERIVED
+        # from content. Once calibrate_scroll has measured the wheel, the shift
+        # is known before the scroll: notches x rows-per-notch. So the stride
+        # can be the full `step` regardless of how repetitive the rows are.
+        #
+        # Still verified, just cheaply: scroll_chunk reports what it observed,
+        # and a disagreement with the calibration means the view hit the bottom
+        # or the wheel did something unexpected -- both of which the caller
+        # already handles.
+        per_notch = scroll_rows_per_notch()
+        if per_notch and this_step < step:
+            say(f"  stepping the full {step} rather than {this_step}: the "
+                f"wheel is calibrated at {per_notch:g} row(s) per notch, so "
+                f"the shift does not have to be read off the rows.")
+            this_step = step
+        elif this_step != step:
             say(f"  stepping {this_step} instead of {step} - the last "
                 f"{len(rows) - this_step} row(s) of this screen include "
                 f"something nameable to match on.")
@@ -16254,6 +16372,10 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
             # an unscoped sweep, where it stays empty and the ceiling reverts
             # to the whole shop.
             in_scope_now = []
+            # The rows the operator asked about, kept even when `scope` is
+            # cleared for the unscoped path -- a walk still only needs to cover
+            # these, and one may already have.
+            asked_range = max(scope) if scope else 0
 
             if scope:
                 # THE FIRST SCREEN IS ABSOLUTE ROWS 1-EXPECTED_ROWS, AND ONLY
@@ -16280,6 +16402,14 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
                         f"sold out from rows that were never looked at.")
                     record("restock.scope_offscreen",
                            scope=f"{min(scope)}-{max(scope)}")
+                    # KEEP WHAT WAS ASKED FOR. `scope` is cleared here so the
+                    # rest of the function takes the unscoped path, but the
+                    # ROWS the operator asked about are still what a walk needs
+                    # to cover -- and chaos has very likely just walked exactly
+                    # them. Losing the number here meant the cache lookup below
+                    # ran with scope=None and could never hit, for precisely
+                    # the case it was written for.
+                    asked_range = max(scope)
                     scope = None
                 else:
                     in_scope = [r for r in visible if r.index in set(scope)]
@@ -16399,18 +16529,21 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
             # and walks the same range from the same tab; both were paying for
             # it -- 125s and 137s on 2026-08-10, i.e. 262 seconds of reading
             # before a single row was relisted.
+            # `asked_range` survives the scope being cleared above; `scope`
+            # alone would be None on exactly the path that needs the reuse.
+            want_rows = max(scope) if scope else asked_range
             everything = None
-            if scope:
-                everything = cached_range_view(max(scope))
+            if want_rows:
+                everything = cached_range_view(want_rows)
                 if everything is not None:
-                    say(f"  reusing this cycle's walk of rows 1-"
-                        f"{max(scope)} rather than reading the table again.")
+                    say(f"  reusing this cycle's walk of rows 1-{want_rows} "
+                        f"rather than reading the table again.")
             if everything is None:
                 everything = whole_shop_listings(
                     timeout=timeout, verbose=verbose,
-                    stop_after=(max(scope) if scope else None))
-                if everything and scope:
-                    note_range_view(max(scope), everything)
+                    stop_after=want_rows or None)
+                if everything and want_rows:
+                    note_range_view(want_rows, everything)
             say(f"  the shop sweep took "
                 f"{time.monotonic() - sweep_started:.0f}s.")
             if everything is None:
@@ -18053,6 +18186,8 @@ def calibrate(verbose: bool = True, save: bool = True) -> bool:
     # The window may have moved or resized, and the park point is derived from
     # its geometry. Recomputed on next use rather than carried over.
     forget_park_point()
+    # A resized window scrolls a different number of rows per notch.
+    forget_scroll_calibration()
 
     say("Calibrating against the current screen and game window...")
     screen = current_screen_size()
