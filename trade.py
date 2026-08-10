@@ -1972,6 +1972,26 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
     read the table it covers as an empty shop.
     """
     shot = source if source is not None else grab()
+    # LITERALS, DELIBERATELY -- and NOT PURCHASE_DIALOG_REGION.
+    #
+    # These look like the classic un-calibrated-constant bug: every
+    # neighbouring region (PURCHASE_DLG_PRICE, PURCHASE_DLG_QTY_*) is rescaled
+    # by apply_layout, while this sweep and the button threshold are hardcoded.
+    # I swapped them for PURCHASE_DIALOG_REGION / PURCHASE_DIALOG_BUTTONS,
+    # which ARE rescaled -- and purchase_confirm went from reading 14 of 14
+    # corpus dialogs to reading 0.
+    #
+    # Those two constants are STALE, not merely unused. PURCHASE_DIALOG_REGION
+    # (1000, 545, 1575, 895) is far tighter than the (700, 400, 1700, 950) the
+    # dialog actually occupies, and it clips the words this function keys on.
+    # They are rescaled by apply_layout and read by nothing, which is exactly
+    # how they drifted without anyone noticing.
+    #
+    # So: do not "fix" this by wiring them up. Fix it by re-measuring them
+    # against corpus buy.dialog frames first, proving the new box reads 14 of
+    # 14, and only then switching. Until that is done the literals are the
+    # working values, and being unscaled is a real limitation on any screen
+    # other than the reference one.
     words = [w for w in find_words(shot, (700, 400, 1700, 950), 20)
              if w.conf >= 45]
     text = " ".join(w.text for w in words)
@@ -2402,6 +2422,36 @@ def run_favourite_search(slot: int, settle: float = 3.0,
 # somebody else, and "sold out" alone is what the original check used, so this
 # is a superset of the behaviour it replaces rather than a narrowing.
 RACE_REFUSALS = ("sold out", "sold to another")
+
+# Refusals that are TRANSIENT rather than a race: the click missed, the dialog
+# went, or one frame did not read. Worth another attempt for the same reason a
+# race is -- the next search starts from a clean state -- and the attempt count
+# still bounds them.
+#
+# The price mismatch is the important one. buy_offer's own comment calls it
+# "NOT permanent... an ordinary race: the listing changed between reading the
+# row and opening the dialog, and the next search sees the new one" -- and its
+# message contains neither race marker, so a single reprice ended the entire
+# restock rather than costing one order.
+TRANSIENT_REFUSALS = (
+    "the dialog says",                      # the price moved under us
+    "did not appear",                       # the confirm dialog never came
+    "vanished",                             # it went mid-read
+    "did not read",                         # one unreadable frame
+)
+
+
+def is_retryable_refusal(why: str) -> bool:
+    """True when another attempt is worth making.
+
+    A race or a transient miss both clear on the next search. What must NOT be
+    retried is a refusal that says the script's map is wrong -- a name
+    mismatch, a grade mismatch, an unsanctioned Buy -- because those repeat
+    identically and halt_buying exists precisely to stop them being retried.
+    """
+    text = (why or "").lower()
+    return (is_race_refusal(text)
+            or any(marker in text for marker in TRANSIENT_REFUSALS))
 
 
 def is_race_refusal(why: str) -> bool:
@@ -3021,7 +3071,10 @@ def buy_cheapest_set_detail(item_slot: int,
             say(f"  BOUGHT {taken} x {target.name!r} for {order_price:,} Alz.")
             return outcome(True, offer=target, saving=saving, taken=taken)
         say(f"  not bought: {why}")
-        if not is_race_refusal(why):
+        # Retried for a race OR a transient miss. Anything else means the
+        # script and the game disagree about what is being bought, and that
+        # must stop rather than repeat.
+        if not is_retryable_refusal(why):
             return outcome(False, why, saving=saving)
 
     say(f"Gave up after {attempts} attempts - the listings kept selling first.")
@@ -3354,6 +3407,9 @@ SERVER_CLOCK_RESYNC = 1800.0
 # How far a fresh reading may disagree with the running clock before it is
 # treated as a misread rather than as news. The server clock does not leap, so
 # anything past a couple of minutes is the OCR, not the server.
+# How long to wait before re-reading the clock to confirm a first anchor.
+# Long enough for a fresh frame, short enough to be free once per run.
+SERVER_CLOCK_CONFIRM_PAUSE = 1.0
 SERVER_CLOCK_MAX_DRIFT = 150.0
 
 # An arbitrary fixed date for the server clock to hang off.
@@ -3492,12 +3548,69 @@ def carried_sets(slot: int) -> int:
     return max(0, int(_CARRIED_SETS.get(slot, 0)))
 
 
+def _persist_carried(slot: int, count: int) -> None:
+    """Mirror one carry row to the ledger. Never raises.
+
+    Bookkeeping that must survive the process, because the failure it prevents
+    only happens ACROSS one: a restart meeting a dirty work tab with no memory
+    of why raises FatalAbort and dies on cycle 1, repeatedly.
+    """
+    conn = sales_db()
+    if conn is None:
+        return
+    try:
+        with conn:
+            if count > 0:
+                conn.execute(
+                    "INSERT INTO carried (slot, count, noted) VALUES (?,?,?) "
+                    "ON CONFLICT(slot) DO UPDATE SET count=excluded.count, "
+                    "noted=excluded.noted",
+                    (int(slot), int(count),
+                     _dt.datetime.now().isoformat(" ", "seconds")))
+            else:
+                conn.execute("DELETE FROM carried WHERE slot = ?", (int(slot),))
+    except Exception:  # noqa: BLE001 - a carry note must never cost a listing
+        pass
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def load_carried() -> None:
+    """Restore the carry registry from the ledger, once per process.
+
+    Called before the first work-tab check. Without it a restart cannot tell
+    its own paid-for Sets from an item nobody can account for, and refuses the
+    only way it knows how -- fatally.
+    """
+    conn = sales_db()
+    if conn is None:
+        return
+    try:
+        for slot, count in conn.execute(
+                "SELECT slot, count FROM carried WHERE count > 0"):
+            if int(slot) == 0:
+                note_chaos_strand(True)
+            else:
+                _CARRIED_SETS[int(slot)] = int(count)
+    except Exception:  # noqa: BLE001
+        pass
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def note_carried_sets(slot: int, count: int) -> None:
     """Record that `count` Sets for `slot` are in the bag, unlisted."""
     if count > 0:
         _CARRIED_SETS[slot] = int(count)
     else:
         _CARRIED_SETS.pop(slot, None)
+    _persist_carried(slot, count)
 
 
 def clear_carried(slot: int) -> None:
@@ -3524,9 +3637,17 @@ _CHAOS_STRANDED = False
 
 
 def note_chaos_strand(stranded: bool = True) -> None:
-    """Chaos left Cores or Sets in the work tab, or has just cleared them."""
+    """Chaos left Cores or Sets in the work tab, or has just cleared them.
+
+    Persisted under slot 0 -- chaos has no favourite slot of its own -- so a
+    restart still recognises the goods as its own instead of raising
+    FatalAbort over a tab it could have crafted.
+    """
     global _CHAOS_STRANDED
+    was = _CHAOS_STRANDED
     _CHAOS_STRANDED = bool(stranded)
+    if was != _CHAOS_STRANDED:
+        _persist_carried(0, 1 if _CHAOS_STRANDED else 0)
 
 
 def chaos_stranded() -> bool:
@@ -10608,6 +10729,23 @@ def sales_db() -> "sqlite3.Connection | None":
                 );
                 CREATE INDEX IF NOT EXISTS chaos_lots_price
                     ON chaos_lots (listed_price);
+
+                -- WORK LEFT IN THE INVENTORY, ACROSS RESTARTS.
+                --
+                -- The carry registry and the chaos strand flag were
+                -- process-lifetime, so a restart met a dirty work tab with
+                -- carried_total() == 0 and raised FatalAbort -- turning a
+                -- recoverable strand into a run that dies on cycle 1, every
+                -- time, until a human clears the tab. Four such deaths are on
+                -- record for 2026-08-09 alone.
+                --
+                -- One row per slot; slot 0 is the chaos strand, which has no
+                -- favourite slot of its own.
+                CREATE TABLE IF NOT EXISTS carried (
+                    slot    INTEGER PRIMARY KEY,
+                    count   INTEGER NOT NULL,
+                    noted   TEXT    NOT NULL
+                );
                 """
             )
             conn.commit()
@@ -10920,7 +11058,7 @@ def sale_rejection(proceeds: "int | None", price: "int | None",
     return ""
 
 
-def all_time_totals() -> "tuple[int, int, int, int] | None":
+def all_time_totals() -> "tuple[int, int, int, int, int] | None":
     """(sales, proceeds, purchases, spend) over the whole database, or None.
 
     Read from SQLite rather than memory so it spans every run, which is the
@@ -10943,9 +11081,22 @@ def all_time_totals() -> "tuple[int, int, int, int] | None":
         # figure the operator actually wants.
         buys_n, = conn.execute(
             "SELECT COUNT(*) FROM purchases WHERE qty > 0").fetchone()
+        # STOCK SPEND AND FEES ARE DIFFERENT MONEY, and the report treats
+        # them differently, so they are counted separately.
+        #
+        # `held = all_spend - cogs` is printed as "paid for and not yet sold --
+        # stock, not a loss". Registration fees are written to `purchases` with
+        # qty = 0, so they are excluded from cogs (which selects qty > 0) but
+        # were included in all_spend -- and therefore landed in the INVENTORY
+        # line, as though the fee were an asset. A growing, permanent
+        # overstatement of stock on hand, one row per listing per cycle.
         spend, = conn.execute(
-            "SELECT COALESCE(SUM(spend), 0) FROM purchases").fetchone()
-        return int(sales_n), int(proceeds), int(buys_n), int(spend)
+            "SELECT COALESCE(SUM(spend), 0) FROM purchases "
+            "WHERE qty > 0").fetchone()
+        fees, = conn.execute(
+            "SELECT COALESCE(SUM(spend), 0) FROM purchases "
+            "WHERE qty <= 0").fetchone()
+        return int(sales_n), int(proceeds), int(buys_n), int(spend), int(fees)
     except Exception:  # noqa: BLE001 - bookkeeping must never raise
         return None
     finally:
@@ -11035,7 +11186,23 @@ def cost_of_goods_sold() -> "tuple[int, int, int]":
             covered = min(units, bought.get(key, 0)) if unit > 0 else 0
             if covered > 0:
                 bought[key] = bought.get(key, 0) - covered
-                cost += unit * covered
+                # NEVER CHARGE MORE THAN WAS SPENT.
+                #
+                # unit_cost rounds UP so a floor is never a hair under what was
+                # paid -- right for a floor, wrong for a total. Multiplied back
+                # out across every unit it charges slightly more than the
+                # purchases hold, so once an item is fully sold `cogs` exceeds
+                # `all_spend`, `held` goes NEGATIVE, and the report says
+                # "more units have sold than the purchases cover" about a
+                # ledger that balances. Reproduced: 3 units bought for 100,
+                # 3 sold for 102, reported +0 realised and inventory
+                # "not computable".
+                #
+                # Capped at what is left of that item's spend, so the last unit
+                # absorbs the rounding instead of inventing cost.
+                charge = min(unit * covered, spent.get(key, 0))
+                spent[key] = spent.get(key, 0) - charge
+                cost += charge
                 priced += covered
             unpriced += units - covered
         return cost, priced, unpriced
@@ -11318,7 +11485,7 @@ def profit_report() -> str:
                  "=" * 74]
 
     if totals:
-        sales_n, all_gross, buys_n, all_spend = totals
+        sales_n, all_gross, buys_n, all_spend, all_fees = totals
         cogs, priced, unpriced = cost_of_goods_sold()
         # What has been paid for and NOT yet sold. Everything spent, less the
         # cost of the units that have left -- so a restock that just bought
@@ -11327,6 +11494,12 @@ def profit_report() -> str:
         lines += [
             f"  ALL TIME  {sales_n} collection(s)  in  {all_gross:>18,} Alz",
             f"            {buys_n} purchase(s)    out {all_spend:>18,} Alz",
+        ] + ([
+            # Named rather than folded into stock. A fee is money gone, not an
+            # asset, and it used to sit inside the INVENTORY line as though it
+            # were still owned.
+            f"            registration fees  {all_fees:>18,} Alz",
+        ] if all_fees else []) + [
             "  " + "-" * 70,
             f"  {'REALISED':22} {all_gross - cogs:>+29,} Alz",
             f"    takings {all_gross:,} less the {cogs:,} those units cost",
@@ -16385,6 +16558,44 @@ def sync_server_clock(verbose: bool = False) -> bool:
     # correct minutes. A reading that disagrees with the running clock by more
     # than a couple of minutes is far likelier to be a bad read than a real
     # jump -- the server clock does not leap.
+    # THE FIRST SYNC IS GUARDED BY A SECOND READING, NOT BY NOTHING.
+    #
+    # The drift check below only runs once an anchor exists, so the FIRST
+    # reading of a process was accepted unconditionally -- and if it was wrong
+    # the anchor was wrong for the whole run, with every correct reading
+    # afterwards rejected as drift. There is no escape hatch: _SERVER_CLOCK_SYNC
+    # is written in one place, which the rejection returns before reaching.
+    #
+    # Misreads are real and confident: read_server_clock returned 08:43 at
+    # conf 82 on a HUD plainly showing 08:48 (1 in 138 reads on the corpus),
+    # corrupted by translucent scenery behind the digits, and the regex accepts
+    # any 0-59 minute so nothing else catches it.
+    #
+    # Two independent readings that agree is cheap insurance for a number that
+    # decides when the run stops for a war.
+    if _SERVER_CLOCK_SYNC is None:
+        time.sleep(SERVER_CLOCK_CONFIRM_PAUSE)
+        second = read_server_clock(grab(), verbose=False)
+        if second is None:
+            if verbose:
+                print("  the server clock did not read a second time; not "
+                      "anchoring on a single reading.")
+            record("warlag.clock_unconfirmed")
+            return False
+        gap = abs((second.hour * 60 + second.minute)
+                  - (reading.hour * 60 + reading.minute))
+        # A minute may legitimately tick over between the two reads.
+        if gap > 1:
+            if verbose:
+                print(f"  two readings disagree "
+                      f"({reading.hour:02d}:{reading.minute:02d} then "
+                      f"{second.hour:02d}:{second.minute:02d}) - not "
+                      f"anchoring on either.")
+            record("warlag.clock_disagreed",
+                   first=f"{reading.hour:02d}:{reading.minute:02d}",
+                   second=f"{second.hour:02d}:{second.minute:02d}")
+            return False
+
     previous = server_now(resync=False, verbose=False)
     if previous is not None:
         drift = abs((stamped - previous).total_seconds())
@@ -16645,6 +16856,20 @@ def run_loop(
     reported and retried on the next tick. Only a locked workstation stops the
     loop outright, since nothing can work through that.
     """
+    # RESTORE WHAT A PREVIOUS PROCESS LEFT IN THE BAG, before anything checks
+    # the work tab. Without this a restart after a strand meets a dirty tab it
+    # cannot account for and raises FatalAbort on cycle 1 -- four such deaths
+    # are on record for 2026-08-09, each with paid-for goods sitting there.
+    load_carried()
+    if carried_total() or chaos_stranded():
+        parts = []
+        if carried_total():
+            parts.append(f"{carried_total()} carried Set(s)")
+        if chaos_stranded():
+            parts.append("an unfinished chaos pass")
+        print(f"Resuming with {' and '.join(parts)} recorded by an earlier "
+              f"run; the work tab will be cleared rather than refused.")
+
     def say(message: str) -> None:
         if verbose:
             print(message)
