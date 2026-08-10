@@ -3635,6 +3635,44 @@ def clear_carried(slot: int) -> None:
 # craft window, so re-entering chaos_pass crafts whatever is sitting there.
 _CHAOS_STRANDED = False
 
+# ONE RANGE WALK PER CYCLE, SHARED.
+#
+# chaos_pass and restock_pass both need to know what is listed past the first
+# screen, and both walked the table to find out -- 125s and 137s on 2026-08-10
+# with --relist-rows 1-25, i.e. 262 SECONDS before a single row was relisted,
+# answering overlapping questions about the same table from the same tab.
+#
+# Cached by the rows it covers, and dropped whenever the shop changes. It is
+# the same discipline as the row-count cache: stop re-deriving what was just
+# read.
+_RANGE_VIEW: dict = {}
+
+
+def note_range_view(covered: int, rows: list) -> None:
+    """Remember a walk that read absolute rows 1..covered."""
+    _RANGE_VIEW.clear()
+    _RANGE_VIEW.update({"covered": int(covered), "rows": list(rows),
+                        "at": time.monotonic()})
+
+
+def forget_range_view() -> None:
+    """Drop it: something changed the shop, so the walk is a lie now."""
+    _RANGE_VIEW.clear()
+
+
+def cached_range_view(need: int) -> "list | None":
+    """A walk that already covers rows 1..need, or None.
+
+    Deliberately NOT time-expired. A walk goes stale when the SHOP changes,
+    not when a clock ticks -- and every way this script changes it already
+    calls forget_range_view. A timer would only ever throw away a good read.
+    """
+    if not _RANGE_VIEW:
+        return None
+    if _RANGE_VIEW.get("covered", 0) < int(need):
+        return None
+    return list(_RANGE_VIEW.get("rows") or [])
+
 
 def note_chaos_strand(stranded: bool = True) -> None:
     """Chaos left Cores or Sets in the work tab, or has just cleared them.
@@ -3715,6 +3753,7 @@ def note_rows_used(count: "int | None") -> None:
 
 def forget_rows_used() -> None:
     """Drop it: something changed the shop that this script did not do."""
+    forget_range_view()
     global _ROWS_USED_CACHE
     _ROWS_USED_CACHE = None
 
@@ -3753,6 +3792,12 @@ def cached_rows_used() -> "int | None":
 
 
 def note_rows_added(count: int) -> None:
+    """A listing was created, so any remembered walk of the rows is stale."""
+    forget_range_view()
+    return _note_rows_added(count)
+
+
+def _note_rows_added(count: int) -> None:
     """Widen future sweeps by `count` rows, so new listings keep being priced."""
     global BUY_ADDED_ROWS
     if count > 0:
@@ -3942,10 +3987,34 @@ def leave_for_restock(verbose: bool = True) -> None:
             # The key reopens it in ~2s wherever the character stands, so the
             # window covering the NPC no longer matters -- and closing it here
             # only means reopening it before the first search.
+            #
+            # BUT THE VIEW MUST STILL BE RESET, and that is the half I removed
+            # with the close.
+            #
+            # Closing and reopening was doing two jobs: getting the window off
+            # the NPC, and putting the table back to a KNOWN state. Only the
+            # first is irrelevant under --premium. A sweep leaves the listings
+            # scrolled to the bottom, and open_purchase_tab finds its tab by
+            # locating the word "Purchase" -- which is not where it expects on
+            # a scrolled view.
+            #
+            # Measured live 2026-08-10 at t=301.4: "could not find the
+            # 'Purchase' tab to click", twice, so BOTH sold-out Cores were
+            # skipped. Cheap in itself -- 2.7s and nothing bought -- but the
+            # restock simply did not happen.
+            #
+            # Scrolling back to the top costs a fraction of a close-and-reopen
+            # and buys the same guarantee.
             if verbose:
-                print("  leaving the Agent Shop OPEN for the refill: --premium "
-                      "reaches it from the inventory key, so closing it now "
-                      "would only cost a reopen.")
+                print("  leaving the Agent Shop OPEN for the refill "
+                      "(--premium), but scrolling the table back to the top so "
+                      "the Purchase tab is where it is expected.")
+            try:
+                if trade_window_open():
+                    scroll_to_end(up=True, verbose=False)
+            except Exception as exc:  # noqa: BLE001 - a reset is best effort
+                if verbose:
+                    print(f"  (could not scroll the table back: {exc})")
             return
         if trade_window_open():
             leave_shop(verbose=verbose)
@@ -15569,11 +15638,17 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
         # as sold out past row 10.
         listings = None
         if want and max(want) > EXPECTED_ROWS:
-            walked = enumerate_listings(timeout=timeout, verbose=False,
-                                        stop_after=max(want))
-            if walked:
-                listings = [_dc.replace(row, index=absolute)
-                            for absolute, row in walked]
+            listings = cached_range_view(max(want))
+            if listings is not None:
+                say(f"Chaos: reusing this cycle's walk of rows 1-"
+                    f"{max(want)} rather than reading the table again.")
+            else:
+                walked = enumerate_listings(timeout=timeout, verbose=False,
+                                            stop_after=max(want))
+                if walked:
+                    listings = [_dc.replace(row, index=absolute)
+                                for absolute, row in walked]
+                    note_range_view(max(want), listings)
         if listings is None:
             listings = await_rows(timeout)
         if not listings:
@@ -16320,9 +16395,22 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
             # listed inside the rows this batch manages, so the walk stops
             # there. Everything past it is rows nobody asked about, paid for
             # at a full table read each.
-            everything = whole_shop_listings(
-                timeout=timeout, verbose=verbose,
-                stop_after=(max(scope) if scope else None))
+            # REUSE THIS CYCLE'S WALK IF THERE IS ONE. chaos_pass runs first
+            # and walks the same range from the same tab; both were paying for
+            # it -- 125s and 137s on 2026-08-10, i.e. 262 seconds of reading
+            # before a single row was relisted.
+            everything = None
+            if scope:
+                everything = cached_range_view(max(scope))
+                if everything is not None:
+                    say(f"  reusing this cycle's walk of rows 1-"
+                        f"{max(scope)} rather than reading the table again.")
+            if everything is None:
+                everything = whole_shop_listings(
+                    timeout=timeout, verbose=verbose,
+                    stop_after=(max(scope) if scope else None))
+                if everything and scope:
+                    note_range_view(max(scope), everything)
             say(f"  the shop sweep took "
                 f"{time.monotonic() - sweep_started:.0f}s.")
             if everything is None:
