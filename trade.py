@@ -1634,6 +1634,12 @@ PURCHASE_DLG_ITEM = (1030, 600, 1330, 645)
 # None and a valid 1,336,678 Alz purchase was cancelled. Three tries a fifth of
 # a second apart cover a blink cycle without meaningfully delaying a real
 # refusal -- and a WRONG value is still refused immediately, with no retries.
+# How long to let the craft window's recipe panel settle before believing a
+# zero material count. The counter shows the SELECTED recipe's material, and it
+# reads 0 while the panel is still switching -- which stranded 250 Chaos Cores
+# on 2026-08-10.
+CRAFT_MATERIAL_SETTLE = 0.8
+
 QTY_READBACK_TRIES = 3
 QTY_READBACK_PAUSE = 0.2
 
@@ -14419,6 +14425,46 @@ def craft_window_open(source: "Image.Image | None" = None) -> bool:
     return "material" in words and ("complete" in words or "request" in words)
 
 
+def chaos_cores_held(verbose: bool = True) -> int:
+    """Chaos Cores already in the inventory, across every tab. 0 if unknown.
+
+    Read from the craft window's Required Material counter, which is the same
+    number a craft would consume -- so it answers "do I still need to buy"
+    exactly. Opening that window costs a few seconds against an order worth
+    ~175,000,000 Alz.
+
+    ZERO ON ANY DOUBT, deliberately. An unreadable counter must not suppress a
+    purchase, because the failure it would cause -- a shelf that never refills
+    because the script wrongly believes it is stocked -- is silent and lasts
+    the whole run. Buying when material was already held is visible, costs
+    capital rather than losing it, and is what this exists to reduce; getting
+    it wrong in that direction is recoverable.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    try:
+        if not open_craft_window(timeout=6.0, verbose=False):
+            return 0
+        held = craft_material_held(grab())
+        # Same settle as the craft itself: the counter reads 0 while the recipe
+        # panel is still switching.
+        if not held:
+            time.sleep(CRAFT_MATERIAL_SETTLE)
+            held = craft_material_held(grab())
+        press_escape()
+        time.sleep(0.4)
+        return int(held or 0)
+    except Exception as exc:  # noqa: BLE001 - a hint must never stop the pass
+        say(f"  could not read what is already held ({exc}); assuming none.")
+        try:
+            press_escape()
+        except Exception:  # noqa: BLE001
+            pass
+        return 0
+
+
 def craft_material_held(source: "Image.Image | None" = None) -> "int | None":
     """How many Chaos Cores the craft window says are held. None if unread.
 
@@ -14520,8 +14566,33 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
             "blind.")
         record("chaos.material_unread")
         return 0
-    if before < 1:
+    # A ZERO IS RE-READ BEFORE IT IS BELIEVED.
+    #
+    # The counter shows the material for the SELECTED recipe, and it reads 0
+    # while the panel is still switching to it. Measured live 2026-08-10: the
+    # recipe was clicked at t=97.5, the counter read zero at t=103.0, and 250
+    # Chaos Cores were sitting in the work tab -- confirmed by the work-tab
+    # check 25 seconds later reporting 64 slots in use. The pass stopped before
+    # crafting, so it never compressed and never listed, and ~175,000,000 Alz
+    # of Cores were stranded.
+    #
+    # The distinction that matters: an unread counter already refuses above.
+    # This branch is a CONFIDENT zero, which is treated as fact -- so it has to
+    # earn that confidence with a second look, the same way the Purchase
+    # dialog's quantity limit does.
+    if before is not None and before < 1:
+        for _ in range(QTY_READBACK_TRIES):
+            time.sleep(CRAFT_MATERIAL_SETTLE)
+            again = craft_material_held(grab())
+            if again:
+                say(f"  the material counter re-read as {again} (it was 0 a "
+                    f"moment ago -- the recipe panel was still settling).")
+                record("chaos.material_settled", first=before, then=again)
+                before = again
+                break
+    if before is None or before < 1:
         say("  no Chaos Cores are held; nothing to craft.")
+        record("chaos.material_zero")
         return 0
     say(f"  {before} Chaos Core(s) held")
 
@@ -14945,6 +15016,10 @@ def chaos_margin_now(verbose: bool = True,
         # another Set search per order.
         report["set_unit"] = offer.price // max(1, offer.pack)
         report["core_unit"] = core.price
+        # The Core rows this gate just read, so the buy loop's FIRST order can
+        # use them instead of repeating the same search seconds later. Only
+        # order 1 -- see the note at the loop's search.
+        report["core_offers"] = list(cores)
     margin = chaos_margin(core.price, offer.price, offer.pack)
     if margin is None:
         say("  one of the two prices did not read.")
@@ -15082,6 +15157,7 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
             return False
         margin_report: dict = {}
         margin = chaos_margin_now(verbose=verbose, report=margin_report)
+        gate_offers = margin_report.get("core_offers") or None
         set_unit_price = margin_report.get("set_unit")
         if margin is None:
             say("Chaos: the margin could not be read - not buying blind.")
@@ -15144,8 +15220,27 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
             # now is. Every order is row 1 of a search that has just run; this
             # loop never reads offers[1] or beyond. The last order takes only
             # the remainder, so the total is exactly K rather than overshooting.
+            # WHAT IS ALREADY IN THE BAG COUNTS TOWARDS K.
+            #
+            # chaos_pass used to open every pass by buying, whatever it held.
+            # That is wrong twice: a pass whose craft or compress failed leaves
+            # paid-for Cores in the work tab, and the strand recovery re-enters
+            # HERE -- so it bought a second batch on top of the first. Measured
+            # live 2026-08-10: cycle 1 bought 250 Cores (~175,000,000 Alz) and
+            # stranded them when the material counter misread; cycle 2 opened
+            # by buying another 250, doubling the position to build a shelf
+            # that needed one batch.
+            #
+            # `got` starts from what is held, so the loop below breaks straight
+            # away when there is already enough and falls through to the craft.
+            # Nothing else changes: craft_material_held counts every tab, so
+            # the craft consumes the lot either way.
             core = None
-            got = 0
+            got = max(0, chaos_cores_held(verbose=verbose))
+            if got:
+                say(f"Chaos: {got} Core(s) already in hand - they count "
+                    f"towards the {CHAOS_BUY_QUANTITY} minimum.")
+                record("chaos.already_held", held=got)
             # WHAT WAS ACTUALLY PAID, accumulated per completed order.
             #
             # `core` holds the row the loop last LOOKED at, and every exit
@@ -15170,7 +15265,22 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # Re-searched every order: buy_offer refuses a Buy that is not
                 # row 1 of a search that just ran, and buying out row 1 is what
                 # changes which listing IS row 1.
-                offers = run_favourite_search(CHAOS_CORE_SLOT, verbose=False)
+                #
+                # EXCEPT THE FIRST, which the margin gate has just done. The
+                # gate searches BOTH favourite slots to decide whether the
+                # trade is worth starting, and order 1 then repeated the Core
+                # half of it seconds later against the same unchanged row --
+                # measured 2026-08-10 at 19.1s for the gate and another 9.1s
+                # for order 1. search_receipt_for accepts a search up to 90s
+                # old, so the gate's is still valid here; the loop's own
+                # re-search remains mandatory for every order after it, because
+                # by then row 1 really has changed.
+                if order == 1 and gate_offers:
+                    offers = gate_offers
+                    gate_offers = None
+                else:
+                    offers = run_favourite_search(CHAOS_CORE_SLOT,
+                                                  verbose=False)
                 if not offers:
                     say(f"Chaos: no Core offers left after {got} of "
                         f"{CHAOS_BUY_QUANTITY}.")
