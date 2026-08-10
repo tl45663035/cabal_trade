@@ -17585,6 +17585,26 @@ def finish_run_log(note: str = "") -> None:
     Deliberately never raises. This is the last thing a dying process does, and
     an exception here would replace the real cause of death with its own.
     """
+    # THE OCR BILL, PRINTED HOWEVER THE RUN ENDS.
+    #
+    # It used to print only on the clean-exit path, which loses it exactly
+    # when it is most wanted: an interrupted run is the one you stopped
+    # BECAUSE something was slow. Ctrl+C, a breaker trip and a crash all reach
+    # here, so the numbers survive all three.
+    try:
+        if OCR_PROFILE:
+            report = ocr_profile_report()
+            if report:
+                print(report)
+                cache = ocr_cache_stats()
+                served = cache.get("hits", 0)
+                asked = served + cache.get("misses", 0)
+                if asked:
+                    print(f"  cache: {served} of {asked} reads served without "
+                          f"a launch ({100.0 * served / asked:.0f}%)")
+    except Exception:  # noqa: BLE001 - a report must never mask the real exit
+        pass
+
     global _run_finished
     if _run_finished:
         return
@@ -17612,17 +17632,6 @@ def finish_run_log(note: str = "") -> None:
 
         ended = datetime.now()
         elapsed = time.monotonic() - _RUN_STARTED
-        if OCR_PROFILE:
-            report = ocr_profile_report()
-            if report:
-                print(report)
-                cache = ocr_cache_stats()
-                served = cache.get("hits", 0)
-                asked = served + cache.get("misses", 0)
-                if asked:
-                    print(f"  cache: {served} of {asked} reads served without "
-                          f"a launch ({100.0 * served / asked:.0f}%)")
-
         line = (f"Ran for {_format_duration(elapsed)}  "
                 f"({_RUN_STARTED_AT:%H:%M:%S} -> {ended:%H:%M:%S})"
                 + (f"  [{note}]" if note else ""))
