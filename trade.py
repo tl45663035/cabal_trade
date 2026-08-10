@@ -4527,7 +4527,9 @@ def restock_core(item_slot: int,
                  target: int = RESTOCK_TARGET,
                  max_rounds: int = RESTOCK_MAX_ROUNDS,
                  verbose: bool = True,
-                 rows_used: int | None = None) -> dict:
+                 rows_used: int | None = None,
+                 scope: "list[int] | None" = None,
+                 rows_in_scope_used: int = 0) -> dict:
     """The whole pipeline for one sold-out Core: buy, convert, list.
 
     Returns what happened at each stage rather than a bare bool, because the
@@ -4572,10 +4574,36 @@ def restock_core(item_slot: int,
                          "to know whether the result would fit")
         say(f"  {result['why']}")
         return result
-    if used + need > SHOP_ROW_CAPACITY:
-        result["why"] = (f"paused: {used}/{SHOP_ROW_CAPACITY} rows used and a "
-                         f"restock needs up to {need} more. Sell or clear some "
-                         "rows first.")
+    # THE RANGE IS THE WHOLE WORLD, at the operator's instruction: "DO NOT
+    # touch any unspecified rows. If the specific rows grow to full capacity,
+    # we don't add anymore rows, relist all rows in range and DO NOT touch
+    # outside rows."
+    #
+    # The ceiling is therefore the free rows INSIDE the batch's range, not the
+    # 30-row shop. restock_core lists into the lowest empty row anywhere, so
+    # without this it quietly created rows outside the range -- and a row
+    # outside the range is never repriced again, because the batch that would
+    # reprice it does not look there. It is listed once, at one moment's
+    # market, and left.
+    #
+    # Seen on 2026-08-10: a Force Core(Highest) restock added two rows to a
+    # 1-8 batch that was already full, which both orphaned those rows and left
+    # chaos with no free row inside the boundary for the rest of the run.
+    #
+    # Chaos already refuses on exactly this ground ("N short, but only M free
+    # row(s) inside rows X-Y"). This makes the restock agree with it.
+    room = SHOP_ROW_CAPACITY
+    where = f"{used}/{SHOP_ROW_CAPACITY} rows"
+    if scope:
+        inside = sorted(set(scope))
+        free_inside = max(0, len(inside) - rows_in_scope_used)
+        room = used + free_inside
+        where = (f"{rows_in_scope_used}/{len(inside)} rows inside "
+                 f"{min(inside)}-{max(inside)}")
+    if used + need > room:
+        result["why"] = (f"paused: {where} used and a restock needs up to "
+                         f"{need} more. It will NOT list outside the range, "
+                         f"because a row out there is never repriced again.")
         say(f"  {result['why']}")
         return result
     say(f"  shop has {used}/{SHOP_ROW_CAPACITY} rows used; a restock needs up "
@@ -4700,8 +4728,20 @@ def restock_core(item_slot: int,
         # same Core at a different price do not match the price filter, and one
         # at the same price would make this conservative (expecting fewer than
         # are really there), never fail-open.
-        listing = list_cores(core, candidates, verbose=verbose,
-                             expect_rows=result["rows_listed"] + 1)
+        # NOT expect_rows=rows_listed + 1. That was wrong and it misfired on
+        # its first live run: sanity_check's witnesses filter on price AND
+        # QUANTITY, and each round lists a different remainder -- round 1 put
+        # up 250 and round 2 put up 172 at the same price. Round 1's row can
+        # never satisfy round 2's filter, so demanding two matches failed a
+        # perfectly good listing, printed CHECK THE SHOP, and left 172 already
+        # listed Sets on the books as still owed.
+        #
+        # The quantity in the filter already discriminates the rounds, which
+        # is what the count was trying to add. It only fails to when two rounds
+        # list an IDENTICAL price and quantity -- rarer than the false alarm
+        # this caused, and it fails toward "verified" rather than toward
+        # inventing a carry.
+        listing = list_cores(core, candidates, verbose=verbose)
         if not listing["ok"]:
             if conv["converted"] <= 0:
                 # Nothing arrived on the work tab AND nothing could be listed
@@ -4805,7 +4845,9 @@ def rows_in_use(listings: list) -> int:
 
 
 def restock_sold_out_slots(slots: list[int], verbose: bool = True,
-                           rows_used: "int | None" = None) -> list[dict]:
+                           rows_used: "int | None" = None,
+                           scope: "list[int] | None" = None,
+                           rows_in_scope_used: int = 0) -> list[dict]:
     """Restock these slots directly, without re-reading the shop.
 
     Used when the last sweep's verdict is still good: the expensive part is
@@ -4819,7 +4861,8 @@ def restock_sold_out_slots(slots: list[int], verbose: bool = True,
     wanted = [s for s in slots if s in allowed]
     if not wanted:
         return []
-    return _restock_each(wanted, rows_used=rows_used, verbose=verbose)
+    return _restock_each(wanted, rows_used=rows_used, verbose=verbose,
+                         scope=scope, rows_in_scope_used=rows_in_scope_used)
 
 
 def restock_sold_out(listings: list, verbose: bool = True) -> list[dict]:
@@ -4851,7 +4894,9 @@ def restock_sold_out(listings: list, verbose: bool = True) -> list[dict]:
 
 
 def _restock_each(slots: list[int], rows_used: int | None,
-                  verbose: bool = True) -> list[dict]:
+                  verbose: bool = True,
+                  scope: "list[int] | None" = None,
+                  rows_in_scope_used: int = 0) -> list[dict]:
     """Restock each slot in turn, keeping the row count in step as it goes."""
     def say(message: str) -> None:
         if verbose:
@@ -4876,9 +4921,14 @@ def _restock_each(slots: list[int], rows_used: int | None,
         # boundary where nothing is half-done -- the previous Core is listed
         # and the next has not been bought.
         avoid_warlag(allowance=WAR_RESTOCK_ALLOWANCE, verbose=verbose)
+        # THE RANGE TRAVELS WITH THE COUNT. Each restock that lists adds a
+        # row inside the range too, so the in-range figure has to keep step
+        # exactly as rows_used does -- otherwise the second Core of a cycle
+        # measures its room against the first Core's starting position.
         outcome = restock_core(
             slot, target=BUY_TARGET, verbose=verbose,
-            rows_used=None if rows_used is None else rows_used + shop_grew)
+            rows_used=None if rows_used is None else rows_used + shop_grew,
+            scope=scope, rows_in_scope_used=rows_in_scope_used + shop_grew)
         done.append(outcome)
         # Listing something changes the shop, so the remembered verdict about
         # what is unlisted no longer holds.
@@ -15443,6 +15493,14 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
             #
             # A batch over ALL rows keeps the sweep: there is no scope to
             # narrow to, and "not in these rows" then really does mean absent.
+            # HOW MANY OF THE RANGE'S ROWS ARE ALREADY OCCUPIED.
+            #
+            # The restock's ceiling is the free rows INSIDE the range, so it
+            # needs this on every path -- including the ones that fall back to
+            # an unscoped sweep, where it stays empty and the ceiling reverts
+            # to the whole shop.
+            in_scope_now = []
+
             if scope:
                 # THE FIRST SCREEN IS ABSOLUTE ROWS 1-EXPECTED_ROWS, AND ONLY
                 # THOSE.
@@ -15471,6 +15529,8 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
                     scope = None
                 else:
                     in_scope = [r for r in visible if r.index in set(scope)]
+                    in_scope_now = [r for r in in_scope
+                                    if getattr(r, "action", None) != "register"]
                     say(f"Restock is looking at rows {min(scope)}-{max(scope)} "
                         f"only ({len(in_scope)} of {len(visible)} read), not "
                         f"the whole shop.")
@@ -15541,7 +15601,9 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
                         rows_now = shop_rows_used(verbose=False)
                 leave_for_restock(verbose=verbose)
                 restock_sold_out_slots(missing, verbose=verbose,
-                                       rows_used=rows_now)
+                                       rows_used=rows_now,
+                                       scope=scope,
+                                       rows_in_scope_used=len(in_scope_now))
                 return
             say("Not on the first screen: "
                 + ", ".join(FAVOURITE_SLOTS[s] for s in missing)
@@ -15568,7 +15630,9 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
                     rows_now = shop_rows_used(verbose=False)
                 leave_for_restock(verbose=verbose)
                 restock_sold_out_slots(missing, verbose=verbose,
-                                       rows_used=rows_now)
+                                       rows_used=rows_now,
+                                       scope=scope,
+                                       rows_in_scope_used=len(in_scope_now))
                 return
             remembered = cached_unlisted(missing)
             if remembered is not None:
@@ -15585,6 +15649,8 @@ def restock_pass(timeout: float = 8.0, verbose: bool = True,
                         f"so the table is not walked at all.")
                 leave_for_restock(verbose=verbose)
                 restock_sold_out_slots(remembered, verbose=verbose,
+                                       scope=scope,
+                                       rows_in_scope_used=len(in_scope_now),
                                        rows_used=rows_now)
                 return
             # LOGGED, not silent. Measured live on 2026-08-09 this call
@@ -17499,6 +17565,17 @@ def finish_run_log(note: str = "") -> None:
 
         ended = datetime.now()
         elapsed = time.monotonic() - _RUN_STARTED
+        if OCR_PROFILE:
+            report = ocr_profile_report()
+            if report:
+                print(report)
+                cache = ocr_cache_stats()
+                served = cache.get("hits", 0)
+                asked = served + cache.get("misses", 0)
+                if asked:
+                    print(f"  cache: {served} of {asked} reads served without "
+                          f"a launch ({100.0 * served / asked:.0f}%)")
+
         line = (f"Ran for {_format_duration(elapsed)}  "
                 f"({_RUN_STARTED_AT:%H:%M:%S} -> {ended:%H:%M:%S})"
                 + (f"  [{note}]" if note else ""))
@@ -17538,6 +17615,12 @@ def main() -> None:
                         "inventory (last tab, slot 1x7) instead of finding the "
                         "NPC by OCR. Much faster and cannot miss, but the key "
                         "only exists on a premium account")
+    p.add_argument("--ocr-profile", action="store_true",
+                   help="print, at the end of the run, every Tesseract launch "
+                        "attributed to the reader that asked for it -- calls, "
+                        "seconds, average and share. OCR is essentially the "
+                        "whole cost of a cycle, and this is the only thing "
+                        "that says WHERE it goes")
     p.add_argument("--debug-frames", action="store_true",
                    help="save a screenshot after EVERY input the script sends "
                         "(click, ctrl/alt/right click, Escape, each typed "
@@ -17829,6 +17912,11 @@ def main() -> None:
         print(f"--premium is ON: the Agent Shop opens from the key at tab "
               f"{PREMIUM_SHOP_KEY_TAB} slot ({row},{col}), not by finding the "
               f"NPC. No OCR sweep and no offset guessing.")
+
+    if args.ocr_profile:
+        globals()["OCR_PROFILE"] = True
+        print("--ocr-profile is ON: every Tesseract launch is counted and "
+              "timed, and the bill is printed when the run ends.")
 
     if args.debug_frames:
         globals()["DEBUG_ACTIONS"] = True
