@@ -66,8 +66,59 @@ entries = json.loads(INDEX.read_text(encoding="utf-8"))
 usable = [e for e in entries
           if e.get("matched") and e.get("rows") and (FRAMES / e["file"]).exists()]
 stale = [e for e in entries if not e.get("matched")]
+
+
+def _captured_name(entry):
+    rows = entry.get("rows") or []
+    return rows[0][1] if rows and len(rows[0]) > 1 else ""
+
+
+def _fold(name):
+    return trade._floor_key(
+        trade.item_name(trade._PACK_ANYWHERE.sub(" ", name or "")))
+
+
+# FRAMES CAPTURED UNDER A PREVIOUS FAVOURITES LAYOUT.
+#
+# A favourite slot is a position on the game's bar, and the operator can
+# reassign it. Slots 3 and 4 held Upgrade Core(Highest) and its Set when these
+# were captured; they now hold Chaos Core and Chaos Core Set. The IMAGES are
+# still perfectly good reads -- what is stale is the slot LABEL attached to
+# them, so asserting "this frame reads as slot 3" now compares a real Upgrade
+# Core capture against Chaos Core and fails for a reason that says nothing
+# about the code.
+#
+# They are quarantined rather than deleted or flipped to matched=False. Deleting
+# throws away real captures, and matched=False means "the capture did not match
+# when it was taken", which is a different fact and would quietly overstate how
+# many captures ever failed. Quarantining says the true thing: good frame,
+# retired mapping, needs re-capturing against the slot it now describes.
+retired = []
+current = []
+for e in usable:
+    want = trade.FAVOURITE_SLOTS.get(e.get("slot"), "")
+    if want and _captured_name(e) and _fold(want) != _fold(_captured_name(e)) \
+            and not _fold(_captured_name(e)).startswith(_fold(want)):
+        retired.append(e)
+    else:
+        current.append(e)
+usable = current
+
 print(f"{len(entries)} frames indexed: {len(usable)} usable, "
       f"{len(stale)} recorded as stale and excluded")
+if retired:
+    by_slot = {}
+    for e in retired:
+        by_slot.setdefault(e["slot"], _captured_name(e))
+    print(f"{len(retired)} frame(s) captured under a PREVIOUS favourites "
+          f"layout and quarantined:")
+    for slot in sorted(by_slot):
+        print(f"    slot {slot}: captured as {by_slot[slot]!r}, now "
+              f"{trade.FAVOURITE_SLOTS.get(slot, '?')!r} -- needs re-capturing")
+    # Loud, because a quarantine that goes unnoticed is coverage silently lost:
+    # slots 3 and 4 are the CHAOS pair, and they now have no golden frames at
+    # all until a live capture supplies them.
+    print("    NOTE: these slots have NO golden coverage until re-captured.")
 
 READ = {}
 for e in usable:

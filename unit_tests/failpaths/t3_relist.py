@@ -294,7 +294,16 @@ check("3h2 and says why", h.said("could not be read"), h.out()[-300:])
 
 
 # ---------------------------------------------------------------------------
-section("3i. relist_rows: a mid-batch failure stops the batch")
+section("3i. relist_rows: a mid-batch failure does NOT stop a clean batch")
+# This used to assert the opposite, and the opposite was measured to be wrong:
+# three consecutive cycles each relisted row 1, failed on row 2, never
+# attempted rows 3-10, and still counted as total failures -- which tripped the
+# breaker on a run doing half its work. One poison row froze 80% of the shop.
+#
+# The rule now is decidable rather than a guess: if the work tab is CLEAN the
+# cancel either did not happen or was undone, the next row starts from a known
+# state, and the batch carries on. A dirty tab means something is stranded and
+# every later row would fail its precondition identically, so that still stops.
 h = fresh()
 with h:
     calls = {"n": 0}
@@ -304,9 +313,31 @@ with h:
         return trade.RELISTED if calls["n"] == 1 else trade.FAILED
     h.patch("relist", flaky)
     ok, exc = run(trade.relist_rows, [1, 2])
-check("3i returns False", ok is False, f"got {ok!r}")
-check("3i named the rows not attempted", h.said("not attempted"),
-      h.out()[-300:])
+check("3i a clean tab lets the batch finish", ok is True, f"got {ok!r}")
+check("3i said the failure was confined to that row",
+      h.said("confined to this row"), h.out()[-400:])
+check("3i and named the failed row in the summary",
+      h.said("failed and were skipped"), h.out()[-600:])
+
+# The other half of the rule: a DIRTY work tab still stops the batch, because
+# the strand makes every later row fail the same way.
+h = fresh()
+with h:
+    calls = {"n": 0}
+
+    def flaky2(*a, **k):
+        calls["n"] += 1
+        return trade.RELISTED if calls["n"] == 1 else trade.FAILED
+    h.patch("relist", flaky2)
+    # Clean at the START of the batch, dirty only AFTER the row that failed.
+    # Patching it to fail unconditionally trips the start-of-batch check
+    # instead, and the batch never reaches row 2 -- so the test would pass
+    # while proving nothing about the mid-batch rule it names.
+    h.patch("require_empty_work_tab", lambda verbose=True: calls["n"] < 2)
+    ok, exc = run(trade.relist_rows, [1, 2])
+check("3i2 a dirty tab stops the batch", ok is False, f"got {ok!r}")
+check("3i2 and says every later row would fail the same way",
+      h.said("is not clean") or h.said("not attempted"), h.out()[-500:])
 
 raise SystemExit(summary())
 

@@ -36,9 +36,14 @@ sys.path.insert(0, str(_ROOT))
 # resolves SALES_DB once at import. Without this the profit tests below would
 # write into the operator's real sales history -- which is how 1,163 junk rows
 # got in there once already.
-os.environ.setdefault(
-    "CABAL_SALES_DB",
-    str(_Path(tempfile.gettempdir()) / "cabal_gaps_test.db"))
+# ASSIGNED, not setdefault. setdefault yields to an exported CABAL_SALES_DB --
+# and this file unlinks whatever it resolves to, so an operator who had pointed
+# that variable at the live ledger would have this suite delete it. sales.db is
+# what purchase_cost_basis reads for the never-below-cost floor.
+_SCRATCH_DB = _Path(tempfile.gettempdir()) / "cabal_gaps_test.db"
+if _SCRATCH_DB.resolve().parent != _Path(tempfile.gettempdir()).resolve():
+    raise SystemExit(f"refusing to run: {_SCRATCH_DB} is not in the temp dir")
+os.environ["CABAL_SALES_DB"] = str(_SCRATCH_DB)
 
 import trade as m  # noqa: E402
 
@@ -826,8 +831,18 @@ class _Market:
                             self.pack * 187_000, self.pack, 340)]
         return [m.Offer(1, "Force Core(High)", 209_800, 1, 340)]
 
-    def buy(self, offer, want=1, timeout=8.0, verbose=True):
+    def buy(self, offer, want=1, timeout=8.0, report=None, verbose=True):
+        # Mirrors buy_offer's signature INCLUDING the report out-parameter.
+        # The real function reports what it ACTUALLY took, which is not always
+        # what was asked for -- an unreadable /max field clamps it to one
+        # listing. A stub that omitted this let the caller's accounting go
+        # untested, which is how `taken = want * pack` survived: it books a
+        # debt the bag cannot pay, and that Core is then never restocked again.
+        take = max(1, min(int(want), max(1, getattr(offer, "available", 1))))
         self.bought.append(offer.pack)
+        if report is not None:
+            report["take"] = take
+            report["items"] = take * max(1, offer.pack)
         return True, ""
 
 
@@ -1215,7 +1230,6 @@ check(m.PRICE_DIFF_FLOOR_BY_ITEM == _saved_table, "the table was restored")
 # in behaviour on the next run.
 for _item, _want in (("Force Core(Highest)", 5_000),
                      ("Force Core(High)", 5_000),
-                     ("Upgrade Core(Highest)", 5_000),
                      ("Force Core (Ultimate)", 10_000),
                      ("Upgrade Core (Ultimate)", 10_000)):
     check(m.price_diff_floor_for(_item) == _want,
@@ -1246,4 +1260,84 @@ if fails:
     for f in fails[:25]:
         print(f"  FAIL  {f}")
     sys.exit(1)
+
+# -- A BLANK QUANTITY READ-BACK IS RE-READ, A WRONG ONE IS NOT ------------
+# The caret blinks beside the digits after typing, and while it is lit the OCR
+# can return nothing for a short value. Measured 2026-08-09: the field plainly
+# showed "2 / 90", the read returned None, and a valid 1,336,678 Alz purchase
+# was cancelled -- leaving the chaos shelf unfilled.
+#
+# The asymmetry is the whole point. Unreadable means "look again"; a different
+# number means the keystrokes went somewhere else, and the figure on screen is
+# what the game will charge for. That case must still refuse at once.
+import inspect as _i  # noqa: E402
+
+_buy = _i.getsource(m.buy_offer)
+_seg = _buy[_buy.index("landed = dialog.get(\"qty\")"):]
+check("QTY_READBACK_TRIES" in _seg,
+      "a blank quantity read-back must be retried, not refused -- the caret "
+      "blinks over the digits and a valid purchase was cancelled on it")
+check("if landed is not None:" in _seg,
+      "and the retry loop must stop as soon as it reads something")
+_refusal = _seg[_seg.index("if landed != take:"):]
+check("QTY_READBACK_TRIES" not in _refusal,
+      "but a value that reads as a DIFFERENT number must still refuse "
+      "immediately, with no retries -- that is the case the guard exists for")
+check(m.QTY_READBACK_TRIES >= 2 and m.QTY_READBACK_PAUSE > 0,
+      f"the retry must actually cover a blink cycle, got "
+      f"{m.QTY_READBACK_TRIES} x {m.QTY_READBACK_PAUSE}s")
+
+
+# -- THE POINTER MUST NOT BE ON WHAT IS BEING READ ------------------------
+# The click that focuses the quantity field leaves the cursor on the digits,
+# and the cursor graphic is part of the screenshot. Measured 2026-08-10: "20"
+# read back as "204" twice in a row, and both valid 13,766,780 Alz orders were
+# cancelled by the read-back guard. Deterministic rather than flaky -- the
+# pointer is in the same place every time, so it corrupts the same read every
+# time. The dialog also opens over the row that was just clicked, which is what
+# produced "the dialog's quantity limit did not read - taking one listing" and
+# turned an order for 21 Cores into an order for 1.
+#
+# Same fix as the Item Information tooltip covering the registration dialog:
+# park between clicking and reading. The guards are right; they were being fed
+# a picture of the mouse.
+_src = _i.getsource(m.buy_offer)
+
+_typed = _src.index("type_number(take")
+_reread = _src.index("dialog = purchase_confirm()", _typed)
+check("park_cursor()" in _src[_typed:_reread],
+      "the pointer must be parked between typing the quantity and reading the "
+      "dialog again -- it sits on the digits otherwise")
+
+# -- THE QUANTITY IS PROVED BY THE PRICE, NOT BY READING IT BACK ----------
+# The typed field carries a blinking caret against the digits. It read "20" as
+# "204" twice in a row and as None before that, cancelling 13,766,780 Alz of
+# good orders. Parking the cursor helped and did not fix it, because the caret
+# remains.
+#
+# The game computes Purchase Price FROM the quantity, so the price is the same
+# fact read somewhere legible. It catches everything the old check caught:
+# keystrokes going elsewhere leave the quantity at 1 and the price at one unit;
+# a mistyped 204 prices 204 units. Neither equals `expected`.
+check('landed = dialog.get("qty")' not in _src,
+      "the quantity must not be read back from the field the caret sits in")
+check("typed {take} into the quantity field" not in _src,
+      "and the refusal that came from it must be gone with it")
+
+# Which makes the price the ONLY proof, so it must fail CLOSED.
+_pricecheck = _src[_src.index("expected = offer.price * take"):]
+check('if dialog["price"] and dialog["price"] != expected' not in _pricecheck,
+      "an unreadable price must not skip the check -- that is fail-open on the "
+      "one number standing between a typed quantity and real Alz")
+check("did not read, and it is" in _pricecheck,
+      "an unreadable price must refuse outright")
+check("QTY_READBACK_TRIES" in _pricecheck,
+      "after retrying, since a blank read is transient and a wrong one is not")
+
+_buyclick = _src.index("click(PURCHASE_BUY_X, offer.y)")
+_firstread = _src.index("dialog = purchase_confirm()", _buyclick)
+check("park_cursor()" in _src[_buyclick:_firstread],
+      "and between opening the dialog and reading it, since the dialog opens "
+      "over the row that was just clicked")
+
 print("all green")

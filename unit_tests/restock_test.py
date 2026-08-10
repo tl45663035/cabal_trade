@@ -75,9 +75,13 @@ check(SLOTS, "there is at least one managed Core")
 # Stated literally rather than derived from the function under test. Deriving
 # both sides from managed_core_slots() would pass no matter what it returned --
 # including the Set slots, which would make the pipeline buy Sets to list Sets.
+# Upgrade Core(Highest) removed 2026-08-09 at the operator's request, along
+# with its slots 3/4. The remaining slot NUMBERS were deliberately left as
+# they are -- they index the game's favourite bar -- so this list is shorter
+# but the others are unmoved.
 EXPECTED_MANAGED = sorted([
     "Force Core(High)", "Force Core(Highest)", "Force Core (Ultimate)",
-    "Upgrade Core(Highest)", "Upgrade Core (Ultimate)",
+    "Upgrade Core (Ultimate)",
 ])
 check(sorted(m.FAVOURITE_SLOTS[s] for s in SLOTS) == EXPECTED_MANAGED,
       f"the managed Cores are exactly {EXPECTED_MANAGED}, got "
@@ -263,12 +267,24 @@ class Pipeline:
     # -- stage 0 ---------------------------------------------------------
     def rows(self, timeout=8.0, verbose=True):
         self.log.append(("count_rows",))
-        # Called twice: once for the capacity gate, once afterwards to measure
-        # how much the shop GREW. The second reading has to move, or
-        # rows_grown is never exercised -- and one listing refills the row that
-        # sold out, so growth is one less than the listings made.
+        # ONE ROW PER LISTING, not one fewer.
+        #
+        # This used to return listed - 1, on the reasoning that the row which
+        # sold out is empty and the first listing refills it. Plausible, and
+        # contradicted by production: across every occurrence in the logs --
+        # twenty of them -- the listings made and the rows grown are equal.
+        #
+        #     shop went 25 -> 27 rows (2 listing(s), 2 of them new rows)
+        #     shop went 13 -> 17 rows (4 listing(s), 4 of them new rows)
+        #
+        # The reasoning misses WHEN the count is taken. A Core counts as sold
+        # out only when no row holds it at all -- a sold-but-uncollected row is
+        # still `receive`, still occupied, still carrying the name. So by the
+        # time a restock runs, that row has already been collected, and
+        # rows_used (a count of change/receive rows) never included it. There
+        # is no gap left to refill.
         listed = sum(1 for c in self.log if c[0] == "list")
-        return self.rows_used + max(0, listed - 1)
+        return self.rows_used + listed
 
     def purchase(self, timeout=10.0, verbose=True):
         self.log.append(("purchase_tab",))
@@ -708,15 +724,42 @@ class _Register:
         return True
 
 
-def run_list(reg, slots):
-    saved = (m.open_trade_window, m.register_item, m.inventory_origin)
+def run_list(reg, slots, tab_ok=True):
+    """Drive list_cores with the register and the inventory both stubbed.
+
+    The inventory has to be modelled now: list_cores selects the WORK TAB
+    before clicking any slot, because a (row, col) pair means nothing without
+    one. It used to trust that nothing had moved the tab -- true only while the
+    NPC route was the only way to open the shop. The --premium key switches to
+    tab 8 to reach the Agent Shop key, and on 2026-08-09 the same slot numbers
+    then addressed tab 8: two empty slots aborted and the third held 348
+    crystals, which were listed at 18,026,400 Alz as a Force Core.
+    """
+    saved = (m.open_trade_window, m.register_item, m.inventory_origin,
+             m.select_inventory_tab)
     try:
         m.open_trade_window, m.register_item = reg.open_window, reg.register
-        m.inventory_origin = lambda source=None, retries=3: None
+        m.inventory_origin = lambda source=None, retries=3: (1000, 200)
+        m.select_inventory_tab = (lambda tab, origin=None, timeout=5.0:
+                                  bool(tab_ok))
         return m.list_cores("Force Core(High)", slots, verbose=False)
     finally:
-        m.open_trade_window, m.register_item, m.inventory_origin = saved
+        (m.open_trade_window, m.register_item, m.inventory_origin,
+         m.select_inventory_tab) = saved
 
+
+# THE TAB IS A PRECONDITION, not an assumption. If the working tab cannot be
+# reached, the slot numbers address some other tab -- so nothing is clicked at
+# all. This is the guard that would have stopped 348 crystals being listed at
+# 18,026,400 Alz as a Force Core.
+reg = _Register(holder=(1, 3))
+out = run_list(reg, [(1, 3)], tab_ok=False)
+check(not out["ok"], f"an unreachable work tab must refuse, got {out}")
+check("tab" in (out.get("why") or ""),
+      f"and say why, got {out.get('why')!r}")
+check(reg.tried == [],
+      f"and must click NOTHING -- a slot number on the wrong tab is how "
+      f"someone else's item gets listed. got {reg.tried}")
 
 reg = _Register(holder=(1, 3))
 out = run_list(reg, [(1, 3), (1, 4), (1, 1)])
@@ -736,8 +779,17 @@ check(out["ok"], f"it works through refusals to the right slot, got {out}")
 reg = _Register(holder=(8, 8))
 out = run_list(reg, [(1, c) for c in range(1, 9)])
 check(not out["ok"], "a candidate list with no Cores in it fails")
-check(len(reg.tried) == m.CORE_SLOT_TRIES,
-      f"after at most {m.CORE_SLOT_TRIES} attempts, got {len(reg.tried)}")
+# Phase 1 tries the candidates it was GIVEN, capped at CORE_SLOT_TRIES.
+check(reg.tried[:m.CORE_SLOT_TRIES] == [(1, c) for c in range(1, 5)],
+      f"the given candidates are tried first, capped at {m.CORE_SLOT_TRIES}; "
+      f"got {reg.tried[:m.CORE_SLOT_TRIES]}")
+# Then phase 2 searches the OTHER tabs, because a conversion overflowing the
+# work tab really does put Cores on later ones ("+186 on later tabs" is a real
+# log line). That fallback was invisible to this test before: inventory_origin
+# was stubbed to None, which returned it early, so the whole second phase went
+# untested.
+check(len(reg.tried) > m.CORE_SLOT_TRIES,
+      f"and the other tabs are then searched, got {len(reg.tried)} attempts")
 
 reg = _Register(holder=(1, 1))
 out = run_list(reg, [])
@@ -912,13 +964,15 @@ try:
 finally:
     m.BUY_ADDED_ROWS = _saved_added
 
-# Growth is MEASURED, not counted from listings: counting registrations
-# over-states it by however many gaps were waiting.
+# Growth is COUNTED from the listings, not measured by walking the table.
+# Measuring cost 213.6 seconds in one restock -- four traversals of the shop --
+# to produce a number identical to the registrations already made.
 sim = Pipeline(pack=250, rows_used=20)
 res = run_restock(sim, target=250)
 check(res["rows_listed"] >= 1, f"listings were made, got {res['rows_listed']}")
-check(res["rows_grown"] == max(0, res["rows_listed"] - 1),
-      f"and the shop grew by one fewer -- the first listing refilled the gap "
+check(res["rows_grown"] == res["rows_listed"],
+      f"and the shop grew by exactly one row per listing -- see rows() for why "
+      f"there is no gap to refill "
       f"({res['rows_listed']} listings, {res['rows_grown']} new rows)")
 
 

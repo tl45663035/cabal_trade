@@ -51,43 +51,72 @@ check(m.WAR_QUIET_SECONDS == 300,
 
 # -- which window is in force ----------------------------------------------
 # (server time now, expected window start, expected window end)
+# The window END now carries the clock's own uncertainty. The believed time
+# runs up to SERVER_CLOCK_UNCERTAINTY seconds AHEAD of the truth (a reading is
+# stamped at the end of its minute), which is deliberate and safe for the
+# START -- it stops early. Applied to the END it would resume that much EARLY,
+# into the tail of the lag. So the window is extended by the same uncertainty
+# it is measured with, and the operator's "5 minutes" is a floor, not a target.
+END_PAD = m.SERVER_CLOCK_UNCERTAINTY
+
+
+def window_end(start_text):
+    """The expected end for a window starting at `start_text`."""
+    return at(start_text) + dt.timedelta(seconds=m.WAR_QUIET_SECONDS + END_PAD)
+
+
 CASES = [
     # Well before a war ends: the next window is the one that war opens.
-    ("02:35", "04:29", "04:34"),   # the operator's own example
-    ("00:00", "01:29", "01:34"),
-    ("04:00", "04:29", "04:34"),   # war just STARTED; the window is its end
-    ("04:28:59", "04:29", "04:34"),
+    ("02:35", "04:29"),   # the operator's own example
+    ("00:00", "01:29"),
+    ("04:00", "04:29"),   # war just STARTED; the window is its end
+    ("04:28:59", "04:29"),
     # Inside the window.
-    ("04:29", "04:29", "04:34"),
-    ("04:30", "04:29", "04:34"),   # the moment the war ends
-    ("04:33:59", "04:29", "04:34"),
-    # The instant it closes, attention moves to the next war.
-    ("04:34", "07:29", "07:34"),
-    ("05:00", "07:29", "07:34"),
+    ("04:29", "04:29"),
+    ("04:30", "04:29"),   # the moment the war ends
+    ("04:33:59", "04:29"),
+    # The window now closes at :34:59, so :34 is still INSIDE it -- the extra
+    # second is the clock uncertainty being paid back at the end rather than
+    # stolen from the cover.
+    ("04:34", "04:29"),
+    ("04:34:58", "04:29"),
+    # The instant it truly closes, attention moves to the next war.
+    ("04:35", "07:29"),
+    ("05:00", "07:29"),
     # Every war in the day resolves to its own window.
-    ("06:00", "07:29", "07:34"),
-    ("09:00", "10:29", "10:34"),
-    ("12:00", "13:29", "13:34"),
-    ("15:00", "16:29", "16:34"),
-    ("18:00", "19:29", "19:34"),
-    ("21:00", "22:29", "22:34"),
+    ("06:00", "07:29"),
+    ("09:00", "10:29"),
+    ("12:00", "13:29"),
+    ("15:00", "16:29"),
+    ("18:00", "19:29"),
+    ("21:00", "22:29"),
 ]
-for now, want_start, want_end in CASES:
+for now, want_start in CASES:
     start, end = m.war_quiet_window(at(now))
-    check(start == at(want_start) and end == at(want_end),
-          f"at server {now} the window should be {want_start}-{want_end}, "
-          f"got {start:%H:%M:%S}-{end:%H:%M:%S}")
+    check(start == at(want_start),
+          f"at server {now} the window should start {want_start}, got "
+          f"{start:%H:%M:%S}")
+    check(end == window_end(want_start),
+          f"and end {window_end(want_start):%H:%M:%S}, got {end:%H:%M:%S}")
+    # The operator's rule, stated independently of how the end is computed:
+    # cover must run to at least four minutes past the war ending.
+    war_ends = start + dt.timedelta(seconds=m.WAR_QUIET_BEFORE_END)
+    check((end - war_ends).total_seconds()
+          >= m.WAR_QUIET_SECONDS - m.WAR_QUIET_BEFORE_END,
+          f"at {now} the cover must last at least "
+          f"{(m.WAR_QUIET_SECONDS - m.WAR_QUIET_BEFORE_END) / 60:.0f} min "
+          f"past the war end, got {(end - war_ends).total_seconds() / 60:.1f}")
 
 # Midnight wrap: after the last war of the day, the next window belongs to
 # TOMORROW. Getting this wrong parks the script for 22 hours.
-for now in ("22:34", "23:00", "23:59:59"):
+for now in ("22:35", "23:00", "23:59:59"):
     start, end = m.war_quiet_window(at(now))
     check(start.day == at(now).day + 1 and start.hour == 1
           and start.minute == 29,
           f"at server {now} the next window is 01:29 TOMORROW, got "
           f"{start:%d %H:%M}")
-    check((end - start).total_seconds() == m.WAR_QUIET_SECONDS,
-          "and it is still five minutes long")
+    check((end - start).total_seconds() == m.WAR_QUIET_SECONDS + END_PAD,
+          "and it still carries the full window plus the clock uncertainty")
 
 # The window is always exactly WAR_QUIET_SECONDS, and always ends
 # WAR_QUIET_SECONDS - WAR_QUIET_BEFORE_END after the war finishes.
@@ -95,15 +124,15 @@ for hour in m.WAR_START_HOURS:
     probe = dt.datetime(2026, 8, 12, hour, 0, 0)
     start, end = m.war_quiet_window(probe)
     war_ends = probe.replace(minute=m.WAR_MINUTES)
-    check((end - start).total_seconds() == m.WAR_QUIET_SECONDS,
-          f"the {hour:02d}:00 window is 5 min long")
+    check((end - start).total_seconds() == m.WAR_QUIET_SECONDS + END_PAD,
+          f"the {hour:02d}:00 window is 5 min plus the clock uncertainty")
     check((war_ends - start).total_seconds() == m.WAR_QUIET_BEFORE_END,
           f"the {hour:02d}:00 window starts 1 min before the war ends")
     check(start < war_ends < end,
           f"the {hour:02d}:00 war ends INSIDE its quiet window")
 
 # Never returns a window that has already closed.
-for now in ("04:34", "04:35", "22:34"):
+for now in ("04:35", "04:36"):
     start, end = m.war_quiet_window(at(now))
     check(end > at(now),
           f"at {now} the returned window must not be over ({end:%H:%M:%S})")
@@ -196,15 +225,15 @@ try:
 
     # Inside the window: waits until it ends.
     waited = drive("04:30")
-    check(abs(waited - 240.0) < 1.0,
-          f"at 04:30 it should wait until 04:34 (240s), got {waited}")
+    check(abs(waited - (240.0 + END_PAD)) < 1.0,
+          f"at 04:30 it waits until the window ends, got {waited}")
     check(closed, "and the shop is put back to its default state first")
-    check(abs(sum(slept) - 240.0) < 1.0,
+    check(abs(sum(slept) - (240.0 + END_PAD)) < 1.0,
           f"and actually sleeps that long, got {sum(slept)}")
 
     # Right at the start of the window: the full five minutes.
     waited = drive("04:29")
-    check(abs(waited - m.WAR_QUIET_SECONDS) < 1.0,
+    check(abs(waited - (m.WAR_QUIET_SECONDS + END_PAD)) < 1.0,
           f"at 04:29 it waits the whole window, got {waited}")
 
     # The allowance is the point: a row that takes ~150s must not START at
@@ -219,8 +248,8 @@ try:
 
     # Never waits past the end of the window.
     waited = drive("04:33:30")
-    check(0 < waited <= 30.0,
-          f"at 04:33:30 only the last 30s remain, got {waited}")
+    check(0 < waited <= 30.0 + END_PAD,
+          f"at 04:33:30 only the tail of the window remains, got {waited}")
 
     # An unreadable clock must not silently disable the schedule, nor hang.
     m.server_now = lambda resync=True, verbose=False: None

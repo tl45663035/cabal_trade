@@ -86,10 +86,12 @@ def main() -> int:
     old_below = {label: 0 for _t, label, _f in floors}
     judged = settled = ignored = 0
 
+    resolved = 0
     for frame, rows in data.items():
         path = CORPUS / frame
         if not path.exists():
             continue
+        resolved += 1
         stamp = path.stat().st_mtime
         recent = stamp >= changed_at
         is_settled = stamp >= settled_at
@@ -152,6 +154,27 @@ def main() -> int:
               f"grace yet, so violations below are REPORTED, not asserted -- "
               f"the script has not had time to reprice what was already "
               f"listed.")
+
+    # `judged == 0` and `resolved == 0` are NOT the same, and only
+    # the second is a defect in this file.
+    #
+    # judged == 0 happens by construction when a floor has just
+    # changed -- no frame can postdate a change made seconds ago.
+    # That is what the soft warning above exists for, and failing
+    # hard on it would paint this red for a non-reason.
+    #
+    # resolved == 0 means not ONE baselined frame is on disk: the
+    # corpus rotated out from under the baseline (run_11046.png ->
+    # run_32010.png), so every row hit the `continue` above and
+    # every assertion below passed over an empty set. This suite
+    # reported pass in that state for a full day while asserting
+    # nothing -- and it is the only one that can catch a wrong
+    # floor VALUE against real screenshots.
+    check("the baseline resolves against the corpus", resolved > 0,
+          f"0 of {len(data)} baselined frames are present in "
+          f"{CORPUS}. The corpus has rotated away from this "
+          f"baseline, so every check below is vacuous. Re-baseline "
+          f"it, or point CORPUS at the frames it was taken from.")
 
     print("\n--- the assertion: nothing below its floor, once settled ---")
     for _token, label, floor in floors:

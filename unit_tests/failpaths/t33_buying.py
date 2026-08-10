@@ -267,8 +267,15 @@ class _Market:
                     trade.Offer(2, "Force Core Set (High) X 10", 1_900_000, 10, 416)]
         return [trade.Offer(1, "Force Core(High)", 209_800, 1, 340)]
 
-    def buy(self, offer, want=1, timeout=8.0, verbose=True):
+    def buy(self, offer, want=1, timeout=8.0, report=None, verbose=True):
+        # `report` mirrors buy_offer's signature. Without it this fake raised
+        # TypeError the moment the parameter was added to the real function,
+        # and every check from here down never ran -- a whole suite silently
+        # skipped while the runner reported a crash rather than a failure.
         self.bought.append(offer.row)
+        if report is not None:
+            report.setdefault("take", want)
+            report.setdefault("items", want * max(1, getattr(offer, "pack", 1)))
         if len(self.bought) <= self.sold_out_times:
             return False, "the listing sold out before the click"
         return True, ""
@@ -276,6 +283,12 @@ class _Market:
 
 for _sold_out in (0, 1, 2):
     _m = _Market(_sold_out)
+    # Each iteration is a separate restock, so it starts from a fresh market.
+    # buy_cheapest_set does not clear the loose-item memo itself -- production
+    # never calls it directly, buy_sets_until does and clears it there -- so
+    # without this the price from the previous iteration decides this one, and
+    # the first attempt skips the item search entirely.
+    trade.forget_item_prices()
     _saved = (trade.run_favourite_search, trade.buy_offer,
               trade.favourite_set_slot)
     trade.run_favourite_search, trade.buy_offer = _m.search, _m.buy

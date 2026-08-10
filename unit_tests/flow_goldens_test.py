@@ -318,17 +318,34 @@ for path, ctx in need("sale.implausible", "wrongly rejected sales", limit=6):
     check(verdict == "",
           f"{name}: today's rule ACCEPTS it ({units} units sold, {still} "
           f"still listed) -- got {verdict!r}")
-    # And the old bound is what refused it: price x the leftovers.
-    check(m.sale_rejection(proceeds, price, still, None) != "",
-          f"{name}: while the OLD bound -- the {still} still listed -- refuses "
-          f"it, which is the bug these frames captured")
-    # And the bound that rejected it was the leftovers, which is the bug.
-    # The bound the OLD rule used was price x still_listed, whatever that
-    # happened to be -- 0 on a fully sold row, more on a partial. Asserting 0
-    # was true of the first two frames and wrong for the next one captured.
-    check(m.sale_rejection(proceeds, price, still, None) != "",
-          f"{name}: the old bound (price x the {still} still listed) refuses "
-          f"it, which is exactly the bug these frames captured")
+    # WITHOUT the registration, the rule falls back to still_listed -- but only
+    # when still_listed says something. These two cases are not the same and
+    # this check used to demand the first behaviour of both:
+    #
+    #   still > 0   a real remainder, so a real ceiling. The old rule used it
+    #               as the bound and refused these frames; that is the bug the
+    #               registration lookup fixes, and it is worth asserting.
+    #
+    #   still == 0  NO evidence about the size. A fully sold row reads 0
+    #               remaining, so a ceiling of zero refuses every possible
+    #               figure -- and it did, for 313,683,417 Alz across seven
+    #               collections. sale_rejection now treats bound <= 0 as
+    #               "unknown" and falls back to SET_STACK_MAX, so it correctly
+    #               does NOT refuse.
+    #
+    # Asserting "the old bound refuses it" on a still == 0 frame therefore
+    # asserts the pre-fix behaviour, and these twelve frames all read 0. The
+    # check was demanding the very bug the fix removed.
+    if still > 0:
+        check(m.sale_rejection(proceeds, price, still, None) != "",
+              f"{name}: with {still} still listed and no registration on file, "
+              f"the old bound refuses it -- which is the bug the registration "
+              f"lookup exists to fix")
+    else:
+        check(m.sale_rejection(proceeds, price, still, None) == "",
+              f"{name}: a row reading 0 still listed carries NO size evidence, "
+              f"so it must not be refused for exceeding a ceiling of zero. "
+              f"That reading rejected 313,683,417 Alz of real collections.")
 
 
 # ==========================================================================

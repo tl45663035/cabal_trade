@@ -87,22 +87,54 @@ with h:
 check("1d returns False", ok is False, f"got {ok!r}")
 check("1d aborted on 'dialog stayed open'",
       h.said("dialog stayed open after Confirmation"), h.out()[-500:])
-check("1d says the game did NOT accept it",
-      h.said("the game did NOT accept the cancellation"), h.out()[-600:])
+# HEDGED, deliberately, and this check used to demand the opposite.
+#
+# A confirmation dialog still up USUALLY means the game refused -- but the game
+# stacks confirmation dialogs (MAX_CONFIRM_STEPS exists for that on the
+# register side), so it can commit AND still be showing one. Stating "the game
+# did NOT accept it" as fact would send the operator away from a listing that
+# had in fact been withdrawn, leaving the stack sitting unlisted in the work
+# tab while they looked elsewhere.
+#
+# So the contract is: say what it usually means, and say plainly that it is not
+# proof. Demanding the unhedged sentence was demanding a claim the code cannot
+# support from one frame.
+check("1d says the cancellation was probably refused",
+      h.said("means the game refused the cancellation"), h.out()[-600:])
+check("1d does NOT state that as proof",
+      h.said("this is not proof"), h.out()[-600:])
+check("1d tells the operator to check the listing",
+      h.said("CHECK THE LISTING before retrying"), h.out()[-600:])
 check("1d listing really is still there", len(h.rows) == 2)
 check("1d clicked nothing after Confirmation", len(h.clicks()) == 3,
       str(h.clicks()))
 aborted = h.rec("cancel.aborted") or {}
-if aborted.get("committed") is True:
-    note("1d record says committed=True while the message says it was refused",
-         "record('cancel.aborted', committed=True) at trade.py:3591 is written "
-         "BEFORE the trade.py:3603 read that concludes the game refused it. "
-         "The corpus index therefore labels a REFUSED cancellation as "
-         "committed, and nothing rewrites it.")
-check("1d honesty of the recorded committed flag",
-      aborted.get("committed") is False,
-      "record says committed=True for a cancellation the code itself then "
-      "reports as refused")
+# TWO DIFFERENT FACTS, and this check used to conflate them.
+#
+# `committed` means only "the Confirmation click was sent". It is set BEFORE
+# the click on purpose: with the reverse order there was a window where the
+# confirm had been delivered and committed still read False, and _relist_cycle
+# retries on `committed is False` -- so with two identical stacks at the same
+# price the retry re-resolved to the surviving sibling and withdrew that one
+# too. Forcing committed=False here to mean "refused" would put that back.
+#
+# Whether the game ACCEPTED it is the separate question, and `accepted` is the
+# field that answers it -- added precisely because the corpus was storing the
+# first while the log printed the second. So the honest assertion is that both
+# are recorded, and that they disagree in the way this scenario describes.
+check("1d records that the click was sent",
+      aborted.get("committed") is True,
+      f"committed must stay True -- it means the Confirmation click went out, "
+      f"and _relist_cycle retrying on False withdraws a sibling stack. "
+      f"got {aborted.get('committed')!r}")
+check("1d records that the game did not accept it",
+      aborted.get("accepted") is False,
+      f"`accepted` is what says the game refused, and it is the field the "
+      f"corpus index should be read on. got {aborted.get('accepted')!r}")
+check("1d records the dialog it saw afterwards",
+      aborted.get("dialog_after") == "confirm",
+      f"the observation the verdict rests on is stored too, so a later reader "
+      f"can re-judge it. got {aborted.get('dialog_after')!r}")
 
 
 # ---------------------------------------------------------------------------

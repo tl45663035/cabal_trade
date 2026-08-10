@@ -131,11 +131,23 @@ check("relist_rows still calls require_empty_work_tab mid-batch",
 # resupply buys, converts and lists on the work tab, so a batch that started
 # clean can be dirty by the time the relisting begins -- and starting the
 # relist on a dirty tab is the state this whole check exists to prevent.
-check("and ensure_work_tab_empty guards BOTH sides of the resupply",
-      relist_src.count("ensure_work_tab_empty(") == 2,
-      f"found {relist_src.count('ensure_work_tab_empty(')} -- the resupply "
-      f"works on that tab, so checking only before it would miss a strand it "
-      f"created")
+# AT LEAST twice, not exactly twice.
+#
+# The rule being protected is "every stage that works on the work tab is
+# followed by a check", and an exact count turns that into "there are exactly
+# two such stages" -- which stops being true the moment another one is added.
+# The chaos pass is a third: it buys Cores onto the work tab, crafts,
+# compresses and lists from it, so it needs its own check afterwards for the
+# same reason the resupply does. An exact count fails on the fix rather than on
+# the bug, which is the wrong way round.
+#
+# The count is still asserted, because dropping to one would mean a stage lost
+# its guard, and that is the failure this check exists for.
+_guards = relist_src.count("ensure_work_tab_empty(")
+check("and ensure_work_tab_empty guards every stage that touches the tab",
+      _guards >= 2,
+      f"found {_guards} -- the resupply and the chaos pass both work on that "
+      f"tab, so checking only before them would miss a strand they created")
 
 
 raise SystemExit(summary())

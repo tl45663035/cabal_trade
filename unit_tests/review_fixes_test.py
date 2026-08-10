@@ -384,8 +384,18 @@ class Market:
                             self.pack * 187_000, self.pack, 340)]
         return [m.Offer(1, "Force Core(High)", 209_800, 1, 340)]
 
-    def buy(self, offer, want=1, timeout=8.0, verbose=True):
+    def buy(self, offer, want=1, timeout=8.0, report=None, verbose=True):
+        # Mirrors buy_offer's signature INCLUDING the report out-parameter.
+        # The real function reports what it ACTUALLY took, which is not always
+        # what was asked for -- an unreadable /max field clamps it to one
+        # listing. A stub that omitted this let the caller's accounting go
+        # untested, which is how `taken = want * pack` survived: it books a
+        # debt the bag cannot pay, and that Core is then never restocked again.
+        take = max(1, min(int(want), max(1, getattr(offer, "available", 1))))
         self.bought.append(offer.pack)
+        if report is not None:
+            report["take"] = take
+            report["items"] = take * max(1, offer.pack)
         return True, ""
 
 

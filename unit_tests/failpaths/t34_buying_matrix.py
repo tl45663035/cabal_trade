@@ -242,6 +242,12 @@ try:
                 # one halted case silently turns every later one into "buying
                 # is off". Cleared per case so each is independent.
                 trade.BUY_HALTED, trade.BUY_HALT_REASON = False, ""
+                # The loose-item price is memoised across attempts within one
+                # restock (see _item_price_reusable), which is sound there and
+                # poison here: every matrix case is a different market, so a
+                # price carried over from the previous case decides this one.
+                # 557 cases failed on a stale memo, not on the rule under test.
+                trade.forget_item_prices()
                 got = trade.buy_cheapest_set(item_slot, verbose=False)
                 want = saving >= threshold
                 expect(f"slot {item_slot} saving {saving:,} -> "
@@ -265,14 +271,14 @@ try:
 
     # A Set slot has no Set of its own, so it can never start a comparison.
     for set_slot in SET_SLOTS:
-        fake.clear(); bought.clear()
+        fake.clear(); bought.clear(); trade.forget_item_prices()
         expect(f"slot {set_slot} (a Set) refuses to be the item side",
                trade.buy_cheapest_set(set_slot, verbose=False) is False, "")
         expect(f"slot {set_slot}: nothing bought", not bought, f"{bought}")
 
     # A search that did not run yields nothing, and nothing must be bought.
     for item_slot in ITEM_SLOTS:
-        fake.clear(); bought.clear()
+        fake.clear(); bought.clear(); trade.forget_item_prices()
         fake[item_slot] = []                     # the item search failed
         fake[item_slot + 1] = [offer(1, f"{trade.FAVOURITE_SLOTS[item_slot+1]} X 10",
                                      100_000)]
@@ -281,7 +287,7 @@ try:
         expect(f"slot {item_slot}: nothing bought without a comparison",
                not bought, f"{bought}")
 
-        fake.clear(); bought.clear()
+        fake.clear(); bought.clear(); trade.forget_item_prices()
         fake[item_slot] = [offer(1, trade.FAVOURITE_SLOTS[item_slot], 209_800)]
         fake[item_slot + 1] = []                 # the Set search failed
         expect(f"slot {item_slot}: no set rows -> no buy",
@@ -293,7 +299,7 @@ try:
     for item_slot in ITEM_SLOTS:
         for thr in (0, 1_000, 10_000, 25_000, 1_000_000):
             for saving in (0, 5_000, 10_000, 22_522, 50_000):
-                fake.clear(); bought.clear()
+                fake.clear(); bought.clear(); trade.forget_item_prices()
                 fake[item_slot] = [offer(1, trade.FAVOURITE_SLOTS[item_slot],
                                          200_000)]
                 fake[item_slot + 1] = [
@@ -322,7 +328,7 @@ trade.affordable = lambda price, source=None: True
 try:
     for item_slot in ITEM_SLOTS:
         for pack in PACKS:
-            fake.clear(); bought.clear()
+            fake.clear(); bought.clear(); trade.forget_item_prices()
             trade.BUY_HALTED, trade.BUY_HALT_REASON = False, ""
             fake[item_slot] = [offer(1, trade.FAVOURITE_SLOTS[item_slot], 300_000)]
             fake[item_slot + 1] = [

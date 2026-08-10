@@ -57,6 +57,20 @@ SUITES = [
     # both sides of a boundary from the function being bounded, or only ever
     # supplied inputs that already satisfied the check.
     ("review fixes",          HERE / "review_fixes_test.py", []),
+    # The four regressions introduced on 2026-08-09/10 while fixing other
+    # things, and caught by review rather than by any suite above. Each check
+    # was verified to FAIL with its fix reverted -- all four mutations caught
+    # in a sandbox on 2026-08-10 -- which is the property the rest of this
+    # registry mostly lacks: an audit that day found 32 of 43 mutations
+    # survived the failpath suites, and 14 of 20 survived the unit suites.
+    ("regression fixes",      HERE / "regression_fixes_test.py", []),
+    # Sequential replay of what the live script actually recorded: every step
+    # must leave the screen in the state the next step assumes, and re-reading
+    # a frame must reproduce the value stored beside it. No stubs, so it can
+    # see the things the stub suites answer for and therefore cannot test --
+    # coordinates, regions, tabs, confidence. One episode per cycle, per row,
+    # per Core resupply and per chaos resupply.
+    ("sequence replay",       HERE / "sequence_replay_test.py", []),
     # The resupply flow replayed against real screenshots taken while it ran.
     # Its strongest checks are cross-reader: purchase_confirm reads a centred
     # dialog and read_purchase_rows reads the table behind it, and the price
@@ -76,7 +90,53 @@ SUITES = [
     ("failure paths",         HERE / "failpaths" / "run_all.py", []),
     ("corpus suite",          HERE / "suite_corpus.py",      []),
     ("read_rows baseline",    HERE / "baseline_rows.py",     ["check"]),
+    # Added 2026-08-09. All four existed and none was ever run by this file --
+    # including the two covering the code most recently changed. The docstring
+    # said "every test suite" while four sat on disk untouched, so a green run
+    # here meant less than anyone reading it believed.
+    ("purchase sort control", HERE / "sort_control_test.py", []),
+    ("scroll avoidance",      HERE / "bring_into_view_test.py", []),
+    ("identical stacks",      HERE / "siblings_test.py",     []),
+    ("floors: the amounts",   HERE / "floor_amounts_test.py", []),
+    ("tooltip over dialog",   HERE / "tooltip_guard_test.py", []),
+    ("mid-cycle resupply",    HERE / "mid_cycle_restock_test.py", []),
+    ("ledger accounting",     HERE / "accounting_test.py",    []),
+    ("work-tab gate",         HERE / "worktab_gate_test.py",  []),
+    ("chaos pair separation", HERE / "chaos_test.py",         []),
+    ("chaos pass ordering",   HERE / "chaos_pass_test.py",    []),
+    ("chaos per-row floors",  HERE / "chaos_lots_test.py",    []),
+    ("bought stock report",   HERE / "stock_report_test.py",  []),
+    ("shop sweep / cache",    HERE / "sweep_cache_test.py",  []),
+    ("corpus sequences",      HERE / "sequence_test.py",     []),
+    ("item price reuse",      HERE / "item_price_reuse_test.py", []),
+    ("war lag / server clock", HERE / "warlag_test.py",      []),
+    ("log step timings",      HERE / "log_timing_test.py",   []),
 ]
+
+# A suite that exists but is not listed above is a suite nobody runs.
+#
+# That is not hypothetical: sort_control, bring_into_view, warlag and
+# log_timing were all written, reported as passing, and then never executed by
+# the command documented as running everything. This makes the omission
+# impossible rather than merely discouraged.
+EXCLUDED = {
+    # Manual tools and generators, each with its own usage banner.
+    "capture_goldens.py", "clean_corpus.py", "find_anchors.py",
+    "promote_goldens.py", "probe_flow.py", "baseline_extend.py",
+    # Deliberately not in the default run: rebuilds trade.py once per
+    # mutation. Invoke directly after changing a guard.
+    "mutation_check.py",
+    # Invoked as a group by the failpaths runner listed above.
+    "run_all.py",
+}
+
+
+def _unlisted() -> list[str]:
+    listed = {path.name for _label, path, _args in SUITES}
+    on_disk = {f.name for f in HERE.glob("*.py")
+               if f.name.endswith(("_test.py", "_smoke.py", "_check.py"))
+               or f.name.startswith("suite_") or f.name.startswith("baseline_")}
+    return sorted(on_disk - listed - EXCLUDED)
 
 
 # Point the sales ledger at a scratch file BEFORE any suite starts.
@@ -95,6 +155,23 @@ os.environ["CABAL_SALES_DB"] = str(_SALES_SCRATCH)
 def main():
     results = []
     total_started = time.monotonic()
+
+    # Refuse to report a green run while a suite sits unlisted. A missing
+    # suite is indistinguishable from a passing one in the summary below, and
+    # that is exactly how four of them went unrun for a day.
+    orphans = _unlisted()
+    if orphans:
+        bar = "=" * 72
+        print(bar)
+        print("UNLISTED SUITES")
+        print(bar)
+        print("These exist on disk and are in neither SUITES nor EXCLUDED:")
+        for name in orphans:
+            print(f"  {name}")
+        print("Add each to SUITES, or to EXCLUDED with a reason. "
+              "Refusing to report a result while any suite is "
+              "unaccounted for.")
+        return 1
 
     for label, path, args in SUITES:
         print(f"\n{'=' * 72}\n=== {label}\n{'=' * 72}", flush=True)
