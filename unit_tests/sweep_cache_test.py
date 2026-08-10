@@ -1,4 +1,4 @@
-"""The shop sweep: how often it runs, whether it says so, and how to skip it.
+﻿"""The shop sweep: how often it runs, whether it says so, and how to skip it.
 
 Measured live on 2026-08-09: the sweep took 485 seconds out of a ~1,000 second
 cycle -- a third of the run spent re-learning which Cores are listed. The code
@@ -241,12 +241,25 @@ try:
         check("note_rows_added(" in inspect.getsource(fn),
               f"{fn.__name__} must report the row it added -- {why}")
 
-    # Collecting a sold row frees one, so the count must be given up: a
-    # missing count costs one walk, a WRONG one lets the restock overfill.
+    # Collecting a sold row frees one, so the count must MOVE -- but by the
+    # known delta, not by being thrown away.
+    #
+    # Dropping it meant the next restock had to re-derive it, and on a deep
+    # shop that is a full sweep: 93 SECONDS measured 2026-08-10, run twice in
+    # one cycle for the same answer (30 listings both times) because a partial
+    # sale in between discarded the count. The delta needs no reading at all --
+    # a collect either empties the row or leaves a remainder that is relisted
+    # into it -- so the count is decremented here and given back on the
+    # remainder path.
     receive_src = inspect.getsource(m._relist_cycle)
-    branch = receive_src.split('target.action == "receive"')[-1][:1800]
-    check("forget_rows_used()" in branch,
-          "collecting a row must drop the remembered count -- it just changed")
+    branch = receive_src.split('target.action == "receive"')[-1][:2600]
+    check("note_rows_used(max(0, _known_rows - 1))" in branch,
+          "collecting a row must ADJUST the remembered count, not discard it")
+    check("forget_rows_used()" not in branch,
+          "and must not fall back to discarding it -- that is the 93s sweep")
+    check("note_rows_used(_known_rows + 1)" in receive_src,
+          "a partial sale relists into the same row, so the decrement above "
+          "must be given back -- erring DOWN lets the restock overfill")
 finally:
     m.BUY_ADDED_ROWS = _saved_added
     m.forget_unlisted()

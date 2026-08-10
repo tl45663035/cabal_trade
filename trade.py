@@ -12787,10 +12787,27 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             # was the last of its kind, which would need a shop-wide read to
             # decide and is exactly what the cache exists to avoid.
             forget_unlisted()
-            # A collected row is one fewer in use. Cheaper to drop the count
-            # than to re-derive it, and a missing count costs one walk whereas
-            # a WRONG one lets the restock overfill the shop.
-            forget_rows_used()
+            # ADJUSTED, NOT DISCARDED.
+            #
+            # "Cheaper to drop the count than to re-derive it" is exactly
+            # backwards on a deep shop: re-deriving means a full sweep, which
+            # measured 93 SECONDS on 2026-08-10 and ran twice in one cycle for
+            # the same answer -- 30 listings, both times -- because a partial
+            # sale in between threw the count away.
+            #
+            # And the delta is known without reading anything. A collect either
+            # empties the row (one fewer in use) or leaves a remainder that is
+            # relisted into the same row (no change at all). The 08-10 case was
+            # the second kind: 60 of 220 sold, 160 relisted, the row count
+            # never moved, and 93s was spent re-learning that.
+            #
+            # Erring DOWN is the dangerous direction -- it lets the restock
+            # believe there is room that is not there -- so the count is only
+            # decremented where the row genuinely goes, and the remainder path
+            # below leaves it untouched.
+            _known_rows = cached_rows_used()
+            if _known_rows is not None:
+                note_rows_used(max(0, _known_rows - 1))
             if dry_run:
                 say("[dry run] would click Receive, then relist any remainder")
                 return RELISTED
@@ -13065,6 +13082,14 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 row = candidates[0].index
                 say(f"Partially sold: {lost[0]} -> {gained[0]} at row {row} "
                     "- relisting the remainder.")
+                # THE ROW DID NOT GO. The collect above decremented the count
+                # on the assumption it emptied; a remainder means it is still
+                # occupied, so give that row back. Without this a run of
+                # partial sales walks the count down below the truth, which is
+                # the direction that lets the restock overfill the shop.
+                _known_rows = cached_rows_used()
+                if _known_rows is not None:
+                    note_rows_used(_known_rows + 1)
                 continue
 
             # Anything else means the family changed in a way one collect does
@@ -13504,6 +13529,28 @@ def sanity_check(
         # "suspect" was our own correct listing, whose price and quantity read
         # fine. Cancelling a 119M listing over one character, off one frame, is
         # far worse than leaving a wrong listing up and saying so loudly.
+        # ONE SCREEN IS NOT THE SHOP. await_rows reads the ten visible rows and
+        # does not scroll, while a registration fills the lowest empty row of
+        # thirty -- so on any shop deeper than a screen, a perfectly good
+        # listing is simply out of view here.
+        #
+        # "Not on this screen" is CANNOT VERIFY, not WRONG ITEM. Reporting it
+        # as a failure is expensive now that list_cores gates the carry on the
+        # answer: seen live 2026-08-10, "Registered (1,2) qty 33 at 219,268"
+        # was followed immediately by "the shop table does not show it" and
+        # "NOT counting 33 toward the target", putting 33 genuinely listed Sets
+        # back on the books as owed.
+        #
+        # A full screen means there may be more below it. Only a table with
+        # room to spare proves the row is really absent.
+        if len(rows) >= EXPECTED_ROWS:
+            say(f"  {name!r} is not on the first screen, and the table is full "
+                f"({len(rows)} rows) so the listing may be below it. Treating "
+                f"as unverified-but-not-wrong rather than raising a false "
+                f"alarm.")
+            record("sanity.below_screen", name=name, price=price, qty=qty)
+            return True
+
         say(f"  {name!r} is not in the table after relisting it.")
         suspect = [r for r in changeable if price is not None and r.price == price]
         if suspect:
