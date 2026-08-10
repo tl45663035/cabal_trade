@@ -1,4 +1,4 @@
-"""The ledger must not invent cost, or throw away income, or clamp a nonsense.
+﻿"""The ledger must not invent cost, or throw away income, or clamp a nonsense.
 
 Three defects found on 2026-08-09, all of them in the direction of a figure
 that LOOKS authoritative:
@@ -122,8 +122,14 @@ class FakeDB:
 
 try:
     # 100 Sets bought; 250 Cores sold. Only 100 may be charged.
+    # THREE columns, matching the real query. cost_of_goods_sold now selects
+    # `item, price, qty` so it can take the unit cost from the same scan --
+    # purchase_cost_basis resolves through set_behind and returns 0 for chaos.
+    # A 2-tuple fixture raised ValueError into the blanket `except`, so the
+    # function returned (0, 0, 0) and all three checks below "passed" against
+    # a swallowed error rather than against the arithmetic.
     m.sales_db = lambda: FakeDB(
-        purchases=[("Force Core Set (Highest) X 100", 100)],
+        purchases=[("Force Core Set (Highest) X 100", 100_000, 100)],
         sales=[("Force Core(Highest)", 250)])
     _basis = m.purchase_cost_basis
     m.purchase_cost_basis = lambda name: 1_000

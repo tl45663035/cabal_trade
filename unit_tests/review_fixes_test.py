@@ -527,7 +527,11 @@ class Pipeline:
         self.pending = moved
         return {"converted": reported, "candidates": [(1, 1)] if moved else []}
 
-    def list_(self, core, candidates, verbose=True):
+    # `expect_rows` mirrors list_cores -- see the note in restock_test. Without
+    # it the double raises TypeError and this suite dies at its first restock,
+    # discarding 159 of 208 checks including the one that catches an ignored
+    # dialog quantity limit (the 428,142,429 Alz single-click path).
+    def list_(self, core, candidates, verbose=True, expect_rows=None):
         self.log.append(("list", core))
         if not self.list_ok:
             return {"ok": False, "qty": 0, "why": "the shop refused"}

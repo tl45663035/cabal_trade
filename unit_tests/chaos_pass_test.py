@@ -1,4 +1,4 @@
-"""chaos_pass: collect first, count second, buy only if the margin clears.
+﻿"""chaos_pass: collect first, count second, buy only if the margin clears.
 
 The operator's rule is that Chaos has priority over everything: before any
 non-Chaos row is relisted, a sold bundle is collected and replaced. This file
@@ -325,9 +325,16 @@ try:
     check(allowances and all(a == m.chaos_row_allowance() for a in allowances),
           f"it must ask for the derived chaos allowance "
           f"({m.chaos_row_allowance():.0f}s), got {allowances}")
-    check(m.WAR_CHAOS_ALLOWANCE > m.WAR_ROW_ALLOWANCE,
-          f"which must exceed a relist row's {m.WAR_ROW_ALLOWANCE:g}s: a chaos "
-          f"row also crafts a queue that scales with the quantity")
+    # The DERIVED allowance, not the bare WAR_CHAOS_ALLOWANCE floor. The floor
+    # is only the lower bound; chaos_row_allowance() adds the buy loop and the
+    # craft queue on top. Comparing the floor worked only while a relist row
+    # reserved less than 300s -- raising WAR_ROW_ALLOWANCE to 400 (6.8% of real
+    # rows exceeded 150s, worst 911s) made the old form fail on a chaos
+    # allowance that had actually gone UP.
+    check(m.chaos_row_allowance() > m.WAR_ROW_ALLOWANCE,
+          f"a chaos row ({m.chaos_row_allowance():.0f}s) must reserve more "
+          f"than a relist row ({m.WAR_ROW_ALLOWANCE:g}s): it also buys across "
+          f"many orders and crafts a queue that scales with the quantity")
     check(m.WAR_CHAOS_ALLOWANCE >= m.CRAFT_SETTLE_MAX,
           f"and must cover the craft ceiling ({m.CRAFT_SETTLE_MAX:g}s) it may "
           f"spend waiting, or it can start a row it cannot finish")
@@ -612,7 +619,15 @@ pass_src5 = inspect.getsource(m.chaos_pass)
 # Generous slice: the cost-floor block sits between the compress and the
 # register call, so a short window cut the register out and reported the
 # listing as missing when it was simply further down.
-after_compress = pass_src5.split("compress_stack(1, 1")[1][:2500]
+# EVERYTHING after the compress, not a fixed 2,500 characters.
+#
+# The window was sized to the code as it stood. Adding the chaos cost-floor
+# block between compress_stack and register_item pushed "register_item(" past
+# 2,500 chars, so .index() raised ValueError, the suite died here, and 63 of
+# its 133 checks never ran -- including three that were FAILING and are only
+# printed in the end-of-file summary. A source window that has to be resized
+# whenever the code grows is a tripwire on the test, not on the code.
+after_compress = pass_src5.split("compress_stack(1, 1")[1]
 check("occupied_slots(" not in after_compress,
       "and the caller must not re-count either -- it listed immediately, by "
       "instruction")
@@ -690,14 +705,14 @@ check(m.PREMIUM_ENABLED is False,
 # those results, so this is not retrying the same thing.
 buy_src = inspect.getsource(m.chaos_pass)
 _after_fail = buy_src[buy_src.index("if not bought:"):]
-_after_fail = _after_fail[:_after_fail.index("got += int(")]
+_after_fail = _after_fail[:_after_fail.index("got += items")]
 check("continue" in _after_fail,
       "a failed order must start again rather than abandon the target")
 # ROW 1, ALWAYS. The recovery re-runs the favourite search and takes offers[0];
 # nothing in this loop may index past it, because the list is sorted Low to
 # High and row 1 is the cheapest.
 _loop = buy_src[buy_src.index("for order in range(1, CHAOS_BUY_ORDERS"):]
-_loop = _loop[:_loop.index("got += int(")]
+_loop = _loop[:_loop.index("got += items")]
 check("offers[0]" in _loop and "offers[1]" not in _loop,
       "every order must take ROW 1 of a fresh search, never a later row")
 check(_loop.count("run_favourite_search(CHAOS_CORE_SLOT") == 1
@@ -998,8 +1013,10 @@ check("chaos_row_allowance()" in inspect.getsource(m.chaos_pass),
 
 check(m.CHAOS_ROWS == 2, f"N defaults to 2, got {m.CHAOS_ROWS}")
 check(m.CHAOS_BUY_QUANTITY == 100, f"K is 100, got {m.CHAOS_BUY_QUANTITY}")
-check(m.CHAOS_MARGIN_FLOOR == 20_000,
-      f"the margin floor is 20,000, got {m.CHAOS_MARGIN_FLOOR:,}")
+# Lowered to 10,000 at the operator's instruction on 2026-08-10, from 20,000.
+# Pinned as a literal so a retune is a deliberate edit here as well as there.
+check(m.CHAOS_MARGIN_FLOOR == 10_000,
+      f"the margin floor is 10,000, got {m.CHAOS_MARGIN_FLOOR:,}")
 
 
 print(f"chaos_pass_test: {checks} checks, {len(failures)} failure(s)")

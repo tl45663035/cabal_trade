@@ -1450,18 +1450,48 @@ def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
     # game world instead of the widget.
     click((CONVERT_DLG_QTY_VALUE[0] + CONVERT_DLG_QTY_VALUE[2]) // 2,
           (CONVERT_DLG_QTY_VALUE[1] + CONVERT_DLG_QTY_VALUE[3]) // 2)
+    # THE DIALOG MUST SURVIVE THE FOCUSING CLICK, CHECKED BEFORE ANY KEY IS SENT.
+    #
+    # type_number sends six Backspaces and then the digits to WHATEVER HAS
+    # FOCUS. Its own comment names the hazard -- "if the field ignores
+    # Backspace when empty, sending them to the game instead" -- and nothing
+    # verified the target was still there.
+    #
+    # It is not hypothetical. Measured 2026-08-10 on a live run: run_40056
+    # shows the dialog reading `Purchase QTY [1] / 275` immediately before the
+    # click, and run_40059, captured immediately after typing, shows the game
+    # world with no dialog at all. All three fields then read None -- not a
+    # caret or an occlusion problem, nothing there to read -- and the round
+    # bailed with 407 Sets bought (~151,000,000 Alz) and zero converted.
+    #
+    # Digits are skill-bar hotkeys in this game, so keystrokes reaching the
+    # world are not merely wasted: they are input the operator did not ask for.
+    # Refusing here costs one round; typing blind costs the conversion AND
+    # plays the character.
+    time.sleep(0.25)
+    if not mass_purchase_open():
+        bail("the Purchase Item dialog closed when the quantity field was "
+             "clicked, so the keystrokes would have gone to the game world. "
+             "Cancelled without typing anything.")
+
     # Six backspaces clear any quantity this field holds without paying the
     # typing cooldown for a long tail of no-ops.
     type_number(quantity, clear_first=True, clear=6)
 
-    # PARK, THEN RETRY -- the same fix the Purchase dialog needed.
+    # AND IT MUST STILL BE THERE AFTERWARDS. If it went during the typing, the
+    # tail of those keystrokes reached the world and the read below would be
+    # measuring nothing -- report that, rather than "the field reads None".
+    if not mass_purchase_open():
+        bail("the Purchase Item dialog vanished while the quantity was being "
+             "typed, so some of those keystrokes reached the game. Cancelled "
+             "without buying.")
+
+    # PARK, THEN RETRY.
     #
-    # The click leaves the pointer sitting on the digits and the cursor graphic
-    # is part of the screenshot, so the read is corrupted in the same place
-    # every time; the field also carries a blinking caret, which makes what is
-    # left flake rather than fail outright. Neither was handled here: one read,
-    # 0.35s after typing, and a mismatch calls bail() -- throwing away a
-    # conversion of up to CONVERT_QUANTITY Sets that have already been paid for.
+    # The field carries a blinking caret, which makes a legible value flake
+    # rather than fail outright. One read 0.35s after typing, and a mismatch
+    # calls bail() -- throwing away a conversion of up to CONVERT_QUANTITY
+    # Sets that have already been paid for.
     #
     # The Purchase dialog had both bugs and both fixes; this, its sibling, had
     # the same shape and neither. Retrying costs at most QTY_READBACK_TRIES
@@ -1606,6 +1636,19 @@ PURCHASE_DLG_ITEM = (1030, 600, 1330, 645)
 # refusal -- and a WRONG value is still refused immediately, with no retries.
 QTY_READBACK_TRIES = 3
 QTY_READBACK_PAUSE = 0.2
+
+# How long to keep looking for the Alz balance to move after a confirm click,
+# and how often. The balance is the ONLY proof a purchase happened, and a HUD
+# that has not ticked yet is indistinguishable from a listing that went to
+# somebody else -- which costs a ledger row and makes the caller buy again.
+#
+# Sized from the observed lag rather than guessed: on 2026-08-10 a 6-Core order
+# had already decremented in the frame taken immediately after the click, while
+# a 158-Core order had not and settled within the following seconds. The budget
+# is spent only when the balance has NOT moved, so a settled balance pays
+# nothing.
+ALZ_SETTLE_BUDGET = 6.0
+ALZ_SETTLE_POLL = 0.6
 
 PURCHASE_DLG_QTY_VALUE = (1152, 668, 1218, 702)
 # Right edge widened 1280 -> 1296 on 2026-08-10. Measured against real frames,
@@ -2636,7 +2679,34 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     park_cursor()
     time.sleep(1.0)
 
+    # POLLED UNTIL IT MOVES, not read once at a fixed offset.
+    #
+    # This is the only read that decides whether money moved, and it was the
+    # one read in the function taken a single time -- qty_max and the price
+    # both retry. The HUD lag is real and scales with the order: measured
+    # 2026-08-10, a 6-Core order had already decremented in the frame captured
+    # immediately after the click, while the 158-Core order was still showing
+    # the old balance and only caught up within the next few seconds.
+    #
+    # A stale read here is not a small error. `before == after` returns "the
+    # listing sold to another buyer", note_purchase never fires, so the
+    # purchase is invisible to the ledger and drags the average cost DOWN --
+    # and the caller treats a race as retryable, so it buys the same thing
+    # again. On the chaos path, where an order is now a whole row, three of
+    # those is most of a balance.
+    #
+    # Polling costs nothing when the balance has already settled, which is the
+    # common case: the loop exits on the first read.
     after = get_alz(grab()) or None
+    if before and (not after or before == after):
+        deadline = time.monotonic() + ALZ_SETTLE_BUDGET
+        while time.monotonic() < deadline:
+            time.sleep(ALZ_SETTLE_POLL)
+            again = get_alz(grab()) or None
+            if again and again != before:
+                after = again
+                break
+
     if before and after and before - after == expected:
         record("buy.completed", item=offer.name, price=expected,
                pack=offer.pack * take, took=take)
@@ -3147,7 +3217,12 @@ WAR_QUIET_SECONDS = 300
 # into the quiet window. Measured on the 17:24 run of 2026-08-08: 10m35s for
 # five rows, ~127s each. Rounded up, because overrunning the window is the
 # thing this exists to prevent and finishing early costs nothing.
-WAR_ROW_ALLOWANCE = 150.0
+# Raised 150 -> 400 on 2026-08-10. Measured across every run log: 27 of 400
+# relist rows (6.8%) exceeded 150s, worst 911.9s -- three full cancel-and-relist
+# retries, which is exactly the half-done state the guard exists to prevent.
+# _relist_cycle retries up to 3 times INSIDE one row, and the old figure was
+# sized from a single untroubled row.
+WAR_ROW_ALLOWANCE = 400.0
 # One chaos row is far longer than one relist row: a buy, a craft queue that
 # scales with the quantity, a compress, a shop reopen and a registration. It is
 # also the one sequence in this file that must NOT be interrupted partway --
@@ -3155,6 +3230,14 @@ WAR_ROW_ALLOWANCE = 150.0
 # work tab. So chaos asks for the whole craft ceiling plus the fixed steps
 # around it, and simply does not start a row it cannot finish before the lag.
 WAR_CHAOS_ALLOWANCE = 300.0      # the floor; chaos_row_allowance() scales it
+
+# Measured 2026-08-10: five chaos buy orders spanned 181.1 -> 324.6, about 29s
+# each, and the whole row from first margin read to listed took 295.6s against
+# a 300s reservation while obtaining only 83 of 200 Cores.
+CHAOS_ORDER_SECONDS = 30.0
+# Everything around the buy and the craft: the compress, closing and reopening
+# the shop, and the registration. 324.6 -> 438.1 on the same row.
+CHAOS_FIXED_SECONDS = 150.0
 
 # How long one Core's restock needs before the quiet window opens.
 #
@@ -3166,7 +3249,13 @@ WAR_CHAOS_ALLOWANCE = 300.0      # the floor; chaos_row_allowance() scales it
 # Checked BETWEEN Cores, so this reserves one Core's worth, not all four. A
 # restock that runs out of window finishes the Core it is on and stops before
 # starting the next, rather than stranding paid-for Sets mid-conversion.
-WAR_RESTOCK_ALLOWANCE = 400.0
+# Raised 400 -> 900 on 2026-08-10. The 400 came from one measured restock's
+# 356s of work -- but that was the CHEAP case (4 buy orders, 2 convert rounds).
+# The same log gives ~39s per buy order against RESTOCK_MAX_BUYS = 15, i.e.
+# ~585s of buying before a single conversion round; a plainly reachable 8-order
+# 3-round restock is ~595s. Overshooting the allowance costs idle time;
+# undershooting it runs a conversion during the lag with paid-for Sets in hand.
+WAR_RESTOCK_ALLOWANCE = 900.0
 
 
 def chaos_row_allowance() -> float:
@@ -3178,12 +3267,24 @@ def chaos_row_allowance() -> float:
     can run longer than the allowance is a row that can be STARTED before a war
     window it cannot finish before, which strands paid-for Cores mid-flow.
 
-    The fixed part is everything around the craft: the buy and its dialog, the
-    compress, the shop reopen and the registration, measured at roughly two
-    minutes in total.
+    THE BUY LOOP IS THE BIGGEST TERM AND USED TO BE MISSING ENTIRELY.
+
+    The old form was `max(300, craft_settle(K) + 150)`, which is a flat 300s for
+    every K below ~500 -- the derived term did not bind over the whole usable
+    range, so the docstring's claim that it tracks --chaos-quantity was false
+    where it mattered. Measured against a real successful row on 2026-08-10:
+    295.6s flush against the 300s reservation, and that row obtained only 83 of
+    200 Cores in 5 orders. At ~29s per order and CHAOS_BUY_ORDERS = 15 the buy
+    phase alone is ~430s, before the craft settle (up to CRAFT_SETTLE_MAX) and
+    ~115s of compress, reopen and registration.
+
+    Since an order now takes a whole row, the number actually crafted is
+    CHAOS_BUY_QUANTITY plus one row's depth, so the craft term is sized from a
+    generous multiple rather than from K exactly.
     """
-    return max(WAR_CHAOS_ALLOWANCE,
-               craft_settle_seconds(CHAOS_BUY_QUANTITY) + 150.0)
+    buying = CHAOS_BUY_ORDERS * CHAOS_ORDER_SECONDS
+    crafting = craft_settle_seconds(CHAOS_BUY_QUANTITY * 2)
+    return max(WAR_CHAOS_ALLOWANCE, buying + crafting + CHAOS_FIXED_SECONDS)
 
 # The same question at a cycle boundary. A cycle is many rows, so waiting for
 # a whole one to fit would idle for far longer than the window itself; the
@@ -3362,6 +3463,35 @@ def note_carried_sets(slot: int, count: int) -> None:
 def clear_carried(slot: int) -> None:
     """Everything bought for `slot` has been listed."""
     _CARRIED_SETS.pop(slot, None)
+
+
+# Chaos left paid-for goods in the work tab. Its own flag, NOT _CARRIED_SETS.
+#
+# The carry registry is keyed by favourite slot and consumed by restock_core,
+# which converts Sets DOWN into Cores. Chaos runs the other way -- Cores
+# crafted UP into Sets -- so filing a chaos strand there would send
+# restock_core to the vendor to convert Chaos Cores as if they were Sets.
+#
+# Without some marker the tab reads as unaccountable and ensure_work_tab_empty
+# raises FatalAbort, ending the run with the goods in the bag. That has
+# happened six times on record -- 66,999,700 Alz of Cores left uncrafted on
+# 2026-08-09 and 65,392,205 of Sets left unmerged an hour later, each followed
+# by restarts that met the same tab and died again before doing anything.
+#
+# It IS recoverable: craft_chaos_sets reads the held-material count off the
+# craft window, so re-entering chaos_pass crafts whatever is sitting there.
+_CHAOS_STRANDED = False
+
+
+def note_chaos_strand(stranded: bool = True) -> None:
+    """Chaos left Cores or Sets in the work tab, or has just cleared them."""
+    global _CHAOS_STRANDED
+    _CHAOS_STRANDED = bool(stranded)
+
+
+def chaos_stranded() -> bool:
+    """True while chaos owes the work tab a craft-and-list."""
+    return _CHAOS_STRANDED
 
 
 def carried_slots() -> list:
@@ -3629,14 +3759,33 @@ def leave_for_restock(verbose: bool = True) -> None:
 
     Everything downstream reopens what it needs: open_purchase_tab opens the
     Trade window when it is shut, and the conversion closes it again anyway to
-    reach the vendor. So the only cost is one close, and what is bought is a
-    known state at the boundary -- if the refill fails, it fails from the
-    default state rather than from whatever the last row left behind.
+    reach the vendor.
+
+    SKIPPED WHEN THE SHOP OPENS FROM A KEY. "The only cost is one close" was
+    true when the shop could only be reached by finding the NPC -- an open
+    Trade window covers her, so closing first genuinely bought something. Under
+    --premium the shop opens from an inventory key and the NPC is never hunted,
+    so the close buys nothing and the very next step reopens the window it just
+    shut. Measured 2026-08-10: closed at t=250.4, discovered shut at t=256.9,
+    Purchase tab finally open at t=285.6 -- 35 seconds per Core, and the
+    conversion still does its own close for the vendor later at t=390.7.
+
+    The known-state argument survives: the buy phase asserts the Purchase tab
+    and the sort order for itself, and the conversion closes the shop anyway.
 
     Never raises. A refill that cannot start is a missed opportunity; a relist
     batch turned into a failure by its own tidying is not.
     """
     try:
+        if PREMIUM_ENABLED:
+            # The key reopens it in ~2s wherever the character stands, so the
+            # window covering the NPC no longer matters -- and closing it here
+            # only means reopening it before the first search.
+            if verbose:
+                print("  leaving the Agent Shop OPEN for the refill: --premium "
+                      "reaches it from the inventory key, so closing it now "
+                      "would only cost a reopen.")
+            return
         if trade_window_open():
             leave_shop(verbose=verbose)
     except Exception as exc:  # noqa: BLE001 - tidying must not fail a batch
@@ -4200,7 +4349,7 @@ def buy_sets_until(item_slot: int,
 
 
 def list_cores(core_name: str, slots, timeout: float = 8.0,
-               verbose: bool = True) -> dict:
+               verbose: bool = True, expect_rows: int | None = None) -> dict:
     """Register every held Core of one type into an empty shop row.
 
     `slots` is an ordered list of candidate positions -- see
@@ -4303,7 +4452,8 @@ def list_cores(core_name: str, slots, timeout: float = 8.0,
             # not do is stay silent, because the output otherwise reads exactly
             # like a verified listing.
             verified = sanity_check(core_name, report.get("price"), qty,
-                                    timeout=timeout, verbose=verbose)
+                                    timeout=timeout, verbose=verbose,
+                                    expect_at_least=expect_rows)
             if not verified:
                 say(f"WARNING: {core_name!r} was registered from slot {slot} "
                     f"but the shop table does not show it at "
@@ -4357,7 +4507,8 @@ def list_cores(core_name: str, slots, timeout: float = 8.0,
                 # Adding sanity_check to the primary loop and not to this one
                 # would have left the incident's own route unguarded.
                 verified = sanity_check(core_name, report.get("price"), qty,
-                                        timeout=timeout, verbose=verbose)
+                                        timeout=timeout, verbose=verbose,
+                                        expect_at_least=expect_rows)
                 if not verified:
                     say(f"WARNING: {core_name!r} was registered from tab {tab} "
                         f"slot {slot} but the shop table does not show it at "
@@ -4537,7 +4688,20 @@ def restock_core(item_slot: int,
             break
 
         close_npc_shop(verbose=verbose)
-        listing = list_cores(core, candidates, verbose=verbose)
+        # EACH ROUND EXPECTS ONE MORE ROW THAN THE LAST.
+        #
+        # Every round registers the same Core at the same market price, so
+        # "a matching row exists" is satisfied by round 1's row for the whole
+        # restock. Counting is what makes the check mean anything after the
+        # first round. `rows_listed` is how many this restock has put up so
+        # far, so one more must be on the board once this one commits.
+        #
+        # Only counts rows THIS restock created -- pre-existing rows of the
+        # same Core at a different price do not match the price filter, and one
+        # at the same price would make this conservative (expecting fewer than
+        # are really there), never fail-open.
+        listing = list_cores(core, candidates, verbose=verbose,
+                             expect_rows=result["rows_listed"] + 1)
         if not listing["ok"]:
             if conv["converted"] <= 0:
                 # Nothing arrived on the work tab AND nothing could be listed
@@ -6790,62 +6954,72 @@ QTY_COL_MIN_CONF = 15.0
 # Somewhere harmless to leave the cursor: the Trade window's title bar. Hovering
 # a listing pops a large item tooltip that covers the table and wrecks the OCR.
 #
-# THE FALLBACK ONLY. park_point() prefers a spot OUTSIDE the game's client area
-# entirely -- see below.
+# THE PARK POINT. See park_point() for why it must stay INSIDE the window.
 PARK_POINT = (600, 45)
 
-# Cached because park_cursor runs before nearly every read, and the two Win32
-# queries behind it do not change while the window sits still. calibrate()
-# clears it.
-_PARK_OUTSIDE: "tuple[int, int] | None" = None
-
+# How long to let the game dismiss a hover tooltip after parking, before
+# reading the table.
+#
+# Only after a SCROLL, where the tooltip is guaranteed rather than possible:
+# scroll_wheel has to put the cursor over the scrollable area to deliver wheel
+# notches, and the centre of TRADE_REGION is a listing. That hover pops the
+# Item Information panel across the middle of the table, and the game only
+# takes it down once it has processed the move away.
+#
+# Observed live 2026-08-10: park then read immediately, and read_rows came back
+# with 0 rows while a tooltip covered the table -- await_rows then burned its
+# full 45s budget and the sweep reported "the table could not be read after
+# scrolling" at 66s a time, twice, with a restock blocked behind it.
+#
+# Deliberately NOT applied to every park. park_cursor already ends in the
+# standard cooldown, which is enough where no listing was hovered; paying this
+# on all ~40 parks per row would be minutes a cycle for nothing.
+TOOLTIP_CLEAR_SECONDS = 0.45
 
 def forget_park_point() -> None:
-    """Drop the cached park point: the window may have moved or resized."""
-    global _PARK_OUTSIDE
-    _PARK_OUTSIDE = None
+    """No-op. RETIRED with the outside-the-window park point.
+
+    Kept callable because calibrate() calls it, and because the reasoning is
+    worth not losing: the point was cached from client_rect() and
+    current_screen_size(), which mix virtual-desktop and primary-monitor
+    coordinates and would have picked a spot on the wrong display on a
+    multi-monitor setup. park_point() is now a constant, so there is nothing
+    to invalidate.
+    """
+    return None
 
 
 def park_point() -> tuple[int, int]:
     """Where to leave the cursor so it cannot corrupt an OCR read.
 
-    OUTSIDE the game's client area, at the operator's instruction: "move mouse
-    outside before OCR so it doesn't interfere".
+    INSIDE the game window, on the Trade window's title bar. This must stay
+    inside, and the reason is not obvious.
 
-    PARK_POINT (600, 45) is the Trade window's title bar, which is INSIDE the
-    client area -- measured 2026-08-10 the client area was (0, 23, 2560, 1392),
-    so y=45 sits within it. That was enough to keep the cursor off the listings
-    and stop the item tooltip, but not enough to keep it out of a centred
-    dialog's way: the Confirm Purchase quantity limit still failed to read with
-    the cursor parked, `limit` fell back to 1, and an order for 91 Cores bought
-    one.
+    THE CURSOR IS NOT IN THE SCREENSHOT AT ALL. grab() goes through mss, which
+    BitBlts the desktop without drawing the pointer -- verified 2026-08-10 by
+    diffing run_39912 (cursor parked) against run_39913 (cursor sitting on the
+    quantity field): the only difference was the text-selection highlight, with
+    no pointer ink anywhere. So parking has never been about keeping the mouse
+    out of the picture, and every comment in this file that said so was wrong
+    about the mechanism.
 
-    Falls back to PARK_POINT when the geometry cannot be measured, and when the
-    game is genuinely fullscreen there is no outside to move to.
+    What parking actually does is make the GAME redraw. Hovering a listing pops
+    a large Item Information tooltip that covers the table, and the game only
+    dismisses it when it receives a mouse-move over its own window.
+
+    So parking OUTSIDE the client area is worse than useless: the pointer
+    leaves, the game stops receiving move events, and the tooltip from the last
+    hover stays on screen for ever. Measured 2026-08-10 on a live run -- the
+    cursor sat at (10, 1400), outside a client area of (0, 23, 2560, 1392),
+    while an Item Information panel covered the middle of the table.  read_rows
+    returned 0 rows, await_rows burned its full 45s budget twice, and the sweep
+    reported "the table could not be read after scrolling" at 66s a time with
+    the restock blocked behind it.
+
+    The title bar is inside the window, carries no tooltip of its own, and is
+    nowhere near a listing -- which is the whole job.
     """
-    global _PARK_OUTSIDE
-    if _PARK_OUTSIDE is not None:
-        return _PARK_OUTSIDE
-
-    spot = PARK_POINT
-    try:
-        rect = client_rect()
-        screen = current_screen_size()
-        if rect and screen:
-            left, top, right, bottom = rect
-            width, height = screen
-            x = max(2, min(int(left) + 10, int(width) - 3))
-            # Below the client area first -- the taskbar strip is furthest from
-            # anything the script reads. Above it only if there is no room.
-            if int(bottom) + 8 <= int(height) - 2:
-                spot = (x, min(int(height) - 2, int(bottom) + 8))
-            elif int(top) - 8 >= 1:
-                spot = (x, max(1, int(top) - 8))
-    except Exception:  # noqa: BLE001 - geometry is a hint, never a blocker
-        spot = PARK_POINT
-
-    _PARK_OUTSIDE = spot
-    return spot
+    return PARK_POINT
 
 
 @dataclass
@@ -8501,7 +8675,7 @@ def scroll_to_end(up: bool, timeout: float = 8.0,
     centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
               (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
     scroll_wheel(*centre, SCROLL_TO_END_NOTCHES if up else -SCROLL_TO_END_NOTCHES)
-    park_cursor()
+    park_cursor(settle=TOOLTIP_CLEAR_SECONDS)
     rows = await_rows(timeout)
     if not rows:
         say("  the table could not be read after scrolling.")
@@ -8528,7 +8702,7 @@ def scroll_one(down: bool, before: list[Row], timeout: float = 8.0,
     centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
               (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
     scroll_wheel(*centre, -1 if down else 1)
-    park_cursor()
+    park_cursor(settle=TOOLTIP_CLEAR_SECONDS)
     after = await_rows(timeout)
     if not after:
         say("  the table could not be read after scrolling.")
@@ -8601,7 +8775,7 @@ def scroll_chunk(notches: int, before: list[Row], timeout: float = 8.0,
     centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
               (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
     scroll_wheel(*centre, -abs(notches))
-    park_cursor()
+    park_cursor(settle=TOOLTIP_CLEAR_SECONDS)
     after = await_rows(timeout)
     if not after:
         say("  the table could not be read after scrolling.")
@@ -8737,7 +8911,7 @@ def bring_into_view(ref: RowRef, timeout: float = 8.0,
             centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
                       (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
             scroll_wheel(*centre, -jump)
-            park_cursor()
+            park_cursor(settle=TOOLTIP_CLEAR_SECONDS)
             landed = await_rows(timeout)
             if landed and holds(landed):
                 return landed
@@ -10515,7 +10689,19 @@ def bought_stock_report() -> str:
                 "SELECT item, qty, proceeds FROM sales "
                 "WHERE qty > 0 AND proceeds > 0"):
             entry = sold.setdefault(item, {"qty": 0, "proceeds": 0})
-            entry["qty"] += int(qty)
+            # UNITS, NOT ROWS -- the same expansion cost_of_goods_sold does.
+            #
+            # note_sale stores qty 1 for a "Chaos Core Set X 270", because a
+            # compressed bundle is ONE inventory item with its count in its
+            # name. Counting that as a single unit against 270 Sets' takings
+            # reported the chaos line as BOUGHT 702 / SOLD 4 / LEFT 698 when
+            # 600 had left, and pulled the whole report to +489,938,389 at
+            # 25.0% margin against a true +80,764,721 at 4.1% -- an
+            # overstatement of 409,173,668 Alz.
+            #
+            # cost_of_goods_sold was fixed for this and this report was not,
+            # so the two disagreed by exactly the bundle contents.
+            entry["qty"] += int(qty) * max(1, pack_size(item))
             entry["proceeds"] += int(proceeds)
     except Exception:  # noqa: BLE001 - a report must never stop a run
         return ""
@@ -10940,6 +11126,13 @@ def ensure_work_tab_empty(timeout: float = 8.0, verbose: bool = True) -> bool:
     # instead of the 12 Epic Boosters that had just been cancelled, and
     # stranded them.
     if carried_total() > 0:
+        return False
+
+    # A chaos strand is the same shape: paid-for goods this script put there
+    # and can still craft, compress and list. Six runs on record died on this
+    # tab instead -- and every restart died again, because nothing recognised
+    # the Cores as chaos's own. See note_chaos_strand.
+    if chaos_stranded():
         return False
 
     raise FatalAbort(
@@ -12822,8 +13015,22 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
 
         say(f"\n[relist 2/2] listing inventory slot ({slot[0]},{slot[1]})")
         report: dict = {}
-        # floor_price is passed for reporting only -- it is the price the
-        # listing had before, used to note a large drop, never to override one.
+        # floor_price is the price the listing had before, and it DOES bind.
+        #
+        # DO NOT DELETE IT AS COSMETIC. This comment used to say it was "passed
+        # for reporting only... never to override one", and three other places
+        # said the same -- but choose_price feeds it to RELATIVE_PRICE_FLOOR,
+        # which clamps how far a relist may fall below it:
+        #
+        #     choose_price(100000, 0, 200000, 0)
+        #       -> (198000, 'market 100,000 is more than 1% below the listed
+        #                   200,000; listing at 198,000')
+        #
+        # That clamp matters more than it looks. COST_FLOOR_ON_RELIST is off
+        # and listing_floor() is 0 for every managed Core, so the 1% ratchet is
+        # THE ONLY THING limiting a descent on them. A maintainer who believed
+        # the old comment and dropped this argument would remove the last price
+        # protection the Cores have, on a line whose comment authorised it.
         # A chaos bundle carries its OWN floor: what ITS Cores cost, matched
         # by the price it is listed at now. Everything else gets 0 here and is
         # priced exactly as before -- chaos_row_floor returns 0 for anything
@@ -12972,6 +13179,7 @@ def sanity_check(
     timeout: float = 8.0,
     verbose: bool = True,
     found: dict | None = None,
+    expect_at_least: int | None = None,
 ) -> bool:
     """After relisting, confirm the table really holds what we meant to list.
 
@@ -12980,6 +13188,20 @@ def sanity_check(
     that a row now exists for `name`, priced at `price` for `qty`. It is the
     only step that would catch the whole sequence having acted on the wrong
     item or the wrong figure.
+
+    `expect_at_least` is how many matching rows there should be by now, and it
+    exists because "a matching row exists" is NOT proof on the restock path.
+
+    A relist produces exactly one new row, so any witness proves it. But
+    restock_core lists in ROUNDS -- CONVERT_QUANTITY at a time -- and each
+    round registers the same Core at the same market price. Round 1's genuine
+    row is still on the board and satisfies round 2's witness test whatever
+    round 2 actually listed, so the check passes even when round 2 grabbed the
+    wrong slot. That is precisely the case it was added to catch, failing open.
+
+    Counting instead of matching closes it: the caller says how many rows of
+    this item it has listed, and one more must have appeared. None keeps the
+    old any-witness behaviour for the relist path, where it is correct.
     """
     def say(message: str) -> None:
         if verbose:
@@ -13012,6 +13234,18 @@ def sanity_check(
                  if _canonical(r.name) == _canonical(name)
                  and (price is None or r.price == price)
                  and (qty is None or r.qty is None or r.qty == qty)]
+    if expect_at_least is not None and len(witnesses) < expect_at_least:
+        # COUNTING, not matching -- see the docstring. The caller has listed
+        # `expect_at_least` rows of this item; fewer on the board means this
+        # round's registration is not among them, however many earlier rounds
+        # are.
+        say(f"  {len(witnesses)} row(s) of {name!r} at {price} on the board, "
+            f"but {expect_at_least} should be by now - this round's listing "
+            f"is not there.")
+        record("sanity.short_count", name=name, price=price,
+               seen=len(witnesses), wanted=expect_at_least)
+        return False
+
     if witnesses:
         say(f"  row {witnesses[0].index} matches what was registered"
             + (f" ({len(witnesses)} identical rows)" if len(witnesses) > 1 else "")
@@ -13193,7 +13427,20 @@ def relist_rows(
             # Running the resupply here converts and lists them, which is what
             # clears the tab. If it still is not clear afterwards, the original
             # refusal stands.
-            if carried_total() > 0 and restock_is_armed():
+            # NOT gated on restock_is_armed(), which is False once BUY_HALTED.
+            #
+            # halt_buying fires on exactly the states most likely to leave
+            # paid-for Sets in the bag mid-flow -- out of Alz, a dialog naming
+            # the wrong grade, a Buy outside the sanctioned sequence. Gating
+            # the recovery on it meant the wedge survived in its most likely
+            # cause: the tab stays dirty, the cycle fails, and three of those
+            # stop the run.
+            #
+            # The recovery buys NOTHING. It converts and lists Sets that have
+            # already been paid for, so a buying halt is not a reason to skip
+            # it. BUY_ENABLED still gates it, because without --buy there is no
+            # restock pipeline to run at all.
+            if carried_total() > 0 and BUY_ENABLED:
                 # DRIVEN FROM THE CARRY REGISTRY, NOT FROM restock_pass.
                 #
                 # restock_pass chooses its work from `missing` -- Cores with no
@@ -13224,6 +13471,28 @@ def relist_rows(
                                why=str(exc))
                 if not ensure_shop_ready(verbose=verbose):
                     say("Could not reopen the Agent Shop after the carry "
+                        "recovery.")
+                    return False
+
+            # A CHAOS STRAND CLEARS THE SAME WAY: by finishing the job.
+            #
+            # craft_chaos_sets reads the held-material count off the craft
+            # window, so re-entering chaos_pass crafts and lists whatever the
+            # failed pass left in the tab. Without this the gate refuses every
+            # cycle and three of those stop the run -- which is what happened
+            # six times, twice with ~66M of goods sitting in the bag.
+            if chaos_stranded() and CHAOS_ENABLED:
+                say("The work tab holds goods from a chaos pass that did not "
+                    "finish. Crafting and listing them before anything else.")
+                record("relist.chaos_recovery")
+                try:
+                    chaos_pass(timeout=timeout, verbose=verbose,
+                               scope=None if all_rows else list(rows))
+                except Exception as exc:  # noqa: BLE001 - opportunistic
+                    say(f"  the chaos recovery did not complete: {exc}")
+                    record("relist.chaos_recovery_failed", why=str(exc))
+                if not ensure_shop_ready(verbose=verbose):
+                    say("Could not reopen the Agent Shop after the chaos "
                         "recovery.")
                     return False
 
@@ -14794,12 +15063,14 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 say("Chaos: the craft window would not open; the Cores are in "
                     "the inventory, uncrafted.")
                 record("chaos.craft_window_failed")
+                note_chaos_strand()
                 return False
             made = craft_chaos_sets(timeout=timeout, verbose=verbose)
             press_escape()          # the window closes with ESC
             time.sleep(0.8)
             if made < 1:
                 say("Chaos: nothing was crafted; stopping before listing.")
+                note_chaos_strand()
                 return False
 
             # 6. Compress into the single bundle the shop sells as one row.
@@ -14817,6 +15088,7 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
             if not compress_stack(1, 1, verbose=verbose,
                                   tab=CHAOS_WORK_TAB):
                 say("Chaos: could not compress the crafted Sets.")
+                note_chaos_strand()
                 return False
 
             # NEVER below what the Cores cost.
@@ -14902,6 +15174,11 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # is room that is not there, buys against it, and cannot list
                 # what it bought.
                 note_rows_added(1)
+                # The tab is clear: the bundle is on the board. Whatever the
+                # previous pass may have stranded here has now been crafted,
+                # compressed and listed, so the work-tab gate can stop
+                # refusing the cycle.
+                note_chaos_strand(False)
             record("chaos.listed", ok=bool(listed), price=report.get("price"),
                    qty=report.get("qty"), unit_cost=core.price)
             if not listed:

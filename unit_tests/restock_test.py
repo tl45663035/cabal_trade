@@ -362,7 +362,13 @@ class Pipeline:
                 "landed": bool(counted), "verified": True}
 
     # -- stage 3 ---------------------------------------------------------
-    def list_them(self, core_name, slots, timeout=8.0, verbose=True):
+    # `expect_rows` mirrors list_cores: restock_core passes it so each round
+    # requires one MORE matching row than the last, because every round lists
+    # the same Core at the same price and round 1's row would otherwise vouch
+    # for round 2. Without it here the double raises TypeError and the suite
+    # dies mid-file, discarding 166 of its 194 checks with no failure shown.
+    def list_them(self, core_name, slots, timeout=8.0, verbose=True,
+                  expect_rows=None):
         self.log.append(("list", core_name, tuple(slots or ())))
         if not self.listing_works:
             return {"ok": False, "qty": 0, "why": "registration failed"}
