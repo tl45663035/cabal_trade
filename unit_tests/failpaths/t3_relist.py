@@ -76,7 +76,7 @@ def refresh_dies_after_cancel(h):
     """wait_for_table starts failing once the cancel has committed."""
     original = h._wait_for_table
 
-    def patched(timeout=20.0, poll=1.0):
+    def patched(timeout=20.0, poll=1.0, **_):
         if "cancel.committed" in h.labels():
             h.log("wait_for_table(False)")
             return False
@@ -134,7 +134,7 @@ remainder = make_row(1, ITEM, action="change", price=410_000, qty=100)
 
 
 def collect_leaves_remainder(h):
-    def patched():
+    def patched(**_):
         row = h._cancel_target
         if row is not None and row in h.rows:
             h.rows[h.rows.index(row)] = remainder
@@ -195,7 +195,7 @@ h = fresh(rows=[make_row(1, ITEM, price=410_000, qty=100),
 def shift_on_second_read(h):
     original = h._read_rows
 
-    def patched(source=None):
+    def patched(source=None, **_):
         rows = original(source)
         if h.n_rows >= 2 and rows and rows[0].name == ITEM:
             shifted = [make_row(1, OTHER, price=1_500_000, qty=50),
@@ -284,7 +284,7 @@ check("3h a batch that only collected is still True",
 h = fresh()
 with h:
     # every row vanishes from the live read -> 'already sold out, skipping'
-    def vanish(source=None):
+    def vanish(source=None, **_):
         h.n_rows += 1
         return [] if h.n_rows > 1 else list(h.rows)
     h.patch("read_rows", vanish)

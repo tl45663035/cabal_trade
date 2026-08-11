@@ -37,7 +37,7 @@ class ScrollShop(Harness):
                          price=it["price"], qty=it["qty"])
                 for n, it in enumerate(window, start=1)]
 
-    def _read_rows(self, source=None):
+    def _read_rows(self, source=None, words=None, **_):
         self.n_rows += 1
         self.rows = self._visible()
         return list(self.rows)

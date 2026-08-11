@@ -466,7 +466,7 @@ class Harness:
         self.pending_register = None
 
     # ------------------------------------------------------------ readers
-    def _dialog_kind(self, source=None):
+    def _dialog_kind(self, source=None, words=None, **_):
         kind = self.dialog
         if kind == "extension" and self.extension_vanishes:
             # seen once by await_dialog, then the game closes it again
@@ -474,7 +474,7 @@ class Harness:
             self.dialog = None
         return kind
 
-    def _read_rows(self, source=None):
+    def _read_rows(self, source=None, words=None, **_):
         self.n_rows += 1
         self._armed_fault("read_rows")
         fault = self.rows_fault.get(self.n_rows)
@@ -482,7 +482,7 @@ class Harness:
             raise fault
         return [] if self.loading else list(self.rows)
 
-    def _table_loading(self, source=None):
+    def _table_loading(self, source=None, words=None, **_):
         return self.loading
 
     def _read_register_panel(self, source=None):
@@ -502,7 +502,7 @@ class Harness:
         return [word("Confirmation", CONFIRM_XY, 31.0),
                 word("Cancel", DISMISS_XY, 28.0)]
 
-    def _dialog_button(self, source, w, min_conf=40.0):
+    def _dialog_button(self, source, w, min_conf=40.0, words=None, **_):
         low = w.casefold()
         if self.dialog is None:
             return None

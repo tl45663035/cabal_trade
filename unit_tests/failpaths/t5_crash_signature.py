@@ -121,7 +121,7 @@ def focus_false_after_label(h):
     """focus_game returns False on the call cancel_item makes."""
     original = h._focus
 
-    def patched(settle=0.35):
+    def patched(settle=0.35, **_):
         if "inventory.before_cancel" in h.labels():
             h.log("focus_game(False)")
             return False
@@ -142,7 +142,7 @@ h = build()
 
 
 def locked_after_label(h):
-    def patched():
+    def patched(**_):
         return "inventory.before_cancel" in h.labels()
     return patched
 

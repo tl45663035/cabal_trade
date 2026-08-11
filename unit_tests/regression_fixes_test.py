@@ -174,11 +174,17 @@ def restock_decision(scope, visible_rows):
     """What restock_pass does with `scope` against a given first screen."""
     saved = {n: getattr(m, n) for n in
              ("restock_is_armed", "await_rows", "enabled_buying_slots",
-              "cached_rows_used", "restock_core", "whole_shop_listings",
+              "cached_rows_used", "restock_core", "shop_listing_pairs",
               "record")}
     seen = {"swept": False, "scoped": False, "skipped": True}
 
     def sweep(*a, **k):
+        # PAIRS, because restock_pass now calls shop_listing_pairs. It used to
+        # patch whole_shop_listings, which restock_pass no longer calls at all
+        # -- so this double intercepted NOTHING and the test reached the real
+        # sweep, which opens the Trade window and CLICKS. restock_pass's
+        # blanket `except Exception` then swallowed the fallout, so the test
+        # still reported green while driving the live game.
         seen["swept"] = True
         return []
 
@@ -193,7 +199,7 @@ def restock_decision(scope, visible_rows):
         m.await_rows = lambda *a, **k: list(visible_rows)
         m.enabled_buying_slots = lambda: [1]
         m.cached_rows_used = lambda: 12
-        m.whole_shop_listings = sweep
+        m.shop_listing_pairs = sweep
         m.record = rec
 
         def core(slot, *a, **k):

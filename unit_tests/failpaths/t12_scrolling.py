@@ -41,7 +41,7 @@ class ScrollShop(Harness):
                          price=it["price"], qty=it["qty"])
                 for n, it in enumerate(self._window(), start=1)]
 
-    def _read_rows(self, source=None):
+    def _read_rows(self, source=None, words=None, **_):
         self.n_rows += 1
         fault = self.rows_fault.get(self.n_rows)
         if fault is not None:

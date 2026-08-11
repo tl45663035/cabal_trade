@@ -61,10 +61,10 @@ try:
     m.grab = lambda: object()
     m.record = lambda *a, **k: None
     m.trade_window_open = lambda source=None: True
-    m.dialog_kind = lambda shot=None: None
+    m.dialog_kind = lambda shot=None, words=None: None
     m.find_words = lambda shot, region, scale=20: []
     m.await_rows = lambda timeout=8.0, poll=0.5: list(TABLE)
-    m.read_rows = lambda shot=None: list(TABLE)
+    m.read_rows = lambda shot=None, words=None: list(TABLE)
     m.refresh_table = lambda timeout=8.0, verbose=True: list(TABLE)
 
     def fake_dialog(kind, timeout=8.0, *a, **k):
@@ -72,7 +72,7 @@ try:
         return None                      # reproduce the failure: no dialog
 
     m.await_dialog = fake_dialog
-    m.await_dialog_button = lambda word, timeout=8.0: None
+    m.await_dialog_button = lambda word, timeout=8.0, poll=0.4, source=None: None
 
     ref = m.RowRef.of(TABLE[0], TABLE)
     try:

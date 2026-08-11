@@ -147,7 +147,7 @@ with h:
     original = h._read_rows
     state = {"n": 0}
 
-    def flaky(source=None):
+    def flaky(source=None, **_):
         state["n"] += 1
         return original(source) if state["n"] <= 2 else []
 

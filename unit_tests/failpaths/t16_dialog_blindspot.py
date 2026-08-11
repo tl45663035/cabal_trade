@@ -38,7 +38,7 @@ def unreliable(h, mode, reveal_at=8):
     real = h._dialog_kind
     seen = {"n": 0}
 
-    def reader(source=None):
+    def reader(source=None, words=None, **_):
         seen["n"] += 1
         if mode == "honest":
             return real(source)

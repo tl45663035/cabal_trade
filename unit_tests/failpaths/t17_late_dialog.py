@@ -42,7 +42,7 @@ def run_with_reveal(reveal_at):
         real = h._dialog_kind
         seen = {"n": 0}
 
-        def reader(source=None):
+        def reader(source=None, words=None, **_):
             seen["n"] += 1
             if reveal_at is None or seen["n"] < reveal_at:
                 return None

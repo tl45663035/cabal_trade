@@ -97,7 +97,8 @@ class Game:
                  "open_craft_window", "craft_chaos_sets", "compress_stack",
                  "ensure_shop_ready", "register_item", "inventory_origin",
                  "select_inventory_tab", "press_escape", "craft_window_open",
-                 "record", "grab", "occupied_slots", "avoid_warlag")
+                 "record", "grab", "occupied_slots", "avoid_warlag",
+                 "scroll_to_end", "shop_listing_pairs")
         for n in names:
             self.saved[n] = getattr(m, n)
         m.await_rows = lambda timeout=8.0, poll=0.5: list(self.listings)
@@ -119,6 +120,14 @@ class Game:
         # No screenshots. Without these two the pass reaches a real grab() and
         # this suite would read the operator's actual screen.
         m.avoid_warlag = self._warlag
+        # chaos_pass re-counts the shelf from a FRESH read, and it now anchors
+        # at the top first: await_rows numbers rows by SCREEN position while
+        # the chaos scope is in ABSOLUTE row numbers, and the two coincide only
+        # at the top of the table. Both the anchor and the ranged read have to
+        # be stubbed or the re-count reaches the real game.
+        m.scroll_to_end = lambda up, timeout=8.0, verbose=True: list(self.listings)
+        m.shop_listing_pairs = lambda timeout=8.0, verbose=True, stop_after=None: [
+            (r.index, r) for r in self.listings]
         m.grab = lambda *a, **k: None
         m.occupied_slots = lambda shot=None, origin=None: [
             (1, i + 1) for i in range(self.held_slots)]
@@ -130,8 +139,25 @@ class Game:
 
     def _relist(self, index, **kw):
         self.events.append(("collect", index))
+        row = next((r for r in self.listings if r.index == index), None)
         # Collecting removes the row, exactly as the game does.
         self.listings = [r for r in self.listings if r.index != index]
+
+        # AND IT RETIRES THE LOT, because the real relist does.
+        #
+        # chaos_pass used to clear the lot itself; it now delegates to relist,
+        # whose comment records why ("THE LOT IS RETIRED BY relist(), NOT
+        # HERE" -- two retirements for one sale emptied the ledger after ~4
+        # sales). This fake still did the old thing: returned RELISTED and
+        # cleared nothing, so the assertion that a collected bundle drops its
+        # cost floor could never pass however correct the code was.
+        #
+        # A fully sold row comes back SOLD_OUT, not RELISTED -- that is the
+        # value the caller branches on.
+        if row is not None and getattr(row, "action", None) == "receive":
+            if m.is_chaos_set(row.name):
+                m.clear_cheapest_chaos_lot()
+            return m.SOLD_OUT
         return m.RELISTED
 
     def _warlag(self, allowance=0.0, verbose=True, dry_run=False):
@@ -258,9 +284,30 @@ try:
                            ("compress", "list")):
         check(earlier in ks and later in ks and ks.index(earlier) < ks.index(later),
               f"{earlier} must precede {later}; got {ks}")
-    check(("buy", m.CHAOS_BUY_QUANTITY) in g.events,
-          f"it buys K={m.CHAOS_BUY_QUANTITY} Cores, got "
-          f"{[e for e in g.events if e[0] == 'buy']}")
+    # K IS A MINIMUM, NOT A TARGET -- and the assertion has to say so.
+    #
+    # This used to require an order of exactly CHAOS_BUY_QUANTITY. The rule
+    # changed at the operator's instruction ("Min floor is 200, i.e if not
+    # reached yet continue buying. If reached, then compress and relist"), so
+    # orders now take THE WHOLE ROW and the total is allowed to overshoot --
+    # bounded by one row's depth, because the loop stops as soon as `got`
+    # reaches the minimum. Demanding an exact K here was asserting the
+    # behaviour the operator asked to have removed.
+    bought = [e for e in g.events if e[0] == "buy"]
+    check(bought, f"it buys Cores at all, got {g.events}")
+    check(sum(qty for _, qty in bought) >= m.CHAOS_BUY_QUANTITY,
+          f"buying continues until the K={m.CHAOS_BUY_QUANTITY} MINIMUM is "
+          f"reached; got {bought}")
+    # WITH TEETH, unlike `all(qty > 0)`, which holds for any purchase at all
+    # and so could not tell the two rules apart.
+    #
+    # The fake offers a row of 500 against a K of 100. Taking the WHOLE ROW
+    # means the first order is 500; computing the REMAINDER would make it 100.
+    # Those numbers differ, so this check fails if the rule is ever changed
+    # back -- which is the only reason to write it.
+    check(bought and bought[0][1] == 500,
+          f"the first order takes the whole 500-deep row, not the "
+          f"{m.CHAOS_BUY_QUANTITY} still needed; got {bought}")
 
     # -- BOTH missing rows get stocked, not just the first ------------------
     # register_item leaves the client on the Register tab, so unless the pass
@@ -570,13 +617,29 @@ loop_src = inspect.getsource(m._relist_cycle) \
 rows_src = inspect.getsource(m.relist_rows)
 check("chaos_attention_needed(" in rows_src,
       "relist_rows must consult it between rows -- that is the priority")
-hook = rows_src.split("chaos_attention_needed(")[1][:1400]
+# A generous window, deliberately. This slice used to be 1400 characters and
+# broke the moment a comment was added between the hook and its re-read -- the
+# check is about what the hook DOES, not how tightly it is written, and a
+# source-window assertion that fails on a comment is testing formatting.
+# ANCHORED ON THE ESCALATION, NOT ON A CHARACTER COUNT.
+#
+# This was a fixed window after chaos_attention_needed( -- 1400 characters,
+# then 2600 -- and it broke twice when comments and a retry cap were added
+# between the check and the pass. A slice that fails because code moved is
+# testing layout, not behaviour.
+#
+# The properties below are all about what happens AFTER the pass fires, so the
+# slice starts at the pass itself and runs to the end of the function.
+hook = rows_src.split("chaos_attention_needed(")[1]
+_esc = hook.find("chaos_pass(")
+check(_esc >= 0, "the hook must escalate to the full chaos pass")
+hook_after = hook[_esc:] if _esc >= 0 else hook
 check("chaos_pass(" in hook,
       "and escalate to the full pass when it fires")
-check("ensure_work_tab_empty(" in hook,
+check("ensure_work_tab_empty(" in hook_after,
       "and re-assert the work tab afterwards: chaos buys, crafts and lists on "
       "it, and the next row's cancel identifies its item by diffing that tab")
-check("bring_into_view(" in hook or "await_rows(" in hook,
+check("bring_into_view(" in hook or "await_rows(" in hook_after,
       "and RE-READ the table -- collecting and listing renumber it, so acting "
       "on the pre-chaos view would cancel whatever slid into that position")
 check("trust_count=not scrolling" in rows_src,
@@ -722,7 +785,17 @@ _loop = buy_src[buy_src.index("for order in range(1, CHAOS_BUY_ORDERS"):]
 _loop = _loop[:_loop.index("got += items")]
 check("offers[0]" in _loop and "offers[1]" not in _loop,
       "every order must take ROW 1 of a fresh search, never a later row")
-check(_loop.count("run_favourite_search(CHAOS_CORE_SLOT") == 1
+# COUNTED AS "at least one, before offers[0]", not "exactly one".
+#
+# The rule being protected is that row 1 must come from a search that has JUST
+# run -- not that the loop contains a single search call. A second call was
+# added on 2026-08-10 to recover from the Trade window closing mid-order (the
+# margin gate read eight offers, the next search found none because the window
+# had gone, and a 180,975,459 Alz sale went unreplaced). That recovery
+# re-searches before using offers[0], so it upholds the rule; an exact-count
+# assertion failed it anyway, which is testing the shape of the code rather
+# than what it guarantees.
+check(_loop.count("run_favourite_search(CHAOS_CORE_SLOT") >= 1
       and _loop.index("run_favourite_search(CHAOS_CORE_SLOT") < _loop.index("offers[0]"),
       "and the favourite slot must be clicked again at the top of every "
       "order, so row 1 is row 1 of results that have just run")
@@ -792,9 +865,16 @@ check("does not fit in the" in main_src2,
 pass_src4 = inspect.getsource(m.chaos_pass)
 check("CHAOS_BUY_ORDERS" in pass_src4,
       "the buy must be able to place several orders for one bundle")
-check("CHAOS_BUY_QUANTITY - got" in pass_src4,
-      "each order takes only the REMAINDER, so the total lands on K exactly "
-      "rather than overshooting on the last row")
+# The REMAINDER rule is gone, deliberately: order_size is the whole row.
+# Trimming to exactly what was still wanted meant every order had to compute a
+# precise count, and getting that count wrong is what a flaky qty_max read
+# does. What must remain true is that the loop STOPS at the minimum, so the
+# overshoot is bounded by a single row's depth.
+check("order_size = max(1, core.available)" in pass_src4,
+      "each order takes the whole row -- K is a minimum, not a target")
+check("if got >= CHAOS_BUY_QUANTITY" in pass_src4,
+      "and the loop stops as soon as the minimum is reached, which is what "
+      "bounds the overshoot to one row")
 buy_loop = pass_src4.split("for order in range(1, CHAOS_BUY_ORDERS")[-1]
 check("run_favourite_search(CHAOS_CORE_SLOT" in buy_loop,
       "and must re-search inside the loop -- buy_offer refuses a Buy that is "

@@ -60,7 +60,7 @@ class Flaky(Harness):
         self.reads = 0
         self.real_rows = live_rows()
 
-    def _read_rows(self, source=None):
+    def _read_rows(self, source=None, words=None, **_):
         self.reads += 1
         # 1st read: the batch snapshot, empty. Later: the truth.
         return empty_rows() if self.reads <= 1 else list(self.real_rows)

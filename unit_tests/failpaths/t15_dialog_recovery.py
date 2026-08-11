@@ -114,7 +114,7 @@ class LateDialog(Harness):
         self.reveal_after = reveal_after
         self.kind_calls = 0
 
-    def _dialog_kind(self, source=None):
+    def _dialog_kind(self, source=None, words=None, **_):
         self.kind_calls += 1
         if self.kind_calls < self.reveal_after:
             return None

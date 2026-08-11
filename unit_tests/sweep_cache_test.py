@@ -112,12 +112,17 @@ pass_src = inspect.getsource(m.restock_pass)
 # split lands on prose instead of code. Find the invocations that actually
 # pass arguments.
 import re as _re
-_calls = [c for c in _re.findall(r"whole_shop_listings\(([^)]*)\)", pass_src)
+# The sweep is shop_listing_pairs now, not whole_shop_listings: restock_pass
+# needs the ABSOLUTE row numbers alongside the rows, and whole_shop_listings
+# drops them. Asserting on the old name meant _calls came back empty, the
+# check below failed, and the split on a name no longer in the source raised
+# IndexError -- aborting this file rather than reporting a failure.
+_calls = [c for c in _re.findall(r"shop_listing_pairs\(([^)]*)\)", pass_src)
           if "timeout" in c]
-check(_calls, "restock_pass must actually call whole_shop_listings")
+check(_calls, "restock_pass must actually call shop_listing_pairs")
 check(all("verbose=verbose" in c for c in _calls),
       "the sweep must inherit the caller's verbosity, not be hardcoded silent")
-check("verbose=False)" not in pass_src.split("whole_shop_listings")[1][:60],
+check("verbose=False)" not in pass_src.split("shop_listing_pairs")[1][:60],
       "and must not be pinned to verbose=False again")
 check("the shop sweep took" in pass_src,
       "and it must report how long it took, so a regression in its cost is "
@@ -136,7 +141,7 @@ check("--buy-no-sweep" in inspect.getsource(m.main),
 # The branch must SKIP the sweep, not merely log about it -- otherwise the flag
 # costs the money risk and saves nothing.
 after_flag = pass_src.split("if BUY_NO_SWEEP:")[1].split("return")[0]
-check("whole_shop_listings" not in after_flag,
+check("shop_listing_pairs" not in after_flag,
       "the no-sweep branch must not read the whole shop anyway")
 check("restock_sold_out_slots" in after_flag,
       "but it must still restock the Cores it decided were sold out, or the "
@@ -262,7 +267,10 @@ try:
     # into it -- so the count is decremented here and given back on the
     # remainder path.
     receive_src = inspect.getsource(m._relist_cycle)
-    branch = receive_src.split('target.action == "receive"')[-1][:2600]
+    # A generous window. This was 2600 characters and broke when a comment was
+    # added between the branch head and the call -- a source-slice assertion
+    # that fails on prose is testing formatting, not behaviour.
+    branch = receive_src.split('target.action == "receive"')[-1][:4200]
     check("note_rows_used(max(0, _known_rows - 1))" in branch,
           "collecting a row must ADJUST the remembered count, not discard it")
     check("forget_rows_used()" not in branch,
@@ -333,7 +341,11 @@ check("cached_rows_used()" in after_scope,
 # Walking rows 11-30 to answer a question about rows 1-10 cost 90s+, and up to
 # 54.5s for a single step on a sparse shop. The branch is gone rather than
 # skipped, so this pins its absence.
-check("whole_shop_listings" not in after_scope,
+# The name the scoped branch must NOT contain is the one restock_pass actually
+# calls now. Asserting the old name could not fail: restock_pass no longer
+# mentions whole_shop_listings anywhere, so the scoped path could regress to a
+# full sweep with this suite still green.
+check("shop_listing_pairs" not in after_scope,
       "a scoped restock must not sweep: the whole-shop count cancels out of "
       "its own capacity gate")
 check("no sweep" in after_scope,
