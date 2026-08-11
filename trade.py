@@ -2699,13 +2699,38 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         report["items"] = take * max(1, offer.pack)
 
     if take > 1:
-        say(f"  taking {take} of the {limit} listing(s) on offer")
+        # TYPE A ROUND NUMBER AND LET THE DIALOG CLAMP, at the operator's
+        # instruction (2026-08-11): "if I want 100,200,230, enter 250, if I
+        # want 300,400,251, enter 500."
+        #
+        # The dialog will not accept more than the row holds, so any number at
+        # or above what is wanted buys exactly what is there. What that buys us
+        # is independence from qty_max: reading it is the weakest step in this
+        # sequence, and when it fails the code above falls back to `limit = 1`
+        # and takes a SINGLE listing off a row that might hold 250.
+        #
+        # THE CHECK BELOW IS UNCHANGED AND STILL FALSIFIABLE. What the game
+        # does with a too-large number is predictable -- it clamps to the row's
+        # depth -- so the expected total is offer.price x min(typed, available)
+        # and the dialog's own Purchase Price still has to equal it exactly. A
+        # dialog that clamps somewhere else, or prices it differently, is
+        # refused exactly as before.
+        asked = -(-take // BUY_QTY_GRANULARITY) * BUY_QTY_GRANULARITY
+        take = min(asked, max(1, offer.available))
+        if report is not None:
+            report["take"] = take
+            report["items"] = take * max(1, offer.pack)
+        if asked != take:
+            say(f"  taking {take} of the {limit} listing(s) on offer "
+                f"(typing {asked}; the dialog clamps to the row)")
+        else:
+            say(f"  taking {take} of the {limit} listing(s) on offer")
         # Click the field before typing. "It looks focused" is exactly the
         # assumption that sends keystrokes into the game world instead of the
         # widget -- the same reasoning as the vendor's Mass Purchase dialog.
         click((PURCHASE_DLG_QTY_VALUE[0] + PURCHASE_DLG_QTY_VALUE[2]) // 2,
               (PURCHASE_DLG_QTY_VALUE[1] + PURCHASE_DLG_QTY_VALUE[3]) // 2)
-        type_number(take, clear_first=True, clear=6)
+        type_number(asked, clear_first=True, clear=6)
         # MOVE THE POINTER OFF THE FIELD BEFORE READING IT.
         #
         # The click leaves the cursor sitting on the digits, and the cursor
@@ -3265,6 +3290,12 @@ RESTOCK_TARGET = 200
 # order taken to REACH the minimum may carry the holding straight past it
 # (100 + 999 = 1,099 is allowed), because the hard limit wins. Nothing else may.
 BUY_MAXIMUM = 500
+# What to TYPE into the Confirm Purchase dialog: the wanted quantity rounded
+# UP to this. The dialog clamps to the row's depth, so a round number at or
+# above what is wanted takes the whole row without having to read qty_max
+# first -- and that read is what fails back to "take one listing".
+# Operator's rule, 2026-08-11: want 230, type 250; want 251, type 500.
+BUY_QTY_GRANULARITY = 250
 # How many Sets a restock accumulates before converting.
 #
 # Not the same as CONVERT_QUANTITY: a shop row holds 250 and a conversion asks
@@ -16183,13 +16214,42 @@ def relist_rows(
         else:
             match, note = locate_row(current, ref)
         if match is None and note == "unmatched":
-            # Something very like this row is on screen but its name did not
-            # read cleanly. Skipping would report a live listing as sold and
-            # let the batch finish "successfully" having refreshed nothing.
-            say(f"{name!r} is on the table but its name did not read clearly "
-                "enough to act on. Stopping rather than skipping a live "
-                "listing as though it had sold.")
-            return False
+            # LOOK ONCE MORE BEFORE GIVING UP THE CYCLE.
+            #
+            # "Something like this row is on screen but the name did not read
+            # cleanly" is usually a table caught mid-redraw, not a table that
+            # cannot be read. It happened twice in one run on 2026-08-11, both
+            # times on the line immediately after the mid-batch chaos hook had
+            # listed a bundle and renumbered the shop:
+            #
+            #   Chaos: listed a bundle at 107,156,503 Alz
+            #   Chaos handled; re-reading the table before row 2
+            #   'Chaos Core Set X 250' ... did not read clearly enough
+            #
+            # Each one cost the whole cycle. A second look after a short settle
+            # costs one table read, and the guard keeps its teeth: if the name
+            # still will not read, the batch stops exactly as before rather
+            # than acting on a row it cannot identify.
+            say(f"{name!r} did not read clearly; looking again before giving "
+                f"up the cycle.")
+            time.sleep(TOOLTIP_CLEAR_SECONDS)
+            retry_report: dict = {}
+            again = (bring_into_view(ref, timeout=timeout, verbose=False,
+                                     hint=index, report=retry_report)
+                     if scrolling else await_rows(timeout))
+            if again:
+                current = [r for r in again
+                           if r.action in ("change", "receive")]
+                match, note = locate_row(current, ref)
+                if match is not None:
+                    say(f"  it read cleanly on the second look.")
+                    record("relist.reread_rescued", item=name)
+            if match is None:
+                say(f"{name!r} is on the table but its name did not read "
+                    "clearly enough to act on, twice. Stopping rather than "
+                    "skipping a live listing as though it had sold.")
+                record("relist.unmatched", item=name)
+                return False
         if match is None:
             say(f"{name!r} is no longer in the table - already sold out, skipping.")
             # That row is gone from the shop. If it was the LAST one of an
