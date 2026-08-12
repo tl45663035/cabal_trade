@@ -1112,7 +1112,13 @@ def slot_tip_region(x: int, y: int) -> tuple[int, int, int, int]:
     slot is being read. Measured on a live hover of slot (1,1): the tooltip
     occupied x 1538-1883, y 301-490 for a slot centred at (1981, 293).
     """
-    return (max(0, x - 560), max(0, y - 70), max(1, x - 20), y + 430)
+    # Every offset scaled: the measurements in the docstring above are
+    # 2560x1440 pixels. Raw, the region is ~33% oversized at 0.76 -- dragging
+    # the game world and neighbouring panels into a crop whose whole job is to
+    # say what is in one slot -- and undersized above scale 1, where it clips
+    # the tooltip so the name never reads and a valid conversion is refused.
+    return (max(0, x - LAYOUT.length(560)), max(0, y - LAYOUT.length(70)),
+            max(1, x - LAYOUT.length(20)), y + LAYOUT.length(430))
 
 
 def read_slot_tooltip(row: int, col: int, settle: float | None = None) -> dict:
@@ -1856,6 +1862,25 @@ PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
 PURCHASE_NAME_MAX_X = 700          # the Name cell ends before the QTY column
 PURCHASE_PRICE_X = (900, 1080)     # the Price cell
 PURCHASE_BUY_X = 1124              # the per-row Buy button
+
+# THE REST OF THE OFFER ROW'S GEOMETRY.
+#
+# These three were the untransformed remainder of the block above: the commit
+# that introduced PURCHASE_NAME_MAX_X, PURCHASE_PRICE_X and PURCHASE_BUY_X as
+# three consecutive lines registered only the third, and left the row band,
+# its half-height and the row-select x as bare literals in the code.
+#
+# The band's half-height is the one that costs money. At scale 0.76 a row
+# pitch is 58px, so a +/-24 band is 48 of them -- 84% of a pitch, straddling
+# the rows either side. The same hazard is documented for the shop table:
+# "the band is a full row pitch tall ... so it catches the neighbouring row's
+# price, whose digits then interleave by x into one nonsense number." The
+# same crop reads the available-listings count, and that count sizes the
+# order -- "a phantom 7 makes the order seven times the intended size, and
+# the first order is exempt from BUY_MAXIMUM".
+PURCHASE_ROW_BAND_X = (250, 1235)  # the strip a row is OCR'd from
+PURCHASE_ROW_HALF = 24             # half a row band's height
+PURCHASE_ROW_SELECT_X = 500        # anywhere on the row: click it to select
 # How much cheaper per item a Set must be before it is worth buying.
 PRICE_DIFF_FLOOR = 10_000
 SET_SAVING_THRESHOLD = PRICE_DIFF_FLOOR      # older name, kept for callers
@@ -2038,7 +2063,8 @@ def read_purchase_rows(source: "Image.Image | None" = None) -> list[Offer]:
         y = PURCHASE_ROW_TOP + i * PURCHASE_ROW_PITCH
         # Starts at 250, not 240: the category tree on the left bleeds into the
         # band and prefixed names with its own text ("of L Force Core Set...").
-        band = (250, y - 24, 1235, y + 24)
+        band = (PURCHASE_ROW_BAND_X[0], y - PURCHASE_ROW_HALF,
+                PURCHASE_ROW_BAND_X[1], y + PURCHASE_ROW_HALF)
         words = [w for w in find_words(shot, band, 20) if w.conf >= 55]
         if not words:
             continue
@@ -2062,7 +2088,8 @@ def read_purchase_rows(source: "Image.Image | None" = None) -> list[Offer]:
         # read_rows documents for the shop table's quantity column (~30% of
         # cells). Since most counts are 1, the rescue is the common path here
         # rather than the exception.
-        cell = (PURCHASE_NAME_MAX_X, y - 24, PURCHASE_PRICE_X[0], y + 24)
+        cell = (PURCHASE_NAME_MAX_X, y - PURCHASE_ROW_HALF,
+                PURCHASE_PRICE_X[0], y + PURCHASE_ROW_HALF)
         available = None
         digits = sorted((w for w in words
                          if PURCHASE_NAME_MAX_X < w.centre[0]
@@ -2701,11 +2728,11 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     # the pointer genuinely ENTERS the button: move_mouse to a pixel the cursor
     # already occupies generates no move event, and the game then never arms
     # the control.
-    move_mouse(500, offer.y - 40)
+    move_mouse(PURCHASE_ROW_SELECT_X, offer.y - LAYOUT.length(40))
     time.sleep(0.2)
-    click(500, offer.y)
+    click(PURCHASE_ROW_SELECT_X, offer.y)
     time.sleep(0.8)
-    move_mouse(PURCHASE_BUY_X, offer.y - 40)
+    move_mouse(PURCHASE_BUY_X, offer.y - LAYOUT.length(40))
     time.sleep(0.2)
     click(PURCHASE_BUY_X, offer.y)
     time.sleep(1.5)
@@ -4749,6 +4776,13 @@ CONVERT_VENDOR_TAB = "Dungeon"
 # ~27-32 for the others, a 37-level gap, where a band over the labels
 # themselves separates by about 12.
 VENDOR_TAB_BAND = (176, 188)
+# Half-width of that sample. VENDOR_TAB_BAND beside it is registered and the
+# x centre is OCR-derived, so this was the only raw term -- and at 0.76 a raw
+# +/-25 covers 44% of the scaled 114px tab pitch instead of 33%, bleeding into
+# the neighbours and flattening the gap against VENDOR_TAB_MARGIN. It gates
+# the Alt+click into a window where a plain click buys outright, so it fails
+# closed -- by throwing away a conversion already paid for.
+VENDOR_TAB_HALF_W = 25
 # WHERE THE VENDOR TABS HAVE ACTUALLY BEEN CLICKED, in screen coordinates on
 # the reference machine. Only the tab this script uses is here, and only
 # because it is MEASURED: 44 logged sightings of "Dungeon tab at (195, 205)",
@@ -4803,7 +4837,8 @@ def active_vendor_tab(source: "Image.Image | None" = None) -> "str | None":
             continue
         cx = point[0]
         vals = [px[x, y]
-                for x in range(max(0, cx - 25), min(grey.width, cx + 25))
+                for x in range(max(0, cx - VENDOR_TAB_HALF_W),
+                               min(grey.width, cx + VENDOR_TAB_HALF_W))
                 for y in range(top, bottom)]
         scores.append((sum(vals) / len(vals), name))
     if len(scores) < 2:
@@ -7716,8 +7751,26 @@ def find_text(
     return sorted(hits, key=lambda w: w.top)
 
 
-def _text_lines(words: list[Word], tolerance: int = 10) -> list[list[Word]]:
-    """Group words into lines by vertical proximity, each ordered left to right."""
+def _text_lines(words: list[Word],
+                tolerance: "int | None" = None) -> list[list[Word]]:
+    """Group words into lines by vertical proximity, each ordered left to right.
+
+    `tolerance` is a SCREEN distance and defaults to the calibrated equivalent
+    of 10 reference px.
+
+    RESOLVED HERE, NOT IN THE SIGNATURE. A default argument binds when the
+    function is defined -- before calibrate() has run -- so writing
+    `tolerance: int = LAYOUT.length(10)` would freeze the reference value for
+    the life of the process. find_alz documents the same trap.
+
+    It matters because this decides item IDENTITY: read_rows groups a row's
+    name words with it, and mis-grouping turned "Master's SIGMetal Headgear"
+    into "Master's Headgear SIGMetal", which matches nothing, so the row was
+    reported already sold out. locate_row matches on that name, and
+    cancel_item's `expect` guard verifies it.
+    """
+    if tolerance is None:
+        tolerance = max(4, LAYOUT.length(10))
     lines: list[list[Word]] = []
     for word in sorted(words, key=lambda w: (w.top, w.left)):
         for line in lines:
@@ -9285,7 +9338,13 @@ NPC_EXCLUDE_ZONES = (
 NPC_CLICK_ATTEMPTS = 100
 # Where the model usually sits relative to the centre of its name label.
 NPC_BODY_OFFSET = (0, 120)
-NPC_CLICK_OFFSET = NPC_BODY_OFFSET  # kept for callers wanting a single point
+# NPC_CLICK_OFFSET WAS HERE, AND IT WAS A TRAP.
+#
+# It aliased NPC_BODY_OFFSET at import. apply_layout rewrites
+# globals()["NPC_BODY_OFFSET"] but never the alias, so it would have kept the
+# reference (0, 120) for the life of the process -- and its comment invited
+# the next caller wanting "a single point" to use it. Nothing read it, so it
+# is deleted rather than wired up: one name for one number.
 
 
 def _npc_click_offsets(attempts: int = NPC_CLICK_ATTEMPTS) -> tuple:
@@ -9911,7 +9970,15 @@ def refresh_table(timeout: float = 20.0, verbose: bool = True) -> bool:
     # a fraction of the cost: ~90x50 pixels instead of 1225x1035.
     point = anchor_point("Refresh")
     if point is not None:
-        near = (point[0] - 90, point[1] - 26, point[0] + 90, point[1] + 26)
+        # Scaled: this crop is the only proof the Trade window really sits
+        # under the fitted point before click(*point) fires, and the
+        # alternative is a blind click onto bare ground, i.e. a click-to-move
+        # that walks the character away from the NPC. Raw it is ~32% oversized
+        # around a button that is 24% smaller -- the crop-dependent
+        # segmentation hazard this file documents three separate times.
+        pad_x, pad_y = LAYOUT.length(90), LAYOUT.length(26)
+        near = (point[0] - pad_x, point[1] - pad_y,
+                point[0] + pad_x, point[1] + pad_y)
         if not find_text(shot, "Refresh", near):
             record("refresh.not_where_expected", point=list(point))
             say("  the Refresh button is not where the fit says it is - the "
@@ -9965,13 +10032,29 @@ def find_row_buttons(image: Image.Image,
     anchors = [w for w in hits if "change" in w.text.casefold()] or hits
     xs = sorted(w.centre[0] for w in anchors)
     column_x = xs[len(xs) // 2]
-    hits = [w for w in hits if abs(w.centre[0] - column_x) <= 45]
+    # SCALED. This is the half-width of the Function column in SCREEN pixels,
+    # and everything downstream rides on it: len(buttons) feeds the cardinality
+    # gate, the order sets Row.index, and button.centre becomes the pixel
+    # cancel_item clicks. Raw, it is 31% over-permissive at 0.76, and 112
+    # reference px at the bottom of SCALE_LIMITS -- where the Status column's
+    # text sits only ~106 away, so the safety would rest on vocabulary rather
+    # than geometry. The sibling in dialog_button already does this correctly
+    # (keep_away = LAYOUT.length(60)); this one was missed.
+    column_half = max(20, LAYOUT.length(45))
+    hits = [w for w in hits if abs(w.centre[0] - column_x) <= column_half]
 
     # Two words can land on one row (OCR splitting); keep one per y band.
     hits.sort(key=lambda w: w.top)
     deduped: list[Word] = []
     for w in hits:
-        if deduped and w.top - deduped[-1].top < 20:
+        # SCALED. This collapses OCR word-splits onto one row, so it sets
+        # len(buttons) and therefore Row.index -- the "renumber and cancel row
+        # 8 instead of row 7" failure. A raw 20 is 25% of the reference pitch
+        # but 33% of the scaled one, so it grows more aggressive exactly where
+        # rows sit closer together; at 0.4 it is 62% of a pitch and a 12px
+        # jitter merges two real rows, which then fails the cardinality gate
+        # on every frame for ever.
+        if deduped and w.top - deduped[-1].top < max(6, LAYOUT.length(20)):
             continue
         deduped.append(w)
     return deduped
@@ -10480,7 +10563,11 @@ def dialog_button(
     button -- so a cancel aborts after its Change click has committed.
     """
     column_x = LAYOUT.x(REF_FUNCTION_COLUMN_X)
-    keep_away = max(40, LAYOUT.length(60))
+    # No bare floor. LAYOUT.length(60) exceeds 40 above scale 0.667, so the
+    # floor only ever activated BELOW that -- where it over-excludes, which is
+    # the dangerous direction: filtering out every real dialog button means a
+    # cancel aborts after its Change click has committed.
+    keep_away = LAYOUT.length(60)
     needle = word.casefold()
     pool = ([w for w in words
              if w.conf >= min_conf and needle in (w.text or "").casefold()]
@@ -12816,6 +12903,24 @@ TAB_ACTIVE_MARGIN = 6.0
 SLOT_OCCUPIED_STDEV = 8.0
 
 SLOT_INSET = 26          # half-width of the sampled area inside a slot
+
+# THE BRIGHTNESS SAMPLE THAT DECIDES WHICH INVENTORY TAB IS SELECTED.
+#
+# The anchors (cx, cy) already scale -- they come from TAB_ONE_OFFSET and
+# TAB_PITCH, both registered. These four offsets did not, which is the
+# anchor-scaled/offset-raw shape that produced the incident this constant's
+# neighbours describe: a CONFIDENT wrong answer, which made
+# select_inventory_tab skip its click, so every later Ctrl+Click operated on
+# the wrong tab's items.
+#
+# At scale 0.76 the raised edge the sample depends on moves to cy-19..cy-11,
+# while a raw cy-25..cy-15 band reads mostly ABOVE it -- panel header,
+# identical on every tab -- so the 22-24 grey-level separation collapses
+# toward noise while TAB_ACTIVE_MARGIN stays fixed at 6.0. Horizontally a raw
+# +/-22 spans 84% of the 52.6px scaled pitch (64% at reference), taking in the
+# gaps and the neighbours' edges.
+TAB_SAMPLE_HALF_W = 22        # half-width of the raised-edge sample
+TAB_SAMPLE_BAND = (-25, -15)  # top and bottom of that band, from tab centre
 SLOT_CHANGE_MIN = 6.0    # mean per-pixel delta that counts as "something moved"
 SLOT_CHANGE_MARGIN = 2.0 # the winner must beat the runner-up by this factor
 
@@ -14332,7 +14437,15 @@ def active_inventory_tab(
         # select_inventory_tab would take as "already on the right tab" and
         # skip the click. Checked against 40 recorded run frames: identical
         # verdict on every one, with a wider margin on all of them.
-        cell = image.crop((cx - 22, cy - 25, cx + 22, cy - 15)).convert("L")
+        # CLAMPED. PIL pads an out-of-bounds crop with BLACK, which would
+        # drag one tab's mean down and hand the verdict to another.
+        box = (max(0, int(cx - TAB_SAMPLE_HALF_W)),
+               max(0, int(cy + TAB_SAMPLE_BAND[0])),
+               min(image.width, int(cx + TAB_SAMPLE_HALF_W)),
+               min(image.height, int(cy + TAB_SAMPLE_BAND[1])))
+        if box[2] <= box[0] or box[3] <= box[1]:
+            continue
+        cell = image.crop(box).convert("L")
         data = list(getattr(cell, "get_flattened_data", cell.getdata)())
         brightness.append((sum(data) / len(data), tab))
 
@@ -21397,6 +21510,10 @@ _TRADE_FRAME_GEOMETRY = {
     # which prices a 62-Set bundle at 62x its true per-unit cost.
     "PURCHASE_NAME_MAX_X": "x",
     "PURCHASE_PRICE_X": "xpair",
+    "PURCHASE_ROW_BAND_X": "xpair",
+    "PURCHASE_ROW_HALF": "len",
+    "PURCHASE_ROW_SELECT_X": "x",
+    "VENDOR_TAB_HALF_W": "len",
     # The Confirm Purchase dialog, added when its quantity field was wired up.
     # Same reasoning as everything above it: these are absolute coordinates
     # measured on one 2560x1440 machine, and one of them is CLICKED to focus a
@@ -21441,6 +21558,7 @@ _INVENTORY_FRAME_GEOMETRY = {
     "SLOT_PITCH": "lenpair", "SLOT_ONE_OFFSET": "lenpair",
     "TAB_ONE_OFFSET": "lenpair", "ALZ_TO_TITLE": "lenpair",
     "TAB_PITCH": "len", "SLOT_INSET": "len",
+    "TAB_SAMPLE_HALF_W": "len", "TAB_SAMPLE_BAND": "lenpair",
 }
 
 # Captured at import, before anything can rewrite them.

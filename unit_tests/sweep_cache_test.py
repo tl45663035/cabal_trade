@@ -315,7 +315,12 @@ check(pass_src3.count("r.index in set(scope)") >= 1,
 check("_dc.replace(r, index=i)" in pass_src3,
       "a range past one screen must be read with ABSOLUTE row numbers, or the "
       "scope filter compares screen positions against absolute rows")
-check("scope = None" not in pass_src3,
+# COMMENTS STRIPPED. inspect.getsource returns them too, and the comment
+# explaining why the scope must not be discarded contains the very literal
+# this check forbids -- so it failed on correct code.
+_pass_code = chr(10).join(l for l in pass_src3.splitlines()
+                          if not l.strip().startswith("#"))
+check("scope = None" not in _pass_code,
       "restock_pass must NOT discard the scope past row 10: that made "
       "restock_core's whole scoped block -- including the chaos row cap -- "
       "unreachable, and let the restock list outside the batch")
