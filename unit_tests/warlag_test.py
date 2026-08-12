@@ -1,4 +1,4 @@
-"""Sitting out the lag around the end of a server war.
+﻿"""Sitting out the lag around the end of a server war.
 
 Wars start every three hours on the server clock and last 30 minutes. The rule
 is: stop one minute before a war ENDS, stay stopped five minutes, resume. So a
@@ -13,6 +13,17 @@ import datetime as dt
 import sys
 
 sys.path.insert(0, r"C:\Users\Trung\Cabal")
+# NO GAME INPUT FROM A TEST. Imported before trade is used, so
+# every click, keystroke, wheel turn and screen grab raises
+# instead of reaching the live client. On 2026-08-12 a test
+# called the real restock pipeline and drove the operator's
+# game for over two minutes.
+import os as _os_guard
+import sys as _sys_guard
+_sys_guard.path.insert(0, _os_guard.path.dirname(
+    _os_guard.path.abspath(__file__)))
+import _no_input_guard  # noqa: F401  -- arms every input primitive to raise
+
 import trade as m  # noqa: E402
 
 m.NO_INPUT = True

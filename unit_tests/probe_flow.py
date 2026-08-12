@@ -1,4 +1,4 @@
-"""Every coordinate and every reader the trading flow uses, against this screen.
+﻿"""Every coordinate and every reader the trading flow uses, against this screen.
 
     py unit_tests\\probe_flow.py            # probe the live screen
     py unit_tests\\probe_flow.py FRAME.png  # probe a saved frame instead
@@ -382,11 +382,10 @@ def main() -> int:
     head("9. THE MONEY RULES currently in force")
     note(OK, "restock target (hard minimum)", f"{m.RESTOCK_TARGET}")
     note(OK, "buy maximum (soft)", f"{m.BUY_MAXIMUM}")
-    note(OK, "runtime BUY_TARGET", f"{m.BUY_TARGET}")
     note(OK, "orders per restock", f"{m.RESTOCK_MAX_BUYS}")
     note(OK, "convert/list rounds", f"{m.RESTOCK_MAX_ROUNDS}")
     note(OK, "shop capacity", f"{m.SHOP_ROW_CAPACITY}")
-    note(OK, "rows a restock reserves", f"{m.restock_rows_needed(m.BUY_TARGET)}")
+    note(OK, "rows a restock reserves", f"{m.restock_rows_needed(m.BUY_MAXIMUM)}")
     note(OK, "relative price floor", f"{m.RELATIVE_PRICE_FLOOR}")
     note(OK, "resupply order",
          "BEFORE relisting" if m.RESTOCK_BEFORE_RELIST else "after relisting")

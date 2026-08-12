@@ -1,4 +1,4 @@
-"""The four regressions introduced on 2026-08-09/10, and the fixes for them.
+﻿"""The four regressions introduced on 2026-08-09/10, and the fixes for them.
 
 Every one of these was found by review rather than by a test, and every one of
 them was introduced while fixing something else. So each check here is written
@@ -14,6 +14,17 @@ source text.
 import sys
 
 sys.path.insert(0, r"C:\Users\Trung\Cabal")
+# NO GAME INPUT FROM A TEST. Imported before trade is used, so
+# every click, keystroke, wheel turn and screen grab raises
+# instead of reaching the live client. On 2026-08-12 a test
+# called the real restock pipeline and drove the operator's
+# game for over two minutes.
+import os as _os_guard
+import sys as _sys_guard
+_sys_guard.path.insert(0, _os_guard.path.dirname(
+    _os_guard.path.abspath(__file__)))
+import _no_input_guard  # noqa: F401  -- arms every input primitive to raise
+
 import trade as m  # noqa: E402
 
 m.NO_INPUT = True
@@ -89,7 +100,12 @@ def drive_buy(price_reads):
         m.click = clicked
         m.type_number = lambda *a, **k: True
         m.park_cursor = lambda *a, **k: None
-        m.grab = lambda *a, **k: None
+        # move_mouse was missing, so buy_offer reached the real one and drove
+        # the operator's client. grab is left to _no_input_guard, which returns
+        # a blank frame -- stubbing it to None here made every caller that
+        # crops the image raise instead.
+        m.move_mouse = lambda *a, **k: True
+        m.move_mouse_to_alz = lambda *a, **k: True
         m.get_alz = lambda *a, **k: state["balance"]
         m.time = NoSleep
         offer = m.Offer(row=1, name="Chaos Core", price=UNIT, pack=1,

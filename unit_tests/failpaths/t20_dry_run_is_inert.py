@@ -1,4 +1,4 @@
-"""A dry run must not touch the game AT ALL -- not merely "not click".
+﻿"""A dry run must not touch the game AT ALL -- not merely "not click".
 
 The incident, 2026-08-04 23:14:
 
@@ -46,7 +46,7 @@ class Spy:
         self._saved = {}
 
     def __enter__(self):
-        for name, fn in (("_send", lambda *a, **k: self.events.append(a)),
+        for name, fn in (("_send", "_release", "_release_left_button", lambda *a, **k: self.events.append(a)),
                          ("make_dpi_aware", lambda: None),
                          ("cooldown", lambda *a, **k: None),
                          ("print", self.printed.append)):

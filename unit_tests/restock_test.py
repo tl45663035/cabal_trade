@@ -27,6 +27,18 @@ from pathlib import Path as _Path
 _ROOT = _Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
+# NO GAME INPUT FROM A TEST. Imported before trade is used, so
+# every click, keystroke, wheel turn and screen grab raises
+# instead of reaching the live client. On 2026-08-12 a test
+# called the real restock pipeline and drove the operator's
+# game for over two minutes.
+import os as _os_guard
+import sys as _sys_guard
+_sys_guard.path.insert(0, _os_guard.path.dirname(
+    _os_guard.path.abspath(__file__)))
+import _no_input_guard  # noqa: F401  -- arms every input primitive to raise
+
+import inspect as _i  # noqa: E402
 import trade as m  # noqa: E402
 
 # NOTHING in this suite may touch the game. Every stage is stubbed, but a stub
@@ -124,7 +136,7 @@ check(sum(counts.values()) == 4,
 only_highest = m.core_row_counts([Row("Force Core(Highest)")] * 5)
 check(only_highest[HIGH] == 0,
       "five Highest rows leave High at zero, not five")
-check(HIGH in m.unlisted_core_slots([Row("Force Core(Highest)")] * 5),
+check(HIGH in m.slots_needing_restock([Row("Force Core(Highest)")] * 5),
       "so a shop holding only Highest reads High as unlisted")
 
 # A pack marker on the row must not make a stocked item read as sold out.
@@ -137,7 +149,8 @@ packed = m.core_row_counts([Row("Force Core(High) X 30"),
 check(packed[HIGH] == 2, f"pack markers do not hide a High row, got {packed[HIGH]}")
 check(packed[HIGHEST] == 1,
       f"nor a Highest row, got {packed[HIGHEST]}")
-check(HIGH not in m.unlisted_core_slots([Row("Force Core(High) X 30")]),
+check(HIGH not in m.slots_needing_restock(
+          [Row("Force Core(High) X 30")] * 2),
       "a packed row still counts as stock, so no needless restock")
 
 # No row may ever count toward two slots at once. With equality that cannot
@@ -151,16 +164,25 @@ for probe in ["Force Core(High)", "Force Core(Highest)", "Force Core (Ultimate)"
           f"{probe!r} counts toward at most one slot, got "
           f"{ {k: v for k, v in hit.items() if v} }")
 
-EVERY = [Row(m.FAVOURITE_SLOTS[s]) for s in SLOTS]
-check(m.unlisted_core_slots(EVERY) == [],
-      "a shop listing every Core has none unlisted")
-check(sorted(m.unlisted_core_slots([])) == sorted(SLOTS),
-      "an empty shop has every Core unlisted")
+# TWO rows each. One row is now a restock trigger, so a fixture giving every
+# Core a single row would make "nothing needs restocking" impossible to state.
+EVERY = [Row(m.FAVOURITE_SLOTS[s]) for s in SLOTS] * 2
+check(m.slots_needing_restock(EVERY) == [],
+      "a shop holding two rows of every Core needs no restock")
+check(sorted(m.slots_needing_restock([])) == sorted(SLOTS),
+      "an empty shop wants every Core restocked")
 
-# A single remaining row is NOT a trigger: the rule is "below 1".
+# A single remaining row IS a trigger: the rule is "at or below 1".
+#
+# It used to be "below 1" -- the last unit had to sell before anything was
+# bought. Force Core(High) sat on one row of 7 units at 15.6% margin, the best
+# in the shop, while chaos at 2.1% took 73% of the capital.
 one_left = [Row(m.FAVOURITE_SLOTS[SLOTS[0]])]
-check(SLOTS[0] not in m.unlisted_core_slots(one_left),
-      "one row left is still stocked; the trigger is zero, not low")
+check(SLOTS[0] in m.slots_needing_restock(one_left),
+      "one row left is restocked now, not after it empties")
+two_left = [Row(m.FAVOURITE_SLOTS[SLOTS[0]])] * 2
+check(SLOTS[0] not in m.slots_needing_restock(two_left),
+      "...but two rows is stocked, so the threshold cannot creep upward")
 
 # -- absolute, and taken over the WHOLE shop -------------------------------
 # The trigger is "this Core has no row anywhere", not "it had one and lost it".
@@ -168,19 +190,23 @@ check(SLOTS[0] not in m.unlisted_core_slots(one_left),
 # switched on in ENABLE_BUYING would sit unlisted forever -- which is exactly
 # the bootstrap case: enabled, never listed, wants stocking.
 never_listed = [Row("Epic Booster (Highest)"), Row("Yekaterina VIP Membership")]
-check(sorted(m.unlisted_core_slots(never_listed)) == sorted(SLOTS),
+check(sorted(m.slots_needing_restock(never_listed)) == sorted(SLOTS),
       "a Core that has NEVER been listed still counts as unlisted, so a newly "
       "enabled one gets bootstrapped rather than ignored")
 
 # And the reason it must see all thirty rows: on ten of them, a Core sitting on
 # row 11 is indistinguishable from one that is absent. Measured on the live
 # shop, three of five managed Cores read as absent from the visible table.
-deep = [Row("Epic Booster (Highest)")] * 10 + [Row(m.FAVOURITE_SLOTS[SLOTS[0]])]
-check(SLOTS[0] not in m.unlisted_core_slots(deep),
-      "a Core on row 11 of a thirty-row shop is NOT unlisted, which is why the "
+# TWO rows past the first screen, so the Core is genuinely stocked under the
+# at-or-below-1 rule and the only thing being tested is whether the count saw
+# past row 10.
+deep = ([Row("Epic Booster (Highest)")] * 10
+        + [Row(m.FAVOURITE_SLOTS[SLOTS[0]])] * 2)
+check(SLOTS[0] not in m.slots_needing_restock(deep),
+      "a Core on rows 11-12 of a thirty-row shop is stocked, which is why the "
       "count is taken over an enumeration rather than a screen")
-check(SLOTS[0] in m.unlisted_core_slots(deep[:10]),
-      "...and reading only the first ten rows would have called it unlisted, "
+check(SLOTS[0] in m.slots_needing_restock(deep[:10]),
+      "...and reading only the first ten rows would have called it sold out, "
       "which is the mistake that buys 250 Sets of a stocked item")
 
 # -- whole_shop_listings: a failed read is None, never an empty shop --------
@@ -388,6 +414,11 @@ class Pipeline:
 
 
 def run_restock(sim, slot=None, target=250, **kw):
+    # `target` is the FLOOR now, and the buy loop runs to the CEILING.
+    # These scenarios were written when one number meant both, so the
+    # ceiling is pinned to it here -- otherwise every case would buy to
+    # BUY_TARGET (500) and stop testing what it was written to test.
+    kw.setdefault("ceiling", target)
     slot = SLOTS[0] if slot is None else slot
     names = {"shop_rows_used": sim.rows,
              "open_purchase_tab": sim.purchase,
@@ -1123,7 +1154,12 @@ check(m.RESTOCK_TARGET <= m.CONVERT_QUANTITY,
       f"and no more than one conversion can handle at a time "
       f"({m.RESTOCK_TARGET} vs {m.CONVERT_QUANTITY}) -- the target is about "
       "how much CAPITAL one restock commits, not how much a row holds")
-check(m.BUY_TARGET == m.BUY_MAXIMUM,
+# BUY_TARGET IS GONE -- it was always BUY_MAXIMUM, and exporting both into
+# config.json made it possible to set them apart, which is silently incoherent
+# (the buy loop runs to one, the ceiling checks read the other).
+check(not hasattr(m, "BUY_TARGET"),
+      "BUY_TARGET must not exist as a second name for BUY_MAXIMUM")
+check("BUY_MAXIMUM or RESTOCK_TARGET" in _i.getsource(m.buy_sets_until),
       f"the accumulator runs to the SOFT MAXIMUM ({m.BUY_MAXIMUM}), not to "
       f"the hard minimum ({m.RESTOCK_TARGET}) -- stopping at the minimum "
       f"would make 'at 240, next bundle is 200, buy it' unreachable")
@@ -1151,7 +1187,8 @@ calls = []
 _saved = m.restock_core
 try:
     m.restock_core = lambda slot, **kw: calls.append(slot) or {"slot": slot}
-    stocked = [Row(m.FAVOURITE_SLOTS[s]) for s in SLOTS]
+    # TWO rows each: one row is at the restock threshold, not above it.
+    stocked = [Row(m.FAVOURITE_SLOTS[s]) for s in SLOTS] * 2
     out = m.restock_sold_out(stocked, verbose=False)
     check(out == [] and not calls,
           f"a fully stocked shop restocks nothing, got {calls}")

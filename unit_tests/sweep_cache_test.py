@@ -304,9 +304,21 @@ pass_src3 = inspect.getsource(m.restock_pass)
 check("scope" in inspect.signature(m.restock_pass).parameters,
       "restock_pass must take the relist scope")
 
-scoped = pass_src3.split("if scope:")[1] if "if scope:" in pass_src3 else ""
-check("r.index in set(scope)" in scoped,
+# CHECKED OVER THE WHOLE FUNCTION, not the tail after `if scope:`.
+#
+# There are now TWO scoped paths: a range inside one screen filters the screen
+# read, and a range past row 10 does a ranged walk and filters that. The second
+# sits ABOVE the `if scope:` dispatch, so slicing on it hid the filter that
+# does the work on every range the operator actually uses.
+check(pass_src3.count("r.index in set(scope)") >= 1,
       "the visible rows must be filtered to the scope by row index")
+check("_dc.replace(r, index=i)" in pass_src3,
+      "a range past one screen must be read with ABSOLUTE row numbers, or the "
+      "scope filter compares screen positions against absolute rows")
+check("scope = None" not in pass_src3,
+      "restock_pass must NOT discard the scope past row 10: that made "
+      "restock_core's whole scoped block -- including the chaos row cap -- "
+      "unreachable, and let the restock list outside the batch")
 
 # THE REFINED RULE, after measuring it live.
 #

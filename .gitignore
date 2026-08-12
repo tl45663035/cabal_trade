@@ -54,3 +54,7 @@ unit_tests/corpus/goldens/
 
 # Per-process scratch crops written by get_alz.
 .alz_tmp*.png
+
+# Local pre-change snapshots of trade.py. Git already keeps the history;
+# committing a 1 MB copy of the file next to the file is noise.
+backups/

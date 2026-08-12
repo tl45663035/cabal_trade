@@ -1,4 +1,4 @@
-"""convert_cores(): the vendor grid, the Purchase Item dialog, and the refusals.
+﻿"""convert_cores(): the vendor grid, the Purchase Item dialog, and the refusals.
 
 This is the only code in the file that clicks inside an NPC vendor window, and
 that window is unlike every other surface the script touches:
@@ -42,6 +42,17 @@ from pathlib import Path as _Path
 
 _ROOT = _Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
+
+# NO GAME INPUT FROM A TEST. Imported before trade is used, so
+# every click, keystroke, wheel turn and screen grab raises
+# instead of reaching the live client. On 2026-08-12 a test
+# called the real restock pipeline and drove the operator's
+# game for over two minutes.
+import os as _os_guard
+import sys as _sys_guard
+_sys_guard.path.insert(0, _os_guard.path.dirname(
+    _os_guard.path.abspath(__file__)))
+import _no_input_guard  # noqa: F401  -- arms every input primitive to raise
 
 import trade as m  # noqa: E402
 
@@ -320,7 +331,7 @@ class Sim:
         self.qty_max = qty_max
         self.dialog_cost = dialog_cost
         self.qty_max_readable = qty_max_readable
-        self.typing = typing          # works | ignored | wrong | unreadable
+        self.typing = typing   # works | ignored | wrong | over | unreadable
         self.focus = focus
         self.inv_open = inv_open
         self.inv_tab = inv_tab
@@ -421,6 +432,11 @@ class Sim:
             return
         if self.typing == "wrong":
             self.field = min(value, self.qty_max) + 1
+            return
+        if self.typing == "over":
+            # MORE than was asked for. Not a clamp -- a clamp can only ever
+            # reduce -- so the field holds something this round did not type.
+            self.field = value + 5
             return
         self.field = min(value, self.qty_max)   # the game clamps
 
@@ -634,11 +650,8 @@ CANCEL_CASES = [
     ("the dialog names a different Core", Sim(dialog_cell=(2, 4))),
     ("the dialog names the Upgrade row", Sim(dialog_cell=(4, 3))),
     ("the dialog prices it at 2 per conversion", Sim(dialog_cost=2)),
-    ("the QTY maximum cannot be read", Sim(qty_max_readable=False)),
     ("the dialog reports nothing to convert", Sim(qty_max=0)),
-    ("the typed quantity never lands", Sim(typing="ignored")),
-    ("the field settles on the wrong number", Sim(typing="wrong")),
-    ("the field cannot be read back", Sim(typing="unreadable")),
+    ("the field settles HIGHER than was typed", Sim(typing="over")),
 ]
 for label, s in CANCEL_CASES:
     res, err = run(s)
@@ -646,6 +659,37 @@ for label, s in CANCEL_CASES:
     check(not s.bought(), f"{label}: OK is NEVER clicked")
     check(s.clicked(Sim.CANCEL.centre) or ("escape",) in s.log,
           f"{label}: the dialog is closed rather than left up")
+    check(not s.dialog_up, f"{label}: no modal is left covering the shop")
+
+# ---- THE QUANTITY IS TYPED BLINDLY AND THE DIALOG CLAMPS IT --------------
+#
+# These three used to cancel the round. They no longer do, and that is the
+# point: the QTY maximum is a right-aligned number in a 70px box, and a
+# single-digit maximum does not read at any confidence. On 2026-08-11 an
+# unreadable "4" cancelled every conversion of 4 Force Core Set (Ultimate)
+# that were already paid for; those Sets then blocked the work tab, every
+# cycle failed, and the run died after 37 minutes.
+#
+# So the maximum is advisory, the quantity is typed blindly, and whatever the
+# field settles at IS the round -- measured, not predicted. Converting fewer
+# than asked costs one more round of a loop that already repeats until every
+# Set is listed.
+CLAMP_CASES = [
+    ("the QTY maximum cannot be read", Sim(qty_max_readable=False), 55),
+    ("the typed quantity never lands", Sim(typing="ignored"), 1),
+    ("the field settles somewhere lower", Sim(typing="wrong"), 56),
+    # Unreadable AFTER typing is the second half of the same wedge: the value
+    # field settled on a lone "4" that would not read, so requiring it just
+    # cancelled the round one line further down than before.
+    ("the field cannot be read back", Sim(typing="unreadable"), None),
+]
+for label, s, want in CLAMP_CASES:
+    res, err = run(s)
+    check(err is None, f"{label}: the round proceeds ({err!r})")
+    # `purchased`, not `bought()` -- the latter is a bool, and `True == 1`
+    # would have let the "never lands" case pass for the wrong reason.
+    check(s.purchased == want,
+          f"{label}: confirms what the field shows -- {want}, got {s.purchased}")
     check(not s.dialog_up, f"{label}: no modal is left covering the shop")
 
 # The dialog-identity refusals must bail before typing anything at all.

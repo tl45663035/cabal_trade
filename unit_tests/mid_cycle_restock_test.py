@@ -1,4 +1,4 @@
-"""A Core that sells out mid-batch is resupplied now, not next cycle.
+﻿"""A Core that sells out mid-batch is resupplied now, not next cycle.
 
 Sold-out detection used to happen once, in restock_pass, before the row loop.
 A Core that sold out at row 3 of a fifteen-row batch therefore sat unstocked
@@ -23,6 +23,17 @@ WHAT THIS FILE IS CAREFUL ABOUT, because both are ways to make it useless:
 import sys
 
 sys.path.insert(0, r"C:\Users\Trung\Cabal")
+# NO GAME INPUT FROM A TEST. Imported before trade is used, so
+# every click, keystroke, wheel turn and screen grab raises
+# instead of reaching the live client. On 2026-08-12 a test
+# called the real restock pipeline and drove the operator's
+# game for over two minutes.
+import os as _os_guard
+import sys as _sys_guard
+_sys_guard.path.insert(0, _os_guard.path.dirname(
+    _os_guard.path.abspath(__file__)))
+import _no_input_guard  # noqa: F401  -- arms every input primitive to raise
+
 import trade as m  # noqa: E402
 
 m.NO_INPUT = True
@@ -73,12 +84,15 @@ class Batch:
         for n in names:
             self.saved[n] = getattr(m, n)
         m.ensure_shop_ready = lambda verbose=True: True
-        m.ensure_work_tab_empty = lambda timeout=8.0, verbose=True: True
+        # **_ throughout: these stand in for functions that keep gaining optional
+        # arguments (stop_after, scope). Without it a new parameter fails this
+        # suite for a reason that has nothing to do with mid-cycle restocking.
+        m.ensure_work_tab_empty = lambda timeout=8.0, verbose=True, **_: True
         # `scope` is the rows this batch was asked for. restock_pass takes
         # it so the sold-out decision is confined to them: "if i relist
         # 1-4 ... if the item doesn't exist there, go resupply those,
         # regardless of what's in bottom rows".
-        m.restock_pass = (lambda timeout=8.0, verbose=True, scope=None:
+        m.restock_pass = (lambda timeout=8.0, verbose=True, scope=None, **_:
                           self.restocked.append(scope or 1))
         m.record = lambda label, *a, **k: self.events.append(label)
         m.shop_rows_used = lambda verbose=True: len(self.shop)
@@ -86,7 +100,7 @@ class Batch:
         m.require_empty_work_tab = lambda verbose=True: True
         m.avoid_warlag = lambda allowance=0.0, verbose=True, dry_run=False: 0.0
         m.await_rows = lambda timeout=8.0, poll=0.5: self._visible()
-        m.enumerate_listings = lambda timeout=8.0, verbose=True: [
+        m.enumerate_listings = lambda timeout=8.0, verbose=True, **_: [
             (r.index, r) for r in self.shop]
         def _biv(ref, timeout=8.0, verbose=True, hint=None, report=None):
             self._hint = hint or 1
@@ -123,7 +137,7 @@ class Batch:
         return live[top - 1:top - 1 + 10]
 
     def _relist(self, row_index, inv_row=None, inv_col=None, dry_run=False,
-                timeout=8.0, verbose=True, attempts=3, expect=None):
+                timeout=8.0, verbose=True, attempts=3, expect=None, **_):
         self.relisted.append(row_index)
         return m.RELISTED
 

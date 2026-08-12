@@ -128,12 +128,19 @@ try:
     # A 2-tuple fixture raised ValueError into the blanket `except`, so the
     # function returned (0, 0, 0) and all three checks below "passed" against
     # a swallowed error rather than against the arithmetic.
+    # Both fixtures now lead with `at`: the cost basis is FIFO, so lots are
+    # consumed oldest-first and the query orders by time.
+    # The sales fixture carries `at, item, qty, proceeds` -- the query gained the
+    # proceeds column so the takings of the UNCOSTED units can be split off in
+    # the same pass. A 2-tuple fixture would raise into the blanket except and
+    # make every check below pass against (0, 0, 0, 0).
     m.sales_db = lambda: FakeDB(
-        purchases=[("Force Core Set (Highest) X 100", 100_000, 100)],
-        sales=[("Force Core(Highest)", 250)])
+        purchases=[("2026-08-01T00:00:00",
+                    "Force Core Set (Highest) X 100", 100_000, 100)],
+        sales=[("2026-08-02T00:00:00", "Force Core(Highest)", 250, 500_000)])
     _basis = m.purchase_cost_basis
     m.purchase_cost_basis = lambda name: 1_000
-    cogs, priced, unpriced = m.cost_of_goods_sold()
+    cogs, priced, unpriced, spare = m.cost_of_goods_sold()
     check(priced == 100,
           f"only the 100 units a purchase covers may be priced, got {priced}")
     check(unpriced == 150,
@@ -141,15 +148,24 @@ try:
     check(cogs == 100_000,
           f"cost is 100 x 1,000, not 250 x 1,000 -- charging the 150 invents "
           f"150,000 Alz of cost. got {cogs:,}")
+    # 150 of the 250 units are uncosted, so 150/250 of the takings are too.
+    # This is what keeps pre-existing stock out of the profit figure: without
+    # it the whole 500,000 counted as profit against 100,000 of cost.
+    check(spare == 300_000,
+          f"150 of 250 units uncosted means 300,000 of the 500,000 takings "
+          f"are uncosted, got {spare:,}")
 
-    # Nothing bought at all: everything is unpriced, nothing is charged.
-    m.sales_db = lambda: FakeDB(purchases=[],
-                                sales=[("Force Core(Highest)", 250)])
+    # Nothing bought at all: everything is unpriced, nothing is charged, and
+    # every Alz of the takings is uncosted -- so profit on it is not claimed.
+    m.sales_db = lambda: FakeDB(
+        purchases=[],
+        sales=[("2026-08-02T00:00:00", "Force Core(Highest)", 250, 500_000)])
     m.purchase_cost_basis = lambda name: 0
-    cogs, priced, unpriced = m.cost_of_goods_sold()
-    check((cogs, priced, unpriced) == (0, 0, 250),
-          f"with no purchases nothing is charged and all 250 are unpriced, "
-          f"got {(cogs, priced, unpriced)}")
+    cogs, priced, unpriced, spare = m.cost_of_goods_sold()
+    check((cogs, priced, unpriced, spare) == (0, 0, 250, 500_000),
+          f"with no purchases nothing is charged, all 250 are unpriced and "
+          f"all 500,000 of takings is uncosted, got "
+          f"{(cogs, priced, unpriced, spare)}")
 finally:
     m.sales_db = _saved_db
     m.purchase_cost_basis = _basis

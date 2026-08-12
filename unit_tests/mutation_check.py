@@ -1,4 +1,4 @@
-"""Revert each fix and prove a test goes red.
+﻿"""Revert each fix and prove a test goes red.
 
 A green suite is evidence of nothing until it can fail. The ten-agent review
 found four bugs that 2,805 existing checks did not catch, and the reason was
@@ -242,6 +242,12 @@ def build(source):
     """Load `source` as the `trade` module, replacing any cached one."""
     for name in [n for n in sys.modules if n == "trade"]:
         del sys.modules[name]
+    # AND THE GUARD WITH IT. A suite's `import _no_input_guard` is a cached
+    # no-op after the first build, so every rebuilt trade module would be
+    # UNARMED -- and four of the six suites here are guarded precisely because
+    # they reach the real pipeline. A mutation run has walked the character
+    # off once already.
+    sys.modules.pop("_no_input_guard", None)
     module = types.ModuleType("trade")
     module.__file__ = str(ROOT / "trade.py")
     sys.modules["trade"] = module

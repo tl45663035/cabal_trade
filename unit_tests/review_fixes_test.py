@@ -1,4 +1,4 @@
-"""The bugs a ten-agent review found, and the guards that now stop them.
+﻿"""The bugs a ten-agent review found, and the guards that now stop them.
 
 Every section here corresponds to a defect that was live in trade.py and that
 2,805 existing checks did not catch. That is the point of the file: each test
@@ -40,6 +40,17 @@ sys.path.insert(0, str(_ROOT))
 # nothing outside it is ever removed.
 _SCRATCH = _Path(tempfile.mkdtemp(prefix="cabal_review_test_"))
 os.environ["CABAL_SALES_DB"] = str(_SCRATCH / "scratch.db")
+
+# NO GAME INPUT FROM A TEST. Imported before trade is used, so
+# every click, keystroke, wheel turn and screen grab raises
+# instead of reaching the live client. On 2026-08-12 a test
+# called the real restock pipeline and drove the operator's
+# game for over two minutes.
+import os as _os_guard
+import sys as _sys_guard
+_sys_guard.path.insert(0, _os_guard.path.dirname(
+    _os_guard.path.abspath(__file__)))
+import _no_input_guard  # noqa: F401  -- arms every input primitive to raise
 
 import trade as m  # noqa: E402
 
@@ -401,11 +412,13 @@ class Market:
 
 def order(pack, still_wanted, buy_target):
     mk = Market(pack)
+    # BUY_MAXIMUM, not BUY_TARGET: the two were merged, because they were
+    # always equal and exporting both let them be set apart.
     saved = {n: getattr(m, n) for n in
              ("run_favourite_search", "buy_offer", "favourite_set_slot",
-              "affordable", "BUY_TARGET")}
+              "affordable", "BUY_MAXIMUM")}
     try:
-        m.BUY_TARGET = buy_target
+        m.BUY_MAXIMUM = buy_target
         m.run_favourite_search, m.buy_offer = mk.search, mk.buy
         m.favourite_set_slot = lambda s: s + 1
         m.affordable = lambda price, source=None: True
@@ -874,7 +887,9 @@ check(m.purchase_cost_basis("Force Core(High)") == basis_before,
 
 totals = m.all_time_totals()
 check(totals is not None, "the totals read")
-_sales_n, _proceeds, buys_n, spend = totals
+# FIVE values -- registration fees are their own figure, split out so
+# they stop being counted as an asset inside INVENTORY.
+_sales_n, _proceeds, buys_n, spend, _fees = totals
 check(spend == 18_700_000 + 2_500_000,
       f"but it IS counted in spend, so profit is honest: got {spend:,}")
 check(buys_n == 1,
@@ -1012,11 +1027,13 @@ for unknown in [None, "", "unknown"]:
           f"an action of {unknown!r} counts as stocked -- the safe direction")
 
 # And it reaches the decision that spends money.
-sold_out = m.unlisted_core_slots([TableRow(HIGH, "receive")])
+sold_out = m.slots_needing_restock([TableRow(HIGH, "receive")])
 check(SLOT_HIGH in sold_out,
       "so a sold-and-uncollected row makes the Core eligible to restock")
-check(SLOT_HIGH not in m.unlisted_core_slots([TableRow(HIGH, "change")]),
-      "while a live one does not")
+# TWO live rows. One is now a trigger in its own right, so a single row would
+# not isolate what this check is about: that `receive` does not count as stock.
+check(SLOT_HIGH not in m.slots_needing_restock([TableRow(HIGH, "change")] * 2),
+      "while live ones do not")
 
 # The grade trap, once more, at this layer: every grade is a prefix of another.
 counts = m.core_row_counts([TableRow("Force Core(Highest)", "change")])
@@ -1218,9 +1235,18 @@ def run_qty_buy(want, offered=48, pack=1, unit=190_190, types_to=None):
 
     def typed(value, per_key=None, clear_first=True, clear=None):
         seen["typed"].append(value)
-        # What the field ACTUALLY settles at, which a test can make differ
-        # from what was typed -- that is the case worth covering.
-        state["qty"] = value if types_to is None else types_to
+        # THE GAME CLAMPS to the row's depth. That is the whole premise of
+        # typing a round number under BUY_QTY_GRANULARITY: any figure at or
+        # above what is wanted buys exactly what is there.
+        #
+        # This double used to accept whatever was typed, so an order of 48 with
+        # 250 typed produced a dialog claiming 250 listings from a row of 48 --
+        # a dialog the real game never shows, and one buy_offer rightly
+        # refused. The test then read as "buying is broken".
+        #
+        # types_to still overrides it, because a field that settles somewhere
+        # else entirely is the case worth covering.
+        state["qty"] = min(value, offered) if types_to is None else types_to
 
     saved = {n: getattr(m, n) for n in
              ("purchase_ready", "get_alz", "grab", "focus_game", "move_mouse",
@@ -1254,12 +1280,54 @@ def run_qty_buy(want, offered=48, pack=1, unit=190_190, types_to=None):
 
 ok, why, seen = run_qty_buy(want=48)
 check(ok is True, f"an order for 48 listings goes through ({why!r})")
-check(seen["typed"] == [48], f"and 48 is typed into the field, got {seen['typed']}")
+# 250 TYPED, 48 BOUGHT. Quantities are entered at BUY_QTY_GRANULARITY and the
+# dialog clamps to the row -- the operator's rule of 2026-08-11: "if I want
+# 100, 200, 230, enter 250". What is RECORDED is still what was actually taken.
+check(seen["typed"] == [m.BUY_QTY_GRANULARITY],
+      f"and a round {m.BUY_QTY_GRANULARITY} is typed, got {seen['typed']}")
 check(seen["purchases"][0]["qty"] == 48,
       f"48 Sets are recorded, not 1: got {seen['purchases'][0]['qty']}")
 check(seen["purchases"][0]["price"] == 48 * 190_190,
       f"at 48 x 190,190 = {48 * 190_190:,}, got "
       f"{seen['purchases'][0]['price']:,}")
+
+
+# == WANTING LESS THAN THE ROW HOLDS MUST TYPE EXACTLY THAT ==================
+#
+# The 250-granularity exists so the typed figure does not depend on reading a
+# fragile QTY maximum: when we want the WHOLE row, a round number at or above
+# its depth is exact. It was applied unconditionally, so a `want` that had been
+# deliberately REDUCED -- by the BUY_MAXIMUM ceiling or an affordability trim
+# -- was rounded straight back up and clamped only against the row's depth.
+#
+# Measured live 2026-08-12: 491 Sets held against a 500 ceiling, `want`
+# correctly clamped to 9, then rounded to 250 and bought for 56,643,000 Alz
+# instead of ~2,000,000. No over-ceiling record was written, because that guard
+# tests a single bundle. 2,800+ checks missed it because every ceiling test
+# stubs buy_offer wholesale and every quantity test asks for the whole row.
+_ok, _why, _seen = run_qty_buy(want=9, offered=250)
+check(_seen["typed"] == [9],
+      f"a want of 9 against a 250-deep row must type 9, not the granularity - "
+      f"this is the ceiling being respected, got {_seen['typed']}")
+
+_ok, _why, _seen = run_qty_buy(want=128, offered=400)
+check(_seen["typed"] == [128],
+      f"an affordability trim must survive too: want 128 of 400 types 128, "
+      f"got {_seen['typed']} (rounding it up is why the 'buy what the balance "
+      f"allows' recovery never fired below 250)")
+
+# ...and the whole-row case still rounds, which is the rule's actual purpose.
+_ok, _why, _seen = run_qty_buy(want=48, offered=48)
+check(_seen["typed"] == [m.BUY_QTY_GRANULARITY],
+      f"wanting the whole row still types the granularity and lets the dialog "
+      f"clamp, got {_seen['typed']}")
+
+# A bundled row is still taken exactly, whatever the depth.
+_ok, _why, _seen = run_qty_buy(want=20, offered=48, pack=10)
+check(_seen["typed"] == [20],
+      f"a pack-10 row types listings exactly - rounding a COUNT OF LISTINGS is "
+      f"what bought 2,170 Sets for 717,200,190 Alz, got {_seen['typed']}")
+
 
 # One listing is still one purchase, and must NOT touch the field: typing into
 # a dialog that already reads 1 is a chance to send keystrokes somewhere else.
@@ -1270,8 +1338,14 @@ check(seen["typed"] == [],
 
 # Never more than the game offers, whatever the caller asks for.
 ok, why, seen = run_qty_buy(want=500, offered=48)
-check(seen["typed"] == [48],
-      f"asking for 500 when 48 are offered takes 48, got {seen['typed']}")
+# Clamped to what is on offer BEFORE it is rounded up, so 500 wanted against
+# 48 offered rounds 48 up to one granularity step, not 500 up to two.
+check(seen["typed"] == [m.BUY_QTY_GRANULARITY],
+      f"asking for 500 when 48 are offered types one granularity step, got "
+      f"{seen['typed']}")
+check(seen["purchases"][0]["qty"] == 48,
+      f"and the dialog clamps it to the 48 on offer, so 48 are recorded, got "
+      f"{seen['purchases'][0]['qty']}")
 
 # A field that does not settle where it was told is a REFUSAL, not a smaller
 # purchase: the keystrokes may have gone somewhere else entirely, and whatever
@@ -1284,6 +1358,15 @@ check("reads 7" in why or "7" in why, f"and the reason says what it read: {why!r
 # A bundle row: "X 28" with 2 on offer is 56 Sets for two listings.
 ok, why, seen = run_qty_buy(want=2, offered=2, pack=28, unit=190_190)
 check(ok is True, f"two bundles of 28 ({why!r})")
+# A BUNDLED row is taken EXACTLY -- no granularity rounding.
+#
+# Rounding a listing count is rounding bundles: on 2026-08-11 a restock wanting
+# 480 Sets from pack-10 rows computed 48 listings, rounded that to 250, and the
+# dialog clamped to the 217 available -- 2,170 Sets for 717,200,190 Alz against
+# an intended 158,643,360. The rule is about UNITS, and a bundle is already a
+# round quantity, so `take` stands.
+check(seen["typed"] == [2],
+      f"a pack-28 row is taken exactly, not rounded up, got {seen['typed']}")
 check(seen["purchases"][0]["qty"] == 56,
       f"is 56 Sets, got {seen['purchases'][0]['qty']}")
 check(seen["purchases"][0]["price"] == 2 * 28 * 190_190,
@@ -1320,7 +1403,10 @@ try:
     m.leave_shop = _leave
     m.shop_rows_used = lambda verbose=True: (
         order.append("count" if state["open"] else "count-SHUT") or 7)
-    m._restock_each = lambda slots, rows_used=None, verbose=True: (
+    # **_ so a new optional argument on the real function cannot fail this
+    # test for a reason unrelated to what it checks. `scope` was added to
+    # keep restocks inside the batch's row range and broke this double.
+    m._restock_each = lambda slots, rows_used=None, verbose=True, **_: (
         order.append(f"refill(rows_used={rows_used})") or [])
 
     m.restock_sold_out_slots([1], verbose=False, rows_used=7)
@@ -1637,6 +1723,17 @@ def qty_verdict(expect_qty, loaded):
                     "typed": None, "slot_stdev": 2.0 if first else 42.0}
 
         m.read_register_panel = _panel
+        # NO INPUT. register_item is driven for real here with dry_run=False,
+        # and it clicks -- the quantity field, the Register button, the
+        # confirmation. Against a live client that is the operator's game being
+        # driven by a unit test, which is how a review agent's test moved the
+        # mouse for two minutes on 2026-08-12. The cross-check under test is
+        # decided before any of these matter, so they are no-ops.
+        for _n in ("click", "ctrl_click", "right_click", "move_mouse",
+                   "press_key", "press_escape", "type_number", "scroll_wheel",
+                   "park_cursor"):
+            if hasattr(m, _n):
+                setattr(m, _n, lambda *a, **k: None)
         # register_item CATCHES Aborted and returns False -- it does not
         # raise -- so the verdict is the return value, and the reason is on
         # stdout. Watching only for an exception reported every refusal as a

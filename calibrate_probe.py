@@ -45,7 +45,135 @@ def show(label, value, note=""):
     print(f"  {label:26} {value}" + (f"   {note}" if note else ""))
 
 
+def env():
+    """Everything about the DISPLAY, before trade.py's own view of it.
+
+    This section exists because the machine that cannot calibrate differs from
+    the one that can in three ways at once -- 1920x1080 instead of 2560x1440,
+    ONE monitor instead of two, and very likely Windows display scaling -- and
+    each of those breaks calibration differently. Guessing which is which from
+    "calibration failed" is not possible; this prints all three.
+
+    Read only. No clicks, no keys, no window changes.
+    """
+    rule("0. the display, measured three ways")
+
+    # --- what Windows thinks, BEFORE we declare DPI awareness --------------
+    import ctypes
+    u32 = ctypes.windll.user32
+    naive = (u32.GetSystemMetrics(0), u32.GetSystemMetrics(1))
+    show("GetSystemMetrics (naive)", naive,
+         "logical pixels; shrinks under display scaling")
+
+    # --- and after ---------------------------------------------------------
+    try:
+        trade.make_dpi_aware()
+        aware = (u32.GetSystemMetrics(0), u32.GetSystemMetrics(1))
+        show("GetSystemMetrics (aware)", aware,
+             "MATCHES naive" if aware == naive else "<-- DPI scaling IS on")
+    except Exception as exc:            # noqa: BLE001 - diagnostic
+        show("make_dpi_aware()", f"FAILED: {exc}")
+        aware = naive
+
+    # --- the scaling factor itself ----------------------------------------
+    #
+    # A 1080p laptop at 150% reports 1280x720 logical against 1920x1080
+    # physical. mss captures PHYSICAL pixels; SetCursorPos takes LOGICAL ones.
+    # Mixing them puts every click at two thirds of where it belongs, which
+    # looks exactly like a bad calibration and is not one.
+    try:
+        hdc = u32.GetDC(0)
+        LOGPIXELSX = 88
+        dpi = ctypes.windll.gdi32.GetDeviceCaps(hdc, LOGPIXELSX)
+        u32.ReleaseDC(0, hdc)
+        show("system DPI", f"{dpi}  ({dpi / 96 * 100:.0f}% scaling)",
+             "100% is the only value this script was built against"
+             if dpi != 96 else "")
+    except Exception as exc:            # noqa: BLE001 - diagnostic
+        show("system DPI", f"could not read: {exc}")
+
+    # --- every monitor mss can see ----------------------------------------
+    #
+    # monitors[0] is the UNION of all displays; real ones start at index 1.
+    # On a dual-monitor machine the union is wider than any single display and
+    # a second monitor sits at a non-zero origin -- so a capture of it yields
+    # image coordinates starting at (0,0) that do NOT match cursor
+    # coordinates. On a single monitor at (0,0) the two spaces coincide, which
+    # is why code can be silently wrong on one machine and right on the other.
+    try:
+        import mss
+        with mss.mss() as sct:
+            mons = sct.monitors
+        show("monitors seen by mss", len(mons) - 1)
+        for i, m in enumerate(mons):
+            tag = ("UNION of all" if i == 0
+                   else "PRIMARY" if (m["left"], m["top"]) == (0, 0)
+                   else f"secondary, origin ({m['left']},{m['top']})")
+            show(f"  monitors[{i}]",
+                 f"{m['width']}x{m['height']} at ({m['left']},{m['top']})", tag)
+        real = mons[1:]
+        if len(real) == 1 and (real[0]["left"], real[0]["top"]) == (0, 0):
+            show("verdict", "SINGLE monitor at origin",
+                 "capture and cursor coordinates coincide")
+        else:
+            show("verdict", f"{len(real)} monitor(s)",
+                 "<-- capture origin may differ from cursor origin")
+    except Exception as exc:            # noqa: BLE001 - diagnostic
+        show("mss", f"FAILED: {exc}  <-- fatal, nothing can be captured")
+
+    # --- physical vs logical, the actual trap ------------------------------
+    #
+    # COMPARE THE PRIMARY, NOT THE UNION. monitors[0] is every display glued
+    # together -- on a dual-monitor machine it is legitimately larger than the
+    # screen user32 reports, and comparing the two flags a DPI problem that
+    # does not exist. The real test is the PRIMARY display's physical pixels
+    # against the logical size clicks are addressed in.
+    try:
+        import mss
+        with mss.mss() as sct:
+            mons = sct.monitors
+        prim = next((m for m in mons[1:]
+                     if (m["left"], m["top"]) == (0, 0)),
+                    mons[1] if len(mons) > 1 else None)
+        if prim:
+            phys = (prim["width"], prim["height"])
+            show("primary, physical (mss)", phys)
+            show("primary, logical (user32)", aware)
+            if phys != aware:
+                show("MISMATCH", f"{phys} captured vs {aware} clicked",
+                     "<-- DISPLAY SCALING. mss captures physical pixels, "
+                     "SetCursorPos takes logical ones, so every click lands "
+                     "short. Set Windows scaling to 100% and re-run.")
+            else:
+                show("physical == logical", "yes",
+                     "capture and click coordinates agree")
+    except Exception:                   # noqa: BLE001 - already reported
+        pass
+
+    # --- the game window ---------------------------------------------------
+    #
+    # The reference layout was measured with the Trade window at a FIXED pixel
+    # size. If that holds, a different resolution only moves it, and
+    # calibration is a translation. If the window is a different SIZE here,
+    # the whole reference layout has to be rescaled and every raw pixel
+    # constant in trade.py is wrong.
+    try:
+        rect = trade.client_rect()
+        show("game client rect", rect)
+        if rect:
+            w, h = rect[2] - rect[0], rect[3] - rect[1]
+            show("game client size", f"{w}x{h}")
+        show("REF_SCREEN", trade.REF_SCREEN)
+        show("REF_TRADE_ORIGIN", trade.REF_TRADE_ORIGIN)
+        show("REF_TRADE_SIZE", trade.REF_TRADE_SIZE,
+             "if the Trade window is this size here too, "
+             "calibration is pure translation")
+    except Exception as exc:            # noqa: BLE001 - diagnostic
+        show("client_rect()", f"FAILED: {exc}")
+
+
 def probe():
+    env()
     rule("1. the machine")
     trade.make_dpi_aware()
     screen = trade.current_screen_size()
@@ -81,7 +209,7 @@ def probe():
         show("LAYOUT.scale", trade.LAYOUT.scale, "built-in until calibrated")
         show("LAYOUT.origin", trade.LAYOUT.origin)
         show("_CALIBRATED", trade._CALIBRATED)
-        show("upscale chosen", trade._ocr_upscale_for(seed)
+        show("upscale chosen", getattr(trade, '_ocr_upscale_for', None) or trade._ocr_reference_scale(seed)
              if hasattr(trade, "_ocr_upscale_for") else "(derived inside find_words)")
     except Exception:
         traceback.print_exc()
@@ -118,7 +246,7 @@ def probe():
             encoding="utf-8")
         show("words on screen", len(words), "-> words.txt")
         found = missing = 0
-        for phrase, ref in trade.REF_ANCHORS:
+        for phrase, ref in trade.REF_ANCHORS_ALL:
             centre = trade._anchor_centre(phrase, words, lines)
             if centre:
                 found += 1

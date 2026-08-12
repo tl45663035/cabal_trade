@@ -1,4 +1,4 @@
-"""The cursor must leave the row before a dialog is looked for.
+﻿"""The cursor must leave the row before a dialog is looked for.
 
 THE INCIDENT, from logs/run_2026-08-09_015103.log: 63 consecutive
 "the Registration Extension dialog did not appear" aborts, almost all on one
@@ -26,6 +26,14 @@ after the dialog read would satisfy a naive check and fix nothing.
 import sys
 
 sys.path.insert(0, r"C:\Users\Trung\Cabal")
+# NO GAME INPUT FROM A TEST. cancel_item() below runs with dry_run=False and
+# reaches the real focus_game(), which un-minimises Cabal, pulls it to the
+# foreground and can inject a real Alt keydown. NO_INPUT does not gate that.
+import os as _os_guard
+import sys as _sys_guard
+_sys_guard.path.insert(0, _os_guard.path.dirname(
+    _os_guard.path.abspath(__file__)))
+import _no_input_guard  # noqa: F401,E402
 import trade as m  # noqa: E402
 
 m.NO_INPUT = True

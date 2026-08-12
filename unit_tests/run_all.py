@@ -1,4 +1,4 @@
-"""Run every test suite, time each one, report the total.
+﻿"""Run every test suite, time each one, report the total.
 
     py unit_tests\\run_all.py
 
@@ -8,6 +8,7 @@ budget goes -- which, on this project, is always OCR.
 """
 
 import os
+import re
 import tempfile
 import subprocess
 import sys
@@ -43,6 +44,9 @@ SUITES = [
     # where a plain click spends items with no confirmation, so the tests that
     # matter assert that nothing is clicked when anything is unverified.
     ("convert_cores",         HERE / "convert_cores_test.py", []),
+    ("shop_model",            HERE / "shop_model_test.py", []),
+    ("idle_cycle",            HERE / "idle_cycle_test.py", []),
+    ("live_config",           HERE / "live_config_test.py", []),
     # The --buy pipeline: sold out -> buy Sets -> convert -> list. Mostly about
     # the ORDER the three stages run in and when the next one is allowed to
     # start, since each stage has its own suite already.
@@ -128,6 +132,10 @@ EXCLUDED = {
     "mutation_check.py",
     # Invoked as a group by the failpaths runner listed above.
     "run_all.py",
+    # Not a suite: imported BY suites to arm every input primitive so a test
+    # cannot drive the live client. Run directly it takes a suite path as an
+    # argument, which is how the input audit is done.
+    "_no_input_guard.py",
 }
 
 
@@ -151,8 +159,37 @@ def _unlisted() -> list[str]:
 _SALES_SCRATCH = Path(tempfile.gettempdir()) / "cabal_test_sales.db"
 os.environ["CABAL_SALES_DB"] = str(_SALES_SCRATCH)
 
+# ONE LEDGER PER SUITE once suites run concurrently.
+#
+# Serially a single scratch file is fine. In parallel it is not: sqlite writers
+# contend, and a suite that asserts on its own rows would read another's. The
+# per-suite path is derived from the label so a failure names the file that
+# holds the evidence.
+_SALES_DIR = Path(tempfile.mkdtemp(prefix="cabal_run_all_"))
 
-def main():
+
+def _suite_env(label: str) -> dict:
+    env = dict(os.environ)
+    # SANITISED: labels contain "/" and ":" ("import / globals",
+    # "floors: the amounts"), which become nested paths and NTFS alternate
+    # data streams rather than filenames.
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", label).strip("_") or "suite"
+    env["CABAL_SALES_DB"] = str(_SALES_DIR / f"{safe}.db")
+    return env
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    cores = 1
+    for i, a in enumerate(argv):
+        if a.startswith("--cores"):
+            # --cores 8 and --cores=8, and `cores=8` because that is what the
+            # operator typed.
+            raw = a.split("=", 1)[1] if "=" in a else (
+                argv[i + 1] if i + 1 < len(argv) else "")
+            cores = max(1, int(raw or 1))
+        elif a.startswith("cores="):
+            cores = max(1, int(a.split("=", 1)[1] or 1))
     results = []
     total_started = time.monotonic()
 
@@ -173,17 +210,39 @@ def main():
               "unaccounted for.")
         return 1
 
-    for label, path, args in SUITES:
-        print(f"\n{'=' * 72}\n=== {label}\n{'=' * 72}", flush=True)
+    def run_one(entry):
+        label, path, args = entry
         if not path.exists():
-            print(f"MISSING: {path}")
-            results.append((label, None, "MISSING"))
-            continue
+            return (label, None, "MISSING", f"MISSING: {path}")
         started = time.monotonic()
         proc = subprocess.run([sys.executable, str(path), *args],
-                              cwd=str(ROOT))
+                              cwd=str(ROOT), env=_suite_env(label),
+                              capture_output=(cores > 1), text=True)
         elapsed = time.monotonic() - started
-        results.append((label, elapsed, "pass" if proc.returncode == 0 else "FAIL"))
+        out = "" if cores == 1 else ((proc.stdout or "") + (proc.stderr or ""))
+        return (label, elapsed,
+                "pass" if proc.returncode == 0 else "FAIL", out)
+
+    if cores > 1:
+        # OUTPUT IS BUFFERED AND REPLAYED IN SUITE ORDER. Interleaved stdout
+        # from eight suites is unreadable, and this file exists to make a
+        # failure obvious. Threads, not processes: every suite is already its
+        # own subprocess, so the pool only waits on them.
+        from concurrent.futures import ThreadPoolExecutor
+        print(f"Running {len(SUITES)} suite(s) on {cores} core(s); "
+              f"each suite's output is replayed below in order.", flush=True)
+        with ThreadPoolExecutor(max_workers=cores) as pool:
+            done = list(pool.map(run_one, SUITES))
+        for label, elapsed, status, out in done:
+            print(f"\n{'=' * 72}\n=== {label}\n{'=' * 72}", flush=True)
+            if out:
+                print(out, end="" if out.endswith("\n") else "\n", flush=True)
+            results.append((label, elapsed, status))
+    else:
+        for entry in SUITES:
+            print(f"\n{'=' * 72}\n=== {entry[0]}\n{'=' * 72}", flush=True)
+            label, elapsed, status, _out = run_one(entry)
+            results.append((label, elapsed, status))
 
     total = time.monotonic() - total_started
     print(f"\n{'=' * 72}")

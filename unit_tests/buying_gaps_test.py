@@ -1,4 +1,4 @@
-"""The parts of buying and converting nothing else tests.
+﻿"""The parts of buying and converting nothing else tests.
 
 A coverage audit of the buy/convert surface found four functions with no test
 referencing them at all. Three are diagnostics; one commits money:
@@ -44,6 +44,17 @@ _SCRATCH_DB = _Path(tempfile.gettempdir()) / "cabal_gaps_test.db"
 if _SCRATCH_DB.resolve().parent != _Path(tempfile.gettempdir()).resolve():
     raise SystemExit(f"refusing to run: {_SCRATCH_DB} is not in the temp dir")
 os.environ["CABAL_SALES_DB"] = str(_SCRATCH_DB)
+
+# NO GAME INPUT FROM A TEST. Imported before trade is used, so
+# every click, keystroke, wheel turn and screen grab raises
+# instead of reaching the live client. On 2026-08-12 a test
+# called the real restock pipeline and drove the operator's
+# game for over two minutes.
+import os as _os_guard
+import sys as _sys_guard
+_sys_guard.path.insert(0, _os_guard.path.dirname(
+    _os_guard.path.abspath(__file__)))
+import _no_input_guard  # noqa: F401  -- arms every input primitive to raise
 
 import trade as m  # noqa: E402
 
@@ -494,13 +505,19 @@ check(m.record_sale_row("Force Core(High)", 205_000, 41_960_000, 200) is True,
 totals = m.all_time_totals()
 check(totals is not None, "the all-time totals read back")
 if totals:
-    sales_n, gross, buys_n, spend = totals
+    # FIVE values. Registration fees were split out of the spend so they would
+    # stop being counted as an asset inside INVENTORY, and this unpack was left
+    # at four -- so it raised, the suite stopped here, and every check after it
+    # silently never ran.
+    sales_n, gross, buys_n, spend, fees = totals
     check(sales_n == 1 and gross == 41_960_000,
           f"one sale of 41,960,000, got {sales_n}/{gross}")
     check(buys_n == 1 and spend == 11_611_236,
           f"one purchase of 11,611,236, got {buys_n}/{spend}")
     check(gross - spend == 30_348_764,
-          f"profit is the difference, got {gross - spend}")
+          f"the difference is 30,348,764, got {gross - spend}")
+    check(isinstance(fees, int),
+          f"and fees come back as their own figure, got {fees!r}")
 
 # The two halves are independent.
 m.SALES.clear()
@@ -521,12 +538,15 @@ try:
     check(m.profit_report() == "",
           "with an empty ledger AND a quiet run, there is nothing to say")
 
-    m.all_time_totals = lambda: (43, 1_162_810_873, 26, 716_151_240)
+    # FIVE values -- registration fees are their own figure. A 4-tuple here
+    # raised inside profit_report, which the suite reported as a test failure
+    # rather than as the stale double it was.
+    m.all_time_totals = lambda: (43, 1_162_810_873, 26, 716_151_240, 0)
     out = m.profit_report()
     check(out != "",
           "but a quiet run with history still reports the standing position")
-    check("ALL TIME" in out,
-          f"and that position is the ALL TIME block, got {out!r}")
+    check("STANDING POSITION" in out,
+          f"and that position is named as such, got {out!r}")
     check("1,162,810,873" in out,
           "with the real takings in it, not this run's zero")
     check("nothing collected and nothing bought" in out,
@@ -576,15 +596,17 @@ m.SALES.clear()
 m.PURCHASES.clear()
 m.SALES.append({"item": "X", "price": 1, "proceeds": 1_000, "qty": 1})
 out = m.profit_report()
-check("THIS RUN" in out and "ALL TIME" in out,
+check("THIS RUN" in out and "STANDING POSITION" in out,
       f"both windows are shown, got {out!r}")
-# The all-time block reports REALISED profit -- takings less what the units
-# that SOLD cost -- rather than takings less everything ever spent. The old
-# figure subtracted stock still sitting on the shop and called the result
-# PROFIT, so it got worse the better the restocking worked: 586,553,522 spent
-# against 290,475,717 taken read as a 296M loss while 1,212 Sets were in hand.
-check("REALISED" in out,
-      f"the all-time figure is REALISED profit, got {out!r}")
+# PROFIT IS NOT REPORTED HERE ANY MORE, at all.
+#
+# This block used to carry an all-time REALISED profit, printed a few lines
+# below the profit of the run that had just ended. On 2026-08-11 the
+# cumulative +215,178,745 across 49 runs was read as the overnight run's
+# earnings, against its actual +12,566,529. One profit figure, per run,
+# reported by bought_stock_report -- so no profit word belongs in this block.
+check("REALISED" not in out,
+      f"no all-time profit figure may appear beside this run's, got {out!r}")
 check("INVENTORY" in out,
       "and what is paid for but unsold is shown as stock, not as a loss")
 check("CASH FLOW" in out,
@@ -932,7 +954,9 @@ try:
                        _moves.append("up" if up else "down") or [])
 
     # A sweep that succeeds still returns to the top.
-    m._enumerate_at_step = lambda step, timeout, verbose, say: [(1, Row("x"))]
+    # **_ so a new optional argument on the real function cannot fail this
+    # test for a reason that has nothing to do with what it checks.
+    m._enumerate_at_step = lambda step, timeout, verbose, say, **_: [(1, Row("x"))]
     _moves.clear()
     out = m.enumerate_listings(verbose=False)
     check(out is not None, "a successful sweep returns its rows")
@@ -941,7 +965,7 @@ try:
 
     # A sweep that FAILS must restore it too -- that is the state a caller is
     # most likely to read next, having been told nothing useful.
-    m._enumerate_at_step = lambda step, timeout, verbose, say: None
+    m._enumerate_at_step = lambda step, timeout, verbose, say, **_: None
     _moves.clear()
     out = m.enumerate_listings(verbose=False)
     check(out is None, "a failed sweep reports failure")
@@ -949,7 +973,7 @@ try:
           f"and STILL returns the table to the top, got {_moves}")
 
     # And an exception on the way must not leave it scrolled either.
-    def _boom(step, timeout, verbose, say):
+    def _boom(step, timeout, verbose, say, **_):
         raise RuntimeError("sweep exploded")
 
     m._enumerate_at_step = _boom
@@ -1273,16 +1297,24 @@ if fails:
 import inspect as _i  # noqa: E402
 
 _buy = _i.getsource(m.buy_offer)
-_seg = _buy[_buy.index("landed = dialog.get(\"qty\")"):]
-check("QTY_READBACK_TRIES" in _seg,
-      "a blank quantity read-back must be retried, not refused -- the caret "
-      "blinks over the digits and a valid purchase was cancelled on it")
-check("if landed is not None:" in _seg,
-      "and the retry loop must stop as soon as it reads something")
-_refusal = _seg[_seg.index("if landed != take:"):]
-check("QTY_READBACK_TRIES" not in _refusal,
-      "but a value that reads as a DIFFERENT number must still refuse "
-      "immediately, with no retries -- that is the case the guard exists for")
+# THE QUANTITY READ-BACK IS GONE, AND THESE CHECKS WENT WITH IT.
+#
+# There used to be three checks here anchored on `landed = dialog.get("qty")`,
+# asserting that a blank read of the typed quantity was retried and a wrong one
+# refused. That line is not in trade.py and never has been in any committed
+# version: the read-back was replaced by proving the quantity through the
+# PURCHASE PRICE, which the game computes FROM the quantity and which does not
+# share a box with a blinking caret. The checks a hundred lines below assert
+# exactly that, and one of them asserts `landed = dialog.get("qty")` must NOT
+# appear -- so this block was asserting the opposite of its own file.
+#
+# It never failed, it RAISED: `.index()` on a missing substring, which killed
+# the run. The summary prints before this point, so `buying_gaps_test` reported
+# "488 checks, 0 failed" while dying eighteen lines later, and every check
+# after it -- including the cursor-parking and fail-closed price guards, which
+# are the ones standing between a typed quantity and real Alz -- never ran.
+#
+# The constant is still worth checking: the retry moved to the price read.
 check(m.QTY_READBACK_TRIES >= 2 and m.QTY_READBACK_PAUSE > 0,
       f"the retry must actually cover a blink cycle, got "
       f"{m.QTY_READBACK_TRIES} x {m.QTY_READBACK_PAUSE}s")
@@ -1303,7 +1335,12 @@ check(m.QTY_READBACK_TRIES >= 2 and m.QTY_READBACK_PAUSE > 0,
 # a picture of the mouse.
 _src = _i.getsource(m.buy_offer)
 
-_typed = _src.index("type_number(take")
+# `asked`, not `take`. The field is typed with the GRANULAR figure and
+# the dialog clamps it; `take` is what we expect to actually get, and
+# is what prices the order. This anchor said "take" and so never
+# matched -- in any committed version either -- which is why the
+# cursor-parking check below has never once run.
+_typed = _src.index("type_number(asked")
 _reread = _src.index("dialog = purchase_confirm()", _typed)
 check("park_cursor()" in _src[_typed:_reread],
       "the pointer must be parked between typing the quantity and reading the "

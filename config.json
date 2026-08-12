@@ -1,0 +1,47 @@
+{
+  "_README": [
+    "THIS FILE IS THE SOURCE OF TRUTH. `py trade.py` with no arguments reads",
+    "it and runs. It is written once, when absent, and never overwritten by a",
+    "run -- your edits survive.",
+    "The `run` block is read ONCE at startup: the batch, the shop model and",
+    "the loop's arithmetic are built around it, so it is not safe to change",
+    "mid-run. Everything else is re-read at the top of EVERY cycle, so a",
+    "change lands on the next cycle and never mid-action.",
+    "A malformed or invalid file is IGNORED with a warning: the run keeps the",
+    "values it already has rather than stopping.",
+    "Changes are applied ALL OR NOTHING, because these knobs constrain each",
+    "other."
+  ],
+  "_NOTES": {
+    "CHAOS_ENABLED": "run the chaos pass at all",
+    "CHAOS_ROWS": "bundles to keep on the board",
+    "CHAOS_RESTOCK_AT_OR_BELOW_ROWS": "rebuy at or below this many",
+    "CHAOS_BUY_QUANTITY": "Cores per top-up",
+    "CHAOS_MARGIN_FLOOR": "min Set-over-Core spread per unit",
+    "CHAOS_UNDERCUT": "Alz shaved off a chaos listing",
+    "BUY_ENABLED": "restock the ordinary Cores",
+    "RESTOCK_TARGET": "core min: hard floor per restock",
+    "BUY_MAXIMUM": "core max: soft ceiling, and what a restock runs to",
+    "RESTOCK_AT_OR_BELOW_ROWS": "restock a Core at/below this many rows",
+    "run": "startup only: the shape of the run itself",
+    "COST_FLOOR_ON_RELIST": "never relist below what the stock cost"
+  },
+  "CHAOS_ENABLED": true,
+  "CHAOS_ROWS": 4,
+  "CHAOS_RESTOCK_AT_OR_BELOW_ROWS": 2,
+  "CHAOS_BUY_QUANTITY": 200,
+  "CHAOS_MARGIN_FLOOR": 10000,
+  "CHAOS_UNDERCUT": 1,
+  "BUY_ENABLED": true,
+  "RESTOCK_TARGET": 200,
+  "BUY_MAXIMUM": 500,
+  "RESTOCK_AT_OR_BELOW_ROWS": 1,
+  "run": {
+    "relist_rows": "1-16",
+    "for_minutes": 600,
+    "every_minutes": 0,
+    "premium": true,
+    "debug_frames": false
+  },
+  "COST_FLOOR_ON_RELIST": true
+}
