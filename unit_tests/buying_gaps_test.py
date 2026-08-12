@@ -1186,9 +1186,16 @@ finally:
 
 check(m.COST_FLOOR_ON_RELIST is _saved_cost_floor,
       "the flag was restored")
-check(m.COST_FLOOR_ON_RELIST is False,
-      "and its shipped default is OFF, which is what was asked for on "
-      "2026-08-08")
+# ON since 2026-08-12, at the operator's instruction. It was off from
+# 2026-08-08, and the evidence for turning it back on came from the shelf:
+# every Core row priced with a cost floor of 0 while Force Core(Highest) ran
+# at a ~2% spread over a 333,331 cost, so a dip would have listed it under
+# water with nothing to stop it. The chaos rows already had a real floor
+# (their own lot) and were the only protected ones.
+check(m.COST_FLOOR_ON_RELIST is True,
+      "the cost floor ships ON: a Core row must not relist below what its "
+      "stock cost. --no-cost-floor and the config knob both still turn it "
+      "off for a position that has to move.")
 
 # An unreadable ledger must not invent a floor, nor block a listing.
 _saved_db = m.sales_db

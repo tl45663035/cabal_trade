@@ -21384,6 +21384,19 @@ _TRADE_FRAME_GEOMETRY = {
     "PURCHASE_ROW_TOP": "y",
     "PURCHASE_ROW_PITCH": "len",
     "PURCHASE_BUY_X": "x",
+    # THE PURCHASE TABLE'S COLUMN BOUNDARIES.
+    #
+    # Unregistered until 2026-08-12, so they stayed 1440p pixels while the row
+    # POSITIONS beside them scaled -- the half-transformed shape that looks
+    # like it works. At scale 0.76 the real price column is live 684..821
+    # while the filter accepted 900..1080: disjoint, so no row's price ever
+    # read, read_purchase_rows returned [] on every call, and the whole buying
+    # path was dead. The name boundary was worse than dead: live 700 maps back
+    # to reference 921, so "the name" swallowed the entire QTY column, the
+    # "X 62" pack marker stopped matching, and pack_size fell back to 1 --
+    # which prices a 62-Set bundle at 62x its true per-unit cost.
+    "PURCHASE_NAME_MAX_X": "x",
+    "PURCHASE_PRICE_X": "xpair",
     # The Confirm Purchase dialog, added when its quantity field was wired up.
     # Same reasoning as everything above it: these are absolute coordinates
     # measured on one 2560x1440 machine, and one of them is CLICKED to focus a
