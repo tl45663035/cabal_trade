@@ -21725,12 +21725,58 @@ def measure_layout(image: Image.Image | None = None,
     # is. 'Trade' is the least reliable of the six -- found on 237 of 286
     # frames, the lowest of any -- and was also the decoy that made a 1080p
     # screen uncalibratable.
-    if hits < MIN_ANCHORS_AFTER_DROP:
-        for bigger in (3, 4):
+    # RETRY ON SPREAD, NOT ONLY ON COUNT.
+    #
+    # This gate counted anchors and never looked at where they were, so it
+    # never fired in the one situation it exists for.
+    #
+    # Only TWO of the six required anchors sit below y=250 -- 'Selling' (982)
+    # and 'Refresh' (981). The other four occupy a 100px band at the top. So
+    # MIN_ANCHOR_SPREAD's 250px vertical requirement rests entirely on those
+    # two, and they are exactly the two that fail: 'Refresh' comes back split
+    # as 'R' + 'efresh' at upscale 2, and 'Selling' is discarded whenever a
+    # chat advert repeats the word (52 of 3,019 recorded frames).
+    #
+    # Every calibration refusal ever observed in production is this shape --
+    # the four top anchors read, the two bottom ones did not, so hits == 4,
+    # `4 < 4` was False, and the larger upscale that recovers 'Refresh' was
+    # never tried:
+    #
+    #   anchors cover 998px horizontally and 100px vertically;
+    #   at least 250.0px on BOTH axes is needed
+    #
+    # (998 x 100/103 is precisely the top cluster: Purchase x=128 to
+    # Function x=1126, Trade y=19 to Item y=122.)
+    #
+    # At 2560x1440 this was masked: ensure_calibrated falls back to the
+    # built-in coordinates when the screen and client match the reference,
+    # which swallowed 42 of 1,093 attempts. On any other resolution that
+    # fallback cannot fire, so the same 3.8% becomes a hard refusal.
+    def _y_spread(ws, ls) -> float:
+        """Vertical spread of the anchors that READ, in REFERENCE units.
+
+        Reference, not screen: MIN_ANCHOR_SPREAD is checked against the
+        reference frame in fit(), so this has to be measured the same way or
+        the retry would use a different bar than the gate it is feeding.
+        """
+        ys = []
+        for phrase, ref in REF_ANCHORS_ALL:
+            if _anchor_centre(phrase, ws, ls) is not None:
+                ys.append(ref[1])
+        return (max(ys) - min(ys)) if len(ys) >= 2 else 0.0
+
+    need_more = (hits < MIN_ANCHORS_AFTER_DROP
+                 or _y_spread(words, lines) < MIN_ANCHOR_SPREAD)
+    if need_more:
+        for bigger in (3, 4, 5):
             words2, lines2 = collect(bigger)
             attempts.append((words2, lines2))
-            if sum(1 for p, _ in REF_ANCHORS
-                   if _anchor_centre(p, words2, lines2) is not None) >= len(REF_ANCHORS):
+            got = sum(1 for p, _ in REF_ANCHORS
+                      if _anchor_centre(p, words2, lines2) is not None)
+            # BOTH conditions, or the retry stops one pass before the one that
+            # would have worked. A full set that is still bunched at the top
+            # cannot be fitted, and a good spread with four anchors can.
+            if got >= len(REF_ANCHORS) and _y_spread(words2, lines2) >= MIN_ANCHOR_SPREAD:
                 break
 
     found: list[tuple[str, tuple[int, int], tuple[int, int]]] = []
