@@ -172,8 +172,136 @@ def env():
         show("client_rect()", f"FAILED: {exc}")
 
 
+def window_hunt():
+    """Every visible top-level window, so a title mismatch cannot hide.
+
+    GAME_TITLE_HINT is a single substring, and it is the single point of
+    failure for the whole bootstrap: if it does not match, find_game_window
+    returns None, client_rect returns None, the OCR upscale seed falls back to
+    the built-in 1.0, and the upscale drops to the value that splits 'Refresh'
+    into 'R' + 'efresh'. calibrate() then prints "game client area: not found"
+    and carries on, so every downstream symptom looks like an anchor problem.
+
+    Printing the real list turns that into a five-second diagnosis.
+    """
+    rule("0b. every window on this machine")
+    import ctypes
+    from ctypes import wintypes
+    u32 = ctypes.windll.user32
+    show("GAME_TITLE_HINT", repr(trade.GAME_TITLE_HINT),
+         "find_game_window matches this, case-insensitively")
+    rows = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def each(hwnd, _):
+        if not u32.IsWindowVisible(hwnd):
+            return True
+        n = u32.GetWindowTextLengthW(hwnd)
+        if n <= 0:
+            return True
+        buf = ctypes.create_unicode_buffer(n + 1)
+        u32.GetWindowTextW(hwnd, buf, n + 1)
+        r = wintypes.RECT()
+        u32.GetWindowRect(hwnd, ctypes.byref(r))
+        rows.append((hwnd, buf.value, (r.left, r.top, r.right, r.bottom)))
+        return True
+
+    try:
+        u32.EnumWindows(each, 0)
+    except Exception as exc:              # noqa: BLE001 - diagnostic
+        show("EnumWindows", f"FAILED: {exc}")
+        return
+    hint = (trade.GAME_TITLE_HINT or "").casefold()
+    hits = [r for r in rows if hint and hint in r[1].casefold()]
+    show("visible windows", len(rows))
+    show("matching the hint", len(hits),
+         "<-- ZERO means the bootstrap silently reverts" if not hits else "")
+    for hwnd, title, rect in rows:
+        w, h = rect[2] - rect[0], rect[3] - rect[1]
+        if w < 200 or h < 200:
+            continue
+        mark = "  <== MATCHES" if hint and hint in title.casefold() else ""
+        print(f"    {hwnd:>10}  {w:>5}x{h:<5} at ({rect[0]},{rect[1]})"
+              f"  {title[:44]!r}{mark}")
+    if not hits:
+        print("    None of these contain the hint. Either the client is not"
+              " running, or its\n    title differs on this machine -- in which"
+              " case GAME_TITLE_HINT needs\n    widening before anything else"
+              " is worth trying.")
+
+
+def row_count():
+    """How many rows the Agent Shop table shows.
+
+    The one thing calibration cannot fix. EXPECTED_ROWS is a hard gate --
+    `if len(buttons) != EXPECTED_ROWS: return []` -- so if this screen shows a
+    different number, read_rows returns nothing on every frame for ever,
+    await_rows burns its whole budget each call, and three cycles later the
+    breaker stops the run with a message about the Trade window being closed.
+    """
+    rule("4b. how many rows the table actually shows")
+    show("EXPECTED_ROWS", trade.EXPECTED_ROWS, "what the code demands")
+    try:
+        shot = trade.grab()
+        buttons = trade.find_row_buttons(shot)
+        show("buttons found", len(buttons),
+             "MATCH" if len(buttons) == trade.EXPECTED_ROWS
+             else "<-- MISMATCH: read_rows will return [] on every frame")
+        if buttons:
+            tops = [b.top for b in buttons]
+            gaps = [b - a for a, b in zip(tops, tops[1:])]
+            if gaps:
+                mid = sorted(gaps)[len(gaps) // 2]
+                show("measured row pitch", f"{mid}px",
+                     f"reference {trade.REF_ROW_PITCH}"
+                     f"  -> implied scale {mid / trade.REF_ROW_PITCH:.4f}")
+        else:
+            print("    No Change/Receive/Register buttons read at all. Either"
+                  " the Register tab\n    is not showing, or the OCR upscale"
+                  " is wrong for this resolution.")
+    except Exception as exc:              # noqa: BLE001 - diagnostic
+        show("find_row_buttons", f"FAILED: {exc}")
+
+
+def scale_agreement():
+    """The client-rect ratio against the anchor-fitted scale.
+
+    Two independent measurements of the same thing: one from Win32 geometry
+    with no OCR at all, one from a least-squares fit of a dozen OCR'd words.
+    On the machine that could not calibrate they agreed to 0.04% -- which is
+    what proved the UI scales with the client rather than staying a fixed
+    pixel size, and therefore that the whole transform model is sound.
+
+    A large disagreement here means something this port has not accounted for
+    -- most likely the game's own UI-scale setting differing between machines.
+    """
+    rule("5b. do the two independent scale measurements agree?")
+    seed = None
+    try:
+        seed = trade._ocr_reference_scale()
+        show("client-rect ratio", f"{seed:.4f}", "no OCR involved")
+    except Exception as exc:              # noqa: BLE001 - diagnostic
+        show("client-rect ratio", f"FAILED: {exc}")
+    try:
+        layout = trade.measure_layout(verbose=False)
+    except Exception as exc:              # noqa: BLE001 - diagnostic
+        show("anchor fit", f"FAILED: {exc}")
+        return
+    if layout is None:
+        show("anchor fit", "REFUSED", "see section 5 for the reason")
+        return
+    show("anchor-fitted scale", f"{layout.scale:.4f}")
+    show("fitted origin", layout.origin)
+    if seed:
+        drift = abs(layout.scale - seed) / seed * 100
+        show("disagreement", f"{drift:.2f}%",
+             "the two agree; the model holds" if drift < 5
+             else "<-- OVER 5%: the game's UI scale may differ here")
+
+
 def probe():
     env()
+    window_hunt()
     rule("1. the machine")
     trade.make_dpi_aware()
     screen = trade.current_screen_size()
@@ -283,6 +411,7 @@ def probe():
     except Exception:
         traceback.print_exc()
 
+    row_count()
     rule("5. the fit")
     layout = None
     try:
@@ -294,6 +423,7 @@ def probe():
     except Exception:
         traceback.print_exc()
 
+    scale_agreement()
     rule("6. what every derived coordinate would become")
     print("  Reference value on the left, what this machine would use on the")
     print("  right. A wrong number here is a click somewhere in the game world.\n")
