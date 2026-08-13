@@ -8372,7 +8372,24 @@ def type_number(value: int, per_key: float = TYPE_COOLDOWN,
     debug_shot("type", value=value)
 
 
-def scroll_wheel(x: int, y: int, notches: int, settle: float = 0.35,
+# HOW LONG TO WAIT AFTER EACH WHEEL NOTCH.
+#
+# It was 0.35s, chosen when the caller had to re-read the whole table to learn
+# where the view had landed -- a read that costs 1.85s, so an over-long settle
+# was invisible next to it.
+#
+# Row access no longer works that way. goto_row and step_row know exactly
+# where the view should be, and read one 1226x135 band to confirm it. A settle
+# that is too short does not produce a WRONG answer, it produces a read of a
+# list still moving -- which fails the name check against the row model and
+# stops, rather than acting on it.
+#
+# So the cost of being slightly too fast is one retry, and the cost of being
+# too slow is paid on every notch of every row for the life of the run.
+WHEEL_SETTLE = 0.12
+
+
+def scroll_wheel(x: int, y: int, notches: int, settle: float = WHEEL_SETTLE,
                  checked: bool = False) -> None:
     """Turn the mouse wheel over (x, y). Negative scrolls DOWN (further into
     the list), positive scrolls UP, matching how Windows reports a real wheel.
@@ -18429,9 +18446,53 @@ def relist_rows(
         # renumber everything below whatever they touched, so it is a place to
         # look first, and identity is still what decides.
         view_report: dict = {}
-        live = (bring_into_view(ref, timeout=timeout, verbose=verbose,
-                                hint=index, report=view_report)
-                if scrolling else await_rows(timeout))
+        live = None
+
+        # POSITIONAL FAST PATH: scroll to the row, read one band, check it.
+        #
+        # bring_into_view searches for the listing by identity, because an
+        # index taken when the batch started is stale by the time later rows
+        # are reached -- cancelling a listing renumbers everything below it.
+        # That reasoning is sound, and the ROW MODEL is what answers it: the
+        # model is told about every register, cancel and collect, so ITS index
+        # is the current one.
+        #
+        # So when the model is trusted, the index can be. Scroll to it by
+        # counting notches, read the one band that row occupies, and check the
+        # name against what the model says is there. A disagreement is a
+        # divergence -- which under enforcement ends the run rather than
+        # resyncing -- and that check is stricter than the identity search it
+        # replaces, because identity cannot tell one sibling from another and
+        # a position can.
+        #
+        # Measured live: 0.94s a row stepping in order, against 2.8s a row for
+        # the walk this replaces, reading a 1226x135 band instead of the whole
+        # table.
+        #
+        # Only within ROW_INDEX_LIMIT: past that the view clamps before the row
+        # can reach the top, and there is nothing to read at position 1.
+        positional = (scrolling and SHOP.enforce and SHOP.ready
+                      and 1 <= index <= ROW_INDEX_LIMIT and not dry_run)
+        if positional:
+            top = goto_row(index, timeout=timeout, verbose=verbose)
+            if top is None:
+                say(f"  row {index} could not be reached positionally; "
+                    f"falling back to the identity search.")
+                positional = False
+            else:
+                # RAISES on divergence when enforcing. That is the point: the
+                # model claimed this slot, the shop disagrees, and acting on
+                # it would touch the wrong listing.
+                SHOP.check(index, top)
+                live = [top]
+                # The row is at SCREEN POSITION 1 by construction, which is
+                # what the caller acts on; `index` is what it reports.
+                view_report["top_index"] = index
+
+        if live is None:
+            live = (bring_into_view(ref, timeout=timeout, verbose=verbose,
+                                    hint=index, report=view_report)
+                    if scrolling else await_rows(timeout))
         # An unreadable table is not an empty shop. Without this guard the
         # chain launders "I cannot see the table" into "the item sold": an
         # empty read makes locate_row report 'missing', every row is skipped
@@ -18474,8 +18535,14 @@ def relist_rows(
             # between rows, and a resupply that failed once was never retried.
             top_index = view_report.get("top_index") if scrolling else 1
             shows_chaos = top_index == 1
+            # NEVER FROM THE POSITIONAL PATH. `live` is a SINGLE row there --
+            # the one this iteration is about -- so counting chaos bundles in
+            # it would report at most one however full the shelf is, and a
+            # full shelf would read as empty. The count is only a fact when
+            # the whole chaos range is on screen.
             why = chaos_attention_needed(
-                live, trust_count=(not scrolling) or shows_chaos)
+                live, trust_count=((not scrolling) or shows_chaos)
+                and not positional)
             # BOUNDED RETRIES. Now that a short shelf fires the hook between
             # rows, a resupply that keeps failing -- an unreadable margin, a
             # market with no Cores -- would fire on EVERY remaining row, each
