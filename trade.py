@@ -2554,16 +2554,27 @@ def purchase_ready(verbose: bool = True) -> bool:
         if verbose:
             print(message)
 
+    # EVERY READ OF `shot` FIRST, THEN THE FRAME PROBE.
+    #
+    # The order is not cosmetic. panel_covers_trade_area grabs two more frames,
+    # and grab() clears the OCR cache -- so running it in the middle threw away
+    # the read that trade_window_open had just paid for, and the tab and sort
+    # checks below then paid for it again. Three launches where one would do,
+    # on a function called before every click.
+    #
+    # All three questions are now answered from one read of one band: the
+    # markers they look for share a region, and find_words caches per
+    # (frame, region).
+    #
+    # BOTH WINDOW SIGNALS ARE STILL REQUIRED, and the panel probe still has to
+    # pass before anything is clicked. Moving it last only means it is not paid
+    # for when a cheaper check has already refused -- and a closed window is
+    # caught by the OCR above without waiting 0.8s to watch the world animate.
     shot = grab()
     if not trade_window_open(shot):
         say("  the Trade window is not open - refusing to click, the game "
             "world is underneath.")
         record("purchase.not_ready", reason="window_shut")
-        return False
-    if not panel_covers_trade_area():
-        say("  the Trade window reads as open but the area is still moving - "
-            "that is the world, not a panel. Refusing to click.")
-        record("purchase.not_ready", reason="area_animating")
         return False
     if not purchase_tab_open(shot):
         say("  the Trade window is not on the Purchase tab - refusing to "
@@ -2574,6 +2585,11 @@ def purchase_ready(verbose: bool = True) -> bool:
         say("  the results are not sorted Price: Low to High, so 'row 1 is "
             "the cheapest' does not hold. Refusing.")
         record("purchase.not_ready", reason="wrong_sort")
+        return False
+    if not panel_covers_trade_area():
+        say("  the Trade window reads as open but the area is still moving - "
+            "that is the world, not a panel. Refusing to click.")
+        record("purchase.not_ready", reason="area_animating")
         return False
     return True
 
@@ -2637,6 +2653,27 @@ def search_receipt_for(offer) -> str:
     return ""
 
 
+# How often the results are re-read while waiting for a search to land, and
+# the shortest time after the click before the first look.
+#
+# The floor exists because the click itself takes a moment to register and the
+# tooltip under the cursor has to clear; reading instantly would just burn a
+# launch on the old screen.
+SEARCH_POLL_SECONDS = 0.2
+# The shortest wait after the click before the results are first read.
+#
+# It used to be 0.4s on the reasoning that the click needs a moment to register
+# and the tooltip under the cursor has to clear. Both are true, but neither
+# needs 0.4s, and this is paid on EVERY search whether the results are ready or
+# not.
+#
+# It can be short because it is not what protects the read: the poll loop
+# rejects anything whose row 1 does not name the item just searched for, so
+# reading too early costs one 90ms launch and goes round again. Reading too
+# LATE costs the whole difference, every time.
+SEARCH_FLOOR_SECONDS = 0.15
+
+
 def run_favourite_search(slot: int, settle: float = 3.0,
                          tries: int = FAVOURITE_SEARCH_TRIES,
                          verbose: bool = True) -> list[Offer]:
@@ -2663,17 +2700,32 @@ def run_favourite_search(slot: int, settle: float = 3.0,
                       f"never run.")
             record("search.not_ready", slot=slot, attempt=attempt)
             return []
+        # WHAT ROW 1 SHOWS BEFORE THE CLICK.
+        #
+        # It is what makes the wait below a measurement rather than a guess: if
+        # the screen currently names a DIFFERENT item, then the moment row 1
+        # names this slot's item, the search has landed and there is nothing
+        # left to wait for.
+        #
+        # When it already names this slot's item -- the same search run twice
+        # in a row -- that test cannot tell a fresh result from the old one, so
+        # the fixed settle is kept for that case. One extra read buys the
+        # saving on every other case.
+        prior = read_purchase_rows(rows=1)
+        ambiguous = bool(prior) and offers_match_slot(slot, prior)
+
         x, y = favourite_slot_point(slot)
         focus_game()
         # Approach from above so the pointer ENTERS the button: a move to the
         # pixel the cursor already occupies raises no event, and the control is
         # then never armed.
+        # No extra sleep here: move_mouse already waits ACTION_COOLDOWN
+        # (0.3s) before returning, which is longer than the 0.2 that used to
+        # follow it.
         move_mouse(x, y - LAYOUT.length(45))
-        time.sleep(0.2)
         click(x, y)
-        time.sleep(settle)
         park_cursor()
-        time.sleep(0.4)
+        time.sleep(SEARCH_FLOOR_SECONDS)
         # THE OFFERS ARE IN THE SAME WINDOW, AND REFRESH THE SAME WAY.
         #
         # await_rows refuses to read the LISTINGS table while "Waiting for the
@@ -2683,8 +2735,49 @@ def run_favourite_search(slot: int, settle: float = 3.0,
         # market is empty" -- and on 2026-08-10 that is exactly what happened:
         # "the Chaos Core search returned nothing" -> "the margin could not be
         # read - not buying blind", with the banner plainly on screen.
-        wait_for_table(timeout=max(6.0, settle * 4), verbose=verbose)
+        # NO wait_for_table HERE ANY MORE.
+        #
+        # It grabbed a fresh screenshot and OCR'd it for the "Waiting for the
+        # server response" banner before every read -- and grab() clears the
+        # OCR cache, so it also threw away whatever the readiness check had
+        # just paid for.
+        #
+        # The loop below subsumes it, and more strictly. The banner check only
+        # asked "is the table mid-refresh"; the loop asks "does row 1 name the
+        # item I searched for", which is false during a refresh AND false when
+        # the refresh finished showing something else. It is still consulted on
+        # the failure path, where its message is worth having.
+        #
+        # WAIT FOR THE RESULT, NOT FOR THE CLOCK.
+        #
+        # `settle` was a flat 3.0s sleep on every search: the time the server
+        # was assumed to need. Measured live on 2026-08-12 it was 6.0s of a
+        # 20s margin call, and the results are usually there long before it
+        # expires.
+        #
+        # `settle` is now a BUDGET rather than a duration. The loop re-reads
+        # row 1 and stops the moment it names this slot's item -- which is the
+        # same condition the caller checks, so a poll that succeeds cannot be
+        # wrong about it. A mid-refresh read simply does not match and the loop
+        # goes round again, which is the guard that used to be a longer sleep.
+        #
+        # Nothing is read sooner than SEARCH_FLOOR_SECONDS after the click, and
+        # nothing waits longer than `settle`. The worst case is what the old
+        # code did every time.
         offers = read_purchase_rows()
+        if ambiguous:
+            # Cannot tell a fresh result from the one already on screen, so
+            # wait the budget out before trusting it.
+            time.sleep(max(0.0, settle - SEARCH_FLOOR_SECONDS))
+            offers = read_purchase_rows()
+        else:
+            deadline = time.monotonic() + settle
+            while not (offers and offers_match_slot(slot, offers)):
+                if time.monotonic() >= deadline:
+                    break
+                time.sleep(SEARCH_POLL_SECONDS)
+                offers = read_purchase_rows()
+
         if offers and offers_match_slot(slot, offers):
             if verbose:
                 print(f"  slot {slot} ({FAVOURITE_SLOTS.get(slot, '?')}): "
@@ -2695,6 +2788,12 @@ def run_favourite_search(slot: int, settle: float = 3.0,
             sample = offers[0].name if offers else "(nothing)"
             print(f"  slot {slot}: the results still show {sample!r} - the "
                   f"search did not run (attempt {attempt}/{tries})")
+        # ONLY NOW. If the budget expired without the results arriving, the
+        # server being slow is the likeliest reason and is worth saying out
+        # loud -- but it costs a grab and a read, so it is paid for on the
+        # failure path rather than on every search.
+        if table_loading(grab()):
+            wait_for_table(timeout=max(6.0, settle * 4), verbose=verbose)
     return []
 
 
@@ -9691,14 +9790,28 @@ def find_npc(
     return None
 
 
-def panel_covers_trade_area(gap: float = 0.35, threshold: float = 2.0) -> bool:
+def panel_covers_trade_area(gap: float = 0.12, threshold: float = 2.0) -> bool:
     """Fast probe: is a static UI panel covering the Trade window's area?
 
     Two frames a moment apart. The 3D world animates constantly, so with no
     window open the area differs noticeably between them; an opaque UI panel
-    barely changes at all. Costs ~0.8s against ~5s for the OCR check, which is
-    what makes sweeping many click points practical. Indicative only -- always
-    confirm with trade_window_open() before acting on it.
+    barely changes at all. Indicative only -- always confirm with
+    trade_window_open() before acting on it.
+
+    THE GAP IS 0.12s, NOT 0.35s. It is the wait between the two frames, and it
+    runs before every click that this guards -- 0.7s of a 8s margin call once
+    the OCR waste was removed, purely watching for motion.
+
+    0.12s is ~7 frames at 60fps. The thing being detected is a 3D scene with
+    drifting camera, animated water, grass and other players; it does not hold
+    still for seven frames. What it must NOT do is mistake a static panel for
+    the world, and a shorter gap makes that MORE certain, not less: less time
+    for anything to change means a smaller difference, and the test is
+    `difference < threshold`.
+
+    The direction that a short gap could get wrong is the opposite one -- a
+    momentarily still world reading as a panel -- and that is exactly what the
+    OCR checks beside it exist to catch. purchase_ready requires both.
     """
     first = grab().convert("L").crop(TRADE_REGION)
     time.sleep(gap)
