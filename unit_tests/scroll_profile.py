@@ -183,8 +183,9 @@ def main() -> int:
     print("=" * 84)
     clock.reset()
     t = time.perf_counter()
-    trade.step_row(1, verbose=False)
-    clock.report("one step down (step_row)", time.perf_counter() - t)
+    trade.scroll_wheel(*trade.SCROLL_POINT, -1, checked=True)
+    trade.read_top_row()
+    clock.report("one notch + top-row read", time.perf_counter() - t)
 
     print()
     print("=" * 84)

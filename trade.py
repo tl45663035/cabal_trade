@@ -8378,7 +8378,7 @@ def type_number(value: int, per_key: float = TYPE_COOLDOWN,
 # where the view had landed -- a read that costs 1.85s, so an over-long settle
 # was invisible next to it.
 #
-# Row access no longer works that way. goto_row and step_row know exactly
+# Row access no longer works that way. goto_row knows exactly
 # where the view should be, and read one 1226x135 band to confirm it. A settle
 # that is too short does not produce a WRONG answer, it produces a read of a
 # list still moving -- which fails the name check against the row model and
@@ -11795,40 +11795,6 @@ def goto_row(index: int, timeout: float = 8.0,
         return None
     say(f"  row {index} is at the top of the view after {notches} notch(es): "
         f"{row.name!r}")
-    return row
-
-
-def step_row(notches: int = 1, verbose: bool = True) -> "Row | None":
-    """Move the view down `notches` and read whatever is now at the top.
-
-    THE PRIMITIVE A BATCH WALKS WITH. goto_row is the absolute form and pays
-    a scroll-to-top every time; rows taken in order do not need it -- row N+1
-    is one notch below row N.
-
-    Measured: reaching rows 1..8 from the top each time costs 0+1+..+7 notches
-    and eight scroll-to-tops; stepping costs seven notches and one.
-
-    Carries none of the per-scroll overhead, and each omission has a reason:
-
-      no table_scrollable   the caller checked before the walk, and nothing
-                            between two steps can have changed it
-      no park_cursor        SCROLL_POINT is seven rows below TABLE_HEAD_BAND,
-                            so the cursor's tooltip cannot cover what is read
-      no full-table read    read_top_row is 0.34s against await_rows' 1.85s
-
-    The caller is expected to check what comes back against what it believes
-    is there -- the row model's answer -- because nothing here verifies that
-    the view moved by exactly one row.
-    """
-    def say(message: str) -> None:
-        if verbose:
-            print(message)
-
-    if notches:
-        scroll_wheel(*SCROLL_POINT, -int(notches), checked=True)
-    row = read_top_row()
-    if row is None:
-        say(f"  the top row could not be read after {notches} notch(es).")
     return row
 
 
@@ -18363,22 +18329,23 @@ def relist_rows(
     worked = 0
 
     failed_rows: list[str] = []
-    # ROWS THIS BATCH HAS ALREADY ACTED ON.
+    # THERE IS NO "ALREADY HANDLED" SET, AND THERE MUST NOT BE ONE.
     #
-    # With several indistinguishable stacks -- routine here, this shop has run
-    # six at once -- locate_row can only match on name, quantity and price, so
-    # it hands back whichever sibling it finds first. That is frequently one
-    # this batch has ALREADY relisted seconds earlier, and the row still
-    # waiting is skipped.
+    # A batch is a list of ABSOLUTE rows and it visits each of them once. Every
+    # row in it is a distinct row of the shop, so "have I done this one
+    # already" is not a question that needs asking -- and asking it is how rows
+    # stopped being relisted at all.
     #
-    # Measured across today's logs: 47 of 391 relist steps acted on a different
-    # row than their own header named (12%), and 31 rows were cancelled TWICE
-    # inside a single cycle. Each double-relist is a row repriced for nothing
-    # and another left at a stale price for the whole cycle.
+    # What was here tracked the SCREEN index of every row acted on and skipped
+    # any later row that resolved to the same one. Under the positional path
+    # every row is placed at screen position 1 by construction, so from the
+    # second row onward every row collided with the first and was skipped.
+    # Measured live on 2026-08-12: 13 of 14 rows skipped every cycle, four
+    # cycles running, with "every row matching 'Force Core(High)' has already
+    # been relisted this cycle" -- while the shop went unpriced.
     #
-    # Identity cannot separate identical stacks. Position can, and the batch
-    # already knows which positions it has consumed.
-    handled: set = set()
+    # The operator's instruction is the rule: relist the rows in the batch.
+    # Each one, once, in order.
     # Fresh per batch. See _COLLECTED_FULLY.
     forget_collected()
 
@@ -18771,31 +18738,6 @@ def relist_rows(
                     # exactly what it was asked to do.
                     return True
             continue
-        # NEVER THE SAME ROW TWICE IN ONE BATCH.
-        #
-        # If the match is a row this batch has already acted on, it is a
-        # sibling collision, not a move. Prefer any equally-good candidate that
-        # has not been touched; if every candidate is spent, skip rather than
-        # reprice one row a second time while another goes stale.
-        if match.index in handled:
-            spare = [r for r in current
-                     if r.index not in handled
-                     and _canonical(r.name) == _canonical(name)]
-            if spare:
-                say(f"  row {match.index} was already relisted this cycle; "
-                    f"taking row {spare[0].index} instead -- identical stacks "
-                    "cannot be told apart by name.")
-                record("relist.sibling_collision", item=name,
-                       already=match.index, taking=spare[0].index)
-                match = spare[0]
-            else:
-                say(f"  every row matching {name!r} has already been relisted "
-                    "this cycle; skipping rather than doing one twice.")
-                record("relist.sibling_exhausted", item=name,
-                       already=sorted(handled))
-                continue
-        handled.add(match.index)
-
         if note:
             say(f"  {note}")
         if match.index != index:
@@ -21623,6 +21565,17 @@ def leave_shop(verbose: bool = True) -> bool:
     # rebuild from the NPC on its first row.
     note_shop_closed()
     try:
+        # FOCUS FIRST. Escape goes to whatever holds the foreground, not to
+        # the game, and this runs at the end of a run when a dialog, an
+        # explorer window or the console may have taken it.
+        #
+        # Measured on the 22:23 run of 2026-08-12: leave_shop pressed Escape
+        # for 18 seconds and reported "the Trade window would not close with
+        # Escape - close it by hand", leaving the shop open with the script
+        # gone. Closing it by hand afterwards worked on the first press,
+        # because that path focuses the client first. The window was never
+        # stuck; the keystrokes were going somewhere else.
+        focus_game()
         if dialog_present():
             say("Closing the dialog left on screen...")
             close_any_dialog()
