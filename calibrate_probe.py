@@ -312,37 +312,47 @@ def tesseract_selftest():
     days of this port were spent looking. Ten lines here name the cause.
     """
     rule("0c. is Tesseract itself working?")
-    try:
-        import pytesseract
-    except Exception as exc:                      # noqa: BLE001 - diagnostic
-        show("pytesseract", f"NOT IMPORTABLE: {exc}")
+    print("  Through trade.py's OWN path. It does not use pytesseract -- it")
+    print("  runs tesseract.exe as a subprocess -- so testing the library")
+    print("  would report a missing package on a machine that works fine,")
+    print("  which is the kind of false alarm this section exists to kill.\n")
+    import subprocess
+    exe = trade.find_tesseract()
+    show("find_tesseract()", exe or "NOT FOUND",
+         "" if exe else "<-- nothing that reads the screen can work")
+    if not exe:
+        print("    trade.py looks on PATH first, then the two standard install")
+        print("    directories. Install Tesseract, or put it on PATH.")
         return
-    show("pytesseract", getattr(pytesseract, "__version__", "?"))
-    show("binary", pytesseract.pytesseract.tesseract_cmd)
-    try:
-        show("tesseract version", str(pytesseract.get_tesseract_version()))
-    except Exception as exc:                      # noqa: BLE001 - diagnostic
-        show("tesseract version", f"FAILED: {exc}",
-             "<-- nothing below this line can work")
-        return
-    try:
-        langs = pytesseract.get_languages(config="")
-        show("languages", ",".join(sorted(langs)[:8]) or "NONE",
-             "eng present" if "eng" in langs
-             else "<-- 'eng' MISSING: every read returns empty")
-    except Exception as exc:                      # noqa: BLE001 - diagnostic
-        show("languages", f"could not list: {exc}")
-    # A synthetic round-trip, so a failure here is unambiguously the engine.
+    for label, args in (("version", ["--version"]),
+                        ("languages", ["--list-langs"])):
+        try:
+            out = subprocess.run([exe, *args], capture_output=True, text=True,
+                                 timeout=30)
+            first = " ".join((out.stdout or out.stderr or "").split())[:70]
+            note = ""
+            if label == "languages":
+                note = ("eng present" if "eng" in (out.stdout or "")
+                        else "<-- 'eng' MISSING: every read returns empty")
+            show(label, first or "(no output)", note)
+        except Exception as exc:                  # noqa: BLE001 - diagnostic
+            show(label, f"FAILED: {exc}",
+                 "<-- the binary is there but will not run")
+            return
+    # A round trip through find_words, which is the function every later
+    # section depends on. A failure here is the engine or the wiring, never
+    # the geometry -- and that is the distinction worth ten seconds.
     try:
         from PIL import Image as _I, ImageDraw as _D
-        card = _I.new("RGB", (320, 60), (12, 12, 12))
-        _D.Draw(card).text((10, 18), "Register Item 250", fill=(235, 235, 235))
-        got = pytesseract.image_to_string(card).strip()
-        show("synthetic read", repr(got),
-             "engine is healthy" if "Register" in got
+        card = _I.new("RGB", (420, 70), (18, 18, 18))
+        _D.Draw(card).text((12, 24), "Register Item 250", fill=(235, 235, 235))
+        got = trade.find_words(card, (0, 0, 420, 70), 0.0)
+        texts = [w.text for w in got]
+        show("find_words on a test card", " ".join(texts) or "(nothing)",
+             "the OCR path is healthy" if any("egister" in t for t in texts)
              else "<-- ENGINE PROBLEM: it cannot read its own test card")
     except Exception as exc:                      # noqa: BLE001 - diagnostic
-        show("synthetic read", f"FAILED: {exc}")
+        show("find_words on a test card", f"FAILED: {exc}")
 
 
 def anchor_stability(frames: int = 6, gap: float = 1.2):
