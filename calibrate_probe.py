@@ -299,8 +299,54 @@ def scale_agreement():
              else "<-- OVER 5%: the game's UI scale may differ here")
 
 
+_BEFORE: dict = {}
+
+
+def tesseract_selftest():
+    """Prove the OCR engine works before blaming the geometry.
+
+    Every section from 3 onward is OCR. If the binary is missing, the version
+    differs, or eng.traineddata is absent, all of them fail at once and the
+    symptoms read as anchor and scale problems -- which is where the last two
+    days of this port were spent looking. Ten lines here name the cause.
+    """
+    rule("0c. is Tesseract itself working?")
+    try:
+        import pytesseract
+    except Exception as exc:                      # noqa: BLE001 - diagnostic
+        show("pytesseract", f"NOT IMPORTABLE: {exc}")
+        return
+    show("pytesseract", getattr(pytesseract, "__version__", "?"))
+    show("binary", pytesseract.pytesseract.tesseract_cmd)
+    try:
+        show("tesseract version", str(pytesseract.get_tesseract_version()))
+    except Exception as exc:                      # noqa: BLE001 - diagnostic
+        show("tesseract version", f"FAILED: {exc}",
+             "<-- nothing below this line can work")
+        return
+    try:
+        langs = pytesseract.get_languages(config="")
+        show("languages", ",".join(sorted(langs)[:8]) or "NONE",
+             "eng present" if "eng" in langs
+             else "<-- 'eng' MISSING: every read returns empty")
+    except Exception as exc:                      # noqa: BLE001 - diagnostic
+        show("languages", f"could not list: {exc}")
+    # A synthetic round-trip, so a failure here is unambiguously the engine.
+    try:
+        from PIL import Image as _I, ImageDraw as _D
+        card = _I.new("RGB", (320, 60), (12, 12, 12))
+        _D.Draw(card).text((10, 18), "Register Item 250", fill=(235, 235, 235))
+        got = pytesseract.image_to_string(card).strip()
+        show("synthetic read", repr(got),
+             "engine is healthy" if "Register" in got
+             else "<-- ENGINE PROBLEM: it cannot read its own test card")
+    except Exception as exc:                      # noqa: BLE001 - diagnostic
+        show("synthetic read", f"FAILED: {exc}")
+
+
 def probe():
     env()
+    tesseract_selftest()
     window_hunt()
     rule("1. the machine")
     trade.make_dpi_aware()
@@ -342,15 +388,23 @@ def probe():
     except Exception:
         traceback.print_exc()
 
-    rule("3. what is on screen")
+    rule("3. what is on screen (BEFORE calibration -- see 7b)")
+    print("  Every check here crops a region that has NOT been calibrated yet,")
+    print("  so a False is not evidence about this machine. On the 1080p port")
+    print("  the uncalibrated REGISTER_PANEL starts at y=120 and the words")
+    print("  'Register Item' sit at y=118 -- clipped by two pixels, reported as")
+    print("  a closed tab. Section 7b repeats all of it after calibrating; that")
+    print("  is the pair to trust.\n")
     shot = trade.grab()
     shot.save(OUT / "screen.png")
     show("captured", f"{shot.size[0]}x{shot.size[1]}", "-> screen.png")
-    show("trade_window_open", trade.trade_window_open(shot))
-    show("register_tab_open", trade.register_tab_open(shot))
-    show("dialog_kind", repr(trade.dialog_kind(shot)))
-    show("dialog_present", trade.dialog_present(shot))
-    show("find_npc", trade.find_npc(shot, retries=1))
+    _BEFORE["trade_window_open"] = trade.trade_window_open(shot)
+    _BEFORE["register_tab_open"] = trade.register_tab_open(shot)
+    _BEFORE["dialog_kind"] = repr(trade.dialog_kind(shot))
+    _BEFORE["dialog_present"] = trade.dialog_present(shot)
+    _BEFORE["find_npc"] = trade.find_npc(shot, retries=1)
+    for _name, _value in _BEFORE.items():
+        show(_name, _value)
     try:
         shot.crop(trade.TRADE_REGION).save(OUT / "trade_region.png")
         show("TRADE_REGION crop", trade.TRADE_REGION, "-> trade_region.png")
@@ -427,41 +481,82 @@ def probe():
     rule("6. what every derived coordinate would become")
     print("  Reference value on the left, what this machine would use on the")
     print("  right. A wrong number here is a click somewhere in the game world.\n")
+    print("  These are read back from the module AFTER applying the fitted")
+    print("  layout -- not recomputed here. A probe that re-implements the")
+    print("  transform can disagree with the code it is meant to be checking,")
+    print("  and this one did: it had no case for the 'xs', 'ys' or 'ypair")
+    print("  kinds, so CONVERT_COLS, CONVERT_ROWS and VENDOR_TAB_BAND printed")
+    print("  \'not mapped by this probe\' while apply_layout was scaling them")
+    print("  correctly all along. Three coordinate families, invisible to")
+    print("  exactly the review that should have caught an error in them.\n")
     try:
-        # Captured lazily on the first apply_layout, so on a probe run it is
-        # still empty and this section printed nothing at all.
         if not trade._REFERENCE_GEOMETRY:
             trade._capture_reference_geometry()
-        use = layout or trade.LAYOUT
-        print(f"  (using {'the measured layout' if layout else 'the built-in layout'}: "
-              f"origin {use.origin}, scale {use.scale})\n")
-        for name, kind in sorted(trade._TRADE_FRAME_GEOMETRY.items()):
-            ref = trade._REFERENCE_GEOMETRY.get(name)
-            if ref is None:
+
+        tables = [("Trade frame", trade._TRADE_FRAME_GEOMETRY),
+                  ("Inventory (scale only)", trade._INVENTORY_FRAME_GEOMETRY),
+                  ("Client frame (inset from right/top edges)",
+                   {n: "box" for n in trade._CLIENT_FRAME_GEOMETRY})]
+
+        if layout is not None:
+            # Apply for real, then read the globals the run itself would use.
+            # calibrate() in section 7 applies the identical layout moments
+            # later, so this leaves nothing behind that section does not.
+            trade.apply_layout(layout)
+            print(f"  (applied the measured layout: origin {layout.origin}, "
+                  f"scale {layout.scale})\n")
+            read = lambda n: getattr(trade, n, "<missing>")   # noqa: E731
+        else:
+            print("  (calibration REFUSED, so these are the built-in reference")
+            print("   values, unchanged -- the run would not have started)\n")
+            read = lambda n: trade._REFERENCE_GEOMETRY.get(n, "<missing>")  # noqa: E731
+
+        total = 0
+        for title, table in tables:
+            names = [n for n in sorted(table) if n in trade._REFERENCE_GEOMETRY]
+            if not names:
                 continue
-            try:
-                if kind == "box":
-                    got = trade._clamp_box(use.box(ref), use.screen)
-                elif kind == "point":
-                    got = use.point(ref)
-                elif kind == "x":
-                    got = use.x(ref)
-                elif kind == "y":
-                    got = use.y(ref)
-                elif kind == "len":
-                    got = use.length(ref)
-                elif kind == "xpair":
-                    got = tuple(use.x(v) for v in ref)
-                elif kind == "lenpair":
-                    got = tuple(use.length(v) for v in ref)
-                elif kind == "boxes":
-                    got = tuple(trade._clamp_box(use.box(b), use.screen)
-                                for b in ref)
-                else:
-                    got = f"(kind {kind!r} not mapped by this probe)"
-            except Exception as exc:
-                got = f"ERROR {exc}"
-            print(f"    {name:26} {str(ref):>28} -> {got}")
+            print(f"  -- {title} --")
+            for name in names:
+                ref = trade._REFERENCE_GEOMETRY[name]
+                got = read(name)
+                same = "   (unchanged)" if str(ref) == str(got) else ""
+                print(f"    {name:26} {str(ref):>28} -> {got}{same}")
+                total += 1
+            print()
+        show("coordinates reported", total)
+
+        # Nothing may be registered in a table yet absent from the dump.
+        missing = [n for _, t in tables for n in t
+                   if n not in trade._REFERENCE_GEOMETRY]
+        if missing:
+            show("REGISTERED BUT NOT CAPTURED", ", ".join(sorted(missing)),
+                 "<-- these never get rewritten; they stay at reference")
+
+        # And nothing may sit in the module looking like geometry while being
+        # registered nowhere -- that is the constant that never scales.
+        known = {n for _, t in tables for n in t}
+        known |= {"NPC_BODY_OFFSET", "NPC_CLICK_OFFSETS", "LAYOUT",
+                  "REF_SCREEN", "REF_CLIENT", "REF_TRADE_ORIGIN",
+                  "REF_TRADE_SIZE", "REF_ROW_PITCH", "SCALE_LIMITS"}
+        suspects = []
+        for name in dir(trade):
+            if name in known or not name.isupper() or name.startswith("_"):
+                continue
+            if name.startswith("REF_") or "COLOUR" in name or "COLOR" in name:
+                continue
+            v = getattr(trade, name)
+            if isinstance(v, tuple) and 2 <= len(v) <= 5 and \
+                    all(isinstance(e, (int, float)) for e in v) and \
+                    any(abs(e) > 40 for e in v):
+                suspects.append(f"{name}={v}")
+        if suspects:
+            print("\n  Tuples that look like coordinates but are registered in")
+            print("  no table, so calibration never touches them. Most will be")
+            print("  legitimate (thresholds, colours, ratios) -- but this is")
+            print("  where a fixed pixel position hides:")
+            for t in sorted(suspects):
+                print(f"    {t}")
     except Exception:
         traceback.print_exc()
 
@@ -469,6 +564,51 @@ def probe():
     try:
         print(f"  calibrate(save=False) -> "
               f"{trade.calibrate(verbose=True, save=False)}")
+    except Exception:
+        traceback.print_exc()
+
+    rule("7b. the same state checks, now calibrated")
+    print("  Section 3 ran against reference-sized regions. These run against")
+    print("  the fitted ones. A line that changes here was never a fact about")
+    print("  the screen -- it was the uncalibrated crop landing in the wrong")
+    print("  place, and only this column means anything.\n")
+    try:
+        after = trade.grab()
+        checks = (
+            ("trade_window_open", lambda im: trade.trade_window_open(im)),
+            ("register_tab_open", lambda im: trade.register_tab_open(im)),
+            ("dialog_kind", lambda im: repr(trade.dialog_kind(im))),
+            ("dialog_present", lambda im: trade.dialog_present(im)),
+            ("find_npc", lambda im: trade.find_npc(im, retries=1)),
+        )
+        for name, fn in checks:
+            try:
+                now = fn(after)
+            except Exception as exc:              # noqa: BLE001 - diagnostic
+                now = f"FAILED: {exc}"
+            was = _BEFORE.get(name, "?")
+            moved = "  <== CHANGED, section 3 was wrong" if str(was) != str(now) else ""
+            print(f"    {name:<20} before {str(was):<18} now {now}{moved}")
+        # The region that matters most, cropped with the fitted numbers.
+        try:
+            after.crop(trade.TRADE_REGION).save(OUT / "trade_region_calibrated.png")
+            show("TRADE_REGION crop", trade.TRADE_REGION,
+                 "-> trade_region_calibrated.png")
+            print("    Open that PNG: it should contain the Trade window and"
+                  " almost nothing else.\n    If it is off-centre or clipped,"
+                  " the fit is wrong no matter what the residual says.")
+        except Exception as exc:                  # noqa: BLE001 - diagnostic
+            print(f"    could not crop TRADE_REGION: {exc}")
+        if not trade.find_row_buttons(after):
+            print("\n    !! No row buttons read even after calibrating. read_rows"
+                  " returns [] on\n       every frame in this state -- this is the"
+                  " one failure that stops a run.")
+        else:
+            n = len(trade.find_row_buttons(after))
+            print(f"\n    row buttons after calibration: {n}"
+                  f"  (EXPECTED_ROWS {trade.EXPECTED_ROWS})"
+                  + ("" if n == trade.EXPECTED_ROWS
+                     else "  <== MISMATCH, read_rows will return [] for ever"))
     except Exception:
         traceback.print_exc()
 
