@@ -1776,7 +1776,27 @@ def convert_cores(core_name: str, quantity: int = CONVERT_QUANTITY,
 # against the live shop, where every Set row divided to the same 187,278.
 PURCHASE_ROW_TOP = 340
 PURCHASE_ROW_PITCH = 76
+# ============================ THE RULE ============================
+#
+# ALWAYS ROW 1. NO MATTER WHAT.
+#
+# Every price decision on the Purchase tab is made from row 1 of a search that
+# has just run, under a confirmed Price: Low to High sort. Not the cheapest
+# per unit, not the biggest bundle, not a scan for the best value -- row 1.
+#
+# It follows that reading rows 2..N is wasted OCR. Measured live on
+# 2026-08-12: eight bands at ~90ms plus their count cells cost ~2s of every
+# 20s call, for rows nothing looked at.
+#
+# PURCHASE_ROWS stays at 8 because it is the count that made the strip-vs-band
+# decision below meaningful, and because a caller that genuinely needs more
+# than row 1 can still ask. The DEFAULT is one.
+# ==================================================================
 PURCHASE_ROWS = 8
+
+# How many rows read_purchase_rows reads when nobody says otherwise. See THE
+# RULE above.
+PURCHASE_ROWS_DEFAULT = 1
 # The Confirm Purchase dialog, measured on the live client on 2026-08-07 and
 # kept as unit_tests/corpus/goldens/purchase_confirm_qty48.png.
 #
@@ -2043,8 +2063,20 @@ class Offer:
         return self.pack * max(1, self.available)
 
 
-def read_purchase_rows(source: "Image.Image | None" = None) -> list[Offer]:
-    """Every readable row of the Purchase results, top to bottom."""
+def read_purchase_rows(source: "Image.Image | None" = None,
+                       rows: "int | None" = None) -> list[Offer]:
+    """The first `rows` readable rows of the Purchase results, top to bottom.
+
+    ROW 1 ONLY BY DEFAULT -- see THE RULE beside PURCHASE_ROWS. Each row is a
+    separate process launch and cannot be batched (the note below explains why
+    a single tall strip changes the reads), so reading rows nobody looks at is
+    pure cost: measured live, eight extra bands and their count cells were ~2s
+    of every 20s margin call.
+
+    Rows that cannot be parsed are SKIPPED, not padded, so a caller must select
+    by Offer.row rather than by list position -- offers[0] is the first row
+    that PARSED, which is not necessarily the first row on screen.
+    """
     shot = source if source is not None else grab()
     offers: list[Offer] = []
 
@@ -2065,7 +2097,8 @@ def read_purchase_rows(source: "Image.Image | None" = None) -> list[Offer]:
     # makes the order seven times the intended size, and the first order is
     # exempt from BUY_MAXIMUM. Eight process spawns on the path that gates real
     # spending is the cheapest insurance in this file.
-    for i in range(PURCHASE_ROWS):
+    wanted = PURCHASE_ROWS_DEFAULT if rows is None else max(1, int(rows))
+    for i in range(min(wanted, PURCHASE_ROWS)):
         y = PURCHASE_ROW_TOP + i * PURCHASE_ROW_PITCH
         # Starts at 250, not 240: the category tree on the left bleeds into the
         # band and prefixed names with its own text ("of L Force Core Set...").
@@ -2118,11 +2151,27 @@ def read_purchase_rows(source: "Image.Image | None" = None) -> list[Offer]:
     return offers
 
 
-def cheapest_per_unit(offers: list[Offer]) -> "Offer | None":
-    """The offer with the lowest price PER ITEM.
+def _row_one(offers: "list[Offer]") -> "Offer | None":
+    """The offer sitting at row 1, or None. THE operator's rule.
 
-    Not offers[0]: the table sorts by the listing total, so on a Set search the
-    first row is the smallest bundle rather than the best value.
+    Selected by the row NUMBER, not by list position. read_purchase_rows skips
+    a row it cannot parse, so offers[0] is the first row that PARSED rather
+    than the first row on screen -- and the rule is about the row the game is
+    showing. A row 1 that did not read must refuse, never silently promote
+    row 2.
+    """
+    for offer in offers or []:
+        if getattr(offer, "row", None) == 1:
+            return offer
+    return None
+
+
+def cheapest_per_unit(offers: list[Offer]) -> "Offer | None":
+    """DEAD. Kept only so its evidence is not lost. Nothing calls this.
+
+    It ranked by price per unit, which the operator's rule replaces: the gate
+    takes ROW 1. The outlier guard below is the part worth remembering, and it
+    applies to any price read, not just a ranking.
 
     A row far below the rest is DISCARDED rather than taken as a bargain. A
     clipped price read looks exactly like the find of the day: on 2026-08-07
@@ -2172,8 +2221,12 @@ def cheapest_listing(offers: list[Offer]) -> "Offer | None":
     before confirming, so a clipped read -- which sorts to the top precisely
     BECAUSE it is too small -- is caught by the price that actually matters
     rather than by second-guessing the order here.
+
+    By ROW NUMBER, not offers[0]: read_purchase_rows skips a row it cannot
+    parse, so offers[0] is the first row that PARSED. If row 1 did not read,
+    this refuses rather than silently promoting row 2 into a purchase.
     """
-    return offers[0] if offers else None
+    return _row_one(offers)
 
 
 def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
@@ -2322,8 +2375,11 @@ def purchase_tab_open(source: "Image.Image | None" = None) -> bool:
     table instead of the search controls.
     """
     shot = source if source is not None else grab()
+    # TRADE_TOP_BAND, not TRADE_REGION. Both markers are column headers and sit
+    # above the first table row; OCR'ing the whole 1225x1035 window to find
+    # them cost 400ms a launch, six launches per margin call.
     hits = sum(1 for marker in PURCHASE_TAB_MARKERS
-               if find_text(shot, marker, TRADE_REGION))
+               if find_text(shot, marker, TRADE_TOP_BAND))
     return hits >= len(PURCHASE_TAB_MARKERS)
 
 
@@ -9507,6 +9563,31 @@ REGISTER_TAB_WORD = "Register"
 # wider box than TRADE_REGION in case the window is not where the Register-tab
 # layout puts it.
 TRADE_OPEN_MARKERS = ("Purchase", "Adjust", "Register", "Function")
+
+# THE BAND THOSE MARKERS ACTUALLY LIVE IN.
+#
+# Measured live 2026-08-12: trade_window_open was OCR'ing (0, 0, 1700, 700) --
+# 1700x700 -- at 551ms a launch, twice per margin call, and purchase_tab_open
+# was OCR'ing the WHOLE 1225x1035 window at 400ms, six times per call. Between
+# them that was 3.5s of every 20s call, to find words that all sit above the
+# first table row.
+#
+# DECLARED IN SCREEN COORDINATES AT THE REFERENCE MACHINE, like every other
+# box in this frame -- TRADE_REGION is (10, 30, 1235, 1065), not
+# (0, 0, 1225, 1035). _capture_reference_geometry back-derives the
+# window-relative reference by removing the origin, so a constant written
+# window-relative here comes out (-10, -30, ...) and lands 30px high.
+#
+# That is not hypothetical: this was first written (0, 0, 1225, 260), which
+# applied to (0, 0, 1225, 260) and missed 'Function' at y 263 by three pixels.
+# purchase_tab_open then returned False on a Purchase tab that was plainly
+# open, and the run reported "the Purchase tab did not open".
+#
+# Measured live on this screen: tabs at y~97, the Register tab's column
+# headers at y~149, the sort control at y~193, and the Purchase tab's headers
+# at y~263 where the search box pushes them down. 300 covers all of it and
+# stops above the first offer row, whose band starts at y 316.
+TRADE_TOP_BAND = (10, 30, 1235, 300)
 # Stops above the bottom-left chat log: a chat line containing "Register" or
 # "Purchase" would otherwise report the window open while it is shut, so the
 # NPC click is skipped and the run fails looking for the Register tab.
@@ -9636,7 +9717,14 @@ def panel_covers_trade_area(gap: float = 0.35, threshold: float = 2.0) -> bool:
 def trade_window_open(source: Image.Image | None = None) -> bool:
     """True when the Trade window is up, on either tab."""
     image = source if source is not None else grab()
-    return any(find_text(image, marker, TRADE_WINDOW_SEARCH)
+    # TRADE_TOP_BAND, not TRADE_WINDOW_SEARCH. Every marker is a tab label or
+    # a column header, all above the first table row -- and the old region was
+    # 1700x700 at 551ms a launch.
+    #
+    # find_words caches per (frame, region), so this now shares its read with
+    # purchase_tab_open and the sort check on the same screenshot: one launch
+    # answers all three instead of three.
+    return any(find_text(image, marker, TRADE_TOP_BAND)
                for marker in TRADE_OPEN_MARKERS)
 
 
@@ -19218,23 +19306,23 @@ def chaos_margin_now(verbose: bool = True,
     if not sets_:
         say("  the Chaos Core Set search returned nothing.")
         return None
-    # THE CHEAPEST SET PER UNIT, not row 1.
+    # ROW 1, BOTH SIDES. The operator's rule, stated repeatedly: always
+    # operate on row 1.
     #
-    # The Purchase table sorts by the listing's TOTAL price, so row 1 is the
-    # SMALLEST bundle, not the best price. Seen live on 2026-08-10: row 1 was
-    # "Chaos Core Set X 10" at 7,400,000 -- 740,000/unit -- while "X 999" sat
-    # at 745,000,000, or 745,745/unit. Whichever tiny bundle happens to be
-    # listed cheapest was setting the comparator for a decision that commits
-    # around 142,000,000 Alz.
+    # This used to take min(price // pack) across the whole Set result, on the
+    # reasoning that the table sorts by listing TOTAL so row 1 is the smallest
+    # bundle rather than the best value. That reasoning is not wrong about the
+    # sort -- it is simply not the rule this gate runs under.
     #
-    # The lowest per-unit price is also the conservative choice for a gate that
-    # spends money: it is what a buyer reaches for first, so it is what our
-    # bundle actually has to compete with.
-    #
-    # cores[0] is left alone -- Cores are pack 1, so row 1 IS the cheapest per
-    # unit there, and the sort already guarantees it.
-    core = cores[0]
-    offer = min(sets_, key=lambda o: o.price // max(1, o.pack))
+    # Selected by the row NUMBER rather than by list position. read_purchase_
+    # rows skips a row it cannot parse, so offers[0] is the first row that
+    # PARSED, which is not necessarily the first row on screen; and the rule is
+    # about the row the game is showing.
+    core = _row_one(cores)
+    offer = _row_one(sets_)
+    if core is None or offer is None:
+        say("  row 1 did not read on one of the two searches.")
+        return None
     if report is not None:
         # The Set's PER-UNIT price, kept so the buy loop can re-judge the
         # margin against each Core row it works down to without paying for
@@ -19959,7 +20047,21 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                     say(f"Chaos: no Core offers left after {got} of "
                         f"{CHAOS_BUY_QUANTITY}.")
                     break
-                core = offers[0]
+                # ROW 1 of the search that just ran. Each order re-searches,
+                # and the rows taken so far are gone from the result, so row 1
+                # is always the cheapest remaining -- which is what walking
+                # down the offers means under a Low to High sort.
+                #
+                # By row NUMBER, not offers[0]: a row that failed to parse is
+                # skipped, and buy_offer refuses anything that is not row 1 of
+                # the search that just ran, so a mismatch here does not
+                # misbuy -- it stops the order.
+                core = _row_one(offers)
+                if core is None:
+                    say(f"Chaos: row 1 did not read after {got} of "
+                        f"{CHAOS_BUY_QUANTITY} - stopping rather than buying "
+                        f"a row nobody checked.")
+                    break
 
                 # THE MARGIN IS RE-JUDGED ON THE ROW BEING BOUGHT. Sorted Low
                 # to High means each row down is dearer, so a trade that
@@ -21714,6 +21816,7 @@ _TRADE_FRAME_GEOMETRY = {
     "PURCHASE_DIALOG_BUTTONS": "box",
     "DISCONNECT_REGION": "box",
     "TRADE_WINDOW_SEARCH": "box",
+    "TRADE_TOP_BAND": "box",
     # NPC_EXCLUDE_ZONES is NOT here: it is derived from the client rect in
     # apply_layout, not from the Trade window's frame. See the fractions above.
     # Anchored on the Inventory panel, not the Trade window, but mapped the
