@@ -36,19 +36,18 @@ SEARCH_SETTLE = 3.0
 SORT_MENU_TIMEOUT = 2.0
 SORT_TRIES = 3
 
-# "Price: Low to High" / "By Price:High to Low". The DIRECTION is the word
-# straight after "Price:", and nothing else will do.
-#
-# A substring test cannot do this job: "low" in text and "price" in text is
-# true of "By Price:High to Low" as well, because the two labels are anagrams
-# as far as substrings are concerned. Getting it wrong buys the most expensive
-# offer on the board believing it to be the cheapest.
-_SORT_DIRECTION = re.compile(r"price\s*:?\s*(low|high)", re.I)
+# The direction pattern is a fact about the game's label, so it lives in
+# geometry beside the control it reads. See geometry.SORT_DIRECTION for why a
+# substring test cannot do this job.
+_SORT_DIRECTION = re.compile(geo.SORT_DIRECTION, re.I)
 
 _PRICE = re.compile(r"[0-9][0-9,]*")
 # 'Chaos Core Set X 148' -- the count lives in the NAME for bundled items, and
 # it is the only place the pack size appears.
 _PACK_IN_NAME = re.compile(r"\bx\s*([0-9][0-9,]*)\s*$", re.I)
+# What may legally follow a bound item's name in a listing: a bundle count and
+# nothing else. See offers_match_slot.
+_BUNDLE_SUFFIX = re.compile(r"x\d+")
 
 
 @dataclass(frozen=True)
@@ -77,22 +76,17 @@ class Offer:
 # The sort
 # --------------------------------------------------------------------------
 
-def _sort_text(layout: Layout, source: "Image.Image | None" = None) -> str:
-    shot = source if source is not None else screen.grab()
-    box = layout.cropped(geo.SORT_REGION)
-    upscale = max(1.0, 2.0 / max(0.2, layout.scale))
-    words = ocr.find_words(shot, box, upscale=upscale, min_conf=45.0)
-    return " ".join(w.text for w in words)
-
-
 def sorted_low_to_high(layout: Layout,
-                       source: "Image.Image | None" = None) -> bool:
+                       frame: "ocr.Frame | None" = None) -> bool:
     """True when the results are sorted Price: Low to High.
+
+    Delegated to shop.read_state, which reads the whole control band in one
+    OCR. Asking separately would pay a second 70ms process launch for words
+    that have already been recognised.
 
     Fails closed: an unread direction, or no "Price:" at all, is False.
     """
-    match = _SORT_DIRECTION.search(_sort_text(layout, source))
-    return bool(match) and match.group(1).casefold() == "low"
+    return shop.read_state(layout, frame).sorted_low_to_high
 
 
 def _sort_menu_rows(layout: Layout) -> dict:
@@ -104,10 +98,9 @@ def _sort_menu_rows(layout: Layout) -> dict:
     clicking a row that was only partly read is how a menu click lands on the
     table underneath it.
     """
-    shot = screen.grab()
-    box = layout.cropped(geo.SORT_OPTIONS)
-    upscale = max(1.0, 2.0 / max(0.2, layout.scale))
-    words = ocr.find_words(shot, box, upscale=upscale, min_conf=45.0)
+    frame = ocr.Frame(screen.grab())
+    words = frame.words(layout.cropped(geo.SORT_OPTIONS),
+                        upscale=shop.state_upscale(layout), min_conf=45.0)
     rows: dict = {}
     for line in ocr.text_lines(words, max(4, layout.length(10))):
         text = " ".join(w.text for w in line)
@@ -164,28 +157,33 @@ def set_sort_low_to_high(layout: Layout, verbose: bool = True) -> bool:
 # Readiness
 # --------------------------------------------------------------------------
 
-def purchase_ready(layout: Layout, verbose: bool = True) -> bool:
+def purchase_ready(layout: Layout, verbose: bool = True,
+                   frame: "ocr.Frame | None" = None) -> bool:
     """Every precondition for clicking anything on the Purchase tab.
 
-    ONE screenshot, four questions. Checked before EACH click rather than once
-    per sweep: the window can close between one click and the next, and a
-    favourite coordinate with no window under it is a move order into the game
-    world, not a failed search.
+    ONE screenshot and ONE OCR, three questions. All three markers live in the
+    same band across the top of the window, so asking them separately paid
+    three process launches for one set of words.
+
+    STILL CHECKED BEFORE EACH CLICK. Making it cheap is not the same as making
+    it optional: the window can close between one click and the next, and the
+    saving from trusting a stale answer is 70ms against a click into the 3D
+    world that walks the character away from the shop.
     """
     def say(message: str) -> None:
         if verbose:
             print(message)
 
-    shot = screen.grab()
-    if not shop.trade_window_open(layout, shot):
+    state = shop.read_state(layout, frame or ocr.Frame(screen.grab()))
+    if not state.window_open:
         say("  the Trade window is not open - refusing to click, the game "
             "world is underneath.")
         return False
-    if not shop.purchase_tab_open(layout, shot):
+    if not state.purchase_tab:
         say("  the Trade window is not on the Purchase tab - refusing to "
             "click Purchase-tab coordinates on another tab.")
         return False
-    if not sorted_low_to_high(layout, shot):
+    if not state.sorted_low_to_high:
         say("  the results are not sorted Price: Low to High, so 'row 1 is "
             "the cheapest' does not hold. Refusing.")
         return False
@@ -223,23 +221,32 @@ def _pack_from_name(name: str) -> int:
 
 
 def read_offer_rows(layout: Layout,
-                    source: "Image.Image | None" = None,
-                    rows: int = geo.ROWS_VISIBLE) -> "list[Offer]":
-    """The visible offer rows, numbered from 1 as shown.
+                    frame: "ocr.Frame | None" = None,
+                    rows: int = 1) -> "list[Offer]":
+    """The first `rows` offer rows, numbered from 1 as shown.
+
+    DEFAULTS TO ONE, because that is what every caller in this flow wants.
+    Each row costs its own OCR launch -- there is no way to read ten rows in
+    one pass without a crop tall enough to interleave them -- so reading the
+    nine rows nobody looks at is nine wasted launches per search, and there
+    are up to five attempts per slot and two slots per call.
 
     Each row is OCR'd from its own horizontal strip and the words are split
     into cells by x. One banded read per row yields name, quantity and price
     together; they are not three separate reads.
+
+    Rows that cannot be parsed are SKIPPED, not padded, so the caller must
+    select by `Offer.row` rather than by list position.
     """
-    shot = source if source is not None else screen.grab()
-    upscale = max(1.0, 2.0 / max(0.2, layout.scale))
+    frame = frame or ocr.Frame(screen.grab())
+    upscale = shop.state_upscale(layout)
     half = layout.length(geo.ROW_HALF)
     out: "list[Offer]" = []
     for index in range(rows):
         centre_y = layout.y(geo.ROW_TOP + index * geo.ROW_PITCH)
         band = layout.clamp((layout.x(geo.ROW_BAND_X[0]), centre_y - half,
                              layout.x(geo.ROW_BAND_X[1]), centre_y + half))
-        words = ocr.find_words(shot, band, upscale=upscale, min_conf=30.0)
+        words = frame.words(band, upscale=upscale, min_conf=30.0)
         if not words:
             continue
         name_max = layout.x(geo.NAME_MAX_X)
@@ -286,11 +293,27 @@ def offers_match_slot(slot: int, offers: "list[Offer]") -> bool:
     want = _canonical(geo.FAVOURITE_SLOTS.get(slot, ""))
     if not want or not offers:
         return False
-    # The bound name is a prefix of every listing of that item -- bundles add
-    # a count suffix, and OCR may clip a trailing character, so containment
-    # either way is the test rather than equality.
     head = _canonical(offers[0].name)
-    return want in head or head.startswith(want[:max(6, len(want) // 2)])
+
+    # A PREFIX, AND THEN ONLY A BUNDLE COUNT. Containment is not enough and
+    # this is the bug it hides:
+    #
+    #   slot 3 is 'Chaos Core'      -> 'chaoscore'
+    #   slot 4 lists 'Chaos Core Set X 148' -> 'chaoscoresetx148'
+    #
+    # 'chaoscore' IS contained in 'chaoscoresetx148', so a slot 3 search that
+    # never ran would accept slot 4's stale results and price Cores at the
+    # Sets' price. The same shape as 'Force Core(High)' matching
+    # 'Force Core(Highest)', which this file's geometry table contains as
+    # slots 7 and 1.
+    #
+    # So: the listing must START with the bound name, and whatever follows
+    # must be a bundle count and nothing else. More letters mean a different,
+    # longer item.
+    if not head.startswith(want):
+        return False
+    rest = head[len(want):]
+    return rest == "" or _BUNDLE_SUFFIX.fullmatch(rest) is not None
 
 
 def run_favourite_search(layout: Layout, slot: int,
@@ -322,7 +345,9 @@ def run_favourite_search(layout: Layout, slot: int,
         time.sleep(0.2)
         screen.click(x, y)
         time.sleep(SEARCH_SETTLE)
-        offers = read_offer_rows(layout)
+        # ROW 1 ONLY. Nothing in this flow looks further down, and each
+        # extra row is another process launch.
+        offers = read_offer_rows(layout, rows=1)
         if offers and offers_match_slot(slot, offers):
             say(f"  slot {slot} ({geo.FAVOURITE_SLOTS.get(slot, '?')}): "
                 f"{len(offers)} offer(s)")

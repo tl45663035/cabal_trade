@@ -7,9 +7,18 @@ Everything here answers a question by LOOKING, never by remembering. A cached
 by a disconnect, or by the game itself, and a click sent at a coordinate with
 no window under it is not a no-op -- it is a move order into the 3D world that
 walks the character away.
+
+LOOKING ONCE, THOUGH. All three state questions are answered from a single OCR
+of one band across the top of the window. That is not a weakening of the rule
+above: the band is still re-read before every click. It is read once per check
+instead of three times, which at ~70ms of process launch per read is most of
+the cost of a check.
 """
 
 from __future__ import annotations
+
+import re
+from dataclasses import dataclass
 
 from PIL import Image
 
@@ -23,60 +32,107 @@ class ShopClosed(RuntimeError):
     """The Trade window is not open and this flow cannot open it."""
 
 
-def _words_in(layout: Layout, shot: Image.Image, region) -> list:
-    """OCR one region of the Trade window, upscaled for this layout's size."""
-    box = layout.cropped(region)
-    # NORMALISED TO REFERENCE GLYPH SIZE. The region already shrank with the
-    # UI, so a fixed multiplier hands Tesseract smaller letters at 1080p than
-    # the confidence thresholds were tuned against. Dividing by the layout
-    # scale keeps the final glyph height constant at any resolution.
-    upscale = max(1.0, 2.0 / max(0.2, layout.scale))
-    return ocr.find_words(shot, box, upscale=upscale, min_conf=20.0)
+_SORT_DIRECTION = re.compile(geo.SORT_DIRECTION, re.I)
 
 
-def _line_tolerance(layout: Layout) -> int:
+@dataclass(frozen=True)
+class ShopState:
+    """Everything the one state read can tell us."""
+    window_open: bool
+    purchase_tab: bool
+    register_tab: bool
+    sorted_low_to_high: bool
+
+
+def state_upscale(layout: Layout) -> float:
+    """OCR upscale that keeps the FINAL glyph height constant.
+
+    The region already shrank with the UI, so a fixed multiplier hands
+    Tesseract smaller letters at 1080p than the confidence thresholds were
+    tuned against, and the reads get quietly worse in a way that reads as a
+    coordinate fault.
+    """
+    return max(1.0, 2.0 / max(0.2, layout.scale))
+
+
+def line_tolerance(layout: Layout) -> int:
     """Line-grouping distance in SCREEN pixels for this layout."""
     return max(4, layout.length(10))
 
 
+def read_state(layout: Layout,
+               frame: "ocr.Frame | None" = None) -> ShopState:
+    """Window, tab and sort markers, from ONE read of the control band.
+
+    Pass a Frame to share the read with other questions about the same
+    screenshot; omit it and one is taken.
+    """
+    frame = frame or ocr.Frame(screen.grab())
+    words = frame.words(layout.cropped(geo.STATE_BAND),
+                        upscale=state_upscale(layout), min_conf=20.0)
+    tolerance = line_tolerance(layout)
+
+    def seen(phrase: str) -> bool:
+        return ocr.find_phrase(words, phrase, tolerance) is not None
+
+    # The title AND a tab label. One word alone can come from the 3D world
+    # behind the panel.
+    window = (all(seen(m) for m in geo.TRADE_WINDOW_MARKERS)
+              and any(seen(m) for m in geo.TRADE_WINDOW_EITHER))
+
+    # The sort control lives inside the same band, so the direction costs
+    # nothing on top of the tab question -- the words are already read. Only
+    # the words physically over the control are considered, because the tab
+    # labels and column headers in this band contain neither 'low' nor 'high'
+    # but a future marker might.
+    sort_box = layout.cropped(geo.SORT_REGION)
+    over_control = " ".join(
+        w.text for w in sorted(words, key=lambda w: w.left)
+        if sort_box[0] <= w.centre[0] <= sort_box[2]
+        and sort_box[1] <= w.centre[1] <= sort_box[3])
+    match = _SORT_DIRECTION.search(over_control)
+    # Fails closed: an unread direction, or no 'Price:' at all, is False.
+    low_to_high = bool(match) and match.group(1).casefold() == "low"
+
+    return ShopState(
+        window_open=window,
+        # Both markers per tab, never one: the two tabs share a window, and
+        # clicking a Purchase coordinate while Register is showing hits the
+        # listings table instead of the search controls.
+        purchase_tab=window and all(seen(m) for m in geo.PURCHASE_TAB_MARKERS),
+        register_tab=window and all(seen(m) for m in geo.REGISTER_TAB_MARKERS),
+        sorted_low_to_high=low_to_high,
+    )
+
+
+# -- the individual questions, for callers that only want one ---------------
+#
+# Each takes an optional Frame so it costs nothing extra when the caller has
+# already read the band.
+
 def trade_window_open(layout: Layout,
-                      source: "Image.Image | None" = None) -> bool:
-    """True when the Trade window is on screen."""
-    shot = source if source is not None else screen.grab()
-    words = _words_in(layout, shot, geo.TRADE_REGION)
-    tolerance = _line_tolerance(layout)
-    return all(ocr.find_phrase(words, marker, tolerance) is not None
-               for marker in geo.TRADE_WINDOW_MARKERS)
+                      frame: "ocr.Frame | None" = None) -> bool:
+    return read_state(layout, frame).window_open
 
 
 def purchase_tab_open(layout: Layout,
-                      source: "Image.Image | None" = None) -> bool:
-    """True when the window is showing the PURCHASE tab.
-
-    BOTH markers are required. The two tabs share one window, so a single word
-    that happens to appear on either proves nothing -- and clicking a
-    Purchase-tab coordinate while Register is showing hits the listings table
-    instead of the search controls.
-    """
-    shot = source if source is not None else screen.grab()
-    words = _words_in(layout, shot, geo.TRADE_REGION)
-    tolerance = _line_tolerance(layout)
-    return all(ocr.find_phrase(words, marker, tolerance) is not None
-               for marker in geo.PURCHASE_TAB_MARKERS)
+                      frame: "ocr.Frame | None" = None) -> bool:
+    return read_state(layout, frame).purchase_tab
 
 
 def register_tab_open(layout: Layout,
-                      source: "Image.Image | None" = None) -> bool:
-    """True when the window is showing the REGISTER tab."""
-    shot = source if source is not None else screen.grab()
-    words = _words_in(layout, shot, geo.TRADE_REGION)
-    tolerance = _line_tolerance(layout)
-    return all(ocr.find_phrase(words, marker, tolerance) is not None
-               for marker in geo.REGISTER_TAB_MARKERS)
+                      frame: "ocr.Frame | None" = None) -> bool:
+    return read_state(layout, frame).register_tab
+
+
+def sorted_low_to_high(layout: Layout,
+                       frame: "ocr.Frame | None" = None) -> bool:
+    return read_state(layout, frame).sorted_low_to_high
 
 
 def open_purchase_tab(layout: Layout, timeout: float = 10.0,
-                      verbose: bool = True) -> bool:
+                      verbose: bool = True,
+                      frame: "ocr.Frame | None" = None) -> bool:
     """Put the window on the Purchase tab. True when it is showing.
 
     The OUTCOME is what is trusted, not the click. The tab is fixed furniture
@@ -88,10 +144,11 @@ def open_purchase_tab(layout: Layout, timeout: float = 10.0,
         if verbose:
             print(message)
 
-    if purchase_tab_open(layout):
+    state = read_state(layout, frame)
+    if state.purchase_tab:
         say("  the Purchase tab is already open.")
         return True
-    if not trade_window_open(layout):
+    if not state.window_open:
         say("  the Trade window is not open - refusing to click, the game "
             "world is underneath.")
         return False
@@ -99,6 +156,8 @@ def open_purchase_tab(layout: Layout, timeout: float = 10.0,
     say(f"  switching to the Purchase tab at {point}")
     screen.focus_game()
     screen.click(*point)
+    # A NEW frame every poll: the whole question is whether the screen has
+    # changed, and the frame passed in is by definition from before the click.
     ok = screen.wait_until(lambda: purchase_tab_open(layout), timeout=timeout)
     say("  the Purchase tab is open." if ok
         else "  the Purchase tab did not open.")
@@ -106,15 +165,17 @@ def open_purchase_tab(layout: Layout, timeout: float = 10.0,
 
 
 def open_register_tab(layout: Layout, timeout: float = 10.0,
-                      verbose: bool = True) -> bool:
+                      verbose: bool = True,
+                      frame: "ocr.Frame | None" = None) -> bool:
     """Put the window back on the Register tab. True when it is showing."""
     def say(message: str) -> None:
         if verbose:
             print(message)
 
-    if register_tab_open(layout):
+    state = read_state(layout, frame)
+    if state.register_tab:
         return True
-    if not trade_window_open(layout):
+    if not state.window_open:
         return False
     point = layout.point(geo.REGISTER_TAB)
     say(f"  switching to the Register tab at {point}")
@@ -168,10 +229,7 @@ def open_agent_shop(layout: Layout, verbose: bool = True) -> bool:
     There is no undo for that, and the failure is silent: the shop simply does
     not open, and something in the bag is gone.
 
-    So it is a named gap rather than a guess. It needs its own spec covering
-    the panel's origin detection, the tab strip, the slot grid, and a way to
-    confirm what is under the cursor BEFORE pressing anything. Until then this
-    flow requires the shop to be open already and says so.
+    So it is a named gap rather than a guess. See shop.md.
     """
     if verbose:
         print("  open_agent_shop is not implemented: it would have to "

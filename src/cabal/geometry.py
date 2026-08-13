@@ -29,10 +29,28 @@ TRADE_SIZE = (1225, 1035)
 # The whole window as a box, for OCR that should not see the game world.
 TRADE_REGION = (0, 0, 1225, 1035)
 
-# Words that are present when the Trade window is open at all. Two of them,
-# because a single word can be supplied by the 3D world behind the panel --
-# an item name, a chat line, a player's title.
+# Words present when the Trade window is open at all.
+#
+# 'Trade' is the window's own title. It is paired with a tab label because a
+# single word can be supplied by the 3D world behind the panel -- an item name,
+# a chat line, a player's title -- and the two tabs are the only labels
+# guaranteed to be present whichever tab is showing.
 TRADE_WINDOW_MARKERS = ("Trade",)
+TRADE_WINDOW_EITHER = ("Purchase", "Register")
+
+# THE ONE BAND THAT ANSWERS EVERY STATE QUESTION.
+#
+# The window title, both tab labels, the column headers that identify which
+# tab is showing, and the sort control all sit above y=220 in the reference
+# frame. So "is the window open", "which tab", and "which sort" are one OCR
+# rather than three -- and at ~70ms of process launch per read, that is the
+# difference that matters, not the pixel count.
+#
+# Read the positions below and check for yourself before narrowing this:
+#   Trade (608, 19)   Purchase (128, 67)   Register (382, 69)
+#   Item (142, 122)   Name (492, 119)      Status (1010, 119)
+#   Function (1126, 118)                   sort control y 178..212
+STATE_BAND = (0, 0, 1225, 220)
 
 # --------------------------------------------------------------------------
 # Calibration anchors
@@ -86,8 +104,17 @@ REGISTER_TAB_MARKERS = ("Register", "Item")
 # The sort control
 # --------------------------------------------------------------------------
 
-# The closed control, showing the current sort.
+# The closed control, showing the current sort. Inside STATE_BAND, which is
+# why "which sort" costs nothing on top of "which tab".
 SORT_REGION = (820, 178, 1080, 212)
+
+# The DIRECTION is the word straight after "Price:", and nothing else will do.
+#
+# A substring test cannot do this job: checking for both "low" and "price" is
+# true of "By Price:High to Low" as well, because the two labels are anagrams
+# as far as substrings are concerned. Getting it wrong buys the most expensive
+# offer on the board believing it to be the cheapest.
+SORT_DIRECTION = r"price\s*:?\s*(low|high)"
 # The control itself, clicked to open the menu.
 SORT_BUTTON = (930, 195)
 # Where the open menu's options are drawn.

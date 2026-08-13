@@ -179,6 +179,51 @@ check(not purchase.offers_match_slot(4, [O(1, "Force Core(Highest)", 1, 1, 1)]),
       "real answer look exactly like a successful search of the wrong thing")
 check(not purchase.offers_match_slot(4, []), "no results never match")
 
+rule("speed: a Frame pays for each distinct read once")
+
+card = Image.new("RGB", (300, 60), (18, 18, 18))
+ImageDraw.Draw(card).text((10, 20), "Category Function", fill=(235, 235, 235))
+frame = ocr.Frame(card)
+first = frame.words((0, 0, 300, 60), upscale=2.0, min_conf=0.0)
+second = frame.words((0, 0, 300, 60), upscale=2.0, min_conf=0.0)
+check(frame.reads == 1,
+      f"the same question twice costs ONE launch, not two (paid {frame.reads})")
+check(first is second, "and the identical list comes back, not a copy")
+frame.words((0, 0, 150, 60), upscale=2.0, min_conf=0.0)
+check(frame.reads == 2, "a DIFFERENT region is a different question")
+frame.words((0, 0, 300, 60), upscale=3.0, min_conf=0.0)
+check(frame.reads == 3, "so is a different upscale -- it changes the answer")
+
+rule("speed: only row 1 is read unless more is asked for")
+
+import inspect                                             # noqa: E402
+sig = inspect.signature(purchase.read_offer_rows)
+check(sig.parameters["rows"].default == 1,
+      "read_offer_rows defaults to ONE row: this flow never looks further "
+      "down, and each extra row is another 70ms process launch, five attempts "
+      "per slot and two slots per call")
+
+rule("a slot's results must not be another item's")
+
+M = purchase.offers_match_slot
+O = purchase.Offer
+check(M(4, [O(1, "Chaos Core Set X 148", 1, 148, 1)]),
+      "slot 4 (Chaos Core Set) accepts its own bundle")
+check(not M(3, [O(1, "Chaos Core Set X 148", 1, 148, 1)]),
+      "slot 3 (Chaos Core) REJECTS slot 4's results. 'chaoscore' is contained "
+      "in 'chaoscoresetx148', so a containment test accepted them and priced "
+      "Cores at the Sets' price")
+check(M(3, [O(1, "Chaos Core", 1, 1, 1)]),
+      "and slot 3 still accepts its own")
+check(not M(7, [O(1, "Force Core(Highest)", 1, 1, 1)]),
+      "slot 7 (Force Core(High)) REJECTS slot 1's results -- the same trap, "
+      "and both are real slots in this table")
+check(M(1, [O(1, "Force Core(Highest)", 1, 1, 1)]),
+      "slot 1 accepts its own")
+check(M(1, [O(1, "Force Core(Highest) X 20", 1, 20, 1)]),
+      "a bundle count is the ONLY thing allowed to follow the bound name")
+check(not M(4, []), "no results never match")
+
 print()
 print("-" * 70)
 print(f"{PASS + FAIL} checks, {FAIL} failed")

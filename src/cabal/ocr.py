@@ -179,6 +179,44 @@ def find_words(image: Image.Image,
     return words
 
 
+class Frame:
+    """One screenshot, plus every OCR read taken from it, memoised.
+
+    THE POINT IS THE MEMO, NOT THE IMAGE. A grab costs a few milliseconds; a
+    read costs 70ms of process launch before it has looked at a single pixel.
+    Two predicates that each take their own screenshot cannot share a read
+    even when they ask the identical question of an identical screen.
+
+    Keyed on (region, upscale, min_conf) because those three are the whole
+    question. Identity of the image is not part of the key -- a Frame IS one
+    image, and a new observation means a new Frame. That is the property that
+    makes reuse safe: nothing can accidentally answer about a stale screen,
+    because a stale screen is a different object.
+    """
+
+    __slots__ = ("image", "_reads")
+
+    def __init__(self, image: Image.Image):
+        self.image = image
+        self._reads: dict = {}
+
+    def words(self, region: "tuple[int, int, int, int]",
+              upscale: float = 1.0, min_conf: float = 0.0) -> "list[Word]":
+        key = (tuple(int(v) for v in region), round(float(upscale), 3),
+               float(min_conf))
+        cached = self._reads.get(key)
+        if cached is None:
+            cached = find_words(self.image, region, upscale=upscale,
+                                min_conf=min_conf)
+            self._reads[key] = cached
+        return cached
+
+    @property
+    def reads(self) -> int:
+        """How many OCR launches this frame has paid for. For diagnostics."""
+        return len(self._reads)
+
+
 def text_lines(words: "list[Word]", tolerance: int) -> "list[list[Word]]":
     """Group words into lines by vertical proximity, each ordered left to right.
 

@@ -118,6 +118,53 @@ empty" and "the tab was not ready" call for opposite responses.
 
 ---
 
+## Speed
+
+**This is called thousands of times. Latency is a feature, not a detail.**
+
+The cost is dominated by the NUMBER of OCR calls, not by how many pixels each
+one covers. Measured on this machine: a 200x40 crop takes 69.7ms and a
+1225x1035 crop takes 374.9ms, so roughly **70ms of every read is process
+launch** and cannot be optimised away by cropping. Halving a region saves
+tens of milliseconds; removing a call saves seventy at minimum.
+
+That gives the ranking for any change here:
+
+1. **Do not call OCR twice for the same question on the same frame.**
+2. **Do not call OCR for a question already answered by another read.**
+3. **Do not read pixels that will not be used.**
+4. Only then, make the regions smaller.
+
+### The rules that follow from it
+
+- **One screenshot per call, shared.** A grab is cheap; the reads on it are
+  not, and two predicates that each grab their own frame cannot share a read.
+- **One state read answers window, tab and sort together.** All three markers
+  live in a band across the top of the window, so they are one OCR, not three.
+  This does not weaken the re-check-before-every-click rule: the band is re-read
+  before each slot, it is simply read once per check instead of three times.
+- **Row 1 only.** This function never looks below row 1, so reading the other
+  nine visible rows is nine wasted launches per search, and there are up to
+  five attempts per slot and two slots per call.
+- **Calibrate once per process, not once per call.** The measurement is the
+  single most expensive operation here. It is cached and revalidated cheaply;
+  a full re-measure happens only when the window has actually moved.
+
+### What must NOT be optimised away
+
+Speed does not buy the right to skip a check that exists because it failed once.
+
+- `purchase_ready()` is still re-read before **every** slot click. The window
+  can close between two clicks, and the saving from trusting a stale answer is
+  70ms against a click into the 3D world.
+- The sort is still confirmed. An unconfirmed sort makes row 1 the dearest
+  offer on the board.
+- The results are still confirmed to belong to the slot just pressed.
+
+The target is fewer reads, never fewer guarantees.
+
+---
+
 ## Rules
 
 - **Searching item slot A, B will always select first row. DO NOT BREAK THIS

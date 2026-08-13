@@ -23,12 +23,80 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from cabal import geometry as geo          # noqa: E402
-from cabal import calibrate, purchase, screen, shop   # noqa: E402
-from cabal.layout import Layout            # noqa: E402
+from cabal import geometry as geo               # noqa: E402
+from cabal import calibrate, ocr, purchase, screen, shop   # noqa: E402
+from cabal.layout import Layout                 # noqa: E402
 
 
-__all__ = ["get_price_diff", "price_per_unit"]
+__all__ = ["get_price_diff", "price_per_unit", "reset_layout"]
+
+
+# THE LAYOUT, MEASURED ONCE PER PROCESS.
+#
+# Calibration is by far the most expensive thing here: a full-screen OCR at an
+# upscale that makes the frame larger than the screen. At thousands of calls,
+# paying it every time is most of the runtime.
+#
+# It is NOT simply cached and trusted. The rule it has to respect is that a
+# stale layout does not fail loudly -- it clicks confidently in the wrong
+# place -- so it is revalidated on every call. The revalidation is free: the
+# state band is read anyway, and if the window has moved, the anchor inside it
+# no longer lands where the cached layout predicts.
+_CACHED_LAYOUT: "Layout | None" = None
+_CACHED_CLIENT: "tuple | None" = None
+
+# How far an anchor may drift from its predicted position before the layout is
+# re-measured. Generous enough to absorb OCR jitter on a glyph's bounding box,
+# far tighter than the width of anything that gets clicked.
+LAYOUT_DRIFT_TOLERANCE = 12
+
+
+def reset_layout() -> None:
+    """Forget the cached layout. Call after moving or resizing the window."""
+    global _CACHED_LAYOUT, _CACHED_CLIENT
+    _CACHED_LAYOUT = None
+    _CACHED_CLIENT = None
+
+
+def _layout_still_good(layout: Layout, frame: "ocr.Frame") -> bool:
+    """True when the window is still where `layout` says it is.
+
+    Uses the words already recognised for the state read, so it costs nothing.
+    The test is positional, not merely "is something there": a window that has
+    been dragged still shows every marker, and only its POSITION reveals the
+    move.
+    """
+    if screen.client_rect() != _CACHED_CLIENT:
+        return False
+    words = frame.words(layout.cropped(geo.STATE_BAND),
+                        upscale=shop.state_upscale(layout), min_conf=20.0)
+    tolerance = shop.line_tolerance(layout)
+    for phrase, reference in geo.REF_ANCHORS:
+        seen = ocr.find_phrase(words, phrase, tolerance)
+        if seen is None:
+            continue
+        want = layout.point(reference)
+        return (abs(seen[0] - want[0]) <= LAYOUT_DRIFT_TOLERANCE
+                and abs(seen[1] - want[1]) <= LAYOUT_DRIFT_TOLERANCE)
+    # No anchor legible in the band at all: not evidence the layout is good.
+    return False
+
+
+def _current_layout(verbose: bool) -> "tuple[Layout | None, ocr.Frame | None]":
+    """The layout to use, and the frame the check was made on."""
+    global _CACHED_LAYOUT, _CACHED_CLIENT
+    if _CACHED_LAYOUT is not None:
+        frame = ocr.Frame(screen.grab())
+        if _layout_still_good(_CACHED_LAYOUT, frame):
+            return _CACHED_LAYOUT, frame
+        if verbose:
+            print("  the Trade window has moved; re-measuring.")
+        reset_layout()
+    layout = calibrate.calibrated_layout(verbose=verbose)
+    if layout is not None:
+        _CACHED_LAYOUT = layout
+        _CACHED_CLIENT = screen.client_rect()
+    return layout, None
 
 
 def price_per_unit(offer) -> "int | None":
@@ -118,26 +186,31 @@ def get_price_diff(A: int, B: int, in_shop: bool = False,
 
     # MEASURED BEFORE ANYTHING IS CLICKED. Every coordinate below is a
     # reference value that means nothing until the window has been located.
+    frame = None
     if layout is None:
-        layout = calibrate.calibrated_layout(verbose=verbose)
+        layout, frame = _current_layout(verbose)
     if layout is None:
         say("Could not measure the Trade window, so no coordinate is "
             "trustworthy. Nothing was clicked.")
         return None
 
+    # ONE READ ANSWERS THREE QUESTIONS. Is the window open, which tab is
+    # showing, and which way is it sorted -- all from the same band, on the
+    # frame the layout check already paid for.
+    state = shop.read_state(layout, frame or ocr.Frame(screen.grab()))
+
     # THE HINT IS CHECKED, NOT TRUSTED.
-    was_open = shop.trade_window_open(layout)
-    if in_shop and not was_open:
+    if in_shop and not state.window_open:
         say("in_shop=True, but the Trade window is not open.")
     opened_here = False
-    if not was_open:
+    if not state.window_open:
         if not shop.open_agent_shop(layout, verbose=verbose):
             say("The Agent Shop is not open and this flow cannot open it; "
                 "no prices were read.")
             return None
         opened_here = True
 
-    was_register = (not opened_here) and shop.register_tab_open(layout)
+    was_register = (not opened_here) and state.register_tab
 
     try:
         if not shop.open_purchase_tab(layout, verbose=verbose):

@@ -58,7 +58,12 @@ class Game:
 
     def __enter__(self):
         patches = {
-            (gpd.calibrate, "calibrated_layout"): lambda *a, **k: self.layout,
+            # The layout is cached across calls in the real module, so the
+            # test replaces the accessor rather than the calibration beneath
+            # it -- otherwise the second test in a run would reuse the first
+            # test's layout.
+            (gpd, "_current_layout"): lambda *a, **k: (self.layout, None),
+            (gpd.shop, "read_state"): self._state,
             (gpd.shop, "trade_window_open"): lambda *a, **k: self.window_open,
             (gpd.shop, "register_tab_open"): lambda *a, **k: self.register,
             (gpd.shop, "open_agent_shop"): self._open,
@@ -77,6 +82,13 @@ class Game:
         for (mod, name), fn in self._saved.items():
             setattr(mod, name, fn)
         return False
+
+    def _state(self, *a, **k):
+        return gpd.shop.ShopState(
+            window_open=self.window_open,
+            purchase_tab=self.window_open and self.purchase_tab,
+            register_tab=self.window_open and self.register,
+            sorted_low_to_high=self.sort)
 
     def _open(self, *a, **k):
         self.events.append("open_shop")
