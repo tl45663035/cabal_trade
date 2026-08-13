@@ -9176,6 +9176,23 @@ class FatalAbort(Exception):
     """
 
 
+def _reads_empty(row) -> bool:
+    """True only when the row POSITIVELY says it is empty.
+
+    An empty shop row offers Register and carries no name, no price and no
+    quantity. A row that merely failed to OCR has an unrecognised action and is
+    not evidence of anything -- "a sweep that did not reach the bottom cannot
+    tell empty from not looked at", and the same holds for one row that did not
+    resolve. Treating the second as the first is how a slot that is actually
+    full gets handed out by first_empty().
+    """
+    if getattr(row, "action", "") != "register":
+        return False
+    return (not (getattr(row, "name", "") or "").strip()
+            and not getattr(row, "price", None)
+            and not getattr(row, "qty", None))
+
+
 def _model_key(name: str) -> str:
     """The key the row model compares two identities with.
 
@@ -9248,6 +9265,11 @@ class ShopModel:
         # index -> {"name", "qty", "price"}; absent means EMPTY.
         self._slots: dict[int, dict] = {}
         self._ready = False
+        # How many disagreements this model has had to be corrected on. Not a
+        # failure count -- a debugging signal. A model that never mismatches is
+        # tracking the shop; one that mismatches often is being told something
+        # wrong upstream, and the log now names the row and the moment.
+        self.mismatches = 0
         # ENFORCE ONLY ONCE PROVED. With this False the model still tracks
         # every action and still compares itself against every row that is
         # read -- it simply RECORDS a divergence and stands down instead of
@@ -9266,6 +9288,13 @@ class ShopModel:
         return self._ready
 
     def reset(self, reason: str = "") -> None:
+        # SAY IT. This stood the model down nine times in the 2026-08-12 run
+        # without printing a line, so the log could not distinguish a model
+        # that was answering correctly from one that had stopped answering at
+        # all -- and every re-seed costs a full 30-slot walk.
+        if self._ready:
+            print(f"  Row model: standing down and re-seeding"
+                  f"{' - ' + reason if reason else ''}.")
         self._slots.clear()
         self._ready = False
         record("shopmodel.reset", reason=reason)
@@ -9314,7 +9343,10 @@ class ShopModel:
                 # do -- the shop does not record which purchase filled it. Rows
                 # listed by this process afterwards carry their own figures.
                 try:
-                    cost = purchase_cost_basis(name)
+                    # The startup market price stands in when nothing has been
+                    # bought this run -- see listing_floor. Without it a seeded
+                    # Core row carries a floor of 0.
+                    cost = purchase_cost_basis(name) or market_floor(name)
                 except Exception:  # noqa: BLE001
                     cost = 0
                 try:
@@ -9478,6 +9510,181 @@ class ShopModel:
                qty_left=qty_left)
 
     # ---- policing --------------------------------------------------------
+    def _mismatch(self, index: int, why: str, verbose: bool) -> None:
+        """Say a disagreement out loud and book it. Never raises.
+
+        The operator's rule: every walk syncs the model and REPORTS the
+        mismatch, so a drift is debuggable from the log at the moment it
+        appears rather than thirteen minutes later. Silence is what hid the
+        2026-08-13 divergence -- the model stood down and re-seeded nine times
+        that night without printing a line, so a model that had stopped
+        answering looked exactly like one answering correctly.
+        """
+        self.mismatches += 1
+        if verbose:
+            print(f"  ROW MODEL MISMATCH: {why}.")
+        record("shopmodel.mismatch", row=index, why=why)
+
+    def reconcile(self, pairs: "list", scope: "set | None" = None,
+                  verbose: bool = True, source: str = "a walk") -> int:
+        """Correct the model from a fresh reading. Returns rows changed.
+
+        THE READING IS THE TRUTH. This model is a cache of what the shop held
+        the last time anything looked; the shop is the shop. So where the two
+        disagree, the model is wrong by definition and is corrected -- it is
+        never the other way round, and a disagreement here is not an error.
+
+        This is what a divergence is NOT. `check` guards a single row that is
+        about to be clicked, where a disagreement means "I am about to touch
+        the wrong listing" and the only safe answer is to stop. Here nothing
+        has been clicked, a full read has just been taken for other reasons,
+        and correcting the map is strictly safer than acting on a stale one.
+
+        Why it is needed at all: every mutation the model is told about is a
+        prediction of what the game did, and predictions go wrong. On
+        2026-08-13 a cancel was aimed at absolute row 12 while the game
+        cancelled a different row; the model emptied 12, the game emptied 20,
+        and nothing compared the two for thirteen minutes -- until a row the
+        model called empty turned out to hold 240 Upgrade Cores and the run
+        stopped. The reading that would have settled it was taken at the start
+        of the very next cycle and thrown away.
+
+        `scope` limits the comparison to rows that were actually read. A row
+        outside it is not evidence of anything and is left alone: a walk of
+        rows 1-17 says nothing about row 25.
+        """
+        if not self._ready:
+            return 0
+        before = self.mismatches
+        seen: dict = {}
+        for index, row in pairs or []:
+            index = int(index)
+            if not 1 <= index <= SHOP_ROW_CAPACITY:
+                continue
+            if scope is not None and index not in scope:
+                continue
+            seen[index] = row
+
+        changed = 0
+        for index, row in sorted(seen.items()):
+            occupied = bool(getattr(row, "occupied", False))
+            name = (getattr(row, "name", "") or "") if occupied else ""
+            price = getattr(row, "price", None) if occupied else None
+            mine = self._slots.get(index)
+
+            # AN UNREADABLE ROW IS NOT AN EMPTY ROW.
+            #
+            # `occupied` is derived from the Function column, so one flaked OCR
+            # reads as not-occupied -- and deleting the slot on that would make
+            # first_empty() offer a slot that is actually full, which is how a
+            # registration lands somewhere unpredicted. The rule this file
+            # states everywhere else: a read that did not resolve is not
+            # evidence of an empty shop. An empty row must SAY it is empty.
+            if not occupied and not _reads_empty(row):
+                if mine is not None:
+                    self._mismatch(index, f"row {index} did not resolve "
+                                   f"(action {getattr(row, 'action', '')!r}); "
+                                   f"leaving {mine['name']!r} in place",
+                                   verbose)
+                continue
+
+            if not occupied:
+                if mine is not None:
+                    if verbose:
+                        print(f"  row model: row {index} reads EMPTY but the "
+                              f"model held {mine['name']!r} - taking the "
+                              f"reading.")
+                    self._slots.pop(index, None)
+                    changed += 1
+                continue
+
+            if mine is None:
+                if verbose:
+                    print(f"  row model: row {index} holds {name!r} but the "
+                          f"model had it empty - taking the reading.")
+                # FLOOR AND COST ARE NOT ON THE SCREEN, so they are looked up
+                # the same way adopt() does for a seeded row.
+                try:
+                    # The startup market price stands in when nothing has been
+                    # bought this run -- see listing_floor. Without it a seeded
+                    # Core row carries a floor of 0.
+                    cost = purchase_cost_basis(name) or market_floor(name)
+                except Exception:  # noqa: BLE001
+                    cost = 0
+                try:
+                    floor, _why = effective_floor(
+                        item_price_floor(name), "",
+                        cost if COST_FLOOR_ON_RELIST else 0)
+                except Exception:  # noqa: BLE001
+                    floor = 0
+                self._slots[index] = {
+                    "name": name, "qty": getattr(row, "qty", None),
+                    "price": price, "floor": floor or 0, "cost": cost or 0}
+                changed += 1
+                continue
+
+            if _model_key(mine["name"]) != _model_key(name):
+                if verbose:
+                    print(f"  row model: row {index} holds {name!r} but the "
+                          f"model had {mine['name']!r} - taking the reading.")
+                try:
+                    # The startup market price stands in when nothing has been
+                    # bought this run -- see listing_floor. Without it a seeded
+                    # Core row carries a floor of 0.
+                    cost = purchase_cost_basis(name) or market_floor(name)
+                except Exception:  # noqa: BLE001
+                    cost = 0
+                try:
+                    floor, _why = effective_floor(
+                        item_price_floor(name), "",
+                        cost if COST_FLOOR_ON_RELIST else 0)
+                except Exception:  # noqa: BLE001
+                    floor = 0
+                self._slots[index] = {
+                    "name": name, "qty": getattr(row, "qty", None),
+                    "price": price, "floor": floor or 0, "cost": cost or 0}
+                changed += 1
+                continue
+
+            # Same item. Quantity and price move on their own -- a buyer takes
+            # part of a stack, and this script reprices -- so they are refreshed
+            # without comment. Only the FLOOR and COST are left alone: they are
+            # facts about the ledger, not about the screen, and the screen
+            # cannot improve on them.
+            # A PARTIAL SALE IS NOT A MISMATCH; A PRICE THAT MOVED IS.
+            #
+            # Quantity falls whenever a buyer takes part of a stack, which is
+            # the shop working, so it is refreshed quietly. The price only ever
+            # changes when this script changes it, and the model is told at the
+            # moment of commit -- so a price the walk disagrees with means a
+            # listing this script did not make, or a slot pointing at the wrong
+            # row. That is worth a line in the log every time.
+            if mine.get("qty") != getattr(row, "qty", None):
+                mine["qty"] = getattr(row, "qty", None)
+            if mine.get("price") != price:
+                self._mismatch(index, f"row {index} holds {name!r} at "
+                               f"{(price or 0):,}, model said "
+                               f"{(mine.get('price') or 0):,} - taking the "
+                               f"reading", verbose)
+                mine["price"] = price
+                changed += 1
+
+        # EVERY WALK REPORTS ITS VERDICT, agreement included. A silent
+        # reconcile is the same blind spot as a silent stand-down: it makes a
+        # model that is quietly drifting indistinguishable from one tracking
+        # the shop exactly.
+        found = self.mismatches - before
+        if verbose and found:
+            print(f"  row model: {found} mismatch(es) against {source}; the "
+                  f"reading won, {changed} row(s) corrected.")
+        elif verbose and seen:
+            print(f"  row model: agrees with {source} on all {len(seen)} "
+                  f"row(s) read.")
+        if changed or found:
+            record("shopmodel.reconciled", rows=changed, scope=len(seen),
+                   mismatches=found, source=source)
+        return changed
+
     def check(self, index: int, row) -> None:
         """Compare one observed row against the model. Raise on divergence.
 
@@ -9509,6 +9716,37 @@ class ShopModel:
             why = (f"row {index} holds {seen!r}, but the model has "
                    f"{mine['name']!r}. Acting on this row would touch the "
                    "wrong listing.")
+        elif mine is not None and theirs is not None:
+            # A PRICE THAT DISAGREES IS REPORTED AND RESYNCED, NOT FATAL.
+            #
+            # The operator's rule: reading the game is truth, so the model is
+            # corrected from the reading and the disagreement is logged where
+            # it can be debugged. It does not end the run.
+            #
+            # Fatal was tried and priced out. The NAME already agrees here, and
+            # on the automated path the row was reached by counting scroll
+            # notches, so its position is measured rather than inferred -- a
+            # price that differs means the model is stale, not that this is a
+            # different listing. Replayed against the 2026-08-12 log it fires
+            # six times in 288 rows, and one of those is a one-Alz undercut on
+            # a row that was relisted perfectly: as a FatalAbort that alone
+            # would have ended a 6.5-hour run 65 minutes in, after 4 of 26
+            # cycles, with 4 of 351 relists done.
+            #
+            # BOTH PLAUSIBLE, OR IT IS NOT EVIDENCE. A clipped read loses its
+            # leading digits -- this file records a 7,444,281 read as 444,281
+            # -- so a figure below MIN_PLAUSIBLE_PRICE is treated as unread.
+            # That bar does not catch a clip that stays large, which is why
+            # this reports rather than acts on it.
+            mine_price = mine.get("price") or 0
+            theirs_price = getattr(row, "price", None) or 0
+            if (mine_price >= MIN_PLAUSIBLE_PRICE
+                    and theirs_price >= MIN_PLAUSIBLE_PRICE
+                    and mine_price != theirs_price):
+                self._mismatch(index, f"row {index} holds {seen!r} at "
+                               f"{theirs_price:,}, model said {mine_price:,}"
+                               f" - taking the reading", True)
+                mine["price"] = theirs_price
         if why is None:
             return
 
@@ -12818,14 +13056,47 @@ def locate_row(rows: list[Row], ref: RowRef,
         return same[0], ""
 
     pool = same
-    for attribute, value in (("qty", ref.qty), ("price", ref.price)):
+    # PRICE BEFORE QUANTITY, AND A FILTER THAT MATCHES NOTHING IS A REFUSAL.
+    #
+    # Both halves of that come from the same incident. On 2026-08-13 the target
+    # at row 12 had partially sold, 250 -> 240, so the QUANTITY filter ran
+    # first and eliminated the only correct row. The price filter then matched
+    # nothing among the survivors -- and was DISCARDED by `if narrowed:`, on
+    # the reasoning that a filter matching nothing has nothing to say. It has
+    # everything to say: it means the row being looked for is not in this pool.
+    # With both filters gone the pool was two identical x250 stacks and the
+    # ordinal picked the wrong one, 509,000 against the intended 480,000.
+    #
+    # Price first because it is the stabler of the two: quantity changes every
+    # time a buyer takes part of a stack, while the price only changes when
+    # this script changes it. Filtering on the volatile field first is what
+    # threw the correct row away.
+    for attribute, value in (("price", ref.price), ("qty", ref.qty)):
         if value is None:
             continue
         narrowed = [r for r in pool if getattr(r, attribute) == value]
         if len(narrowed) == 1:
             return narrowed[0], ""
-        if narrowed:
-            pool = narrowed
+        if not narrowed:
+            # NOTHING CARRIES THIS VALUE, SO THE FILTER IS SKIPPED -- NOT
+            # TREATED AS AN ANSWER, AND NOT AS A REFUSAL EITHER.
+            #
+            # Refusing here was tried and was worse. Both fields drift for
+            # innocent reasons: a buyer takes part of a stack between the walk
+            # and the row's turn, and an undercut lands a single Alz below what
+            # the walk saw (28 rows in 1,237 across recent logs). Worse, two
+            # callers read a None from this function as "the listing sold" --
+            # bring_into_view's walk terminator gives up on a view that really
+            # does hold the row, and relist_rows counts a live stack as gone
+            # and decrements the stock it thinks it has. Conflating missing
+            # with ambiguous is the exact thing this function's docstring
+            # forbids.
+            #
+            # The wrong-row selection the refusal was meant to stop is now
+            # stopped where it belongs: the automated path never reaches the
+            # ordinal at all, because the caller measured the position.
+            continue
+        pool = narrowed
 
     if strict:
         return None, "ambiguous"
@@ -13072,6 +13343,80 @@ def core_behind(set_name: str) -> str:
     return FAVOURITE_SLOTS.get(core_slot, "")
 
 
+# WHAT THE MARKET SAID EACH ITEM WAS WORTH WHEN THE RUN STARTED.
+#
+# Keyed by _floor_key(name), per UNIT, read once from the Purchase tab before
+# any trading.
+#
+# It exists because purchase_cost_basis is `this_run_only` by default, so on a
+# fresh start it is 0 for everything and the Core floor is 0 with it. A floor
+# of 0 is not a floor: the run opens by relisting whatever it already holds at
+# whatever the market happens to be, with nothing underneath it. Stock bought
+# last night at 500,000 can go out at 400,000 this morning and every guard is
+# satisfied.
+#
+# The operator's rule: "on init, get price for all items and use that as floor
+# price. The resupplied items will have its floor set by buying." So this is a
+# STAND-IN for a cost basis, used only while there is no real one -- the moment
+# a purchase happens, what was actually paid takes over.
+#
+# It is deliberately NOT the same thing as ITEM_PRICE_FLOORS, which is the
+# operator's own valuation and always applies.
+_MARKET_FLOORS: dict = {}
+_MARKET_FLOORS_READ = False
+
+
+def market_floor(name: str) -> int:
+    """What the market wanted for `name` per unit when the run started. 0 if unread."""
+    return int(_MARKET_FLOORS.get(_floor_key(name), 0) or 0)
+
+
+def seed_market_floors(verbose: bool = True) -> int:
+    """Read every favourite item's market price, once, before trading.
+
+    ROW 1 of each slot, per unit -- the operator's rule, and the same figure
+    every other price decision here uses.
+
+    Needs the Purchase tab. Returns how many items were priced. A slot that
+    cannot be read is simply left without a stand-in floor rather than being
+    given a guessed one: an unread price is not evidence, and the catalogue
+    floor still applies underneath.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    global _MARKET_FLOORS_READ
+    if _MARKET_FLOORS_READ:
+        return len(_MARKET_FLOORS)
+    if not purchase_ready(verbose=verbose):
+        say("  the Purchase tab is not ready; market floors were not read. "
+            "Cores start with only their catalogue floor.")
+        return 0
+    _MARKET_FLOORS_READ = True
+
+    priced = 0
+    for slot in sorted(FAVOURITE_SLOTS):
+        name = FAVOURITE_SLOTS[slot]
+        offers = run_favourite_search(slot, verbose=False)
+        row_one = _row_one(offers)
+        if row_one is None or not row_one.price or row_one.price <= 0:
+            say(f"  {name}: no price read; no market floor for it.")
+            continue
+        pack = max(1, getattr(row_one, "pack", 1) or 1)
+        unit = int(row_one.price) // pack
+        if unit < MIN_PLAUSIBLE_PRICE:
+            say(f"  {name}: {unit:,}/unit is below the plausible bar; ignored.")
+            continue
+        _MARKET_FLOORS[_floor_key(name)] = unit
+        priced += 1
+        say(f"  {name}: {unit:,}/unit")
+    record("floors.market_seeded", priced=priced,
+           items=len(FAVOURITE_SLOTS))
+    say(f"  market floors read for {priced} of {len(FAVOURITE_SLOTS)} item(s).")
+    return priced
+
+
 def purchase_cost_basis(name: str, this_run_only: bool = True) -> int:
     """What was paid per item for the Sets behind `name`. 0 if none were.
 
@@ -13215,8 +13560,25 @@ def listing_floor(name: str) -> tuple[int, str]:
     if not COST_FLOOR_ON_RELIST:
         return catalogue, "the floor set for this item"
     cost = purchase_cost_basis(name)
-    if cost > catalogue:
-        return cost, "what its Sets were bought for"
+    if cost:
+        if cost > catalogue:
+            return cost, "what its Sets were bought for"
+        return catalogue, "the floor set for this item"
+
+    # NOTHING WAS BOUGHT THIS RUN, so there is no cost basis -- and without a
+    # stand-in the floor for a Core is whatever the catalogue says, which for
+    # an ordinary Core is 0. A floor of 0 is not a floor: the run opens by
+    # relisting stock it already holds at whatever the market happens to be,
+    # with nothing underneath it, and stock bought last night at 500,000 goes
+    # out this morning at 400,000 with every guard satisfied.
+    #
+    # So the market price read at startup stands in until a real purchase
+    # replaces it. It is not what the stock cost -- nothing here knows that
+    # for stock bought before the run -- but it is the best available floor
+    # and it is a measurement rather than a guess.
+    market = market_floor(name)
+    if market > catalogue:
+        return market, "what the market wanted for it when the run started"
     return catalogue, "the floor set for this item"
 
 
@@ -16736,13 +17098,82 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
         # somewhere else. Everything below -- the price floor, the expected
         # quantity, what sanity_check will look for -- is taken from `target`,
         # so a shift here means relisting one item under another's identity.
-        if expect is not None:
+        if expect is not None and absolute_row is not None:
+            # THE CALLER MEASURED THIS ROW; DO NOT GUESS IT AGAIN.
+            #
+            # relist_rows reaches a row by counting scroll notches -- goto_row
+            # puts absolute row N at screen 1 -- and hands that screen position
+            # down. Re-deriving it by identity search throws a measurement away
+            # and replaces it with an inference, which is the one thing this
+            # file says never to do.
+            #
+            # It is also how the 2026-08-13 divergence happened. The search
+            # ranks same-named siblings by an ordinal RowRef counted over the
+            # whole 30-row shop, then indexes it into a 10-row view -- off by
+            # however many siblings sit above the view. Cycle 25 asked for
+            # absolute row 12, the search "followed" to screen 9 (absolute 20)
+            # and cancelled it, and the model then emptied row 12. Six more
+            # rows that night picked a sibling the same way and left no trace,
+            # because those siblings shared a price.
+            #
+            # So the position stands and identity becomes a CHECK on it rather
+            # than a search: the name must agree or nothing is touched. That is
+            # strictly stronger than what it replaces, because a search cannot
+            # tell one identical sibling from another and a measured position
+            # can.
+            #
+            # The same fuzzy test the search uses for its same-name pool, so
+            # this is exactly as tolerant of OCR noise -- no stricter, looser.
+            seen_name = (target.name or "").strip()
+            if not match_rows([target], expect.name):
+                say(f"Row {row} was scrolled to for absolute row "
+                    f"{absolute_row} but holds {seen_name!r}, not "
+                    f"{expect.name!r} - refusing to act on it.")
+                record("relist.pin_wrong_item", asked=absolute_row,
+                       at_screen=row, expected=expect.name, saw=seen_name)
+                return FAILED
+        elif expect is not None:
             resolved, note = locate_row(rows, expect)
             if resolved is None:
                 say(f"{expect.name!r} is no longer in the table "
                     f"({note or 'gone'}) - nothing was cancelled.")
                 return FAILED
             if resolved.index != row:
+                # NEVER FOLLOW A ROW THE CALLER PINNED BY ABSOLUTE POSITION.
+                #
+                # Following updates the SCREEN index and leaves absolute_row
+                # untouched, and absolute_row is what the model is keyed on:
+                # cancel_item does SHOP.check(absolute_row or row) and
+                # SHOP.cancel(absolute_row or row). So the game cancels the row
+                # this found and the model empties the row it was sent to.
+                #
+                # That is the 2026-08-13 divergence, exactly. Cycle 25 asked
+                # for absolute row 12, the view put it at screen 1, this
+                # followed to screen 9 -- absolute 20, priced 509,000 against
+                # row 12's 480,000, and outside the 1-17 batch entirely -- and
+                # cancelled it. SHOP.cancel(12) then emptied a slot the game
+                # had not touched. Row 12 was never repriced, row 20 was
+                # repriced without being asked, and the model carried a phantom
+                # for the rest of the run.
+                #
+                # It followed the wrong row because locate_row narrows by qty
+                # before price and drops a price filter that matches nothing:
+                # row 12 had partially sold 250 -> 240, so the qty filter
+                # eliminated the right row and left two identical x250 stacks.
+                # That is fixed below too, but the two are independent -- this
+                # refusal holds even when the search is perfect, because a
+                # listing that is not where it was deliberately scrolled to
+                # means the shop changed under the batch.
+                if absolute_row is not None:
+                    say(f"{expect.name!r} is at row {resolved.index}, not the "
+                        f"row {row} it was scrolled to for absolute row "
+                        f"{absolute_row}. The shop moved under this batch - "
+                        f"refusing to act on a different row than the one "
+                        f"asked for.")
+                    record("relist.moved_under_batch", asked=absolute_row,
+                           at_screen=row, found_at=resolved.index,
+                           item=expect.name)
+                    return FAILED
                 say(f"{expect.name!r} moved from row {row} to "
                     f"{resolved.index} since it was chosen - following it.")
                 row = resolved.index
@@ -17981,6 +18412,32 @@ def relist_rows(
         # than a few rows being repriced late. It also runs before the restock
         # for a mundane reason -- both want the NPC and the Purchase tab, and
         # interleaving them would mean two trips.
+        # THE FLOOR EVERY CORE STARTS WITH.
+        #
+        # purchase_cost_basis is `this_run_only`, so on a fresh process it is 0
+        # for everything and an ordinary Core's floor is 0 with it -- and a
+        # floor of 0 is not a floor. The run would open by relisting stock it
+        # already holds at whatever the market happens to be, with nothing
+        # underneath: goods bought last night at 500,000 go out this morning at
+        # 400,000 and every guard is satisfied.
+        #
+        # So the market is read once, before anything is listed, and stands in
+        # until a real purchase replaces it. Reading it here rather than at
+        # startup is deliberate: this is the first point where the Purchase tab
+        # is open and calibrated, and chaos below is the first thing that can
+        # list anything.
+        #
+        # It costs one favourite search per item, once per process, and it buys
+        # nothing.
+        if not _MARKET_FLOORS_READ and not dry_run:
+            if open_purchase_tab(verbose=verbose) and                     set_purchase_sort_low_to_high(verbose=verbose):
+                say("Reading the market once, to floor every item this run "
+                    "holds before anything is relisted:")
+                seed_market_floors(verbose=verbose)
+            else:
+                say("Could not reach the Purchase tab to read market floors; "
+                    "Cores start on their catalogue floor only.")
+
         if CHAOS_ENABLED:
             chaos_pass(timeout=timeout, verbose=verbose,
                        scope=None if all_rows else list(rows))
@@ -18110,6 +18567,31 @@ def relist_rows(
     beyond = [i for i in rows if i > len(snapshot)]
     scrolling = bool(beyond) or all_rows
 
+    # EVERY WALK SYNCS THE MODEL. The operator's rule: the init walk fills the
+    # model in, every read after it syncs the model and says so, so a drift is
+    # visible in the log at the moment it appears instead of thirteen minutes
+    # later.
+    #
+    # This is the non-scrolling read. It can only be compared against absolute
+    # rows if screen position IS absolute position, which is true only with the
+    # view at the top -- and that is not assumed here. `scroll_to_top` returns
+    # whether it actually got there, and without that proof the comparison is
+    # skipped: the shop stays open across a batch now, so a previous row's
+    # scroll can still be in force, and reconciling row 1 against absolute row
+    # 8 would rewrite the model from the wrong rows entirely.
+    if SHOP.ready and not scrolling and not dry_run:
+        # scroll_to_end(up=True) DRIVES to the top and returns what is showing,
+        # so the same call both establishes the fact and supplies the reading.
+        # None means the view could not be established, and then there is
+        # nothing to compare against -- a read whose position is unknown is not
+        # evidence about any absolute row.
+        top_view = scroll_to_end(up=True, timeout=timeout, verbose=False)
+        if top_view:
+            snapshot = top_view
+            SHOP.reconcile([(r.index, r) for r in top_view],
+                           scope=set(range(1, len(top_view) + 1)),
+                           verbose=verbose, source="the first-screen read")
+
     # A SHOP THAT FITS ON ONE SCREEN NEEDS NO WALK, WHATEVER RANGE WAS ASKED
     # FOR.
     #
@@ -18146,33 +18628,20 @@ def relist_rows(
     # The row model exists to answer "what is below" without a walk. Until it
     # is trusted, the honest answer is to WALK: a request for rows 1-11 means
     # rows 1-11.
-    if scrolling and not all_rows and snapshot and SHOP.enforce and SHOP.ready:
-        # ENFORCE, NOT READY. Gated on `ready` this let an UNPROVEN model
-        # decide not to look at rows the operator asked for -- in shadow mode,
-        # with the flag off, which the whole design says cannot happen.
-        #
-        # That is the same failure as the screen-based trim removed just above,
-        # wearing a better disguise: rows dropped from a batch on an inference
-        # rather than a reading. Every under-count elsewhere in the model
-        # (a dry run mutating it, a collect booked before the click, a listing
-        # made without a name) became a money consequence through this line.
-        #
-        # The model has been seeded from a full walk, so it knows. Only skip
-        # the walk when it says every row beyond the screen is genuinely empty.
-        occupied_beyond = [i for i in beyond if not SHOP.is_empty(i)]
-        if not occupied_beyond:
-            say(f"Row model: rows {min(beyond)}-{max(beyond)} are empty, so "
-                f"there is nothing to walk to.")
-            record("relist.no_walk_needed", asked=max(beyond), source="model")
-            # Every row past the screen is empty by the model's account, so
-            # what is left is what the screen already shows.
-            rows = [i for i in rows if i <= len(snapshot)]
-            beyond = []
-            scrolling = False
-            if not rows:
-                say("None of the rows asked for hold anything; nothing to do "
-                    "this cycle.")
-                return True
+    # THE MODEL DOES NOT GET TO DECIDE WHETHER TO LOOK.
+    #
+    # A block here used to skip the walk entirely when SHOP.is_empty() was true
+    # for every row past the screen, and cut those rows out of the batch. It
+    # was gated on the model being seeded and enforcing, which reads as
+    # careful and is not: the walk is the ONLY thing that keeps the model
+    # honest, so letting the model cancel it means a slot that has drifted can
+    # never be found. A phantom-empty row suppresses the read that would have
+    # exposed it, and then goes unpriced for the rest of the run.
+    #
+    # On 2026-08-13 the model carried a phantom-empty row 13 for thirteen
+    # minutes. The reading that would have corrected it was taken at the start
+    # of the next cycle and compared against nothing. Now it is compared --
+    # see the reconcile() call below -- and the walk always happens.
 
     # How many times the mid-batch chaos hook has fired this batch, and
     # whether the cap has already been announced.
@@ -18218,6 +18687,22 @@ def relist_rows(
                 "screen cannot be addressed safely - stopping rather than "
                 "acting on a position that might be the wrong listing.")
             return False
+        # THE READING IS THE TRUTH. This walk just read every row the batch
+        # is about to work on; the model is a cache of what was there last
+        # time anything looked. Where they disagree the model is wrong, and
+        # correcting it here costs a dictionary lookup per row -- no OCR, no
+        # clicks, on a read already paid for.
+        #
+        # Deliberately NOT a divergence. Nothing has been clicked yet and the
+        # reading is fresh, so there is nothing to protect against by
+        # stopping. check() still stops the run mid-row, where a disagreement
+        # means the next click would land on the wrong listing.
+        if SHOP.ready:
+            fixed = SHOP.reconcile(listings, scope=set(rows) | set(beyond),
+                                   verbose=verbose)
+            if fixed:
+                say(f"  row model: corrected {fixed} row(s) from this walk.")
+
         catalogue = [row for _, row in listings]
         # How many rows each enabled Core still has, counted from the whole
         # shop rather than from the ten rows on screen. A Core absent from the
@@ -18662,6 +19147,26 @@ def relist_rows(
                 return False
         else:
             match, note = locate_row(current, ref)
+        # A FILTER THAT MATCHED NOTHING IS NOT A SALE.
+        #
+        # locate_row now refuses when no candidate carries the expected price
+        # or quantity, rather than picking one by ordinal. That note must not
+        # fall through to the "already sold out" branch below: that branch
+        # skips the row AND decrements core_rows_left, which can trip a
+        # mid-cycle restock -- so one clipped price read would buy stock to
+        # replace a listing that never sold.
+        #
+        # It is the same conflation locate_row's own docstring forbids:
+        # "Missing and ambiguous must never be conflated. 'Missing' means the
+        # listing sold and was collected."
+        if match is None and note and note.startswith("no candidate matches"):
+            say(f"  {name!r}: {note}. The listing is still there; this is a "
+                f"read that does not agree with what was expected, not a "
+                f"sale. Leaving the row alone this cycle.")
+            record("relist.no_candidate", item=name, note=note, row=index)
+            failed_rows.append(f"row {index} ({name}): {note}")
+            continue
+
         if match is None and note == "unmatched":
             # LOOK ONCE MORE BEFORE GIVING UP THE CYCLE.
             #
