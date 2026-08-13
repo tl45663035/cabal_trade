@@ -4175,12 +4175,38 @@ def forget_range_view() -> None:
 # of a cycle -- and far shorter than a batch, which runs for ~600s.
 RANGE_VIEW_SECONDS = 120.0
 
+# How fresh a shared walk has to be before CHAOS will count from it.
+#
+# Deliberately far tighter than RANGE_VIEW_SECONDS. The point is not to make
+# chaos reuse whatever happens to be lying around -- that is the 2026-08-10
+# loss described in cached_range_view, where a twelve-minute-old walk reported
+# "0 sold and uncollected" and the money stayed on the board. The point is the
+# one case where a full walk has just been taken for another reason: the model
+# seeding walk runs immediately before the chaos pass and reads all 30 slots
+# with the same function chaos would call, so chaos was walking the table a
+# second time seconds later, having changed nothing in between.
+#
+# 33 of the 42 walks in the 4h49m run on 2026-08-12 were chaos, ~28.5 minutes
+# of it -- 9.8% of the run, and about an hour extrapolated to a full 600.
+#
+# At 30s this can only ever match a walk from the same phase of the same
+# cycle. Anything older and chaos pays for its own read, as before.
+CHAOS_VIEW_REUSE_SECONDS = 30.0
 
-def cached_range_view(need: int) -> "list | None":
+
+def cached_range_view(need: int,
+                      max_age: "float | None" = None) -> "list | None":
     """A walk covering rows 1..need as (absolute, Row) pairs, or None.
 
     Bounded by RANGE_VIEW_SECONDS as well as by the invalidations, because a
     sale changes the shop without this script touching it.
+
+    `max_age` tightens that bound for one caller. RANGE_VIEW_SECONDS is set
+    for the batch, which re-reads a row before acting on it and so has a
+    second line of defence. Chaos does not: it decides whether to spend
+    ~600,000,000 Alz on the strength of this count alone, and the failure
+    below is exactly what a merely-recent view does to it. A caller that
+    cannot afford to be wrong asks for a view taken moments ago.
 
     The first version had NO time limit, on the reasoning that a walk goes
     stale when the SHOP changes and every such change calls forget_range_view.
@@ -4198,7 +4224,8 @@ def cached_range_view(need: int) -> "list | None":
         return None
     if _RANGE_VIEW.get("covered", 0) < int(need):
         return None
-    if time.monotonic() - _RANGE_VIEW.get("at", 0.0) > RANGE_VIEW_SECONDS:
+    limit = RANGE_VIEW_SECONDS if max_age is None else float(max_age)
+    if time.monotonic() - _RANGE_VIEW.get("at", 0.0) > limit:
         return None
     return list(_RANGE_VIEW.get("pairs") or [])
 
@@ -17367,6 +17394,62 @@ def relist_rows(
         if verbose:
             print(message)
 
+    # THE SEEDING WALK, and it runs BEFORE chaos, the restock and the batch.
+    #
+    # It belongs in this function rather than only in restock_pass, which owns
+    # the other full-shop sweep but returns immediately when nothing is armed
+    # -- so a relist-only run (no --buy, no --chaos) would never seed the
+    # model, `check` would return early on every row, and the run would look
+    # like a clean test while testing nothing at all.
+    #
+    # FIRST, not last. forget_range_view() just above says what this file
+    # already intended -- "chaos walks, restock and this batch reuse it" --
+    # but chaos never read the cache, only wrote to it, so the intent was
+    # never realised. This walk reads all 30 slots through
+    # shop_listing_pairs -> enumerate_listings, the same call read_chaos_rows
+    # makes, and chaos ran seconds later and walked the identical unchanged
+    # table again. 33 of the 42 walks in the 4h49m run on 2026-08-12 were
+    # chaos: ~28.5 minutes, 9.8% of the run, about an hour over a full 600.
+    #
+    # Safe to move because chaos does not change the shop behind the model's
+    # back: it lists through register_item and collects through relist(), and
+    # both carry the SHOP.register / SHOP.collect transitions. The model is
+    # seeded from the shop as it stands and then told about every change made
+    # to it -- the same contract the batch already relies on.
+    #
+    # Outside `if not dry_run:` deliberately, exactly as before: a dry run
+    # still seeds, because the walk only reads. shop_listing_pairs opens the
+    # Trade window itself when it is not already open, which is what it did
+    # when this block sat further down.
+    #
+    # One walk, once, for the life of the process.
+    if (SHOP.enforce or SHOP_MODEL_SHADOW) and not SHOP.ready:
+        mode = "ENFORCING" if SHOP.enforce else "SHADOW: records, never acts"
+        say(f"Row model ({mode}) - walking the whole shop once to seed it "
+            f"(all {SHOP_ROW_CAPACITY} slots); later cycles answer from it.")
+        seed = shop_listing_pairs(timeout=timeout, verbose=verbose)
+        if seed and max(i for i, _ in seed) >= SHOP_ROW_CAPACITY:
+            SHOP.adopt(seed)
+            # AND PUBLISH IT, so nothing walks again for the same rows.
+            #
+            # This walk reads all 30 slots. Without this the batch below found
+            # no cached view, saw rows past the first screen, and enumerated
+            # the shop a SECOND time seconds later -- two full sweeps per cycle
+            # where the shop had changed by nothing in between. The cache is
+            # bounded by RANGE_VIEW_SECONDS and cleared by every invalidation
+            # that matters, so publishing here cannot outlive the truth any
+            # longer than the walk that produced it.
+            note_range_view(SHOP_ROW_CAPACITY, seed)
+            say(SHOP.describe())
+        else:
+            # Refused rather than seeded from a short read: with holes legal,
+            # a slot the walk never reached is not the same as an empty one,
+            # and the model would hand it to the next registration.
+            covered = max((i for i, _ in seed), default=0) if seed else 0
+            say(f"  NOT seeded: the walk reached row {covered} of "
+                f"{SHOP_ROW_CAPACITY}. The model stays off for this run.")
+            record("shopmodel.seed_failed", covered=covered)
+
     # Open the shop before reading anything: relist() closes it after each row.
     if not dry_run:
         if not ensure_shop_ready(verbose=verbose):
@@ -17582,40 +17665,6 @@ def relist_rows(
                 say("Aborting: the resupply left something in the work tab.")
                 return False
 
-    # THE SEEDING WALK, and it belongs HERE rather than only in restock_pass.
-    #
-    # restock_pass owns the other full-shop sweep, but it returns immediately
-    # when nothing is armed -- so a relist-only run (no --buy, no --chaos)
-    # would never seed the model, `check` would return early on every row, and
-    # the run would look like a clean test while testing nothing at all.
-    #
-    # One walk, once, for the life of the process.
-    if (SHOP.enforce or SHOP_MODEL_SHADOW) and not SHOP.ready:
-        mode = "ENFORCING" if SHOP.enforce else "SHADOW: records, never acts"
-        say(f"Row model ({mode}) - walking the whole shop once to seed it "
-            f"(all {SHOP_ROW_CAPACITY} slots); later cycles answer from it.")
-        seed = shop_listing_pairs(timeout=timeout, verbose=verbose)
-        if seed and max(i for i, _ in seed) >= SHOP_ROW_CAPACITY:
-            SHOP.adopt(seed)
-            # AND PUBLISH IT, so nothing walks again for the same rows.
-            #
-            # This walk reads all 30 slots. Without this the batch below found
-            # no cached view, saw rows past the first screen, and enumerated
-            # the shop a SECOND time seconds later -- two full sweeps per cycle
-            # where the shop had changed by nothing in between. The cache is
-            # bounded by RANGE_VIEW_SECONDS and cleared by every invalidation
-            # that matters, so publishing here cannot outlive the truth any
-            # longer than the walk that produced it.
-            note_range_view(SHOP_ROW_CAPACITY, seed)
-            say(SHOP.describe())
-        else:
-            # Refused rather than seeded from a short read: with holes legal,
-            # a slot the walk never reached is not the same as an empty one,
-            # and the model would hand it to the next registration.
-            covered = max((i for i, _ in seed), default=0) if seed else 0
-            say(f"  NOT seeded: the walk reached row {covered} of "
-                f"{SHOP_ROW_CAPACITY}. The model stays off for this run.")
-            record("shopmodel.seed_failed", covered=covered)
 
     snapshot = await_rows(timeout)
     if not snapshot:
@@ -19269,8 +19318,32 @@ def read_chaos_rows(want: "set | None",
     # It matters most on the recount, where a collect may have scrolled the
     # view: bundles at rows 1-2 with the view parked lower count as zero live,
     # and the pass buys replacements for bundles already on the board.
-    scroll_to_end(up=True, timeout=timeout, verbose=False)
     top = chaos_boundary(want)
+
+    # A WALK TAKEN MOMENTS AGO, IF THERE IS ONE.
+    #
+    # Checked BEFORE the anchor scroll, because a cached view is already in
+    # absolute numbering and scrolling to serve it would be pure cost.
+    #
+    # The model's seeding walk runs immediately before the chaos pass and
+    # reads all 30 slots through shop_listing_pairs -> enumerate_listings,
+    # which is the very call below. Without this, chaos walked the same table
+    # again seconds later: two full sweeps per cycle for one shop that had not
+    # changed in between.
+    #
+    # This is NOT the model answering. The model deliberately does not track
+    # sale status -- "Function and Status are deliberately not compared. A
+    # sale arrives when a buyer chooses, not when this script acts" -- so it
+    # cannot say which bundles are live, which is the only thing chaos wants
+    # to know. What is reused is a real table READ, complete with each row's
+    # action, and only while it is seconds old.
+    if top > SCREEN_ROWS:
+        shared = cached_range_view(top, max_age=CHAOS_VIEW_REUSE_SECONDS)
+        if shared:
+            return [_dc.replace(r, index=i) for i, r in shared]
+
+    # ANCHOR FIRST on both remaining paths.
+    scroll_to_end(up=True, timeout=timeout, verbose=False)
     if top <= SCREEN_ROWS:
         return await_rows(timeout)
     pairs = enumerate_listings(timeout=timeout, verbose=False, stop_after=top)
