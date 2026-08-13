@@ -17139,41 +17139,29 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                     f"({note or 'gone'}) - nothing was cancelled.")
                 return FAILED
             if resolved.index != row:
-                # NEVER FOLLOW A ROW THE CALLER PINNED BY ABSOLUTE POSITION.
+                # FOLLOWING IS SAFE HERE, AND ONLY HERE.
                 #
-                # Following updates the SCREEN index and leaves absolute_row
-                # untouched, and absolute_row is what the model is keyed on:
-                # cancel_item does SHOP.check(absolute_row or row) and
-                # SHOP.cancel(absolute_row or row). So the game cancels the row
-                # this found and the model empties the row it was sent to.
+                # This branch runs only when absolute_row is None -- the
+                # hand-driven paths, `do relist` and `--relist N`. Those do not
+                # key the row model on an absolute slot, so moving to where the
+                # listing actually is costs nothing.
                 #
-                # That is the 2026-08-13 divergence, exactly. Cycle 25 asked
-                # for absolute row 12, the view put it at screen 1, this
+                # It is NOT safe on the automated path, which is why that path
+                # no longer reaches this code. Following updates the SCREEN
+                # index and leaves absolute_row untouched, while the model is
+                # keyed on absolute_row: cancel_item does
+                # SHOP.check(absolute_row or row) and SHOP.cancel(absolute_row
+                # or row). The game cancels the row the search found; the model
+                # empties the row it was sent to.
+                #
+                # That is the 2026-08-13 divergence. Cycle 25 asked for
+                # absolute row 12, the view put it at screen 1, the search
                 # followed to screen 9 -- absolute 20, priced 509,000 against
-                # row 12's 480,000, and outside the 1-17 batch entirely -- and
+                # row 12's 480,000, outside the 1-17 batch entirely -- and
                 # cancelled it. SHOP.cancel(12) then emptied a slot the game
                 # had not touched. Row 12 was never repriced, row 20 was
-                # repriced without being asked, and the model carried a phantom
-                # for the rest of the run.
-                #
-                # It followed the wrong row because locate_row narrows by qty
-                # before price and drops a price filter that matches nothing:
-                # row 12 had partially sold 250 -> 240, so the qty filter
-                # eliminated the right row and left two identical x250 stacks.
-                # That is fixed below too, but the two are independent -- this
-                # refusal holds even when the search is perfect, because a
-                # listing that is not where it was deliberately scrolled to
-                # means the shop changed under the batch.
-                if absolute_row is not None:
-                    say(f"{expect.name!r} is at row {resolved.index}, not the "
-                        f"row {row} it was scrolled to for absolute row "
-                        f"{absolute_row}. The shop moved under this batch - "
-                        f"refusing to act on a different row than the one "
-                        f"asked for.")
-                    record("relist.moved_under_batch", asked=absolute_row,
-                           at_screen=row, found_at=resolved.index,
-                           item=expect.name)
-                    return FAILED
+                # repriced unasked, and the model carried a phantom for the
+                # rest of the run.
                 say(f"{expect.name!r} moved from row {row} to "
                     f"{resolved.index} since it was chosen - following it.")
                 row = resolved.index
