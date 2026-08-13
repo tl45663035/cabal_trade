@@ -8372,7 +8372,8 @@ def type_number(value: int, per_key: float = TYPE_COOLDOWN,
     debug_shot("type", value=value)
 
 
-def scroll_wheel(x: int, y: int, notches: int, settle: float = 0.35) -> None:
+def scroll_wheel(x: int, y: int, notches: int, settle: float = 0.35,
+                 checked: bool = False) -> None:
     """Turn the mouse wheel over (x, y). Negative scrolls DOWN (further into
     the list), positive scrolls UP, matching how Windows reports a real wheel.
 
@@ -8404,14 +8405,35 @@ def scroll_wheel(x: int, y: int, notches: int, settle: float = 0.35) -> None:
     # It refuses when the Trade window is shut (the wheel becomes a camera
     # zoom) and when the PURCHASE tab is showing (the wheel moves the offers,
     # so "always buy row 1" quietly stops meaning the cheapest listing).
-    if not table_scrollable(verbose=True):
+    # `checked` is the caller saying it has ALREADY confirmed this, moments
+    # ago, and nothing has touched the window since. It exists because the
+    # guard costs 1.35s a call -- two OCR launches, four screenshots and a
+    # frame-difference probe -- and a walk that steps one notch per row pays
+    # it once per row, where the answer cannot have changed between steps.
+    #
+    # The default is still to check. A caller that passes True and is wrong
+    # scrolls the game world or the offers table, so it is only ever passed by
+    # a loop that verified immediately before entering.
+    if not checked and not table_scrollable(verbose=True):
         raise Aborted(
             f"refusing to scroll {notches:+d} notch(es) at ({x}, {y}): the "
             "listings table is not what the wheel would reach")
 
     make_dpi_aware()
-    if not move_mouse(x, y):
-        raise PermissionError(CURSOR_BLOCKED_HINT)
+    # ALREADY THERE IS ALREADY DONE.
+    #
+    # move_mouse ends in a 0.3s cooldown whether or not the cursor moved, and
+    # a walk that steps one notch per row from the same SCROLL_POINT paid it
+    # every row to put the cursor where it already was. Measured: 0.30s of a
+    # 1.29s step.
+    #
+    # Safe because this is not a hover: the wheel is delivered to the window
+    # under the pointer, and the pointer is already over it. The places that
+    # DO need a move to raise an enter event -- arming a button -- approach
+    # from elsewhere first and are unaffected.
+    if cursor_position() != (int(x), int(y)):
+        if not move_mouse(x, y):
+            raise PermissionError(CURSOR_BLOCKED_HINT)
     # mouseData is unsigned in the struct, so a downward notch has to be sent
     # as its two's-complement value rather than a bare -120.
     step = (WHEEL_DELTA if notches > 0 else -WHEEL_DELTA) & 0xFFFFFFFF
@@ -8961,6 +8983,42 @@ NAME_COLUMN = (275, 715)  # fallback only; normally derived from the headers
 PREMIUM_SLOT_MARKER = "premium"
 # Row spacing on the reference display; scaled through LAYOUT at runtime.
 REF_ROW_PITCH = 79
+
+# THE HEADERS AND SCREEN ROW 1, and nothing else.
+#
+# In this file's usual convention: screen coordinates at the reference
+# machine, so TRADE_REGION is (10, 30, 1235, 1065) and this sits inside it.
+#
+# The headers have to be in the crop even though only one row is wanted --
+# name_column, price_column and status_column are derived FROM them, and a
+# band holding just the row would fall back to the built-in column constants
+# and read the wrong cells.
+#
+# Measured: the Register table's column headers sit at y~149 and its first row
+# at y~229, one REF_ROW_PITCH apart. 140..275 covers the headers and the whole
+# of row 1 with a margin, and stops short of row 2 at y~308.
+#
+# It is ~135px tall against the full table's ~900. Same single OCR launch,
+# roughly a quarter of the pixels.
+TABLE_HEAD_BAND = (10, 140, 1236, 275)
+
+# WHERE TO PUT THE CURSOR WHEN SCROLLING.
+#
+# The wheel goes to the window under the pointer, so it has to be over the
+# table -- but it does NOT have to be over the middle of it, which is what
+# scroll_to_end and every other scroll used.
+#
+# That mattered because the cursor left a tooltip where it stopped, and a
+# tooltip over the table is why park_cursor exists at all: it moved the cursor
+# right off the window before every read, at 0.38s a time, twelve times in a
+# single full walk.
+#
+# A caller that only reads TABLE_HEAD_BAND does not need any of that. Scroll
+# from a point seven rows BELOW row 1 and the tooltip cannot reach the band
+# being read. Same wheel, same table, no park.
+#
+# y 800 is inside the table (30..1065) and far below the band's bottom at 275.
+SCROLL_POINT = (620, 800)
 # Every table row carries one of these in the Function column. Rows that are
 # sold show Receive and empty slots show Register, so counting only Change
 # buttons would renumber the rows relative to what is on screen.
@@ -9472,10 +9530,16 @@ def park_cursor(settle: float = 0.0) -> None:
     if not move_mouse(*park_point()):
         raise PermissionError(CURSOR_BLOCKED_HINT)
     # move_mouse already ends in cooldown(), so the tooltip has ACTION_COOLDOWN
-    # to clear. `settle` used to add another 0.45s on top, making a park cost
-    # ~0.95s -- the one input path that was not on the standard cooldown.
-    if settle:
-        time.sleep(settle)
+    # to clear before this returns. `settle` is what a caller adds ON TOP of
+    # that, and it is nearly always redundant: measured live, a park with
+    # settle=TOOLTIP_CLEAR_SECONDS costs 0.75s against 0.30s without, and the
+    # tooltip is gone either way because the cursor has already left it.
+    #
+    # So the extra is capped at whatever the cooldown has not already covered.
+    # A caller asking for 0.45s after a 0.30s cooldown gets 0.15s, not 0.45s.
+    remaining = (settle or 0.0) - ACTION_COOLDOWN
+    if remaining > 0:
+        time.sleep(remaining)
 
 
 # --------------------------------------------------------------------------
@@ -10633,11 +10697,18 @@ def await_rows(timeout: float = TABLE_READ_BUDGET, poll: float = 0.5) -> list[Ro
 
 
 def read_rows(source: Image.Image | Path | str,
-              words: "list | None" = None) -> list[Row]:
+              words: "list | None" = None,
+              expect: "int | None" = None) -> list[Row]:
     """Every visible table row, numbered top-to-bottom as displayed.
 
     Rows are anchored on the Function-column button, then the name is read from
     that button's vertical band.
+
+    `expect` is how many buttons must be present. It defaults to EXPECTED_ROWS
+    -- the whole visible table -- because a short read there means a button was
+    missed, which renumbers every row below it. Pass 1 to read a single row
+    from a band, where that reasoning does not apply because there is no row
+    below it to renumber.
     """
     image = source if isinstance(source, Image.Image) else Image.open(source)
 
@@ -10668,7 +10739,8 @@ def read_rows(source: Image.Image | Path | str,
     # evenly spaced, so the gap guard below sees nothing wrong while every row
     # is numbered one out and "cancel row 7" hits row 8. await_rows() retries
     # on a fresh frame, so rejecting here costs a read, not the run.
-    if len(buttons) != EXPECTED_ROWS:
+    wanted = EXPECTED_ROWS if expect is None else int(expect)
+    if len(buttons) != wanted:
         return []
 
     # Scaled, because it is a distance inside the Trade window. Only reached
@@ -11363,7 +11435,17 @@ class RowRef:
 # Beyond any plausible list length. Over-scrolling clamps, so this is how the
 # view is driven to a known end rather than tracked with a running counter --
 # a counter drifts, and re-deriving from a known end cannot.
-SCROLL_TO_END_NOTCHES = 40
+# ENOUGH TO REACH THE END, AND NOT MORE.
+#
+# The clamp makes over-asking harmless in EFFECT, so this was 40 -- twice what
+# the table can travel. It is not harmless in TIME: a notch costs ~400ms even
+# when it moves nothing, so the twenty surplus notches were 8 seconds of every
+# scroll_to_end, and scroll_to_end is called three times by a single full walk.
+#
+# The table shows SCREEN_ROWS of SHOP_ROW_CAPACITY, so the view can travel
+# exactly SHOP_ROW_CAPACITY - SCREEN_ROWS rows. The two spare notches cover a
+# dropped event rather than a shortfall in the arithmetic.
+SCROLL_TO_END_NOTCHES = (SHOP_ROW_CAPACITY - SCREEN_ROWS) + 2
 # Rows that must overlap before an offset is believed.
 MIN_SCROLL_OVERLAP = 3
 # When the exact test finds nothing, how much of the overlap must still agree
@@ -11607,6 +11689,132 @@ def measure_shift(before: list[Row], after: list[Row],
     return shift
 
 
+# The deepest absolute row that can be placed at SCREEN POSITION 1.
+#
+# The table shows SCREEN_ROWS of SHOP_ROW_CAPACITY, and scrolling clamps when
+# the last row reaches the bottom -- so the furthest the view can travel is
+# SHOP_ROW_CAPACITY - SCREEN_ROWS notches, which puts row 21 at the top. Rows
+# below that can be SEEN, but never at position 1.
+#
+# Held one short of the arithmetic limit deliberately: the operator's scope is
+# 1-20, and a row that cannot be positioned is a row this indexing cannot be
+# used for.
+ROW_INDEX_LIMIT = SHOP_ROW_CAPACITY - SCREEN_ROWS
+
+
+def read_top_row(source: "Image.Image | None" = None) -> "Row | None":
+    """Screen row 1, read from the header band alone. None if unreadable.
+
+    ONE OCR of ~135px of screen instead of the ~900px whole-table pass. The
+    caller that knows WHICH absolute row is at position 1 -- because it scrolled
+    there deliberately -- does not need the other nine.
+    """
+    shot = source if source is not None else grab()
+    words = find_words(shot, TABLE_HEAD_BAND, 0.0)
+    if not words:
+        return None
+    rows = read_rows(shot, words=words, expect=1)
+    return rows[0] if rows else None
+
+
+def goto_row(index: int, timeout: float = 8.0,
+             verbose: bool = True) -> "Row | None":
+    """Put absolute row `index` at SCREEN POSITION 1 and return just that row.
+
+    DETERMINISTIC, NOT SEARCHED. The wheel is calibrated against the table, so
+    row N sits at the top after scrolling to the top and stepping down N-1
+    notches. No walking, no reading rows on the way past, no identity search.
+
+    What makes an absolute index legitimate here is the row MODEL. Positions
+    go stale on their own -- cancelling a listing renumbers everything below
+    it, which is why bring_into_view searches by identity instead -- but the
+    model is told about every register, cancel and collect, so its index IS
+    the current one. The caller checks the row this returns against what the
+    model says is there, and a disagreement is a divergence rather than a
+    resync.
+
+    Returns None when the view cannot be driven or the row cannot be read.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    if not 1 <= index <= ROW_INDEX_LIMIT:
+        say(f"  row {index} cannot be placed at the top of the view: only "
+            f"rows 1-{ROW_INDEX_LIMIT} can, because the view clamps once the "
+            f"last of {SHOP_ROW_CAPACITY} rows reaches the bottom.")
+        return None
+
+    per_notch = scroll_rows_per_notch()
+    if per_notch is None:
+        per_notch = calibrate_scroll(timeout=timeout, verbose=verbose)
+    if not per_notch or per_notch <= 0:
+        say("  the wheel is not calibrated against the table, so a notch "
+            "count cannot be turned into a row. Refusing to guess.")
+        return None
+
+    # read=False: scroll_to_end would OCR the whole table and park, 1.9s, and
+    # every row of it is discarded -- this reads the header band below.
+    if scroll_to_end(up=True, timeout=timeout, verbose=False,
+                     read=False) is None:
+        say("  the view could not be driven to the top.")
+        return None
+
+    notches = int(round((index - 1) / per_notch))
+    if notches:
+        # SCROLL_POINT, not the table centre, and NO park afterwards.
+        #
+        # The park existed to get the cursor's tooltip off the table before a
+        # read. This reads TABLE_HEAD_BAND alone, and SCROLL_POINT is seven
+        # rows below it, so the tooltip is nowhere near what is about to be
+        # read. That is 0.38s and a 0.30s cursor move saved on every row.
+        #
+        # checked=True: scroll_to_end confirmed the table is what the wheel
+        # reaches, one scroll ago, and nothing has touched the window since.
+        scroll_wheel(*SCROLL_POINT, -notches, checked=True)
+    row = read_top_row()
+    if row is None:
+        say(f"  row {index} was scrolled to but could not be read.")
+        return None
+    say(f"  row {index} is at the top of the view after {notches} notch(es): "
+        f"{row.name!r}")
+    return row
+
+
+def step_row(notches: int = 1, verbose: bool = True) -> "Row | None":
+    """Move the view down `notches` and read whatever is now at the top.
+
+    THE PRIMITIVE A BATCH WALKS WITH. goto_row is the absolute form and pays
+    a scroll-to-top every time; rows taken in order do not need it -- row N+1
+    is one notch below row N.
+
+    Measured: reaching rows 1..8 from the top each time costs 0+1+..+7 notches
+    and eight scroll-to-tops; stepping costs seven notches and one.
+
+    Carries none of the per-scroll overhead, and each omission has a reason:
+
+      no table_scrollable   the caller checked before the walk, and nothing
+                            between two steps can have changed it
+      no park_cursor        SCROLL_POINT is seven rows below TABLE_HEAD_BAND,
+                            so the cursor's tooltip cannot cover what is read
+      no full-table read    read_top_row is 0.34s against await_rows' 1.85s
+
+    The caller is expected to check what comes back against what it believes
+    is there -- the row model's answer -- because nothing here verifies that
+    the view moved by exactly one row.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    if notches:
+        scroll_wheel(*SCROLL_POINT, -int(notches), checked=True)
+    row = read_top_row()
+    if row is None:
+        say(f"  the top row could not be read after {notches} notch(es).")
+    return row
+
+
 def table_scrollable(verbose: bool = True) -> bool:
     """Whether wheel notches will reach the listings rather than the camera.
 
@@ -11687,11 +11895,17 @@ def table_scrollable(verbose: bool = True) -> bool:
 
 
 def scroll_to_end(up: bool, timeout: float = 8.0,
-                  verbose: bool = True) -> list[Row] | None:
+                  verbose: bool = True, read: bool = True) -> "list[Row] | None":
     """Drive the view to the top (up) or bottom, and return what is showing.
 
     Relies on the clamp: asking for more than the list can give is a no-op, so
     this needs no knowledge of how long the list is.
+
+    `read=False` skips the table read and returns [] on success. It costs 1.9s
+    -- a full-table OCR plus a park -- and a caller that is about to read a
+    different region anyway was paying for a view it then threw away. The
+    distinction between [] and None is preserved: None still means the view
+    could not be driven.
     """
     def say(message: str) -> None:
         if verbose:
@@ -11702,8 +11916,14 @@ def scroll_to_end(up: bool, timeout: float = 8.0,
 
     centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
               (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
-    scroll_wheel(*centre, SCROLL_TO_END_NOTCHES if up else -SCROLL_TO_END_NOTCHES)
+    # table_scrollable ran at the top of this function, so the wheel does not
+    # need to ask again.
+    scroll_wheel(*centre,
+                 SCROLL_TO_END_NOTCHES if up else -SCROLL_TO_END_NOTCHES,
+                 checked=True)
     park_cursor(settle=TOOLTIP_CLEAR_SECONDS)
+    if not read:
+        return []
     rows = await_rows(timeout)
     if not rows:
         say("  the table could not be read after scrolling.")
@@ -21930,6 +22150,8 @@ _TRADE_FRAME_GEOMETRY = {
     "DISCONNECT_REGION": "box",
     "TRADE_WINDOW_SEARCH": "box",
     "TRADE_TOP_BAND": "box",
+    "TABLE_HEAD_BAND": "box",
+    "SCROLL_POINT": "point",
     # NPC_EXCLUDE_ZONES is NOT here: it is derived from the client rect in
     # apply_layout, not from the Trade window's frame. See the fractions above.
     # Anchored on the Inventory panel, not the Trade window, but mapped the
