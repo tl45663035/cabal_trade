@@ -161,8 +161,15 @@ rule("favourite slots")
 check(purchase.favourite_point(L, 1) == L.point(geo.FAVOURITE_FIRST),
       "slot 1 is the first favourite")
 step = (purchase.favourite_point(L, 2)[0] - purchase.favourite_point(L, 1)[0])
-check(step == L.length(geo.FAVOURITE_PITCH),
-      "the gap between slots is the SCALED pitch, not the raw one")
+# Within a pixel of the scaled pitch, not exactly equal: the two POSITIONS
+# round independently, so their difference can differ from the rounded
+# DISTANCE by one. What matters is that it tracks the scale rather than the
+# raw constant -- 42 or 43 at 0.75, never 57.
+check(abs(step - L.length(geo.FAVOURITE_PITCH)) <= 1,
+      f"the gap between slots is the SCALED pitch ({step}px), not the raw one "
+      f"({geo.FAVOURITE_PITCH}px)")
+check(step != geo.FAVOURITE_PITCH,
+      "and at scale 0.75 it is definitely not the raw pitch")
 check(purchase.favourite_point(L, 1)[1] == purchase.favourite_point(L, 10)[1],
       "all ten sit on one row")
 for bad in (0, 11, -1):
@@ -209,6 +216,13 @@ M = purchase.offers_match_slot
 O = purchase.Offer
 check(M(4, [O(1, "Chaos Core Set X 148", 1, 148, 1)]),
       "slot 4 (Chaos Core Set) accepts its own bundle")
+check(M(4, [O(1, "Chacs Core Set X 148", 1, 148, 1)]),
+      "and still accepts it with a glyph flaked -- 'Chaos' reads as 'Chacs' "
+      "through this project's own renderer, and an exact prefix test rejected "
+      "the correct results and burned all five retries")
+check(not M(3, [O(1, "Chacs Core Set X 148", 1, 148, 1)]),
+      "but the BOUNDARY still holds under the same noise: the looseness is in "
+      "the name, not in what may follow it")
 check(not M(3, [O(1, "Chaos Core Set X 148", 1, 148, 1)]),
       "slot 3 (Chaos Core) REJECTS slot 4's results. 'chaoscore' is contained "
       "in 'chaoscoresetx148', so a containment test accepted them and priced "

@@ -75,10 +75,10 @@ def read_state(layout: Layout,
     def seen(phrase: str) -> bool:
         return ocr.find_phrase(words, phrase, tolerance) is not None
 
-    # The title AND a tab label. One word alone can come from the 3D world
-    # behind the panel.
-    window = (all(seen(m) for m in geo.TRADE_WINDOW_MARKERS)
-              and any(seen(m) for m in geo.TRADE_WINDOW_EITHER))
+    # ANY of the markers. See geometry.TRADE_WINDOW_MARKERS: the window's own
+    # title does not read reliably, so presence is established from the plain
+    # UI text that is always on one tab or the other.
+    window = any(seen(m) for m in geo.TRADE_WINDOW_MARKERS)
 
     # The sort control lives inside the same band, so the direction costs
     # nothing on top of the tab question -- the words are already read. Only

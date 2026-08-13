@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 import time
+from difflib import SequenceMatcher
 from dataclasses import dataclass
 
 from PIL import Image
@@ -48,6 +49,13 @@ _PACK_IN_NAME = re.compile(r"\bx\s*([0-9][0-9,]*)\s*$", re.I)
 # What may legally follow a bound item's name in a listing: a bundle count and
 # nothing else. See offers_match_slot.
 _BUNDLE_SUFFIX = re.compile(r"x\d+")
+
+# How close a listing's leading characters must be to the bound item's name.
+# Loose enough to survive a substituted glyph in a dozen characters, tight
+# enough that a different item does not clear it -- and the boundary check
+# beside it, not this number, is what separates an item from a longer one
+# whose name starts the same way.
+NAME_SIMILARITY = 0.82
 
 
 @dataclass(frozen=True)
@@ -195,11 +203,24 @@ def purchase_ready(layout: Layout, verbose: bool = True,
 # --------------------------------------------------------------------------
 
 def _number(text: str) -> "int | None":
-    match = _PRICE.search(text or "")
-    if not match:
+    """Every digit in `text`, as one number. None when there are none.
+
+    ALL the digits, not the first group. OCR splits a long figure at its
+    thousands separators as often as not, and taking the first match then
+    silently drops the leading digits: rendered through this project's own
+    benchmark, '5,900,000' came back as the two words '5,' and '900,000', and
+    a first-match parser read it as 900,000 -- an order of magnitude low, in
+    the direction that makes an item look cheap.
+
+    Safe because a caller passes ONE cell. The column boundaries have already
+    separated the price from the quantity, so there is nothing else in the
+    string to concatenate with.
+    """
+    digits = re.sub(r"[^0-9]", "", text or "")
+    if not digits:
         return None
     try:
-        return int(match.group(0).replace(",", ""))
+        return int(digits)
     except ValueError:
         return None
 
@@ -310,7 +331,19 @@ def offers_match_slot(slot: int, offers: "list[Offer]") -> bool:
     # So: the listing must START with the bound name, and whatever follows
     # must be a bundle count and nothing else. More letters mean a different,
     # longer item.
-    if not head.startswith(want):
+    # FUZZY ON THE NAME, EXACT ON THE BOUNDARY.
+    #
+    # An exact startswith cannot survive OCR. Rendered through this very
+    # benchmark, 'Chaos Core Set X 10' comes back as 'Chacs Core Set X 10' --
+    # one substituted glyph, and a strict prefix test then rejects the correct
+    # results and burns all five retries.
+    #
+    # But the looseness has to go into the NAME and not into the BOUNDARY,
+    # because the boundary is what does the safety work: it is the remainder
+    # after the bound name, not the spelling of the name, that separates
+    # 'Chaos Core' from 'Chaos Core Set'.
+    head_prefix = head[:len(want)]
+    if SequenceMatcher(None, want, head_prefix).ratio() < NAME_SIMILARITY:
         return False
     rest = head[len(want):]
     return rest == "" or _BUNDLE_SUFFIX.fullmatch(rest) is not None
