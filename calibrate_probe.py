@@ -25,6 +25,7 @@ actions are screen captures and OCR.
 """
 import io
 import sys
+import time
 import traceback
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -344,6 +345,88 @@ def tesseract_selftest():
         show("synthetic read", f"FAILED: {exc}")
 
 
+def anchor_stability(frames: int = 6, gap: float = 1.2):
+    """Read the anchors over several frames instead of one.
+
+    A single frame cannot tell a permanent failure from a passing one. The
+    game animates: tooltips fade, the target nameplate comes and goes, a sale
+    notification slides across the bottom-right, and the mouse cursor sits on
+    top of whatever it is over. Any of those can cover an anchor for the one
+    frame the probe happened to grab, and the report then says MISSING about a
+    word that is on screen 95% of the time.
+
+    That distinction changes the fix. An anchor missing on every frame is
+    wrong text, wrong upscale, or a word this build does not have. An anchor
+    missing on one frame in six is noise, and calibrate()'s own retry already
+    handles it -- chasing it wastes the time the real fault needed.
+    """
+    rule(f"4c. are the anchors STABLE? ({frames} frames, ~{gap}s apart)")
+    print("  A single frame cannot separate a permanent failure from a passing")
+    print("  one. Anything below 100% here was on screen for some frames and")
+    print("  not others, and only 0% is worth chasing.\n")
+    seen = {phrase: 0 for phrase, _ in trade.REF_ANCHORS_ALL}
+    where: dict = {}
+    scales = []
+    for n in range(frames):
+        if n:
+            time.sleep(gap)
+        try:
+            shot = trade.grab()
+            words = trade.find_words(shot, (0, 0, *shot.size), 40.0)
+            lines = trade._text_lines(words)
+        except Exception as exc:                  # noqa: BLE001 - diagnostic
+            print(f"    frame {n + 1}: FAILED {exc}")
+            continue
+        for phrase, _ref in trade.REF_ANCHORS_ALL:
+            centre = trade._anchor_centre(phrase, words, lines)
+            if centre:
+                seen[phrase] += 1
+                where.setdefault(phrase, []).append(centre)
+        try:
+            fitted = trade.measure_layout(verbose=False, source=shot)
+        except TypeError:
+            fitted = trade.measure_layout(verbose=False)
+        except Exception:                         # noqa: BLE001 - diagnostic
+            fitted = None
+        if fitted is not None:
+            scales.append(fitted.scale)
+        print(f"    frame {n + 1}: {sum(1 for p_ in seen if seen[p_] > n)}"
+              f" anchors, scale "
+              f"{f'{fitted.scale:.4f}' if fitted else 'REFUSED'}")
+    print()
+    always = never = 0
+    for phrase, ref in trade.REF_ANCHORS_ALL:
+        hits = seen[phrase]
+        pts = where.get(phrase, [])
+        jitter = ""
+        if len(pts) > 1:
+            xs = [c[0] for c in pts]
+            ys = [c[1] for c in pts]
+            jx, jy = max(xs) - min(xs), max(ys) - min(ys)
+            if jx or jy:
+                jitter = f"  moved {jx}x{jy}px between frames"
+        if hits == frames:
+            always += 1
+            mark = "always"
+        elif hits == 0:
+            never += 1
+            mark = "NEVER   <-- real: wrong text, wrong upscale, or absent"
+        else:
+            mark = f"{hits}/{frames}  <-- intermittent, something covers it"
+        print(f"    {phrase:<12} {mark}{jitter}")
+    print("")
+    print(f"  {always} on every frame, {never} on none, "
+          f"{len(seen) - always - never} intermittent")
+    if scales:
+        spread = max(scales) - min(scales)
+        show("fitted scale range", f"{min(scales):.4f} .. {max(scales):.4f}",
+             f"spread {spread:.5f}" + ("  stable" if spread < 0.005
+                                       else "  <-- UNSTABLE, the fit is moving"))
+    elif frames:
+        show("fitted scale", "REFUSED on every frame",
+             "<-- calibration cannot run in this state")
+
+
 def probe():
     env()
     tesseract_selftest()
@@ -457,15 +540,37 @@ def probe():
         print("  them: 'missing' can mean the word is absent, split in two,")
         print("  covered by a dialog, or rendered where nobody looked.")
         if missing:
-            print("\n  Highest-confidence words actually read, in case an anchor")
-            print("  came back split (the known 1080p failure is 'Refresh' ->")
-            print("  'R' + 'efresh' at the wrong upscale):")
-            for w in sorted(words, key=lambda w: -w.conf)[:30]:
+            print("\n  What OCR actually read NEAR each missing anchor. This is")
+            print("  the evidence: a split word ('Refresh' -> 'R' + 'efresh' at")
+            print("  the wrong upscale) looks identical to an absent one in the")
+            print("  MISSING line above, and the two need opposite fixes.")
+            try:
+                seed = trade._ocr_reference_scale()
+            except Exception:                     # noqa: BLE001 - diagnostic
+                seed = 1.0
+            for phrase, ref in trade.REF_ANCHORS_ALL:
+                if trade._anchor_centre(phrase, words, lines) is not None:
+                    continue
+                cx, cy = int(ref[0] * seed), int(ref[1] * seed)
+                near = sorted(
+                    (w for w in words
+                     if abs(w.centre[0] - cx) < 220 and abs(w.centre[1] - cy) < 60),
+                    key=lambda w: abs(w.centre[0] - cx) + abs(w.centre[1] - cy))
+                print(f"\n    {phrase!r} expected near ({cx}, {cy}):")
+                if not near:
+                    print("      NOTHING readable within 220x60px -- the word is"
+                          " absent, covered,\n      or the seed put this box in"
+                          " the wrong place entirely.")
+                for w in near[:8]:
+                    print(f"      {w.text!r:22} conf {w.conf:5.1f} at {w.centre}")
+            print("\n  Highest-confidence words anywhere on screen:")
+            for w in sorted(words, key=lambda w: -w.conf)[:20]:
                 print(f"    {w.text!r:24} conf {w.conf:5.1f} at {w.centre}")
     except Exception:
         traceback.print_exc()
 
     row_count()
+    anchor_stability()
     rule("5. the fit")
     layout = None
     try:

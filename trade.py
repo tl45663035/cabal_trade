@@ -898,7 +898,13 @@ def _tooltip_lines(shot: "Image.Image",
     words = [w for w in find_words(shot, region, 25) if w.conf >= 40]
     lines: dict = {}
     for w in words:
-        lines.setdefault(round(w.centre[1] / 16), []).append(w)
+        # SCALED. This buckets words into lines, and it decides what a
+        # tooltip SAYS -- which is how convert_cores identifies the item in a
+        # slot before Ctrl+clicking it. At 0.76 the lines are 12px apart while
+        # a raw 16px bucket is wider than the gap, so two lines collapse into
+        # one, the name reads as a run-on and matches nothing.
+        bucket = max(4, LAYOUT.length(16))
+        lines.setdefault(round(w.centre[1] / bucket), []).append(w)
     out = []
     for key in sorted(lines):
         joined = " ".join(w.text for w in sorted(lines[key],
@@ -933,7 +939,7 @@ def hover_tooltip(x: int, y: int, settle: float | None = None,
     def attempt(wait: float) -> dict:
         # Approach from elsewhere: a move to the pixel the cursor already
         # occupies raises no event, and the tooltip never appears.
-        move_mouse(x - 140, y - 140)
+        move_mouse(x - LAYOUT.length(140), y - LAYOUT.length(140))
         time.sleep(0.18)
         move_mouse(x, y)
         time.sleep(wait)
@@ -988,7 +994,7 @@ def hover_tooltip(x: int, y: int, settle: float | None = None,
         if good(best):
             break
         # Park between tries so the next move genuinely re-enters the cell.
-        move_mouse(x - 300, y - 300)
+        move_mouse(x - LAYOUT.length(300), y - LAYOUT.length(300))
         time.sleep(0.25)
         best = attempt(wait)
     return best
@@ -2606,7 +2612,7 @@ def run_favourite_search(slot: int, settle: float = 3.0,
         # Approach from above so the pointer ENTERS the button: a move to the
         # pixel the cursor already occupies raises no event, and the control is
         # then never armed.
-        move_mouse(x, y - 45)
+        move_mouse(x, y - LAYOUT.length(45))
         time.sleep(0.2)
         click(x, y)
         time.sleep(settle)
@@ -2794,7 +2800,7 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         record("buy.refused", item=offer.name, price=offer.price, why=why)
         if dialog and dialog.get("cancel"):
             cx, cy = dialog["cancel"]
-            move_mouse(cx, cy + 60)
+            move_mouse(cx, cy + LAYOUT.length(60))
             time.sleep(0.2)
             click(cx, cy)
             time.sleep(1.0)
@@ -3093,7 +3099,7 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     say(f"  confirming {take} x {offer.name!r} "
         f"({take * offer.pack} item(s)) at {expected:,} Alz")
     bx, by = dialog["buy"]
-    move_mouse(bx, by + 60)
+    move_mouse(bx, by + LAYOUT.length(60))
     time.sleep(0.25)
     click(bx, by)
     time.sleep(2.5)
@@ -6666,7 +6672,19 @@ def _isolate_digits(
     """Black-on-white image of just the orange Alz digits, plus the box those
     digits occupy in the source image. None if the region holds no digits."""
     crop = image.crop(region).convert("RGB")
-    scale = 5
+    # NORMALISED TO THE REFERENCE SIZE, not a fixed multiplier.
+    #
+    # `region` already scales, so at 0.74 the crop arrives 26% smaller and a
+    # fixed 5x upscale hands Tesseract digits 26% smaller than the ones this
+    # threshold and ALZ_MAX_TEXT_HEIGHT were tuned against. This reads the
+    # shop's Alz balance, and a misread balance is a buy sized against money
+    # that is not there.
+    #
+    # Dividing by the layout scale keeps the FINAL glyph height constant at
+    # every resolution: 5x at reference, 7x at 0.74. Cost is flat -- the crop
+    # shrinks by scale^2 as the multiplier grows by 1/scale^2 -- which matters
+    # because the mask below is a per-pixel Python loop.
+    scale = max(2, int(round(5 / max(0.2, LAYOUT.scale))))
     crop = crop.resize((crop.width * scale, crop.height * scale), Image.LANCZOS)
 
     px = crop.load()
@@ -9326,9 +9344,36 @@ def _npc_label_words(line: "list[Word]") -> "tuple[bool, bool]":
 NPC_SEARCH_REGION = (600, 150, 1900, 900)
 # Belt and braces: reject a match landing in either bottom corner even if the
 # search box is ever widened.
+# AS FRACTIONS OF THE CLIENT RECT, because that is what they actually are.
+#
+# They were registered as Trade-frame "boxes", so they were transformed with
+# the Trade window's own origin and scale. But neither zone has anything to do
+# with the Trade window: the chat is pinned to the client's bottom-left and the
+# inventory panel to its right edge. The two frames coincide at the reference
+# resolution, which is why it looked correct.
+#
+# The 1080p probe showed the cost. Zone 2 came out (1374, 6, 1902, 1076) on a
+# client of (0, 23, 1920, 1040): it stopped 18px SHORT of the right edge, so a
+# strip of the inventory panel sat outside the exclusion, and it ran 36px past
+# the bottom. An NPC sweep landing in that strip clicks the inventory instead
+# of the NPC -- and a missed NPC click is a click-to-move that walks the
+# character away from the vendor mid-conversion.
+#
+# Fractions are exact at every resolution by construction, and they cannot
+# drift out of the client the way an offset-plus-scale box can. Derived from
+# the reference client (0, 23, 2560, 1392) and clipped to it:
+#   chat      x 0    -> 900  = 0.0000 -> 0.3516 of width
+#             y 700  -> 1392 = 0.4945 -> 1.0000 of height
+#   inventory x 1850 -> 2560 = 0.7227 -> 1.0000 of width, full height
+NPC_EXCLUDE_FRACTIONS = (
+    (0.0000, 0.4945, 0.3516, 1.0000),   # bottom-left: chat
+    (0.7227, 0.0000, 1.0000, 1.0000),   # right: inventory panel + notifications
+)
+# Filled in by apply_layout from the measured client rect. The reference values
+# below are what an uncalibrated run would use, and match the old literals.
 NPC_EXCLUDE_ZONES = (
-    (0, 700, 900, 1440),      # bottom-left: chat
-    (1850, 0, 2560, 1440),    # right: inventory panel and sale notifications
+    (0, 700, 900, 1392),
+    (1850, 23, 2560, 1392),
 )
 # The floating label sits above the model, centred on it, but how far above
 # depends on the camera angle and how close you are standing -- a single fixed
@@ -10223,10 +10268,11 @@ def name_column(image: Image.Image,
     half = qty.left - centre
     if half <= 0:
         return NAME_COLUMN
-    left, right = max(0, centre - half + 4), qty.left - 6
+    left, right = (max(0, centre - half + LAYOUT.length(4)),
+                   qty.left - LAYOUT.length(6))
     # A reversed box makes PIL raise mid-sequence, possibly after a cancel has
     # committed; fall back rather than crash.
-    if right - left < 40:
+    if right - left < LAYOUT.length(40):
         return NAME_COLUMN
     return (left, right)
 
@@ -10239,7 +10285,8 @@ def price_column(image: Image.Image,
     if qty_header is None or status_header is None:
         return None
     qtys, statuses = [qty_header], [status_header]
-    left, right = qtys[0].right + 4, statuses[0].left - 4
+    left, right = (qtys[0].right + LAYOUT.length(4),
+                   statuses[0].left - LAYOUT.length(4))
     return (left, right) if right > left else None
 
 
@@ -10259,7 +10306,8 @@ def status_column(image: Image.Image,
     function_header = _header(words, image, "Function")
     if status_header is None or function_header is None:
         return None
-    left, right = status_header.left - 6, function_header.left - 6
+    left, right = (status_header.left - LAYOUT.length(6),
+                   function_header.left - LAYOUT.length(6))
     return (left, right) if right > left else None
 
 
@@ -14029,11 +14077,19 @@ def profit_report() -> str:
 
     if totals:
         sales_n, all_gross, buys_n, all_spend, all_fees = totals
-        # Only the cost of what has sold is wanted here, to value the stock
-        # still held. The unit counts and the uncosted takings the same call
-        # returns belong to a profit figure, and profit is no longer reported
-        # from this function.
-        cogs = cost_of_goods_sold()[0]
+        # Only the COST is wanted here, to value the stock still held -- the
+        # uncosted takings belong to a profit figure, and profit is no longer
+        # reported from this function.
+        #
+        # The unit counts are kept, though, because the `held < 0` branch below
+        # names them. Taking [0] and discarding the rest left `priced` and
+        # `unpriced` undefined at that one reference: NameError, not a wrong
+        # number, and it would have taken the whole report down with it.
+        #
+        # It fires exactly when more has sold than the purchases cover, i.e.
+        # when the shop is clearing stock bought before the ledger existed --
+        # which is the normal state after a legacy restock, not a rare edge.
+        cogs, priced, unpriced, _uncosted = cost_of_goods_sold()
         # What has been paid for and NOT yet sold. Everything spent, less the
         # cost of the units that have left -- so a restock that just bought
         # 1,212 Sets shows as stock rather than as a loss.
@@ -21529,7 +21585,8 @@ _TRADE_FRAME_GEOMETRY = {
     "PURCHASE_DIALOG_BUTTONS": "box",
     "DISCONNECT_REGION": "box",
     "TRADE_WINDOW_SEARCH": "box",
-    "NPC_EXCLUDE_ZONES": "boxes",
+    # NPC_EXCLUDE_ZONES is NOT here: it is derived from the client rect in
+    # apply_layout, not from the Trade window's frame. See the fractions above.
     # Anchored on the Inventory panel, not the Trade window, but mapped the
     # same way for the same reason. Deriving ALZ_REGION from the client rect
     # replaced a tight 195x56 band with a whole screen quadrant -- and
@@ -21689,6 +21746,12 @@ def apply_layout(layout: "Layout") -> None:
         int(round(_REFERENCE_NPC_BODY_OFFSET[0] * layout.scale)),
         int(round(_REFERENCE_NPC_BODY_OFFSET[1] * layout.scale)))
     globals()["NPC_CLICK_OFFSETS"] = _npc_click_offsets()
+
+    # The exclusion zones, straight off the client's own edges.
+    globals()["NPC_EXCLUDE_ZONES"] = tuple(
+        (int(round(cl + fl * (cr - cl))), int(round(ct + ft * (cb - ct))),
+         int(round(cl + fr * (cr - cl))), int(round(ct + fb * (cb - ct))))
+        for fl, ft, fr, fb in NPC_EXCLUDE_FRACTIONS)
 
 
 _REFERENCE_NPC_BODY_OFFSET = NPC_BODY_OFFSET
