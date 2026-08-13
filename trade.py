@@ -6090,6 +6090,9 @@ RUN_KNOBS = {
     "every_minutes": (int, "gap between cycle STARTS; 0 = back to back"),
     "premium":       (bool, "open the shop by the inventory key, not the NPC"),
     "debug_frames":  (bool, "a screenshot after every input (slow)"),
+    "row_model":     (bool, "TRUST the 30-slot model: one seeding walk, then "
+                            "no discovery sweeps, and a disagreeing row ends "
+                            "the run instead of resyncing"),
 }
 
 
@@ -6201,6 +6204,7 @@ def export_live_config(path=None, verbose=True, run_shape=None):
         "every_minutes": run_shape.get("every_minutes", 0),
         "premium": run_shape.get("premium", False),
         "debug_frames": run_shape.get("debug_frames", False),
+        "row_model": run_shape.get("row_model", False),
     }
     # SEED ONLY. NEVER CLOBBER.
     #
@@ -10891,6 +10895,45 @@ FUZZY_NAME_MARGIN = 0.03
 # Well below FUZZY_NAME_THRESHOLD on purpose: this is not a match, it is
 # evidence that something very like the target is still on screen.
 UNMATCHED_NAME_SIMILARITY = 0.70
+# WHAT THIS BATCH COLLECTED, in canonical form.
+#
+# The similarity bar above separates "a glyph flaked, stop" from "it sold,
+# skip", and for ordinary Cores that works: nothing else on the board looks
+# like 'Force Core(Highest)'. Chaos bundles carry their COUNT IN THE NAME, so
+# the siblings of a sold bundle sit far above the bar --
+# 'Chaos Core Set X 218' against 'Chaos Core Set X 21' scores 0.968. A chaos
+# bundle that has genuinely sold can therefore never report 'missing' while
+# any sibling remains; it always reports 'unmatched', and the batch stops.
+#
+# That ended the 2026-08-12 run. The hook collected 'Chaos Core Set X 218' at
+# t=16544 and SAID SO -- "no longer in the table - fully sold and collected" --
+# and 333s later the batch went looking for it, found its siblings, called the
+# name unreadable and gave up the cycle. Three of those in a row tripped the
+# consecutive-failure breaker and stopped a healthy run 4h49m in.
+#
+# So the guard keeps its teeth and gains a memory: it only skips a name THIS
+# BATCH watched leave the table. Anything else still stops.
+_COLLECTED_FULLY: set = set()
+
+
+def note_fully_collected(name: str) -> None:
+    """Remember that `name` left the table for good, for locate_row's sake."""
+    key = _canonical(name)
+    if key:
+        _COLLECTED_FULLY.add(key)
+
+
+def forget_collected() -> None:
+    """Start a batch with no memory. Called once per batch, never mid-batch.
+
+    Scoped to the batch on purpose: an item collected an hour ago tells us
+    nothing about a listing of the same name registered since.
+    """
+    _COLLECTED_FULLY.clear()
+
+
+def was_fully_collected(name: str) -> bool:
+    return _canonical(name) in _COLLECTED_FULLY
 # A one- or two-character token in a name cell is almost always an option-
 # socket icon, not a word. Below this confidence it is dropped, so an item's
 # identity does not change with the icon's OCR luck.
@@ -16636,6 +16679,9 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             if len(lost) == 1 and not gained:
                 say(f"{target.name!r} is no longer in the table - fully sold "
                     "and collected.")
+                # Told to the batch, which may still have this row queued and
+                # would otherwise mistake its siblings for a bad read.
+                note_fully_collected(target.name)
                 # RETIRE THE LOT HERE TOO, not only in chaos_pass.
                 #
                 # clear_cheapest_chaos_lot had one caller, inside the chaos
@@ -17846,6 +17892,8 @@ def relist_rows(
     # Identity cannot separate identical stacks. Position can, and the batch
     # already knows which positions it has consumed.
     handled: set = set()
+    # Fresh per batch. See _COLLECTED_FULLY.
+    forget_collected()
 
     for position, (index, ref, action) in enumerate(targets, start=1):
         name = ref.name
@@ -18141,7 +18189,15 @@ def relist_rows(
                 if match is not None:
                     say(f"  it read cleanly on the second look.")
                     record("relist.reread_rescued", item=name)
-            if match is None:
+            if match is None and was_fully_collected(name):
+                # Not a bad read. This batch watched it leave.
+                say(f"{name!r} was collected earlier in this batch and is "
+                    f"gone; what is on screen are its siblings, whose names "
+                    f"differ only by their count. Skipping it rather than "
+                    f"stopping the cycle.")
+                record("relist.collected_midbatch", item=name)
+                match, note = None, "missing"
+            elif match is None:
                 say(f"{name!r} is on the table but its name did not read "
                     "clearly enough to act on, twice. Stopping rather than "
                     "skipping a live listing as though it had sold.")
@@ -23689,6 +23745,14 @@ def main() -> None:
         if _shape.get("debug_frames") and not args.debug_frames:
             globals()["DEBUG_ACTIONS"] = True
             print("  config.json: debug frames are ON.")
+        if _shape.get("row_model") and not args.row_model:
+            # Applied HERE, not beside the --row-model branch above: that runs
+            # before the file is read, so setting it there would be overwritten
+            # by the `else: SHOP.enforce = False` that follows it.
+            SHOP.enforce = True
+            print("  config.json: --row-model is ON. The 30-slot model is "
+                  "TRUSTED -- one seeding walk, then no discovery sweeps, and "
+                  "a row that disagrees ENDS THE RUN rather than resyncing.")
         print(f"  config.json: looping 'relist-rows {spec}' for {minutes} min, "
               f"every {every} min.")
         record("config.run_from_file", spec=spec, minutes=minutes, every=every)
