@@ -324,8 +324,8 @@ class Pipeline:
         return bool(self.inv_tab_ok) and tab == self.inv_tab
 
     # -- stage 1 ---------------------------------------------------------
-    def buy(self, item_slot, threshold=m.PRICE_DIFF_FLOOR, attempts=3,
-            verbose=True, still_wanted=None):
+    def buy(self, item_slot, free_rows=None, threshold=m.PRICE_DIFF_FLOOR,
+            attempts=3, verbose=True, still_wanted=None):
         # still_wanted is how many Sets are left to reach the target; the real
         # function declines a row 1 bundle far larger than that.
         self.log.append(("buy", item_slot))

@@ -527,7 +527,12 @@ class Pipeline:
         # buying, so it has to be settable independently of `pack`.
         self.left = in_bag
 
-    def buy(self, slot, target, verbose=True):
+    # `free_rows` mirrors buy_sets_until, which gained it on 2026-08-15 so the
+    # space clamp could bound even the exempt first order. Without it this
+    # double raised TypeError at restock_core's only buy call and the suite
+    # died there -- taking the ten buy-rule cases below with it, unrun. That is
+    # the same failure this file's other stubs already carry a note about.
+    def buy(self, slot, target, verbose=True, free_rows=None):
         self.log.append(("buy", target))
         self.left = self.pack
         return {"bought": self.pack}

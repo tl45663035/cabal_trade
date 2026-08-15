@@ -32,6 +32,7 @@ SUITES = [
     ("plan changes",          HERE / "plan_changes_test.py",  []),
     ("pin replay",            HERE / "pin_replay_test.py",    []),
     ("row model reconcile",   HERE / "reconcile_test.py",     []),
+    ("craft remainder sweep", HERE / "craft_sweep_test.py",   []),
     ("record guard",          HERE / "record_guard_test.py", []),
     ("pure suite",            HERE / "suite_pure.py",        []),
     ("floors: both items",    HERE / "floor_siena_test.py",  []),
