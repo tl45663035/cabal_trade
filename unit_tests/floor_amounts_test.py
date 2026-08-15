@@ -101,13 +101,40 @@ for raw in ("Chaos Core", "Chaos Core X 250", "chaos core"):
 # 2026-08-15: "Chaos Core Set X 25O" (zero read as O) scored 690,000 against a
 # true 172,500,000, a 250x collapse, and it takes the whole floor stack with it
 # because market_floor keys on the folded name and misses too.
+# A REFUSAL IS A PROHIBITIVE FLOOR, NEVER ZERO. register_item enforces
+# `require(not absolute_floor or price >= absolute_floor)`, so a floor of 0
+# short-circuits and the item lists at market -- the opposite of a safeguard.
+_TRUE = 690_000 * 250
 for _bad in ("Chaos Core Set X 25O",                      # 0 -> O
              "Chaos Core Set X 2SO",                      # 5 -> S as well
              "Chaos Core Set X 250 Use Period: 30 days"):  # trailer
-    check(m.item_price_floor(_bad) == 0,
-          f"{_bad!r} has a marker that did not parse, so it REFUSES to price "
-          f"rather than pricing at 1 unit. Got "
-          f"{m.item_price_floor(_bad):,}")
+    _f = m.item_price_floor(_bad)
+    check(_f > _TRUE,
+          f"{_bad!r} has a marker that did not parse, so it floors ABOVE any "
+          f"real price and the listing is refused. Got {_f:,}, needs to beat "
+          f"{_TRUE:,}")
+    check(_f != 0,
+          f"{_bad!r} must NOT return 0 -- 0 reads as 'no floor applies' and "
+          f"lists at market")
+
+# AND THE GUARD MUST NOT FIRE ON AN ORDINARY LETTER x. Every catalogue name
+# with one character swapped for X/x: if it still matches its entry, it must
+# still carry its full floor. The first cut of this guard zeroed 198 of 216
+# such names -- including "Yekaterina VIP MembXrship", a 104,000,000 item that
+# would then have listed at market, breaking the absolute VIP rule.
+_lost = []
+for _tok, _cat, _amt in m.ITEM_PRICE_FLOORS:
+    _base = m.item_price_floor(_cat)
+    for _i in range(len(_cat)):
+        for _rep in ("X", "x"):
+            _fz = _cat[:_i] + _rep + _cat[_i + 1:]
+            if m._item_price_floor_unit(m._PACK_ANYWHERE.sub(" ", _fz)) == 0:
+                continue                      # no longer matches: fine
+            if m.item_price_floor(_fz) < _base:
+                _lost.append(_fz)
+check(not _lost,
+      f"no fuzzed catalogue name loses its floor to the marker guard; "
+      f"{len(_lost)} did: {_lost[:4]}")
 
 # A CALLER THAT KNOWS THE COUNT OVERRIDES THE NAME.
 check(m.item_price_floor("Chaos Core Set X 25O", units=250) == 690_000 * 250,

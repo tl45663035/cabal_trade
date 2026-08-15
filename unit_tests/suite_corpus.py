@@ -443,7 +443,8 @@ def main():
                 entries.append(json.loads(line))
             except ValueError:
                 pass
-    entries = [e for e in entries if (CORPUS / e.get("file", "")).exists()]
+    entries = [e for e in entries
+               if e.get("file") and (CORPUS / e["file"]).exists()]
 
     # Attach the frames each inventory diff was computed from. The script
     # recorded the diff's ANSWER but the diff itself needs both inputs, so the

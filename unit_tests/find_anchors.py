@@ -75,7 +75,7 @@ def frames_by_tab():
             continue
         if not (row.get("layout") or {}).get("origin"):
             continue
-        if (CORPUS / (row.get("file") or "")).exists():
+        if row.get("file") and (CORPUS / row["file"]).exists():
             rows.append(row)
     rows.reverse()
 

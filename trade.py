@@ -9312,9 +9312,12 @@ def grab() -> Image.Image:
 # Labels recorded as a row in the index with NO screenshot. Pure measurements
 # whose frame would be noise -- and, at a few thousand a run, would evict the
 # frames that are evidence. See record().
+# NOT shopmodel.mismatch or shopmodel.reconciled. Those fire when the model and
+# the board disagree -- one row in a thousand, and the frame at that instant is
+# the single most diagnostic thing the corpus holds. Silence around exactly
+# that is what hid the 2026-08-13 divergence for thirteen minutes.
 NO_FRAME_LABELS = frozenset((
-    "phase", "table.scan", "table.walk",
-    "shopmodel.mismatch", "shopmodel.reconciled",
+    "phase", "table.scan", "table.walk", "chaos.remainder",
 ))
 
 RECORD_DIR = SCRIPT_DIR / "unit_tests" / "corpus"
@@ -9372,12 +9375,10 @@ def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
     # that found today's dialog bug would have been gone.
     #
     # These labels are numbers, not evidence. They go to the index only.
-    if label in NO_FRAME_LABELS:
-        image = None
-    else:
-        image = shot if shot is not None else _last_shot
-        if image is None:
-            return
+    keep_frame = label not in NO_FRAME_LABELS
+    image = (shot if shot is not None else _last_shot) if keep_frame else None
+    if keep_frame and image is None:
+        return
     try:
         RECORD_DIR.mkdir(parents=True, exist_ok=True)
         if _record_seq == 0:
@@ -9399,9 +9400,19 @@ def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
                 if digits.isdigit():
                     highest = max(highest, int(digits))
             _record_seq = highest
-        _record_seq += 1
-        name = f"run_{_record_seq:05d}.png"
-        image.save(RECORD_DIR / name)
+        # A FRAMELESS ROW BURNS NO SEQUENCE NUMBER AND WRITES NO FILE.
+        #
+        # The first cut of this set `image = None` and fell straight into
+        # image.save(), which raised AttributeError into the catch-all below --
+        # so those labels recorded NOTHING, not even the index row they were
+        # supposed to keep. The performance goal was met by accident, via an
+        # exception, and the measurement it was meant to preserve was destroyed.
+        if keep_frame:
+            _record_seq += 1
+            name = f"run_{_record_seq:05d}.png"
+            image.save(RECORD_DIR / name)
+        else:
+            name = None
         entry = {"file": name, "label": label,
                  "at": datetime.now().isoformat(timespec="seconds"),
                  # The layout the frame was READ under, not just when it was
@@ -9487,6 +9498,7 @@ def prune_recordings(keep: int = RECORD_KEEP,
             kept = 0
             with index.open("r", encoding="utf-8", errors="replace") as src, \
                     tmp.open("w", encoding="utf-8") as dst:
+                frameless = 0
                 for line in src:
                     stripped = line.strip()
                     if not stripped:
@@ -9494,6 +9506,18 @@ def prune_recordings(keep: int = RECORD_KEEP,
                     try:
                         name = json.loads(stripped).get("file")
                     except Exception:      # noqa: BLE001 - keep unparseable
+                        dst.write(line)
+                        kept += 1
+                        continue
+                    # A FRAMELESS ROW IS PRUNED WITH ITS NEIGHBOURS, NOT KEPT
+                    # FOREVER. Rows with no file survive "name not in gone" by
+                    # definition, so an index that gains ~20% frameless rows
+                    # would grow without bound. They are measurements, so the
+                    # newest RECORD_KEEP of them is as much as anyone wants.
+                    if name is None:
+                        frameless += 1
+                        if frameless > keep:
+                            continue
                         dst.write(line)
                         kept += 1
                         continue
@@ -14476,7 +14500,7 @@ def effective_floor(catalogue: int, reason: str,
     return catalogue, reason
 
 
-def listing_floor(name: str) -> tuple[int, str]:
+def listing_floor(name: str, units: "int | None" = None) -> tuple[int, str]:
     """The lowest price `name` may be listed at, and which rule set it.
 
     Two independent minimums, and the higher wins:
@@ -14518,7 +14542,7 @@ def listing_floor(name: str) -> tuple[int, str]:
     catalogue rather than a sample, so adding an entry cannot add an untested
     one.
     """
-    catalogue = item_price_floor(name)
+    catalogue = item_price_floor(name, units=units)
     if not COST_FLOOR_ON_RELIST:
         return catalogue, "the floor set for this item"
     cost = purchase_cost_basis(name)
@@ -14569,6 +14593,19 @@ def _pack_marker_unreadable(name: str) -> bool:
     upper = text.upper()
     for i, ch in enumerate(upper):
         if ch != "X":
+            continue
+        after = upper[i + 1:].strip()
+        # WHAT FOLLOWS MUST LOOK LIKE A MANGLED COUNT, not like the rest of a
+        # word. Without this the guard fired on every ordinary letter x:
+        # "Yekaterina VIP MembXrship" scored 0, and a 0 floor does not refuse
+        # -- register_item's require reads `not absolute_floor` as "no floor
+        # applies" -- so a 104,000,000 VIP would have listed at market. 198 of
+        # 216 single-character fuzzes of the catalogue names hit that.
+        #
+        # A count that OCR mangled still starts like a number: a digit, or one
+        # of the glyphs this file already records digits being read as (0->O,
+        # 5->S, 1->I/l).
+        if not after or not (after[0].isdigit() or after[0] in "OSIL"):
             continue
         if i and upper[i - 1].isdigit():
             continue                      # e.g. '2X' inside a number
@@ -14633,8 +14670,22 @@ def item_price_floor(name: str, units: "int | None" = None) -> int:
         # than pricing low. 0 here means "no floor could be established", and
         # register_item's `require` will not list without one -- which strands
         # the bundle for a cycle instead of selling it at a fraction.
+        # A PROHIBITIVE FLOOR, NOT ZERO.
+        #
+        # Zero was the first attempt and it is the opposite of a safeguard:
+        # register_item enforces `require(not absolute_floor or price >=
+        # absolute_floor)`, so a floor of 0 short-circuits and the item lists
+        # at whatever the market says. The comment claiming "require will not
+        # list without one" was simply wrong -- that require is in the branch
+        # for items with no NAME.
+        #
+        # So the refusal has to be expressed as a floor nothing can clear.
+        # SET_STACK_MAX is the largest bundle the game holds, so a floor of
+        # unit x that is above any real listing: the require fails, the item is
+        # not listed, and it strands for a cycle -- which is the outcome that
+        # was wanted. Loud, and in the safe direction.
         record("floor.pack_unreadable", name=name[:60], unit=unit)
-        return 0
+        return unit * SET_STACK_MAX
     return unit * max(1, count)
 
 
@@ -21133,7 +21184,42 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
         #
         # So it is recorded as what it is -- a remainder too small to craft --
         # and the work-tab gate accepts exactly that many.
-        note_chaos_remainder(after if after < craft_material_cost() else 0)
+        left = after if after < craft_material_cost() else 0
+        if left:
+            # SWEEP THE REMAINDER WITH THE x1 RECIPE RATHER THAN LEAVING IT.
+            #
+            # Leaving it was the first attempt and it deadlocks. The work-tab
+            # gate runs BEFORE chaos_pass, so a tab holding the remainder stops
+            # the cycle before reaching the only code that could absorb it:
+            # cycle N lists its bundle and is then counted a failure, N+1 and
+            # N+2 refuse at the gate without ever buying, and the breaker trips
+            # having relisted nothing. "The next purchase absorbs them" was
+            # wrong -- the purchase is downstream of the refusal.
+            #
+            # The x1 recipe takes ONE Core, so it can always consume 1 or 2.
+            # Two clicks and a queue, only when a remainder exists, and the tab
+            # is clean afterwards -- which means no gate anywhere has to be
+            # taught to forgive it.
+            say(f"  {left} Core(s) left over -- too few for the "
+                f"x{craft_material_cost()} recipe. Sweeping them with the x1 "
+                f"before the tab is checked.")
+            was = CHAOS_RECIPE
+            try:
+                globals()["CHAOS_RECIPE"] = 1
+                if select_chaos_recipe(verbose=verbose):
+                    click(*CRAFT_REQUEST_ALL)
+                    time.sleep(craft_settle_seconds(left))
+                    click(*CRAFT_COMPLETE_ALL)
+                    time.sleep(1.0)
+                    swept = craft_material_held()
+                    left = left if swept is None else swept
+                    say(f"  swept: {left} Core(s) still held.")
+            except Exception as exc:      # noqa: BLE001 - a sweep is a tidy-up
+                say(f"  the remainder sweep did not complete ({exc}); the tab "
+                    f"still holds {left}.")
+            finally:
+                globals()["CHAOS_RECIPE"] = was
+        note_chaos_remainder(left)
 
     # THE TAB AGAIN, IMMEDIATELY BEFORE COLLECTING.
     #
