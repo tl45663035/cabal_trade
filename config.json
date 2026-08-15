@@ -17,16 +17,20 @@
     "CHAOS_ROWS": "bundles to keep on the board",
     "CHAOS_RESTOCK_AT_OR_BELOW_ROWS": "rebuy at or below this many",
     "CHAOS_BUY_QUANTITY": "Cores per top-up",
-    "CHAOS_MARGIN_FLOOR": "min Set-over-Core spread per unit",
+    "CHAOS_MARGIN_FLOOR": "min Set-over-Core spread per unit (chaos only)",
     "CHAOS_UNDERCUT": "Alz shaved off a chaos listing",
     "BUY_ENABLED": "restock the ordinary Cores",
     "RESTOCK_TARGET": "core min: hard floor per restock",
     "BUY_MAXIMUM": "core max: soft ceiling, and what a restock runs to",
-    "RESTOCK_AT_OR_BELOW_ROWS": "restock a Core at/below this many rows",
+    "RESTOCK_AT_OR_BELOW_ROWS": "TRIGGER: start restocking a Core once it is down to this many rows or fewer. The chaos equivalent is CHAOS_RESTOCK_AT_OR_BELOW_ROWS.",
+    "CORE_ROWS": "TARGET: rows each ordinary Core keeps on the board, the CHAOS_ROWS idea per type. Trigger and target are different questions: at or below the trigger it starts buying, and it stops at the target. The target also bounds how many rows a restock may reserve, which is what stops a type being refused over rows it would never have used.",
+    "CORE_ROWS_BY_ITEM": "per-item overrides of that target, every Core listed so the value in force is readable without knowing the default. The Core targets plus CHAOS_ROWS must fit the 30-row shop or the file is refused.",
+    "PRICE_DIFF_FLOOR": "profit margin a normal Core's Set must clear to be worth buying",
+    "PRICE_DIFF_FLOOR_BY_ITEM": "per-item overrides of that margin. Every normal Core is listed below so the value in force is readable without knowing the default. MIND THE GRADE: 'Force Core(High)' is a substring of 'Force Core(Highest)' and they are different items with different margins -- matching is on an exact name, never a prefix. An item named here that is not a favourite is REFUSED, so a typo cannot silently restore the default.",
     "run": "startup only: the shape of the run itself",
     "COST_FLOOR_ON_RELIST": "never relist below what the stock cost"
   },
-  "CHAOS_ENABLED": false,
+  "CHAOS_ENABLED": true,
   "CHAOS_ROWS": 5,
   "CHAOS_RESTOCK_AT_OR_BELOW_ROWS": 4,
   "CHAOS_BUY_QUANTITY": 200,
@@ -36,12 +40,26 @@
   "RESTOCK_TARGET": 200,
   "BUY_MAXIMUM": 500,
   "RESTOCK_AT_OR_BELOW_ROWS": 1,
+  "CORE_ROWS": 3,
+  "CORE_ROWS_BY_ITEM": {
+    "Force Core(High)": 3,
+    "Force Core(Highest)": 3,
+    "Force Core (Ultimate)": 3,
+    "Upgrade Core (Ultimate)": 3
+  },
+  "PRICE_DIFF_FLOOR": 10000,
+  "PRICE_DIFF_FLOOR_BY_ITEM": {
+    "Force Core(High)": 5000,
+    "Force Core(Highest)": 10000,
+    "Force Core (Ultimate)": 10000,
+    "Upgrade Core (Ultimate)": 10000
+  },
   "run": {
     "relist_rows": "1-18",
     "for_minutes": 600,
     "every_minutes": 0,
     "premium": true,
-    "debug_frames": false,
+    "debug_frames": true,
     "row_model": true
   },
   "COST_FLOOR_ON_RELIST": true

@@ -1236,9 +1236,16 @@ try:
         check(m.price_diff_floor_for(moved) == 7_777,
               f"moving {moved!r} moves it, got "
               f"{m.price_diff_floor_for(moved):,}")
-        check(m.price_diff_floor_for(other) == _saved_table[other],
+        # .get, not [] -- since 2026-08-14 only Force Core(High) carries an
+        # override and Force Core(Highest) falls through to the default. The
+        # containment risk this test exists for is UNCHANGED by that, and is
+        # in fact sharper: the two grades now resolve to DIFFERENT numbers, so
+        # a prefix match would show up as a wrong value rather than hiding
+        # behind two equal ones.
+        _want_other = _saved_table.get(other, m.PRICE_DIFF_FLOOR)
+        check(m.price_diff_floor_for(other) == _want_other,
               f"and does NOT move {other!r}: expected "
-              f"{_saved_table[other]:,}, got {m.price_diff_floor_for(other):,} "
+              f"{_want_other:,}, got {m.price_diff_floor_for(other):,} "
               f"-- the two grades are being confused")
 
     # An item with no entry falls back to the default, and moving a neighbour
@@ -1259,7 +1266,10 @@ check(m.PRICE_DIFF_FLOOR_BY_ITEM == _saved_table, "the table was restored")
 # The shipped values, stated once. A threshold decides where money goes, so a
 # silent change to one is worth a failing test rather than a quiet difference
 # in behaviour on the next run.
-for _item, _want in (("Force Core(Highest)", 5_000),
+# Updated 2026-08-14 at the operator's instruction: "put all normal cores
+# profit margin to 10k except FCH". Force Core(HIGH) keeps 5,000; Force Core
+# (HIGHEST) went to the 10,000 default with everything else.
+for _item, _want in (("Force Core(Highest)", 10_000),
                      ("Force Core(High)", 5_000),
                      ("Force Core (Ultimate)", 10_000),
                      ("Upgrade Core (Ultimate)", 10_000)):
@@ -1271,6 +1281,13 @@ for _item, _want in (("Force Core(Highest)", 5_000),
 # carries a pack marker. Neither may restore the default silently.
 for _variant in ("Force Core (Highest)", "Force Core(Highest) X 250",
                  "force core(highest)"):
+    check(m.price_diff_floor_for(_variant) == 10_000,
+          f"{_variant!r} still resolves to 10,000, got "
+          f"{m.price_diff_floor_for(_variant):,}")
+# And the same for the one item that IS excepted, where a missed match would
+# quietly raise its threshold from 5,000 to 10,000 and stop it restocking.
+for _variant in ("Force Core (High)", "Force Core(High) X 250",
+                 "force core(high)"):
     check(m.price_diff_floor_for(_variant) == 5_000,
           f"{_variant!r} still resolves to 5,000, got "
           f"{m.price_diff_floor_for(_variant):,}")

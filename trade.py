@@ -1927,17 +1927,22 @@ SET_SAVING_THRESHOLD = PRICE_DIFF_FLOOR      # older name, kept for callers
 # validate_price_diff_floors(), because a typo here reads as "this item is
 # back on the 10,000 floor" -- the quiet direction, which is exactly how the
 # original ENABLE_BUYING typo would have silently disabled an item.
+# ONE EXCEPTION, and it is Force Core(High).
+#
+# The operator's rule, 2026-08-14: "put all normal cores profit margin to 10k
+# except FCH". Everything else therefore takes PRICE_DIFF_FLOOR (10,000) by
+# falling through, including Force Core(HIGHEST), which held a 5,000 override
+# from 2026-08-08 and no longer does.
+#
+# NOTE THE GRADE ON EVERY LINE HERE. "Force Core(High)" is a SUBSTRING of
+# "Force Core(Highest)", and that containment is the recurring bug in this
+# file -- it has already cost a wrong purchase check and a wrong sort guard.
+# The two are different items with different thresholds now, so a mix-up is no
+# longer hidden by their happening to be equal. price_diff_floor_for matches on
+# an exact folded key rather than a prefix, and the tests assert both
+# independently.
 PRICE_DIFF_FLOOR_BY_ITEM: dict[str, int] = {
     "Force Core(High)":      5_000,
-    # Added 2026-08-08 at the operator's request. NOTE the grade: this is
-    # (Highest), a DIFFERENT item from "Force Core(High)" on the line above,
-    # and "Force Core(High)" is a substring of it. That containment is the
-    # recurring bug in this file -- it has already cost a wrong purchase check
-    # and a wrong sort guard -- so both entries are spelled in full and
-    # price_diff_floor_for matches on an exact folded key rather than a
-    # prefix. Both happen to be 5,000 now, which would hide a mix-up; the
-    # tests assert them independently for that reason.
-    "Force Core(Highest)":   5_000,
 }
 
 
@@ -4837,6 +4842,47 @@ def core_row_counts(listings: list) -> dict[int, int]:
 # never sees the chaos Core; that pipeline keeps its own bundle target.
 RESTOCK_AT_OR_BELOW_ROWS = 1
 
+# HOW MANY ROWS EACH ORDINARY CORE KEEPS ON THE BOARD -- the CHAOS_ROWS idea,
+# per type.
+#
+# Chaos has always had this: CHAOS_ROWS bundles, topped up when it falls to
+# CHAOS_RESTOCK_AT_OR_BELOW_ROWS. The ordinary Cores had only a shared pool --
+# "up to 12 rows total, doesn't matter where" -- so one type could take the
+# whole allowance and the rest got what was left. The operator asked for the
+# chaos treatment per type on 2026-08-14.
+#
+# It is also what unblocks a restock with nowhere to go. The row gate reserved
+# the WORST CASE a purchase could ever occupy -- five or six rows, sized for a
+# 999-Set stack landing on the target. On 2026-08-14 that paused Force
+# Core(High), which held ONE row and had been correctly flagged for restock,
+# because 5 free rows would not cover a 6-row reservation it was never going
+# to use. A target says how many rows the type is ALLOWED, so the reservation
+# becomes what it still lacks -- 2 -- and it proceeds.
+#
+# RESTOCK_AT_OR_BELOW_ROWS is the trigger (when to start); this is the target
+# (when to stop). They are different questions and the chaos pair spells them
+# out separately for the same reason.
+CORE_ROWS = 3
+CORE_ROWS_BY_ITEM: dict[str, int] = {}
+
+
+def core_rows_target(item: str) -> int:
+    """Rows this Core is meant to keep on the board. CORE_ROWS by default.
+
+    Matched on the same folded key as every other per-item lookup here, so the
+    game's inconsistent spacing before a bracket, and a table row's pack
+    marker, cannot miss and silently restore the default. MIND THE GRADE:
+    "Force Core(High)" is a substring of "Force Core(Highest)", and this
+    matches exact folded names, never prefixes.
+    """
+    want = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", item or "")))
+    if not want:
+        return CORE_ROWS
+    for name, rows in CORE_ROWS_BY_ITEM.items():
+        if _floor_key(item_name(name)) == want:
+            return max(0, int(rows))
+    return CORE_ROWS
+
 # WHICH CORE GETS RESUPPLIED FIRST when more than one is short.
 #
 # The operator's order (2026-08-12): "FCH -> UCU -> FCU -> FCHH. If any of them
@@ -5800,6 +5846,41 @@ def restock_core(item_slot: int,
                  f"{min(inside)}-{max(inside)}"
                  + (f" ({held} held so chaos can always fit "
                     f"{CHAOS_ROWS})" if held else ""))
+    # BOUNDED BY WHAT THIS TYPE IS STILL ALLOWED.
+    #
+    # `need` above is what the purchase could occupy at worst. This is what it
+    # may occupy at all: a type holding `have` rows against a target of
+    # core_rows_target may add the difference and no more. Reserving the worst
+    # case beyond that asks for rows the restock is not permitted to fill, and
+    # a refusal on rows it would never have used is a restock that never runs.
+    #
+    # 2026-08-14: Force Core(High) held one row, was correctly flagged at
+    # RESTOCK_AT_OR_BELOW_ROWS, and paused on "5 free, needs up to 6".
+    core_name = FAVOURITE_SLOTS.get(item_slot, "")
+    target_rows = core_rows_target(core_name)
+    # ASK THE MODEL HOW MANY ROWS THIS TYPE ALREADY HOLDS. It was seeded from a
+    # full walk and told about every register, cancel and collect since, so
+    # this needs no read. When it is not seeded the count is 0, which makes the
+    # allowance the whole target -- the most the type could ever add, so the
+    # bound is still real and still tighter than the blind worst case.
+    have_rows = 0
+    if SHOP.ready and core_name:
+        want_key = _floor_key(item_name(core_name))
+        have_rows = sum(
+            1 for i in SHOP.occupied_rows()
+            if _floor_key(item_name((SHOP.content(i) or {}).get("name") or ""))
+            == want_key)
+    allowance = max(0, target_rows - have_rows)
+    if allowance <= 0:
+        result["why"] = (f"already holding {have_rows} row(s), its target of "
+                         f"{target_rows}; nothing to restock")
+        say(f"  {result['why']}")
+        return result
+    if allowance < need:
+        say(f"  reserving {allowance} row(s), not {need}: it holds "
+            f"{have_rows} of a {target_rows}-row target, so that is all it "
+            f"may add.")
+        need = allowance
     if used + need > room:
         result["why"] = (f"paused: {where} used and a restock needs up to "
                          f"{need} more. It will NOT list outside the range, "
@@ -6272,6 +6353,16 @@ LIVE_KNOBS = {
     "RESTOCK_AT_OR_BELOW_ROWS":       (int, "restock a Core at/below this many rows"),
     "SHOP_MODEL_SHADOW":              (bool, "track the row model without acting"),
     "COST_FLOOR_ON_RELIST":           (bool, "never relist below what the stock cost"),
+    "PRICE_DIFF_FLOOR":               (int, "profit margin a normal Core's "
+                                            "Set must clear to be worth "
+                                            "buying"),
+    "PRICE_DIFF_FLOOR_BY_ITEM":       (dict, "per-item overrides of that "
+                                             "margin, by the game's own "
+                                             "spelling"),
+    "CORE_ROWS":                      (int, "rows each ordinary Core keeps "
+                                            "on the board, like CHAOS_ROWS"),
+    "CORE_ROWS_BY_ITEM":              (dict, "per-item overrides of that row "
+                                             "target"),
 }
 
 
@@ -6341,6 +6432,26 @@ def _live_config_problems(values):
             bad.append(f"{name} must be a whole number, got {want!r}")
         elif kind is int and want < 0:
             bad.append(f"{name} cannot be negative, got {want}")
+        elif kind is dict:
+            if not isinstance(want, dict):
+                bad.append(f"{name} must be an object, got {want!r}")
+            else:
+                # AN UNMATCHED KEY IS NOT A NO-OP. It means the operator asked
+                # for a different threshold on an item that then quietly kept
+                # the default, and the only evidence would be a restock that
+                # never fires -- which is why validate_price_diff_floors
+                # already refuses one at startup.
+                known = {_floor_key(item_name(n))
+                         for n in FAVOURITE_SLOTS.values()}
+                for key, floor in want.items():
+                    if isinstance(floor, bool) or not isinstance(floor, int):
+                        bad.append(f"{name}[{key!r}] must be a whole number, "
+                                   f"got {floor!r}")
+                    elif floor < 0:
+                        bad.append(f"{name}[{key!r}] cannot be negative")
+                    elif _floor_key(item_name(key)) not in known:
+                        bad.append(f"{name} names {key!r}, which is not a "
+                                   f"favourite item")
     if bad:
         return bad
 
@@ -6350,6 +6461,25 @@ def _live_config_problems(values):
     if val("CHAOS_ROWS") > SHOP_ROW_CAPACITY:
         bad.append(f"CHAOS_ROWS {val('CHAOS_ROWS')} is more than the "
                    f"{SHOP_ROW_CAPACITY}-row shop")
+    # THE CORES AND CHAOS MUST BOTH FIT. Chaos holds CHAOS_ROWS whatever else
+    # happens, so the Cores' targets have to leave room for it -- otherwise
+    # every cycle would flag a restock that the row gate then refuses, which
+    # is the loop this target exists to break.
+    _core_names = [n for s, n in FAVOURITE_SLOTS.items()
+                   if s not in CHAOS_SLOTS and "Set" not in n]
+    _by_item = val("CORE_ROWS_BY_ITEM") or {}
+    _promised = 0
+    for _n in _core_names:
+        _want = None
+        for _k, _v in _by_item.items():
+            if _floor_key(item_name(_k)) == _floor_key(item_name(_n)):
+                _want = _v
+                break
+        _promised += int(_want if _want is not None else val("CORE_ROWS"))
+    if _promised + val("CHAOS_ROWS") > SHOP_ROW_CAPACITY:
+        bad.append(f"the Core row targets add up to {_promised} and "
+                   f"CHAOS_ROWS is {val('CHAOS_ROWS')}, which is more than "
+                   f"the {SHOP_ROW_CAPACITY}-row shop")
     if val("CHAOS_RESTOCK_AT_OR_BELOW_ROWS") > val("CHAOS_ROWS"):
         bad.append(f"CHAOS_RESTOCK_AT_OR_BELOW_ROWS "
                    f"{val('CHAOS_RESTOCK_AT_OR_BELOW_ROWS')} is above "
@@ -12792,7 +12922,22 @@ def calibrate_scroll(timeout: float = 8.0, verbose: bool = True) -> "float | Non
                 record("scroll.calibrated",
                        rows_per_notch=_SCROLL_ROWS_PER_NOTCH,
                        probe=probe, attempt=attempt + 1)
-                scroll_to_end(up=True, timeout=timeout, verbose=False)
+                # BACK UP BY WHAT WAS SENT DOWN, not by a blind run at the top.
+                #
+                # scroll_to_end fires SCROLL_TO_END_NOTCHES (22) and relies on
+                # the clamp to absorb the excess, which is right when the
+                # position is unknown -- and it is not unknown here. This
+                # function has just sent `probe * (attempt + 1)` notches down
+                # from a known top and, on this very line, proved the wheel
+                # moves one row per notch. Sending exactly that many back is
+                # the same measurement used in reverse.
+                #
+                # Measured 2026-08-14: the blind version cost 6.5s of the
+                # 33s that ran before the enumeration read a single row.
+                sent = probe * (attempt + 1)
+                centre = ((TRADE_REGION[0] + TRADE_REGION[2]) // 2,
+                          (TRADE_REGION[1] + TRADE_REGION[3]) // 2)
+                scroll_wheel(*centre, sent, settle=WHEEL_SETTLE)
                 return _SCROLL_ROWS_PER_NOTCH
             before = after
             say(f"  no row on this screen is distinctive enough to measure "
@@ -12904,18 +13049,46 @@ def _enumerate_at_step(step: int, timeout: float, verbose: bool,
     # alike was reported as "10 listing(s) in the shop (0 beyond the first
     # screen)" -- confident, wrong, and acted on by row number. Two full reads
     # is the price of not doing that.
-    tail = scroll_to_end(up=False, timeout=timeout, verbose=verbose)
-    if not tail:
-        return None
-    tail_keys = [_row_key(r) for r in tail]
+    # THE PROBE IS ONLY NEEDED WHILE POSITION HAS TO BE INFERRED FROM CONTENT.
+    #
+    # Everything above is true of a walk that does not know where it is. Once
+    # calibrate_scroll has measured the wheel, it does: `top` below is the
+    # absolute index of screen row 1, advanced by counted notches, and the shop
+    # is SHOP_ROW_CAPACITY slots deep by definition. So the sweep can stop when
+    # it has COVERED row 30 -- arithmetic, not a content match -- and the trip
+    # to the bottom buys nothing.
+    #
+    # It also retires the ambiguity the probe existed to catch. "A shop of
+    # thirty identical rows cannot be told apart top from bottom" is a
+    # statement about identifying position BY CONTENT; counting notches from a
+    # known top does not care whether the rows are identical, which is the same
+    # reasoning goto_row already runs on.
+    #
+    # Measured 2026-08-14: the probe cost 13.4s of the 33s that elapsed before
+    # the enumeration read its first row -- a scroll to the bottom and a scroll
+    # back, both full-length. That is the second walk the operator counted.
+    tail_keys = None
+    if scroll_rows_per_notch():
+        if stop_after is None:
+            # The whole shop, expressed as a position rather than as a
+            # landmark to bump into.
+            stop_after = SHOP_ROW_CAPACITY
+        rows = scroll_to_end(up=True, timeout=timeout, verbose=verbose)
+        if not rows:
+            return None
+    else:
+        tail = scroll_to_end(up=False, timeout=timeout, verbose=verbose)
+        if not tail:
+            return None
+        tail_keys = [_row_key(r) for r in tail]
 
-    rows = scroll_to_end(up=True, timeout=timeout, verbose=verbose)
-    if not rows:
-        return None
+        rows = scroll_to_end(up=True, timeout=timeout, verbose=verbose)
+        if not rows:
+            return None
 
     found: list[tuple[int, Row]] = [(i + 1, r) for i, r in enumerate(rows)]
     top = 1                      # absolute index of screen row 1
-    if [_row_key(r) for r in rows] == tail_keys:
+    if tail_keys is not None and [_row_key(r) for r in rows] == tail_keys:
         # The top read the same as the bottom. Normally that means the shop is
         # one screen deep -- but if every row on the screen is identical, a
         # thirty-deep shop reads exactly the same way, and returning ten rows
@@ -13053,7 +13226,10 @@ def _enumerate_at_step(step: int, timeout: float, verbose: bool,
         # relist skips them anyway. Three barren steps, so a lone unreadable
         # frame cannot end the sweep.
         barren = 0 if grew else barren + 1
-        at_tail = [_row_key(r) for r in rows] == tail_keys
+        # With the wheel calibrated there is no tail to compare against: the
+        # sweep ends on coverage, at the `stop_after` check above.
+        at_tail = (tail_keys is not None
+                   and [_row_key(r) for r in rows] == tail_keys)
         # Reaching the measured bottom ends the sweep -- but only when that
         # bottom is DISTINCTIVE. A shop ending in empty slots has an all-empty
         # bottom screen, and every all-empty screen on the way down matches it,
@@ -13063,7 +13239,7 @@ def _enumerate_at_step(step: int, timeout: float, verbose: bool,
         # sufficient: also require that no new LISTING has appeared for three
         # steps. Crossing a gap mid-shop cannot satisfy both, because there the
         # tail still holds listings and an all-empty screen does not match it.
-        if at_tail and (len(set(tail_keys)) >= 2 or barren >= 3):
+        if at_tail and (len(set(tail_keys or [])) >= 2 or barren >= 3):
             break
     else:
         say(f"  still scrolling after {steps} steps - refusing to continue.")
