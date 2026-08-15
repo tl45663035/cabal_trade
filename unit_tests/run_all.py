@@ -1,4 +1,4 @@
-﻿"""Run every test suite, time each one, report the total.
+"""Run every test suite, time each one, report the total.
 
     py unit_tests\\run_all.py
 
@@ -107,6 +107,7 @@ SUITES = [
     ("ledger accounting",     HERE / "accounting_test.py",    []),
     ("work-tab gate",         HERE / "worktab_gate_test.py",  []),
     ("chaos pair separation", HERE / "chaos_test.py",         []),
+    ("chaos recipe",          HERE / "chaos_recipe_test.py",  []),
     ("chaos pass ordering",   HERE / "chaos_pass_test.py",    []),
     ("chaos per-row floors",  HERE / "chaos_lots_test.py",    []),
     ("bought stock report",   HERE / "stock_report_test.py",  []),

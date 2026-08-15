@@ -1,4 +1,4 @@
-﻿"""Cabal Online automation: screen capture, Alz reading and Agent Shop trading.
+"""Cabal Online automation: screen capture, Alz reading and Agent Shop trading.
 
 Everything lives here -- capture, OCR, input and the trade automation -- so
 there is one file to read and one to run.
@@ -545,6 +545,9 @@ SHOP_MODEL_SHADOW = True
 # register_item clamps it back above the cost floor and MIN_PLAUSIBLE_PRICE, so
 # it can never be the thing that lists below what the Cores cost.
 CHAOS_UNDERCUT = 1
+# Which craft recipe the chaos pass uses. 1 = the [1500] x1, 2 = the [2500] x3.
+# See CRAFT_RECIPES for where each one's two clicks land.
+CHAOS_RECIPE = 1
 
 # Set by --chaos. Off unless asked for, like BUY_ENABLED: it spends money.
 CHAOS_ENABLED = False
@@ -629,8 +632,26 @@ CHAOS_CRAFT_TAB = 8               # the last inventory tab, where the card lives
 CHAOS_CRAFT_KEY_SLOT = (1, 8)     # row, col of the Remote Request Card
 CHAOS_WORK_TAB = 4                # crafted Sets land on whatever tab is showing
 
-CRAFT_CATEGORY_POINT = (121, 236)   # the "1000 - 1999" tree node
-CRAFT_RECIPE_POINT = (216, 318)     # "[1500] Chaos Core Set (x1)" under it
+# WHICH RECIPE TO CRAFT, AND WHERE ITS TWO CLICKS LAND.
+#
+# Keyed by the `chaos_recipe` config setting: 1 is the [1500] x1 under the
+# "1000 - 1999" tier, 2 is the [2500] x3 under "2000 - 2999", which takes three
+# Cores and yields three Sets per craft -- a third of the craft operations for
+# the same stock.
+#
+# TWO FIXED CLICKS, NO OCR, at the operator's instruction: "i dont want any
+# OCR, i want precise coordinate, click on the craft tier, then click on
+# recipe, then click Request all." An earlier version read the tree to find the
+# row and was rejected.
+#
+# Both points assume the tree is in its RESTING state -- every tier collapsed,
+# which is what the window opens to. A tier left open from an earlier action
+# moves the recipe row and the second click lands somewhere else; there is no
+# reader here to catch that.
+CRAFT_RECIPES = {
+    1: ((121, 236), (216, 318), "[1500] Chaos Core Set (x1)"),
+    2: ((121, 276), (216, 359), "[2500] Chaos Core Set (x3)"),
+}
 CRAFT_REPEAT_POINT = (104, 981)     # the Repeat checkbox
 CRAFT_REQUEST_ALL = (355, 980)      # queues one craft per available material
 CRAFT_COMPLETE_ALL = (1181, 980)    # collects every finished craft
@@ -650,8 +671,23 @@ CRAFT_WINDOW_REGION = (10, 30, 1300, 1020)
 # Rounded up, and never below one block: waiting too long costs seconds, while
 # clicking Complete All early leaves paid-for material sitting in the queue and
 # reports the shortfall as "the craft only made N", with no error anywhere.
-CRAFT_SETTLE_PER_BLOCK = 30.0
-CRAFT_SETTLE_BLOCK = 100
+# PER TIER. The x3 finishes far faster than the x1 -- the operator,
+# 2026-08-15: "wait time for tier 1 is 30s per 100 chaos, rounding up to
+# nearest granularity, tier 2 is 10s per 100 chaos". An unknown setting falls
+# back to the SLOWER rate: waiting too long costs seconds, while collecting
+# early leaves paid-for material in the queue and reports it as "the craft only
+# made N", with no error anywhere.
+#
+# GRANULARITY 50, NOT 100. The per-Core rate is unchanged -- tier 1 is 0.3s a
+# Core, tier 2 is 0.1s -- but rounding to the nearest 100 overpaid by up to a
+# whole block. The operator: "Lets do in the granularity of 50. i.e. if we have
+# 230 chaos core, we need to wait 25s."
+#
+#   tier 1: 30s per 100 -> 15s per 50   (230 Cores -> 5 blocks -> 75s)
+#   tier 2: 10s per 100 ->  5s per 50   (230 Cores -> 5 blocks -> 25s)
+CRAFT_SETTLE_PER_BLOCK_BY_RECIPE = {1: 15.0, 2: 5.0}
+CRAFT_SETTLE_PER_BLOCK = 15.0
+CRAFT_SETTLE_BLOCK = 50
 # The ceiling moves with the rate, or the scaling dies at three blocks: at 30s
 # per 100 the old 180s cap bit at 600 items, and a queue that accumulated after
 # a failed craft would have been under-waited by exactly the amount the rate
@@ -663,10 +699,21 @@ CRAFT_SETTLE_BLOCK = 100
 CRAFT_SETTLE_MAX = 300.0
 
 
+def craft_settle_rate() -> float:
+    """Seconds per CRAFT_SETTLE_BLOCK for the recipe in force."""
+    return CRAFT_SETTLE_PER_BLOCK_BY_RECIPE.get(
+        int(CHAOS_RECIPE or 1), CRAFT_SETTLE_PER_BLOCK)
+
+
+def craft_material_cost() -> int:
+    """Cores consumed per craft by the recipe in force: 1 for x1, 3 for x3."""
+    return 3 if int(CHAOS_RECIPE or 1) == 2 else 1
+
+
 def craft_settle_seconds(made: int) -> float:
     """How long to wait between queueing `made` crafts and collecting them."""
     blocks = -(-max(0, int(made)) // CRAFT_SETTLE_BLOCK)   # ceiling division
-    return min(CRAFT_SETTLE_MAX, CRAFT_SETTLE_PER_BLOCK * max(1, blocks))
+    return min(CRAFT_SETTLE_MAX, craft_settle_rate() * max(1, blocks))
 
 # "Required Material: Chaos Core  N/1" -- how many are held, and how many each
 # craft needs.
@@ -6613,6 +6660,9 @@ LIVE_KNOBS = {
     "CHAOS_BUY_QUANTITY":             (int, "Cores per top-up"),
     "CHAOS_MARGIN_FLOOR":             (int, "min Set-over-Core spread per unit"),
     "CHAOS_UNDERCUT":                 (int, "Alz shaved off a chaos listing"),
+    "CHAOS_RECIPE":                   (int, "which craft recipe chaos uses: "
+                                            "1 = [1500] Chaos Core Set (x1), "
+                                            "2 = [2500] Chaos Core Set (x3)"),
     "BUY_ENABLED":                    (bool, "restock the ordinary Cores"),
     "RESTOCK_TARGET":                 (int, "core min: hard floor per restock"),
     "BUY_MAXIMUM":                    (int, "core max: soft ceiling, and "
@@ -20548,11 +20598,21 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
         say("  the craft window is not open.")
         return 0
 
-    say("  selecting the Chaos Core Set recipe")
-    click(*CRAFT_CATEGORY_POINT)
+    entry = CRAFT_RECIPES.get(int(CHAOS_RECIPE or 1))
+    if entry is None:
+        say(f"  chaos_recipe {CHAOS_RECIPE} is not a known recipe "
+            f"({sorted(CRAFT_RECIPES)}); not crafting.")
+        record("craft.recipe_unknown", setting=CHAOS_RECIPE)
+        return 0
+    tier, recipe, label = entry
+    say(f"  selecting {label} (chaos_recipe {CHAOS_RECIPE}): tier at {tier}, "
+        f"recipe at {recipe}")
+    click(*tier)
     time.sleep(0.8)
-    click(*CRAFT_RECIPE_POINT)
+    click(*recipe)
     time.sleep(1.2)
+    record("craft.recipe_selected", setting=CHAOS_RECIPE,
+           tier=str(tier), recipe=str(recipe))
 
     shot = grab()
     if not craft_window_open(shot):
@@ -20646,7 +20706,8 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
     # chaos.craft_settled records made/waited every time, so if a live run ever
     # shows the queue outlasting the wait, the block size is set from evidence.
     say(f"  waiting {settle:.0f}s for {made} craft(s) to finish "
-        f"({CRAFT_SETTLE_PER_BLOCK:.0f}s per {CRAFT_SETTLE_BLOCK}, rounded up)")
+        f"({craft_settle_rate():.0f}s per {CRAFT_SETTLE_BLOCK}, rounded up, "
+        f"chaos_recipe {CHAOS_RECIPE})")
     time.sleep(settle)
     waited = settle
     say(f"  waited {waited:.0f}s")
@@ -23455,8 +23516,10 @@ _TRADE_FRAME_GEOMETRY = {
     # The Remote Request (craft) window. Its own panel, mapped through the
     # Trade frame like the vendor regions above -- and every one of these is
     # CLICKED, so an unscaled value here lands somewhere unintended.
-    "CRAFT_CATEGORY_POINT": "point",
-    "CRAFT_RECIPE_POINT": "point",
+    # A DICT of points, not a bare point -- see apply_layout. Registered so
+    # the recipe clicks scale with the window like every other coordinate;
+    # unregistered, they were the only craft points that never did.
+    "CRAFT_RECIPES": "recipe_points",
     "CRAFT_REPEAT_POINT": "point",
     "CRAFT_REQUEST_ALL": "point",
     "CRAFT_COMPLETE_ALL": "point",
@@ -23565,6 +23628,12 @@ def _capture_reference_geometry() -> None:
             value = (value[0] - ox, value[1] - oy, value[2] - ox, value[3] - oy)
         elif kind == "point":
             value = (value[0] - ox, value[1] - oy)
+        elif kind == "recipe_points":
+            # {setting: (tier_point, recipe_point, label)} -- both points move,
+            # the label does not.
+            value = {k: ((v[0][0] - ox, v[0][1] - oy),
+                         (v[1][0] - ox, v[1][1] - oy), v[2])
+                     for k, v in value.items()}
         elif kind == "x":
             value = value - ox
         elif kind == "y":
@@ -23618,6 +23687,9 @@ def apply_layout(layout: "Layout") -> None:
             value = layout.box(ref)
         elif kind == "point":
             value = layout.point(ref)
+        elif kind == "recipe_points":
+            value = {k: (layout.point(v[0]), layout.point(v[1]), v[2])
+                     for k, v in ref.items()}
         elif kind == "x":
             value = layout.x(ref)
         elif kind == "y":
