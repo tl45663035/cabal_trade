@@ -894,18 +894,74 @@ def try_held(pack, held):
     return try_order(pack, still_wanted=MAXIMUM - held)
 
 
-# Below the minimum, ANY bundle is taken -- meeting it comes first.
+# THE ROW LIMIT NOW OUTRANKS THE MINIMUM, at the operator's instruction of
+# 2026-08-14: "If next buy will push us over the limit per core type, we don't
+# purchase."
+#
+# It supersedes the older rule these checks were written for -- "If held = 0,
+# first buy always go through no matter what" -- but only where the two
+# actually collide, which is a bundle too large to fit the type's rows. The
+# reason for the change is on the record: with 198 Sets held, a single click
+# took a 999-Set bundle for 428,142,429 Alz and put Force Core (Ultimate) on 5
+# rows against a 3-row target.
+#
+# WHAT IT COSTS, stated plainly: a market offering only bundles bigger than the
+# limit will not restock that item at all. CORE_ROWS 3 is 750 Cores, so a
+# 999-only market never buys. That is the operator's trade to make and it is
+# made deliberately here.
+ROWS_CAP = m.core_rows_target(m.FAVOURITE_SLOTS.get(7, ""))
+FITS = ROWS_CAP * m.CONVERT_QUANTITY
+
+
+def rows_for(units):
+    return -(-units // m.CONVERT_QUANTITY)
+
+
+# THE FIRST ORDER IS EXEMPT FROM THE ROW LIMIT, whatever its size.
+#
+# The operator's rule, reaffirmed 2026-08-14: "let's keep the old rule true.
+# If first order, buy it even if 999x quantity." Refusing row 1 with nothing
+# held means buying NOTHING, and a market offering only large bundles would
+# never restock the item at all.
 for pack in (1, 50, MINIMUM, 800, 999):
     bought, why, orders = try_held(pack, held=0)
     check(bought is True,
-          f"with nothing held, a bundle of {pack} is taken whatever its size, "
+          f"with nothing held, a bundle of {pack} is taken whatever its size "
+          f"({rows_for(pack)} row(s) against a {ROWS_CAP}-row limit), "
           f"got {why!r}")
     check(orders == [pack], f"and it is row 1's bundle, got {orders}")
 
-bought, why, orders = try_held(999, held=MINIMUM - 1)
+# FROM THE SECOND ORDER ON, THE ROW LIMIT BINDS. This is where the money went:
+# the 2026-08-14 restock was on its SIXTH order with 198 Sets already held
+# when it took a 999-Set bundle for 428,142,429 Alz, putting Force Core
+# (Ultimate) on 5 rows against a 3-row target.
+bought, why, orders = try_held(999, held=198)
+check(bought is False,
+      f"198 already held plus a 999 bundle is {rows_for(198 + 999)} row(s), "
+      f"past the {ROWS_CAP}-row limit -- refused. Got {why!r}")
+check("row" in (why or "") and "limit" in (why or ""),
+      f"and the refusal names the row limit, got {why!r}")
+check(orders == [], "so the 428,142,429 Alz click does not happen")
+
+# The five smaller orders of that same restock still go through.
+for held_now, pack in ((3, 31), (34, 31), (65, 40), (105, 93)):
+    bought, why, orders = try_held(pack, held=held_now)
+    check(bought is True,
+          f"{held_now} held plus {pack} is {rows_for(held_now + pack)} "
+          f"row(s) and is still taken, got {why!r}")
+
+# Below the minimum but past the rows: the row limit outranks the minimum,
+# once something is held.
+bought, why, orders = try_held(999, held=1)
+check(bought is False,
+      f"one Set held is enough to arm the limit -- a 999 bundle is "
+      f"{rows_for(1 + 999)} row(s) and is refused. Got {why!r}")
+
+bought, why, orders = try_held(min(999, FITS - (MINIMUM - 1)), held=MINIMUM - 1)
 check(bought is True,
-      f"one Set short of the {MINIMUM} minimum, a 999 bundle is still taken "
-      f"-- that is what 'hard limit' means. Got {why!r}")
+      f"one Set short of the {MINIMUM} minimum, a bundle that still fits "
+      f"inside {ROWS_CAP} row(s) is taken -- that is what 'hard limit' "
+      f"means, within the row limit. Got {why!r}")
 
 # At or above the minimum, the maximum binds.
 for held, pack, allowed in [(MINIMUM, MAXIMUM - MINIMUM, True),
@@ -920,7 +976,13 @@ for held, pack, allowed in [(MINIMUM, MAXIMUM - MINIMUM, True),
           f"bought={bought} {why!r}")
     if not allowed:
         check(orders == [], f"and nothing is bought, got {orders}")
-        check("maximum" in why, f"and it names the maximum, got {why!r}")
+        # EITHER ceiling may be the one that names it. Since 2026-08-14 the
+        # per-type ROW limit is checked first and is the stricter of the two --
+        # 240 + 999 is 5 rows before it is 1,239 Sets -- so the reason can name
+        # the row limit instead of BUY_MAXIMUM. Both are correct refusals of
+        # the same purchase; what matters is that it declines and says why.
+        check("maximum" in why or "limit" in why,
+              f"and it names the ceiling that bound, got {why!r}")
 
 # The exact case that cost 428,142,429 Alz: 213 Sets already held and a 999
 # bundle on row 1. 213 is over the 200 minimum, so the maximum binds and 1,212

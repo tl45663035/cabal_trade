@@ -3543,6 +3543,85 @@ def buy_cheapest_set_detail(item_slot: int,
         # What still bounds it, unchanged and checked BEFORE this point:
         # the saving must clear `threshold` on every order, so no size of
         # bundle is bought at a spread that does not pay.
+        # WILL THIS PURCHASE PUSH THE TYPE PAST ITS ROW LIMIT? IF SO, DO NOT
+        # BUY IT.
+        #
+        # The operator's rule, 2026-08-14: "estimate how many rows we will use
+        # up after the next buy ... 199 current = 1 row, we about to buy 999
+        # which is 4 rows. Hence clicking buy on next purchase will result in
+        # total of 5 rows ... If next buy will push us over the limit per core
+        # type, we don't purchase."
+        #
+        # CHECKED BEFORE THE CLICK, and independently of everything below it.
+        # The BUY_MAXIMUM ceiling underneath is exempted while `held` is under
+        # RESTOCK_TARGET, deliberately, so a restock can always reach its
+        # minimum -- and that exemption is exactly what let a single click take
+        # a 999-Set bundle for 428,142,429 Alz on 2026-08-14 with 198 Sets
+        # already held. A row limit that only bounded what a restock RESERVED,
+        # as this did when it was first written, cannot stop that: the
+        # reservation is about shop space, and the money is spent before any
+        # row is asked for.
+        #
+        # So this bounds the PURCHASE, and it is not exempt for anyone. Rows
+        # already on the board for this item count too -- the limit is on how
+        # many rows the type occupies in the shop, not on how many one restock
+        # adds.
+        # NOT FOR CHAOS, AND NOT FOR A CALLER WITH NO TARGET.
+        #
+        # Chaos manages its own shelf through CHAOS_ROWS and its own pipeline;
+        # core_rows_target would hand it the ordinary Core default and cap a
+        # bundle it is entitled to buy. And `still_wanted is None` means the
+        # caller asked for a specific purchase rather than a restock to a
+        # target -- a manual buy is not a restock and is not row-managed.
+        # THE FIRST ORDER IS STILL EXEMPT. The operator's older rule stands
+        # and was reaffirmed on 2026-08-14: "If first order, buy it even if
+        # 999x quantity."
+        #
+        # Refusing row 1 with nothing held means buying NOTHING -- a market
+        # offering only large bundles would never restock the item at all, and
+        # the identical bundle would have been taken without complaint had a
+        # smaller one not happened to be listed first. So an empty bag buys
+        # whatever is on offer.
+        #
+        # This does NOT reopen the incident it was written for. That was the
+        # SIXTH order of the restock, with 198 Sets already held, and the row
+        # limit binds from the second order onward -- which is exactly where
+        # the 999-Set, 428,142,429 Alz click sat.
+        #
+        # NOT FOR CHAOS, AND NOT FOR A CALLER WITH NO TARGET. Chaos manages its
+        # own shelf through CHAOS_ROWS; core_rows_target would hand it the
+        # ordinary Core default and cap a bundle it is entitled to buy. And
+        # `still_wanted is None` means the caller asked for a specific
+        # purchase rather than a restock to a target -- a manual buy is not
+        # row-managed.
+        rows_cap = 0
+        if (held > 0 and still_wanted is not None
+                and item_slot not in CHAOS_SLOTS):
+            rows_cap = core_rows_target(FAVOURITE_SLOTS.get(item_slot, ""))
+        on_board = 0
+        if SHOP.ready:
+            want_key = _floor_key(item_name(FAVOURITE_SLOTS.get(item_slot, "")))
+            on_board = sum(
+                1 for i in SHOP.occupied_rows()
+                if _floor_key(item_name((SHOP.content(i) or {}).get("name")
+                                        or "")) == want_key)
+        rows_after = on_board + -(-(held + target.pack) // max(1,
+                                                              CONVERT_QUANTITY))
+        if rows_cap and rows_after > rows_cap:
+            say(f"  {held} Set(s) held and {on_board} row(s) already listed; "
+                f"row 1 holds {target.pack}, which would need "
+                f"{rows_after} row(s) against a {rows_cap}-row limit for "
+                f"{FAVOURITE_SLOTS.get(item_slot, 'this item')} - not buying.")
+            record("buy.row_cap", item=FAVOURITE_SLOTS.get(item_slot, ""),
+                   held=held, pack=target.pack, on_board=on_board,
+                   rows_after=rows_after, cap=rows_cap)
+            return outcome(False,
+                           f"row 1 bundle of {target.pack} would take "
+                           f"{FAVOURITE_SLOTS.get(item_slot, 'this item')} to "
+                           f"{rows_after} row(s), past its {rows_cap}-row "
+                           f"limit",
+                           saving=saving)
+
         below_minimum = held < RESTOCK_TARGET
         if (BUY_NEVER_EXCEED_TARGET and still_wanted is not None
                 and not below_minimum
@@ -5635,7 +5714,8 @@ def list_cores(core_name: str, slots, timeout: float = 8.0,
             # like a verified listing.
             verified = sanity_check(core_name, report.get("price"), qty,
                                     timeout=timeout, verbose=verbose,
-                                    expect_at_least=expect_rows)
+                                    expect_at_least=expect_rows,
+                                    absolute_row=report.get("row"))
             if not verified:
                 say(f"WARNING: {core_name!r} was registered from slot {slot} "
                     f"but the shop table does not show it at "
@@ -5690,7 +5770,8 @@ def list_cores(core_name: str, slots, timeout: float = 8.0,
                 # would have left the incident's own route unguarded.
                 verified = sanity_check(core_name, report.get("price"), qty,
                                         timeout=timeout, verbose=verbose,
-                                        expect_at_least=expect_rows)
+                                        expect_at_least=expect_rows,
+                                        absolute_row=report.get("row"))
                 if not verified:
                     say(f"WARNING: {core_name!r} was registered from tab {tab} "
                         f"slot {slot} but the shop table does not show it at "
@@ -17183,6 +17264,22 @@ def register_item(
                         if SHOP.enforce:
                             raise
                         SHOP.reset("register into a full shop")
+                # HAND THE LANDING ROW TO WHOEVER CHECKS THIS LISTING.
+                #
+                # `landed` is the ABSOLUTE row the model says this registration
+                # went to. Without it in the report, sanity_check re-read the
+                # ten VISIBLE rows and numbered them 1..10 by screen position,
+                # so a listing that landed at absolute row 12 was verified
+                # against screen row 10 -- a different listing entirely.
+                #
+                # Measured 2026-08-14: registered to row 12, checked row 10,
+                # reported "MISMATCH ... price 211,332, quantity 54" against an
+                # expected 210,912 x 250, printed "CHECK THE SHOP", and refused
+                # to count the 250 toward the target -- so a 66-second convert
+                # and list round was thrown away and repeated. Nothing was
+                # wrong with the listing.
+                if isinstance(report, dict):
+                    report["row"] = landed
                 say(f"Registered ({row},{col}) qty {qty} at {price:,} Alz "
                     f"each ({panel['net_sales']:,} total)."
                     + (f" Row {landed}." if landed else ""))
@@ -18188,7 +18285,8 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 "not re-reading the table to confirm it.")
         elif not sanity_check(target.name, report.get("price"),
                               report.get("qty"),
-                              timeout=timeout, verbose=verbose, found=found):
+                              timeout=timeout, verbose=verbose, found=found,
+                              absolute_row=report.get("row")):
             bad = found.get("row")
             if bad is None:
                 # Could not verify (table unreadable, refresh failed). That is
@@ -18213,7 +18311,12 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             # was never constructed, the wrong listing stayed on the market,
             # and the unattended loop carried on.
             try:
+                # absolute_row, so the MODEL is told about the right slot.
+                # bad.index is a screen position by contract; without this the
+                # withdrawal would cancel the correct row on screen and empty
+                # a different one in the model.
                 withdrawn = cancel_item(bad.index, expect=RowRef.of(bad, [bad]),
+                                        absolute_row=found.get("absolute_row"),
                                         timeout=timeout, verbose=verbose)
             except FatalAbort:
                 raise
@@ -18283,6 +18386,7 @@ def sanity_check(
     verbose: bool = True,
     found: dict | None = None,
     expect_at_least: int | None = None,
+    absolute_row: int | None = None,
 ) -> bool:
     """After relisting, confirm the table really holds what we meant to list.
 
@@ -18316,7 +18420,47 @@ def sanity_check(
         return False
     park_cursor()
 
-    rows = await_rows(timeout)
+    # THE ROW IT LANDED ON, IF THE CALLER KNOWS IT.
+    #
+    # await_rows numbers the ten VISIBLE rows 1..10 by SCREEN position. A
+    # registration can land anywhere in the thirty-slot shop, so checking the
+    # screen means checking whichever listing happens to be sitting in that
+    # position -- which is how a listing at absolute row 12 was verified
+    # against row 10 and declared a mismatch.
+    #
+    # With the row known, go to it and read the one band it occupies: the same
+    # measured, notch-counted access the relist path uses, and cheaper than the
+    # full-table read it replaces. Only for rows past the first screen; within
+    # it, screen position IS the absolute row once the view is at the top,
+    # which await_rows below already gives.
+    rows = None
+    if absolute_row is not None and absolute_row > SCREEN_ROWS:
+        if goto_row(absolute_row, timeout=timeout, verbose=False):
+            top = read_top_row()
+            if top is not None:
+                # ITS INDEX STAYS AT THE SCREEN POSITION, deliberately.
+                #
+                # goto_row put absolute `absolute_row` at screen 1, and the
+                # withdrawal below this function calls cancel_item(bad.index),
+                # which takes a SCREEN position and keys the model off a
+                # SEPARATE absolute_row argument. Stamping the absolute number
+                # onto .index here would fix the log and break the click --
+                # the mirror of the bug being fixed. So the row keeps screen
+                # numbering and the absolute row travels beside it, in `found`.
+                rows = [top]
+                if found is not None:
+                    found["absolute_row"] = absolute_row
+                say(f"  checking absolute row {absolute_row} (at screen 1 "
+                    f"after {absolute_row - 1} notch(es)) where the "
+                    f"registration landed, not whatever is on screen.")
+            else:
+                say(f"  could not read absolute row {absolute_row}; falling "
+                    f"back to the visible rows.")
+        else:
+            say(f"  could not scroll to absolute row {absolute_row}; falling "
+                f"back to the visible rows.")
+    if rows is None:
+        rows = await_rows(timeout)
     if not rows:
         say("  the table could not be read.")
         return False
