@@ -4191,9 +4191,23 @@ def forget_unlisted() -> None:
 # stock carried over CONVERTS AND LISTS IT instead of buying more. The bag is
 # the record; this is just the script's knowledge of it.
 #
-# Deliberately process-lifetime and not persisted: a new run cannot know
-# whether the bag was emptied by hand between runs, and a stale carry would
-# stop a legitimate purchase forever. Within one run it is authoritative.
+# PROCESS-LIFETIME, AND NOT PERSISTED. Within one run this is authoritative;
+# across runs it does not exist.
+#
+# It was persisted to the ledger for a while, to stop a restart meeting a
+# dirty work tab it could not account for. That traded one failure for a worse
+# one. The bag can be emptied, sold or rearranged by hand between runs, so a
+# restored carry is a claim about the world that nothing has verified -- and
+# acting on it means converting and listing goods the script only BELIEVES are
+# there, while a stale entry stops legitimate buying indefinitely. The same
+# reconciliation below already had to exist for exactly that reason: 84 ghost
+# Sets survived four runs on 2026-08-11 and cost Force Core(Highest) its
+# restocking entirely.
+#
+# The operator's rule, 2026-08-14: each script launch is a separate run, and it
+# does not attempt to recover leftovers from a previous one. A dirty tab on
+# cycle 1 is somebody else's mess -- it is reported and refused, which is a
+# cycle failure and not a death, and nothing tries to adopt what is in it.
 _CARRIED_SETS: dict[int, int] = {}
 
 
@@ -4202,69 +4216,12 @@ def carried_sets(slot: int) -> int:
     return max(0, int(_CARRIED_SETS.get(slot, 0)))
 
 
-def _persist_carried(slot: int, count: int) -> None:
-    """Mirror one carry row to the ledger. Never raises.
-
-    Bookkeeping that must survive the process, because the failure it prevents
-    only happens ACROSS one: a restart meeting a dirty work tab with no memory
-    of why raises FatalAbort and dies on cycle 1, repeatedly.
-    """
-    conn = sales_db()
-    if conn is None:
-        return
-    try:
-        with conn:
-            if count > 0:
-                conn.execute(
-                    "INSERT INTO carried (slot, count, noted) VALUES (?,?,?) "
-                    "ON CONFLICT(slot) DO UPDATE SET count=excluded.count, "
-                    "noted=excluded.noted",
-                    (int(slot), int(count),
-                     _dt.datetime.now().isoformat(" ", "seconds")))
-            else:
-                conn.execute("DELETE FROM carried WHERE slot = ?", (int(slot),))
-    except Exception:  # noqa: BLE001 - a carry note must never cost a listing
-        pass
-    finally:
-        try:
-            conn.close()
-        except Exception:  # noqa: BLE001
-            pass
-
-
-def load_carried() -> None:
-    """Restore the carry registry from the ledger, once per process.
-
-    Called before the first work-tab check. Without it a restart cannot tell
-    its own paid-for Sets from an item nobody can account for, and refuses the
-    only way it knows how -- fatally.
-    """
-    conn = sales_db()
-    if conn is None:
-        return
-    try:
-        for slot, count in conn.execute(
-                "SELECT slot, count FROM carried WHERE count > 0"):
-            if int(slot) == 0:
-                note_chaos_strand(True)
-            else:
-                _CARRIED_SETS[int(slot)] = int(count)
-    except Exception:  # noqa: BLE001
-        pass
-    finally:
-        try:
-            conn.close()
-        except Exception:  # noqa: BLE001
-            pass
-
-
 def note_carried_sets(slot: int, count: int) -> None:
     """Record that `count` Sets for `slot` are in the bag, unlisted."""
     if count > 0:
         _CARRIED_SETS[slot] = int(count)
     else:
         _CARRIED_SETS.pop(slot, None)
-    _persist_carried(slot, count)
 
 
 def clear_carried(slot: int) -> None:
@@ -4408,19 +4365,17 @@ _CHAOS_STRAND_UNIT_COST = 0
 def note_chaos_strand(stranded: bool = True, unit_cost: int = 0) -> None:
     """Chaos left Cores or Sets in the work tab, or has just cleared them.
 
-    Persisted under slot 0 -- chaos has no favourite slot of its own -- so a
-    restart still recognises the goods as its own instead of raising
-    FatalAbort over a tab it could have crafted.
+    Lives for this process only. It used to be persisted under slot 0 so a
+    restart would recognise the goods as its own; that is gone with the rest of
+    the cross-run carry, because each launch is a separate run and a strand
+    recorded by an earlier one is not evidence about this one's work tab.
     """
     global _CHAOS_STRANDED, _CHAOS_STRAND_UNIT_COST
     if stranded and unit_cost > 0:
         _CHAOS_STRAND_UNIT_COST = int(unit_cost)
     elif not stranded:
         _CHAOS_STRAND_UNIT_COST = 0
-    was = _CHAOS_STRANDED
     _CHAOS_STRANDED = bool(stranded)
-    if was != _CHAOS_STRANDED:
-        _persist_carried(0, 1 if _CHAOS_STRANDED else 0)
 
 
 def chaos_stranded() -> bool:
@@ -5222,6 +5177,7 @@ def shop_listing_pairs(timeout: float = 8.0,
     # reaches rows past the first screen by scrolling. Left on the Purchase
     # tab, that scroll moves the OFFERS instead -- and the whole buying design
     # rests on row 1 being the cheapest.
+    note_scan("shop_listing_pairs", "enumerating the whole shop")
     if not register_tab_open() and not open_trade_window(
             timeout=max(timeout, 15.0), verbose=verbose):
         return None
@@ -5243,6 +5199,7 @@ def whole_shop_listings(timeout: float = 8.0,
     None rather than a short list: a partial read is exactly the input that
     makes a stocked Core look absent and buys 250 Sets of it.
     """
+    note_scan("whole_shop_listings", "enumerating the whole shop")
     if not register_tab_open() and not open_trade_window(
             timeout=max(timeout, 15.0), verbose=verbose):
         return None
@@ -5260,6 +5217,25 @@ def shop_rows_used(timeout: float = 8.0,
     Enumerated rather than read off the screen: ten rows are visible and thirty
     exist, and the whole question here is how close the SHOP is to full.
     """
+    # THE MODEL ALREADY KNOWS. Ask it before walking anything.
+    #
+    # This function enumerates the whole shop -- four traversals, about twenty
+    # seconds of OCR -- to answer a question the row model holds in a
+    # dictionary: it was seeded from a full walk and is told about every
+    # register, cancel and collect since. The operator's rule for this gate:
+    # "No need for walk here, model should contain this info beforehand."
+    #
+    # Only when the model is READY, which means seeded from a walk that reached
+    # all thirty slots. An unseeded model has no beliefs to report, and a short
+    # walk cannot tell an empty slot from one it never reached.
+    if SHOP.ready:
+        used = len(SHOP.occupied_rows())
+        if verbose:
+            print(f"  row model: {used}/{SHOP_ROW_CAPACITY} rows in use "
+                  f"(no walk needed).")
+        note_rows_used(used)
+        return used
+
     # Same reason as whole_shop_listings: this enumerates, enumerating
     # scrolls, and scrolling belongs on the Register tab.
     if not register_tab_open() and not open_trade_window(
@@ -5278,21 +5254,52 @@ def shop_rows_used(timeout: float = 8.0,
     return used
 
 
-def restock_rows_needed(target: int = RESTOCK_TARGET) -> int:
-    """Rows a restock of `target` Sets could occupy, worst case.
+def restock_rows_needed(target: int = RESTOCK_TARGET,
+                        held: int = 0,
+                        pack: "int | None" = None,
+                        total: "int | None" = None) -> int:
+    """Rows the restock about to run will actually need.
 
     A listing holds CONVERT_QUANTITY, so the row count is the Set count divided
-    by it -- but the Set count OVERSHOOTS the target, because buying stops at
-    the first order that reaches it and a Set stacks to SET_STACK_MAX. Sized
-    for that worst case: 250 asked for, 999 arriving on top, is five rows.
+    by it. The Set count overshoots the target, because buying stops at the
+    FIRST order that reaches it -- so the last purchase can carry most of a
+    bundle past the line.
+
+    THE SIZE OF THAT OVERSHOOT IS KNOWABLE, and this used to ignore it. The old
+    version discarded its argument and returned one flat number: 200 wanted
+    plus a 999 stack landing on top is 1,198 Sets, five rows, every time. That
+    is the worst case the hard limit permits, and it is nothing like the
+    typical one -- a restock buying 200 Sets in bundles of 28 lands on 224 and
+    needs one row. Reserving five to list one is how a shop with four free rows
+    refused a restock it had ample room for.
+
+    So: `held` is what is already in the bag and needs no buying, and `pack` is
+    the bundle size of the offer about to be taken -- row 1's, the only row
+    this script ever buys from. Given both, the arithmetic is exact to within
+    one bundle. Without `pack` it falls back to the old worst case, because an
+    unknown overshoot is not a small one.
+
+    `total` short-circuits all of it: when the caller already knows what the
+    bag will hold after the purchase, that number is the answer and no
+    overshoot is guessed on top of it. The operator's example -- holding 199,
+    with a buy that will reach 700 -- is ceil(700 / 250) = 3 rows, not 5.
     """
-    # Two worst cases, whichever is larger:
-    #
-    #   * one Set short of the minimum, then a full 999 stack on top -- the
-    #     hard limit permits exactly this, and it is the bigger of the two;
-    #   * the soft maximum, reached exactly.
-    worst = max(RESTOCK_TARGET - 1 + SET_STACK_MAX, BUY_MAXIMUM)
-    return max(1, -(-worst // max(1, CONVERT_QUANTITY)))
+    if total is not None:
+        return max(1, -(-max(0, int(total)) // max(1, CONVERT_QUANTITY)))
+    want = max(0, int(target) - max(0, int(held)))
+    if pack and pack > 0:
+        # The last bundle can carry at most `pack - 1` past the target.
+        total = max(0, int(held)) + want + (int(pack) - 1)
+        # Never claim less room than the run's own hard ceiling allows.
+        total = min(total, max(BUY_MAXIMUM, int(target) + int(pack)))
+    else:
+        # Two worst cases, whichever is larger:
+        #
+        #   * one Set short of the minimum, then a full 999 stack on top -- the
+        #     hard limit permits exactly this, and it is the bigger of the two;
+        #   * the soft maximum, reached exactly.
+        total = max(int(target) - 1 + SET_STACK_MAX, BUY_MAXIMUM)
+    return max(1, -(-total // max(1, CONVERT_QUANTITY)))
 
 
 def open_purchase_tab(timeout: float = 10.0, verbose: bool = True) -> bool:
@@ -5722,7 +5729,17 @@ def restock_core(item_slot: int,
     if resuming > 0:
         need = 1
     else:
-        need = restock_rows_needed(target)
+        # SIZED ON THIS PURCHASE, not on the worst one the limits permit.
+        #
+        # market_pack is row 1's bundle size for this item, taken by the init
+        # price read from the same row this restock will buy from. With it the
+        # overshoot is one bundle instead of an assumed 999-Set stack, and a
+        # 200-Set restock in bundles of 28 asks for the one row it needs rather
+        # than the five it never uses. 0 means the read did not price this item
+        # and the old worst case stands -- an unknown overshoot is not a small
+        # one.
+        need = restock_rows_needed(
+            target, pack=market_pack(FAVOURITE_SLOTS.get(item_slot, "")))
     if used is None:
         result["why"] = ("could not count the shop's rows, so there is no way "
                          "to know whether the result would fit")
@@ -9392,6 +9409,57 @@ class ShopModel:
     def occupied_rows(self) -> list[int]:
         return sorted(self._slots)
 
+    def refresh_floors(self, verbose: bool = True) -> int:
+        """Recompute every occupied row's floor and cost. Returns rows changed.
+
+        NEITHER OF THESE IS ON THE SCREEN, so this needs no walk and no OCR.
+        A floor comes from the operator's catalogue, from what the stock cost,
+        and from the market read; a cost comes from the ledger. All three are
+        available in memory, so this is a loop over at most thirty dictionaries.
+
+        It exists because of an ordering problem the model could not see. The
+        seeding walk runs at the top of the first cycle, before chaos has
+        bought anything, before the resupply has bought anything, and before
+        the market has been read -- so `purchase_cost_basis` is 0 for
+        everything and every row is adopted with a floor of 0. That is what
+        printed as "-" in the FLOOR column of the model table, and a floor of 0
+        is not a floor.
+
+        The buying and the market read then establish the real numbers, and
+        nothing told the rows that had already been adopted. This does.
+        """
+        if not self._ready:
+            return 0
+        changed = 0
+        for index in sorted(self._slots):
+            entry = self._slots[index]
+            name = entry.get("name") or ""
+            if not name:
+                continue
+            # Exactly what adopt() does, so a refreshed row and a freshly
+            # adopted one cannot disagree about the same item.
+            try:
+                cost = purchase_cost_basis(name) or market_floor(name)
+            except Exception:  # noqa: BLE001
+                cost = 0
+            try:
+                floor, _why = effective_floor(item_price_floor(name), "",
+                                              cost if COST_FLOOR_ON_RELIST
+                                              else 0)
+            except Exception:  # noqa: BLE001
+                floor = 0
+            if entry.get("floor") != (floor or 0) or entry.get("cost") != (
+                    cost or 0):
+                entry["floor"] = floor or 0
+                entry["cost"] = cost or 0
+                changed += 1
+        if verbose and changed:
+            print(f"  row model: floor and cost filled in for {changed} "
+                  f"row(s) now that buying and the market read are done.")
+        if changed:
+            record("shopmodel.floors_refreshed", rows=changed)
+        return changed
+
     def describe(self) -> str:
         """Every one of the 30 slots, as a table. What the model believes.
 
@@ -11964,6 +12032,7 @@ def read_top_row(source: "Image.Image | None" = None) -> "Row | None":
     caller that knows WHICH absolute row is at position 1 -- because it scrolled
     there deliberately -- does not need the other nine.
     """
+    note_scan("read_top_row", "OCR of the header band")
     shot = source if source is not None else grab()
     words = find_words(shot, TABLE_HEAD_BAND, 0.0)
     if not words:
@@ -11990,6 +12059,7 @@ def goto_row(index: int, timeout: float = 8.0,
 
     Returns None when the view cannot be driven or the row cannot be read.
     """
+    note_scan("goto_row", f"scrolling to row {index}")
     def say(message: str) -> None:
         if verbose:
             print(message)
@@ -12128,6 +12198,7 @@ def scroll_to_end(up: bool, timeout: float = 8.0,
     distinction between [] and None is preserved: None still means the view
     could not be driven.
     """
+    note_scan("scroll_to_end", "to the top" if up else "to the bottom")
     def say(message: str) -> None:
         if verbose:
             print(message)
@@ -12161,6 +12232,7 @@ def scroll_one(down: bool, before: list[Row], timeout: float = 8.0,
     other than 0 or 1 means the wheel did something unexpected, and the caller
     must stop rather than reinterpret it.
     """
+    note_scan("scroll_one", "down" if down else "up")
     def say(message: str) -> None:
         if verbose:
             print(message)
@@ -12234,6 +12306,7 @@ def scroll_chunk(notches: int, before: list[Row], timeout: float = 8.0,
     seen everything. A shift outside 0..notches means the wheel did something
     unexpected, and the caller must stop rather than reinterpret it.
     """
+    note_scan("scroll_chunk", f"{notches} notch(es)")
     def say(message: str) -> None:
         if verbose:
             print(message)
@@ -12493,10 +12566,43 @@ def note_walk(what: str, rows: "int | None" = None) -> int:
     return _WALK_COUNT
 
 
+# EVERY TRAVERSAL OF THE TABLE, not just the full walks.
+#
+# note_walk counts the deliberate sweeps. It could not answer the operator's
+# question on 2026-08-14 -- "I noticed we only print once, but in-game we
+# walked twice" -- because a walk is not the only thing that moves the table.
+# A wheel calibration scrolls and reads. goto_row scrolls to a row. Every chunk
+# step scrolls and OCRs. All of that is physically a walk to anyone watching
+# the screen, and all of it was silent.
+#
+# So this counts SCANS: any scroll burst or table read, whoever asks for it.
+# Unconditional, for the same reason note_walk is -- the quiet path is usually
+# the expensive one.
+_SCAN_COUNT = 0
+TABLE_TRACE = True
+
+
+def note_scan(what: str, detail: str = "") -> int:
+    """Announce one table scroll or read. Returns its number this cycle."""
+    global _SCAN_COUNT
+    _SCAN_COUNT += 1
+    if TABLE_TRACE:
+        print(f"    [scan #{_SCAN_COUNT}] {what}"
+              f"{' - ' + detail if detail else ''}")
+    record("table.scan", n=_SCAN_COUNT, what=what, detail=detail)
+    return _SCAN_COUNT
+
+
+def scan_count() -> int:
+    """How many table scrolls/reads have happened this cycle."""
+    return _SCAN_COUNT
+
+
 def reset_walk_count() -> None:
-    """New cycle, new count."""
-    global _WALK_COUNT
+    """New cycle, new counts -- both the walks and the scans."""
+    global _WALK_COUNT, _SCAN_COUNT
     _WALK_COUNT = 0
+    _SCAN_COUNT = 0
 
 
 def walks_this_cycle() -> int:
@@ -12649,6 +12755,7 @@ def calibrate_scroll(timeout: float = 8.0, verbose: bool = True) -> "float | Non
     to see than a one-row move, and dividing at the end recovers the per-notch
     figure either way.
     """
+    note_scan("calibrate_scroll", "probing the wheel")
     global _SCROLL_ROWS_PER_NOTCH
 
     def say(message: str) -> None:
@@ -13365,6 +13472,25 @@ def core_behind(set_name: str) -> str:
 _MARKET_FLOORS: dict = {}
 _MARKET_FLOORS_READ = False
 
+# ROW 1'S BUNDLE SIZE, per item, from the same read that priced it.
+#
+# The restock's row gate has to guess how far a purchase will overshoot its
+# target, because buying stops at the FIRST order that reaches it -- and the
+# size of that overshoot is one bundle. Without a bundle size the gate assumes
+# the worst the hard limit permits (a 999 stack) and reserves five rows to list
+# what is usually one.
+#
+# The market read already looks at row 1 of every favourite to price it, and
+# row 1 is the only row this script ever buys from. So the number is already on
+# the screen when the price is taken; keeping it costs nothing and no extra
+# search.
+_MARKET_PACKS: dict = {}
+
+
+def market_pack(name: str) -> int:
+    """Row 1's bundle size for `name` when the market was read. 0 if unknown."""
+    return int(_MARKET_PACKS.get(_floor_key(name), 0) or 0)
+
 
 def market_floor(name: str) -> int:
     """What the market wanted for `name` per unit when the run started. 0 if unread."""
@@ -13409,6 +13535,7 @@ def seed_market_floors(verbose: bool = True) -> int:
             say(f"  {name}: {unit:,}/unit is below the plausible bar; ignored.")
             continue
         _MARKET_FLOORS[_floor_key(name)] = unit
+        _MARKET_PACKS[_floor_key(name)] = pack
         priced += 1
         say(f"  {name}: {unit:,}/unit")
     record("floors.market_seeded", priced=priced,
@@ -14097,22 +14224,18 @@ def sales_db() -> "sqlite3.Connection | None":
                 CREATE INDEX IF NOT EXISTS chaos_lots_price
                     ON chaos_lots (listed_price);
 
-                -- WORK LEFT IN THE INVENTORY, ACROSS RESTARTS.
+                -- NOTE: there is no `carried` table here any more.
                 --
-                -- The carry registry and the chaos strand flag were
-                -- process-lifetime, so a restart met a dirty work tab with
-                -- carried_total() == 0 and raised FatalAbort -- turning a
-                -- recoverable strand into a run that dies on cycle 1, every
-                -- time, until a human clears the tab. Four such deaths are on
-                -- record for 2026-08-09 alone.
+                -- One existed, holding work left in the inventory so a restart
+                -- could resume it. That is gone: each launch is a separate run
+                -- and does not adopt a previous one's leftovers, because the
+                -- bag can be emptied or rearranged by hand in between and a
+                -- restored carry is a claim nothing has verified.
                 --
-                -- One row per slot; slot 0 is the chaos strand, which has no
-                -- favourite slot of its own.
-                CREATE TABLE IF NOT EXISTS carried (
-                    slot    INTEGER PRIMARY KEY,
-                    count   INTEGER NOT NULL,
-                    noted   TEXT    NOT NULL
-                );
+                -- It is NOT dropped. An older ledger will still have the table
+                -- and its rows; this file simply stops creating, reading and
+                -- writing it. Deleting data from a live ledger to tidy up a
+                -- schema is not a trade worth making.
                 """
             )
             conn.commit()
@@ -18400,32 +18523,6 @@ def relist_rows(
         # than a few rows being repriced late. It also runs before the restock
         # for a mundane reason -- both want the NPC and the Purchase tab, and
         # interleaving them would mean two trips.
-        # THE FLOOR EVERY CORE STARTS WITH.
-        #
-        # purchase_cost_basis is `this_run_only`, so on a fresh process it is 0
-        # for everything and an ordinary Core's floor is 0 with it -- and a
-        # floor of 0 is not a floor. The run would open by relisting stock it
-        # already holds at whatever the market happens to be, with nothing
-        # underneath: goods bought last night at 500,000 go out this morning at
-        # 400,000 and every guard is satisfied.
-        #
-        # So the market is read once, before anything is listed, and stands in
-        # until a real purchase replaces it. Reading it here rather than at
-        # startup is deliberate: this is the first point where the Purchase tab
-        # is open and calibrated, and chaos below is the first thing that can
-        # list anything.
-        #
-        # It costs one favourite search per item, once per process, and it buys
-        # nothing.
-        if not _MARKET_FLOORS_READ and not dry_run:
-            if open_purchase_tab(verbose=verbose) and                     set_purchase_sort_low_to_high(verbose=verbose):
-                say("Reading the market once, to floor every item this run "
-                    "holds before anything is relisted:")
-                seed_market_floors(verbose=verbose)
-            else:
-                say("Could not reach the Purchase tab to read market floors; "
-                    "Cores start on their catalogue floor only.")
-
         if CHAOS_ENABLED:
             chaos_pass(timeout=timeout, verbose=verbose,
                        scope=None if all_rows else list(rows))
@@ -18514,6 +18611,52 @@ def relist_rows(
                 say("Aborting: the resupply left something in the work tab.")
                 return False
 
+        # THE FLOOR EVERY CORE STARTS WITH -- READ AFTER BUYING, NOT BEFORE.
+        #
+        # purchase_cost_basis is `this_run_only`, so on a fresh process it is 0
+        # for everything and an ordinary Core's floor is 0 with it. A floor of
+        # 0 is not a floor: the run would open by relisting stock it already
+        # holds at whatever the market happens to be, with nothing underneath.
+        # Goods bought last night at 500,000 go out this morning at 400,000 and
+        # every guard is satisfied.
+        #
+        # ORDER MATTERS, AND THIS ORDER IS THE OPERATOR'S. Chaos and the
+        # resupply run FIRST, so everything they buy gets its floor the honest
+        # way -- from what was actually paid. The market read then fills in
+        # only what is still bare: stock held from before this run, which is
+        # exactly the case that has no cost basis and no other answer.
+        #
+        # Reading it first was tried and broke two things. It left the Trade
+        # window on the PURCHASE tab, which the chaos resupply below does not
+        # expect, and it priced items that were about to be bought anyway --
+        # paying for a market search to guess at a number the next thirty
+        # seconds would establish exactly.
+        #
+        # It costs one favourite search per item, once per process, and buys
+        # nothing.
+        if not _MARKET_FLOORS_READ and not dry_run:
+            if open_purchase_tab(verbose=verbose):
+                say("Reading the market once, to floor stock this run is "
+                    "holding but did not buy:")
+                seed_market_floors(verbose=verbose)
+            else:
+                say("Could not reach the Purchase tab to read market floors; "
+                    "stock held from before this run keeps its catalogue "
+                    "floor only.")
+            # BACK TO THE REGISTER TAB. Everything below reads the listing
+            # table, and open_purchase_tab left the window on the other side.
+            if not ensure_shop_ready(verbose=verbose):
+                say("Could not get back to the Agent Shop after reading the "
+                    "market.")
+                return False
+            # AND TEACH THE MODEL WHAT WAS JUST LEARNED. The seeding walk ran
+            # before any of this, so every row it adopted carries floor 0 --
+            # which is what printed as "-" in the model table. The floors are
+            # not on the screen and never were; they come from the ledger and
+            # from this read, so they are recomputed rather than re-walked.
+            if SHOP.ready:
+                SHOP.refresh_floors(verbose=verbose)
+
 
     snapshot = await_rows(timeout)
     if not snapshot:
@@ -18554,6 +18697,9 @@ def relist_rows(
 
     beyond = [i for i in rows if i > len(snapshot)]
     scrolling = bool(beyond) or all_rows
+    # One chaos collection per batch, so a bundle that cannot be collected
+    # cannot send the batch round again on every walk.
+    chaos_collected_this_batch = False
 
     # EVERY WALK SYNCS THE MODEL. The operator's rule: the init walk fills the
     # model in, every read after it syncs the model and says so, so a drift is
@@ -18690,6 +18836,67 @@ def relist_rows(
                                    verbose=verbose)
             if fixed:
                 say(f"  row model: corrected {fixed} row(s) from this walk.")
+
+        # A SOLD CHAOS BUNDLE IS COLLECTED THE MOMENT ANY READ SEES IT.
+        #
+        # chaos_pass runs at the top of the batch and reads the shelf itself,
+        # and that read goes blind: across the 2026-08-12 run it reported
+        # "0 live bundle(s), 0 sold" nine times, and once found three bundles
+        # already sold and uncollected. A bundle is ~145,000,000 Alz of money
+        # already earned, sitting on the board doing nothing.
+        #
+        # This walk has just read every row in range WITH ITS FUNCTION COLUMN,
+        # which is the same evidence chaos needs and is already paid for. So
+        # when it shows a bundle in Receive that the pass did not take, chaos
+        # is sent back in immediately rather than waiting for the next cycle --
+        # and chaos_pass collects before it counts, so the refill decision that
+        # follows is made against the true shelf.
+        #
+        # Guarded so it cannot loop: it fires only on a bundle actually seen
+        # sold, only once per batch, and the walk it acts on is discarded
+        # afterwards because collecting renumbers the table.
+        if (CHAOS_ENABLED and not dry_run and not chaos_collected_this_batch):
+            seen_sold = [r for r in chaos_shop_rows([row for _, row in listings])
+                         if getattr(r, "action", None) == "receive"]
+            if seen_sold:
+                chaos_collected_this_batch = True
+                where = ", ".join(str(r.index) for r in seen_sold)
+                say("")
+                say(f"CHAOS HAS SOLD and is uncollected at row(s) {where} "
+                    f"- collecting before anything else is priced.")
+                record("chaos.sold_seen_in_walk", rows=where,
+                       count=len(seen_sold))
+                forget_range_view()
+                chaos_pass(timeout=timeout, verbose=verbose,
+                           scope=None if all_rows else list(rows))
+                if not ensure_shop_ready(verbose=verbose):
+                    say("The Agent Shop did not reopen after collecting "
+                        "chaos.")
+                    return False
+                if not ensure_work_tab_empty(timeout=timeout,
+                                             verbose=verbose):
+                    say("Collecting chaos left items in the working inventory "
+                        "tab; nothing below can diff it safely.")
+                    return False
+                # THE TABLE RENUMBERED UNDER THE COLLECT, so this walk is no
+                # longer describing the rows it was read from. Re-take the
+                # walk -- not the whole batch: re-entering relist_rows would
+                # run the resupply and the market read again, and could do so
+                # repeatedly.
+                say("  re-reading the table after the chaos collection.")
+                forget_range_view()
+                listings = enumerate_listings(
+                    timeout=timeout, verbose=verbose,
+                    stop_after=None if all_rows else need)
+                if not listings:
+                    say("The shop could not be re-enumerated after collecting "
+                        "chaos - stopping rather than acting on a stale view.")
+                    return False
+                note_range_view(max(i for i, _ in listings), listings)
+                if SHOP.ready:
+                    SHOP.reconcile(listings, scope=set(rows) | set(beyond),
+                                   verbose=verbose,
+                                   source="the post-collect walk")
 
         catalogue = [row for _, row in listings]
         # How many rows each enabled Core still has, counted from the whole
@@ -22166,19 +22373,10 @@ def run_loop(
     reported and retried on the next tick. Only a locked workstation stops the
     loop outright, since nothing can work through that.
     """
-    # RESTORE WHAT A PREVIOUS PROCESS LEFT IN THE BAG, before anything checks
-    # the work tab. Without this a restart after a strand meets a dirty tab it
-    # cannot account for and raises FatalAbort on cycle 1 -- four such deaths
-    # are on record for 2026-08-09, each with paid-for goods sitting there.
-    load_carried()
-    if carried_total() or chaos_stranded():
-        parts = []
-        if carried_total():
-            parts.append(f"{carried_total()} carried Set(s)")
-        if chaos_stranded():
-            parts.append("an unfinished chaos pass")
-        print(f"Resuming with {' and '.join(parts)} recorded by an earlier "
-              f"run; the work tab will be cleared rather than refused.")
+    # NOTHING IS RESUMED FROM AN EARLIER RUN. This launch starts with an
+    # empty carry registry and no chaos strand, whatever the last one did.
+    # See _CARRIED_SETS for why restoring it was worse than the death it
+    # prevented.
 
     def say(message: str) -> None:
         if verbose:

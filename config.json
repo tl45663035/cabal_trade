@@ -26,9 +26,9 @@
     "run": "startup only: the shape of the run itself",
     "COST_FLOOR_ON_RELIST": "never relist below what the stock cost"
   },
-  "CHAOS_ENABLED": true,
-  "CHAOS_ROWS": 4,
-  "CHAOS_RESTOCK_AT_OR_BELOW_ROWS": 2,
+  "CHAOS_ENABLED": false,
+  "CHAOS_ROWS": 5,
+  "CHAOS_RESTOCK_AT_OR_BELOW_ROWS": 4,
   "CHAOS_BUY_QUANTITY": 200,
   "CHAOS_MARGIN_FLOOR": 15000,
   "CHAOS_UNDERCUT": 1,
