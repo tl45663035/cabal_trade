@@ -659,12 +659,23 @@ CRAFT_RECIPE_POINT = (216, 318)     # "[1500] Chaos Core Set (x1)" under it
 # 1000 - 1999 is open. The points below are only a fallback: craft_recipe_row
 # READS the tree and clicks what it finds, which is the same discipline the
 # rest of this file uses -- never guess a position that can be measured.
+# NO OCR. Two clicks at known points: the tier, then the recipe under it.
+#
+# Each entry is (tier_point, recipe_point, label), and each assumes the tree is
+# in its RESTING state -- every category collapsed -- when the tier is clicked.
+# That is what the craft window opens to, and clicking one tier expands only
+# that tier, so the recipe lands at a fixed offset beneath it.
+#
+# Measured off the operator's own screen, 2026-08-15:
+#   "999 and below"  y=196     (collapsed)
+#   "1000 - 1999"    y=236     -> "[1500] Chaos Core Set (x1)"  y=318
+#   "2000 - 2999"    y=276     -> "[2000] Sword Damage Amp"     y=319
+#                               -> "[2500] Chaos Core Set (x3)" y=359
 CHAOS_RECIPE = 1
-CRAFT_RECIPE_LABELS = {
-    1: ("1000", "1500"),        # (category node text, recipe text)
-    2: ("2000", "2500"),
+CRAFT_RECIPES = {
+    1: ((121, 236), (216, 318), "[1500] Chaos Core Set (x1)"),
+    2: ((121, 276), (216, 359), "[2500] Chaos Core Set (x3)"),
 }
-CRAFT_TREE_REGION = (20, 180, 720, 500)   # the recipe tree, left pane
 CRAFT_REPEAT_POINT = (104, 981)     # the Repeat checkbox
 CRAFT_REQUEST_ALL = (355, 980)      # queues one craft per available material
 CRAFT_COMPLETE_ALL = (1181, 980)    # collects every finished craft
@@ -684,8 +695,21 @@ CRAFT_WINDOW_REGION = (10, 30, 1300, 1020)
 # Rounded up, and never below one block: waiting too long costs seconds, while
 # clicking Complete All early leaves paid-for material sitting in the queue and
 # reports the shortfall as "the craft only made N", with no error anywhere.
+# PER TIER. The x3 recipe finishes far faster than the x1 -- the operator,
+# 2026-08-15: "wait time for tier 1 is 30s per 100 chaos, rounding up to
+# nearest granularity, tier 2 is 10s per 100 chaos". Keyed by chaos_recipe, and
+# an unknown setting falls back to the SLOWER rate: waiting too long costs
+# seconds, while collecting early leaves paid-for material in the queue and
+# reports it as "the craft only made N", with no error anywhere.
+CRAFT_SETTLE_PER_BLOCK_BY_RECIPE = {1: 30.0, 2: 10.0}
 CRAFT_SETTLE_PER_BLOCK = 30.0
 CRAFT_SETTLE_BLOCK = 100
+
+
+def craft_settle_rate() -> float:
+    """Seconds per CRAFT_SETTLE_BLOCK for the recipe in force."""
+    return CRAFT_SETTLE_PER_BLOCK_BY_RECIPE.get(
+        int(CHAOS_RECIPE or 1), CRAFT_SETTLE_PER_BLOCK)
 # The ceiling moves with the rate, or the scaling dies at three blocks: at 30s
 # per 100 the old 180s cap bit at 600 items, and a queue that accumulated after
 # a failed craft would have been under-waited by exactly the amount the rate
@@ -700,7 +724,7 @@ CRAFT_SETTLE_MAX = 300.0
 def craft_settle_seconds(made: int) -> float:
     """How long to wait between queueing `made` crafts and collecting them."""
     blocks = -(-max(0, int(made)) // CRAFT_SETTLE_BLOCK)   # ceiling division
-    return min(CRAFT_SETTLE_MAX, CRAFT_SETTLE_PER_BLOCK * max(1, blocks))
+    return min(CRAFT_SETTLE_MAX, craft_settle_rate() * max(1, blocks))
 
 # "Required Material: Chaos Core  N/1" -- how many are held, and how many each
 # craft needs.
@@ -6784,9 +6808,9 @@ def _live_config_problems(values):
                    f"CHAOS_ROWS is {val('CHAOS_ROWS')}, which is more than "
                    f"the {SHOP_ROW_CAPACITY}-row shop")
     # A recipe that is not in the table would fall back to the x1 silently.
-    if val("CHAOS_RECIPE") not in CRAFT_RECIPE_LABELS:
+    if val("CHAOS_RECIPE") not in CRAFT_RECIPES:
         bad.append(f"CHAOS_RECIPE {val('CHAOS_RECIPE')} is not a known recipe; "
-                   f"use one of {sorted(CRAFT_RECIPE_LABELS)} "
+                   f"use one of {sorted(CRAFT_RECIPES)} "
                    f"(1 = [1500] x1, 2 = [2500] x3)")
     if val("CHAOS_RESTOCK_AT_OR_BELOW_ROWS") > val("CHAOS_ROWS"):
         bad.append(f"CHAOS_RESTOCK_AT_OR_BELOW_ROWS "
@@ -20477,79 +20501,33 @@ def chaos_cores_held(verbose: bool = True) -> int:
         return 0
 
 
-def craft_tree_point(text: str, bracketed: bool = False
-                     ) -> "tuple[int, int] | None":
-    """Where `text` sits in the recipe tree right now, or None.
-
-    READ, DO NOT ASSUME. Expanding a category pushes every node below it down,
-    so "[2500]" is at one y with 1000 - 1999 collapsed and another with it
-    open. A fixed point is right for exactly one tree state and silently wrong
-    for the rest -- and a wrong click here selects a DIFFERENT RECIPE, which
-    would craft the wrong item out of Chaos Cores.
-
-    Matched on the bracketed number ("1500", "2500", "1000", "2000"), which is
-    the one part of a row that is short, numeric and unique in this pane.
-    """
-    # BRACKETS TELL A RECIPE FROM A CATEGORY. The tree holds both "2000 - 2999"
-    # (a category) and "[2000] Sword Damage Amplifier" (a recipe), and their
-    # digits are identical -- matching on digits alone would open the category
-    # when asked for a recipe, or worse pick a recipe when asked for the
-    # category. The game brackets recipe numbers and leaves category ranges
-    # bare, so that is what separates them.
-    words = find_words(grab(), CRAFT_TREE_REGION)
-    for w in words:
-        raw = w.text or ""
-        if text not in re.sub(r"[^0-9]", "", raw):
-            continue
-        has_bracket = "[" in raw or "]" in raw
-        if has_bracket != bracketed:
-            continue
-        return ((w.left + w.right) // 2, (w.top + w.bottom) // 2)
-    return None
-
-
 def select_chaos_recipe(verbose: bool = True) -> bool:
-    """Open the right category and click the configured recipe. True on success.
+    """Click the tier, then the recipe under it. No OCR. True when clicked.
 
-    CHAOS_RECIPE picks which: 1 is "[1500] ... (x1)", 2 is "[2500] ... (x3)".
+    CHAOS_RECIPE picks which -- 1 is the x1, 2 is the x3. Both points come
+    from CRAFT_RECIPES and assume the tree is in its resting state, which is
+    what the craft window opens to.
     """
     def say(message: str) -> None:
         if verbose:
             print(message)
 
-    category, recipe = CRAFT_RECIPE_LABELS.get(
-        int(CHAOS_RECIPE or 1), CRAFT_RECIPE_LABELS[1])
-    say(f"  selecting the Chaos Core Set recipe [{recipe}] "
-        f"(chaos_recipe {CHAOS_RECIPE})")
-
-    # The recipe may already be visible if its category is open. Look first,
-    # and only expand when it is not there -- clicking an OPEN category
-    # collapses it, which would hide the very row being looked for.
-    spot = craft_tree_point(recipe, bracketed=True)
-    if spot is None:
-        node = craft_tree_point(category, bracketed=False)
-        if node is None:
-            say(f"  the {category} category could not be found in the recipe "
-                f"tree; not crafting rather than clicking a guessed point.")
-            record("craft.category_not_found", category=category,
-                   recipe=recipe)
-            return False
-        say(f"  opening the {category} category at {node}")
-        click(*node)
-        time.sleep(0.8)
-        spot = craft_tree_point(recipe, bracketed=True)
-
-    if spot is None:
-        say(f"  recipe [{recipe}] is not in the tree after opening "
-            f"{category}; not crafting.")
-        record("craft.recipe_not_found", category=category, recipe=recipe)
+    entry = CRAFT_RECIPES.get(int(CHAOS_RECIPE or 1))
+    if entry is None:
+        say(f"  chaos_recipe {CHAOS_RECIPE} is not a known recipe "
+            f"({sorted(CRAFT_RECIPES)}); not crafting.")
+        record("craft.recipe_unknown", setting=CHAOS_RECIPE)
         return False
+    tier, recipe, label = entry
 
-    say(f"  clicking recipe [{recipe}] at {spot}")
-    click(*spot)
+    say(f"  selecting {label} (chaos_recipe {CHAOS_RECIPE}): tier at {tier}, "
+        f"recipe at {recipe}")
+    click(*tier)
+    time.sleep(0.8)
+    click(*recipe)
     time.sleep(1.2)
-    record("craft.recipe_selected", recipe=recipe, at=str(spot),
-           setting=CHAOS_RECIPE)
+    record("craft.recipe_selected", setting=CHAOS_RECIPE, label=label,
+           tier=str(tier), recipe=str(recipe))
     return True
 
 
@@ -20801,7 +20779,8 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
     # chaos.craft_settled records made/waited every time, so if a live run ever
     # shows the queue outlasting the wait, the block size is set from evidence.
     say(f"  waiting {settle:.0f}s for {made} craft(s) to finish "
-        f"({CRAFT_SETTLE_PER_BLOCK:.0f}s per {CRAFT_SETTLE_BLOCK}, rounded up)")
+        f"({craft_settle_rate():.0f}s per {CRAFT_SETTLE_BLOCK}, rounded up, "
+        f"chaos_recipe {CHAOS_RECIPE})")
     time.sleep(settle)
     waited = settle
     say(f"  waited {waited:.0f}s")

@@ -29,7 +29,7 @@
     "PRICE_DIFF_FLOOR_BY_ITEM": "per-item overrides of that margin. Every normal Core is listed below so the value in force is readable without knowing the default. MIND THE GRADE: 'Force Core(High)' is a substring of 'Force Core(Highest)' and they are different items with different margins -- matching is on an exact name, never a prefix. An item named here that is not a favourite is REFUSED, so a typo cannot silently restore the default.",
     "run": "startup only: the shape of the run itself",
     "COST_FLOOR_ON_RELIST": "never relist below what the stock cost",
-    "CHAOS_RECIPE": "which craft recipe chaos uses. 1 = [1500] Chaos Core Set (x1) under the 1000-1999 node; 2 = [2500] Chaos Core Set (x3) under 2000-2999, which takes 3 Cores and yields 3 Sets per craft, so a third of the craft operations for the same stock. The tree is READ to find the row -- expanding a category moves everything below it, so no fixed coordinate is correct for both."
+    "CHAOS_RECIPE": "which craft recipe chaos uses. 1 = [1500] Chaos Core Set (x1) under the 1000-1999 tier; 2 = [2500] Chaos Core Set (x3) under 2000-2999, which takes 3 Cores and yields 3 Sets per craft, so a third of the craft operations for the same stock. Two fixed clicks, no OCR: the tier, then the recipe under it. Both points assume the tree is in its resting state (all tiers collapsed), which is what the craft window opens to."
   },
   "CHAOS_ENABLED": true,
   "CHAOS_ROWS": 7,
