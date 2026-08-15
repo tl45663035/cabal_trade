@@ -120,6 +120,90 @@ check(trade.market_floor("Upgrade Core (Ultimate)") == 0,
       "an item the read could not price has no stand-in -- an unread price "
       "is not evidence, and inventing one would be a guess")
 
+rule("a Core is floored by what its SET costs, not by what Cores fetch")
+
+# The operator's rule, 2026-08-14: "If I buy set to convert to cores, next
+# launch of script will get the set price as floor for the core." The money
+# goes out on Sets -- the restock buys Sets, converts them down, lists the
+# Cores -- so the Set's price per piece is what a Core cost to put up.
+#
+# Tonight's actual reads, from logs/run_2026-08-14_233738.log.
+READS = {
+    "Force Core(Highest)": 210_000,   "Force Core Set (Highest)": 209_756,
+    "Chaos Core": 694_017,            "Chaos Core Set": 705_000,
+    "Force Core (Ultimate)": 498_887, "Force Core Set (Ultimate)": 434_560,
+    "Force Core(High)": 200_000,      "Force Core Set (High)": 203_955,
+    "Upgrade Core (Ultimate)": 462_999,
+    "Upgrade Core Set (Ultimate)": 436_000,
+}
+
+
+def seed_pairs():
+    """What seed_market_floors leaves behind, Set-over-Core rule applied."""
+    clear()
+    for n, v in READS.items():
+        seed(n, v)
+    for slot in sorted(trade.FAVOURITE_SLOTS):
+        if slot in trade.CHAOS_SLOTS:
+            continue
+        set_slot = trade.favourite_set_slot(slot)
+        if set_slot is None:
+            continue
+        unit = trade.market_floor(trade.FAVOURITE_SLOTS[set_slot])
+        if unit:
+            seed(trade.FAVOURITE_SLOTS[slot], unit)
+    # Chaos, inverted: the SET takes the CORE's price.
+    core_unit = trade.market_floor(
+        trade.FAVOURITE_SLOTS[trade.CHAOS_CORE_SLOT])
+    if core_unit:
+        seed(trade.FAVOURITE_SLOTS[trade.CHAOS_SET_SLOT], core_unit)
+
+
+seed_pairs()
+check(trade.market_floor("Force Core (Ultimate)") == 434_560,
+      f"FCU floors at its Set's 434,560, not the 498,887 Cores were fetching "
+      f"(got {trade.market_floor('Force Core (Ultimate)'):,})")
+check(trade.market_floor("Upgrade Core (Ultimate)") == 436_000,
+      "UCU floors at its Set's 436,000, not 462,999")
+
+# The case that motivated it: stock bought at ~428,571 must keep selling
+# through a dip, not freeze above its own cost.
+check(trade.market_floor("Force Core (Ultimate)") < 498_887,
+      "a position bought at ~428,571 is no longer floored ABOVE what it cost, "
+      "which is what stopped it selling at a profitable 460,000")
+
+# The Set keeps its own price -- only Cores are re-floored.
+check(trade.market_floor("Force Core Set (Ultimate)") == 434_560,
+      "the Set itself is unchanged")
+
+# CHAOS IS INVERTED, AND SO IS ITS FLOOR. It buys Chaos Cores, crafts them up
+# and sells Chaos Core SETS -- so the Set, the thing being sold, is floored at
+# what its Cores cost. The operator's rule: "Use chaos core as price floor for
+# chaos set which is what I'm selling."
+check(trade.market_floor("Chaos Core Set") == 694_017,
+      f"the chaos SET floors at the 694,017 its Cores cost, not the 705,000 "
+      f"Sets were fetching (got {trade.market_floor('Chaos Core Set'):,})")
+check(trade.market_floor("Chaos Core") == 694_017,
+      "and the chaos Core keeps its own read -- it is the raw material, not "
+      "the product")
+
+# THE RULE IN ONE LINE: whatever is being SOLD is floored at what was BOUGHT
+# to make it. Normal pairs sell the Core and buy the Set; chaos sells the Set
+# and buys the Core.
+check(trade.market_floor("Force Core (Ultimate)")
+      == trade.market_floor("Force Core Set (Ultimate)"),
+      "a Core and its Set carry the same floor -- the Set's price")
+check(trade.market_floor("Chaos Core Set")
+      == trade.market_floor("Chaos Core"),
+      "and a chaos Set carries its Core's price, the mirror of that")
+
+# A VIP has no Set slot at all, so nothing here can touch its floor.
+clear()
+seed(VIP, 1_000)
+floor, _why = trade.listing_floor(VIP)
+check(floor == trade.item_price_floor(VIP),
+      "a VIP has no Set pairing, so the catalogue floor still rules it")
+
 rule("the seeder is once per process")
 
 import inspect  # noqa: E402

@@ -13941,6 +13941,72 @@ def seed_market_floors(verbose: bool = True) -> int:
         _MARKET_PACKS[_floor_key(name)] = pack
         priced += 1
         say(f"  {name}: {unit:,}/unit")
+
+    # A CORE IS FLOORED BY WHAT ITS SET COSTS, NOT BY WHAT CORES FETCH.
+    #
+    # The operator's rule, 2026-08-14: "If I buy set to convert to cores, next
+    # launch of script will get the set price as floor for the core." The money
+    # goes out on SETS -- the restock buys Sets, converts them down and lists
+    # the Cores -- so the Set's price per piece is what a Core cost to put on
+    # the board, and that is the number a loss is measured against.
+    #
+    # Reading each slot's OWN price and stopping there was the first version,
+    # and it floors a Core at the wrong thing. Live on 2026-08-14: Force Core
+    # (Ultimate) read 498,887 and its Set read 434,560, so five rows bought at
+    # ~428,571 were floored at 498,887 -- above what they cost. The market only
+    # has to dip to 460,000, still 31,000 a unit of profit, for the whole
+    # position to stop selling.
+    #
+    # ONLY EVER LOWERS A CORE TO ITS SET'S PRICE, never raises it above what
+    # the item is worth, and the catalogue floor still binds underneath: a VIP
+    # is untouched here because it has no Set slot at all.
+    for slot in sorted(FAVOURITE_SLOTS):
+        if slot in CHAOS_SLOTS:
+            # Handled below, inverted -- see the chaos block after this loop.
+            continue
+        set_slot = favourite_set_slot(slot)
+        if set_slot is None:
+            continue
+        core_name = FAVOURITE_SLOTS[slot]
+        set_unit = _MARKET_FLOORS.get(_floor_key(FAVOURITE_SLOTS[set_slot]), 0)
+        if not set_unit:
+            continue
+        was = _MARKET_FLOORS.get(_floor_key(core_name), 0)
+        _MARKET_FLOORS[_floor_key(core_name)] = set_unit
+        say(f"  {core_name}: floored at its Set's {set_unit:,}/unit"
+            + (f" rather than the {was:,} Cores were fetching" if was else ""))
+
+    # CHAOS RUNS THE OTHER WAY, SO ITS FLOOR DOES TOO.
+    #
+    # The operator's rule, 2026-08-14: "Similar for chaos core. Use chaos core
+    # as price floor for chaos set which is what I'm selling."
+    #
+    # Every other pair here buys the SET as raw material and sells the Core.
+    # Chaos is inverted: it buys Chaos CORES, crafts them up, compresses them
+    # and lists Chaos Core SETS. So the money goes out on Cores, and the Core's
+    # price per unit is what the Set cost to make -- the mirror of the rule
+    # above, applied to the mirrored pipeline.
+    #
+    # Tonight's reads: Chaos Core 694,017/unit against Chaos Core Set
+    # 705,000/unit. Flooring the Set at its own 705,000 would stop it selling
+    # the moment the Set market dipped below where it started, while every unit
+    # still carried its margin over the 694,017 the Cores cost.
+    #
+    # CHAOS_MARGIN_FLOOR still governs whether chaos trades at all -- it is the
+    # spread the pipeline demands before crafting. This is the floor under a
+    # bundle already made and sitting on the board, which is a different
+    # question.
+    core_name = FAVOURITE_SLOTS.get(CHAOS_CORE_SLOT, "")
+    set_name = FAVOURITE_SLOTS.get(CHAOS_SET_SLOT, "")
+    if core_name and set_name:
+        core_unit = _MARKET_FLOORS.get(_floor_key(core_name), 0)
+        if core_unit:
+            was = _MARKET_FLOORS.get(_floor_key(set_name), 0)
+            _MARKET_FLOORS[_floor_key(set_name)] = core_unit
+            say(f"  {set_name}: floored at the {core_unit:,}/unit its Cores "
+                f"cost" + (f" rather than the {was:,} Sets were fetching"
+                           if was else ""))
+
     record("floors.market_seeded", priced=priced,
            items=len(FAVOURITE_SLOTS))
     say(f"  market floors read for {priced} of {len(FAVOURITE_SLOTS)} item(s).")
