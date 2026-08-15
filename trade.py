@@ -1,4 +1,4 @@
-"""Cabal Online automation: screen capture, Alz reading and Agent Shop trading.
+﻿"""Cabal Online automation: screen capture, Alz reading and Agent Shop trading.
 
 Everything lives here -- capture, OCR, input and the trade automation -- so
 there is one file to read and one to run.
@@ -90,19 +90,6 @@ ITEM_PRICE_FLOORS: tuple[tuple[str, str, int], ...] = (
     # floor on the token route. 'siena' is 5 characters and unique to this
     # item, so it is both a stronger target than 'vip' and a narrower one.
     ("siena", "Siena's Unbinding Stone", 71_000_000),
-    # PER UNIT, and scaled by the pack count below -- chaos lists compressed
-    # bundles ("Chaos Core Set X 197" is ONE row priced for all 197), so a
-    # flat listing floor would be 197x too low. The operator's rule,
-    # 2026-08-15: "the absolute price floor for Chaos set is 690k per ...
-    # no matter what, always price floor is 690k regardless of what market
-    # says". It is the hard minimum under the running floor, not a
-    # replacement for it: what the Cores actually cost still applies on top
-    # whenever it is higher.
-    #
-    # 'chaoscoreset' as the token, not 'chaos': "Chaos Core" is the raw
-    # material and a different item, and the shorter token would hand it this
-    # floor. Same containment trap as 'siena' vs 'unbinding' above.
-    ("chaoscoreset", "Chaos Core Set", 690_000),
     # 'gempack' rather than 'gem': plain "Force Gem" scores 0.593 against this
     # catalogue name, which clears the 0.4 token bar, so the shorter token
     # would hand a different item this floor. 'gempack' survives every damaged
@@ -642,66 +629,8 @@ CHAOS_CRAFT_TAB = 8               # the last inventory tab, where the card lives
 CHAOS_CRAFT_KEY_SLOT = (1, 8)     # row, col of the Remote Request Card
 CHAOS_WORK_TAB = 4                # crafted Sets land on whatever tab is showing
 
-
-# WHICH CHAOS RECIPE TO CRAFT WITH.
-#
-#   1 -> "[1500] Chaos Core Set (x1)"  under the 1000 - 1999 node
-#   2 -> "[2500] Chaos Core Set (x3)"  under the 2000 - 2999 node
-#
-# The x3 recipe takes THREE Chaos Cores and yields three Sets per craft, so it
-# is a third of the craft operations for the same stock -- 250 Cores is ~83
-# crafts instead of 250, and the queue wait follows the craft count.
-#
-# THE POINTS ASSUME A RESTING TREE -- every tier collapsed, which is what the
-# craft window opens to. Expanding a tier pushes every node below it down, so a
-# tier left open from an earlier action moves the recipe row and the second
-# click lands somewhere else. There is no reader to catch that: the operator
-# required fixed coordinates and no OCR here.
-# NO OCR. Two clicks at known points: the tier, then the recipe under it.
-#
-# Each entry is (tier_point, recipe_point, label), and each assumes the tree is
-# in its RESTING state -- every category collapsed -- when the tier is clicked.
-# That is what the craft window opens to, and clicking one tier expands only
-# that tier, so the recipe lands at a fixed offset beneath it.
-#
-# Measured off the operator's own screen, 2026-08-15:
-#   "999 and below"  y=196     (collapsed)
-#   "1000 - 1999"    y=236     -> "[1500] Chaos Core Set (x1)"  y=318
-#   "2000 - 2999"    y=276     -> "[2000] Sword Damage Amp"     y=319
-#                               -> "[2500] Chaos Core Set (x3)" y=359
-# CORES PER CRAFT, per recipe. The x1 takes one and the x3 takes three -- the
-# dialog shows it as the denominator of "Required Material: Chaos Core N/1" or
-# "N/3". A holding that is not a multiple of this leaves a remainder the recipe
-# physically cannot consume.
-CRAFT_MATERIAL_COST = {1: 1, 2: 3}
-
-# How many Chaos Cores are sitting on the work tab because they are too few to
-# craft. Process-lifetime and expected -- see craft_chaos_sets.
-_CHAOS_REMAINDER = 0
-
-
-def craft_material_cost() -> int:
-    """Cores one craft of the configured recipe consumes."""
-    return max(1, CRAFT_MATERIAL_COST.get(int(CHAOS_RECIPE or 1), 1))
-
-
-def note_chaos_remainder(count: int) -> None:
-    """Record Cores left over because the recipe could not use them."""
-    global _CHAOS_REMAINDER
-    _CHAOS_REMAINDER = max(0, int(count or 0))
-    record("chaos.remainder", cores=_CHAOS_REMAINDER)
-
-
-def chaos_remainder() -> int:
-    """Cores the work tab is expected to be holding. 0 when it should be bare."""
-    return _CHAOS_REMAINDER
-
-
-CHAOS_RECIPE = 1
-CRAFT_RECIPES = {
-    1: ((121, 236), (216, 318), "[1500] Chaos Core Set (x1)"),
-    2: ((121, 276), (216, 359), "[2500] Chaos Core Set (x3)"),
-}
+CRAFT_CATEGORY_POINT = (121, 236)   # the "1000 - 1999" tree node
+CRAFT_RECIPE_POINT = (216, 318)     # "[1500] Chaos Core Set (x1)" under it
 CRAFT_REPEAT_POINT = (104, 981)     # the Repeat checkbox
 CRAFT_REQUEST_ALL = (355, 980)      # queues one craft per available material
 CRAFT_COMPLETE_ALL = (1181, 980)    # collects every finished craft
@@ -721,28 +650,8 @@ CRAFT_WINDOW_REGION = (10, 30, 1300, 1020)
 # Rounded up, and never below one block: waiting too long costs seconds, while
 # clicking Complete All early leaves paid-for material sitting in the queue and
 # reports the shortfall as "the craft only made N", with no error anywhere.
-# PER TIER. The x3 recipe finishes far faster than the x1 -- the operator,
-# 2026-08-15: "wait time for tier 1 is 30s per 100 chaos, rounding up to
-# nearest granularity, tier 2 is 10s per 100 chaos". Keyed by chaos_recipe, and
-# an unknown setting falls back to the SLOWER rate: waiting too long costs
-# seconds, while collecting early leaves paid-for material in the queue and
-# reports it as "the craft only made N", with no error anywhere.
-# GRANULARITY 50, NOT 100. The rate per Core is unchanged -- tier 1 is 0.3s a
-# Core and tier 2 is 0.1s -- but rounding up to the nearest 100 overpaid by up
-# to a whole block. The operator, 2026-08-15: "Lets do in the granularity of
-# 50. i.e. if we have 230 chaos core, we need to wait 25s."
-#
-#   tier 1: 30s per 100 -> 15s per 50   (230 Cores -> 5 blocks -> 75s)
-#   tier 2: 10s per 100 ->  5s per 50   (230 Cores -> 5 blocks -> 25s)
-CRAFT_SETTLE_PER_BLOCK_BY_RECIPE = {1: 15.0, 2: 5.0}
-CRAFT_SETTLE_PER_BLOCK = 15.0
-CRAFT_SETTLE_BLOCK = 50
-
-
-def craft_settle_rate() -> float:
-    """Seconds per CRAFT_SETTLE_BLOCK for the recipe in force."""
-    return CRAFT_SETTLE_PER_BLOCK_BY_RECIPE.get(
-        int(CHAOS_RECIPE or 1), CRAFT_SETTLE_PER_BLOCK)
+CRAFT_SETTLE_PER_BLOCK = 30.0
+CRAFT_SETTLE_BLOCK = 100
 # The ceiling moves with the rate, or the scaling dies at three blocks: at 30s
 # per 100 the old 180s cap bit at 600 items, and a queue that accumulated after
 # a failed craft would have been under-waited by exactly the amount the rate
@@ -757,7 +666,7 @@ CRAFT_SETTLE_MAX = 300.0
 def craft_settle_seconds(made: int) -> float:
     """How long to wait between queueing `made` crafts and collecting them."""
     blocks = -(-max(0, int(made)) // CRAFT_SETTLE_BLOCK)   # ceiling division
-    return min(CRAFT_SETTLE_MAX, craft_settle_rate() * max(1, blocks))
+    return min(CRAFT_SETTLE_MAX, CRAFT_SETTLE_PER_BLOCK * max(1, blocks))
 
 # "Required Material: Chaos Core  N/1" -- how many are held, and how many each
 # craft needs.
@@ -1935,42 +1844,18 @@ CRAFT_MATERIAL_SETTLE = 0.8
 QTY_READBACK_TRIES = 3
 QTY_READBACK_PAUSE = 0.2
 
-# NOTE: there is no Alz settle budget here any more.
+# How long to keep looking for the Alz balance to move after a confirm click,
+# and how often. The balance is the ONLY proof a purchase happened, and a HUD
+# that has not ticked yet is indistinguishable from a listing that went to
+# somebody else -- which costs a ledger row and makes the caller buy again.
 #
-# A poll used to sit in buy_offer re-reading the HUD for up to 6 seconds,
-# waiting for the balance to move after a confirm click. It was removed on the
-# operator's instruction -- "I never asked this feature" -- and the before/after
-# pair it sat on top of is what the ledger has always been written from.
-#
-# TWO MEASUREMENTS WERE GIVEN FOR REMOVING IT AND BOTH WERE WRONG. The record
-# should carry the decomposition rather than a third headline number.
-#
-# It was first reported as costing 6,499 ms an order. That figure is real but
-# is buy_offer.total MINUS the sum of the instrumented phases -- the
-# un-instrumented residual, not the poll. 6,111 ms of it survives the poll's
-# removal, which settles it.
-#
-# The correction then claimed the saving was 435 ms. That is the difference of
-# two three-order means (22,348 -> 21,913) and is mostly noise: 386 ms of it
-# lands in five phases that run BEFORE the poll ever would have -- type_quantity
-# -205, click_buy -60, select_row -57, balance_before -41, confirm_click -23.
-#
-# What the logs actually support: the poll's loop is entered only when
-# `before == after`, so on a SUCCESSFUL order it never ran and cost ~0. It cost
-# ~6.5s exactly twice, on the two orders in _081036 that refused -- 28,906 and
-# 28,946 ms against 22,348 for the successful ones. It was insurance that was
-# free until it fired.
-#
-# WHAT IS NOW UNGUARDED, stated plainly so the next reader can weigh it: if the
-# HUD has not repainted by the time the single after-read is taken,
-# before == after routes to "the listing sold to another buyer", the caller
-# treats that as retryable, and the same order is placed again. A 3.5s settle
-# still precedes the read (sleep 2.5 + park + sleep 1.0), so the window is
-# narrow -- but it is the large orders whose HUD lags, and a chaos order is a
-# whole row.
-#
-# What replaced it is what was always underneath: read the balance BEFORE the
-# order and AFTER it, and take the difference. One read each, no waiting.
+# Sized from the observed lag rather than guessed: on 2026-08-10 a 6-Core order
+# had already decremented in the frame taken immediately after the click, while
+# a 158-Core order had not and settled within the following seconds. The budget
+# is spent only when the balance has NOT moved, so a settled balance pays
+# nothing.
+ALZ_SETTLE_BUDGET = 6.0
+ALZ_SETTLE_POLL = 0.6
 
 PURCHASE_DLG_QTY_VALUE = (1152, 668, 1218, 702)
 # Right edge widened 1280 -> 1296 on 2026-08-10. Measured against real frames,
@@ -1997,27 +1882,6 @@ PURCHASE_DLG_PRICE = (1150, 712, 1380, 758)
 # across those 14 frames sits at y 830-861, and the title "Confirm Purchase"
 # sits at y~549, which is what the floor exists to exclude. purchase_confirm
 # used a bare `> 800`; this is that number, scalable.
-# How long to keep asking for the Confirm Purchase dialog after clicking Buy.
-#
-# Replaces a flat 1.5s sleep plus a 0.3s follow-up that were paid in full on
-# every order regardless of how fast the dialog drew. This is a CEILING, not a
-# wait: the first read usually finds it and the order moves on.
-PURCHASE_DIALOG_WAIT = 2.0
-
-# How long to keep re-reading the Alz HUD after the Buy click, waiting for it
-# to agree with what the dialog said the order would cost.
-#
-# Also a CEILING, not a wait. It is deliberately the 3.5s that used to be slept
-# unconditionally here (2.5 + 1.0), so this can only be faster than what it
-# replaced: a successful order usually matches on the first read at ~330ms, and
-# an order that never matches spends exactly what it spent before.
-BUY_BALANCE_SETTLE = 3.5
-# And a bound on the READS, not just the clock. Each is a grab plus a Tesseract
-# launch at ~330ms, so ten of them is about the 3.5s above -- but the clock
-# alone would hot-spin under a test that fakes sleep, and an attempt count says
-# what the ceiling actually costs in OCR.
-BUY_BALANCE_READS = 10
-
 PURCHASE_DIALOG_BUTTONS_Y = 800
 PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
 
@@ -2378,7 +2242,6 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
     returns False with it plainly on screen. Anything relying on that would
     read the table it covers as an empty shop.
     """
-    _pc_t0 = time.monotonic()
     shot = source if source is not None else grab()
     # RE-MEASURED, THEN WIRED UP -- the way the note below asked for.
     #
@@ -2406,60 +2269,13 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
              if w.conf >= 45]
     text = " ".join(w.text for w in words)
     if "Purchase" not in text:
-        _note_phase("ocr.purchase_confirm", (time.monotonic() - _pc_t0) * 1000.0)
         return None
     buttons = {}
     for w in words:
         label = w.text.strip().lower()
         if label in ("buy", "cancel") and w.centre[1] > PURCHASE_DIALOG_BUTTONS_Y:
             buttons[label] = w.centre
-
-    # READ THE BUTTONS FROM THEIR OWN CROP WHEN THE WIDE SWEEP MISSES THEM.
-    #
-    # The sweep above covers 1000x550 and the button labels are low-contrast
-    # grey-on-grey; measured on unit_tests/corpus/run_69948.png they do not
-    # survive it AT ALL, while the same two words read at conf 96 and 97 from
-    # PURCHASE_DIALOG_BUTTONS, a 380x50 crop over exactly that row. Tesseract
-    # upscales a small crop far more than a large one, and that is the whole
-    # difference.
-    #
-    # The consequence was not subtle. With no button found this returned None,
-    # the caller reported "the Confirm Purchase dialog did not appear" -- with
-    # the dialog plainly on screen, item, quantity and price all reading -- and
-    # three refusals in a row stopped the chaos pass with 0 of 200 Cores
-    # bought. The run then failed three cycles and tripped the breaker.
-    #
-    # PURCHASE_DIALOG_BUTTONS already existed for this and had no reader; the
-    # comment above says it was meant to be wired up. Doing that now. It is a
-    # measurement, not a guessed point: the words are located inside the crop,
-    # so a dialog that moves is still followed.
-    if "buy" not in buttons or "cancel" not in buttons:
-        for w in find_words(shot, PURCHASE_DIALOG_BUTTONS):
-            label = w.text.strip().lower()
-            # THE SAME BAND GUARD AS ABOVE, and it is not redundant. The
-            # table's own row buttons say "Buy" too, and clicking one buys a
-            # DIFFERENT listing at a different price -- so a label is only a
-            # dialog button when it sits below PURCHASE_DIALOG_BUTTONS_Y,
-            # wherever it was read from. The crop is chosen to cover only that
-            # row, but the crop is not what makes it safe; this check is.
-            # OVERRIDE, DO NOT DEFER. `label not in buttons` was wrong here.
-            #
-            # The wide sweep can pick up the TABLE's own row buttons: rows sit
-            # at PURCHASE_ROW_TOP + n*PURCHASE_ROW_PITCH, and row 8 lands at
-            # y=872 -- past the y>800 band guard, at conf 96. If the sweep took
-            # that as the dialog's Buy, deferring meant the crop could only
-            # fill in `cancel` and the bad Buy survived to be clicked, buying a
-            # different listing at a different price.
-            #
-            # The crop is the better evidence by construction: x 1190-1570
-            # excludes PURCHASE_BUY_X (1124) entirely, so nothing the table
-            # draws can appear in it. Where the two disagree the crop wins.
-            if (label in ("buy", "cancel")
-                    and w.centre[1] > PURCHASE_DIALOG_BUTTONS_Y):
-                buttons[label] = w.centre
-
     if "buy" not in buttons:
-        _note_phase("ocr.purchase_confirm", (time.monotonic() - _pc_t0) * 1000.0)
         return None
     # The price from its OWN crop first. The sweep below takes the last
     # >=6-digit word anywhere in a 1000x550 region, which was fine while the
@@ -2496,7 +2312,6 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
     # Cores (64,610,000 Alz) fell back to limit=1 and bought a single Core.
     qty_max = read_number(shot, PURCHASE_DLG_QTY_MAX, 20.0)
 
-    _note_phase("ocr.purchase_confirm", (time.monotonic() - _pc_t0) * 1000.0)
     return {"buy": buttons["buy"], "cancel": buttons.get("cancel"),
             "price": price, "text": text, "qty": qty, "qty_max": qty_max}
 
@@ -3073,8 +2888,7 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         halt_buying(f"a Buy was attempted outside the sanctioned sequence: "
                     f"{wrong}")
         return False, wrong
-    with phase("buy.balance_before"):
-        before = get_alz(grab()) or None
+    before = get_alz(grab()) or None
     focus_game()
     # Select the row, then press its Buy. Approached from a different point so
     # the pointer genuinely ENTERS the button: move_mouse to a pixel the cursor
@@ -3082,13 +2896,12 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     # the control.
     move_mouse(PURCHASE_ROW_SELECT_X, offer.y - LAYOUT.length(40))
     time.sleep(0.2)
-    with phase("buy.select_row"):
-        click(PURCHASE_ROW_SELECT_X, offer.y)
-        time.sleep(0.8)
+    click(PURCHASE_ROW_SELECT_X, offer.y)
+    time.sleep(0.8)
     move_mouse(PURCHASE_BUY_X, offer.y - LAYOUT.length(40))
     time.sleep(0.2)
-    with phase("buy.click_buy"):
-        click(PURCHASE_BUY_X, offer.y)
+    click(PURCHASE_BUY_X, offer.y)
+    time.sleep(1.5)
 
     # And off the dialog before reading it, for the same reason as the quantity
     # field below: the dialog opens over the row that was just clicked, so the
@@ -3096,30 +2909,9 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     # quantity limit did not read - taking one listing", and an order for 21
     # Cores bought 1.
     park_cursor()
+    time.sleep(0.3)
 
-    # POLL FOR THE DIALOG, DO NOT SLEEP PAST IT.
-    #
-    # A flat time.sleep(1.5) sat here, plus a further 0.3 after the park, and
-    # both were paid in full whether the dialog took 200ms or 1400ms. Nothing
-    # measured them; they were a guess at how long the game takes to draw.
-    #
-    # The read below is the actual test for the dialog being up, so asking it
-    # IS the wait. A dialog that is already drawn costs one read (~470ms) and
-    # the order continues; one that is slow costs a read per attempt until the
-    # deadline, which is the same bound the sleep gave without spending it on
-    # the common case.
-    #
-    # The deadline is not optional. Returning None here is reported by the
-    # caller as "the Confirm Purchase dialog did not appear", and on 2026-08-15
-    # three of those in a row stopped a chaos pass at 0 of 200 Cores -- so the
-    # poll must be given at least as long as the sleep it replaces.
-    with phase("buy.await_dialog"):
-        dialog = None
-        deadline = time.monotonic() + PURCHASE_DIALOG_WAIT
-        while True:
-            dialog = purchase_confirm()
-            if dialog is not None or time.monotonic() >= deadline:
-                break
+    dialog = purchase_confirm()
     if dialog is None:
         # "NO DIALOG AND NO PURCHASE" WAS AN ASSUMPTION. ASK THE BALANCE.
         #
@@ -3329,10 +3121,9 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         # Click the field before typing. "It looks focused" is exactly the
         # assumption that sends keystrokes into the game world instead of the
         # widget -- the same reasoning as the vendor's Mass Purchase dialog.
-        with phase("buy.type_quantity"):
-            click((PURCHASE_DLG_QTY_VALUE[0] + PURCHASE_DLG_QTY_VALUE[2]) // 2,
-                  (PURCHASE_DLG_QTY_VALUE[1] + PURCHASE_DLG_QTY_VALUE[3]) // 2)
-            type_number(asked, clear_first=True, clear=6)
+        click((PURCHASE_DLG_QTY_VALUE[0] + PURCHASE_DLG_QTY_VALUE[2]) // 2,
+              (PURCHASE_DLG_QTY_VALUE[1] + PURCHASE_DLG_QTY_VALUE[3]) // 2)
+        type_number(asked, clear_first=True, clear=6)
         # MOVE THE POINTER OFF THE FIELD BEFORE READING IT.
         #
         # The click leaves the cursor sitting on the digits, and the cursor
@@ -3468,34 +3259,21 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     say(f"  confirming {take} x {offer.name!r} "
         f"({take * offer.pack} item(s)) at {expected:,} Alz")
     bx, by = dialog["buy"]
-    with phase("buy.confirm_click"):
-        move_mouse(bx, by + LAYOUT.length(60))
-        time.sleep(0.25)
-        click(bx, by)
-        # PARKED, BUT NOT FOR THE BALANCE READ.
-        #
-        # Worth stating because it looks redundant and nearly is: the next OCR
-        # is the Alz HUD at ALZ_REGION (2330, 872, 2525, 928) and the cursor is
-        # on the Buy button at (1291, 855) -- 1,039 px away, so no tooltip of
-        # it could reach. What the park protects is the read AFTER that:
-        # run_favourite_search opens with read_purchase_rows(rows=1) to spot a
-        # stale result, PURCHASE_ROW_TOP is 340, and the Buy button sits over
-        # the table's lower rows. An Item Information tooltip there corrupts
-        # that read, which is the failure park_cursor's docstring describes.
-        #
-        # The time.sleep(1.0) that used to follow is gone. park_cursor ends in
-        # move_mouse's ACTION_COOLDOWN, and its own docstring records the
-        # measurement: the tooltip is cleared by the cursor LEAVING, and an
-        # extra settle cost 0.75s against 0.30s for no change in outcome.
-        park_cursor()
+    move_mouse(bx, by + LAYOUT.length(60))
+    time.sleep(0.25)
+    click(bx, by)
+    time.sleep(2.5)
+    park_cursor()
+    time.sleep(1.0)
 
-    # WHY THIS READ IS TIMED THE WAY IT IS.
+    # POLLED UNTIL IT MOVES, not read once at a fixed offset.
     #
-    # It is the only read that decides whether money moved. The HUD lag is real
-    # and scales with the order: measured 2026-08-10, a 6-Core order had
-    # already decremented in the frame captured immediately after the click,
-    # while the 158-Core order was still showing the old balance and only
-    # caught up within the next few seconds.
+    # This is the only read that decides whether money moved, and it was the
+    # one read in the function taken a single time -- qty_max and the price
+    # both retry. The HUD lag is real and scales with the order: measured
+    # 2026-08-10, a 6-Core order had already decremented in the frame captured
+    # immediately after the click, while the 158-Core order was still showing
+    # the old balance and only caught up within the next few seconds.
     #
     # A stale read here is not a small error. `before == after` returns "the
     # listing sold to another buyer", note_purchase never fires, so the
@@ -3504,67 +3282,17 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     # again. On the chaos path, where an order is now a whole row, three of
     # those is most of a balance.
     #
-    # HISTORY, because this line has now moved three times. A settle poll
-    # originally sat here looping on `before != after` -- any movement at all.
-    # It was removed on the operator's instruction, and both figures given for
-    # removing it were wrong: the 6,499 ms was buy_offer.total minus the
-    # instrumented phases (the un-instrumented residual, 6,111 ms of which
-    # survived the removal), and the 435 ms was the difference of two
-    # three-order means, 386 ms of which lands in phases that run BEFORE the
-    # poll would have. What the logs support is that the old poll cost ~0 on a
-    # successful order and ~6.5s only on the two that refused.
-    #
-    # Removing it left a blind time.sleep(2.5) doing the same job with none of
-    # the feedback, which is what the loop below replaces. It is bounded by
-    # that same 3.5s and keys on `expected`, not on movement, so a refusal --
-    # which never moves the balance -- costs what it already cost.
-    # READ UNTIL IT AGREES WITH THE DIALOG, INSIDE THE TIME ALREADY SPENT.
-    #
-    # What replaced the time.sleep(2.5) above, and why it is not the settle
-    # poll that was removed:
-    #
-    # The Alz pair is NOT where the spend comes from. `expected` is computed
-    # from the dialog -- price x quantity -- and that is the figure recorded
-    # and the one the average-per-unit is derived from. What the pair does is
-    # CHECK it: `before - after == expected` asks whether the account moved by
-    # exactly what the dialog promised. So the read has to happen after the HUD
-    # has caught up, or a good order fails its own check.
-    #
-    # That is what the 2.5s was buying, blind. Measured over 35 orders,
-    # buy.confirm_click ran 5,579-5,679 ms -- a 100 ms spread, which is a fixed
-    # sleep and not a game responding. The HUD lag it covers is real but
-    # variable: a 6-Core order had already decremented in the frame after the
-    # click, while a 158-Core order was still showing the old balance.
-    #
-    # This waits for the same event and stops as soon as it happens. Typical
-    # cost is ONE read, ~330 ms, against 3,500 ms of sleeping. The budget is
-    # the 3.5s that was previously spent unconditionally, so the worst case is
-    # exactly today's wall clock and a refusal is no slower than it is now.
-    #
-    # The removed poll looped on `before != after` -- ANY movement -- which a
-    # refusal never produces, so it always ran its timeout out. This one is
-    # bounded by what was already being spent.
-    with phase("buy.balance_after"):
-        deadline = time.monotonic() + BUY_BALANCE_SETTLE
-        after = None
-        for _ in range(BUY_BALANCE_READS):
-            got = get_alz(grab()) or None
-            if got is not None:
-                # KEEP THE LAST READ THAT WORKED, not simply the last read.
-                #
-                # get_alz returns 0 on an unreadable frame, which `or None`
-                # turns into None. A single read had one chance at that; a loop
-                # that overwrote `after` every time would take the final
-                # attempt even when an earlier one succeeded, so an occluded
-                # last frame would turn a measured purchase into an unmeasured
-                # one. That is strictly worse than the single read it replaced,
-                # and it is the branch that writes a note into the ledger.
-                after = got
-                if before and before - got == expected:
-                    break
-            if time.monotonic() >= deadline:
+    # Polling costs nothing when the balance has already settled, which is the
+    # common case: the loop exits on the first read.
+    after = get_alz(grab()) or None
+    if before and (not after or before == after):
+        deadline = time.monotonic() + ALZ_SETTLE_BUDGET
+        while time.monotonic() < deadline:
+            time.sleep(ALZ_SETTLE_POLL)
+            again = get_alz(grab()) or None
+            if again and again != before:
+                after = again
                 break
-            time.sleep(0.1)
 
     if before and after and before - after == expected:
         record("buy.completed", item=offer.name, price=expected,
@@ -6898,8 +6626,6 @@ LIVE_KNOBS = {
     "PRICE_DIFF_FLOOR_BY_ITEM":       (dict, "per-item overrides of that "
                                              "margin, by the game's own "
                                              "spelling"),
-    "CHAOS_RECIPE":                   (int, "1 = [1500] Chaos Core Set (x1), "
-                                            "2 = [2500] Chaos Core Set (x3)"),
     "CORE_ROWS":                      (int, "rows each ordinary Core keeps "
                                             "on the board, like CHAOS_ROWS"),
     "CORE_ROWS_BY_ITEM":              (dict, "per-item overrides of that row "
@@ -7021,11 +6747,6 @@ def _live_config_problems(values):
         bad.append(f"the Core row targets add up to {_promised} and "
                    f"CHAOS_ROWS is {val('CHAOS_ROWS')}, which is more than "
                    f"the {SHOP_ROW_CAPACITY}-row shop")
-    # A recipe that is not in the table would fall back to the x1 silently.
-    if val("CHAOS_RECIPE") not in CRAFT_RECIPES:
-        bad.append(f"CHAOS_RECIPE {val('CHAOS_RECIPE')} is not a known recipe; "
-                   f"use one of {sorted(CRAFT_RECIPES)} "
-                   f"(1 = [1500] x1, 2 = [2500] x3)")
     if val("CHAOS_RESTOCK_AT_OR_BELOW_ROWS") > val("CHAOS_ROWS"):
         bad.append(f"CHAOS_RESTOCK_AT_OR_BELOW_ROWS "
                    f"{val('CHAOS_RESTOCK_AT_OR_BELOW_ROWS')} is above "
@@ -8167,14 +7888,6 @@ LAYOUT = Layout(screen=REF_SCREEN, origin=REF_TRADE_ORIGIN, scale=1.0,
 TRADE_REGION = LAYOUT.trade
 # The popup is centred on the game window, whose size varies; search a band.
 POPUP_REGION = (500, 350, 2100, 1150)
-# WHERE THE MODAL ACTUALLY IS, as opposed to the band it is searched for in.
-#
-# Registration Extension, its Confirmation, and Confirm Receipt all render in
-# the same box -- the same one CONVERT_DIALOG_REGION was measured over, which
-# is why the two are identical. dialog_kind reads THIS first, because a crop
-# this size segments the ornate title and a POPUP_REGION-sized one loses it
-# altogether. See dialog_kind for the measurement.
-MODAL_DIALOG_REGION = (975, 470, 1570, 945)
 
 
 def _clamp_box(box: tuple[int, int, int, int],
@@ -9393,17 +9106,6 @@ def grab() -> Image.Image:
 # the call site knew, which is what makes them usable as test fixtures rather
 # than just a pile of images.
 
-# Labels recorded as a row in the index with NO screenshot. Pure measurements
-# whose frame would be noise -- and, at a few thousand a run, would evict the
-# frames that are evidence. See record().
-# NOT shopmodel.mismatch or shopmodel.reconciled. Those fire when the model and
-# the board disagree -- one row in a thousand, and the frame at that instant is
-# the single most diagnostic thing the corpus holds. Silence around exactly
-# that is what hid the 2026-08-13 divergence for thirteen minutes.
-NO_FRAME_LABELS = frozenset((
-    "phase", "table.scan", "table.walk", "chaos.remainder",
-))
-
 RECORD_DIR = SCRIPT_DIR / "unit_tests" / "corpus"
 _last_shot: "Image.Image | None" = None
 _record_seq = 0
@@ -9446,22 +9148,8 @@ def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
     global _record_seq
     if not RECORD_ENABLED:
         return
-    # MEASUREMENTS DO NOT CARRY A PICTURE.
-    #
-    # record() saves _last_shot whenever no frame is handed to it, and the
-    # profiling added on 2026-08-15 calls it from every phase and every table
-    # scan. That is 12-16 saves of a ~3MB screenshot per chaos order -- 40-50MB
-    # an order -- which (a) costs 100-250ms a write on the very path being
-    # timed, so the instrument changes what it measures, (b) lands between
-    # phases rather than inside one, so the bill silently under-reports, and
-    # (c) turns the 1,000-frame corpus over every ~70 orders, evicting the
-    # buy.completed and relist.* frames that answer real questions. The frames
-    # that found today's dialog bug would have been gone.
-    #
-    # These labels are numbers, not evidence. They go to the index only.
-    keep_frame = label not in NO_FRAME_LABELS
-    image = (shot if shot is not None else _last_shot) if keep_frame else None
-    if keep_frame and image is None:
+    image = shot if shot is not None else _last_shot
+    if image is None:
         return
     try:
         RECORD_DIR.mkdir(parents=True, exist_ok=True)
@@ -9484,19 +9172,9 @@ def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
                 if digits.isdigit():
                     highest = max(highest, int(digits))
             _record_seq = highest
-        # A FRAMELESS ROW BURNS NO SEQUENCE NUMBER AND WRITES NO FILE.
-        #
-        # The first cut of this set `image = None` and fell straight into
-        # image.save(), which raised AttributeError into the catch-all below --
-        # so those labels recorded NOTHING, not even the index row they were
-        # supposed to keep. The performance goal was met by accident, via an
-        # exception, and the measurement it was meant to preserve was destroyed.
-        if keep_frame:
-            _record_seq += 1
-            name = f"run_{_record_seq:05d}.png"
-            image.save(RECORD_DIR / name)
-        else:
-            name = None
+        _record_seq += 1
+        name = f"run_{_record_seq:05d}.png"
+        image.save(RECORD_DIR / name)
         entry = {"file": name, "label": label,
                  "at": datetime.now().isoformat(timespec="seconds"),
                  # The layout the frame was READ under, not just when it was
@@ -9582,7 +9260,6 @@ def prune_recordings(keep: int = RECORD_KEEP,
             kept = 0
             with index.open("r", encoding="utf-8", errors="replace") as src, \
                     tmp.open("w", encoding="utf-8") as dst:
-                frameless = 0
                 for line in src:
                     stripped = line.strip()
                     if not stripped:
@@ -9590,18 +9267,6 @@ def prune_recordings(keep: int = RECORD_KEEP,
                     try:
                         name = json.loads(stripped).get("file")
                     except Exception:      # noqa: BLE001 - keep unparseable
-                        dst.write(line)
-                        kept += 1
-                        continue
-                    # A FRAMELESS ROW IS PRUNED WITH ITS NEIGHBOURS, NOT KEPT
-                    # FOREVER. Rows with no file survive "name not in gone" by
-                    # definition, so an index that gains ~20% frameless rows
-                    # would grow without bound. They are measurements, so the
-                    # newest RECORD_KEEP of them is as much as anyone wants.
-                    if name is None:
-                        frameless += 1
-                        if frameless > keep:
-                            continue
                         dst.write(line)
                         kept += 1
                         continue
@@ -11333,44 +10998,6 @@ def open_trade_window(timeout: float = 15.0, verbose: bool = True) -> bool:
     return True
 
 
-# A REFRESH THAT JUST HAPPENED, SPENDABLE EXACTLY ONCE.
-#
-# A sold row refreshes twice for one fact: once to read the table, then again
-# after collecting to confirm the row is gone -- and the NEXT row opens with
-# its own refresh, back to back with that one, nothing in between. Measured on
-# the 12:26 run of 2026-08-15: nine refreshes for five rows against a single
-# cancel, 25,944 ms of 38,783 ms instrumented -- 67% of the measured time.
-#
-# ONE-SHOT ON PURPOSE. This file already carries the scar of the general
-# version: a cache here "saved about twelve seconds a row" and was ripped out
-# because COLLECTING A SOLD ROW INVALIDATED NOTHING, so the table went stale
-# without anything noticing. A flag that is consumed by the first reader cannot
-# do that -- it can skip the refresh IMMEDIATELY after a refresh and nothing
-# further, so staleness cannot accumulate across rows however wrong the
-# invalidation list turns out to be.
-_TABLE_FRESH = False
-
-
-def mark_table_fresh() -> None:
-    """The table was just refetched from the server."""
-    global _TABLE_FRESH
-    _TABLE_FRESH = True
-
-
-def mark_table_stale(why: str = "") -> None:
-    """Something changed the table. Call this from every commit."""
-    global _TABLE_FRESH
-    _TABLE_FRESH = False
-
-
-def consume_table_fresh() -> bool:
-    """True if the table is known-fresh -- and spends that knowledge."""
-    global _TABLE_FRESH
-    was = _TABLE_FRESH
-    _TABLE_FRESH = False
-    return was
-
-
 def refresh_table(timeout: float = 20.0, verbose: bool = True) -> bool:
     """Click the Trade window's Refresh button and wait for the reload.
 
@@ -11384,8 +11011,7 @@ def refresh_table(timeout: float = 20.0, verbose: bool = True) -> bool:
     # One capture, used for both the button search and the record: the pair
     # before/after a refresh is the only evidence of what the reload changed,
     # which is what makes a stale-table bug reconstructable afterwards.
-    with phase("relist.refresh_grab"):
-        shot = grab()
+    shot = grab()
     record("refresh.before", shot)
     # The Refresh button's position comes from the fit -- ("Refresh",
     # (1119, 981)) is a REQUIRED entry in REF_ANCHORS, so a fitted window has
@@ -11424,7 +11050,6 @@ def refresh_table(timeout: float = 20.0, verbose: bool = True) -> bool:
     # So the proof is a small crop around the fitted point itself, looking for
     # the button's own label. That is what the old full-region read proved, at
     # a fraction of the cost: ~90x50 pixels instead of 1225x1035.
-    phase_start = time.monotonic()
     point = anchor_point("Refresh")
     if point is not None:
         # Scaled: this crop is the only proof the Trade window really sits
@@ -11449,20 +11074,13 @@ def refresh_table(timeout: float = 20.0, verbose: bool = True) -> bool:
             return False
         point = buttons[-1].centre
 
-    _note_phase("relist.refresh_locate", (time.monotonic() - phase_start) * 1000)
-
-    with phase("relist.refresh_click"):
-        click(*point)
-        time.sleep(0.6)
-    with phase("relist.refresh_wait_table"):
-        loaded = wait_for_table(max(timeout, 20.0))
-    if not loaded:
+    click(*point)
+    time.sleep(0.6)
+    if not wait_for_table(max(timeout, 20.0)):
         record("refresh.timeout")
-        mark_table_stale("refresh timed out")
         say("The table did not finish refreshing.")
         return False
     record("refresh.after")
-    mark_table_fresh()
     return True
 
 
@@ -12174,54 +11792,23 @@ def dialog_kind(source: Image.Image | Path | str,
     #    routinely -- find_phrase exists because "Inventory" arrives as "I" +
     #    "nventory" -- and dialog_kind was the only title-matching path in the
     #    file that did not stitch a line back together first.
-    def classify(found: list) -> "str | None":
-        found = [w for w in found if w.conf >= DIALOG_TEXT_MIN_CONF]
-        texts = [_normalise(w.text) for w in found]
-        texts += [_normalise("".join(w.text for w in line))
-                  for line in _text_lines(found)]
-        if _mentions(texts, "receipt"):
-            return "receipt"
-        if _mentions(texts, "confirmation"):
-            return "confirm"
-        # Either word of the title will do. They fail independently --
-        # "Extension" misread while "Registration" read at 96% confidence on
-        # the same frame -- so requiring one specific word makes the check as
-        # weak as its worst word.
-        if _mentions(texts, "extension") or _mentions(texts, "registration"):
-            return "extension"
-        return None
-
-    if words is not None:
-        return classify(words)
-
-    # READ THE MODAL'S OWN BOX FIRST, NOT THE 1600x800 SWEEP.
-    #
-    # The fuzzy matching above cannot rescue a word that never reaches it, and
-    # in a POPUP_REGION-sized crop the title does not reach it: Tesseract's
-    # segmentation is crop-dependent, and at that size it drops the ornate
-    # title GLYPHS ENTIRELY rather than misreading them. On run_70189 the whole
-    # 128-word POPUP_REGION read contains nothing in the title band at all,
-    # while a crop of the modal reads 'trationextension' and classifies.
-    #
-    # Measured over every corpus frame with a known dialog state, 2026-08-15:
-    #
-    #     crop                        detected     false positives
-    #     POPUP_REGION (1600x800)     10 of 19          0 of 24
-    #     the modal box (595x475)     19 of 19          0 of 24
-    #
-    # That is the whole of the 11:04 abort -- nine cancels read "no dialog"
-    # with the dialog plainly up, and the run gave up on the row. It is NOT a
-    # new fault: the same nine frames fail identically on builds from before
-    # any of this week's work.
-    #
-    # POPUP_REGION is kept as a fallback rather than deleted. It costs one
-    # extra OCR call only when the tight read finds nothing, and it is the only
-    # thing that would still see a dialog drawn outside the usual box.
-    kind = classify(find_words(source, MODAL_DIALOG_REGION,
-                               DIALOG_TEXT_MIN_CONF))
-    if kind is not None:
-        return kind
-    return classify(find_words(source, POPUP_REGION, DIALOG_TEXT_MIN_CONF))
+    if words is None:
+        words = find_words(source, POPUP_REGION, DIALOG_TEXT_MIN_CONF)
+    else:
+        words = [w for w in words if w.conf >= DIALOG_TEXT_MIN_CONF]
+    texts = [_normalise(w.text) for w in words]
+    texts += [_normalise("".join(w.text for w in line))
+              for line in _text_lines(words)]
+    if _mentions(texts, "receipt"):
+        return "receipt"
+    if _mentions(texts, "confirmation"):
+        return "confirm"
+    # Either word of the title will do. They fail independently -- "Extension"
+    # misread while "Registration" read at 96% confidence on the same frame --
+    # so requiring one specific word makes the check as weak as its worst word.
+    if _mentions(texts, "extension") or _mentions(texts, "registration"):
+        return "extension"
+    return None
 
 
 def dialog_present(source: Image.Image | Path | str | None = None) -> bool:
@@ -13413,99 +13000,6 @@ _SCAN_COUNT = 0
 TABLE_TRACE = True
 
 
-# EVERY PHASE OF A CHAOS ORDER, TO THE MILLISECOND.
-#
-# "chaos buying is very slow" is not a number, and the per-order log lines only
-# bracket three coarse steps. This records each phase by name so the bill can be
-# read off the log instead of inferred from timestamps, and totalled per run.
-_PHASE_TOTALS: dict = {}
-PHASE_TRACE = True
-
-
-class phase:
-    """Time one named step. `with phase("search"): ...`"""
-
-    def __init__(self, name: str, detail: str = "") -> None:
-        self.name = name
-        self.detail = detail
-
-    def __enter__(self):
-        self._t0 = time.monotonic()
-        return self
-
-    def __exit__(self, *exc) -> bool:
-        ms = (time.monotonic() - self._t0) * 1000.0
-        row = _PHASE_TOTALS.setdefault(self.name, {"ms": 0.0, "n": 0})
-        row["ms"] += ms
-        row["n"] += 1
-        if PHASE_TRACE:
-            print(f"      [phase] {self.name:<22} {ms:>8.0f} ms"
-                  + (f"  {self.detail}" if self.detail else ""))
-        record("phase", name=self.name, ms=round(ms, 1), detail=self.detail)
-        return False
-
-
-def _note_phase(name: str, ms: float) -> None:
-    """Add `ms` to a phase total without the `with` form. Never raises."""
-    row = _PHASE_TOTALS.setdefault(name, {"ms": 0.0, "n": 0})
-    row["ms"] += ms
-    row["n"] += 1
-    if PHASE_TRACE:
-        print(f"      [phase] {name:<22} {ms:>8.0f} ms")
-    record("phase", name=name, ms=round(ms, 1))
-
-
-def phase_report(title: str = "CHAOS BUYING") -> None:
-    """Print the phase bill, slowest first. Never raises."""
-    if not _PHASE_TOTALS:
-        return
-    # A <thing>.total is a WRAPPER around other phases in this table, not a
-    # step beside them. Counting it in the denominator double-counts every
-    # step inside it -- the first cut billed a 45.3s relist as 57.5s and gave
-    # the wrapper a 78.8% "share" of a total it mostly WAS.
-    wrappers = {k for k in _PHASE_TOTALS if k.endswith(".total")}
-    total = sum(v["ms"] for k, v in _PHASE_TOTALS.items() if k not in wrappers)
-    print("")
-    print(f"  {title} -- where the time went")
-    print(f"    {'PHASE':<24}{'CALLS':>7}{'TOTAL s':>10}{'EACH ms':>10}"
-          f"{'SHARE':>8}")
-    for name, v in sorted(_PHASE_TOTALS.items(), key=lambda kv: -kv[1]["ms"]):
-        if name in wrappers:
-            continue
-        share = (100.0 * v["ms"] / total) if total else 0.0
-        print(f"    {name:<24}{v['n']:>7}{v['ms']/1000.0:>10.1f}"
-              f"{v['ms']/max(1, v['n']):>10.0f}{share:>7.1f}%")
-    for name in sorted(wrappers):
-        v = _PHASE_TOTALS[name]
-        print(f"    {name:<24}{v['n']:>7}{v['ms']/1000.0:>10.1f}"
-              f"{v['ms']/max(1, v['n']):>10.0f}{'  (whole)':>8}")
-    print(f"    {'TOTAL':<24}{'':>7}{total/1000.0:>10.1f}")
-
-    # THE PART NOTHING MEASURED, stated rather than left to be noticed.
-    #
-    # A wrapper phase named <thing>.total is the whole episode; every other
-    # <thing>.* is a step inside it. The difference is code no probe covers,
-    # and on the 12:39 run that was HALF of every relist -- 22.4s of steps
-    # inside a 45.3s row -- which was invisible because there was nothing to
-    # subtract from. A residual line makes the next such gap the first thing
-    # read rather than something inferred from a wall clock elsewhere.
-    for whole, v in sorted(_PHASE_TOTALS.items()):
-        if not whole.endswith(".total"):
-            continue
-        prefix = whole[:-len(".total")] + "."
-        steps = sum(x["ms"] for k, x in _PHASE_TOTALS.items()
-                    if k.startswith(prefix) and k != whole)
-        gap = v["ms"] - steps
-        pct = (100.0 * gap / v["ms"]) if v["ms"] else 0.0
-        print(f"    {'  ' + prefix + '<un-instrumented>':<24}{v['n']:>7}"
-              f"{gap/1000.0:>10.1f}{gap/max(1, v['n']):>10.0f}{pct:>7.1f}%"
-              f"   of {prefix}total")
-
-
-def reset_phases() -> None:
-    _PHASE_TOTALS.clear()
-
-
 def note_scan(what: str, detail: str = "") -> int:
     """Announce one table scroll or read. Returns its number this cycle."""
     global _SCAN_COUNT
@@ -14693,7 +14187,7 @@ def effective_floor(catalogue: int, reason: str,
     return catalogue, reason
 
 
-def listing_floor(name: str, units: "int | None" = None) -> tuple[int, str]:
+def listing_floor(name: str) -> tuple[int, str]:
     """The lowest price `name` may be listed at, and which rule set it.
 
     Two independent minimums, and the higher wins:
@@ -14735,7 +14229,7 @@ def listing_floor(name: str, units: "int | None" = None) -> tuple[int, str]:
     catalogue rather than a sample, so adding an entry cannot add an untested
     one.
     """
-    catalogue = item_price_floor(name, units=units)
+    catalogue = item_price_floor(name)
     if not COST_FLOOR_ON_RELIST:
         return catalogue, "the floor set for this item"
     cost = purchase_cost_basis(name)
@@ -14761,128 +14255,7 @@ def listing_floor(name: str, units: "int | None" = None) -> tuple[int, str]:
     return catalogue, "the floor set for this item"
 
 
-def _pack_marker_unreadable(name: str) -> bool:
-    """True when `name` shows a pack marker that pack_size could not parse.
-
-    The marker is "X" followed by digits. If an "X" sits where one belongs --
-    after a letter or as its own word -- and pack_size still came back with 1,
-    the digits after it did not survive the read. That is a MANGLED COUNT, not
-    a single item, and the two must never be treated alike: one prices a 250-
-    unit bundle at 250 times too little.
-    """
-    text = (name or "").strip()
-    if not text:
-        return False
-    if _PACK_SIZE.search(text):
-        return False                      # parsed cleanly
-    # No regex here, deliberately. The first attempt at this test shipped
-    # with a mangled escape -- a word-boundary became a literal backspace --
-    # and it silently matched nothing, which is precisely the failure it
-    # exists to catch. Plain string work can be checked by eye.
-    #
-    # A marker is an 'X' that is not part of a number, with something after
-    # it. If one is present and _PACK_SIZE still came back empty, the digits
-    # did not survive the read.
-    upper = text.upper()
-    for i, ch in enumerate(upper):
-        if ch != "X":
-            continue
-        after = upper[i + 1:].strip()
-        # WHAT FOLLOWS MUST LOOK LIKE A MANGLED COUNT, not like the rest of a
-        # word. Without this the guard fired on every ordinary letter x:
-        # "Yekaterina VIP MembXrship" scored 0, and a 0 floor does not refuse
-        # -- register_item's require reads `not absolute_floor` as "no floor
-        # applies" -- so a 104,000,000 VIP would have listed at market. 198 of
-        # 216 single-character fuzzes of the catalogue names hit that.
-        #
-        # A count that OCR mangled still starts like a number: a digit, or one
-        # of the glyphs this file already records digits being read as (0->O,
-        # 5->S, 1->I/l).
-        if not after or not (after[0].isdigit() or after[0] in "OSIL"):
-            continue
-        if i and upper[i - 1].isdigit():
-            continue                      # e.g. '2X' inside a number
-        if i and upper[i - 1] == "(":
-            # A PARENTHESISED COUNT IS PART OF THE NAME, NOT A PACK MARKER.
-            # "Force Gem Package (x400)" is what the item is called -- the
-            # catalogue entry carries the (x400) -- and _PACK_SIZE correctly
-            # refuses it. Treating it as a mangled marker zeroed that item's
-            # 175,000,000 floor, which is the opposite of the point.
-            continue
-        if upper[i + 1:].strip():
-            return True
-    return False
-
-
-def item_price_floor(name: str, units: "int | None" = None) -> int:
-    """The absolute floor for this LISTING, pack count included.
-
-    PER UNIT IN THE CATALOGUE, PER LISTING HERE. A chaos bundle is one shop row
-    priced for all of it -- "Chaos Core Set X 197" sold for 138,683,862 as a
-    single listing -- so a 690,000/unit floor has to become 690,000 x 197 to
-    guard that row. Returning the per-unit figure would be 197 times too low
-    and would never bind.
-
-    Every other entry in the catalogue is a single item, so pack_size returns 1
-    and this is the identity for them -- a VIP is unaffected.
-    """
-    # THE MARKER COMES OFF BEFORE MATCHING, AND BACK ON AS A MULTIPLIER.
-    #
-    # Matching against the raw board name lets the count leak into the key --
-    # "Chaos Core X 250" folds to 'chaoscorex25o', which is not a prefix of
-    # 'chaoscoreset', so the prefix guard misses and the similarity route hands
-    # the raw material the SET's floor. Strip first, decide, then scale.
-    bare = _PACK_ANYWHERE.sub(" ", name or "")
-    unit = _item_price_floor_unit(bare)
-    if not unit:
-        return 0
-
-    count = pack_size(name)
-    if units is not None:
-        # THE CALLER KNOWS BETTER THAN THE NAME. A registration knows exactly
-        # how many units it is listing; the name is an OCR reading of a label.
-        # Where both exist, take the larger -- a floor is a minimum, and the
-        # only unsafe direction is too low.
-        count = max(int(units), count)
-    elif _pack_marker_unreadable(name):
-        # A MARKER THAT DID NOT PARSE IS NOT A COUNT OF ONE.
-        #
-        # pack_size returns 1 when its end-anchored pattern misses, and that is
-        # right for an item with no marker. It is catastrophic for one that HAS
-        # a marker the OCR mangled: "Chaos Core Set X 25O" (zero read as O)
-        # scored a 690,000 floor instead of 172,500,000 -- a 250x collapse --
-        # and the same happens to a trailing "Use Period: 30 days" that pushes
-        # the digits off the end of the string.
-        #
-        # It takes the whole floor stack down together, not one net of several:
-        # market_floor keys on the folded name and misses, and chaos_row_floor's
-        # is_chaos_set test fails on the mangled name too. Nothing else is left
-        # underneath.
-        #
-        # So a marker that is present but unreadable REFUSES to price rather
-        # than pricing low. 0 here means "no floor could be established", and
-        # register_item's `require` will not list without one -- which strands
-        # the bundle for a cycle instead of selling it at a fraction.
-        # A PROHIBITIVE FLOOR, NOT ZERO.
-        #
-        # Zero was the first attempt and it is the opposite of a safeguard:
-        # register_item enforces `require(not absolute_floor or price >=
-        # absolute_floor)`, so a floor of 0 short-circuits and the item lists
-        # at whatever the market says. The comment claiming "require will not
-        # list without one" was simply wrong -- that require is in the branch
-        # for items with no NAME.
-        #
-        # So the refusal has to be expressed as a floor nothing can clear.
-        # SET_STACK_MAX is the largest bundle the game holds, so a floor of
-        # unit x that is above any real listing: the require fails, the item is
-        # not listed, and it strands for a cycle -- which is the outcome that
-        # was wanted. Loud, and in the safe direction.
-        record("floor.pack_unreadable", name=name[:60], unit=unit)
-        return unit * SET_STACK_MAX
-    return unit * max(1, count)
-
-
-def _item_price_floor_unit(name: str) -> int:
+def item_price_floor(name: str) -> int:
     """Absolute floor for a listing name, or 0 if none applies.
 
     Two independent routes, because neither alone is good enough:
@@ -14922,22 +14295,6 @@ def _item_price_floor_unit(name: str) -> int:
         # read is what the token route is for. Guarding both would trade a
         # cosmetic over-match for the one failure that must never happen.
         long_enough = len(key) >= len(reference) * FLOOR_LENGTH_RATIO
-        # A NAME THAT IS A STRICT PREFIX OF THE CATALOGUE NAME IS A DIFFERENT,
-        # SHORTER ITEM -- never this one.
-        #
-        # "Chaos Core" folds to a strict prefix of "Chaos Core Set" and scores
-        # 0.83 against it, clearing the similarity bar. That would hand the raw
-        # material the SET's 690,000 floor, and the Core is what chaos BUYS --
-        # flooring it is both wrong and expensive.
-        #
-        # The token route already refuses this ('chaoscoreset' is not in
-        # 'chaoscore'), so only the similarity route needs the guard. Same
-        # containment trap the catalogue documents for 'siena' vs 'unbinding'
-        # and 'gempack' vs 'gem', reached from the other direction: there a
-        # short TOKEN over-matched, here a short NAME does.
-        prefix_of_reference = (key != reference and reference.startswith(key))
-        if prefix_of_reference:
-            long_enough = False
         if (ratio >= FLOOR_NAME_SIMILARITY and long_enough) or (
                 token_hit and ratio >= FLOOR_TOKEN_MIN_SIMILARITY):
             candidates.append((ratio, floor, reference))
@@ -15403,36 +14760,15 @@ def sales_db() -> "sqlite3.Connection | None":
                 -- numbers shift on any cancel or register, so the price each
                 -- was listed at is the only thing that tells two apart. It is
                 -- rewritten on every relist so it tracks the row.
-                -- `run` IS NOT OPTIONAL BOOKKEEPING. A lot is what THIS
-                -- launch paid for stock THIS launch is holding, and every
-                -- reader below filters on it. Without it the cost basis
-                -- reached back into previous runs: on 2026-08-15 a Set that
-                -- cost 690,000 to make was billed against a 660,000 lot from
-                -- hours earlier and reported 8% profit, while replacing the
-                -- stock cost 690,000 and the real margin was about half that.
-                -- Same rule as the deleted `carried` table below: each launch
-                -- is a separate run and inherits nothing.
                 CREATE TABLE IF NOT EXISTS chaos_lots (
                     id           INTEGER PRIMARY KEY AUTOINCREMENT,
                     unit_cost    INTEGER NOT NULL,
                     listed_price INTEGER NOT NULL,
                     qty          INTEGER NOT NULL,
-                    created      TEXT    NOT NULL,
-                    run          TEXT
+                    created      TEXT    NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS chaos_lots_price
                     ON chaos_lots (listed_price);
-            """)
-            # MIGRATE AN EXISTING LEDGER. CREATE TABLE IF NOT EXISTS does
-            # nothing to a table that already exists, so a ledger written
-            # before `run` was added keeps the old five columns and every
-            # insert below fails on the sixth. Added separately, tolerantly:
-            # a duplicate-column error means it is already there.
-            try:
-                conn.execute("ALTER TABLE chaos_lots ADD COLUMN run TEXT")
-            except Exception:  # noqa: BLE001 - already migrated
-                pass
-            conn.executescript("""
 
                 -- NOTE: there is no `carried` table here any more.
                 --
@@ -16578,22 +15914,6 @@ def ensure_work_tab_empty(timeout: float = 8.0, verbose: bool = True) -> bool:
     if chaos_stranded():
         return False
 
-    # NO EXEMPTION FOR THE CHAOS REMAINDER. There used to be one here and it
-    # was wrong twice over.
-    #
-    # It forgave a dirty tab whenever a remainder had EVER been recorded --
-    # `if left:` with no check that the tab actually held that many -- so a
-    # stale 2 downgraded this FatalAbort to a cycle failure for any unrelated
-    # strand, which is exactly the "recover from a tab we do not understand"
-    # behaviour the docstring above was written to remove. And it deadlocked:
-    # this gate runs BEFORE chaos_pass, so a tab holding the remainder stopped
-    # the cycle before reaching the only code that could absorb it.
-    #
-    # craft_chaos_sets now sweeps the 1-2 leftover Cores with the x1 recipe, so
-    # the tab is clean by the time anything checks it and no exemption is
-    # needed. If one ever shows up here again, it is a real strand and should
-    # stop the run.
-
     raise FatalAbort(
         f"inventory tab {WORK_TAB} is not empty. Everything in it is stock "
         "this script cannot name from a slot, so it cannot be priced safely "
@@ -17111,8 +16431,7 @@ def cancel_item(
         # ---- step 1: Change must open the Registration Extension dialog -----
         record("cancel.before_change", row=row, name=target.name,
                price=target.price, qty=target.qty)
-        with phase("relist.cancel_change_click"):
-            click(*target.change)
+        click(*target.change)
         # Move the cursor OFF the row before looking for the dialog.
         #
         # Resting on a listing raises the game's "Item Information" tooltip,
@@ -17128,8 +16447,7 @@ def cancel_item(
         # the listings so no tooltip covers the table." The cancel path was
         # simply never given it.
         park_cursor()
-        with phase("relist.cancel_await_extension"):
-            shot = await_dialog("extension", timeout)
+        shot = await_dialog("extension", timeout)
         # `shot` positionally, not shot=: it is a positional-only parameter, so
         # the keyword form quietly became *context* -- the frame saved was
         # whatever grab() last returned rather than this one, and a PIL object
@@ -17181,21 +16499,17 @@ def cancel_item(
         # `shot` is the frame await_dialog just used to prove this is the
         # extension dialog; its buttons are on it, and the OCR cache is keyed
         # per frame, so reading them costs nothing extra.
-        with phase("relist.cancel_find_cancel_btn"):
-            cancel = await_dialog_button(DISMISS_WORD, timeout, source=shot)
+        cancel = await_dialog_button(DISMISS_WORD, timeout, source=shot)
         require(cancel is not None,
                 "no Cancel button on the Registration Extension dialog")
 
         # ---- step 2: Cancel must open the confirmation dialog ---------------
         say(f"{DISMISS_WORD} button at {cancel.centre} (conf {cancel.conf:.0f})")
-        with phase("relist.cancel_click_cancel"):
-            click(*cancel.centre)
-        with phase("relist.cancel_await_confirm"):
-            shot = await_dialog("confirm", timeout)
+        click(*cancel.centre)
+        shot = await_dialog("confirm", timeout)
         require(shot is not None, "the confirmation dialog did not appear")
 
-        with phase("relist.cancel_find_confirm_btn"):
-            confirm = await_dialog_button(CONFIRM_WORD, timeout, source=shot)
+        confirm = await_dialog_button(CONFIRM_WORD, timeout, source=shot)
         require(confirm is not None,
                 "no Confirmation button on the confirmation dialog")
 
@@ -17223,7 +16537,6 @@ def cancel_item(
         require(await_dialog(None, timeout) is not None,
                 "the dialog stayed open after Confirmation")
 
-        mark_table_stale("a listing was cancelled")
         record("cancel.committed", row=row, name=target.name,
                price=target.price, qty=target.qty)
         # The slot empties IN PLACE. Nothing below it moves -- measured over
@@ -17449,7 +16762,6 @@ def register_item(
     floor_reason: str = "",
     cost_floor: int = 0,
     maximise_qty: bool | None = None,
-    expect_units: "int | None" = None,
     force_price: int | None = None,
     force_qty: int | None = None,
     expect_item: str | None = None,
@@ -17506,8 +16818,7 @@ def register_item(
                     "the Trade window is not open, so there is no shop slot to "
                     "load into - open the Agent Shop first")
 
-        with phase("relist.reg_check_slot_free"):
-            panel = read_register_panel(grab())
+        panel = read_register_panel(grab())
         require(not panel["loaded"],
                 f"the shop slot already holds an item "
                 f"(qty {panel['qty_text']!r}, spread {panel['slot_stdev']})")
@@ -17524,12 +16835,10 @@ def register_item(
         # dialog closes is sometimes swallowed while the game takes focus back.
         panel = {"loaded": False}
         for attempt in range(1, LOAD_ATTEMPTS + 1):
-            with phase("relist.reg_ctrl_click"):
-                ctrl_click(*centre)
-                time.sleep(0.8)
-                park_cursor()
-            with phase("relist.reg_read_panel"):
-                panel = read_register_panel(grab())
+            ctrl_click(*centre)
+            time.sleep(0.8)
+            park_cursor()
+            panel = read_register_panel(grab())
             if panel["loaded"]:
                 break
             if attempt < LOAD_ATTEMPTS:
@@ -17729,7 +17038,6 @@ def register_item(
             record("qty.before_typing", entry=entry, item=expect_item)
             say(f"Setting quantity: typing {entry}"
                 + ("" if force_qty else " - the game clamps it to the stack maximum"))
-            _qty_t0 = time.monotonic()
             click(*QTY_INPUT)
             # The quantity field holds at most len(str(MAX_QTY_ENTRY)) digits,
             # so clearing it needs that many backspaces plus a little slack --
@@ -17737,8 +17045,6 @@ def register_item(
             type_number(entry, clear=len(str(MAX_QTY_ENTRY)) + 2)
             time.sleep(0.4)
             park_cursor()
-            _note_phase("relist.reg_type_qty",
-                        (time.monotonic() - _qty_t0) * 1000)
 
         # ---- step 3: settle on a price --------------------------------------
         # Two rows: the top is the week's average price, the bottom is the
@@ -17758,11 +17064,7 @@ def register_item(
         if expect_item:
             # See listing_floor: the operator's floor and what was paid,
             # whichever is higher.
-            # expect_units is what the CALLER knows it is listing. The name is
-            # an OCR reading of a label; where both exist the larger wins,
-            # because a floor is a minimum and only 'too low' is dangerous.
-            absolute_floor, floor_reason_text = listing_floor(
-                expect_item, units=expect_units)
+            absolute_floor, floor_reason_text = listing_floor(expect_item)
 
             # A caller that KNOWS what this particular stack cost can say so,
             # and the higher of the two binds.
@@ -17957,22 +17259,6 @@ def register_item(
                 f"refusing to list at {price:,} Alz, below the "
                 f"{absolute_floor:,} floor for this item")
 
-        # BOUND BEFORE THE BRANCH, NOT INSIDE ONE.
-        #
-        # This timer was first assigned in the `elif` arm only, and the
-        # _note_phase below reads it on every arm. The undercut arm -- which is
-        # the ordinary chaos path -- therefore raised UnboundLocalError AFTER
-        # the item was loaded and priced and BEFORE Register was clicked, on
-        # the 12:05 run of 2026-08-15. The item sat in the shop slot holding a
-        # price that was never committed; the next cycle's startup returned it
-        # to the inventory, and the work-tab gate then stopped the run with
-        # tab 4 dirty. From outside it looked like the script listed an item,
-        # priced it, then took it back out and cancelled.
-        #
-        # Fourth instance of this exact shape in one day (`scrolling`,
-        # `free_inside`, `left`, this). A name a profiler introduces must be
-        # bound on EVERY path the profiler's read can reach.
-        _px_t0 = time.monotonic()
         # An undercut price is never one the panel offers, so it must be typed.
         if undercut:
             say(f"Listing at {price:,} Alz - {why}")
@@ -17990,10 +17276,7 @@ def register_item(
         time.sleep(0.5)
 
         park_cursor()
-        _note_phase("relist.reg_set_price",
-                    (time.monotonic() - _px_t0) * 1000)
-        with phase("relist.reg_verify_price"):
-            panel = read_register_panel(grab())
+        panel = read_register_panel(grab())
         require(panel["net_sales"] > 0,
                 f"price did not take - net sales is still {panel['net_sales']}")
 
@@ -18072,10 +17355,8 @@ def register_item(
         # Sometimes two -- pricing more than 25% under the weekly average adds
         # an extra "are you sure" step -- so confirm through the whole chain
         # rather than assuming a single dialog.
-        with phase("relist.reg_click_register"):
-            click(*button.centre)
-        with phase("relist.reg_await_confirm"):
-            shot = await_dialog("confirm", timeout)
+        click(*button.centre)
+        shot = await_dialog("confirm", timeout)
         require(shot is not None, "no confirmation dialog appeared after Register")
 
         # THE FOURTH WITNESS, and the last chance to stop: this dialog is the
@@ -18216,7 +17497,6 @@ def register_item(
                     report["price"] = price
                     report["qty"] = qty
                     report["total"] = panel["net_sales"]
-                mark_table_stale("a listing was registered")
                 record("register.committed", row=row, col=col, price=price,
                        qty=qty, item=expect_item)
                 # THE MODEL FOLLOWS THE COMMIT, never the intent. `row, col`
@@ -18404,21 +17684,6 @@ def relist(
 def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, say,
                   expect=None, work_tab_verified=False, absolute_row=None):
     """The body of relist(); relist() wraps this to always close the shop."""
-    # THE WHOLE EPISODE, so the residual is arithmetic rather than a guess.
-    #
-    # 22 step phases accounted for 22.4s of a 45.3s relist on the 12:39 run --
-    # exactly half. Without a total there is nothing to subtract them FROM, so
-    # the missing half was invisible: every step looked fine and the row still
-    # took twice as long as its parts. phase_report prints total minus the sum.
-    with phase("relist.total", f"row {row}"):
-        return _relist_body(row, inv_row, inv_col, dry_run, timeout, verbose,
-                            attempts, say, expect, work_tab_verified,
-                            absolute_row)
-
-
-def _relist_body(row, inv_row, inv_col, dry_run, timeout, verbose, attempts,
-                 say, expect=None, work_tab_verified=False, absolute_row=None):
-    """Split out of _relist_cycle so the whole episode can be timed."""
     for attempt in range(1, attempts + 1):
         if attempt > 1:
             say(f"\n=== relist attempt {attempt}/{attempts} ===")
@@ -18499,23 +17764,14 @@ def _relist_body(row, inv_row, inv_col, dry_run, timeout, verbose, attempts,
             #   two were wired to invalidate it."
             #
             # It saved about twelve seconds a row. Not at this price.
-            if consume_table_fresh():
-                # The previous row ended in a refresh and nothing has changed
-                # the table since -- collecting marks it stale, and so does
-                # every cancel and every register. Refreshing again here would
-                # be the second of two back-to-back refetches.
-                say("  the table was refreshed a moment ago and nothing has "
-                    "changed it since; not refetching.")
-                record("refresh.skipped_fresh", row=row)
-            elif not refresh_table(timeout=max(timeout, 20.0),
-                                   verbose=verbose):
+            if not refresh_table(timeout=max(timeout, 20.0),
+                                 verbose=verbose):
                 say("Could not refresh the table - stopping.")
                 return FAILED
             park_cursor()
 
         # Read the price BEFORE cancelling; once cancelled the row is gone.
-        with phase("relist.read_table"):
-            rows = await_rows(timeout)
+        rows = await_rows(timeout)
         if not 1 <= row <= len(rows):
             say(f"Row {row} is out of range; {len(rows)} row(s) visible.")
             return FAILED
@@ -18711,15 +17967,6 @@ def _relist_body(row, inv_row, inv_col, dry_run, timeout, verbose, attempts,
                 return FAILED
             say(f"Confirm Receipt: accepting at {accept.centre} "
                 f"(conf {accept.conf:.0f})")
-            # STALE FROM THE CLICK, not from the confirmation below.
-            #
-            # Collecting is the one table change that the previous cache here
-            # was never wired to notice -- enumerate_listings names it exactly:
-            # "a cancellation, a registration, and COLLECTING a sold row -- and
-            # only the first two were wired to invalidate it". Marked BEFORE
-            # the click lands, so every exit between here and the refresh two
-            # branches down leaves the table known-stale rather than trusted.
-            mark_table_stale("a sold row was collected")
             click(*accept.centre)
             time.sleep(1.0)
             if await_dialog(None, timeout) is None:
@@ -19154,9 +18401,7 @@ def _relist_body(row, inv_row, inv_col, dry_run, timeout, verbose, attempts,
                 # The game can switch tabs when a big stack comes back; go back
                 # to the one the diff's "before" frame was taken on, or the
                 # comparison is meaningless.
-                with phase("relist.inv_select_tab"):
-                    back = select_inventory_tab(start_tab, origin)
-                if not back:
+                if not select_inventory_tab(start_tab, origin):
                     say(f"Could not return to inventory tab {start_tab}.\n"
                         f"IMPORTANT: row {row} has already been cancelled - "
                         f"{target.name!r} is in your inventory, unlisted.")
@@ -19166,8 +18411,7 @@ def _relist_body(row, inv_row, inv_col, dry_run, timeout, verbose, attempts,
                 # The single most useful frame in a failed cycle: it shows
                 # where the item actually came back to. Captured once and
                 # reused for the diff, so recording costs nothing.
-                with phase("relist.inv_grab_after"):
-                    after = grab()
+                after = grab()
                 record("inventory.after_cancel", after, tab=start_tab)
                 # THE DIFF EXISTS TO ANSWER "WHICH SLOT DID IT COME BACK TO",
                 # and it scans all 64 slots of the tab to do it -- ~3.2s a row.
@@ -19179,8 +18423,7 @@ def _relist_body(row, inv_row, inv_col, dry_run, timeout, verbose, attempts,
                 # tell us is the SLOT, because the game chooses that -- so the
                 # scan still runs, but the ambiguity guard below can be
                 # satisfied by the model when several slots changed at once.
-                with phase("relist.inv_diff_64_slots"):
-                    returned = changed_slots(before, after, origin)
+                returned = changed_slots(before, after, origin)
                 if len(returned) > 1 and SHOP.enforce and SHOP.ready:
                     # Several slots moved -- normally a refusal, because an
                     # unidentified item must not be listed. With a trusted
@@ -19308,7 +18551,7 @@ def _relist_body(row, inv_row, inv_col, dry_run, timeout, verbose, attempts,
         if SHOP.enforce and SHOP.ready:
             say("  row model: landing row already predicted and committed; "
                 "not re-reading the table to confirm it.")
-        elif not _timed_sanity(target.name, report.get("price"),
+        elif not sanity_check(target.name, report.get("price"),
                               report.get("qty"),
                               timeout=timeout, verbose=verbose, found=found,
                               absolute_row=report.get("row")):
@@ -19401,14 +18644,6 @@ def parse_row_spec(specs: list[str]) -> list[int]:
                 rows.append(int(chunk))
     seen: set[int] = set()
     return [r for r in rows if not (r in seen or seen.add(r))]
-
-
-def _timed_sanity(*a, **k):
-    """sanity_check, timed. It refreshes the table and re-reads the row, and
-    on the 12:39 run its line ("Registered (1,1) qty 1 at ... Row 5.") carried
-    4.5s that no step phase covered."""
-    with phase("relist.verify_listing"):
-        return sanity_check(*a, **k)
 
 
 def sanity_check(
@@ -21160,36 +20395,6 @@ def chaos_cores_held(verbose: bool = True) -> int:
         return 0
 
 
-def select_chaos_recipe(verbose: bool = True) -> bool:
-    """Click the tier, then the recipe under it. No OCR. True when clicked.
-
-    CHAOS_RECIPE picks which -- 1 is the x1, 2 is the x3. Both points come
-    from CRAFT_RECIPES and assume the tree is in its resting state, which is
-    what the craft window opens to.
-    """
-    def say(message: str) -> None:
-        if verbose:
-            print(message)
-
-    entry = CRAFT_RECIPES.get(int(CHAOS_RECIPE or 1))
-    if entry is None:
-        say(f"  chaos_recipe {CHAOS_RECIPE} is not a known recipe "
-            f"({sorted(CRAFT_RECIPES)}); not crafting.")
-        record("craft.recipe_unknown", setting=CHAOS_RECIPE)
-        return False
-    tier, recipe, label = entry
-
-    say(f"  selecting {label} (chaos_recipe {CHAOS_RECIPE}): tier at {tier}, "
-        f"recipe at {recipe}")
-    click(*tier)
-    time.sleep(0.8)
-    click(*recipe)
-    time.sleep(1.2)
-    record("craft.recipe_selected", setting=CHAOS_RECIPE, label=label,
-           tier=str(tier), recipe=str(recipe))
-    return True
-
-
 def craft_material_held(source: "Image.Image | None" = None) -> "int | None":
     """How many Chaos Cores the craft window says are held. None if unread.
 
@@ -21343,8 +20548,11 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
         say("  the craft window is not open.")
         return 0
 
-    if not select_chaos_recipe(verbose=verbose):
-        return 0
+    say("  selecting the Chaos Core Set recipe")
+    click(*CRAFT_CATEGORY_POINT)
+    time.sleep(0.8)
+    click(*CRAFT_RECIPE_POINT)
+    time.sleep(1.2)
 
     shot = grab()
     if not craft_window_open(shot):
@@ -21438,8 +20646,7 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
     # chaos.craft_settled records made/waited every time, so if a live run ever
     # shows the queue outlasting the wait, the block size is set from evidence.
     say(f"  waiting {settle:.0f}s for {made} craft(s) to finish "
-        f"({craft_settle_rate():.0f}s per {CRAFT_SETTLE_BLOCK}, rounded up, "
-        f"chaos_recipe {CHAOS_RECIPE})")
+        f"({CRAFT_SETTLE_PER_BLOCK:.0f}s per {CRAFT_SETTLE_BLOCK}, rounded up)")
     time.sleep(settle)
     waited = settle
     say(f"  waited {waited:.0f}s")
@@ -21447,36 +20654,12 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
            budget=round(settle, 1))
 
     after = craft_material_held()
-    # Bound on BOTH branches. An unreadable counter means the remainder is
-    # unknown, and unknown is not "sweep something" -- it is 0 here and the
-    # work-tab gate is left to have the last word.
-    left = 0
     if after is None:
         say(f"  the material counter did not read back; assuming the queue "
             f"took all {before}.")
     else:
         made = before - after
         say(f"  the queue consumed {made} of {before} Core(s).")
-        # WHAT THE RECIPE CANNOT SWALLOW IS EXPECTED, NOT A STRAND.
-        #
-        # The x3 recipe takes three Cores per craft, so a holding that is not a
-        # multiple of three leaves one or two behind -- observed live on
-        # 2026-08-15: 35 held, 33 consumed, 2 left. They are not lost; the next
-        # purchase rolls them in.
-        #
-        # But they sit on CHAOS_WORK_TAB, which IS WORK_TAB, and
-        # ensure_work_tab_empty raises FatalAbort on a dirty tab with no carry
-        # and no strand -- a run-ending stop needing a human. With the shipped
-        # CHAOS_BUY_QUANTITY of 200 and this recipe, 200 % 3 == 2, so the
-        # holding cycles 2 -> 1 -> 0 and two passes in every three would end
-        # the run. Marking it a strand instead is no better: two Cores cannot
-        # make a craft, so the next pass reports "nothing was crafted" and
-        # re-strands, trading the abort for a breaker trip.
-        #
-        # So it is recorded as what it is -- a remainder too small to craft --
-        # and the work-tab gate accepts exactly that many.
-        # Swept below, AFTER this craft has been collected -- see the sweep.
-        left = after if after < craft_material_cost() else 0
 
     # THE TAB AGAIN, IMMEDIATELY BEFORE COLLECTING.
     #
@@ -21500,23 +20683,6 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
     say("  Complete All")
     click(*CRAFT_COMPLETE_ALL)
     time.sleep(2.0)
-
-    # THE LEFTOVER CORES ARE LEFT ALONE. NOT SWEPT, NOT CRAFTED, NOT TIDIED.
-    #
-    # The x3 recipe leaves 1 or 2 Cores whenever the holding is not a multiple
-    # of three. A "remainder sweep" was invented here on 2026-08-15 -- it
-    # reopened the craft window, switched CHAOS_RECIPE to 1 behind the
-    # operator's back and crafted the leftovers with the other recipe. That was
-    # never asked for. The operator's instruction was to select the configured
-    # recipe and craft; changing recipe mid-pass is a second, unrequested
-    # behaviour, and it was removed on sight.
-    #
-    # Do not re-add it, and do not add anything else that clears these Cores by
-    # crafting. If a leftover Core matters, it is a question about
-    # CHAOS_BUY_QUANTITY or about the work-tab gate -- not a licence for this
-    # function to run a craft nobody asked for.
-    note_chaos_remainder(left)
-
     record("chaos.crafted", before=before, after=after, made=made)
     say(f"  crafted {made} Chaos Core Set(s).")
     return max(0, made)
@@ -21637,12 +20803,10 @@ def note_chaos_lot(unit_cost: int, listed_price: int, qty: int) -> None:
         return
     try:
         conn.execute(
-            "INSERT INTO chaos_lots "
-            "(unit_cost, listed_price, qty, created, run) "
-            "VALUES (?,?,?,?,?)",
+            "INSERT INTO chaos_lots (unit_cost, listed_price, qty, created) "
+            "VALUES (?,?,?,?)",
             (int(unit_cost), int(listed_price), int(max(1, qty)),
-             _dt.datetime.now().isoformat(" ", "seconds"),
-             _RUN_STARTED_AT.isoformat(timespec="seconds")))
+             _dt.datetime.now().isoformat(" ", "seconds")))
         conn.commit()
     except Exception:  # noqa: BLE001 - bookkeeping must never block a listing
         pass
@@ -21660,9 +20824,8 @@ def chaos_lots_cheapest_first() -> list:
         return []
     try:
         return [(int(r[0]), int(r[1])) for r in conn.execute(
-            "SELECT id, unit_cost FROM chaos_lots WHERE run = ? "
-            "ORDER BY unit_cost ASC, id ASC",
-            (_RUN_STARTED_AT.isoformat(timespec="seconds"),)).fetchall()]
+            "SELECT id, unit_cost FROM chaos_lots "
+            "ORDER BY unit_cost ASC, id ASC").fetchall()]
     except Exception:  # noqa: BLE001
         return []
     finally:
@@ -21683,9 +20846,8 @@ def chaos_lots() -> list:
         return []
     try:
         return [tuple(r) for r in conn.execute(
-            "SELECT id, unit_cost, listed_price FROM chaos_lots WHERE run = ? "
-            "ORDER BY unit_cost DESC, id ASC",
-            (_RUN_STARTED_AT.isoformat(timespec="seconds"),)).fetchall()]
+            "SELECT id, unit_cost, listed_price FROM chaos_lots "
+            "ORDER BY unit_cost DESC, id ASC").fetchall()]
     except Exception:  # noqa: BLE001
         return []
     finally:
@@ -22542,9 +21704,8 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # Reusing the offers is still sound in principle; it needs the
                 # gate to re-note the Core search as the current one, and that
                 # is not worth the risk on this path for nine seconds.
-                with phase("search.core_row1", f"order {order}"):
-                    offers = run_favourite_search(CHAOS_CORE_SLOT,
-                                                  verbose=verbose)
+                offers = run_favourite_search(CHAOS_CORE_SLOT,
+                                              verbose=verbose)
                 if not offers and not purchase_tab_open():
                     # THE WINDOW CLOSED UNDER US. Reopen and ask once more.
                     #
@@ -22663,8 +21824,7 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # purchase itself a moment later, which is recoverable.
                 order_price = core.price * order_size
                 try:
-                    with phase("alz.balance_read"):
-                        held = get_alz(grab()) or 0
+                    held = get_alz(grab()) or 0
                 except Exception:  # noqa: BLE001 - a balance read is a hint
                     held = 0
                 if held and order_price > held:
@@ -22687,9 +21847,8 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                     f"{core.price:,} = {core.price * order_size:,} Alz "
                     f"({got}/{CHAOS_BUY_QUANTITY} held so far)")
                 report: dict = {}
-                with phase("buy_offer.total", f"{order_size} x"):
-                    bought, why = buy_offer(core, want=order_size,
-                                            report=report, verbose=verbose)
+                bought, why = buy_offer(core, want=order_size, report=report,
+                                        verbose=verbose)
                 if not bought:
                     say(f"Chaos: order {order} not bought - {why}")
                     record("chaos.buy_refused", why=why, got=got)
@@ -22736,8 +21895,6 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
             if got < 1:
                 say("Chaos: nothing was bought; nothing to craft.")
                 return False
-            phase_report("CHAOS BUYING")
-            reset_phases()
             say(f"Chaos: {got} Core(s) obtained"
                 + ("." if got >= CHAOS_BUY_QUANTITY else
                    f" of {CHAOS_BUY_QUANTITY} - crafting what there is rather "
@@ -22845,30 +22002,10 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 + (f", {paid:,} over {paid_units} Core(s)"
                    if paid_units != made else "") + ").")
             report = {}
-            # THE COUNT HAS TO TRAVEL WITH THE NAME, or the absolute floor is
-            # a per-unit figure applied to a whole bundle.
-            #
-            # item_price_floor scales ITEM_PRICE_FLOORS by the pack marker in
-            # the name, because a compressed bundle is ONE row priced for all
-            # of it. The bare catalogue name has no marker, so a 197-unit
-            # bundle was floored at 690,000 for the lot instead of 690,000 x
-            # 197 = 135,930,000 -- 197 times too low, and only masked while the
-            # cost floor happened to sit higher. With the market above cost and
-            # below 690,000/unit it listed under the operator's absolute floor:
-            # at 650,000 cost and a 660,000 market that is 30,000/unit, about
-            # 5,910,000 Alz on one bundle.
-            #
-            # "Chaos Core Set X 197" is also the name the BOARD shows for it --
-            # compressed bundles really are one item named that way -- so this
-            # is the more accurate identity as well as the one that floors
-            # correctly. The relist path has always passed the board name and
-            # has always floored right; this makes the two agree.
-            bundle_name = f"{FAVOURITE_SLOTS[CHAOS_SET_SLOT]} X {made}"
             listed = register_item(1, 1, timeout=timeout, verbose=verbose,
                                    maximise_qty=True,
                                    cost_floor=cost_floor,
-                                   expect_item=bundle_name,
-                                   expect_units=made,
+                                   expect_item=FAVOURITE_SLOTS[CHAOS_SET_SLOT],
                                    undercut=CHAOS_UNDERCUT,
                                    report=report)
             if listed:
@@ -24318,12 +23455,8 @@ _TRADE_FRAME_GEOMETRY = {
     # The Remote Request (craft) window. Its own panel, mapped through the
     # Trade frame like the vendor regions above -- and every one of these is
     # CLICKED, so an unscaled value here lands somewhere unintended.
-    # CRAFT_RECIPES is a dict of points, not a bare point -- see apply_layout,
-    # which special-cases it. The two flat constants that used to live here
-    # were replaced by that table on 2026-08-15 and are gone; leaving them
-    # registered would have rescaled coordinates nothing clicks while the ones
-    # that ARE clicked stayed at reference pixels.
-    "CRAFT_RECIPES": "recipe_points",
+    "CRAFT_CATEGORY_POINT": "point",
+    "CRAFT_RECIPE_POINT": "point",
     "CRAFT_REPEAT_POINT": "point",
     "CRAFT_REQUEST_ALL": "point",
     "CRAFT_COMPLETE_ALL": "point",
@@ -24432,12 +23565,6 @@ def _capture_reference_geometry() -> None:
             value = (value[0] - ox, value[1] - oy, value[2] - ox, value[3] - oy)
         elif kind == "point":
             value = (value[0] - ox, value[1] - oy)
-        elif kind == "recipe_points":
-            # {setting: (tier_point, recipe_point, label)} -- both points move,
-            # the label does not.
-            value = {k: ((v[0][0] - ox, v[0][1] - oy),
-                         (v[1][0] - ox, v[1][1] - oy), v[2])
-                     for k, v in value.items()}
         elif kind == "x":
             value = value - ox
         elif kind == "y":
@@ -24491,9 +23618,6 @@ def apply_layout(layout: "Layout") -> None:
             value = layout.box(ref)
         elif kind == "point":
             value = layout.point(ref)
-        elif kind == "recipe_points":
-            value = {k: (layout.point(v[0]), layout.point(v[1]), v[2])
-                     for k, v in ref.items()}
         elif kind == "x":
             value = layout.x(ref)
         elif kind == "y":

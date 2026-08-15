@@ -32,13 +32,13 @@
     "CHAOS_RECIPE": "which craft recipe chaos uses. 1 = [1500] Chaos Core Set (x1) under the 1000-1999 tier; 2 = [2500] Chaos Core Set (x3) under 2000-2999, which takes 3 Cores and yields 3 Sets per craft, so a third of the craft operations for the same stock. Two fixed clicks, no OCR: the tier, then the recipe under it. Both points assume the tree is in its resting state (all tiers collapsed), which is what the craft window opens to."
   },
   "CHAOS_ENABLED": true,
-  "CHAOS_ROWS": 7,
-  "CHAOS_RESTOCK_AT_OR_BELOW_ROWS": 4,
+  "CHAOS_ROWS": 8,
+  "CHAOS_RESTOCK_AT_OR_BELOW_ROWS": 7,
   "CHAOS_BUY_QUANTITY": 200,
   "CHAOS_MARGIN_FLOOR": 15000,
   "CHAOS_UNDERCUT": 1,
   "CHAOS_RECIPE": 2,
-  "BUY_ENABLED": true,
+  "BUY_ENABLED": false,
   "RESTOCK_TARGET": 200,
   "BUY_MAXIMUM": 500,
   "RESTOCK_AT_OR_BELOW_ROWS": 1,
@@ -57,11 +57,11 @@
     "Upgrade Core (Ultimate)": 10000
   },
   "run": {
-    "relist_rows": "1-19",
+    "relist_rows": "1-8",
     "for_minutes": 1000,
     "every_minutes": 0,
     "premium": true,
-    "debug_frames": true,
+    "debug_frames": false,
     "row_model": true
   },
   "COST_FLOOR_ON_RELIST": true

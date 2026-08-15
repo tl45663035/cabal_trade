@@ -56,12 +56,6 @@ FLOORS = {
     "Siena's Unbinding Stone":    71_000_000,
     "Force Gem Package (x400)":  175_000_000,
     "Epic Booster (Highest)":     44_000_000,
-    # PER UNIT. Added 2026-08-15 at the operator's instruction: "the absolute
-    # price floor for Chaos set is 690k per ... no matter what, always price
-    # floor is 690k regardless of what market says". Chaos lists compressed
-    # bundles, so item_price_floor scales this by the count in the name -- the
-    # bare name here is one unit. See the bundle checks below.
-    "Chaos Core Set":                690_000,
 }
 
 for name, want in FLOORS.items():
@@ -71,93 +65,6 @@ for name, want in FLOORS.items():
     check(got != 0,
           f"{name} resolved to NO floor at all -- the catalogue entry is "
           f"missing or its name no longer matches")
-
-# A COMPRESSED BUNDLE IS ONE ROW PRICED FOR ALL OF IT, so the absolute floor
-# scales by the count in its name. A flat per-unit figure would be hundreds of
-# times too low and would never bind on the listing it exists to guard.
-for bundle, count in (("Chaos Core Set X 197", 197),
-                      ("Chaos Core Set X 250", 250),
-                      ("Chaos Core Set", 1)):
-    want_bundle = 690_000 * count
-    got_bundle = m.item_price_floor(bundle)
-    check(got_bundle == want_bundle,
-          f"{bundle} must floor at {want_bundle:,} ({count} x 690,000), got "
-          f"{got_bundle:,}")
-
-# AND THE RAW MATERIAL MUST NOT INHERIT IT. "Chaos Core" is what chaos BUYS;
-# it folds to a strict prefix of "Chaos Core Set" and scores 0.83 against it,
-# which clears the similarity bar. Flooring it would be both wrong and
-# expensive. Same containment trap as 'siena' vs 'unbinding'.
-for raw in ("Chaos Core", "Chaos Core X 250", "chaos core"):
-    check(m.item_price_floor(raw) == 0,
-          f"{raw!r} must have NO absolute floor -- it is the raw material, "
-          f"not the product. Got {m.item_price_floor(raw):,}")
-
-# A MANGLED PACK MARKER MUST NOT PRICE A BUNDLE AT A FRACTION.
-#
-# item_price_floor scales a per-unit catalogue floor by the count in the name.
-# pack_size returns 1 when its end-anchored pattern misses -- right for an item
-# with no marker, catastrophic for one whose marker the OCR mangled. Measured
-# 2026-08-15: "Chaos Core Set X 25O" (zero read as O) scored 690,000 against a
-# true 172,500,000, a 250x collapse, and it takes the whole floor stack with it
-# because market_floor keys on the folded name and misses too.
-# A REFUSAL IS A PROHIBITIVE FLOOR, NEVER ZERO. register_item enforces
-# `require(not absolute_floor or price >= absolute_floor)`, so a floor of 0
-# short-circuits and the item lists at market -- the opposite of a safeguard.
-_TRUE = 690_000 * 250
-for _bad in ("Chaos Core Set X 25O",                      # 0 -> O
-             "Chaos Core Set X 2SO",                      # 5 -> S as well
-             "Chaos Core Set X 250 Use Period: 30 days"):  # trailer
-    _f = m.item_price_floor(_bad)
-    check(_f > _TRUE,
-          f"{_bad!r} has a marker that did not parse, so it floors ABOVE any "
-          f"real price and the listing is refused. Got {_f:,}, needs to beat "
-          f"{_TRUE:,}")
-    check(_f != 0,
-          f"{_bad!r} must NOT return 0 -- 0 reads as 'no floor applies' and "
-          f"lists at market")
-
-# AND THE GUARD MUST NOT FIRE ON AN ORDINARY LETTER x. Every catalogue name
-# with one character swapped for X/x: if it still matches its entry, it must
-# still carry its full floor. The first cut of this guard zeroed 198 of 216
-# such names -- including "Yekaterina VIP MembXrship", a 104,000,000 item that
-# would then have listed at market, breaking the absolute VIP rule.
-_lost = []
-for _tok, _cat, _amt in m.ITEM_PRICE_FLOORS:
-    _base = m.item_price_floor(_cat)
-    for _i in range(len(_cat)):
-        for _rep in ("X", "x"):
-            _fz = _cat[:_i] + _rep + _cat[_i + 1:]
-            if m._item_price_floor_unit(m._PACK_ANYWHERE.sub(" ", _fz)) == 0:
-                continue                      # no longer matches: fine
-            if m.item_price_floor(_fz) < _base:
-                _lost.append(_fz)
-check(not _lost,
-      f"no fuzzed catalogue name loses its floor to the marker guard; "
-      f"{len(_lost)} did: {_lost[:4]}")
-
-# A CALLER THAT KNOWS THE COUNT OVERRIDES THE NAME.
-check(m.item_price_floor("Chaos Core Set X 25O", units=250) == 690_000 * 250,
-      "a registration that knows it is listing 250 units floors at "
-      f"{690_000 * 250:,} whatever the label reads")
-check(m.item_price_floor("Chaos Core Set X 250", units=10) == 690_000 * 250,
-      "and the LARGER of the two wins -- a floor is a minimum, so only 'too "
-      "low' is dangerous")
-
-# A NAME WITHOUT A MARKER IS ONE UNIT, NOT A MANGLED READ.
-check(m.item_price_floor("Chaos Core Set") == 690_000,
-      "the bare catalogue name still prices at one unit")
-
-# AND A PARENTHESISED COUNT IS PART OF THE NAME. "Force Gem Package (x400)" is
-# what the item is CALLED; reading its (x400) as a broken marker zeroed a
-# 175,000,000 floor when this guard was first written.
-check(m.item_price_floor("Force Gem Package (x400)") == 175_000_000,
-      f"the gem pack keeps its floor, got "
-      f"{m.item_price_floor('Force Gem Package (x400)'):,}")
-for _vip in ("Yekaterina VIP Membership", "Siena's Unbinding Stone",
-             "Epic Booster (Highest)"):
-    check(m.item_price_floor(_vip) > 0,
-          f"{_vip} is untouched by the marker guard")
 
 # The catalogue holds these and only these. An entry appearing without a
 # pinned amount is a floor nobody has stated.

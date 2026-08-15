@@ -1,4 +1,4 @@
-"""The bugs a ten-agent review found, and the guards that now stop them.
+﻿"""The bugs a ten-agent review found, and the guards that now stop them.
 
 Every section here corresponds to a defect that was live in trade.py and that
 2,805 existing checks did not catch. That is the point of the file: each test
@@ -174,35 +174,6 @@ check(seen["purchases"][0]["spend"] == OFFER.price,
       f"at the measured spend, got {seen['purchases'][0]['spend']:,}")
 check(seen["purchases"][0]["qty"] == 62,
       "with the pack size as the quantity, so the cost basis is per ITEM")
-
-# AND IT COSTS ONE BALANCE READ, NOT TEN.
-#
-# The 3.5s that used to be slept between the Buy click and this read (2.5 +
-# 1.0, both literal) is now a poll that stops as soon as the balance agrees
-# with the dialog. Measured over 35 live orders, buy.confirm_click ran
-# 5,579-5,679 ms -- a 100 ms spread, which is a sleep, not a game responding.
-#
-# The saving only exists if the happy path exits on its FIRST read, so that is
-# asserted rather than assumed: at ~330ms an OCR of the HUD, a regression to
-# "always read the ceiling" would cost ~3s an order and show up nowhere else.
-
-
-# The script has exactly two entries: one `before`, one matching `after`. A
-# poll that read twice would fall off the end of that list, get 0, and record
-# the purchase "unmeasured" -- so an empty note IS the assertion that it
-# stopped on the first read.
-_before = 1_000_000_000
-bought, why, seen = run_buy([_before, _before - OFFER.price])
-_note = seen["purchases"][0]["note"] if seen["purchases"] else "<not recorded>"
-check(bought is True and _note == "",
-      f"the happy path matches on its first balance read and is recorded "
-      f"MEASURED, got note {_note!r}")
-
-# And the ceiling is bounded in READS as well as seconds. The clock alone
-# hot-spins under this suite, which fakes sleep away.
-check(m.BUY_BALANCE_READS * 0.33 <= m.BUY_BALANCE_SETTLE + 0.5,
-      f"the read bound ({m.BUY_BALANCE_READS} x ~330ms) and the time bound "
-      f"({m.BUY_BALANCE_SETTLE}s) describe the same ceiling")
 
 # THE GAP: the click lands, the dialog closes, and no money moves. Before this
 # test existed nothing in the tree distinguished it from a real purchase.
@@ -556,12 +527,7 @@ class Pipeline:
         # buying, so it has to be settable independently of `pack`.
         self.left = in_bag
 
-    # `free_rows` mirrors buy_sets_until, which gained it on 2026-08-15 so the
-    # space clamp could bound even the exempt first order. Without it this
-    # double raised TypeError at restock_core's only buy call and the suite
-    # died there -- taking the ten buy-rule cases below with it, unrun. That is
-    # the same failure this file's other stubs already carry a note about.
-    def buy(self, slot, target, verbose=True, free_rows=None):
+    def buy(self, slot, target, verbose=True):
         self.log.append(("buy", target))
         self.left = self.pack
         return {"bought": self.pack}
@@ -1516,10 +1482,7 @@ check('report["committed"] = committed' in _src,
       "and fills it in on the abort path, where the distinction matters")
 
 # The caller retries ONLY on positive evidence of not-committed.
-# _relist_cycle is now a wrapper that times the episode; its body moved to
-# _relist_body. Read both, or these checks inspect six lines of timing.
-_relist = (_inspect.getsource(m._relist_cycle)
-           + _inspect.getsource(m._relist_body))
+_relist = _inspect.getsource(m._relist_cycle)
 check('cancel_report.get("committed") is False' in _relist,
       "the retry is gated on committed being explicitly False")
 check('is False' in _relist and 'not cancel_report.get("committed")' not in _relist,

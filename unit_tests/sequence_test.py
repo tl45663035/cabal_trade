@@ -56,7 +56,7 @@ if not INDEX.exists():
 
 rows = [json.loads(l) for l in
         INDEX.read_text(encoding="utf-8").splitlines() if l.strip()]
-rows.sort(key=lambda r: (r.get("at", ""), r.get("file") or ""))
+rows.sort(key=lambda r: (r.get("at", ""), r.get("file", "")))
 
 # An EPISODE is one row's journey. table.target is where relist() commits to a
 # particular listing, so it is the natural cut.

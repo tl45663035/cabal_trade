@@ -1,4 +1,4 @@
-"""Run every test suite, time each one, report the total.
+﻿"""Run every test suite, time each one, report the total.
 
     py unit_tests\\run_all.py
 
@@ -23,19 +23,6 @@ ROOT = HERE.parent
 # as-is -- which was not true while half of these sat in a scratchpad.
 SUITES = [
     ("import / globals",      HERE / "import_smoke.py",      []),
-    # Registered 2026-08-15. run_all refuses to run at all while any suite is
-    # unlisted, so an unregistered file does not merely go untested -- it stops
-    # the whole runner. These five had accumulated unlisted, which is why the
-    # guard had been failing silently.
-    ("purchase dialog",       HERE / "purchase_dialog_test.py", []),
-    ("market floors",         HERE / "market_floor_test.py", []),
-    ("plan changes",          HERE / "plan_changes_test.py",  []),
-    ("pin replay",            HERE / "pin_replay_test.py",    []),
-    ("row model reconcile",   HERE / "reconcile_test.py",     []),
-    ("dialog_kind",           HERE / "dialog_kind_test.py",   []),
-    ("unbound paths",         HERE / "unbound_paths_check.py", []),
-    ("table freshness",       HERE / "table_fresh_test.py",   []),
-    ("chaos lot scope",       HERE / "lot_scope_test.py",     []),
     ("record guard",          HERE / "record_guard_test.py", []),
     ("pure suite",            HERE / "suite_pure.py",        []),
     ("floors: both items",    HERE / "floor_siena_test.py",  []),
@@ -145,10 +132,6 @@ EXCLUDED = {
     "mutation_check.py",
     # Invoked as a group by the failpaths runner listed above.
     "run_all.py",
-    # Excluded 2026-08-15. Not suites: the first two exercise the standalone
-    # src/cabal stack rather than trade.py, and the third is a log-analysis
-    # tool that takes a run log as an argument.
-    "cabal_stack_test.py", "get_price_diff_test.py", "row_coverage_check.py",
     # Not a suite: imported BY suites to arm every input primitive so a test
     # cannot drive the live client. Run directly it takes a suite path as an
     # argument, which is how the input audit is done.

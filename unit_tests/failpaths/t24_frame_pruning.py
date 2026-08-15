@@ -68,12 +68,7 @@ class Corpus:
         out = []
         for line in path.read_text(encoding="utf-8").splitlines():
             if line.strip():
-                # A frameless index row carries "file": null -- the profiling
-                # labels write a measurement with no screenshot. This function
-                # returns FRAME NAMES, so those rows are not entries in it.
-                name = json.loads(line).get("file")
-                if name:
-                    out.append(name)
+                out.append(json.loads(line)["file"])
         return out
 
 
