@@ -1909,18 +1909,18 @@ CRAFT_MATERIAL_SETTLE = 0.8
 QTY_READBACK_TRIES = 3
 QTY_READBACK_PAUSE = 0.2
 
-# How long to keep looking for the Alz balance to move after a confirm click,
-# and how often. The balance is the ONLY proof a purchase happened, and a HUD
-# that has not ticked yet is indistinguishable from a listing that went to
-# somebody else -- which costs a ledger row and makes the caller buy again.
+# NOTE: there is no Alz settle budget here any more.
 #
-# Sized from the observed lag rather than guessed: on 2026-08-10 a 6-Core order
-# had already decremented in the frame taken immediately after the click, while
-# a 158-Core order had not and settled within the following seconds. The budget
-# is spent only when the balance has NOT moved, so a settled balance pays
-# nothing.
-ALZ_SETTLE_BUDGET = 6.0
-ALZ_SETTLE_POLL = 0.6
+# A poll used to sit in buy_offer re-reading the HUD for up to 6 seconds,
+# waiting for the balance to move after a confirm click. It was never asked
+# for, and the profile disproved its own justification: measured over three
+# orders on 2026-08-15 it cost 6,499 ms EVERY order -- the full budget plus
+# the leading read -- so it timed out every time instead of exiting early on a
+# settled balance. Shared with the Cores restock, that was ~6s on every order
+# the script placed anywhere.
+#
+# What replaced it is what was always underneath: read the balance BEFORE the
+# order and AFTER it, and take the difference. One read each, no waiting.
 
 PURCHASE_DLG_QTY_VALUE = (1152, 668, 1218, 702)
 # Right edge widened 1280 -> 1296 on 2026-08-10. Measured against real frames,
@@ -3354,16 +3354,25 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     #
     # Polling costs nothing when the balance has already settled, which is the
     # common case: the loop exits on the first read.
-    with phase("buy.verify_balance", "get_alz + settle poll"):
+    # ONE READ AFTER, AGAINST THE ONE TAKEN BEFORE. That is the whole
+    # measurement: the balance before this order, the balance after it, and the
+    # difference.
+    #
+    # A settle POLL used to sit here -- up to ALZ_SETTLE_BUDGET seconds of
+    # re-reading the HUD, waiting for it to move. It was never asked for, and
+    # the profile showed it was not doing the job its own comment claimed
+    # ("the budget is spent only when the balance has NOT moved, so a settled
+    # balance pays nothing"): measured over three orders on 2026-08-15 it cost
+    # 6,499 ms EVERY order, the full budget plus the leading read, so it was
+    # timing out every time rather than exiting early. buy_offer is shared with
+    # the Cores restock, so that was ~6s on every order the script placed
+    # anywhere.
+    #
+    # The before/after pair below is unchanged and is what the ledger has
+    # always been written from. Removing the poll removes a wait, not a
+    # measurement.
+    with phase("buy.balance_after"):
         after = get_alz(grab()) or None
-        if before and (not after or before == after):
-            deadline = time.monotonic() + ALZ_SETTLE_BUDGET
-            while time.monotonic() < deadline:
-                time.sleep(ALZ_SETTLE_POLL)
-                again = get_alz(grab()) or None
-                if again and again != before:
-                    after = again
-                    break
 
     if before and after and before - after == expected:
         record("buy.completed", item=offer.name, price=expected,
