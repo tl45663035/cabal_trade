@@ -7867,8 +7867,29 @@ def find_words(
         # failure between a committed cancel and its relist killed the process
         # outright, leaving a dialog open and the item stranded, and it could
         # replace an in-flight FatalAbort on the way out.
-        print(f"Tesseract failed ({result.stderr.decode(errors='replace').strip()}); "
-              "treating this frame as unreadable.", file=sys.stderr)
+        # SAY WHAT ACTUALLY HAPPENED. This printed only stderr, and on
+        # 2026-08-14 it fired 441 times with stderr EMPTY -- which rules
+        # nothing in and nothing out. An empty stderr with a non-zero code is
+        # the signature of a process that was killed or never started, and
+        # that is a completely different fault from "Image too large" or
+        # "Error during processing", both of which do print. Without the code
+        # and the input size there was no way to tell them apart afterwards.
+        _err = result.stderr.decode(errors="replace").strip()
+        print(f"Tesseract failed (exit {result.returncode}, "
+              f"{prepared.size[0]}x{prepared.size[1]} image, "
+              f"{len(buf.getvalue()):,} bytes"
+              + (f": {_err}" if _err else ", NO stderr - the process was "
+                 "killed or never started")
+              + "); treating this frame as unreadable.", file=sys.stderr)
+        # And keep the frame that did it, so the next occurrence is evidence
+        # rather than a count. Never raises: a debug aid must not be able to
+        # break the run it is debugging.
+        try:
+            record("ocr.failed", prepared, exit=result.returncode,
+                   width=prepared.size[0], height=prepared.size[1],
+                   stderr=_err[:200])
+        except Exception:  # noqa: BLE001
+            pass
         return []
 
     words: list[Word] = []
@@ -25142,7 +25163,29 @@ def main() -> None:
             print("  config.json: premium shop entry is ON.")
         if _shape.get("debug_frames") and not args.debug_frames:
             globals()["DEBUG_ACTIONS"] = True
-            print("  config.json: debug frames are ON.")
+            # AND TURN RECORDING ON WITH IT, or this does nothing at all.
+            #
+            # debug_shot is gated on `DEBUG_ACTIONS and RECORD_ENABLED`, and
+            # record() is gated on RECORD_ENABLED alone. That flag is decided
+            # further up from `clicking`, which is derived ONLY from CLI verbs
+            # -- args.relist_rows, args.do, args.repeat and friends. A run
+            # driven entirely by config.json passes none of them, so clicking
+            # was False, RECORD_ENABLED was False, and every frame and every
+            # structured event was silently dropped while this line cheerfully
+            # printed that debug frames were on.
+            #
+            # Found 2026-08-14: three consecutive config-driven runs printed
+            # "debug frames are ON" and wrote nothing -- the newest corpus
+            # frame was two days old -- which is why a burst of 441 OCR
+            # failures could not be diagnosed afterwards. The operator's rule
+            # is that a game-behaviour question cannot be settled without
+            # before/after frames; this is what silently removed them.
+            if not args.no_record and not RECORD_ENABLED:
+                globals()["RECORD_ENABLED"] = True
+                print(f"  config.json: debug frames are ON; recording frames "
+                      f"to {RECORD_DIR}.")
+            else:
+                print("  config.json: debug frames are ON.")
         if _shape.get("row_model") and not args.row_model:
             # Applied HERE, not beside the --row-model branch above: that runs
             # before the file is read, so setting it there would be overwritten
