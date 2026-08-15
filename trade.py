@@ -2953,7 +2953,8 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         halt_buying(f"a Buy was attempted outside the sanctioned sequence: "
                     f"{wrong}")
         return False, wrong
-    before = get_alz(grab()) or None
+    with phase("buy.balance_before"):
+        before = get_alz(grab()) or None
     focus_game()
     # Select the row, then press its Buy. Approached from a different point so
     # the pointer genuinely ENTERS the button: move_mouse to a pixel the cursor
@@ -2961,12 +2962,14 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     # the control.
     move_mouse(PURCHASE_ROW_SELECT_X, offer.y - LAYOUT.length(40))
     time.sleep(0.2)
-    click(PURCHASE_ROW_SELECT_X, offer.y)
-    time.sleep(0.8)
+    with phase("buy.select_row"):
+        click(PURCHASE_ROW_SELECT_X, offer.y)
+        time.sleep(0.8)
     move_mouse(PURCHASE_BUY_X, offer.y - LAYOUT.length(40))
     time.sleep(0.2)
-    click(PURCHASE_BUY_X, offer.y)
-    time.sleep(1.5)
+    with phase("buy.click_buy"):
+        click(PURCHASE_BUY_X, offer.y)
+        time.sleep(1.5)
 
     # And off the dialog before reading it, for the same reason as the quantity
     # field below: the dialog opens over the row that was just clicked, so the
@@ -3186,9 +3189,10 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         # Click the field before typing. "It looks focused" is exactly the
         # assumption that sends keystrokes into the game world instead of the
         # widget -- the same reasoning as the vendor's Mass Purchase dialog.
-        click((PURCHASE_DLG_QTY_VALUE[0] + PURCHASE_DLG_QTY_VALUE[2]) // 2,
-              (PURCHASE_DLG_QTY_VALUE[1] + PURCHASE_DLG_QTY_VALUE[3]) // 2)
-        type_number(asked, clear_first=True, clear=6)
+        with phase("buy.type_quantity"):
+            click((PURCHASE_DLG_QTY_VALUE[0] + PURCHASE_DLG_QTY_VALUE[2]) // 2,
+                  (PURCHASE_DLG_QTY_VALUE[1] + PURCHASE_DLG_QTY_VALUE[3]) // 2)
+            type_number(asked, clear_first=True, clear=6)
         # MOVE THE POINTER OFF THE FIELD BEFORE READING IT.
         #
         # The click leaves the cursor sitting on the digits, and the cursor
@@ -3324,12 +3328,13 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     say(f"  confirming {take} x {offer.name!r} "
         f"({take * offer.pack} item(s)) at {expected:,} Alz")
     bx, by = dialog["buy"]
-    move_mouse(bx, by + LAYOUT.length(60))
-    time.sleep(0.25)
-    click(bx, by)
-    time.sleep(2.5)
-    park_cursor()
-    time.sleep(1.0)
+    with phase("buy.confirm_click"):
+        move_mouse(bx, by + LAYOUT.length(60))
+        time.sleep(0.25)
+        click(bx, by)
+        time.sleep(2.5)
+        park_cursor()
+        time.sleep(1.0)
 
     # POLLED UNTIL IT MOVES, not read once at a fixed offset.
     #
@@ -13072,6 +13077,58 @@ _SCAN_COUNT = 0
 TABLE_TRACE = True
 
 
+# EVERY PHASE OF A CHAOS ORDER, TO THE MILLISECOND.
+#
+# "chaos buying is very slow" is not a number, and the per-order log lines only
+# bracket three coarse steps. This records each phase by name so the bill can be
+# read off the log instead of inferred from timestamps, and totalled per run.
+_PHASE_TOTALS: dict = {}
+PHASE_TRACE = True
+
+
+class phase:
+    """Time one named step. `with phase("search"): ...`"""
+
+    def __init__(self, name: str, detail: str = "") -> None:
+        self.name = name
+        self.detail = detail
+
+    def __enter__(self):
+        self._t0 = time.monotonic()
+        return self
+
+    def __exit__(self, *exc) -> bool:
+        ms = (time.monotonic() - self._t0) * 1000.0
+        row = _PHASE_TOTALS.setdefault(self.name, {"ms": 0.0, "n": 0})
+        row["ms"] += ms
+        row["n"] += 1
+        if PHASE_TRACE:
+            print(f"      [phase] {self.name:<22} {ms:>8.0f} ms"
+                  + (f"  {self.detail}" if self.detail else ""))
+        record("phase", name=self.name, ms=round(ms, 1), detail=self.detail)
+        return False
+
+
+def phase_report(title: str = "CHAOS BUYING") -> None:
+    """Print the phase bill, slowest first. Never raises."""
+    if not _PHASE_TOTALS:
+        return
+    total = sum(v["ms"] for v in _PHASE_TOTALS.values())
+    print("")
+    print(f"  {title} -- where the time went")
+    print(f"    {'PHASE':<24}{'CALLS':>7}{'TOTAL s':>10}{'EACH ms':>10}"
+          f"{'SHARE':>8}")
+    for name, v in sorted(_PHASE_TOTALS.items(), key=lambda kv: -kv[1]["ms"]):
+        share = (100.0 * v["ms"] / total) if total else 0.0
+        print(f"    {name:<24}{v['n']:>7}{v['ms']/1000.0:>10.1f}"
+              f"{v['ms']/max(1, v['n']):>10.0f}{share:>7.1f}%")
+    print(f"    {'TOTAL':<24}{'':>7}{total/1000.0:>10.1f}")
+
+
+def reset_phases() -> None:
+    _PHASE_TOTALS.clear()
+
+
 def note_scan(what: str, detail: str = "") -> int:
     """Announce one table scroll or read. Returns its number this cycle."""
     global _SCAN_COUNT
@@ -21845,8 +21902,9 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # Reusing the offers is still sound in principle; it needs the
                 # gate to re-note the Core search as the current one, and that
                 # is not worth the risk on this path for nine seconds.
-                offers = run_favourite_search(CHAOS_CORE_SLOT,
-                                              verbose=verbose)
+                with phase("search.core_row1", f"order {order}"):
+                    offers = run_favourite_search(CHAOS_CORE_SLOT,
+                                                  verbose=verbose)
                 if not offers and not purchase_tab_open():
                     # THE WINDOW CLOSED UNDER US. Reopen and ask once more.
                     #
@@ -21965,7 +22023,8 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # purchase itself a moment later, which is recoverable.
                 order_price = core.price * order_size
                 try:
-                    held = get_alz(grab()) or 0
+                    with phase("alz.balance_read"):
+                        held = get_alz(grab()) or 0
                 except Exception:  # noqa: BLE001 - a balance read is a hint
                     held = 0
                 if held and order_price > held:
@@ -21988,8 +22047,9 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                     f"{core.price:,} = {core.price * order_size:,} Alz "
                     f"({got}/{CHAOS_BUY_QUANTITY} held so far)")
                 report: dict = {}
-                bought, why = buy_offer(core, want=order_size, report=report,
-                                        verbose=verbose)
+                with phase("buy_offer.total", f"{order_size} x"):
+                    bought, why = buy_offer(core, want=order_size,
+                                            report=report, verbose=verbose)
                 if not bought:
                     say(f"Chaos: order {order} not bought - {why}")
                     record("chaos.buy_refused", why=why, got=got)
@@ -22036,6 +22096,8 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
             if got < 1:
                 say("Chaos: nothing was bought; nothing to craft.")
                 return False
+            phase_report("CHAOS BUYING")
+            reset_phases()
             say(f"Chaos: {got} Core(s) obtained"
                 + ("." if got >= CHAOS_BUY_QUANTITY else
                    f" of {CHAOS_BUY_QUANTITY} - crafting what there is rather "
