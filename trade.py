@@ -1947,6 +1947,13 @@ PURCHASE_DLG_PRICE = (1150, 712, 1380, 758)
 # across those 14 frames sits at y 830-861, and the title "Confirm Purchase"
 # sits at y~549, which is what the floor exists to exclude. purchase_confirm
 # used a bare `> 800`; this is that number, scalable.
+# How long to keep asking for the Confirm Purchase dialog after clicking Buy.
+#
+# Replaces a flat 1.5s sleep plus a 0.3s follow-up that were paid in full on
+# every order regardless of how fast the dialog drew. This is a CEILING, not a
+# wait: the first read usually finds it and the order moves on.
+PURCHASE_DIALOG_WAIT = 2.0
+
 PURCHASE_DIALOG_BUTTONS_Y = 800
 PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
 
@@ -3006,7 +3013,6 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     time.sleep(0.2)
     with phase("buy.click_buy"):
         click(PURCHASE_BUY_X, offer.y)
-        time.sleep(1.5)
 
     # And off the dialog before reading it, for the same reason as the quantity
     # field below: the dialog opens over the row that was just clicked, so the
@@ -3014,9 +3020,30 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     # quantity limit did not read - taking one listing", and an order for 21
     # Cores bought 1.
     park_cursor()
-    time.sleep(0.3)
 
-    dialog = purchase_confirm()
+    # POLL FOR THE DIALOG, DO NOT SLEEP PAST IT.
+    #
+    # A flat time.sleep(1.5) sat here, plus a further 0.3 after the park, and
+    # both were paid in full whether the dialog took 200ms or 1400ms. Nothing
+    # measured them; they were a guess at how long the game takes to draw.
+    #
+    # The read below is the actual test for the dialog being up, so asking it
+    # IS the wait. A dialog that is already drawn costs one read (~470ms) and
+    # the order continues; one that is slow costs a read per attempt until the
+    # deadline, which is the same bound the sleep gave without spending it on
+    # the common case.
+    #
+    # The deadline is not optional. Returning None here is reported by the
+    # caller as "the Confirm Purchase dialog did not appear", and on 2026-08-15
+    # three of those in a row stopped a chaos pass at 0 of 200 Cores -- so the
+    # poll must be given at least as long as the sleep it replaces.
+    with phase("buy.await_dialog"):
+        dialog = None
+        deadline = time.monotonic() + PURCHASE_DIALOG_WAIT
+        while True:
+            dialog = purchase_confirm()
+            if dialog is not None or time.monotonic() >= deadline:
+                break
     if dialog is None:
         # "NO DIALOG AND NO PURCHASE" WAS AN ASSUMPTION. ASK THE BALANCE.
         #
