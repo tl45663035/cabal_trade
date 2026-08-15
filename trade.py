@@ -2004,6 +2004,20 @@ PURCHASE_DLG_PRICE = (1150, 712, 1380, 758)
 # wait: the first read usually finds it and the order moves on.
 PURCHASE_DIALOG_WAIT = 2.0
 
+# How long to keep re-reading the Alz HUD after the Buy click, waiting for it
+# to agree with what the dialog said the order would cost.
+#
+# Also a CEILING, not a wait. It is deliberately the 3.5s that used to be slept
+# unconditionally here (2.5 + 1.0), so this can only be faster than what it
+# replaced: a successful order usually matches on the first read at ~330ms, and
+# an order that never matches spends exactly what it spent before.
+BUY_BALANCE_SETTLE = 3.5
+# And a bound on the READS, not just the clock. Each is a grab plus a Tesseract
+# launch at ~330ms, so ten of them is about the 3.5s above -- but the clock
+# alone would hot-spin under a test that fakes sleep, and an attempt count says
+# what the ceiling actually costs in OCR.
+BUY_BALANCE_READS = 10
+
 PURCHASE_DIALOG_BUTTONS_Y = 800
 PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
 
@@ -3458,15 +3472,27 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         move_mouse(bx, by + LAYOUT.length(60))
         time.sleep(0.25)
         click(bx, by)
-        time.sleep(2.5)
+        # PARKED, BUT NOT FOR THE BALANCE READ.
+        #
+        # Worth stating because it looks redundant and nearly is: the next OCR
+        # is the Alz HUD at ALZ_REGION (2330, 872, 2525, 928) and the cursor is
+        # on the Buy button at (1291, 855) -- 1,039 px away, so no tooltip of
+        # it could reach. What the park protects is the read AFTER that:
+        # run_favourite_search opens with read_purchase_rows(rows=1) to spot a
+        # stale result, PURCHASE_ROW_TOP is 340, and the Buy button sits over
+        # the table's lower rows. An Item Information tooltip there corrupts
+        # that read, which is the failure park_cursor's docstring describes.
+        #
+        # The time.sleep(1.0) that used to follow is gone. park_cursor ends in
+        # move_mouse's ACTION_COOLDOWN, and its own docstring records the
+        # measurement: the tooltip is cleared by the cursor LEAVING, and an
+        # extra settle cost 0.75s against 0.30s for no change in outcome.
         park_cursor()
-        time.sleep(1.0)
 
-    # READ ONCE. There is no poll here any more -- see below for what that
-    # costs and what it does not.
+    # WHY THIS READ IS TIMED THE WAY IT IS.
     #
-    # This is the only read that decides whether money moved. The HUD lag is
-    # real and scales with the order: measured 2026-08-10, a 6-Core order had
+    # It is the only read that decides whether money moved. The HUD lag is real
+    # and scales with the order: measured 2026-08-10, a 6-Core order had
     # already decremented in the frame captured immediately after the click,
     # while the 158-Core order was still showing the old balance and only
     # caught up within the next few seconds.
@@ -3478,28 +3504,67 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     # again. On the chaos path, where an order is now a whole row, three of
     # those is most of a balance.
     #
-    # A poll used to sit here for exactly that lag. It was removed on the
-    # operator's instruction; the before/after pair is the measurement and
-    # always was.
-    # ONE READ AFTER, AGAINST THE ONE TAKEN BEFORE. That is the whole
-    # measurement: the balance before this order, the balance after it, and the
-    # difference.
+    # HISTORY, because this line has now moved three times. A settle poll
+    # originally sat here looping on `before != after` -- any movement at all.
+    # It was removed on the operator's instruction, and both figures given for
+    # removing it were wrong: the 6,499 ms was buy_offer.total minus the
+    # instrumented phases (the un-instrumented residual, 6,111 ms of which
+    # survived the removal), and the 435 ms was the difference of two
+    # three-order means, 386 ms of which lands in phases that run BEFORE the
+    # poll would have. What the logs support is that the old poll cost ~0 on a
+    # successful order and ~6.5s only on the two that refused.
     #
-    # A settle POLL used to sit here -- re-reading the HUD until the balance
-    # moved. Removed on the operator's instruction; the before/after pair it
-    # wrapped is the whole measurement and always was.
+    # Removing it left a blind time.sleep(2.5) doing the same job with none of
+    # the feedback, which is what the loop below replaces. It is bounded by
+    # that same 3.5s and keys on `expected`, not on movement, so a refusal --
+    # which never moves the balance -- costs what it already cost.
+    # READ UNTIL IT AGREES WITH THE DIALOG, INSIDE THE TIME ALREADY SPENT.
     #
-    # BOTH JUSTIFICATIONS GIVEN FOR REMOVING IT WERE WRONG -- the 6,499 ms and
-    # the 435 ms alike. On a successful order the poll never ran and cost ~0;
-    # it cost ~6.5s only on the two orders that refused. See the ALZ settle
-    # note near QTY_READBACK_TRIES for the decomposition and for what is now
-    # unguarded.
+    # What replaced the time.sleep(2.5) above, and why it is not the settle
+    # poll that was removed:
     #
-    # The before/after pair below is unchanged and is what the ledger has
-    # always been written from. Removing the poll removes a wait, not a
-    # measurement.
+    # The Alz pair is NOT where the spend comes from. `expected` is computed
+    # from the dialog -- price x quantity -- and that is the figure recorded
+    # and the one the average-per-unit is derived from. What the pair does is
+    # CHECK it: `before - after == expected` asks whether the account moved by
+    # exactly what the dialog promised. So the read has to happen after the HUD
+    # has caught up, or a good order fails its own check.
+    #
+    # That is what the 2.5s was buying, blind. Measured over 35 orders,
+    # buy.confirm_click ran 5,579-5,679 ms -- a 100 ms spread, which is a fixed
+    # sleep and not a game responding. The HUD lag it covers is real but
+    # variable: a 6-Core order had already decremented in the frame after the
+    # click, while a 158-Core order was still showing the old balance.
+    #
+    # This waits for the same event and stops as soon as it happens. Typical
+    # cost is ONE read, ~330 ms, against 3,500 ms of sleeping. The budget is
+    # the 3.5s that was previously spent unconditionally, so the worst case is
+    # exactly today's wall clock and a refusal is no slower than it is now.
+    #
+    # The removed poll looped on `before != after` -- ANY movement -- which a
+    # refusal never produces, so it always ran its timeout out. This one is
+    # bounded by what was already being spent.
     with phase("buy.balance_after"):
-        after = get_alz(grab()) or None
+        deadline = time.monotonic() + BUY_BALANCE_SETTLE
+        after = None
+        for _ in range(BUY_BALANCE_READS):
+            got = get_alz(grab()) or None
+            if got is not None:
+                # KEEP THE LAST READ THAT WORKED, not simply the last read.
+                #
+                # get_alz returns 0 on an unreadable frame, which `or None`
+                # turns into None. A single read had one chance at that; a loop
+                # that overwrote `after` every time would take the final
+                # attempt even when an earlier one succeeded, so an occluded
+                # last frame would turn a measured purchase into an unmeasured
+                # one. That is strictly worse than the single read it replaced,
+                # and it is the branch that writes a note into the ledger.
+                after = got
+                if before and before - got == expected:
+                    break
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(0.1)
 
     if before and after and before - after == expected:
         record("buy.completed", item=offer.name, price=expected,
@@ -20946,24 +21011,6 @@ def select_chaos_recipe(verbose: bool = True) -> bool:
     return True
 
 
-def craft_material_counter(
-        source: "Image.Image | None" = None) -> "tuple[int, int] | None":
-    """The "Required Material  N / D" counter, as (held, per_craft).
-
-    D is not decoration: it is the material cost of the recipe CURRENTLY
-    selected -- 1 under the x1, 3 under the x3. That makes this counter the
-    only reader in the craft window that can answer "did the recipe click
-    land where I meant it to", which the remainder sweep needs.
-    """
-    shot = source if source is not None else grab()
-    words = [w.text for w in find_words(shot, CRAFT_MATERIAL_REGION, 20)
-             if w.conf >= 50]
-    match = _CRAFT_MATERIAL.search(" ".join(words))
-    if match is None:
-        return None
-    return int(match.group(1)), int(match.group(2))
-
-
 def craft_material_held(source: "Image.Image | None" = None) -> "int | None":
     """How many Chaos Cores the craft window says are held. None if unread.
 
@@ -20971,8 +21018,13 @@ def craft_material_held(source: "Image.Image | None" = None) -> "int | None":
     answer to "how many can be crafted": the inventory is spread over eight
     tabs and the window has already done that arithmetic.
     """
-    counter = craft_material_counter(source)
-    return None if counter is None else counter[0]
+    shot = source if source is not None else grab()
+    words = [w.text for w in find_words(shot, CRAFT_MATERIAL_REGION, 20)
+             if w.conf >= 50]
+    match = _CRAFT_MATERIAL.search(" ".join(words))
+    if match is None:
+        return None
+    return int(match.group(1))
 
 
 # How many times to press the Remote Request Card before giving up. The card
@@ -21270,78 +21322,20 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
     click(*CRAFT_COMPLETE_ALL)
     time.sleep(2.0)
 
-    # SWEEP THE REMAINDER WITH THE x1 RECIPE RATHER THAN LEAVING IT.
+    # THE LEFTOVER CORES ARE LEFT ALONE. NOT SWEPT, NOT CRAFTED, NOT TIDIED.
     #
     # The x3 recipe leaves 1 or 2 Cores whenever the holding is not a multiple
-    # of three, and they sit on CHAOS_WORK_TAB. Leaving them deadlocks: the
-    # work-tab gate runs BEFORE chaos_pass, so a tab holding the remainder
-    # stops the cycle before reaching the only code that could absorb it.
-    # "The next purchase absorbs them" was wrong -- the purchase is downstream
-    # of the refusal. The x1 recipe takes ONE Core, so it can always consume
-    # 1 or 2, and the tab is clean afterwards.
+    # of three. A "remainder sweep" was invented here on 2026-08-15 -- it
+    # reopened the craft window, switched CHAOS_RECIPE to 1 behind the
+    # operator's back and crafted the leftovers with the other recipe. That was
+    # never asked for. The operator's instruction was to select the configured
+    # recipe and craft; changing recipe mid-pass is a second, unrequested
+    # behaviour, and it was removed on sight.
     #
-    # It runs HERE, after the main craft has been requested, waited for and
-    # collected -- not back where the remainder was measured. Both reasons come
-    # from the order of operations rather than from a failure:
-    #   * the sweep reopens the craft window to get the recipe tree back to its
-    #     resting state, and doing that with the main craft still queued puts
-    #     that queue at risk;
-    #   * Complete All is what puts Sets in the bag, on whatever tab is
-    #     showing. The tab is fixed just above, so a sweep that collected
-    #     before that point would drop its Set on the wrong tab -- the exact
-    #     failure the block above exists to prevent.
-    if left:
-        say(f"  {left} Core(s) left over -- too few for the "
-            f"x{craft_material_cost()} recipe. Sweeping them with the x1.")
-        was = CHAOS_RECIPE
-        try:
-            # THE TREE IS NO LONGER RESTING, SO PUT IT BACK.
-            #
-            # CRAFT_RECIPES holds fixed points that assume every tier is
-            # collapsed -- the state the window OPENS to. By here the first
-            # selection has already expanded a tier, so clicking the tier point
-            # again collapses it and the recipe click lands on whatever moved
-            # into that row. Escape and reopen is the only way back to the
-            # resting state without a reader.
-            press_escape()
-            time.sleep(0.4)
-            if not open_craft_window(verbose=False):
-                raise Aborted("the craft window did not reopen")
-            globals()["CHAOS_RECIPE"] = 1
-            if select_chaos_recipe(verbose=verbose):
-                # AND VERIFY IT LANDED, because select_chaos_recipe returns
-                # True on having CLICKED, not on having selected. The counter's
-                # denominator is the material cost of the recipe currently
-                # selected -- N/1 under the x1, N/3 under the x3 -- so it is
-                # the one reader that can tell those two apart. Refusing here
-                # leaves the Cores in the tab for a human; queueing the x3
-                # against 2 Cores crafts nothing and wastes the settle.
-                counter = craft_material_counter()
-                per = None if counter is None else counter[1]
-                if per != 1:
-                    record("craft.sweep_wrong_recipe", per_craft=per,
-                           remainder=left)
-                    raise Aborted(f"it selected a recipe costing {per} "
-                                  f"Core(s), not the x1")
-                click(*CRAFT_REQUEST_ALL)
-                time.sleep(craft_settle_seconds(left))
-                spot = inventory_origin()
-                if spot is not None:
-                    select_inventory_tab(CHAOS_WORK_TAB, spot)
-                time.sleep(0.4)
-                click(*CRAFT_COMPLETE_ALL)
-                time.sleep(2.0)
-                swept = craft_material_held()
-                took = left if swept is None else max(0, left - swept)
-                left = left if swept is None else swept
-                made += took
-                say(f"  swept {took}; {left} Core(s) still held.")
-                record("craft.swept", took=took, left=left)
-        except Exception as exc:      # noqa: BLE001 - a sweep is a tidy-up
-            say(f"  the remainder sweep did not complete ({exc}); the tab "
-                f"still holds {left}.")
-        finally:
-            globals()["CHAOS_RECIPE"] = was
+    # Do not re-add it, and do not add anything else that clears these Cores by
+    # crafting. If a leftover Core matters, it is a question about
+    # CHAOS_BUY_QUANTITY or about the work-tab gate -- not a licence for this
+    # function to run a craft nobody asked for.
     note_chaos_remainder(left)
 
     record("chaos.crafted", before=before, after=after, made=made)

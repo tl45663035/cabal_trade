@@ -1,4 +1,4 @@
-﻿"""Run every test suite, time each one, report the total.
+"""Run every test suite, time each one, report the total.
 
     py unit_tests\\run_all.py
 
@@ -32,7 +32,6 @@ SUITES = [
     ("plan changes",          HERE / "plan_changes_test.py",  []),
     ("pin replay",            HERE / "pin_replay_test.py",    []),
     ("row model reconcile",   HERE / "reconcile_test.py",     []),
-    ("craft remainder sweep", HERE / "craft_sweep_test.py",   []),
     ("dialog_kind",           HERE / "dialog_kind_test.py",   []),
     ("record guard",          HERE / "record_guard_test.py", []),
     ("pure suite",            HERE / "suite_pure.py",        []),

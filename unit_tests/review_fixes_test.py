@@ -175,6 +175,35 @@ check(seen["purchases"][0]["spend"] == OFFER.price,
 check(seen["purchases"][0]["qty"] == 62,
       "with the pack size as the quantity, so the cost basis is per ITEM")
 
+# AND IT COSTS ONE BALANCE READ, NOT TEN.
+#
+# The 3.5s that used to be slept between the Buy click and this read (2.5 +
+# 1.0, both literal) is now a poll that stops as soon as the balance agrees
+# with the dialog. Measured over 35 live orders, buy.confirm_click ran
+# 5,579-5,679 ms -- a 100 ms spread, which is a sleep, not a game responding.
+#
+# The saving only exists if the happy path exits on its FIRST read, so that is
+# asserted rather than assumed: at ~330ms an OCR of the HUD, a regression to
+# "always read the ceiling" would cost ~3s an order and show up nowhere else.
+
+
+# The script has exactly two entries: one `before`, one matching `after`. A
+# poll that read twice would fall off the end of that list, get 0, and record
+# the purchase "unmeasured" -- so an empty note IS the assertion that it
+# stopped on the first read.
+_before = 1_000_000_000
+bought, why, seen = run_buy([_before, _before - OFFER.price])
+_note = seen["purchases"][0]["note"] if seen["purchases"] else "<not recorded>"
+check(bought is True and _note == "",
+      f"the happy path matches on its first balance read and is recorded "
+      f"MEASURED, got note {_note!r}")
+
+# And the ceiling is bounded in READS as well as seconds. The clock alone
+# hot-spins under this suite, which fakes sleep away.
+check(m.BUY_BALANCE_READS * 0.33 <= m.BUY_BALANCE_SETTLE + 0.5,
+      f"the read bound ({m.BUY_BALANCE_READS} x ~330ms) and the time bound "
+      f"({m.BUY_BALANCE_SETTLE}s) describe the same ceiling")
+
 # THE GAP: the click lands, the dialog closes, and no money moves. Before this
 # test existed nothing in the tree distinguished it from a real purchase.
 bought, why, seen = run_buy([1_000_000_000, 1_000_000_000])
