@@ -1,4 +1,4 @@
-﻿"""chaos_pass: collect first, count second, buy only if the margin clears.
+"""chaos_pass: collect first, count second, buy only if the margin clears.
 
 The operator's rule is that Chaos has priority over everything: before any
 non-Chaos row is relisted, a sold bundle is collected and replaced. This file
@@ -612,7 +612,8 @@ for forbidden in ("grab(", "await_rows(", "read_rows(", "find_words("):
           f"every row, and the caller has already read the table")
 
 # And the hook must be wired into the row loop, re-reading after it fires.
-loop_src = inspect.getsource(m._relist_cycle) \
+loop_src = (inspect.getsource(m._relist_cycle)
+                + inspect.getsource(m._relist_body)) \
     if hasattr(m, "_relist_cycle") else ""
 rows_src = inspect.getsource(m.relist_rows)
 check("chaos_attention_needed(" in rows_src,

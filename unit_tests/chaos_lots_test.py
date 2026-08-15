@@ -258,7 +258,8 @@ import inspect  # noqa: E402
 # Pinning the wrapper instead would have asserted nothing while reading as
 # though it covered the path -- the same shape of mistake as the work-tab fix
 # that landed in require_empty_work_tab rather than ensure_work_tab_empty.
-relist_src = inspect.getsource(m._relist_cycle)
+relist_src = (inspect.getsource(m._relist_cycle)
+                + inspect.getsource(m._relist_body))
 check("chaos_row_floor(" in relist_src,
       "relist must look up the row's own chaos floor -- without it a bundle is "
       "repriced against the market alone and can be walked below cost")

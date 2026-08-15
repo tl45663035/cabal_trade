@@ -1,4 +1,4 @@
-﻿"""The bugs a ten-agent review found, and the guards that now stop them.
+"""The bugs a ten-agent review found, and the guards that now stop them.
 
 Every section here corresponds to a defect that was live in trade.py and that
 2,805 existing checks did not catch. That is the point of the file: each test
@@ -1516,7 +1516,10 @@ check('report["committed"] = committed' in _src,
       "and fills it in on the abort path, where the distinction matters")
 
 # The caller retries ONLY on positive evidence of not-committed.
-_relist = _inspect.getsource(m._relist_cycle)
+# _relist_cycle is now a wrapper that times the episode; its body moved to
+# _relist_body. Read both, or these checks inspect six lines of timing.
+_relist = (_inspect.getsource(m._relist_cycle)
+           + _inspect.getsource(m._relist_body))
 check('cancel_report.get("committed") is False' in _relist,
       "the retry is gated on committed being explicitly False")
 check('is False' in _relist and 'not cancel_report.get("committed")' not in _relist,

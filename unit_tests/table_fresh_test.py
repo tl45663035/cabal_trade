@@ -87,7 +87,11 @@ register_src = inspect.getsource(m.register_item)
 check("mark_table_stale" in register_src,
       "register_item marks the table stale when it commits")
 
-cycle_src = inspect.getsource(m._relist_cycle)
+# _relist_cycle is now a thin wrapper that times the episode; the body it
+# calls is where the collect lives. Read both so this cannot pass by looking
+# at the wrong one.
+cycle_src = (inspect.getsource(m._relist_cycle)
+             + inspect.getsource(m._relist_body))
 check("mark_table_stale" in cycle_src,
       "and the COLLECT path does too -- the one the previous cache missed, "
       "which is why that cache had to be removed")
