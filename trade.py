@@ -14544,7 +14544,47 @@ def listing_floor(name: str) -> tuple[int, str]:
     return catalogue, "the floor set for this item"
 
 
-def item_price_floor(name: str) -> int:
+def _pack_marker_unreadable(name: str) -> bool:
+    """True when `name` shows a pack marker that pack_size could not parse.
+
+    The marker is "X" followed by digits. If an "X" sits where one belongs --
+    after a letter or as its own word -- and pack_size still came back with 1,
+    the digits after it did not survive the read. That is a MANGLED COUNT, not
+    a single item, and the two must never be treated alike: one prices a 250-
+    unit bundle at 250 times too little.
+    """
+    text = (name or "").strip()
+    if not text:
+        return False
+    if _PACK_SIZE.search(text):
+        return False                      # parsed cleanly
+    # No regex here, deliberately. The first attempt at this test shipped
+    # with a mangled escape -- a word-boundary became a literal backspace --
+    # and it silently matched nothing, which is precisely the failure it
+    # exists to catch. Plain string work can be checked by eye.
+    #
+    # A marker is an 'X' that is not part of a number, with something after
+    # it. If one is present and _PACK_SIZE still came back empty, the digits
+    # did not survive the read.
+    upper = text.upper()
+    for i, ch in enumerate(upper):
+        if ch != "X":
+            continue
+        if i and upper[i - 1].isdigit():
+            continue                      # e.g. '2X' inside a number
+        if i and upper[i - 1] == "(":
+            # A PARENTHESISED COUNT IS PART OF THE NAME, NOT A PACK MARKER.
+            # "Force Gem Package (x400)" is what the item is called -- the
+            # catalogue entry carries the (x400) -- and _PACK_SIZE correctly
+            # refuses it. Treating it as a mangled marker zeroed that item's
+            # 175,000,000 floor, which is the opposite of the point.
+            continue
+        if upper[i + 1:].strip():
+            return True
+    return False
+
+
+def item_price_floor(name: str, units: "int | None" = None) -> int:
     """The absolute floor for this LISTING, pack count included.
 
     PER UNIT IN THE CATALOGUE, PER LISTING HERE. A chaos bundle is one shop row
@@ -14566,7 +14606,36 @@ def item_price_floor(name: str) -> int:
     unit = _item_price_floor_unit(bare)
     if not unit:
         return 0
-    return unit * max(1, pack_size(name))
+
+    count = pack_size(name)
+    if units is not None:
+        # THE CALLER KNOWS BETTER THAN THE NAME. A registration knows exactly
+        # how many units it is listing; the name is an OCR reading of a label.
+        # Where both exist, take the larger -- a floor is a minimum, and the
+        # only unsafe direction is too low.
+        count = max(int(units), count)
+    elif _pack_marker_unreadable(name):
+        # A MARKER THAT DID NOT PARSE IS NOT A COUNT OF ONE.
+        #
+        # pack_size returns 1 when its end-anchored pattern misses, and that is
+        # right for an item with no marker. It is catastrophic for one that HAS
+        # a marker the OCR mangled: "Chaos Core Set X 25O" (zero read as O)
+        # scored a 690,000 floor instead of 172,500,000 -- a 250x collapse --
+        # and the same happens to a trailing "Use Period: 30 days" that pushes
+        # the digits off the end of the string.
+        #
+        # It takes the whole floor stack down together, not one net of several:
+        # market_floor keys on the folded name and misses, and chaos_row_floor's
+        # is_chaos_set test fails on the mangled name too. Nothing else is left
+        # underneath.
+        #
+        # So a marker that is present but unreadable REFUSES to price rather
+        # than pricing low. 0 here means "no floor could be established", and
+        # register_item's `require` will not list without one -- which strands
+        # the bundle for a cycle instead of selling it at a fraction.
+        record("floor.pack_unreadable", name=name[:60], unit=unit)
+        return 0
+    return unit * max(1, count)
 
 
 def _item_price_floor_unit(name: str) -> int:
@@ -17115,6 +17184,7 @@ def register_item(
     floor_reason: str = "",
     cost_floor: int = 0,
     maximise_qty: bool | None = None,
+    expect_units: "int | None" = None,
     force_price: int | None = None,
     force_qty: int | None = None,
     expect_item: str | None = None,
@@ -17417,7 +17487,11 @@ def register_item(
         if expect_item:
             # See listing_floor: the operator's floor and what was paid,
             # whichever is higher.
-            absolute_floor, floor_reason_text = listing_floor(expect_item)
+            # expect_units is what the CALLER knows it is listing. The name is
+            # an OCR reading of a label; where both exist the larger wins,
+            # because a floor is a minimum and only 'too low' is dangerous.
+            absolute_floor, floor_reason_text = listing_floor(
+                expect_item, units=expect_units)
 
             # A caller that KNOWS what this particular stack cost can say so,
             # and the higher of the two binds.
@@ -22430,6 +22504,7 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                                    maximise_qty=True,
                                    cost_floor=cost_floor,
                                    expect_item=bundle_name,
+                                   expect_units=made,
                                    undercut=CHAOS_UNDERCUT,
                                    report=report)
             if listed:

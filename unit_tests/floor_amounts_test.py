@@ -93,6 +93,45 @@ for raw in ("Chaos Core", "Chaos Core X 250", "chaos core"):
           f"{raw!r} must have NO absolute floor -- it is the raw material, "
           f"not the product. Got {m.item_price_floor(raw):,}")
 
+# A MANGLED PACK MARKER MUST NOT PRICE A BUNDLE AT A FRACTION.
+#
+# item_price_floor scales a per-unit catalogue floor by the count in the name.
+# pack_size returns 1 when its end-anchored pattern misses -- right for an item
+# with no marker, catastrophic for one whose marker the OCR mangled. Measured
+# 2026-08-15: "Chaos Core Set X 25O" (zero read as O) scored 690,000 against a
+# true 172,500,000, a 250x collapse, and it takes the whole floor stack with it
+# because market_floor keys on the folded name and misses too.
+for _bad in ("Chaos Core Set X 25O",                      # 0 -> O
+             "Chaos Core Set X 2SO",                      # 5 -> S as well
+             "Chaos Core Set X 250 Use Period: 30 days"):  # trailer
+    check(m.item_price_floor(_bad) == 0,
+          f"{_bad!r} has a marker that did not parse, so it REFUSES to price "
+          f"rather than pricing at 1 unit. Got "
+          f"{m.item_price_floor(_bad):,}")
+
+# A CALLER THAT KNOWS THE COUNT OVERRIDES THE NAME.
+check(m.item_price_floor("Chaos Core Set X 25O", units=250) == 690_000 * 250,
+      "a registration that knows it is listing 250 units floors at "
+      f"{690_000 * 250:,} whatever the label reads")
+check(m.item_price_floor("Chaos Core Set X 250", units=10) == 690_000 * 250,
+      "and the LARGER of the two wins -- a floor is a minimum, so only 'too "
+      "low' is dangerous")
+
+# A NAME WITHOUT A MARKER IS ONE UNIT, NOT A MANGLED READ.
+check(m.item_price_floor("Chaos Core Set") == 690_000,
+      "the bare catalogue name still prices at one unit")
+
+# AND A PARENTHESISED COUNT IS PART OF THE NAME. "Force Gem Package (x400)" is
+# what the item is CALLED; reading its (x400) as a broken marker zeroed a
+# 175,000,000 floor when this guard was first written.
+check(m.item_price_floor("Force Gem Package (x400)") == 175_000_000,
+      f"the gem pack keeps its floor, got "
+      f"{m.item_price_floor('Force Gem Package (x400)'):,}")
+for _vip in ("Yekaterina VIP Membership", "Siena's Unbinding Stone",
+             "Epic Booster (Highest)"):
+    check(m.item_price_floor(_vip) > 0,
+          f"{_vip} is untouched by the marker guard")
+
 # The catalogue holds these and only these. An entry appearing without a
 # pinned amount is a floor nobody has stated.
 catalogue = {label for _token, label, _floor in m.ITEM_PRICE_FLOORS}
