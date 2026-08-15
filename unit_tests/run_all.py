@@ -35,6 +35,7 @@ SUITES = [
     ("dialog_kind",           HERE / "dialog_kind_test.py",   []),
     ("unbound paths",         HERE / "unbound_paths_check.py", []),
     ("table freshness",       HERE / "table_fresh_test.py",   []),
+    ("chaos lot scope",       HERE / "lot_scope_test.py",     []),
     ("record guard",          HERE / "record_guard_test.py", []),
     ("pure suite",            HERE / "suite_pure.py",        []),
     ("floors: both items",    HERE / "floor_siena_test.py",  []),

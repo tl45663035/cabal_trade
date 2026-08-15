@@ -15403,15 +15403,36 @@ def sales_db() -> "sqlite3.Connection | None":
                 -- numbers shift on any cancel or register, so the price each
                 -- was listed at is the only thing that tells two apart. It is
                 -- rewritten on every relist so it tracks the row.
+                -- `run` IS NOT OPTIONAL BOOKKEEPING. A lot is what THIS
+                -- launch paid for stock THIS launch is holding, and every
+                -- reader below filters on it. Without it the cost basis
+                -- reached back into previous runs: on 2026-08-15 a Set that
+                -- cost 690,000 to make was billed against a 660,000 lot from
+                -- hours earlier and reported 8% profit, while replacing the
+                -- stock cost 690,000 and the real margin was about half that.
+                -- Same rule as the deleted `carried` table below: each launch
+                -- is a separate run and inherits nothing.
                 CREATE TABLE IF NOT EXISTS chaos_lots (
                     id           INTEGER PRIMARY KEY AUTOINCREMENT,
                     unit_cost    INTEGER NOT NULL,
                     listed_price INTEGER NOT NULL,
                     qty          INTEGER NOT NULL,
-                    created      TEXT    NOT NULL
+                    created      TEXT    NOT NULL,
+                    run          TEXT
                 );
                 CREATE INDEX IF NOT EXISTS chaos_lots_price
                     ON chaos_lots (listed_price);
+            """)
+            # MIGRATE AN EXISTING LEDGER. CREATE TABLE IF NOT EXISTS does
+            # nothing to a table that already exists, so a ledger written
+            # before `run` was added keeps the old five columns and every
+            # insert below fails on the sixth. Added separately, tolerantly:
+            # a duplicate-column error means it is already there.
+            try:
+                conn.execute("ALTER TABLE chaos_lots ADD COLUMN run TEXT")
+            except Exception:  # noqa: BLE001 - already migrated
+                pass
+            conn.executescript("""
 
                 -- NOTE: there is no `carried` table here any more.
                 --
@@ -21616,10 +21637,12 @@ def note_chaos_lot(unit_cost: int, listed_price: int, qty: int) -> None:
         return
     try:
         conn.execute(
-            "INSERT INTO chaos_lots (unit_cost, listed_price, qty, created) "
-            "VALUES (?,?,?,?)",
+            "INSERT INTO chaos_lots "
+            "(unit_cost, listed_price, qty, created, run) "
+            "VALUES (?,?,?,?,?)",
             (int(unit_cost), int(listed_price), int(max(1, qty)),
-             _dt.datetime.now().isoformat(" ", "seconds")))
+             _dt.datetime.now().isoformat(" ", "seconds"),
+             _RUN_STARTED_AT.isoformat(timespec="seconds")))
         conn.commit()
     except Exception:  # noqa: BLE001 - bookkeeping must never block a listing
         pass
@@ -21637,8 +21660,9 @@ def chaos_lots_cheapest_first() -> list:
         return []
     try:
         return [(int(r[0]), int(r[1])) for r in conn.execute(
-            "SELECT id, unit_cost FROM chaos_lots "
-            "ORDER BY unit_cost ASC, id ASC").fetchall()]
+            "SELECT id, unit_cost FROM chaos_lots WHERE run = ? "
+            "ORDER BY unit_cost ASC, id ASC",
+            (_RUN_STARTED_AT.isoformat(timespec="seconds"),)).fetchall()]
     except Exception:  # noqa: BLE001
         return []
     finally:
@@ -21659,8 +21683,9 @@ def chaos_lots() -> list:
         return []
     try:
         return [tuple(r) for r in conn.execute(
-            "SELECT id, unit_cost, listed_price FROM chaos_lots "
-            "ORDER BY unit_cost DESC, id ASC").fetchall()]
+            "SELECT id, unit_cost, listed_price FROM chaos_lots WHERE run = ? "
+            "ORDER BY unit_cost DESC, id ASC",
+            (_RUN_STARTED_AT.isoformat(timespec="seconds"),)).fetchall()]
     except Exception:  # noqa: BLE001
         return []
     finally:
