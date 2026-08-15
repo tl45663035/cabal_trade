@@ -2342,6 +2342,32 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
         label = w.text.strip().lower()
         if label in ("buy", "cancel") and w.centre[1] > PURCHASE_DIALOG_BUTTONS_Y:
             buttons[label] = w.centre
+
+    # READ THE BUTTONS FROM THEIR OWN CROP WHEN THE WIDE SWEEP MISSES THEM.
+    #
+    # The sweep above covers 1000x550 and the button labels are low-contrast
+    # grey-on-grey; measured on unit_tests/corpus/run_69948.png they do not
+    # survive it AT ALL, while the same two words read at conf 96 and 97 from
+    # PURCHASE_DIALOG_BUTTONS, a 380x50 crop over exactly that row. Tesseract
+    # upscales a small crop far more than a large one, and that is the whole
+    # difference.
+    #
+    # The consequence was not subtle. With no button found this returned None,
+    # the caller reported "the Confirm Purchase dialog did not appear" -- with
+    # the dialog plainly on screen, item, quantity and price all reading -- and
+    # three refusals in a row stopped the chaos pass with 0 of 200 Cores
+    # bought. The run then failed three cycles and tripped the breaker.
+    #
+    # PURCHASE_DIALOG_BUTTONS already existed for this and had no reader; the
+    # comment above says it was meant to be wired up. Doing that now. It is a
+    # measurement, not a guessed point: the words are located inside the crop,
+    # so a dialog that moves is still followed.
+    if "buy" not in buttons or "cancel" not in buttons:
+        for w in find_words(shot, PURCHASE_DIALOG_BUTTONS):
+            label = w.text.strip().lower()
+            if label in ("buy", "cancel") and label not in buttons:
+                buttons[label] = w.centre
+
     if "buy" not in buttons:
         _note_phase("ocr.purchase_confirm", (time.monotonic() - _pc_t0) * 1000.0)
         return None
