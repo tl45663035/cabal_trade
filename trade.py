@@ -642,8 +642,6 @@ CHAOS_CRAFT_TAB = 8               # the last inventory tab, where the card lives
 CHAOS_CRAFT_KEY_SLOT = (1, 8)     # row, col of the Remote Request Card
 CHAOS_WORK_TAB = 4                # crafted Sets land on whatever tab is showing
 
-CRAFT_CATEGORY_POINT = (121, 236)   # the "1000 - 1999" tree node
-CRAFT_RECIPE_POINT = (216, 318)     # "[1500] Chaos Core Set (x1)" under it
 
 # WHICH CHAOS RECIPE TO CRAFT WITH.
 #
@@ -654,11 +652,11 @@ CRAFT_RECIPE_POINT = (216, 318)     # "[1500] Chaos Core Set (x1)" under it
 # is a third of the craft operations for the same stock -- 250 Cores is ~83
 # crafts instead of 250, and the queue wait follows the craft count.
 #
-# THE POSITIONS ARE NOT FIXED. Expanding a category pushes every node below it
-# down the tree, so "[2500]" sits at a different y depending on whether
-# 1000 - 1999 is open. The points below are only a fallback: craft_recipe_row
-# READS the tree and clicks what it finds, which is the same discipline the
-# rest of this file uses -- never guess a position that can be measured.
+# THE POINTS ASSUME A RESTING TREE -- every tier collapsed, which is what the
+# craft window opens to. Expanding a tier pushes every node below it down, so a
+# tier left open from an earlier action moves the recipe row and the second
+# click lands somewhere else. There is no reader to catch that: the operator
+# required fixed coordinates and no OCR here.
 # NO OCR. Two clicks at known points: the tier, then the recipe under it.
 #
 # Each entry is (tier_point, recipe_point, label), and each assumes the tree is
@@ -671,6 +669,34 @@ CRAFT_RECIPE_POINT = (216, 318)     # "[1500] Chaos Core Set (x1)" under it
 #   "1000 - 1999"    y=236     -> "[1500] Chaos Core Set (x1)"  y=318
 #   "2000 - 2999"    y=276     -> "[2000] Sword Damage Amp"     y=319
 #                               -> "[2500] Chaos Core Set (x3)" y=359
+# CORES PER CRAFT, per recipe. The x1 takes one and the x3 takes three -- the
+# dialog shows it as the denominator of "Required Material: Chaos Core N/1" or
+# "N/3". A holding that is not a multiple of this leaves a remainder the recipe
+# physically cannot consume.
+CRAFT_MATERIAL_COST = {1: 1, 2: 3}
+
+# How many Chaos Cores are sitting on the work tab because they are too few to
+# craft. Process-lifetime and expected -- see craft_chaos_sets.
+_CHAOS_REMAINDER = 0
+
+
+def craft_material_cost() -> int:
+    """Cores one craft of the configured recipe consumes."""
+    return max(1, CRAFT_MATERIAL_COST.get(int(CHAOS_RECIPE or 1), 1))
+
+
+def note_chaos_remainder(count: int) -> None:
+    """Record Cores left over because the recipe could not use them."""
+    global _CHAOS_REMAINDER
+    _CHAOS_REMAINDER = max(0, int(count or 0))
+    record("chaos.remainder", cores=_CHAOS_REMAINDER)
+
+
+def chaos_remainder() -> int:
+    """Cores the work tab is expected to be holding. 0 when it should be bare."""
+    return _CHAOS_REMAINDER
+
+
 CHAOS_RECIPE = 1
 CRAFT_RECIPES = {
     1: ((121, 236), (216, 318), "[1500] Chaos Core Set (x1)"),
@@ -1912,12 +1938,26 @@ QTY_READBACK_PAUSE = 0.2
 # NOTE: there is no Alz settle budget here any more.
 #
 # A poll used to sit in buy_offer re-reading the HUD for up to 6 seconds,
-# waiting for the balance to move after a confirm click. It was never asked
-# for, and the profile disproved its own justification: measured over three
-# orders on 2026-08-15 it cost 6,499 ms EVERY order -- the full budget plus
-# the leading read -- so it timed out every time instead of exiting early on a
-# settled balance. Shared with the Cores restock, that was ~6s on every order
-# the script placed anywhere.
+# waiting for the balance to move after a confirm click. It was removed on the
+# operator's instruction -- "I never asked this feature" -- and the before/after
+# pair it sat on top of is what the ledger has always been written from.
+#
+# THE MEASUREMENT ORIGINALLY GIVEN FOR REMOVING IT WAS WRONG, and the record
+# should say so. It was reported as costing 6,499 ms every order. Removing it
+# saved 435 ms (buy_offer.total 22,348 -> 21,913 across
+# run_2026-08-15_081036 and _081958), which means the poll was EXITING EARLY on
+# every successful order, exactly as its own comment claimed. The two orders in
+# _081036 where it did spend the budget are the two that refused with
+# "before == after" -- 28,906 and 28,946 ms against 22.3s for the successful
+# ones. It was cheap insurance, not a 6s tax.
+#
+# WHAT IS NOW UNGUARDED, stated plainly so the next reader can weigh it: if the
+# HUD has not repainted by the time the single after-read is taken,
+# before == after routes to "the listing sold to another buyer", the caller
+# treats that as retryable, and the same order is placed again. A 3.5s settle
+# still precedes the read (sleep 2.5 + park + sleep 1.0), so the window is
+# narrow -- but it is the large orders whose HUD lags, and a chaos order is a
+# whole row.
 #
 # What replaced it is what was always underneath: read the balance BEFORE the
 # order and AFTER it, and take the difference. One read each, no waiting.
@@ -2378,7 +2418,19 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
             # dialog button when it sits below PURCHASE_DIALOG_BUTTONS_Y,
             # wherever it was read from. The crop is chosen to cover only that
             # row, but the crop is not what makes it safe; this check is.
-            if (label in ("buy", "cancel") and label not in buttons
+            # OVERRIDE, DO NOT DEFER. `label not in buttons` was wrong here.
+            #
+            # The wide sweep can pick up the TABLE's own row buttons: rows sit
+            # at PURCHASE_ROW_TOP + n*PURCHASE_ROW_PITCH, and row 8 lands at
+            # y=872 -- past the y>800 band guard, at conf 96. If the sweep took
+            # that as the dialog's Buy, deferring meant the crop could only
+            # fill in `cancel` and the bad Buy survived to be clicked, buying a
+            # different listing at a different price.
+            #
+            # The crop is the better evidence by construction: x 1190-1570
+            # excludes PURCHASE_BUY_X (1124) entirely, so nothing the table
+            # draws can appear in it. Where the two disagree the crop wins.
+            if (label in ("buy", "cancel")
                     and w.centre[1] > PURCHASE_DIALOG_BUTTONS_Y):
                 buttons[label] = w.centre
 
@@ -3422,15 +3474,15 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     # measurement: the balance before this order, the balance after it, and the
     # difference.
     #
-    # A settle POLL used to sit here -- up to ALZ_SETTLE_BUDGET seconds of
-    # re-reading the HUD, waiting for it to move. It was never asked for, and
-    # the profile showed it was not doing the job its own comment claimed
-    # ("the budget is spent only when the balance has NOT moved, so a settled
-    # balance pays nothing"): measured over three orders on 2026-08-15 it cost
-    # 6,499 ms EVERY order, the full budget plus the leading read, so it was
-    # timing out every time rather than exiting early. buy_offer is shared with
-    # the Cores restock, so that was ~6s on every order the script placed
-    # anywhere.
+    # A settle POLL used to sit here -- re-reading the HUD until the balance
+    # moved. Removed on the operator's instruction; the before/after pair it
+    # wrapped is the whole measurement and always was.
+    #
+    # THE JUSTIFICATION GIVEN AT THE TIME WAS WRONG. It was reported as costing
+    # 6,499 ms an order; the measured saving was 435 ms, so the poll was
+    # exiting early on every successful order and its own comment ("a settled
+    # balance pays nothing") was accurate. See ALZ settle note near
+    # QTY_READBACK_TRIES for the numbers and for what is now unguarded.
     #
     # The before/after pair below is unchanged and is what the ledger has
     # always been written from. Removing the poll removes a wait, not a
@@ -9257,6 +9309,14 @@ def grab() -> Image.Image:
 # the call site knew, which is what makes them usable as test fixtures rather
 # than just a pile of images.
 
+# Labels recorded as a row in the index with NO screenshot. Pure measurements
+# whose frame would be noise -- and, at a few thousand a run, would evict the
+# frames that are evidence. See record().
+NO_FRAME_LABELS = frozenset((
+    "phase", "table.scan", "table.walk",
+    "shopmodel.mismatch", "shopmodel.reconciled",
+))
+
 RECORD_DIR = SCRIPT_DIR / "unit_tests" / "corpus"
 _last_shot: "Image.Image | None" = None
 _record_seq = 0
@@ -9299,9 +9359,25 @@ def record(label: str, shot: "Image.Image | None" = None, /, **context) -> None:
     global _record_seq
     if not RECORD_ENABLED:
         return
-    image = shot if shot is not None else _last_shot
-    if image is None:
-        return
+    # MEASUREMENTS DO NOT CARRY A PICTURE.
+    #
+    # record() saves _last_shot whenever no frame is handed to it, and the
+    # profiling added on 2026-08-15 calls it from every phase and every table
+    # scan. That is 12-16 saves of a ~3MB screenshot per chaos order -- 40-50MB
+    # an order -- which (a) costs 100-250ms a write on the very path being
+    # timed, so the instrument changes what it measures, (b) lands between
+    # phases rather than inside one, so the bill silently under-reports, and
+    # (c) turns the 1,000-frame corpus over every ~70 orders, evicting the
+    # buy.completed and relist.* frames that answer real questions. The frames
+    # that found today's dialog bug would have been gone.
+    #
+    # These labels are numbers, not evidence. They go to the index only.
+    if label in NO_FRAME_LABELS:
+        image = None
+    else:
+        image = shot if shot is not None else _last_shot
+        if image is None:
+            return
     try:
         RECORD_DIR.mkdir(parents=True, exist_ok=True)
         if _record_seq == 0:
@@ -16168,6 +16244,29 @@ def ensure_work_tab_empty(timeout: float = 8.0, verbose: bool = True) -> bool:
     if chaos_stranded():
         return False
 
+    # CORES THE RECIPE COULD NOT SWALLOW ARE EXPECTED, AND ARE NOT A STOP.
+    #
+    # The x3 chaos recipe consumes three Cores a craft, so a holding that is
+    # not a multiple of three leaves one or two behind. They are accounted for
+    # -- craft_chaos_sets recorded exactly how many -- and the next purchase
+    # rolls them in. Aborting the run over them would fire on two passes in
+    # every three at the shipped CHAOS_BUY_QUANTITY of 200, since 200 % 3 == 2.
+    #
+    # A CYCLE FAILURE, NOT A FATAL, and only for a count this small. The tab
+    # still is not clean, so the cancelled-item diff below still cannot run
+    # safely and the caller must not relist over it -- returning False is what
+    # says that. What this refuses to do is end the RUN over a remainder the
+    # script created on purpose and knows the size of.
+    left = chaos_remainder()
+    if left:
+        print(f"Inventory tab {WORK_TAB} is not empty, and {left} Chaos "
+              f"Core(s) are on the books as left over from the last craft -- "
+              f"the x{craft_material_cost()} recipe cannot use fewer than "
+              f"{craft_material_cost()}. Expected, and the next purchase "
+              f"absorbs them; not relisting over them this cycle.")
+        record("worktab.chaos_remainder", tab=WORK_TAB, remainder=left)
+        return False
+
     raise FatalAbort(
         f"inventory tab {WORK_TAB} is not empty. Everything in it is stock "
         "this script cannot name from a slot, so it cannot be priced safely "
@@ -20942,6 +21041,25 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
     else:
         made = before - after
         say(f"  the queue consumed {made} of {before} Core(s).")
+        # WHAT THE RECIPE CANNOT SWALLOW IS EXPECTED, NOT A STRAND.
+        #
+        # The x3 recipe takes three Cores per craft, so a holding that is not a
+        # multiple of three leaves one or two behind -- observed live on
+        # 2026-08-15: 35 held, 33 consumed, 2 left. They are not lost; the next
+        # purchase rolls them in.
+        #
+        # But they sit on CHAOS_WORK_TAB, which IS WORK_TAB, and
+        # ensure_work_tab_empty raises FatalAbort on a dirty tab with no carry
+        # and no strand -- a run-ending stop needing a human. With the shipped
+        # CHAOS_BUY_QUANTITY of 200 and this recipe, 200 % 3 == 2, so the
+        # holding cycles 2 -> 1 -> 0 and two passes in every three would end
+        # the run. Marking it a strand instead is no better: two Cores cannot
+        # make a craft, so the next pass reports "nothing was crafted" and
+        # re-strands, trading the abort for a breaker trip.
+        #
+        # So it is recorded as what it is -- a remainder too small to craft --
+        # and the work-tab gate accepts exactly that many.
+        note_chaos_remainder(after if after < craft_material_cost() else 0)
 
     # THE TAB AGAIN, IMMEDIATELY BEFORE COLLECTING.
     #
@@ -22289,10 +22407,29 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 + (f", {paid:,} over {paid_units} Core(s)"
                    if paid_units != made else "") + ").")
             report = {}
+            # THE COUNT HAS TO TRAVEL WITH THE NAME, or the absolute floor is
+            # a per-unit figure applied to a whole bundle.
+            #
+            # item_price_floor scales ITEM_PRICE_FLOORS by the pack marker in
+            # the name, because a compressed bundle is ONE row priced for all
+            # of it. The bare catalogue name has no marker, so a 197-unit
+            # bundle was floored at 690,000 for the lot instead of 690,000 x
+            # 197 = 135,930,000 -- 197 times too low, and only masked while the
+            # cost floor happened to sit higher. With the market above cost and
+            # below 690,000/unit it listed under the operator's absolute floor:
+            # at 650,000 cost and a 660,000 market that is 30,000/unit, about
+            # 5,910,000 Alz on one bundle.
+            #
+            # "Chaos Core Set X 197" is also the name the BOARD shows for it --
+            # compressed bundles really are one item named that way -- so this
+            # is the more accurate identity as well as the one that floors
+            # correctly. The relist path has always passed the board name and
+            # has always floored right; this makes the two agree.
+            bundle_name = f"{FAVOURITE_SLOTS[CHAOS_SET_SLOT]} X {made}"
             listed = register_item(1, 1, timeout=timeout, verbose=verbose,
                                    maximise_qty=True,
                                    cost_floor=cost_floor,
-                                   expect_item=FAVOURITE_SLOTS[CHAOS_SET_SLOT],
+                                   expect_item=bundle_name,
                                    undercut=CHAOS_UNDERCUT,
                                    report=report)
             if listed:
@@ -23742,8 +23879,12 @@ _TRADE_FRAME_GEOMETRY = {
     # The Remote Request (craft) window. Its own panel, mapped through the
     # Trade frame like the vendor regions above -- and every one of these is
     # CLICKED, so an unscaled value here lands somewhere unintended.
-    "CRAFT_CATEGORY_POINT": "point",
-    "CRAFT_RECIPE_POINT": "point",
+    # CRAFT_RECIPES is a dict of points, not a bare point -- see apply_layout,
+    # which special-cases it. The two flat constants that used to live here
+    # were replaced by that table on 2026-08-15 and are gone; leaving them
+    # registered would have rescaled coordinates nothing clicks while the ones
+    # that ARE clicked stayed at reference pixels.
+    "CRAFT_RECIPES": "recipe_points",
     "CRAFT_REPEAT_POINT": "point",
     "CRAFT_REQUEST_ALL": "point",
     "CRAFT_COMPLETE_ALL": "point",
@@ -23852,6 +23993,12 @@ def _capture_reference_geometry() -> None:
             value = (value[0] - ox, value[1] - oy, value[2] - ox, value[3] - oy)
         elif kind == "point":
             value = (value[0] - ox, value[1] - oy)
+        elif kind == "recipe_points":
+            # {setting: (tier_point, recipe_point, label)} -- both points move,
+            # the label does not.
+            value = {k: ((v[0][0] - ox, v[0][1] - oy),
+                         (v[1][0] - ox, v[1][1] - oy), v[2])
+                     for k, v in value.items()}
         elif kind == "x":
             value = value - ox
         elif kind == "y":
@@ -23905,6 +24052,9 @@ def apply_layout(layout: "Layout") -> None:
             value = layout.box(ref)
         elif kind == "point":
             value = layout.point(ref)
+        elif kind == "recipe_points":
+            value = {k: (layout.point(v[0]), layout.point(v[1]), v[2])
+                     for k, v in ref.items()}
         elif kind == "x":
             value = layout.x(ref)
         elif kind == "y":
