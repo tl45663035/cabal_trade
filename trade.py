@@ -2307,6 +2307,7 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
     returns False with it plainly on screen. Anything relying on that would
     read the table it covers as an empty shop.
     """
+    _pc_t0 = time.monotonic()
     shot = source if source is not None else grab()
     # RE-MEASURED, THEN WIRED UP -- the way the note below asked for.
     #
@@ -2334,6 +2335,7 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
              if w.conf >= 45]
     text = " ".join(w.text for w in words)
     if "Purchase" not in text:
+        _note_phase("ocr.purchase_confirm", (time.monotonic() - _pc_t0) * 1000.0)
         return None
     buttons = {}
     for w in words:
@@ -2341,6 +2343,7 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
         if label in ("buy", "cancel") and w.centre[1] > PURCHASE_DIALOG_BUTTONS_Y:
             buttons[label] = w.centre
     if "buy" not in buttons:
+        _note_phase("ocr.purchase_confirm", (time.monotonic() - _pc_t0) * 1000.0)
         return None
     # The price from its OWN crop first. The sweep below takes the last
     # >=6-digit word anywhere in a 1000x550 region, which was fine while the
@@ -2377,6 +2380,7 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
     # Cores (64,610,000 Alz) fell back to limit=1 and bought a single Core.
     qty_max = read_number(shot, PURCHASE_DLG_QTY_MAX, 20.0)
 
+    _note_phase("ocr.purchase_confirm", (time.monotonic() - _pc_t0) * 1000.0)
     return {"buy": buttons["buy"], "cancel": buttons.get("cancel"),
             "price": price, "text": text, "qty": qty, "qty_max": qty_max}
 
@@ -13117,6 +13121,16 @@ class phase:
                   + (f"  {self.detail}" if self.detail else ""))
         record("phase", name=self.name, ms=round(ms, 1), detail=self.detail)
         return False
+
+
+def _note_phase(name: str, ms: float) -> None:
+    """Add `ms` to a phase total without the `with` form. Never raises."""
+    row = _PHASE_TOTALS.setdefault(name, {"ms": 0.0, "n": 0})
+    row["ms"] += ms
+    row["n"] += 1
+    if PHASE_TRACE:
+        print(f"      [phase] {name:<22} {ms:>8.0f} ms")
+    record("phase", name=name, ms=round(ms, 1))
 
 
 def phase_report(title: str = "CHAOS BUYING") -> None:
