@@ -90,6 +90,19 @@ ITEM_PRICE_FLOORS: tuple[tuple[str, str, int], ...] = (
     # floor on the token route. 'siena' is 5 characters and unique to this
     # item, so it is both a stronger target than 'vip' and a narrower one.
     ("siena", "Siena's Unbinding Stone", 71_000_000),
+    # PER UNIT, and scaled by the pack count below -- chaos lists compressed
+    # bundles ("Chaos Core Set X 197" is ONE row priced for all 197), so a
+    # flat listing floor would be 197x too low. The operator's rule,
+    # 2026-08-15: "the absolute price floor for Chaos set is 690k per ...
+    # no matter what, always price floor is 690k regardless of what market
+    # says". It is the hard minimum under the running floor, not a
+    # replacement for it: what the Cores actually cost still applies on top
+    # whenever it is higher.
+    #
+    # 'chaoscoreset' as the token, not 'chaos': "Chaos Core" is the raw
+    # material and a different item, and the shorter token would hand it this
+    # floor. Same containment trap as 'siena' vs 'unbinding' above.
+    ("chaoscoreset", "Chaos Core Set", 690_000),
     # 'gempack' rather than 'gem': plain "Force Gem" scores 0.593 against this
     # catalogue name, which clears the 0.4 token bar, so the shorter token
     # would hand a different item this floor. 'gempack' survives every damaged
@@ -14256,6 +14269,31 @@ def listing_floor(name: str) -> tuple[int, str]:
 
 
 def item_price_floor(name: str) -> int:
+    """The absolute floor for this LISTING, pack count included.
+
+    PER UNIT IN THE CATALOGUE, PER LISTING HERE. A chaos bundle is one shop row
+    priced for all of it -- "Chaos Core Set X 197" sold for 138,683,862 as a
+    single listing -- so a 690,000/unit floor has to become 690,000 x 197 to
+    guard that row. Returning the per-unit figure would be 197 times too low
+    and would never bind.
+
+    Every other entry in the catalogue is a single item, so pack_size returns 1
+    and this is the identity for them -- a VIP is unaffected.
+    """
+    # THE MARKER COMES OFF BEFORE MATCHING, AND BACK ON AS A MULTIPLIER.
+    #
+    # Matching against the raw board name lets the count leak into the key --
+    # "Chaos Core X 250" folds to 'chaoscorex25o', which is not a prefix of
+    # 'chaoscoreset', so the prefix guard misses and the similarity route hands
+    # the raw material the SET's floor. Strip first, decide, then scale.
+    bare = _PACK_ANYWHERE.sub(" ", name or "")
+    unit = _item_price_floor_unit(bare)
+    if not unit:
+        return 0
+    return unit * max(1, pack_size(name))
+
+
+def _item_price_floor_unit(name: str) -> int:
     """Absolute floor for a listing name, or 0 if none applies.
 
     Two independent routes, because neither alone is good enough:
@@ -14295,6 +14333,22 @@ def item_price_floor(name: str) -> int:
         # read is what the token route is for. Guarding both would trade a
         # cosmetic over-match for the one failure that must never happen.
         long_enough = len(key) >= len(reference) * FLOOR_LENGTH_RATIO
+        # A NAME THAT IS A STRICT PREFIX OF THE CATALOGUE NAME IS A DIFFERENT,
+        # SHORTER ITEM -- never this one.
+        #
+        # "Chaos Core" folds to a strict prefix of "Chaos Core Set" and scores
+        # 0.83 against it, clearing the similarity bar. That would hand the raw
+        # material the SET's 690,000 floor, and the Core is what chaos BUYS --
+        # flooring it is both wrong and expensive.
+        #
+        # The token route already refuses this ('chaoscoreset' is not in
+        # 'chaoscore'), so only the similarity route needs the guard. Same
+        # containment trap the catalogue documents for 'siena' vs 'unbinding'
+        # and 'gempack' vs 'gem', reached from the other direction: there a
+        # short TOKEN over-matched, here a short NAME does.
+        prefix_of_reference = (key != reference and reference.startswith(key))
+        if prefix_of_reference:
+            long_enough = False
         if (ratio >= FLOOR_NAME_SIMILARITY and long_enough) or (
                 token_hit and ratio >= FLOOR_TOKEN_MIN_SIMILARITY):
             candidates.append((ratio, floor, reference))

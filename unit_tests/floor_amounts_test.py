@@ -56,6 +56,12 @@ FLOORS = {
     "Siena's Unbinding Stone":    71_000_000,
     "Force Gem Package (x400)":  175_000_000,
     "Epic Booster (Highest)":     44_000_000,
+    # PER UNIT. Added 2026-08-15 at the operator's instruction: "the absolute
+    # price floor for Chaos set is 690k per ... no matter what, always price
+    # floor is 690k regardless of what market says". Chaos lists compressed
+    # bundles, so item_price_floor scales this by the count in the name -- the
+    # bare name here is one unit. See the bundle checks below.
+    "Chaos Core Set":                690_000,
 }
 
 for name, want in FLOORS.items():
@@ -65,6 +71,27 @@ for name, want in FLOORS.items():
     check(got != 0,
           f"{name} resolved to NO floor at all -- the catalogue entry is "
           f"missing or its name no longer matches")
+
+# A COMPRESSED BUNDLE IS ONE ROW PRICED FOR ALL OF IT, so the absolute floor
+# scales by the count in its name. A flat per-unit figure would be hundreds of
+# times too low and would never bind on the listing it exists to guard.
+for bundle, count in (("Chaos Core Set X 197", 197),
+                      ("Chaos Core Set X 250", 250),
+                      ("Chaos Core Set", 1)):
+    want_bundle = 690_000 * count
+    got_bundle = m.item_price_floor(bundle)
+    check(got_bundle == want_bundle,
+          f"{bundle} must floor at {want_bundle:,} ({count} x 690,000), got "
+          f"{got_bundle:,}")
+
+# AND THE RAW MATERIAL MUST NOT INHERIT IT. "Chaos Core" is what chaos BUYS;
+# it folds to a strict prefix of "Chaos Core Set" and scores 0.83 against it,
+# which clears the similarity bar. Flooring it would be both wrong and
+# expensive. Same containment trap as 'siena' vs 'unbinding'.
+for raw in ("Chaos Core", "Chaos Core X 250", "chaos core"):
+    check(m.item_price_floor(raw) == 0,
+          f"{raw!r} must have NO absolute floor -- it is the raw material, "
+          f"not the product. Got {m.item_price_floor(raw):,}")
 
 # The catalogue holds these and only these. An entry appearing without a
 # pinned amount is a floor nobody has stated.
