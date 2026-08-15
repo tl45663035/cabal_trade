@@ -3562,10 +3562,13 @@ def buy_cheapest_set_detail(item_slot: int,
         # reservation is about shop space, and the money is spent before any
         # row is asked for.
         #
-        # So this bounds the PURCHASE, and it is not exempt for anyone. Rows
-        # already on the board for this item count too -- the limit is on how
-        # many rows the type occupies in the shop, not on how many one restock
-        # adds.
+        # So this bounds the PURCHASE rather than the reservation. Rows
+        # already on the board for this item count toward it -- the limit is on
+        # how many rows the type occupies in the shop, not on how many one
+        # restock adds.
+        #
+        # It has exactly three exemptions, all stated below: the first order of
+        # a restock, chaos, and a caller with no target. Nothing else.
         # NOT FOR CHAOS, AND NOT FOR A CALLER WITH NO TARGET.
         #
         # Chaos manages its own shelf through CHAOS_ROWS and its own pipeline;
@@ -3598,13 +3601,49 @@ def buy_cheapest_set_detail(item_slot: int,
         if (held > 0 and still_wanted is not None
                 and item_slot not in CHAOS_SLOTS):
             rows_cap = core_rows_target(FAVOURITE_SLOTS.get(item_slot, ""))
+        # A MODEL THAT CANNOT ANSWER IS SAID OUT LOUD.
+        #
+        # on_board stays 0 when the model is not seeded, which LOOSENS the cap
+        # by however many rows the type already holds -- a whole extra row of
+        # slack at CORE_ROWS 3. That is the right direction to fail (refusing
+        # to buy on an unknown count would stall a restock the operator asked
+        # for), but it must not be silent: reset() stood the model down nine
+        # times in one night, and `run.row_model: false` disables it for the
+        # life of the process.
         on_board = 0
+        if rows_cap and not SHOP.ready:
+            say(f"  the row model is not seeded, so rows already listed for "
+                f"{FAVOURITE_SLOTS.get(item_slot, 'this item')} cannot be "
+                f"counted; the {rows_cap}-row limit is applied to this "
+                f"purchase alone.")
+            record("buy.row_cap_unmodelled",
+                   item=FAVOURITE_SLOTS.get(item_slot, ""), cap=rows_cap)
         if SHOP.ready:
-            want_key = _floor_key(item_name(FAVOURITE_SLOTS.get(item_slot, "")))
+            # _model_key, NOT _floor_key. The model stores whatever name it
+            # was given: adopt() keeps the board's own text, which reads
+            # "Force Core(High) X 250", while register() stores the bare
+            # catalogue name. _floor_key folds the pack marker INTO the key --
+            # "forcecorehighx25o" against "forcecorehigh" -- so a row that
+            # entered the model from the seeding walk never matched, and every
+            # run's first restock counted 0 rows already on the board.
+            #
+            # _model_key exists for exactly this comparison and its docstring
+            # is a warning against the mistake made here: "NOT _floor_key on
+            # its own, which was the first attempt ... a model fed the first
+            # and shown the second saw a mismatch on every row the run had
+            # listed itself."
+            want_key = _model_key(FAVOURITE_SLOTS.get(item_slot, ""))
             on_board = sum(
                 1 for i in SHOP.occupied_rows()
-                if _floor_key(item_name((SHOP.content(i) or {}).get("name")
-                                        or "")) == want_key)
+                if _model_key((SHOP.content(i) or {}).get("name") or "")
+                == want_key)
+        # ONE BUNDLE IS THE FLOOR OF WHAT THIS ORDER COSTS, NOT THE WHOLE OF
+        # IT. `want` -- how many of row 1's identical listings to take -- is
+        # not decided until further down, and the order is `want * pack` Sets.
+        # So this early check can only refuse an order that cannot fit even at
+        # its smallest; the binding clamp is applied to `want` itself once it
+        # exists. Checking here as well keeps the refusal cheap and its reason
+        # specific when a single bundle is already too big.
         rows_after = on_board + -(-(held + target.pack) // max(1,
                                                               CONVERT_QUANTITY))
         if rows_cap and rows_after > rows_cap:
@@ -3705,6 +3744,51 @@ def buy_cheapest_set_detail(item_slot: int,
             to_floor = max(0, RESTOCK_TARGET - held)
             want = max(1, min(want, max(
                 1, -(-to_floor // max(1, target.pack)))))
+
+        # AND NOW BOUND THE ORDER BY THE ROWS IT WOULD FILL.
+        #
+        # The check near the top of this function tests ONE bundle, because
+        # `want` did not exist yet. The order is `want * target.pack` Sets --
+        # the log reads "taking 23 of the 23 listing(s) on offer -> 230 Sets"
+        # -- so testing a single pack of 10 and then buying 230 approves, in
+        # one breath, a purchase that breaks the limit by rows at a time.
+        #
+        # Clamped rather than refused. A bundle cannot be split, but the
+        # LISTINGS are separate purchases and taking fewer of them is a real
+        # option -- so the order is trimmed to what the type's rows can hold
+        # instead of being abandoned. Refusing outright would forfeit stock the
+        # limit permits.
+        #
+        # `rows_cap` is already 0 for the exempt cases (first order, chaos, no
+        # target), so this is inert for them by construction.
+        if rows_cap:
+            room_units = max(0, rows_cap - on_board) * CONVERT_QUANTITY - held
+            fits = room_units // max(1, target.pack)
+            if fits < want:
+                if fits < 1:
+                    say(f"  {held} Set(s) held and {on_board} row(s) already "
+                        f"listed; even one bundle of {target.pack} passes the "
+                        f"{rows_cap}-row limit for "
+                        f"{FAVOURITE_SLOTS.get(item_slot, 'this item')} - not "
+                        f"buying.")
+                    record("buy.row_cap", item=FAVOURITE_SLOTS.get(item_slot,
+                                                                   ""),
+                           held=held, pack=target.pack, on_board=on_board,
+                           want=want, cap=rows_cap, fits=0)
+                    return outcome(False,
+                                   f"one bundle of {target.pack} would take "
+                                   f"{FAVOURITE_SLOTS.get(item_slot, 'this item')}"
+                                   f" past its {rows_cap}-row limit",
+                                   saving=saving)
+                say(f"  taking {fits} listing(s), not {want}: "
+                    f"{FAVOURITE_SLOTS.get(item_slot, 'this item')} holds "
+                    f"{on_board} row(s) and {held} Set(s), so only "
+                    f"{room_units} more unit(s) fit inside its {rows_cap}-row "
+                    f"limit.")
+                record("buy.row_trim", item=FAVOURITE_SLOTS.get(item_slot, ""),
+                       held=held, pack=target.pack, on_board=on_board,
+                       want=want, took=fits, cap=rows_cap)
+                want = fits
 
         # Can this actually be paid for? Checked before the click, because a
         # refusal from the game is harder to read than a number we already
@@ -5946,10 +6030,14 @@ def restock_core(item_slot: int,
     # bound is still real and still tighter than the blind worst case.
     have_rows = 0
     if SHOP.ready and core_name:
-        want_key = _floor_key(item_name(core_name))
+        # _model_key -- see the same count in buy_cheapest_set_detail. Using
+        # _floor_key here folded the pack marker into the key, so a row adopted
+        # from the seeding walk ("Force Core(High) X 250") never matched the
+        # catalogue name and this always read 0.
+        want_key = _model_key(core_name)
         have_rows = sum(
             1 for i in SHOP.occupied_rows()
-            if _floor_key(item_name((SHOP.content(i) or {}).get("name") or ""))
+            if _model_key((SHOP.content(i) or {}).get("name") or "")
             == want_key)
     allowance = max(0, target_rows - have_rows)
     if allowance <= 0:
@@ -18435,6 +18523,26 @@ def sanity_check(
     # which await_rows below already gives.
     rows = None
     if absolute_row is not None and absolute_row > SCREEN_ROWS:
+        # OUT OF POSITIONAL REACH IS "CANNOT VERIFY", NOT "CHECK THE SCREEN".
+        #
+        # goto_row refuses above ROW_INDEX_LIMIT (SHOP_ROW_CAPACITY minus a
+        # screen), but SHOP.register hands back first_empty() over all thirty
+        # slots, so a landing row of 21-30 is ordinary once the low gaps fill
+        # -- the logs show "25 of 30 slot(s) in use". Falling back to the
+        # visible rows there re-creates the exact bug this function was changed
+        # to fix, and on the relist path a wrong answer WITHDRAWS a listing.
+        #
+        # Returning False without setting found["row"] is the caller's
+        # "could not verify" branch: nothing is withdrawn and it is checked
+        # again next cycle.
+        if absolute_row > ROW_INDEX_LIMIT:
+            say(f"  row {absolute_row} is past row {ROW_INDEX_LIMIT}, which "
+                f"cannot be scrolled to by count; not verifying from the "
+                f"visible rows, because they are a different row. Nothing "
+                f"withdrawn.")
+            record("sanity.out_of_reach", row=absolute_row,
+                   limit=ROW_INDEX_LIMIT)
+            return False
         if goto_row(absolute_row, timeout=timeout, verbose=False):
             top = read_top_row()
             if top is not None:
@@ -18454,11 +18562,26 @@ def sanity_check(
                     f"after {absolute_row - 1} notch(es)) where the "
                     f"registration landed, not whatever is on screen.")
             else:
-                say(f"  could not read absolute row {absolute_row}; falling "
-                    f"back to the visible rows.")
+                # THE VIEW HAS ALREADY MOVED. goto_row put absolute
+                # `absolute_row` at screen 1 and only the band read failed, so
+                # await_rows here would return absolute N..N+9 numbered 1..10
+                # -- worse than the pre-fix behaviour, which at least read the
+                # top. And a wrong answer here withdraws a live listing.
+                say(f"  could not read absolute row {absolute_row} after "
+                    f"scrolling to it; not falling back to the visible rows, "
+                    f"which are now a different part of the shop. Nothing "
+                    f"withdrawn.")
+                record("sanity.band_unreadable", row=absolute_row)
+                return False
         else:
-            say(f"  could not scroll to absolute row {absolute_row}; falling "
-                f"back to the visible rows.")
+            # goto_row may have scrolled before failing, so the same argument
+            # applies: the view's position is unknown and screen numbering
+            # cannot be trusted against an absolute row.
+            say(f"  could not scroll to absolute row {absolute_row}; not "
+                f"verifying against the visible rows, whose position is now "
+                f"unknown. Nothing withdrawn.")
+            record("sanity.goto_failed", row=absolute_row)
+            return False
     if rows is None:
         rows = await_rows(timeout)
     if not rows:
