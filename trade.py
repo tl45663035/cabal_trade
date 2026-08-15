@@ -644,6 +644,27 @@ CHAOS_WORK_TAB = 4                # crafted Sets land on whatever tab is showing
 
 CRAFT_CATEGORY_POINT = (121, 236)   # the "1000 - 1999" tree node
 CRAFT_RECIPE_POINT = (216, 318)     # "[1500] Chaos Core Set (x1)" under it
+
+# WHICH CHAOS RECIPE TO CRAFT WITH.
+#
+#   1 -> "[1500] Chaos Core Set (x1)"  under the 1000 - 1999 node
+#   2 -> "[2500] Chaos Core Set (x3)"  under the 2000 - 2999 node
+#
+# The x3 recipe takes THREE Chaos Cores and yields three Sets per craft, so it
+# is a third of the craft operations for the same stock -- 250 Cores is ~83
+# crafts instead of 250, and the queue wait follows the craft count.
+#
+# THE POSITIONS ARE NOT FIXED. Expanding a category pushes every node below it
+# down the tree, so "[2500]" sits at a different y depending on whether
+# 1000 - 1999 is open. The points below are only a fallback: craft_recipe_row
+# READS the tree and clicks what it finds, which is the same discipline the
+# rest of this file uses -- never guess a position that can be measured.
+CHAOS_RECIPE = 1
+CRAFT_RECIPE_LABELS = {
+    1: ("1000", "1500"),        # (category node text, recipe text)
+    2: ("2000", "2500"),
+}
+CRAFT_TREE_REGION = (20, 180, 720, 500)   # the recipe tree, left pane
 CRAFT_REPEAT_POINT = (104, 981)     # the Repeat checkbox
 CRAFT_REQUEST_ALL = (355, 980)      # queues one craft per available material
 CRAFT_COMPLETE_ALL = (1181, 980)    # collects every finished craft
@@ -6639,6 +6660,8 @@ LIVE_KNOBS = {
     "PRICE_DIFF_FLOOR_BY_ITEM":       (dict, "per-item overrides of that "
                                              "margin, by the game's own "
                                              "spelling"),
+    "CHAOS_RECIPE":                   (int, "1 = [1500] Chaos Core Set (x1), "
+                                            "2 = [2500] Chaos Core Set (x3)"),
     "CORE_ROWS":                      (int, "rows each ordinary Core keeps "
                                             "on the board, like CHAOS_ROWS"),
     "CORE_ROWS_BY_ITEM":              (dict, "per-item overrides of that row "
@@ -6760,6 +6783,11 @@ def _live_config_problems(values):
         bad.append(f"the Core row targets add up to {_promised} and "
                    f"CHAOS_ROWS is {val('CHAOS_ROWS')}, which is more than "
                    f"the {SHOP_ROW_CAPACITY}-row shop")
+    # A recipe that is not in the table would fall back to the x1 silently.
+    if val("CHAOS_RECIPE") not in CRAFT_RECIPE_LABELS:
+        bad.append(f"CHAOS_RECIPE {val('CHAOS_RECIPE')} is not a known recipe; "
+                   f"use one of {sorted(CRAFT_RECIPE_LABELS)} "
+                   f"(1 = [1500] x1, 2 = [2500] x3)")
     if val("CHAOS_RESTOCK_AT_OR_BELOW_ROWS") > val("CHAOS_ROWS"):
         bad.append(f"CHAOS_RESTOCK_AT_OR_BELOW_ROWS "
                    f"{val('CHAOS_RESTOCK_AT_OR_BELOW_ROWS')} is above "
@@ -20449,6 +20477,82 @@ def chaos_cores_held(verbose: bool = True) -> int:
         return 0
 
 
+def craft_tree_point(text: str, bracketed: bool = False
+                     ) -> "tuple[int, int] | None":
+    """Where `text` sits in the recipe tree right now, or None.
+
+    READ, DO NOT ASSUME. Expanding a category pushes every node below it down,
+    so "[2500]" is at one y with 1000 - 1999 collapsed and another with it
+    open. A fixed point is right for exactly one tree state and silently wrong
+    for the rest -- and a wrong click here selects a DIFFERENT RECIPE, which
+    would craft the wrong item out of Chaos Cores.
+
+    Matched on the bracketed number ("1500", "2500", "1000", "2000"), which is
+    the one part of a row that is short, numeric and unique in this pane.
+    """
+    # BRACKETS TELL A RECIPE FROM A CATEGORY. The tree holds both "2000 - 2999"
+    # (a category) and "[2000] Sword Damage Amplifier" (a recipe), and their
+    # digits are identical -- matching on digits alone would open the category
+    # when asked for a recipe, or worse pick a recipe when asked for the
+    # category. The game brackets recipe numbers and leaves category ranges
+    # bare, so that is what separates them.
+    words = find_words(grab(), CRAFT_TREE_REGION)
+    for w in words:
+        raw = w.text or ""
+        if text not in re.sub(r"[^0-9]", "", raw):
+            continue
+        has_bracket = "[" in raw or "]" in raw
+        if has_bracket != bracketed:
+            continue
+        return ((w.left + w.right) // 2, (w.top + w.bottom) // 2)
+    return None
+
+
+def select_chaos_recipe(verbose: bool = True) -> bool:
+    """Open the right category and click the configured recipe. True on success.
+
+    CHAOS_RECIPE picks which: 1 is "[1500] ... (x1)", 2 is "[2500] ... (x3)".
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    category, recipe = CRAFT_RECIPE_LABELS.get(
+        int(CHAOS_RECIPE or 1), CRAFT_RECIPE_LABELS[1])
+    say(f"  selecting the Chaos Core Set recipe [{recipe}] "
+        f"(chaos_recipe {CHAOS_RECIPE})")
+
+    # The recipe may already be visible if its category is open. Look first,
+    # and only expand when it is not there -- clicking an OPEN category
+    # collapses it, which would hide the very row being looked for.
+    spot = craft_tree_point(recipe, bracketed=True)
+    if spot is None:
+        node = craft_tree_point(category, bracketed=False)
+        if node is None:
+            say(f"  the {category} category could not be found in the recipe "
+                f"tree; not crafting rather than clicking a guessed point.")
+            record("craft.category_not_found", category=category,
+                   recipe=recipe)
+            return False
+        say(f"  opening the {category} category at {node}")
+        click(*node)
+        time.sleep(0.8)
+        spot = craft_tree_point(recipe, bracketed=True)
+
+    if spot is None:
+        say(f"  recipe [{recipe}] is not in the tree after opening "
+            f"{category}; not crafting.")
+        record("craft.recipe_not_found", category=category, recipe=recipe)
+        return False
+
+    say(f"  clicking recipe [{recipe}] at {spot}")
+    click(*spot)
+    time.sleep(1.2)
+    record("craft.recipe_selected", recipe=recipe, at=str(spot),
+           setting=CHAOS_RECIPE)
+    return True
+
+
 def craft_material_held(source: "Image.Image | None" = None) -> "int | None":
     """How many Chaos Cores the craft window says are held. None if unread.
 
@@ -20602,11 +20706,8 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
         say("  the craft window is not open.")
         return 0
 
-    say("  selecting the Chaos Core Set recipe")
-    click(*CRAFT_CATEGORY_POINT)
-    time.sleep(0.8)
-    click(*CRAFT_RECIPE_POINT)
-    time.sleep(1.2)
+    if not select_chaos_recipe(verbose=verbose):
+        return 0
 
     shot = grab()
     if not craft_window_open(shot):
