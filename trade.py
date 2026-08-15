@@ -1,4 +1,4 @@
-﻿"""Cabal Online automation: screen capture, Alz reading and Agent Shop trading.
+"""Cabal Online automation: screen capture, Alz reading and Agent Shop trading.
 
 Everything lives here -- capture, OCR, input and the trade automation -- so
 there is one file to read and one to run.
@@ -11346,7 +11346,8 @@ def refresh_table(timeout: float = 20.0, verbose: bool = True) -> bool:
     # One capture, used for both the button search and the record: the pair
     # before/after a refresh is the only evidence of what the reload changed,
     # which is what makes a stale-table bug reconstructable afterwards.
-    shot = grab()
+    with phase("relist.refresh_grab"):
+        shot = grab()
     record("refresh.before", shot)
     # The Refresh button's position comes from the fit -- ("Refresh",
     # (1119, 981)) is a REQUIRED entry in REF_ANCHORS, so a fitted window has
@@ -11385,6 +11386,7 @@ def refresh_table(timeout: float = 20.0, verbose: bool = True) -> bool:
     # So the proof is a small crop around the fitted point itself, looking for
     # the button's own label. That is what the old full-region read proved, at
     # a fraction of the cost: ~90x50 pixels instead of 1225x1035.
+    phase_start = time.monotonic()
     point = anchor_point("Refresh")
     if point is not None:
         # Scaled: this crop is the only proof the Trade window really sits
@@ -11409,9 +11411,14 @@ def refresh_table(timeout: float = 20.0, verbose: bool = True) -> bool:
             return False
         point = buttons[-1].centre
 
-    click(*point)
-    time.sleep(0.6)
-    if not wait_for_table(max(timeout, 20.0)):
+    _note_phase("relist.refresh_locate", (time.monotonic() - phase_start) * 1000)
+
+    with phase("relist.refresh_click"):
+        click(*point)
+        time.sleep(0.6)
+    with phase("relist.refresh_wait_table"):
+        loaded = wait_for_table(max(timeout, 20.0))
+    if not loaded:
         record("refresh.timeout")
         say("The table did not finish refreshing.")
         return False
@@ -17012,7 +17019,8 @@ def cancel_item(
         # ---- step 1: Change must open the Registration Extension dialog -----
         record("cancel.before_change", row=row, name=target.name,
                price=target.price, qty=target.qty)
-        click(*target.change)
+        with phase("relist.cancel_change_click"):
+            click(*target.change)
         # Move the cursor OFF the row before looking for the dialog.
         #
         # Resting on a listing raises the game's "Item Information" tooltip,
@@ -17028,7 +17036,8 @@ def cancel_item(
         # the listings so no tooltip covers the table." The cancel path was
         # simply never given it.
         park_cursor()
-        shot = await_dialog("extension", timeout)
+        with phase("relist.cancel_await_extension"):
+            shot = await_dialog("extension", timeout)
         # `shot` positionally, not shot=: it is a positional-only parameter, so
         # the keyword form quietly became *context* -- the frame saved was
         # whatever grab() last returned rather than this one, and a PIL object
@@ -17080,17 +17089,21 @@ def cancel_item(
         # `shot` is the frame await_dialog just used to prove this is the
         # extension dialog; its buttons are on it, and the OCR cache is keyed
         # per frame, so reading them costs nothing extra.
-        cancel = await_dialog_button(DISMISS_WORD, timeout, source=shot)
+        with phase("relist.cancel_find_cancel_btn"):
+            cancel = await_dialog_button(DISMISS_WORD, timeout, source=shot)
         require(cancel is not None,
                 "no Cancel button on the Registration Extension dialog")
 
         # ---- step 2: Cancel must open the confirmation dialog ---------------
         say(f"{DISMISS_WORD} button at {cancel.centre} (conf {cancel.conf:.0f})")
-        click(*cancel.centre)
-        shot = await_dialog("confirm", timeout)
+        with phase("relist.cancel_click_cancel"):
+            click(*cancel.centre)
+        with phase("relist.cancel_await_confirm"):
+            shot = await_dialog("confirm", timeout)
         require(shot is not None, "the confirmation dialog did not appear")
 
-        confirm = await_dialog_button(CONFIRM_WORD, timeout, source=shot)
+        with phase("relist.cancel_find_confirm_btn"):
+            confirm = await_dialog_button(CONFIRM_WORD, timeout, source=shot)
         require(confirm is not None,
                 "no Confirmation button on the confirmation dialog")
 
@@ -17400,7 +17413,8 @@ def register_item(
                     "the Trade window is not open, so there is no shop slot to "
                     "load into - open the Agent Shop first")
 
-        panel = read_register_panel(grab())
+        with phase("relist.reg_check_slot_free"):
+            panel = read_register_panel(grab())
         require(not panel["loaded"],
                 f"the shop slot already holds an item "
                 f"(qty {panel['qty_text']!r}, spread {panel['slot_stdev']})")
@@ -17417,10 +17431,12 @@ def register_item(
         # dialog closes is sometimes swallowed while the game takes focus back.
         panel = {"loaded": False}
         for attempt in range(1, LOAD_ATTEMPTS + 1):
-            ctrl_click(*centre)
-            time.sleep(0.8)
-            park_cursor()
-            panel = read_register_panel(grab())
+            with phase("relist.reg_ctrl_click"):
+                ctrl_click(*centre)
+                time.sleep(0.8)
+                park_cursor()
+            with phase("relist.reg_read_panel"):
+                panel = read_register_panel(grab())
             if panel["loaded"]:
                 break
             if attempt < LOAD_ATTEMPTS:
@@ -17620,6 +17636,7 @@ def register_item(
             record("qty.before_typing", entry=entry, item=expect_item)
             say(f"Setting quantity: typing {entry}"
                 + ("" if force_qty else " - the game clamps it to the stack maximum"))
+            _qty_t0 = time.monotonic()
             click(*QTY_INPUT)
             # The quantity field holds at most len(str(MAX_QTY_ENTRY)) digits,
             # so clearing it needs that many backspaces plus a little slack --
@@ -17627,6 +17644,8 @@ def register_item(
             type_number(entry, clear=len(str(MAX_QTY_ENTRY)) + 2)
             time.sleep(0.4)
             park_cursor()
+            _note_phase("relist.reg_type_qty",
+                        (time.monotonic() - _qty_t0) * 1000)
 
         # ---- step 3: settle on a price --------------------------------------
         # Two rows: the top is the week's average price, the bottom is the
@@ -17853,6 +17872,7 @@ def register_item(
             type_number(price)
         elif price == suggested and price_y is not None and price > 0:
             record("price.before_select", price=price, y=price_y)
+            _px_t0 = time.monotonic()
             click(PANEL_RADIO_X, price_y)
         else:
             say(f"Overriding to {price:,} Alz - {why}")
@@ -17862,7 +17882,10 @@ def register_item(
         time.sleep(0.5)
 
         park_cursor()
-        panel = read_register_panel(grab())
+        _note_phase("relist.reg_set_price",
+                    (time.monotonic() - _px_t0) * 1000)
+        with phase("relist.reg_verify_price"):
+            panel = read_register_panel(grab())
         require(panel["net_sales"] > 0,
                 f"price did not take - net sales is still {panel['net_sales']}")
 
@@ -17941,8 +17964,10 @@ def register_item(
         # Sometimes two -- pricing more than 25% under the weekly average adds
         # an extra "are you sure" step -- so confirm through the whole chain
         # rather than assuming a single dialog.
-        click(*button.centre)
-        shot = await_dialog("confirm", timeout)
+        with phase("relist.reg_click_register"):
+            click(*button.centre)
+        with phase("relist.reg_await_confirm"):
+            shot = await_dialog("confirm", timeout)
         require(shot is not None, "no confirmation dialog appeared after Register")
 
         # THE FOURTH WITNESS, and the last chance to stop: this dialog is the
@@ -18357,7 +18382,8 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             park_cursor()
 
         # Read the price BEFORE cancelling; once cancelled the row is gone.
-        rows = await_rows(timeout)
+        with phase("relist.read_table"):
+            rows = await_rows(timeout)
         if not 1 <= row <= len(rows):
             say(f"Row {row} is out of range; {len(rows)} row(s) visible.")
             return FAILED
@@ -18987,7 +19013,9 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 # The game can switch tabs when a big stack comes back; go back
                 # to the one the diff's "before" frame was taken on, or the
                 # comparison is meaningless.
-                if not select_inventory_tab(start_tab, origin):
+                with phase("relist.inv_select_tab"):
+                    back = select_inventory_tab(start_tab, origin)
+                if not back:
                     say(f"Could not return to inventory tab {start_tab}.\n"
                         f"IMPORTANT: row {row} has already been cancelled - "
                         f"{target.name!r} is in your inventory, unlisted.")
@@ -18997,7 +19025,8 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 # The single most useful frame in a failed cycle: it shows
                 # where the item actually came back to. Captured once and
                 # reused for the diff, so recording costs nothing.
-                after = grab()
+                with phase("relist.inv_grab_after"):
+                    after = grab()
                 record("inventory.after_cancel", after, tab=start_tab)
                 # THE DIFF EXISTS TO ANSWER "WHICH SLOT DID IT COME BACK TO",
                 # and it scans all 64 slots of the tab to do it -- ~3.2s a row.
@@ -19009,7 +19038,8 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 # tell us is the SLOT, because the game chooses that -- so the
                 # scan still runs, but the ambiguity guard below can be
                 # satisfied by the model when several slots changed at once.
-                returned = changed_slots(before, after, origin)
+                with phase("relist.inv_diff_64_slots"):
+                    returned = changed_slots(before, after, origin)
                 if len(returned) > 1 and SHOP.enforce and SHOP.ready:
                     # Several slots moved -- normally a refusal, because an
                     # unidentified item must not be listed. With a trusted
