@@ -3354,15 +3354,16 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
     #
     # Polling costs nothing when the balance has already settled, which is the
     # common case: the loop exits on the first read.
-    after = get_alz(grab()) or None
-    if before and (not after or before == after):
-        deadline = time.monotonic() + ALZ_SETTLE_BUDGET
-        while time.monotonic() < deadline:
-            time.sleep(ALZ_SETTLE_POLL)
-            again = get_alz(grab()) or None
-            if again and again != before:
-                after = again
-                break
+    with phase("buy.verify_balance", "get_alz + settle poll"):
+        after = get_alz(grab()) or None
+        if before and (not after or before == after):
+            deadline = time.monotonic() + ALZ_SETTLE_BUDGET
+            while time.monotonic() < deadline:
+                time.sleep(ALZ_SETTLE_POLL)
+                again = get_alz(grab()) or None
+                if again and again != before:
+                    after = again
+                    break
 
     if before and after and before - after == expected:
         record("buy.completed", item=offer.name, price=expected,
