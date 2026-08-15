@@ -8102,6 +8102,14 @@ LAYOUT = Layout(screen=REF_SCREEN, origin=REF_TRADE_ORIGIN, scale=1.0,
 TRADE_REGION = LAYOUT.trade
 # The popup is centred on the game window, whose size varies; search a band.
 POPUP_REGION = (500, 350, 2100, 1150)
+# WHERE THE MODAL ACTUALLY IS, as opposed to the band it is searched for in.
+#
+# Registration Extension, its Confirmation, and Confirm Receipt all render in
+# the same box -- the same one CONVERT_DIALOG_REGION was measured over, which
+# is why the two are identical. dialog_kind reads THIS first, because a crop
+# this size segments the ornate title and a POPUP_REGION-sized one loses it
+# altogether. See dialog_kind for the measurement.
+MODAL_DIALOG_REGION = (975, 470, 1570, 945)
 
 
 def _clamp_box(box: tuple[int, int, int, int],
@@ -12054,23 +12062,54 @@ def dialog_kind(source: Image.Image | Path | str,
     #    routinely -- find_phrase exists because "Inventory" arrives as "I" +
     #    "nventory" -- and dialog_kind was the only title-matching path in the
     #    file that did not stitch a line back together first.
-    if words is None:
-        words = find_words(source, POPUP_REGION, DIALOG_TEXT_MIN_CONF)
-    else:
-        words = [w for w in words if w.conf >= DIALOG_TEXT_MIN_CONF]
-    texts = [_normalise(w.text) for w in words]
-    texts += [_normalise("".join(w.text for w in line))
-              for line in _text_lines(words)]
-    if _mentions(texts, "receipt"):
-        return "receipt"
-    if _mentions(texts, "confirmation"):
-        return "confirm"
-    # Either word of the title will do. They fail independently -- "Extension"
-    # misread while "Registration" read at 96% confidence on the same frame --
-    # so requiring one specific word makes the check as weak as its worst word.
-    if _mentions(texts, "extension") or _mentions(texts, "registration"):
-        return "extension"
-    return None
+    def classify(found: list) -> "str | None":
+        found = [w for w in found if w.conf >= DIALOG_TEXT_MIN_CONF]
+        texts = [_normalise(w.text) for w in found]
+        texts += [_normalise("".join(w.text for w in line))
+                  for line in _text_lines(found)]
+        if _mentions(texts, "receipt"):
+            return "receipt"
+        if _mentions(texts, "confirmation"):
+            return "confirm"
+        # Either word of the title will do. They fail independently --
+        # "Extension" misread while "Registration" read at 96% confidence on
+        # the same frame -- so requiring one specific word makes the check as
+        # weak as its worst word.
+        if _mentions(texts, "extension") or _mentions(texts, "registration"):
+            return "extension"
+        return None
+
+    if words is not None:
+        return classify(words)
+
+    # READ THE MODAL'S OWN BOX FIRST, NOT THE 1600x800 SWEEP.
+    #
+    # The fuzzy matching above cannot rescue a word that never reaches it, and
+    # in a POPUP_REGION-sized crop the title does not reach it: Tesseract's
+    # segmentation is crop-dependent, and at that size it drops the ornate
+    # title GLYPHS ENTIRELY rather than misreading them. On run_70189 the whole
+    # 128-word POPUP_REGION read contains nothing in the title band at all,
+    # while a crop of the modal reads 'trationextension' and classifies.
+    #
+    # Measured over every corpus frame with a known dialog state, 2026-08-15:
+    #
+    #     crop                        detected     false positives
+    #     POPUP_REGION (1600x800)     10 of 19          0 of 24
+    #     the modal box (595x475)     19 of 19          0 of 24
+    #
+    # That is the whole of the 11:04 abort -- nine cancels read "no dialog"
+    # with the dialog plainly up, and the run gave up on the row. It is NOT a
+    # new fault: the same nine frames fail identically on builds from before
+    # any of this week's work.
+    #
+    # POPUP_REGION is kept as a fallback rather than deleted. It costs one
+    # extra OCR call only when the tight read finds nothing, and it is the only
+    # thing that would still see a dialog drawn outside the usual box.
+    kind = classify(find_words(source, MODAL_DIALOG_REGION,
+                               DIALOG_TEXT_MIN_CONF))
+    if kind is not None:
+        return kind
+    return classify(find_words(source, POPUP_REGION, DIALOG_TEXT_MIN_CONF))
 
 
 def dialog_present(source: Image.Image | Path | str | None = None) -> bool:
