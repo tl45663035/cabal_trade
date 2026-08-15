@@ -13459,16 +13459,47 @@ def phase_report(title: str = "CHAOS BUYING") -> None:
     """Print the phase bill, slowest first. Never raises."""
     if not _PHASE_TOTALS:
         return
-    total = sum(v["ms"] for v in _PHASE_TOTALS.values())
+    # A <thing>.total is a WRAPPER around other phases in this table, not a
+    # step beside them. Counting it in the denominator double-counts every
+    # step inside it -- the first cut billed a 45.3s relist as 57.5s and gave
+    # the wrapper a 78.8% "share" of a total it mostly WAS.
+    wrappers = {k for k in _PHASE_TOTALS if k.endswith(".total")}
+    total = sum(v["ms"] for k, v in _PHASE_TOTALS.items() if k not in wrappers)
     print("")
     print(f"  {title} -- where the time went")
     print(f"    {'PHASE':<24}{'CALLS':>7}{'TOTAL s':>10}{'EACH ms':>10}"
           f"{'SHARE':>8}")
     for name, v in sorted(_PHASE_TOTALS.items(), key=lambda kv: -kv[1]["ms"]):
+        if name in wrappers:
+            continue
         share = (100.0 * v["ms"] / total) if total else 0.0
         print(f"    {name:<24}{v['n']:>7}{v['ms']/1000.0:>10.1f}"
               f"{v['ms']/max(1, v['n']):>10.0f}{share:>7.1f}%")
+    for name in sorted(wrappers):
+        v = _PHASE_TOTALS[name]
+        print(f"    {name:<24}{v['n']:>7}{v['ms']/1000.0:>10.1f}"
+              f"{v['ms']/max(1, v['n']):>10.0f}{'  (whole)':>8}")
     print(f"    {'TOTAL':<24}{'':>7}{total/1000.0:>10.1f}")
+
+    # THE PART NOTHING MEASURED, stated rather than left to be noticed.
+    #
+    # A wrapper phase named <thing>.total is the whole episode; every other
+    # <thing>.* is a step inside it. The difference is code no probe covers,
+    # and on the 12:39 run that was HALF of every relist -- 22.4s of steps
+    # inside a 45.3s row -- which was invisible because there was nothing to
+    # subtract from. A residual line makes the next such gap the first thing
+    # read rather than something inferred from a wall clock elsewhere.
+    for whole, v in sorted(_PHASE_TOTALS.items()):
+        if not whole.endswith(".total"):
+            continue
+        prefix = whole[:-len(".total")] + "."
+        steps = sum(x["ms"] for k, x in _PHASE_TOTALS.items()
+                    if k.startswith(prefix) and k != whole)
+        gap = v["ms"] - steps
+        pct = (100.0 * gap / v["ms"]) if v["ms"] else 0.0
+        print(f"    {'  ' + prefix + '<un-instrumented>':<24}{v['n']:>7}"
+              f"{gap/1000.0:>10.1f}{gap/max(1, v['n']):>10.0f}{pct:>7.1f}%"
+              f"   of {prefix}total")
 
 
 def reset_phases() -> None:
@@ -18352,6 +18383,21 @@ def relist(
 def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, say,
                   expect=None, work_tab_verified=False, absolute_row=None):
     """The body of relist(); relist() wraps this to always close the shop."""
+    # THE WHOLE EPISODE, so the residual is arithmetic rather than a guess.
+    #
+    # 22 step phases accounted for 22.4s of a 45.3s relist on the 12:39 run --
+    # exactly half. Without a total there is nothing to subtract them FROM, so
+    # the missing half was invisible: every step looked fine and the row still
+    # took twice as long as its parts. phase_report prints total minus the sum.
+    with phase("relist.total", f"row {row}"):
+        return _relist_body(row, inv_row, inv_col, dry_run, timeout, verbose,
+                            attempts, say, expect, work_tab_verified,
+                            absolute_row)
+
+
+def _relist_body(row, inv_row, inv_col, dry_run, timeout, verbose, attempts,
+                 say, expect=None, work_tab_verified=False, absolute_row=None):
+    """Split out of _relist_cycle so the whole episode can be timed."""
     for attempt in range(1, attempts + 1):
         if attempt > 1:
             say(f"\n=== relist attempt {attempt}/{attempts} ===")
@@ -19241,7 +19287,7 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
         if SHOP.enforce and SHOP.ready:
             say("  row model: landing row already predicted and committed; "
                 "not re-reading the table to confirm it.")
-        elif not sanity_check(target.name, report.get("price"),
+        elif not _timed_sanity(target.name, report.get("price"),
                               report.get("qty"),
                               timeout=timeout, verbose=verbose, found=found,
                               absolute_row=report.get("row")):
@@ -19334,6 +19380,14 @@ def parse_row_spec(specs: list[str]) -> list[int]:
                 rows.append(int(chunk))
     seen: set[int] = set()
     return [r for r in rows if not (r in seen or seen.add(r))]
+
+
+def _timed_sanity(*a, **k):
+    """sanity_check, timed. It refreshes the table and re-reads the row, and
+    on the 12:39 run its line ("Registered (1,1) qty 1 at ... Row 5.") carried
+    4.5s that no step phase covered."""
+    with phase("relist.verify_listing"):
+        return sanity_check(*a, **k)
 
 
 def sanity_check(
