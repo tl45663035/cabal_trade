@@ -701,9 +701,16 @@ CRAFT_WINDOW_REGION = (10, 30, 1300, 1020)
 # an unknown setting falls back to the SLOWER rate: waiting too long costs
 # seconds, while collecting early leaves paid-for material in the queue and
 # reports it as "the craft only made N", with no error anywhere.
-CRAFT_SETTLE_PER_BLOCK_BY_RECIPE = {1: 30.0, 2: 10.0}
-CRAFT_SETTLE_PER_BLOCK = 30.0
-CRAFT_SETTLE_BLOCK = 100
+# GRANULARITY 50, NOT 100. The rate per Core is unchanged -- tier 1 is 0.3s a
+# Core and tier 2 is 0.1s -- but rounding up to the nearest 100 overpaid by up
+# to a whole block. The operator, 2026-08-15: "Lets do in the granularity of
+# 50. i.e. if we have 230 chaos core, we need to wait 25s."
+#
+#   tier 1: 30s per 100 -> 15s per 50   (230 Cores -> 5 blocks -> 75s)
+#   tier 2: 10s per 100 ->  5s per 50   (230 Cores -> 5 blocks -> 25s)
+CRAFT_SETTLE_PER_BLOCK_BY_RECIPE = {1: 15.0, 2: 5.0}
+CRAFT_SETTLE_PER_BLOCK = 15.0
+CRAFT_SETTLE_BLOCK = 50
 
 
 def craft_settle_rate() -> float:
