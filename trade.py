@@ -11333,6 +11333,44 @@ def open_trade_window(timeout: float = 15.0, verbose: bool = True) -> bool:
     return True
 
 
+# A REFRESH THAT JUST HAPPENED, SPENDABLE EXACTLY ONCE.
+#
+# A sold row refreshes twice for one fact: once to read the table, then again
+# after collecting to confirm the row is gone -- and the NEXT row opens with
+# its own refresh, back to back with that one, nothing in between. Measured on
+# the 12:26 run of 2026-08-15: nine refreshes for five rows against a single
+# cancel, 25,944 ms of 38,783 ms instrumented -- 67% of the measured time.
+#
+# ONE-SHOT ON PURPOSE. This file already carries the scar of the general
+# version: a cache here "saved about twelve seconds a row" and was ripped out
+# because COLLECTING A SOLD ROW INVALIDATED NOTHING, so the table went stale
+# without anything noticing. A flag that is consumed by the first reader cannot
+# do that -- it can skip the refresh IMMEDIATELY after a refresh and nothing
+# further, so staleness cannot accumulate across rows however wrong the
+# invalidation list turns out to be.
+_TABLE_FRESH = False
+
+
+def mark_table_fresh() -> None:
+    """The table was just refetched from the server."""
+    global _TABLE_FRESH
+    _TABLE_FRESH = True
+
+
+def mark_table_stale(why: str = "") -> None:
+    """Something changed the table. Call this from every commit."""
+    global _TABLE_FRESH
+    _TABLE_FRESH = False
+
+
+def consume_table_fresh() -> bool:
+    """True if the table is known-fresh -- and spends that knowledge."""
+    global _TABLE_FRESH
+    was = _TABLE_FRESH
+    _TABLE_FRESH = False
+    return was
+
+
 def refresh_table(timeout: float = 20.0, verbose: bool = True) -> bool:
     """Click the Trade window's Refresh button and wait for the reload.
 
@@ -11420,9 +11458,11 @@ def refresh_table(timeout: float = 20.0, verbose: bool = True) -> bool:
         loaded = wait_for_table(max(timeout, 20.0))
     if not loaded:
         record("refresh.timeout")
+        mark_table_stale("refresh timed out")
         say("The table did not finish refreshing.")
         return False
     record("refresh.after")
+    mark_table_fresh()
     return True
 
 
@@ -17131,6 +17171,7 @@ def cancel_item(
         require(await_dialog(None, timeout) is not None,
                 "the dialog stayed open after Confirmation")
 
+        mark_table_stale("a listing was cancelled")
         record("cancel.committed", row=row, name=target.name,
                price=target.price, qty=target.qty)
         # The slot empties IN PLACE. Nothing below it moves -- measured over
@@ -18123,6 +18164,7 @@ def register_item(
                     report["price"] = price
                     report["qty"] = qty
                     report["total"] = panel["net_sales"]
+                mark_table_stale("a listing was registered")
                 record("register.committed", row=row, col=col, price=price,
                        qty=qty, item=expect_item)
                 # THE MODEL FOLLOWS THE COMMIT, never the intent. `row, col`
@@ -18390,8 +18432,16 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             #   two were wired to invalidate it."
             #
             # It saved about twelve seconds a row. Not at this price.
-            if not refresh_table(timeout=max(timeout, 20.0),
-                                 verbose=verbose):
+            if consume_table_fresh():
+                # The previous row ended in a refresh and nothing has changed
+                # the table since -- collecting marks it stale, and so does
+                # every cancel and every register. Refreshing again here would
+                # be the second of two back-to-back refetches.
+                say("  the table was refreshed a moment ago and nothing has "
+                    "changed it since; not refetching.")
+                record("refresh.skipped_fresh", row=row)
+            elif not refresh_table(timeout=max(timeout, 20.0),
+                                   verbose=verbose):
                 say("Could not refresh the table - stopping.")
                 return FAILED
             park_cursor()
@@ -18594,6 +18644,15 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
                 return FAILED
             say(f"Confirm Receipt: accepting at {accept.centre} "
                 f"(conf {accept.conf:.0f})")
+            # STALE FROM THE CLICK, not from the confirmation below.
+            #
+            # Collecting is the one table change that the previous cache here
+            # was never wired to notice -- enumerate_listings names it exactly:
+            # "a cancellation, a registration, and COLLECTING a sold row -- and
+            # only the first two were wired to invalidate it". Marked BEFORE
+            # the click lands, so every exit between here and the refresh two
+            # branches down leaves the table known-stale rather than trusted.
+            mark_table_stale("a sold row was collected")
             click(*accept.centre)
             time.sleep(1.0)
             if await_dialog(None, timeout) is None:
