@@ -3610,10 +3610,18 @@ def buy_cheapest_set_detail(item_slot: int,
         # `still_wanted is None` means the caller asked for a specific
         # purchase rather than a restock to a target -- a manual buy is not
         # row-managed.
-        rows_cap = 0
-        if (held > 0 and still_wanted is not None
-                and item_slot not in CHAOS_SLOTS):
-            rows_cap = core_rows_target(FAVOURITE_SLOTS.get(item_slot, ""))
+        # ARMED is a separate question from the CAP's value.
+        #
+        # Using 0 for both "not armed" and "the operator configured zero rows"
+        # meant that setting CORE_ROWS_BY_ITEM to 0 -- legal, the validator
+        # only rejects negatives -- SKIPPED the cap for precisely the item that
+        # was supposed to occupy no rows at all. That is the inversion this
+        # file warns about elsewhere: a setting that silently restores the
+        # default instead of binding.
+        rows_capped = (held > 0 and still_wanted is not None
+                       and item_slot not in CHAOS_SLOTS)
+        rows_cap = (core_rows_target(FAVOURITE_SLOTS.get(item_slot, ""))
+                    if rows_capped else 0)
         # A MODEL THAT CANNOT ANSWER IS SAID OUT LOUD.
         #
         # on_board stays 0 when the model is not seeded, which LOOSENS the cap
@@ -3623,8 +3631,24 @@ def buy_cheapest_set_detail(item_slot: int,
         # for), but it must not be silent: reset() stood the model down nine
         # times in one night, and `run.row_model: false` disables it for the
         # life of the process.
+        # A SOLD ROW STILL COUNTS HERE, AND THE TRIGGER DOES NOT COUNT IT.
+        #
+        # core_row_counts -- what decides a restock is due -- skips rows in
+        # `receive` state, because a sold row keeps its name until the proceeds
+        # are collected, and a shop swept only over the batch's range can leave
+        # one sitting there indefinitely. The row model cannot make that
+        # distinction at all: "Function and Status are deliberately not
+        # compared", so occupied_rows() reports sold and live rows alike.
+        #
+        # The two therefore disagree, and the disagreement STARVES the restock:
+        # the trigger sees one live row and fires, this sees three and refuses
+        # everything after the first bundle, every cycle, until the sold rows
+        # are collected. Recorded here rather than silently corrected --
+        # correcting it means threading the live count down from restock_pass,
+        # which is a bigger change than belongs inside a guard, and the refusal
+        # below names the count so the cause is visible in the log.
         on_board = 0
-        if rows_cap and not SHOP.ready:
+        if rows_capped and not SHOP.ready:
             say(f"  the row model is not seeded, so rows already listed for "
                 f"{FAVOURITE_SLOTS.get(item_slot, 'this item')} cannot be "
                 f"counted; the {rows_cap}-row limit is applied to this "
@@ -3659,7 +3683,7 @@ def buy_cheapest_set_detail(item_slot: int,
         # specific when a single bundle is already too big.
         rows_after = on_board + -(-(held + target.pack) // max(1,
                                                               CONVERT_QUANTITY))
-        if rows_cap and rows_after > rows_cap:
+        if rows_capped and rows_after > rows_cap:
             say(f"  {held} Set(s) held and {on_board} row(s) already listed; "
                 f"row 1 holds {target.pack}, which would need "
                 f"{rows_after} row(s) against a {rows_cap}-row limit for "
@@ -3774,7 +3798,7 @@ def buy_cheapest_set_detail(item_slot: int,
         #
         # `rows_cap` is already 0 for the exempt cases (first order, chaos, no
         # target), so this is inert for them by construction.
-        if rows_cap:
+        if rows_capped:
             room_units = max(0, rows_cap - on_board) * CONVERT_QUANTITY - held
             fits = room_units // max(1, target.pack)
             if fits < want:
