@@ -204,6 +204,36 @@ floor, _why = trade.listing_floor(VIP)
 check(floor == trade.item_price_floor(VIP),
       "a VIP has no Set pairing, so the catalogue floor still rules it")
 
+rule("the floor resolves for a name that carries its pack count")
+
+# THE BUG THIS CATCHES. Floors are seeded from catalogue names ("Chaos Core
+# Set"), but every lookup that matters happens against a BOARD name, and the
+# board carries the count -- a compressed chaos bundle reads "Chaos Core Set
+# X 250". _floor_key folded that marker into the key, so the floor resolved to
+# 0 for exactly the listings it was meant to protect.
+clear()
+seed("Chaos Core Set", 685_000)
+seed("Force Core (Ultimate)", 434_560)
+
+for name, want in (("Chaos Core Set", 685_000),
+                   ("Chaos Core Set X 250", 685_000),
+                   ("Chaos Core Set X 133", 685_000),
+                   ("Force Core (Ultimate)", 434_560),
+                   ("Force Core (Ultimate) X 250", 434_560)):
+    check(trade.market_floor(name) == want,
+          f"{name!r} resolves to {want:,} (got "
+          f"{trade.market_floor(name):,}) -- a compressed bundle is how chaos "
+          f"actually lists, so a 0 here is the floor not applying at all")
+
+check(trade.market_floor("Nothing Priced X 10") == 0,
+      "an item the read never saw is still 0, marker or not")
+
+# The pack size travels the same way and must not regress with it.
+trade._MARKET_PACKS[trade._market_key("Chaos Core Set")] = 133
+check(trade.market_pack("Chaos Core Set X 250") == 133,
+      "market_pack strips the marker too, so the row gate sizes correctly "
+      "against a board name")
+
 rule("the seeder is once per process")
 
 import inspect  # noqa: E402

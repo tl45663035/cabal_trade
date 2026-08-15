@@ -3367,6 +3367,7 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
 
 
 def buy_cheapest_set_detail(item_slot: int,
+                            free_rows: "int | None" = None,
                             threshold: "int | None" = None,
                             attempts: int = BUY_RETRY_ATTEMPTS,
                             verbose: bool = True,
@@ -3781,6 +3782,48 @@ def buy_cheapest_set_detail(item_slot: int,
             to_floor = max(0, RESTOCK_TARGET - held)
             want = max(1, min(want, max(
                 1, -(-to_floor // max(1, target.pack)))))
+
+        # SPACE BOUNDS EVERY ORDER, INCLUDING THE EXEMPT FIRST ONE.
+        #
+        # The row TARGET and the rows that physically EXIST are two different
+        # questions, and only the first was being asked. The operator's rule --
+        # "If first order, buy it even if 999x quantity" -- is about the
+        # target: a sold-out item must be able to restock from the only bundle
+        # on offer. It is not licence to buy stock the shop has nowhere to put.
+        #
+        # At 16 of 18 rows used, a first order of 999 Sets needs four rows and
+        # two exist. The target exemption let it through and ~500 Cores had
+        # nowhere inside the range to go. So the first order still ignores the
+        # target, and still cannot exceed free space.
+        #
+        # TRIMMED, NOT REFUSED, while at least one bundle fits -- the listings
+        # are separate purchases even though a bundle cannot be split, so the
+        # restock gets what room allows instead of nothing. With no room at
+        # all it refuses, which is correct: buying then would strand it.
+        if free_rows is not None and target.pack:
+            space_units = max(0, int(free_rows)) * CONVERT_QUANTITY - held
+            space_fits = space_units // max(1, target.pack)
+            if space_fits < 1:
+                say(f"  {FAVOURITE_SLOTS.get(item_slot, 'this item')}: "
+                    f"{free_rows} free row(s) inside the range and {held} "
+                    f"Set(s) already held leave no room for a bundle of "
+                    f"{target.pack} - not buying, it would have nowhere to be "
+                    f"listed.")
+                record("buy.no_room", item=FAVOURITE_SLOTS.get(item_slot, ""),
+                       held=held, pack=target.pack, free_rows=free_rows)
+                return outcome(False,
+                               f"{free_rows} free row(s) cannot hold a bundle "
+                               f"of {target.pack}",
+                               saving=saving)
+            if space_fits < want:
+                say(f"  taking {space_fits} listing(s), not {want}: "
+                    f"{free_rows} free row(s) inside the range hold "
+                    f"{space_units} more unit(s).")
+                record("buy.space_trim",
+                       item=FAVOURITE_SLOTS.get(item_slot, ""), held=held,
+                       pack=target.pack, want=want, took=space_fits,
+                       free_rows=free_rows)
+                want = space_fits
 
         # AND NOW BOUND THE ORDER BY THE ROWS IT WOULD FILL.
         #
@@ -5671,7 +5714,8 @@ def buy_sets_until(item_slot: int,
                    target: int = RESTOCK_TARGET,
                    max_buys: int = RESTOCK_MAX_BUYS,
                    threshold: "int | None" = None,
-                   verbose: bool = True) -> dict:
+                   verbose: bool = True,
+                   free_rows: "int | None" = None) -> dict:
     """Buy Sets of the item in `item_slot` until `target` of them are held.
 
     One listing is a bundle of `pack` Sets, so reaching 250 normally takes
@@ -5707,7 +5751,8 @@ def buy_sets_until(item_slot: int,
             say(f"  buying is halted: {BUY_HALT_REASON}")
             break
         say(f"\n-- buy {attempt}/{max_buys}: {bought}/{target} Sets held --")
-        result = buy_cheapest_set_detail(item_slot, threshold=threshold,
+        result = buy_cheapest_set_detail(item_slot, free_rows=free_rows,
+                                         threshold=threshold,
                                          verbose=verbose,
                                          still_wanted=target - bought)
         if not result["bought"]:
@@ -6013,6 +6058,10 @@ def restock_core(item_slot: int,
     # row(s) inside rows X-Y"). This makes the restock agree with it.
     room = SHOP_ROW_CAPACITY
     where = f"{used}/{SHOP_ROW_CAPACITY} rows"
+    # Bound BEFORE the branch, because an unscoped restock never enters it and
+    # the buy below needs a number either way. Unscoped means the whole shop,
+    # so the free rows are simply what the shop has left.
+    free_inside = max(0, SHOP_ROW_CAPACITY - (used or 0))
     if scope:
         inside = sorted(set(scope))
         free_inside = max(0, len(inside) - rows_in_scope_used)
@@ -6162,7 +6211,19 @@ def restock_core(item_slot: int,
         # test, or a future per-item limit -- can set it without reaching into
         # module state. `target` stays the floor, and is what sizes the rows.
         stop_at = BUY_MAXIMUM if ceiling is None else ceiling
-        purchase = buy_sets_until(item_slot, target=stop_at, verbose=verbose)
+        # THE ROWS THAT ACTUALLY EXIST TO LIST INTO.
+        #
+        # free_inside is what this function measured a few lines up: the free
+        # rows inside the batch's range, already reduced by the shelf chaos is
+        # guaranteed. It is a fact about SPACE, and it bounds every order --
+        # including the first, which is exempt from the type's row TARGET.
+        #
+        # Those are two different questions and only one of them was being
+        # asked. At 16 of 18 rows used, a first order of 999 Sets needs four
+        # rows and two exist; the target exemption let it through and ~500
+        # Cores had nowhere inside the range to go.
+        purchase = buy_sets_until(item_slot, target=stop_at, verbose=verbose,
+                                  free_rows=free_inside)
         result["bought"] = purchase["bought"]
         if purchase["bought"] <= 0:
             result["why"] = "no Sets were bought"
@@ -13892,12 +13953,28 @@ _MARKET_PACKS: dict = {}
 
 def market_pack(name: str) -> int:
     """Row 1's bundle size for `name` when the market was read. 0 if unknown."""
-    return int(_MARKET_PACKS.get(_floor_key(name), 0) or 0)
+    return int(_MARKET_PACKS.get(_market_key(name), 0) or 0)
+
+
+def _market_key(name: str) -> str:
+    """The key market floors are stored and looked up under.
+
+    THE PACK MARKER COMES OFF FIRST. Floors are seeded from the catalogue's own
+    names ("Chaos Core Set"), but every lookup that matters happens against a
+    BOARD name, and the board carries the count: a compressed chaos bundle
+    reads "Chaos Core Set X 250". _floor_key folds that marker INTO the key --
+    "chaoscoresetx25o" against "chaoscoreset" -- so the floor silently resolved
+    to 0 for exactly the listings it was meant to protect.
+
+    Same mistake, same shape, as the row count that used _floor_key instead of
+    _model_key. Stripping the marker before folding is what both need.
+    """
+    return _floor_key(item_name(_PACK_ANYWHERE.sub(" ", name or "")))
 
 
 def market_floor(name: str) -> int:
     """What the market wanted for `name` per unit when the run started. 0 if unread."""
-    return int(_MARKET_FLOORS.get(_floor_key(name), 0) or 0)
+    return int(_MARKET_FLOORS.get(_market_key(name), 0) or 0)
 
 
 def seed_market_floors(verbose: bool = True) -> int:
@@ -13937,8 +14014,8 @@ def seed_market_floors(verbose: bool = True) -> int:
         if unit < MIN_PLAUSIBLE_PRICE:
             say(f"  {name}: {unit:,}/unit is below the plausible bar; ignored.")
             continue
-        _MARKET_FLOORS[_floor_key(name)] = unit
-        _MARKET_PACKS[_floor_key(name)] = pack
+        _MARKET_FLOORS[_market_key(name)] = unit
+        _MARKET_PACKS[_market_key(name)] = pack
         priced += 1
         say(f"  {name}: {unit:,}/unit")
 
@@ -13968,11 +14045,11 @@ def seed_market_floors(verbose: bool = True) -> int:
         if set_slot is None:
             continue
         core_name = FAVOURITE_SLOTS[slot]
-        set_unit = _MARKET_FLOORS.get(_floor_key(FAVOURITE_SLOTS[set_slot]), 0)
+        set_unit = _MARKET_FLOORS.get(_market_key(FAVOURITE_SLOTS[set_slot]), 0)
         if not set_unit:
             continue
-        was = _MARKET_FLOORS.get(_floor_key(core_name), 0)
-        _MARKET_FLOORS[_floor_key(core_name)] = set_unit
+        was = _MARKET_FLOORS.get(_market_key(core_name), 0)
+        _MARKET_FLOORS[_market_key(core_name)] = set_unit
         say(f"  {core_name}: floored at its Set's {set_unit:,}/unit"
             + (f" rather than the {was:,} Cores were fetching" if was else ""))
 
@@ -13999,10 +14076,10 @@ def seed_market_floors(verbose: bool = True) -> int:
     core_name = FAVOURITE_SLOTS.get(CHAOS_CORE_SLOT, "")
     set_name = FAVOURITE_SLOTS.get(CHAOS_SET_SLOT, "")
     if core_name and set_name:
-        core_unit = _MARKET_FLOORS.get(_floor_key(core_name), 0)
+        core_unit = _MARKET_FLOORS.get(_market_key(core_name), 0)
         if core_unit:
-            was = _MARKET_FLOORS.get(_floor_key(set_name), 0)
-            _MARKET_FLOORS[_floor_key(set_name)] = core_unit
+            was = _MARKET_FLOORS.get(_market_key(set_name), 0)
+            _MARKET_FLOORS[_market_key(set_name)] = core_unit
             say(f"  {set_name}: floored at the {core_unit:,}/unit its Cores "
                 f"cost" + (f" rather than the {was:,} Sets were fetching"
                            if was else ""))

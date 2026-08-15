@@ -174,6 +174,46 @@ check("held > 0" in _src,
 check("CHAOS_SLOTS" in _src,
       "and chaos is excluded -- it manages its own shelf through CHAOS_ROWS")
 
+rule("6d. free SPACE bounds every order, including the exempt first one")
+
+# The operator's scenario, 2026-08-15: 16 of 18 rows occupied, and the FIRST
+# purchase of Force Core(High) is a 999x bundle. The row TARGET exemption lets
+# the first order through whatever its size -- that is the rule -- but 999
+# Sets need 4 rows and only 2 are free, so ~500 Cores would have nowhere
+# inside the range to be listed.
+#
+# Target and space are different questions. The exemption answers the first.
+
+
+def bundles_that_fit(free_rows, held, pack):
+    """What buy_cheapest_set_detail's space clamp computes."""
+    units = max(0, free_rows) * CQ - held
+    return units // max(1, pack)
+
+
+check(bundles_that_fit(2, 0, 999) == 0,
+      "16/18 used leaves 2 free rows, and a 999 bundle needs 4 -- no bundle "
+      "fits, so it is refused rather than stranded")
+check(bundles_that_fit(2, 0, 250) == 2,
+      "the same 2 free rows DO take two 250-bundles -- 500 Sets, exactly 2 "
+      "rows, so the restock is trimmed and not abandoned")
+check(bundles_that_fit(18, 0, 999) >= 1,
+      "on an empty shelf the first-order exemption still works: 999 fits in "
+      "18 free rows")
+check(bundles_that_fit(0, 0, 1) == 0,
+      "a full shop buys nothing at all")
+
+# Space is checked even when the row target is exempt, which is the whole
+# point -- the exemption is armed on held == 0, the space clamp is not.
+_src = inspect.getsource(trade.buy_cheapest_set_detail)
+check("free_rows" in _src,
+      "the buy decision takes free_rows")
+check("buy.no_room" in _src and "buy.space_trim" in _src,
+      "and records both outcomes, so a refusal is findable in the log")
+check("free_rows=free_inside" in inspect.getsource(trade.restock_core),
+      "restock_core hands down the free rows it already measured, rather than "
+      "recounting them")
+
 rule("7. every table traversal announces itself")
 
 for fn in ("shop_listing_pairs", "whole_shop_listings", "read_top_row",
