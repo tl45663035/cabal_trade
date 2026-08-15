@@ -17864,6 +17864,22 @@ def register_item(
                 f"refusing to list at {price:,} Alz, below the "
                 f"{absolute_floor:,} floor for this item")
 
+        # BOUND BEFORE THE BRANCH, NOT INSIDE ONE.
+        #
+        # This timer was first assigned in the `elif` arm only, and the
+        # _note_phase below reads it on every arm. The undercut arm -- which is
+        # the ordinary chaos path -- therefore raised UnboundLocalError AFTER
+        # the item was loaded and priced and BEFORE Register was clicked, on
+        # the 12:05 run of 2026-08-15. The item sat in the shop slot holding a
+        # price that was never committed; the next cycle's startup returned it
+        # to the inventory, and the work-tab gate then stopped the run with
+        # tab 4 dirty. From outside it looked like the script listed an item,
+        # priced it, then took it back out and cancelled.
+        #
+        # Fourth instance of this exact shape in one day (`scrolling`,
+        # `free_inside`, `left`, this). A name a profiler introduces must be
+        # bound on EVERY path the profiler's read can reach.
+        _px_t0 = time.monotonic()
         # An undercut price is never one the panel offers, so it must be typed.
         if undercut:
             say(f"Listing at {price:,} Alz - {why}")
@@ -17872,7 +17888,6 @@ def register_item(
             type_number(price)
         elif price == suggested and price_y is not None and price > 0:
             record("price.before_select", price=price, y=price_y)
-            _px_t0 = time.monotonic()
             click(PANEL_RADIO_X, price_y)
         else:
             say(f"Overriding to {price:,} Alz - {why}")

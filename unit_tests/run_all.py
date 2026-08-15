@@ -33,6 +33,7 @@ SUITES = [
     ("pin replay",            HERE / "pin_replay_test.py",    []),
     ("row model reconcile",   HERE / "reconcile_test.py",     []),
     ("dialog_kind",           HERE / "dialog_kind_test.py",   []),
+    ("unbound paths",         HERE / "unbound_paths_check.py", []),
     ("record guard",          HERE / "record_guard_test.py", []),
     ("pure suite",            HERE / "suite_pure.py",        []),
     ("floors: both items",    HERE / "floor_siena_test.py",  []),
