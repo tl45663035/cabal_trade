@@ -1082,6 +1082,23 @@ def _convert_name_key(text: str) -> str:
     reads as a bracket: the name was perfect and the comparison still failed.
     """
     cleaned = re.sub(r"\d[\d,]*\s*/\s*\d[\d,]*\s*$", "", text.strip())
+    # AND A LONE TRAILING FIGURE, which is the same column half-read.
+    #
+    # The vendor writes "held / cost" after the payment line, and the pair is
+    # stripped above. On 2026-08-15 only the cost read: the line came back as
+    # 'Force Core Set (High) 1'. That is not stripped by the pair rule, and it
+    # does not merely fail to match -- _floor_key folds OCR lookalikes, so the
+    # trailing '1' became the LETTER i and the key was 'forcecoresethighi'.
+    # Exactly the '[' -> 'i' trap described below, from the other end.
+    #
+    # The conversion was refused, 194 Sets sat unconverted in the work tab,
+    # and the work-tab gate then failed every following cycle until the
+    # breaker stopped the run.
+    #
+    # NOT preceded by an X, because that is a PACK MARKER and part of the
+    # name: "Force Core Set (High) X 62" is a different thing from "Force Core
+    # Set (High)" and must stay different. buying_gaps_test asserts that.
+    cleaned = re.sub(r"(?<![Xx])\s+\d[\d,]*\s*$", "", cleaned)
     cleaned = re.sub(r"^[^A-Za-z]+", "", cleaned)
     return _floor_key(item_name(cleaned))
 

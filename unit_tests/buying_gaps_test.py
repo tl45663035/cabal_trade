@@ -1,4 +1,4 @@
-﻿"""The parts of buying and converting nothing else tests.
+"""The parts of buying and converting nothing else tests.
 
 A coverage audit of the buy/convert surface found four functions with no test
 referencing them at all. Three are diagnostics; one commits money:
@@ -475,12 +475,40 @@ for noise in ["", "[ ", "* ", "| ", "  "]:
         check(hi != hst,
               f"High and Highest stay distinct through {noise!r}+{tail!r}")
 
+# A LONE trailing figure IS the held/cost column, half-read, and must go.
+#
+# Live on 2026-08-15: the vendor's payment line came back as 'Force Core Set
+# (High) 1' -- only the cost read, not the "held / cost" pair. It did not
+# simply fail to match: _floor_key folds OCR lookalikes, so the trailing '1'
+# became the letter i and the key was 'forcecoresethighi'. The conversion was
+# refused, 194 Sets sat unconverted in the work tab, and the work-tab gate
+# then failed every following cycle until the breaker stopped the run.
+for raw in ["Force Core Set (High) 1", "Force Core Set (High) 24",
+            "Force Core Set (High)  1", "Force Core Set (High) 1,250"]:
+    check(m._convert_name_key(raw)
+          == m._convert_name_key("Force Core Set (High)"),
+          f"{raw!r} is the payment line with a half-read figure, got "
+          f"{m._convert_name_key(raw)!r}")
+check(not m._convert_name_key("Force Core Set (High) 1").endswith("i"),
+      "and the figure does not survive as a letter -- '1' folds to 'i', which "
+      "is how this failure hid")
+check(m._names_agree("Force Core Set (High) 1", "Force Core Set (High)"),
+      "so the live dialog line now agrees with what was asked for")
+
+# Grades still separate with a lone figure attached, which is the thing the
+# strictness exists for.
+check(m._convert_name_key("Force Core Set (High) 1")
+      != m._convert_name_key("Force Core Set (Highest) 1"),
+      "High and Highest stay distinct through a lone trailing figure")
+
 # A trailing figure that is NOT a held/cost pair must survive: stripping it
 # would erase part of a name.
-check(m._convert_name_key("Force Core Set (High) X 62")
-      != m._convert_name_key("Force Core Set (High)"),
-      "a pack marker is not a held/cost pair and is not stripped here -- "
-      "core_row_counts strips that separately, on purpose")
+for marker in ["Force Core Set (High) X 62", "Force Core Set (High) x 62"]:
+    check(m._convert_name_key(marker)
+          != m._convert_name_key("Force Core Set (High)"),
+          f"{marker!r}: a pack marker is not a held/cost pair and is not "
+          f"stripped here -- core_row_counts strips that separately, on "
+          f"purpose. The X is what tells it from a vendor figure.")
 
 
 # ==========================================================================
