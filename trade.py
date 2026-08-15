@@ -3577,8 +3577,21 @@ def buy_cheapest_set_detail(item_slot: int,
         # caller asked for a specific purchase rather than a restock to a
         # target -- a manual buy is not a restock and is not row-managed.
         # THE FIRST ORDER IS STILL EXEMPT. The operator's older rule stands
-        # and was reaffirmed on 2026-08-14: "If first order, buy it even if
-        # 999x quantity."
+        # and was reaffirmed twice on 2026-08-14: "If first order, buy it even
+        # if 999x quantity", and again as "If held = 0, next buy is 999, we do
+        # buy it."
+        #
+        # A REVIEW PROPOSED TAKING ROW 2 INSTEAD when row 1 does not fit, on
+        # the reasoning that "refusing row 1 means buying nothing" is usually
+        # false because a smaller listing often sits just below it. That is
+        # rejected, and not on balance -- it breaks the operator's oldest
+        # standing rule for this file: ALWAYS ROW 1, NO MATTER WHAT. Row 1 is
+        # the cheapest per item because the table is sorted Price: Low to High,
+        # and cheapest_listing says why two attempts to improve on that
+        # ordering were both wrong and what they cost. The exemption exists so
+        # that a shop with nothing on the shelf can always restock from the row
+        # it is allowed to buy from; picking a different row to dodge the
+        # limit is not a cheaper purchase, it is a different rule.
         #
         # Refusing row 1 with nothing held means buying NOTHING -- a market
         # offering only large bundles would never restock the item at all, and
