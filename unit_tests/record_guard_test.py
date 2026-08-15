@@ -105,7 +105,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(got == want, f"labels corrupted: {got}")
 
     for e in entries:
-        check(e.get("file", "").startswith("run_") and e["file"].endswith(".png"),
+        check(e.get("file") or "".startswith("run_") and e["file"].endswith(".png"),
               f"file field corrupted: {e.get('file')!r}")
         at = e.get("at", "")
         check(len(at) == 19 and at[4] == "-" and at[10] == "T",

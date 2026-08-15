@@ -53,7 +53,7 @@ for line in raw:
         fixed_label += 1
     if COORD.match(str(e.get("at", ""))):
         e["ctx_at"] = e["at"]
-        png = CORPUS / e.get("file", "")
+        png = CORPUS / e.get("file") or ""
         e["at"] = (datetime.fromtimestamp(png.stat().st_mtime)
                    .isoformat(timespec="seconds")) if png.exists() else ""
         fixed_at += 1
@@ -88,7 +88,7 @@ for line in raw:
     # reports the frame via `seen`), but frames already recorded cannot be
     # re-attributed, so they are dropped rather than asserted against.
     # Measured: 1 of 39.
-    if e.get("label") == "npc.found" and (CORPUS / e.get("file", "")).exists():
+    if e.get("label") == "npc.found" and (CORPUS / e.get("file") or "").exists():
         import trade as _m
         from PIL import Image as _Image
         if _m.find_npc(_Image.open(CORPUS / e["file"]), retries=1) is None:

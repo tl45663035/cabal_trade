@@ -19,7 +19,7 @@ def show(lo, hi, title):
         e = entries[i]
         extra = {k: v for k, v in e.items() if k not in ("file", "label", "at")}
         print(f"  {i:5d} {e.get('at')} {e.get('label'):28} "
-              f"{e.get('file'):15} {str(extra)[:90]}")
+              f"{(e.get('file') or '-'):15} {str(extra)[:90]}")
 
 
 # the two adjacent inventory.before_cancel pairs
@@ -44,7 +44,7 @@ for i, e in enumerate(entries):
 
 # file numbering: does the index ever skip a frame number?
 print(f"\n{'=' * 74}\nframe numbering continuity\n{'=' * 74}")
-nums = [int(e["file"][4:9]) for e in entries if e.get("file", "").startswith("run_")]
+nums = [int(e["file"][4:9]) for e in entries if e.get("file") or "".startswith("run_")]
 skips = [(a, b) for a, b in zip(nums, nums[1:]) if b != a + 1]
 print(f"  {len(nums)} numbered frames, {len(skips)} discontinuities")
 for a, b in skips[:20]:
