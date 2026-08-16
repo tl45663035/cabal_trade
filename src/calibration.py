@@ -73,6 +73,13 @@ DEFAULTS = {
         "VK_ESCAPE": 0x1B,
         "INPUT_STRUCT_SIZE": 40,   # sizeof(INPUT) on 64-bit Windows
     },
+    "game": {
+        "title_hint": "PlayCabal",   # matched on this, NOT on "Cabal": the
+                                     # project folder is called Cabal, so an
+                                     # editor with it open is titled
+                                     # "... - Cabal - Visual Studio Code" and a
+                                     # looser match finds the editor.
+    },
     "game_facts": {
         "grid_size": 8,            # the inventory is 8x8, with 8 tabs
         "agent_shop_tab": 8,       # where the Agent Shop key lives...
@@ -102,6 +109,29 @@ def screen_size() -> "tuple[int, int]":
 def resolution_key(size=None) -> str:
     w, h = size or screen_size()
     return f"{w}x{h}"
+
+
+def load_shared() -> dict:
+    """The resolution-INDEPENDENT settings: timing, input, game, game_facts.
+
+    Never raises. This is what the bootstrap runs on: open_inventory needs the
+    key codes and the window title before any calibration exists, and on a
+    monitor that has never been measured load() below has nothing to give it.
+    Falls back to DEFAULTS section by section, so a checkout with no
+    calibration.json at all can still press I and start measuring.
+    """
+    data = {}
+    if OUT.exists():
+        try:
+            data = json.loads(OUT.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = {}
+    out = {}
+    for section, default in DEFAULTS.items():
+        merged = dict(default)
+        merged.update(data.get(section) or {})
+        out[section] = merged
+    return out
 
 
 def load(force: bool = False) -> dict:
@@ -208,6 +238,43 @@ def grab() -> Image.Image:
 def park() -> None:
     ctypes.windll.user32.SetCursorPos(*_point(PARK_F))
     time.sleep(0.25)
+
+
+def _mouse_event(flags: int):
+    """One mouse event, using open_inventory's structs.
+
+    Imported here rather than at module scope: open_inventory imports THIS
+    module, so a top-level import back would be circular.
+    """
+    from open_inventory import _Input, _InputUnion, _MouseInput
+    return _Input(type=0, u=_InputUnion(mi=_MouseInput(0, 0, 0, flags, 0, None)))
+
+
+def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
+    from open_inventory import _user32
+    _user32.SetCursorPos(int(x), int(y))
+    _user32.SendInput(1, ctypes.byref(_mouse_event(down)),
+                      ctypes.sizeof(_mouse_event(down)))
+    try:
+        pass
+    finally:
+        _user32.SendInput(1, ctypes.byref(_mouse_event(up)),
+                          ctypes.sizeof(_mouse_event(up)))
+    time.sleep(settle)
+
+
+def click(x: int, y: int, settle: float = None) -> None:
+    shared = load_shared()
+    _button(shared["input"]["MOUSEEVENTF_LEFTDOWN"],
+            shared["input"]["MOUSEEVENTF_LEFTUP"], x, y,
+            shared["timing"]["action_gap"] if settle is None else settle)
+
+
+def right_click(x: int, y: int, settle: float = None) -> None:
+    shared = load_shared()
+    _button(shared["input"]["MOUSEEVENTF_RIGHTDOWN"],
+            shared["input"]["MOUSEEVENTF_RIGHTUP"], x, y,
+            shared["timing"]["action_gap"] if settle is None else settle)
 
 
 def ocr(image: Image.Image, box, scale: int = 3, min_conf: float = 45.0):
@@ -394,10 +461,35 @@ def calibrate_inventory(verbose=True):
     strip_top = int(max(0, first_border - 62))
     strip_bottom = int(max(strip_top + 10, first_border - 8))
     strip = panel[strip_top:strip_bottom, :]
-    t_score, t_pitch, t_x0 = fit_periodic(strip.mean(axis=0), GRID, 60, 80)
+    # TAB PITCH IS BOUNDED BY THE SLOT PITCH JUST MEASURED, not by a fixed
+    # 60-80. The strip holds more than eight tabs' worth of vertical edges --
+    # two lock icons and the arrange button sit to their right -- so a wider
+    # pitch can score HIGHER than the true one by picking those up. Measured:
+    # 79.76px scored 2.67 against the correct 69.58px at 2.50, which put tab 8
+    # at x=2519 instead of 2445 and clicked the arrange button.
+    #
+    # On this UI a tab is a little narrower than a slot, never wider, so the
+    # slot pitch is the ceiling and 0.85 of it the floor.
+    t_score, t_pitch, t_x0 = fit_periodic(
+        strip.mean(axis=0), GRID, c_pitch * 0.85, c_pitch * 1.02)
     tab_y = top + strip_top + strip.shape[0] // 2
     tabs = [(round(left + t_x0 + t_pitch / 2 + k * t_pitch), round(tab_y))
             for k in range(GRID)]
+
+    # AND THE TABS MUST NOT RUN PAST THE GRID. Whatever the fit says, eight
+    # tabs sit above eight columns; a strip wider than the grid means the fit
+    # locked onto something beyond the last tab. Refusing here is the
+    # difference between a bad number in a file and a click on a control that
+    # rearranges the bag.
+    grid_left = left + c_x0 + c_pitch / 2
+    grid_right = grid_left + c_pitch * (GRID - 1)
+    if tabs[0][0] < grid_left - c_pitch or tabs[-1][0] > grid_right + c_pitch:
+        raise RuntimeError(
+            f"the inventory tabs fitted to {tabs[0][0]}..{tabs[-1][0]}, which "
+            f"is outside the slot grid at {round(grid_left)}.."
+            f"{round(grid_right)}. Pitch came out {t_pitch:.2f}px against a "
+            f"slot pitch of {c_pitch:.2f}px. Not writing a calibration that "
+            f"would click beside the tabs.")
     say(f"  tabs   pitch {t_pitch:.2f}px  score {t_score:.2f}  y={tab_y} "
         f"(band {strip_top}-{strip_bottom} above the grid)")
 
@@ -460,10 +552,30 @@ def calibrate_shop(verbose=True):
     # The sort dropdown. Its text is "Price: Low to High" but it renders
     # clipped and OCRs inconsistently -- 'Price:High' and 'to' on this frame --
     # so the anchor is the token containing "price", not the whole phrase.
-    sort = next((p for t, c, p in words if "price" in t.lower()), None)
+    # THE SORT DROPDOWN, ANCHORED ON WHATEVER OF IT SURVIVED THE READ.
+    #
+    # Its text is "Price: Low to High" and it renders clipped, so it comes back
+    # differently every time: 'Price:High' + 'to' on one frame, a bare 'to' on
+    # the next, nothing at all on a third. Demanding "price" therefore failed
+    # about half the time and stopped the whole calibration.
+    #
+    # Any of its words will do -- they are all inside the same control, and the
+    # control is what gets clicked. Tried in order of how specific they are.
+    sort = None
+    for want in ("price", "low", "high", "to"):
+        hits = [(t, c, p) for t, c, p in words
+                if want in t.lower() and 150 < p[1] < 230]
+        if hits:
+            t, c, p = max(hits, key=lambda h: h[1])
+            sort = p
+            say(f"  sort dropdown anchored on {t!r} (conf {c})")
+            break
     if sort is None:
-        raise RuntimeError("the sort dropdown was not found.")
-    say(f"  sort dropdown {sort}")
+        raise RuntimeError(
+            "the sort dropdown was not found: none of 'price', 'low', 'high' "
+            "or 'to' read anywhere on the filter row. Is the Trade window on "
+            "the Purchase tab?")
+    say(f"  sort dropdown at {sort}")
 
     # The favourite slots: a row of identical star icons along the bottom.
     # Found by periodicity, anchored by the 'Favorites' label on the same row.
@@ -582,35 +694,73 @@ def find_game_window(title: str = "PlayCabal"):
 
 
 def main() -> None:
-    from open_inventory import VK_I, focus_game, press
-    if not focus_game():
-        raise RuntimeError("could not bring the game to the foreground.")
+    """Calibrate from a default game state, and leave it in one.
 
+    ASSUMES NOTHING IS OPEN when it starts -- no Inventory, no Trade window --
+    which is the state the game is left in by the end of this function and by
+    close_everything() below.
+
+    It opens what it needs as it goes, and the order is forced: the shop half
+    cannot be measured until the Trade window is up, and the Trade window is
+    opened by right-clicking the Agent Shop key, whose position is only known
+    after the inventory half has been measured. So inventory first, always.
+    """
+    from open_inventory import VK_I, VK_ESCAPE, focus_game, press
+
+    shared = load_shared()
+    gap = shared["timing"]["action_gap"]
+    facts = shared["game_facts"]
+
+    if not focus_game():
+        raise RuntimeError(
+            f"could not bring the {shared['game']['title_hint']!r} window to "
+            f"the foreground. Nothing measured.")
+
+    # ---- 1. the inventory ------------------------------------------------
     print("inventory:")
     park()
     if find_alz(grab()) is None:
         press(VK_I)
-        time.sleep(ACTION_GAP)
+        time.sleep(gap)
         park()
+    if find_alz(grab()) is None:
+        raise RuntimeError(
+            "pressed I but the Alz balance is not visible, so the Inventory "
+            "panel is not open. Nothing measured.")
     inventory = calibrate_inventory()
 
+    # ---- 2. open the shop, using what was just measured ------------------
+    #
+    # This is why the inventory has to be first: the key is in a slot, and the
+    # slot's position is an output of the step above. Nothing here reads
+    # calibration.json -- it cannot, on a monitor being measured for the first
+    # time.
+    print("opening the Agent Shop:")
+    tab = inventory["tabs"][str(facts["agent_shop_tab"])]
+    row, col = facts["agent_shop_slot"]
+    key = inventory["slots"][f"{row}x{col}"]
+    print(f"  tab {facts['agent_shop_tab']} at {tab}")
+    click(*tab)
+    print(f"  right-clicking slot ({row},{col}) at {key}")
+    right_click(*key)
+    time.sleep(gap)
+
+    # ---- 3. the shop -----------------------------------------------------
     print("agent shop:")
     park()
     shop = calibrate_shop()
 
+    # ---- 4. write, keyed by resolution -----------------------------------
     win = find_game_window()
     measured = {
         "screen": list(screen_size()),
         "measured_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "game": {
-            "title_hint": "PlayCabal",
             "title_seen": win[1] if win else None,
             "client_rect": win[2] if win else None,
         },
-        # The colour test find_alz uses, written down so the scripts that read
-        # this file test the panel the same way it was measured.
         "alz_detect": {
-            "search": list(ALZ_SEARCH),
+            "search": list(_box(ALZ_SEARCH_F)),
             "bright": ALZ_BRIGHT,
             "saturation": ALZ_SATURATION,
             "min_pixels": ALZ_MIN_PIXELS,
@@ -619,12 +769,14 @@ def main() -> None:
         "inventory": inventory,
         "shop": shop,
     }
+
     existing = {}
     if OUT.exists():
         try:
             existing = json.loads(OUT.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             existing = {}
+
     # KEYED BY RESOLUTION. A coordinate only means anything on the screen it
     # was measured on, so each one gets its own entry and the others are left
     # untouched -- calibrating on a laptop does not destroy the desktop's
@@ -637,8 +789,42 @@ def main() -> None:
     out.setdefault("by_resolution", {})[resolution_key()] = measured
     OUT.write_text(json.dumps(out, indent=2), encoding="utf-8")
     print(f"\nwrote {OUT}  [{resolution_key()}]")
-    print(f"  resolutions in the file: "
-          f"{sorted(out['by_resolution'])}")
+    print(f"  resolutions in the file: {sorted(out['by_resolution'])}")
+
+    # ---- 5. back to default ----------------------------------------------
+    close_everything(verbose=True)
+
+
+def close_everything(verbose: bool = False) -> None:
+    """Leave the game as it was found: no Trade window, no Inventory panel.
+
+    Escape closes the Trade window. It does NOT close the Inventory -- that is
+    a toggle on I -- and with nothing left to close Escape opens the game Menu
+    instead, so it is pressed once and only while the shop is up.
+    """
+    from open_inventory import VK_I, VK_ESCAPE, focus_game, press
+    gap = load_shared()["timing"]["action_gap"]
+    if not focus_game():
+        return
+    if verbose:
+        print("restoring the default state:")
+
+    # The Trade window, if the shop was opened above.
+    press(VK_ESCAPE)
+    time.sleep(gap)
+    if verbose:
+        print("  Escape: Trade window closed")
+
+    # The Inventory, only if it is actually open -- pressing I on a closed
+    # panel opens it, which is the opposite of tidying up.
+    park()
+    if find_alz(grab()) is not None:
+        press(VK_I)
+        time.sleep(gap)
+        if verbose:
+            print("  I: Inventory closed")
+    elif verbose:
+        print("  Inventory already closed")
 
 
 if __name__ == "__main__":

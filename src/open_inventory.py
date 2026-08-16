@@ -22,7 +22,12 @@ import calibration
 # through raw input, which looks at the SCAN code and ignores virtual-key-only
 # events. A keybd_event-style press with wScan left at 0 reaches Notepad and
 # does nothing here.
-_CAL = calibration.load()
+# load_shared(), NOT load(): this module must import on a monitor that has
+# never been calibrated, because calibration.py imports it to press I before
+# any positions exist. load() demands an entry for the current resolution and
+# raises without one; load_shared() falls back to defaults and cannot fail.
+# Nothing here is a position, so there is nothing resolution-specific to want.
+_CAL = calibration.load_shared()
 _IN = _CAL["input"]
 _T = _CAL["timing"]
 
