@@ -91,8 +91,30 @@ def _merge_keeping_existing(fresh: dict, existing: dict) -> dict:
     return out
 
 
+def screen_size() -> "tuple[int, int]":
+    """The primary monitor, in pixels."""
+    import mss
+    with mss.MSS() as sct:
+        m = sct.monitors[1]
+    return m["width"], m["height"]
+
+
+def resolution_key(size=None) -> str:
+    w, h = size or screen_size()
+    return f"{w}x{h}"
+
+
 def load(force: bool = False) -> dict:
-    """The measured screen, from calibration.json.
+    """The measured screen for THIS resolution, from calibration.json.
+
+    Positions are stored under by_resolution["WxH"], because a coordinate is
+    only meaningful on the screen it was measured on. Everything that is NOT a
+    position -- timing, the Windows API numbers, the facts about the bag --
+    is shared across all of them, so tuning action_gap once still tunes it
+    everywhere.
+
+    Returns the two merged, so callers see one flat dict and do not need to
+    know which half a key came from.
 
     Imports nothing from the other scripts on purpose: they import THIS, so a
     module-level import the other way would be circular. main() pulls in
@@ -106,15 +128,68 @@ def load(force: bool = False) -> dict:
                 f"measure this screen; nothing else in src/ carries a "
                 f"coordinate of its own.")
         _CACHE = json.loads(OUT.read_text(encoding="utf-8"))
-    return _CACHE
+
+    data = _CACHE
+    key = resolution_key()
+    per = (data.get("by_resolution") or {}).get(key)
+    if per is None:
+        known = sorted((data.get("by_resolution") or {}))
+        raise RuntimeError(
+            f"calibration.json has no measurements for {key}. It knows "
+            f"{known or 'nothing'}. Run `py src/calibration.py` on this "
+            f"monitor -- the positions from another resolution would be wrong "
+            f"here, so they are not reused.")
+
+    merged = dict(per)
+    for shared in DEFAULTS:
+        merged[shared] = data.get(shared) or DEFAULTS[shared]
+    merged["resolution"] = key
+    return merged
 
 TESSERACT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# Where to leave the mouse while measuring. An item under the cursor raises a
-# tooltip that covers the panel: the first attempt at this read "Remote Trade
-# Card / Drop-Selling Not Allowed / Duration ..." across the slot grid, because
-# the cursor was still resting on (1,7) from opening the shop.
-PARK = (1300, 1000)
+# EVERY SEARCH REGION BELOW IS A FRACTION OF THE GAME'S CLIENT RECT, not a
+# pixel box. That is what lets this run on a monitor it has never seen: the
+# absolute boxes were measured at 2560x1440 and would point at nothing on a
+# 1920x1080 screen, so there would be no way to bootstrap a first calibration
+# there. Fractions were derived from the measured boxes at 2560x1440 and are
+# exact to four places.
+#
+# PARK is where to leave the mouse while measuring. An item under the cursor
+# raises a tooltip that covers the panel: the first attempt at this read
+# "Remote Trade Card / Drop-Selling Not Allowed / Duration ..." across the slot
+# grid, because the cursor was still resting on (1,7) from opening the shop.
+PARK_F = (0.5078, 0.7137)
+ALZ_SEARCH_F = (0.8750, 0.6245, 0.9805, 0.6567)
+TOP_STRIP_F = (0.0000, 0.0197, 0.5078, 0.1585)
+TAB_BAND_F = (0.0000, 0.0270, 0.2734, 0.0709)
+FAV_BAND_F = (0.2422, 0.7100, 0.4648, 0.7465)
+BOUNDARY_WINDOW_F = (0.0781, 0.1289)
+# A slot is between 2.66% and 3.12% of the client width. This is a prior about
+# the UI, not a position, so it scales rather than being replaced.
+SLOT_PITCH_F = (0.0266, 0.0312)
+
+
+def _client_rect():
+    """(x, y, w, h) of the game's client area, or the whole screen."""
+    win = find_game_window()
+    if win is not None:
+        x, y, w, h = win[2]
+        if w > 100 and h > 100:
+            return x, y, w, h
+    w, h = screen_size()
+    return 0, 0, w, h
+
+
+def _box(frac, rect=None):
+    x, y, w, h = rect or _client_rect()
+    return (round(x + frac[0] * w), round(y + frac[1] * h),
+            round(x + frac[2] * w), round(y + frac[3] * h))
+
+
+def _point(frac, rect=None):
+    x, y, w, h = rect or _client_rect()
+    return (round(x + frac[0] * w), round(y + frac[1] * h))
 
 GRID = 8              # the inventory is 8x8, with 8 tabs
 ACTION_GAP = 0.05
@@ -131,7 +206,7 @@ def grab() -> Image.Image:
 
 
 def park() -> None:
-    ctypes.windll.user32.SetCursorPos(*PARK)
+    ctypes.windll.user32.SetCursorPos(*_point(PARK_F))
     time.sleep(0.25)
 
 
@@ -208,16 +283,17 @@ def fit_periodic(profile, n, lo, hi, step=0.02):
 # digit strokes, the gem row often had MORE qualifying pixels -- so the "densest
 # row" rule locked onto the gem and reported the panel as moved when it had
 # not. Excluding it by geometry is simpler than out-arguing it by pixel count.
-ALZ_SEARCH = (2240, 878, 2510, 922)
+ALZ_SEARCH = None       # resolved per call, from ALZ_SEARCH_F
 ALZ_BRIGHT = 110
 ALZ_SATURATION = 45
 ALZ_MIN_PIXELS = 150
 ALZ_LINE_HALF = 14      # half a line of digits, in pixels
 
 
-def find_alz(image: Image.Image):
+def find_alz(image: Image.Image, search=None):
     """(left, top, right, bottom) of the Alz digits, or None."""
-    crop = image.crop(ALZ_SEARCH)
+    search = search or _box(ALZ_SEARCH_F)
+    crop = image.crop(search)
     px = crop.load()
     xs, ys = [], []
     for y in range(crop.height):
@@ -247,11 +323,17 @@ def find_alz(image: Image.Image):
         return None
     kx = [x for x, _ in keep]
     ky = [y for _, y in keep]
-    return (ALZ_SEARCH[0] + min(kx), ALZ_SEARCH[1] + min(ky),
-            ALZ_SEARCH[0] + max(kx), ALZ_SEARCH[1] + max(ky))
+    return (search[0] + min(kx), search[1] + min(ky),
+            search[0] + max(kx), search[1] + max(ky))
 
 
 # --------------------------------------------------------------------------
+def _pitch_bounds():
+    """A slot is 2.66%-3.12% of the client width, whatever the resolution."""
+    w = _client_rect()[2]
+    return SLOT_PITCH_F[0] * w, SLOT_PITCH_F[1] * w
+
+
 def calibrate_inventory(verbose=True):
     """Alz box, the 8 tabs, and all 64 slot centres."""
     say = print if verbose else (lambda *a: None)
@@ -298,13 +380,13 @@ def calibrate_inventory(verbose=True):
     # cannot satisfy it.
     grid_top = int(len(panel) * 0.08)
     c_score, c_pitch, c_x0 = fit_periodic(
-        panel[grid_top:, :].mean(axis=0), GRID, 68, 80)
+        panel[grid_top:, :].mean(axis=0), GRID, *_pitch_bounds())
     borders = [c_x0 + k * c_pitch for k in range(GRID + 1)]
     gaps = [c for b in borders
             for c in range(int(b) - 2, int(b) + 3)
             if 0 <= c < panel.shape[1]]
     r_score, r_pitch, r_y0 = fit_periodic(
-        panel[:, gaps].mean(axis=1)[grid_top:], GRID, 68, 80)
+        panel[:, gaps].mean(axis=1)[grid_top:], GRID, *_pitch_bounds())
     say(f"  columns pitch {c_pitch:.2f}px  score {c_score:.2f}")
     say(f"  rows    pitch {r_pitch:.2f}px  score {r_score:.2f}")
 
@@ -345,7 +427,7 @@ def calibrate_shop(verbose=True):
     say = print if verbose else (lambda *a: None)
     image = grab()
 
-    top_strip = (0, 50, 1300, 240)
+    top_strip = _box(TOP_STRIP_F)
     words = ocr(image, top_strip)
     named = {t.lower(): (c, p) for t, c, p in words}
 
@@ -360,14 +442,16 @@ def calibrate_shop(verbose=True):
     # that label -- '241fps(64bit)' in yellow-green -- and OCR returns nothing
     # at any crop or scale that was tried. So the boundary between the two tabs
     # is measured instead, and Purchase is mirrored across it.
-    band = np.asarray(image.crop((0, 60, 700, 120)).convert("L"), dtype=float)
+    band = np.asarray(image.crop(_box(TAB_BAND_F)).convert("L"), dtype=float)
     d = np.abs(np.diff(band.mean(axis=0)))
     edges = sorted(int(i) for i in np.argsort(d)[::-1][:40])
     picked = []
     for i in edges:
         if all(abs(i - p) > 15 for p in picked):
             picked.append(i)
-    boundary = next((x for x in picked if 200 < x < 330), None)
+    _cw = _client_rect()[2]
+    _lo, _hi = BOUNDARY_WINDOW_F[0] * _cw, BOUNDARY_WINDOW_F[1] * _cw
+    boundary = next((x for x in picked if _lo < x < _hi), None)
     if boundary is None:
         raise RuntimeError("could not find the Purchase/Register boundary.")
     purchase = [2 * boundary - reg[0], reg[1]]
@@ -397,7 +481,7 @@ def calibrate_shop(verbose=True):
     #
     # Bounded at 1190 deliberately: past that are the up/down scroll arrows and
     # then the game world, both brighter than any slot.
-    FAV = (620, 995, 1190, 1045)
+    FAV = _box(FAV_BAND_F)
     prof = np.asarray(image.crop(FAV).convert("L"), dtype=float).mean(axis=0)
     floor, ceiling = prof.min(), prof.max()
     cut = floor + (ceiling - floor) * 0.6
@@ -515,8 +599,8 @@ def main() -> None:
     shop = calibrate_shop()
 
     win = find_game_window()
-    data = {
-        "screen": list(grab().size),
+    measured = {
+        "screen": list(screen_size()),
         "measured_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "game": {
             "title_hint": "PlayCabal",
@@ -541,9 +625,20 @@ def main() -> None:
             existing = json.loads(OUT.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             existing = {}
-    data = _merge_keeping_existing(data, existing)
-    OUT.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    print(f"\nwrote {OUT}")
+    # KEYED BY RESOLUTION. A coordinate only means anything on the screen it
+    # was measured on, so each one gets its own entry and the others are left
+    # untouched -- calibrating on a laptop does not destroy the desktop's
+    # numbers.
+    out = dict(existing)
+    for section in DEFAULTS:
+        merged = dict(DEFAULTS[section])
+        merged.update(existing.get(section) or {})
+        out[section] = merged
+    out.setdefault("by_resolution", {})[resolution_key()] = measured
+    OUT.write_text(json.dumps(out, indent=2), encoding="utf-8")
+    print(f"\nwrote {OUT}  [{resolution_key()}]")
+    print(f"  resolutions in the file: "
+          f"{sorted(out['by_resolution'])}")
 
 
 if __name__ == "__main__":
