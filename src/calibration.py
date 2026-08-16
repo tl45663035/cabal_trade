@@ -222,6 +222,13 @@ def _point(frac, rect=None):
     return (round(x + frac[0] * w), round(y + frac[1] * h))
 
 GRID = 8              # the inventory is 8x8, with 8 tabs
+# The floor for a believable grid fit. Good fits on a visible panel score
+# 2.9-3.4; the logged-out run scored 1.07 and was accepted.
+GRID_FIT_MIN = 2.0
+# How much of the balance region opening the panel must repaint. The panel
+# covers that area completely, so a real open changes nearly all of it; a press
+# that did nothing changes none.
+PANEL_OPEN_CHANGE = 0.30
 ACTION_GAP = 0.05
 
 
@@ -355,6 +362,11 @@ ALZ_BRIGHT = 110
 ALZ_SATURATION = 45
 ALZ_MIN_PIXELS = 150
 ALZ_LINE_HALF = 14      # half a line of digits, in pixels
+# Shape checks, so a bright region cannot pass as a balance. The real box is
+# ~233px of a 270px search and 19px tall; the world fills the box edge to edge.
+ALZ_MAX_WIDTH_FRACTION = 0.95
+ALZ_MIN_HEIGHT = 8
+ALZ_MAX_HEIGHT = 30
 
 
 def find_alz(image: Image.Image, search=None):
@@ -390,8 +402,33 @@ def find_alz(image: Image.Image, search=None):
         return None
     kx = [x for x, _ in keep]
     ky = [y for _, y in keep]
-    return (search[0] + min(kx), search[1] + min(ky),
-            search[0] + max(kx), search[1] + max(ky))
+    box = (search[0] + min(kx), search[1] + min(ky),
+           search[0] + max(kx), search[1] + max(ky))
+
+    # IS THIS SHAPED LIKE A BALANCE, OR IS IT JUST BRIGHT?
+    #
+    # Everything above only asks "are there enough bright saturated pixels on
+    # one row". The 3D world satisfies that everywhere -- sunlit scenery is
+    # bright and colourful -- so with the panel shut, or the client sitting on
+    # a loading screen or the login art, this returned a box and every position
+    # derived from it was wrong.
+    #
+    # It happened for real on 2026-08-16: the game had logged out to the OTP
+    # screen, and this returned (2240, 907, 2504, 921) -- 264px of a 270px
+    # search box, starting exactly at its left edge. Calibration then fitted a
+    # column pitch of 79.38px at a score of 1.07 (against 73.22 at 3.03 when it
+    # is right), put tab 8 at x=2521, and clicked the arrange button.
+    #
+    # trade.py's version of this function carried the same guard and said why:
+    # "A box that fills the search region is not a number, it is the 3D world."
+    # I did not carry it over. Doing that now.
+    width, height = box[2] - box[0], box[3] - box[1]
+    span_w = search[2] - search[0]
+    if width >= span_w * ALZ_MAX_WIDTH_FRACTION:
+        return None
+    if not ALZ_MIN_HEIGHT <= height <= ALZ_MAX_HEIGHT:
+        return None
+    return box
 
 
 # --------------------------------------------------------------------------
@@ -456,6 +493,27 @@ def calibrate_inventory(verbose=True):
         panel[:, gaps].mean(axis=1)[grid_top:], GRID, *_pitch_bounds())
     say(f"  columns pitch {c_pitch:.2f}px  score {c_score:.2f}")
     say(f"  rows    pitch {r_pitch:.2f}px  score {r_score:.2f}")
+
+    # A LOW SCORE IS A REFUSAL, NOT A RESULT. fit_periodic always returns its
+    # best candidate, however bad, so a panel that is not there still yields a
+    # pitch and a confident-looking set of coordinates.
+    #
+    # Measured: a good fit scores 2.9-3.4 on this screen. The run that had
+    # logged out scored 1.07 on the columns and still produced eight slot
+    # positions, which were then clicked.
+    if c_score < GRID_FIT_MIN or r_score < GRID_FIT_MIN:
+        raise RuntimeError(
+            f"the slot grid did not fit: columns scored {c_score:.2f} and rows "
+            f"{r_score:.2f}, against a floor of {GRID_FIT_MIN}. A good fit on "
+            f"a visible panel scores about 3. Is the Inventory really open? "
+            f"Nothing measured.")
+
+    # And eight columns have to fit inside the panel they were found in.
+    if c_pitch * GRID > panel.shape[1]:
+        raise RuntimeError(
+            f"a column pitch of {c_pitch:.2f}px puts {GRID} columns at "
+            f"{c_pitch * GRID:.0f}px, wider than the {panel.shape[1]}px panel "
+            f"they were measured in. Nothing measured.")
 
     first_border = grid_top + r_y0          # crop coords of the grid's top line
     strip_top = int(max(0, first_border - 62))
@@ -717,16 +775,50 @@ def main() -> None:
             f"the foreground. Nothing measured.")
 
     # ---- 1. the inventory ------------------------------------------------
+    #
+    # PRESSED UNCONDITIONALLY, because the default state is the contract: this
+    # function is documented to start with nothing open, so I opens the panel.
+    #
+    # The previous version asked find_alz first, to avoid toggling a panel that
+    # was already up. That looks careful and is not: with the panel SHUT, that
+    # region shows the 3D world, and sunlit scenery is bright and saturated
+    # enough to pass. On 2026-08-16, from a proper default state in a lit town,
+    # it returned a box, concluded the panel was already open, NEVER PRESSED I,
+    # and measured the world -- a column pitch of 79.38 at a fit score of 1.07,
+    # tab 8 at x=2521, and a click on the arrange button.
+    #
+    # There is no reading of that region that distinguishes "panel closed" from
+    # "bright ground" reliably, so it is not asked. The state is known from the
+    # contract, and the press is verified by what it CHANGES, below.
     print("inventory:")
     park()
-    if find_alz(grab()) is None:
-        press(VK_I)
-        time.sleep(gap)
-        park()
-    if find_alz(grab()) is None:
+    before = grab().crop(_box(ALZ_SEARCH_F))
+    press(VK_I)
+    time.sleep(gap)
+    park()
+    after_img = grab()
+    after = after_img.crop(_box(ALZ_SEARCH_F))
+
+    # Verified by the CHANGE, not by an absolute test. Opening the panel
+    # replaces whatever was in this region; a press that did nothing leaves it
+    # identical. That holds whatever the ground happens to look like.
+    from PIL import ImageChops
+    diff = ImageChops.difference(before, after).convert("L")
+    moved = sum(1 for p in diff.get_flattened_data() if p > 24)
+    portion = moved / (before.width * before.height)
+    print(f"  I changed {portion * 100:.0f}% of the balance region")
+    if portion < PANEL_OPEN_CHANGE:
         raise RuntimeError(
-            "pressed I but the Alz balance is not visible, so the Inventory "
-            "panel is not open. Nothing measured.")
+            f"pressing I changed only {portion * 100:.0f}% of the balance "
+            f"region, against a floor of {PANEL_OPEN_CHANGE * 100:.0f}%. The "
+            f"Inventory panel did not open. This function assumes the game "
+            f"starts with nothing open -- if the panel was already up, I has "
+            f"just CLOSED it. Nothing measured.")
+
+    if find_alz(after_img) is None:
+        raise RuntimeError(
+            "the Inventory panel opened but the Alz balance is not readable "
+            "inside it. Nothing measured.")
     inventory = calibrate_inventory()
 
     # ---- 2. open the shop, using what was just measured ------------------
@@ -815,16 +907,24 @@ def close_everything(verbose: bool = False) -> None:
     if verbose:
         print("  Escape: Trade window closed")
 
-    # The Inventory, only if it is actually open -- pressing I on a closed
-    # panel opens it, which is the opposite of tidying up.
+    # The Inventory. Same reasoning as opening it: asking "is it open" reads a
+    # region that shows the ground when it is not, so the answer is taken from
+    # the change instead.
     park()
-    if find_alz(grab()) is not None:
-        press(VK_I)
-        time.sleep(gap)
-        if verbose:
-            print("  I: Inventory closed")
-    elif verbose:
-        print("  Inventory already closed")
+    before = grab().crop(_box(ALZ_SEARCH_F))
+    press(VK_I)
+    time.sleep(gap)
+    after = grab().crop(_box(ALZ_SEARCH_F))
+    from PIL import ImageChops
+    diff = ImageChops.difference(before, after).convert("L")
+    moved = sum(1 for p in diff.get_flattened_data() if p > 24)
+    portion = moved / (before.width * before.height)
+    if verbose:
+        if portion >= PANEL_OPEN_CHANGE:
+            print(f"  I: Inventory closed ({portion * 100:.0f}% changed)")
+        else:
+            print(f"  I: nothing changed ({portion * 100:.0f}%) -- the panel "
+                  f"was already closed, and is now OPEN. Press I once by hand.")
 
 
 if __name__ == "__main__":
