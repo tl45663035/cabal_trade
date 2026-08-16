@@ -11,6 +11,8 @@ PowerShell prompt that launched it, with the game untouched.
 import ctypes
 import time
 
+import calibration
+
 # Scan code, not just the virtual key.
 #
 # The Cabal client reads the keyboard through raw input, which looks at the
@@ -100,7 +102,10 @@ def press(vk: int) -> None:
             1, ctypes.byref(_event(vk, up=True)), ctypes.sizeof(_Input))
 
 
-GAME_TITLE = "PlayCabal"
+# FROM calibration.json, not typed here. This is the only environment-specific
+# value in this file; everything else is a Windows API constant or a virtual
+# key code, which are facts about Windows rather than about this screen.
+GAME_TITLE = calibration.load()["game"]["title_hint"]
 VK_MENU = 0x12          # Alt
 
 

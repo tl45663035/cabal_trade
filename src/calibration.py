@@ -36,10 +36,28 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from open_inventory import VK_I, focus_game, press
-
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "calibration.json"
+
+_CACHE = None
+
+
+def load(force: bool = False) -> dict:
+    """The measured screen, from calibration.json.
+
+    Imports nothing from the other scripts on purpose: they import THIS, so a
+    module-level import the other way would be circular. main() pulls in
+    open_inventory lazily instead.
+    """
+    global _CACHE
+    if _CACHE is None or force:
+        if not OUT.exists():
+            raise RuntimeError(
+                f"{OUT.name} is missing. Run `py src/calibration.py` once to "
+                f"measure this screen; nothing else in src/ carries a "
+                f"coordinate of its own.")
+        _CACHE = json.loads(OUT.read_text(encoding="utf-8"))
+    return _CACHE
 
 TESSERACT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
@@ -378,7 +396,47 @@ def calibrate_shop(verbose=True):
     }
 
 
+def find_game_window(title: str = "PlayCabal"):
+    """(hwnd, exact title, client rect) for the game window, or None.
+
+    Matched on "PlayCabal", NOT "Cabal": this project lives in a folder called
+    Cabal, so an editor with it open is titled "... - Cabal - Visual Studio
+    Code" and a looser match finds the editor.
+    """
+    user32 = ctypes.windll.user32
+    found = []
+    proto = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+
+    def cb(hwnd, _):
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        n = user32.GetWindowTextLengthW(hwnd)
+        if not n:
+            return True
+        buf = ctypes.create_unicode_buffer(n + 1)
+        user32.GetWindowTextW(hwnd, buf, n + 1)
+        if title.casefold() in buf.value.casefold():
+            found.append((hwnd, buf.value))
+            return False
+        return True
+
+    user32.EnumWindows(proto(cb), None)
+    if not found:
+        return None
+    hwnd, name = found[0]
+
+    class RECT(ctypes.Structure):
+        _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                    ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+    r = RECT()
+    user32.GetClientRect(hwnd, ctypes.byref(r))
+    pt = (ctypes.c_long * 2)(0, 0)
+    user32.ClientToScreen(hwnd, ctypes.byref(pt))
+    return hwnd, name, [pt[0], pt[1], r.right, r.bottom]
+
+
 def main() -> None:
+    from open_inventory import VK_I, focus_game, press
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
 
@@ -394,9 +452,24 @@ def main() -> None:
     park()
     shop = calibrate_shop()
 
+    win = find_game_window()
     data = {
         "screen": list(grab().size),
         "measured_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "game": {
+            "title_hint": "PlayCabal",
+            "title_seen": win[1] if win else None,
+            "client_rect": win[2] if win else None,
+        },
+        # The colour test find_alz uses, written down so the scripts that read
+        # this file test the panel the same way it was measured.
+        "alz_detect": {
+            "search": list(ALZ_SEARCH),
+            "bright": ALZ_BRIGHT,
+            "saturation": ALZ_SATURATION,
+            "min_pixels": ALZ_MIN_PIXELS,
+            "line_half": ALZ_LINE_HALF,
+        },
         "inventory": inventory,
         "shop": shop,
     }
