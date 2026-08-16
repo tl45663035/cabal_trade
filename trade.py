@@ -2342,12 +2342,26 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
 
     # READ THE BUTTONS FROM THEIR OWN CROP WHEN THE WIDE SWEEP MISSES THEM.
     #
-    # The sweep above covers 1000x550 and the button labels are low-contrast
-    # grey-on-grey. Measured on unit_tests/corpus/run_69948.png they do not
-    # survive it AT ALL, while the same two words read at conf 96 and 97 from
-    # PURCHASE_DIALOG_BUTTONS -- a 380x50 crop over exactly that row.
-    # Tesseract upscales a small crop far more than a large one, and that is
-    # the whole difference.
+    # NOT A CONTRAST PROBLEM, whatever the earlier note here claimed. The
+    # buttons are white on dark grey and perfectly crisp; look at the golden.
+    # It is RESOLUTION: the sweep above covers 1000x550, Tesseract works that
+    # crop at a scale where the small button glyphs stop being resolvable, and
+    # its layout pass then mis-segments the row.
+    #
+    # Measured on goldens/purchase_dialog_lowcontrast.png. The wide crop finds
+    # 22 words and reads the dialog's own price 678,999 at conf 93 -- so the
+    # dialog is NOT being missed. At the button row it returns exactly one
+    # token, 'as' at conf 52, where "Cancel" is; "Buy" is absent entirely. The
+    # same two words read at conf 96 and 97 from PURCHASE_DIALOG_BUTTONS, a
+    # 380x50 crop over that row, because a small crop is upscaled far more.
+    #
+    # 'as' at conf 52 is a knife-edge, which is why this is INTERMITTENT and
+    # why chasing it as a regression is a dead end: the wide sweep read these
+    # buttons correctly for thirteen-plus runs including a clean three-hour one
+    # on 2026-08-15, then failed twice the next day on identical code, the same
+    # 2560x1440 screen and the same scale 1.000 fit. What tips it is the pixel
+    # content of the crop -- the item name, the price digits, the table rows
+    # showing behind the dialog -- not anything the script changed.
     #
     # The consequence is not subtle. With no button this returns None and the
     # caller reports "the Confirm Purchase dialog did not appear" with the
