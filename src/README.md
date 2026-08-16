@@ -2,7 +2,7 @@
 
 A fresh stack, built step by step, replacing nothing in `trade.py` yet.
 
-**Calibration and opening the Agent Shop both work.**
+**Verified: calibration and open shop works.**
 
 ## What runs
 
@@ -12,47 +12,66 @@ py src/open_inventory.py           focus the game, press I
 py src/open_agent_shop_premium.py  inventory -> tab VIII -> right-click (1,7)
 ```
 
-`calibration.py` assumes the game starts in its default state — nothing open —
-and leaves it that way. It opens what it needs as it goes.
+`calibration.py` starts from the game's default state — nothing open — opens
+what it needs, and puts it back. The two can be chained:
+
+```
+py src/calibration.py; py src/open_agent_shop_premium.py
+```
 
 ## Verified
 
-Three consecutive runs from a **deleted** `calibration.json`, the fresh-monitor
-path, produced byte-identical output:
+Fresh runs from a deleted `calibration.json`, on a **packed** inventory tab —
+the case that used to fail — give 8 of 8 positions within 8px of the values the
+working scripts use, byte-identical across three runs. The chained command
+above then opens the Trade window, three times out of three.
 
 ```
-tabs        pitch 69.57px   score 2.64
-slot 1x7    [2425, 294]     slot 1x8 [2498, 294]
-sort        (953, 194)
-favourites  10 found, pitch 57.00, [651,1020]..[1164,1020]
+tab I  [1958, 222]     tab VIII [2445, 222]
+slot (1,1) [1986, 294]  (1,7) [2426, 294]  (8,8) [2499, 808]
+sort dropdown (953, 194)
+favourites 10 found, pitch 57.00, [651,1020]..[1164,1020]
 ```
 
-Nine of nine positions land within 8px of the values the working scripts use,
-and `open_agent_shop_premium` runs off the generated file in **218-225 ms**,
-opening the Trade window every time.
+Opening the shop is ~220ms. Calibration is a one-off, a few seconds.
 
-Timing of the whole flow, once, per action:
+## How it decides where things are
 
-| step | ms |
-|---|---|
-| `calibrate_inventory()` | 1850 |
-| `calibrate_shop()` | 381 |
-| park cursor (x2) | 501 |
-| `ensure_inventory_open()` | 130 |
-| `panel_open()` (one screenshot) | 31 |
-| click tab | 54 |
-| `right_click` | 3 |
-| `tab_point` / `slot_point` | 0.0 |
+**Only the anchor is measured.** Once the Inventory panel is open its geometry
+is fixed — slot pitch, tab spacing, where the grid starts — and none of it
+depends on what is in the bag. The only thing that varies is where the *panel*
+is, and the Alz balance says that. Everything else is placed from offsets:
 
-Calibration is a one-off ~2.8s per monitor; opening the shop is ~250ms of real
-work.
+```
+slot_one   [-496, -596]     anchor -> centre of slot (1,1)
+slot_pitch [73.3, 73.4]
+tab_one    [-524, -668]     anchor -> centre of tab I
+tab_pitch  69.6
+```
+
+The anchor is `(alz_right, alz_top)` — the *right* edge, because the balance is
+right-aligned, so its left edge moves with the size of the number.
+
+An earlier version fitted the grid by periodicity every run. It read the slot
+borders *through* the item art and failed exactly as that predicts: a packed
+tab put the columns 62px out where a sparse tab was exact. It is gone.
+
+**Every toggle is press → verify → press again if wrong.** `I` and the Agent
+Shop key are both toggles, and a run that fails part-way leaves them in the
+opposite state, so the next run closes what it meant to open.
+
+**One implementation of each reader.** The balance is found by
+`calibration.find_alz` and nowhere else. There used to be a second copy in
+`open_agent_shop_premium`, and the two drifted the moment one was fixed —
+calibration reporting "Inventory already closed" while the other reported
+"inventory already open", one second apart on the same screen.
 
 ## Where things live
 
 Nothing in `open_inventory.py` or `open_agent_shop_premium.py` is a literal
 constant — not a position, not a Windows API number, not a duration. All of it
-is read from `calibration.json`, so changing `action_gap` once changes it in
-every script.
+comes from `calibration.json`, so changing `action_gap` once changes it
+everywhere.
 
 ```
 calibration.json
@@ -61,12 +80,13 @@ calibration.json
 ├── timing            action_gap, key_hold, focus_settle
 ├── input             VK_*, KEYEVENTF_*, MOUSEEVENTF_*, INPUT_STRUCT_SIZE
 ├── game              title_hint
-└── game_facts        grid_size, agent_shop_tab, agent_shop_slot
+├── game_facts        grid_size, agent_shop_tab, agent_shop_slot
+└── panel_layout      slot_one, slot_pitch, tab_one, tab_pitch
 ```
 
 Positions are per-resolution because a coordinate means nothing off the screen
 it was measured on. An unmeasured resolution is **refused**, never approximated
-from another one. Everything else is shared.
+from another. Everything else is shared.
 
 `calibration.py`'s own search regions are fractions of the game's client rect,
 not pixels, so a monitor it has never seen still has somewhere to look.
@@ -76,17 +96,15 @@ not pixels, so a monitor it has never seen still has somewhere to look.
 - **Only 2560x1440 is proven.** The resolution keying and the fractional
   bootstrap are written and self-consistent, but the first run on a different
   monitor is where they get tested.
-- **Only a default starting state is tested.** Calibration assumes nothing is
-  open. A dirty state — shop already up, inventory on another tab — is
-  untested, and the inventory tab matters because the tab strip's appearance is
-  what the tab fit reads.
+- **`panel_layout` was measured here, once.** If the game's UI scale changes,
+  those offsets are wrong and nothing will notice — the only check is that
+  placed positions land inside the game window.
 - **The sort dropdown anchors on whichever word survives OCR.** Its text is
   "Price: Low to High" and renders clipped, reading as `Price:High` + `to`, or
-  a bare `to`, or nothing. All three runs anchored on `to` at (953, 194) — the
-  last of four fallbacks. A future read landing on `Price` moves that point
-  ~57px, to a different spot inside the same control. Fine to click, not a
-  landmark to trust.
-- `PARK`, where the cursor is left while measuring, sits 65px clear of the
-  Trade window and 649px clear of the inventory. It is the one value that has
-  to be somewhere nothing is, rather than somewhere something can be found, so
-  it cannot be verified the way everything else here can.
+  a bare `to`, or nothing. It currently anchors on `to` at (953, 194), the last
+  of four fallbacks. A read landing on `Price` moves that point ~57px, to a
+  different spot in the same control. Fine to click, not a landmark to trust.
+- **`PARK`**, where the cursor is left while measuring, has 65px of clearance
+  from the Trade window and 649px from the inventory. It is the one value that
+  has to be somewhere nothing is, rather than somewhere something can be found,
+  so it cannot be verified the way the rest can.
