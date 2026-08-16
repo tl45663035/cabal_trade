@@ -33,7 +33,24 @@ sort dropdown (953, 194)
 favourites 10 found, pitch 57.00, [651,1020]..[1164,1020]
 ```
 
-Opening the shop is ~220ms. Calibration is a one-off, a few seconds.
+Calibration is a one-off, a few seconds. Opening the shop, 10 runs per setting,
+Escape and 500ms between trials:
+
+| `action_gap` | mean | opened |
+|---:|---:|---:|
+| 500 ms | 1119.9 ms | 10/10 |
+| 200 ms | 519.7 ms | 10/10 |
+| 100 ms | 320.7 ms | 10/10 |
+| **50 ms** | **219.5 ms** | 10/10 |
+| 20 ms | 157.7 ms | 10/10 |
+
+Total is `120ms + 2 x action_gap`: two gaps, one after `I` and one after the tab
+click. The fixed 120ms is almost all `panel_open`, which takes a full-screen
+screenshot to confirm the panel is up before anything gets clicked. Nothing here
+is variable — 3.5ms of spread across a run of 10.
+
+At 50ms it is 219.6ms mean from a fresh process, 10/10 open. 20ms also passed
+10/10 but buys 60ms for no margin, so the setting stays at 50.
 
 ## How it decides where things are
 
@@ -87,6 +104,17 @@ calibration.json
 Positions are per-resolution because a coordinate means nothing off the screen
 it was measured on. An unmeasured resolution is **refused**, never approximated
 from another. Everything else is shared.
+
+**`src/calibration.json` is committed**, which is why the keying matters — a
+machine that is not 2560x1440 reads its own section or is refused, so the file
+is safe to share. The root `calibration.json` is trade.py's, is flat, records
+no resolution, and stays ignored.
+
+It was ignored until 2026-08-16, by a first-commit rule written for the root
+file with no leading slash. That hid a real fault rather than a cosmetic one:
+`timing.action_gap` sat at 0.5 against a `DEFAULTS` of 0.05 — 10x every gap in
+every script — and nothing could notice, because the one thing that would have
+caught it is a diff against the committed value.
 
 `calibration.py`'s own search regions are fractions of the game's client rect,
 not pixels, so a monitor it has never seen still has somewhere to look.
