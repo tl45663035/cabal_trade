@@ -110,12 +110,24 @@ def _mouse(flags: int) -> _Input:
 
 
 def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
-    """Move, press, release. The release is in a finally so it cannot stick."""
+    """Move, press, release. The release is in a finally so it cannot stick.
+
+    NO SLEEP BETWEEN THE MOVE AND THE PRESS, AND NONE IN THE HOLD, at the
+    operator's instruction. There were two -- 60ms after SetCursorPos and 30ms
+    between down and up -- and I invented both. They cost 90ms on EVERY click
+    regardless of the settle, which is why right_click still took 95ms after
+    its settle was removed.
+
+    What they were guarding, so it is on record if a click ever misses: the
+    move-wait covers the client not having registered the new cursor position
+    when the button-down arrives, which would land the click at the OLD
+    position. That is a wrong-click, the expensive kind. The hold covers a
+    press too brief to register, which merely drops the click.
+    """
     _user32.SetCursorPos(int(x), int(y))
-    time.sleep(0.06)          # let the client see the move before the press
     _user32.SendInput(1, ctypes.byref(_mouse(down)), ctypes.sizeof(_Input))
     try:
-        time.sleep(0.03)
+        pass
     finally:
         _user32.SendInput(1, ctypes.byref(_mouse(up)), ctypes.sizeof(_Input))
     time.sleep(settle)
