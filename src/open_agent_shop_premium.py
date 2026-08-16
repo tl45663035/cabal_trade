@@ -42,12 +42,9 @@ ACTION_GAP = CAL["timing"]["action_gap"]
 # panel already up, pressing I shuts it and every click below lands on the game
 # world. The state has to be read -- and it is read with the same thresholds
 # calibration measured it with, taken from the file, so the two cannot drift.
-_D = CAL["alz_detect"]
-ALZ_SEARCH = tuple(_D["search"])
-ALZ_BRIGHT = _D["bright"]
-ALZ_SATURATION = _D["saturation"]
-ALZ_MIN_PIXELS = _D["min_pixels"]
-ALZ_LINE_HALF = _D["line_half"]
+# The detection thresholds are NOT read here any more: calibration.find_alz
+# owns them, and owning them in one place is the point. Only where the balance
+# WAS is needed, to notice the panel having moved.
 
 # Where the balance was when the screen was measured. The positions below are
 # absolute, so they are only valid while the panel has not moved; panel_open()
@@ -67,34 +64,27 @@ def grab():
 def panel_open(image=None, verbose: bool = True) -> bool:
     """Is the Inventory panel up, AND still where it was calibrated?
 
-    Both halves matter. Every position here is absolute, measured once, so it
-    is valid only while the panel has not moved. This finds the Alz balance the
-    way calibration.py found it and checks it is within 30px of where it was --
-    so a dragged panel reads as "not open" and the caller refuses, rather than
-    clicking at a stale coordinate.
+    THE BALANCE IS FOUND BY calibration.find_alz, NOT BY A COPY OF IT HERE.
+    There used to be a second implementation in this file, and the two drifted
+    the moment one was fixed: calibration's gained shape checks -- reject a box
+    that fills the search width, reject an implausible height -- because the 3D
+    world passes a bare "enough bright saturated pixels" test. This copy did
+    not, so on 2026-08-16, with the panel SHUT, calibration correctly reported
+    "Inventory already closed" and this reported "inventory already open" one
+    second later. It then skipped pressing I and clicked the game world.
+
+    One implementation, one definition of open.
+
+    The second half is this file's own concern: the positions here are
+    absolute, so they are valid only while the panel has not moved. A balance
+    found more than a slot's width from where it was measured reads as "not
+    open", and the caller refuses rather than clicking a stale coordinate.
     """
     image = image if image is not None else grab()
-    crop = image.crop(ALZ_SEARCH)
-    px = crop.load()
-    xs, ys = [], []
-    for y in range(crop.height):
-        for x in range(crop.width):
-            r, g, b = px[x, y]
-            hi, lo = max(r, g, b), min(r, g, b)
-            if hi > ALZ_BRIGHT and hi - lo > ALZ_SATURATION:
-                xs.append(x)
-                ys.append(y)
-    if len(xs) < ALZ_MIN_PIXELS:
+    box = calibration.find_alz(image)
+    if box is None:
         return False
-    rows = {}
-    for y in ys:
-        rows[y] = rows.get(y, 0) + 1
-    peak = max(rows, key=rows.get)
-    keep = [(x, y) for x, y in zip(xs, ys) if abs(y - peak) <= ALZ_LINE_HALF]
-    if len(keep) < ALZ_MIN_PIXELS:
-        return False
-    right = ALZ_SEARCH[0] + max(x for x, _ in keep)
-    top = ALZ_SEARCH[1] + min(y for _, y in keep)
+    right, top = box[2], box[1]
     if abs(right - CALIBRATED_ALZ[2]) > 30 or abs(top - CALIBRATED_ALZ[1]) > 30:
         if verbose:
             print(f"  the Inventory panel is open but has MOVED: balance at "
@@ -193,18 +183,22 @@ def ensure_inventory_open(verbose: bool = True) -> None:
             print("  inventory already open")
         return
 
-    press(VK_I)
-    time.sleep(ACTION_GAP)
-    # The real check is this read, not the wait: if the panel is not there,
-    # the script refuses rather than clicking into the game world. Polled on
-    # this screen the panel is up within one screenshot (~30ms).
-    if not panel_open():
-        raise RuntimeError(
-            "pressed I but the Inventory panel is not open where "
-            "calibration.json says it is. Not clicking: those coordinates "
-            "would be the game world.")
-    if verbose:
-        print("  inventory opened")
+    # PRESS, CHECK, PRESS AGAIN IF WRONG. I is a toggle, and a run that failed
+    # part-way leaves the panel open, so the next run's press closes what it
+    # meant to open. Two presses cover both starting states.
+    for attempt in (1, 2):
+        press(VK_I)
+        time.sleep(ACTION_GAP)
+        if panel_open(verbose=(attempt == 2)):
+            if verbose:
+                print("  inventory opened"
+                      + ("  (took two presses -- it had been left open)"
+                         if attempt == 2 else ""))
+            return
+    raise RuntimeError(
+        "pressed I twice and the Inventory panel is not open where "
+        "calibration.json says it is. Not clicking: those coordinates would "
+        "be the game world.")
 
 
 def open_agent_shop(verbose: bool = True) -> None:
