@@ -121,11 +121,23 @@ def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
     time.sleep(settle)
 
 
-def click(x: int, y: int, settle: float = 0.35) -> None:
+def click(x: int, y: int, settle: float = 0.10) -> None:
+    """100ms, at the operator's instruction. It was 350ms, invented.
+
+    Something has to follow a tab click: the panel redraws, and find_panel
+    below reads it. Measured on this screen, the Inventory panel reaches its
+    new state within one screenshot -- 30ms polled, which is what a grab()
+    costs, so it was already there before the first poll finished.
+    """
     _button(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y, settle)
 
 
-def right_click(x: int, y: int, settle: float = 0.6) -> None:
+def right_click(x: int, y: int, settle: float = 0.0) -> None:
+    """No settle. Nothing reads after the right-click; the function returns.
+
+    It was 0.6s, which measured 695ms of the 1,539ms this script took and
+    delayed only the exit.
+    """
     _button(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y, settle)
 
 
