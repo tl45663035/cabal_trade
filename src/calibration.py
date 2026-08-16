@@ -195,7 +195,20 @@ def fit_periodic(profile, n, lo, hi, step=0.02):
 # game art; that is what made trade.py report all 64 slots occupied on an empty
 # tab. Measured here: 20-24 qualifying pixels with the panel shut, 545 with it
 # open.
-ALZ_SEARCH = (2200, 820, 2560, 980)
+# THE BALANCE LINE ONLY. The Inventory panel does not move, so this is a fixed
+# box, and it deliberately stops above the gem counter.
+#
+# Measured on this screen, bright+saturated pixels by row:
+#     Alz balance    y 888-908   x 2249-2483
+#     (nothing)      y 909-938
+#     gem counter    y 939-962   x 2251-2483
+#
+# A 30-row gap between them. The previous box ran 820-980 and contained both,
+# and since the gem's diamond icon is a solid shape while the balance is thin
+# digit strokes, the gem row often had MORE qualifying pixels -- so the "densest
+# row" rule locked onto the gem and reported the panel as moved when it had
+# not. Excluding it by geometry is simpler than out-arguing it by pixel count.
+ALZ_SEARCH = (2240, 878, 2510, 922)
 ALZ_BRIGHT = 110
 ALZ_SATURATION = 45
 ALZ_MIN_PIXELS = 150
