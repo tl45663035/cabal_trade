@@ -80,6 +80,28 @@ DEFAULTS = {
                                      # "... - Cabal - Visual Studio Code" and a
                                      # looser match finds the editor.
     },
+    # THE PANEL'S OWN LAYOUT, as offsets from the Alz balance.
+    #
+    # None of this depends on what is in the bag. Once the panel is open its
+    # geometry is fixed -- slot pitch, tab spacing, where the grid starts -- and
+    # the only thing that varies between runs is where the PANEL is, which the
+    # balance already tells us.
+    #
+    # Fitting the grid every run was solving a problem that does not exist, and
+    # it was fragile in exactly the way that predicts: it read the borders
+    # THROUGH the item art, so a packed tab put the columns 62px out and a
+    # sparse one did not. Measured against a verified calibration and confirmed
+    # on two independent runs.
+    #
+    # Anchor is (alz_right, alz_top) -- the digits' right edge and top. The
+    # right edge because the balance is right-aligned, so its LEFT edge moves
+    # with the size of the number.
+    "panel_layout": {
+        "slot_one": [-496, -596],   # anchor -> centre of slot (1,1)
+        "slot_pitch": [73.3, 73.4],
+        "tab_one": [-524, -668],    # anchor -> centre of tab I
+        "tab_pitch": 69.6,
+    },
     "game_facts": {
         "grid_size": 8,            # the inventory is 8x8, with 8 tabs
         "agent_shop_tab": 8,       # where the Agent Shop key lives...
@@ -222,9 +244,11 @@ def _point(frac, rect=None):
     return (round(x + frac[0] * w), round(y + frac[1] * h))
 
 GRID = 8              # the inventory is 8x8, with 8 tabs
-# The floor for a believable grid fit. Good fits on a visible panel score
-# 2.9-3.4; the logged-out run scored 1.07 and was accepted.
-GRID_FIT_MIN = 2.0
+# The floor for a believable grid fit, on the min-of-borders score above.
+# Measured: a good fit on a PACKED tab scores 0.061 -- the worst case, since
+# item art raises the normalising maximum; a sparse tab scores far higher. A
+# fit with any border on flat ground scores near zero.
+GRID_FIT_MIN = 0.02
 # How much of the balance region opening the panel must repaint. The panel
 # covers that area completely, so a real open changes nearly all of it; a press
 # that did nothing changes none.
@@ -328,7 +352,19 @@ def fit_periodic(profile, n, lo, hi, step=0.02):
             continue
         for start in np.arange(0, length - 1 - pitch * n, 0.5):
             pos = (start + pitch * np.arange(n + 1)).round().astype(int)
-            score = float(d[pos].sum())
+            # SCORED BY THE WEAKEST BORDER, NOT THE SUM.
+            #
+            # A real grid has all n+1 borders present. Summing lets a wrong
+            # pitch win by landing a few positions on strong item art while
+            # others sit on flat ground -- which is exactly what happened on a
+            # packed inventory tab: the sum picked 68.10px and put the columns
+            # 62.5px out, while the true 73.2px scored lower because item edges
+            # are brighter than slot borders.
+            #
+            # Taking the minimum requires EVERY border to be there. Measured on
+            # the same packed tab: sum 62.5px max error, 25th percentile 8.8px,
+            # minimum 1.8px.
+            score = float(d[pos].min())
             if score > best[0]:
                 best = (score, float(pitch), float(start))
     return best
@@ -439,7 +475,19 @@ def _pitch_bounds():
 
 
 def calibrate_inventory(verbose=True):
-    """Alz box, the 8 tabs, and all 64 slot centres."""
+    """Find the panel, then place everything on it from the stored layout.
+
+    ONLY THE ANCHOR IS MEASURED. The panel's internal geometry does not change
+    -- it is the same whatever is in the bag, and the same every time the panel
+    opens -- so it is read from panel_layout rather than re-derived from the
+    pixels each run.
+
+    The previous version fitted the slot grid and the tab strip by periodicity
+    every time. That read the borders through the item art, and measurably
+    failed on it: a packed inventory tab put the columns 62px out where a
+    sparse one was exact, and even after the fit was made robust the tab strip
+    still landed a whole position out and clicked the arrange button twice.
+    """
     say = print if verbose else (lambda *a: None)
     image = grab()
     alz = find_alz(image)
@@ -447,129 +495,64 @@ def calibrate_inventory(verbose=True):
         raise RuntimeError(
             "the Alz balance was not found, so the Inventory panel is not "
             "open. Nothing measured.")
-    say(f"  Alz box {alz}")
+    anchor = (alz[2], alz[1])          # right edge, top -- see panel_layout
+    say(f"  Alz box {alz}   anchor {anchor}")
 
-    # ANCHORED ON THE BOX'S RIGHT EDGE, NOT ITS LEFT. The digits end cleanly
-    # before the "Alz" label, but to their LEFT sits a gold coin icon that is
-    # just as bright and just as saturated, so the left edge lands on the coin
-    # or on the digits depending on the balance. Measured: right edge 2482 on
-    # two runs, left edge 2249 then 2374.
-    left, top = alz[2] - 600, alz[1] - 760
-    right, bottom = alz[2] + 90, alz[3] + 40
-    panel = np.asarray(image.crop((left, top, right, bottom)).convert("L"),
-                       dtype=float)
-    say(f"  panel crop ({left}, {top}) {panel.shape[1]}x{panel.shape[0]}")
+    layout = load_shared()["panel_layout"]
+    s1x, s1y = layout["slot_one"]
+    spx, spy = layout["slot_pitch"]
+    t1x, t1y = layout["tab_one"]
+    tp = layout["tab_pitch"]
 
-    # The tab strip, then the grid. The strip sits above the grid and its
-    # borders are the only strong regular edges up there.
-    # The tab strip is located AFTER the grid, from the grid, because it sits
-    # directly above the first slot row. Sized as a fraction of the panel it
-    # came out 96px tall instead of 47, swallowed the panel title and the top
-    # of row 1, and fitted a pitch of 66.58px against a true 69.6 -- which put
-    # tab VIII 26px off centre.
-    t_score = t_pitch = t_x0 = tab_y = None
-    # Columns over the grid band only, then rows sampled ONLY in the gaps
-    # between columns -- item art dominates everywhere else.
-    # THE GRID STARTS BELOW THE TAB STRIP, not at a fixed fraction of the
-    # panel. A fraction put grid_top inside row 1, and the row fit then locked
-    # onto row 2 -- every slot came out exactly one pitch (74px) low, which is
-    # a different slot, not a rounding error.
-    # Start ABOVE where the grid can begin, and let the fit find the phase.
-    # strip_bottom sat BELOW the first border (136 against 127 on this screen),
-    # so the fit could not see it and locked onto the second -- every slot came
-    # out exactly one pitch (74px) low, which is a different slot.
-    #
-    # Starting at the tab strip's midline is safe: the tabs have their own
-    # pitch (66.6px) and the search below is bounded to 68-80, so tab borders
-    # cannot satisfy it.
-    grid_top = int(len(panel) * 0.08)
-    c_score, c_pitch, c_x0 = fit_periodic(
-        panel[grid_top:, :].mean(axis=0), GRID, *_pitch_bounds())
-    borders = [c_x0 + k * c_pitch for k in range(GRID + 1)]
-    gaps = [c for b in borders
-            for c in range(int(b) - 2, int(b) + 3)
-            if 0 <= c < panel.shape[1]]
-    r_score, r_pitch, r_y0 = fit_periodic(
-        panel[:, gaps].mean(axis=1)[grid_top:], GRID, *_pitch_bounds())
-    say(f"  columns pitch {c_pitch:.2f}px  score {c_score:.2f}")
-    say(f"  rows    pitch {r_pitch:.2f}px  score {r_score:.2f}")
-
-    # A LOW SCORE IS A REFUSAL, NOT A RESULT. fit_periodic always returns its
-    # best candidate, however bad, so a panel that is not there still yields a
-    # pitch and a confident-looking set of coordinates.
-    #
-    # Measured: a good fit scores 2.9-3.4 on this screen. The run that had
-    # logged out scored 1.07 on the columns and still produced eight slot
-    # positions, which were then clicked.
-    if c_score < GRID_FIT_MIN or r_score < GRID_FIT_MIN:
-        raise RuntimeError(
-            f"the slot grid did not fit: columns scored {c_score:.2f} and rows "
-            f"{r_score:.2f}, against a floor of {GRID_FIT_MIN}. A good fit on "
-            f"a visible panel scores about 3. Is the Inventory really open? "
-            f"Nothing measured.")
-
-    # And eight columns have to fit inside the panel they were found in.
-    if c_pitch * GRID > panel.shape[1]:
-        raise RuntimeError(
-            f"a column pitch of {c_pitch:.2f}px puts {GRID} columns at "
-            f"{c_pitch * GRID:.0f}px, wider than the {panel.shape[1]}px panel "
-            f"they were measured in. Nothing measured.")
-
-    first_border = grid_top + r_y0          # crop coords of the grid's top line
-    strip_top = int(max(0, first_border - 62))
-    strip_bottom = int(max(strip_top + 10, first_border - 8))
-    strip = panel[strip_top:strip_bottom, :]
-    # TAB PITCH IS BOUNDED BY THE SLOT PITCH JUST MEASURED, not by a fixed
-    # 60-80. The strip holds more than eight tabs' worth of vertical edges --
-    # two lock icons and the arrange button sit to their right -- so a wider
-    # pitch can score HIGHER than the true one by picking those up. Measured:
-    # 79.76px scored 2.67 against the correct 69.58px at 2.50, which put tab 8
-    # at x=2519 instead of 2445 and clicked the arrange button.
-    #
-    # On this UI a tab is a little narrower than a slot, never wider, so the
-    # slot pitch is the ceiling and 0.85 of it the floor.
-    t_score, t_pitch, t_x0 = fit_periodic(
-        strip.mean(axis=0), GRID, c_pitch * 0.85, c_pitch * 1.02)
-    tab_y = top + strip_top + strip.shape[0] // 2
-    tabs = [(round(left + t_x0 + t_pitch / 2 + k * t_pitch), round(tab_y))
-            for k in range(GRID)]
-
-    # AND THE TABS MUST NOT RUN PAST THE GRID. Whatever the fit says, eight
-    # tabs sit above eight columns; a strip wider than the grid means the fit
-    # locked onto something beyond the last tab. Refusing here is the
-    # difference between a bad number in a file and a click on a control that
-    # rearranges the bag.
-    grid_left = left + c_x0 + c_pitch / 2
-    grid_right = grid_left + c_pitch * (GRID - 1)
-    if tabs[0][0] < grid_left - c_pitch or tabs[-1][0] > grid_right + c_pitch:
-        raise RuntimeError(
-            f"the inventory tabs fitted to {tabs[0][0]}..{tabs[-1][0]}, which "
-            f"is outside the slot grid at {round(grid_left)}.."
-            f"{round(grid_right)}. Pitch came out {t_pitch:.2f}px against a "
-            f"slot pitch of {c_pitch:.2f}px. Not writing a calibration that "
-            f"would click beside the tabs.")
-    say(f"  tabs   pitch {t_pitch:.2f}px  score {t_score:.2f}  y={tab_y} "
-        f"(band {strip_top}-{strip_bottom} above the grid)")
-
+    tabs = {str(k + 1): [round(anchor[0] + t1x + tp * k),
+                         round(anchor[1] + t1y)] for k in range(GRID)}
     slots = {}
     for row in range(1, GRID + 1):
         for col in range(1, GRID + 1):
             slots[f"{row}x{col}"] = [
-                round(left + c_x0 + c_pitch / 2 + c_pitch * (col - 1)),
-                round(top + grid_top + r_y0 + r_pitch / 2 + r_pitch * (row - 1)),
+                round(anchor[0] + s1x + spx * (col - 1)),
+                round(anchor[1] + s1y + spy * (row - 1)),
             ]
-    say(f"  slot (1,7) {slots['1x7']}   slot (1,8) {slots['1x8']}")
+    say(f"  tab I {tabs['1']}  tab VIII {tabs[str(GRID)]}")
+    say(f"  slot (1,1) {slots['1x1']}  (1,7) {slots['1x7']}  "
+        f"(8,8) {slots[f'{GRID}x{GRID}']}")
+
+    # A CHEAP SANITY CHECK, since nothing here is derived from the picture any
+    # more: every position must land inside the game's client area. That
+    # catches a wildly wrong anchor -- which is the only way this can now go
+    # wrong -- without pretending to re-measure the layout.
+    cx, cy, cw, chh = _client_rect()
+    every = list(slots.values()) + list(tabs.values())
+    outside = [p for p in every
+               if not (cx <= p[0] <= cx + cw and cy <= p[1] <= cy + chh)]
+    if outside:
+        raise RuntimeError(
+            f"{len(outside)} of {len(every)} positions fall outside the game "
+            f"window ({cx},{cy} {cw}x{chh}) -- e.g. {outside[0]}. The anchor "
+            f"at {anchor} must be wrong. Nothing measured.")
 
     return {
         "alz_box": list(alz),
-        "tabs": {str(i + 1): list(p) for i, p in enumerate(tabs)},
-        "tab_pitch": round(t_pitch, 2),
+        "anchor": list(anchor),
+        "tabs": tabs,
+        "tab_pitch": tp,
         "slots": slots,
-        "slot_pitch": [round(c_pitch, 2), round(r_pitch, 2)],
-        "evidence": {"tab_fit": round(t_score, 2),
-                     "column_fit": round(c_score, 2),
-                     "row_fit": round(r_score, 2)},
+        "slot_pitch": [spx, spy],
+        "placed_from": "panel_layout offsets, not fitted",
     }
+
+
+def _trade_window_open() -> bool:
+    """Is the Trade window up? Read from its Register tab.
+
+    The same word calibrate_shop anchors on, so "open" here means exactly
+    "measurable there" -- there is no second definition to drift.
+    """
+    try:
+        words = ocr(grab(), _box(TOP_STRIP_F))
+    except Exception:            # noqa: BLE001 - a probe must not throw
+        return False
+    return any(t.lower() == "register" for t, _c, _p in words)
 
 
 def calibrate_shop(verbose=True):
@@ -791,34 +774,37 @@ def main() -> None:
     # "bright ground" reliably, so it is not asked. The state is known from the
     # contract, and the press is verified by what it CHANGES, below.
     print("inventory:")
-    park()
-    before = grab().crop(_box(ALZ_SEARCH_F))
-    press(VK_I)
-    time.sleep(gap)
-    park()
-    after_img = grab()
-    after = after_img.crop(_box(ALZ_SEARCH_F))
 
-    # Verified by the CHANGE, not by an absolute test. Opening the panel
-    # replaces whatever was in this region; a press that did nothing leaves it
-    # identical. That holds whatever the ground happens to look like.
-    from PIL import ImageChops
-    diff = ImageChops.difference(before, after).convert("L")
-    moved = sum(1 for p in diff.get_flattened_data() if p > 24)
-    portion = moved / (before.width * before.height)
-    print(f"  I changed {portion * 100:.0f}% of the balance region")
-    if portion < PANEL_OPEN_CHANGE:
-        raise RuntimeError(
-            f"pressing I changed only {portion * 100:.0f}% of the balance "
-            f"region, against a floor of {PANEL_OPEN_CHANGE * 100:.0f}%. The "
-            f"Inventory panel did not open. This function assumes the game "
-            f"starts with nothing open -- if the panel was already up, I has "
-            f"just CLOSED it. Nothing measured.")
+    # PRESS, CHECK, PRESS AGAIN IF WRONG.
+    #
+    # I is a toggle and the panel's state cannot be read reliably when it is
+    # SHUT -- that region shows the 3D world, and sunlit ground is bright and
+    # saturated enough to look like a balance. So the state is not guessed; it
+    # is established.
+    #
+    # The default state is the documented contract, but a FAILED run raises
+    # before it can tidy up and leaves the panel open, so the next run starts
+    # from the opposite state and its press closes what it meant to open.
+    # Observed doing exactly that twice in a row. One retry settles it: after
+    # two presses the panel has been both toggled and untoggled, so whichever
+    # state it started in, one of the two attempts had it open.
+    for attempt in (1, 2):
+        park()
+        if find_alz(grab()) is not None:
+            break
+        press(VK_I)
+        time.sleep(gap)
+        park()
+        if find_alz(grab()) is not None:
+            if attempt == 2:
+                print("  (the panel had been left open by an earlier run; "
+                      "pressed I twice to get back to a known state)")
+            break
+        if attempt == 2:
+            raise RuntimeError(
+                "pressed I twice and the Alz balance never appeared, so the "
+                "Inventory panel is not opening. Nothing measured.")
 
-    if find_alz(after_img) is None:
-        raise RuntimeError(
-            "the Inventory panel opened but the Alz balance is not readable "
-            "inside it. Nothing measured.")
     inventory = calibrate_inventory()
 
     # ---- 2. open the shop, using what was just measured ------------------
@@ -833,9 +819,28 @@ def main() -> None:
     key = inventory["slots"][f"{row}x{col}"]
     print(f"  tab {facts['agent_shop_tab']} at {tab}")
     click(*tab)
-    print(f"  right-clicking slot ({row},{col}) at {key}")
-    right_click(*key)
-    time.sleep(gap)
+
+    # RIGHT-CLICK, CHECK, RIGHT-CLICK AGAIN IF WRONG -- the key is a toggle
+    # too. A failed run leaves the Trade window open, and then this closes what
+    # it meant to open. Observed doing exactly that: both clicks landed on the
+    # correct coordinates and the shop still was not there afterwards, because
+    # it had been up already.
+    for attempt in (1, 2):
+        if _trade_window_open():
+            break
+        print(f"  right-clicking slot ({row},{col}) at {key}")
+        right_click(*key)
+        time.sleep(gap)
+        park()
+        if _trade_window_open():
+            if attempt == 2:
+                print("  (the shop had been left open by an earlier run; "
+                      "clicked twice to get back to a known state)")
+            break
+        if attempt == 2:
+            raise RuntimeError(
+                "right-clicked the Agent Shop key twice and the Trade window "
+                "never appeared. Nothing written.")
 
     # ---- 3. the shop -----------------------------------------------------
     print("agent shop:")
@@ -910,21 +915,24 @@ def close_everything(verbose: bool = False) -> None:
     # The Inventory. Same reasoning as opening it: asking "is it open" reads a
     # region that shows the ground when it is not, so the answer is taken from
     # the change instead.
+    # Verified, not inferred. The first version reported "Inventory closed"
+    # whenever the press changed the region -- but a press that OPENS it
+    # changes just as much, so it announced success while leaving the panel up
+    # for the next run to close by mistake.
     park()
-    before = grab().crop(_box(ALZ_SEARCH_F))
+    if find_alz(grab()) is None:
+        if verbose:
+            print("  Inventory already closed")
+        return
     press(VK_I)
     time.sleep(gap)
-    after = grab().crop(_box(ALZ_SEARCH_F))
-    from PIL import ImageChops
-    diff = ImageChops.difference(before, after).convert("L")
-    moved = sum(1 for p in diff.get_flattened_data() if p > 24)
-    portion = moved / (before.width * before.height)
+    park()
     if verbose:
-        if portion >= PANEL_OPEN_CHANGE:
-            print(f"  I: Inventory closed ({portion * 100:.0f}% changed)")
+        if find_alz(grab()) is None:
+            print("  I: Inventory closed")
         else:
-            print(f"  I: nothing changed ({portion * 100:.0f}%) -- the panel "
-                  f"was already closed, and is now OPEN. Press I once by hand.")
+            print("  I: pressed, but the balance is still visible -- the "
+                  "panel did not close. Close it by hand.")
 
 
 if __name__ == "__main__":
