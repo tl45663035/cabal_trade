@@ -22,22 +22,21 @@ from open_inventory import (VK_I, _Input, _InputUnion, _MouseInput, _user32,
 # measures them on the live screen and writes them down; this reads them.
 #
 # WHAT IS STILL A CONSTANT HERE, and why none of it is a location:
-#   GRID_SIZE          the inventory is 8x8. A fact about the game.
-#   AGENT_SHOP_TAB     which tab the key lives on, and which slot. Facts about
-#   AGENT_SHOP_SLOT    the BAG, not the screen -- moving the key changes these,
-#                      moving the window does not.
-#   ACTION_GAP         a duration.
-#   MOUSEEVENTF_*      Windows API.
+# NOTHING is defined in this file -- not the positions, not the Windows API
+# numbers, not the durations, not the facts about the bag. All of it is read
+# from calibration.json, so a change lands in every script at once.
 CAL = calibration.load()
 
-GRID_SIZE = 8
-AGENT_SHOP_TAB = 8
-AGENT_SHOP_SLOT = (1, 7)
+_FACTS = CAL["game_facts"]
+GRID_SIZE = _FACTS["grid_size"]
+AGENT_SHOP_TAB = _FACTS["agent_shop_tab"]
+AGENT_SHOP_SLOT = tuple(_FACTS["agent_shop_slot"])
 
 # The gap between one action and the next: press I, wait, click the tab, wait,
-# right-click the key. One number rather than a different invented value at
-# each step. Nothing follows the final right-click, so it is not waited on.
-ACTION_GAP = 0.05
+# right-click the key. One number, and it lives in calibration.json, so it is
+# one number for EVERY script rather than a copy per file. Nothing follows the
+# final right-click, so it is not waited on.
+ACTION_GAP = CAL["timing"]["action_gap"]
 
 # I IS A TOGGLE, so "open the inventory" cannot be a blind press: with the
 # panel already up, pressing I shuts it and every click below lands on the game
@@ -135,11 +134,12 @@ def favourite_point(slot: int) -> "tuple[int, int]":
 # --------------------------------------------------------------------------
 # Mouse
 # --------------------------------------------------------------------------
-INPUT_MOUSE = 0
-MOUSEEVENTF_LEFTDOWN = 0x0002
-MOUSEEVENTF_LEFTUP = 0x0004
-MOUSEEVENTF_RIGHTDOWN = 0x0008
-MOUSEEVENTF_RIGHTUP = 0x0010
+_IN = CAL["input"]
+INPUT_MOUSE = _IN["INPUT_MOUSE"]
+MOUSEEVENTF_LEFTDOWN = _IN["MOUSEEVENTF_LEFTDOWN"]
+MOUSEEVENTF_LEFTUP = _IN["MOUSEEVENTF_LEFTUP"]
+MOUSEEVENTF_RIGHTDOWN = _IN["MOUSEEVENTF_RIGHTDOWN"]
+MOUSEEVENTF_RIGHTUP = _IN["MOUSEEVENTF_RIGHTUP"]
 
 
 def _mouse(flags: int) -> _Input:

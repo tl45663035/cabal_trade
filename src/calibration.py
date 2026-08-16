@@ -41,6 +41,55 @@ OUT = HERE / "calibration.json"
 
 _CACHE = None
 
+# EVERYTHING THAT IS NOT MEASURED, seeded here and written into the JSON so the
+# scripts have exactly one place to read from.
+#
+# These are NOT positions -- they are Windows API values, facts about the game,
+# and durations. They are in the file anyway at the operator's instruction, so
+# that changing `action_gap` once changes it everywhere rather than in three
+# files.
+#
+# SEEDED, NOT OVERWRITTEN. calibrate re-measures the screen every run; if it
+# also rewrote these, a tuned action_gap would be silently reset by the next
+# calibration. The merge below keeps whatever is already in the file.
+DEFAULTS = {
+    "timing": {
+        "action_gap": 0.05,     # between one action and the next
+        "key_hold": 0.02,       # how long a key is held down
+        "focus_settle": 0.35,   # after asking Windows to raise the game
+    },
+    "input": {
+        "INPUT_MOUSE": 0,
+        "INPUT_KEYBOARD": 1,
+        "KEYEVENTF_KEYUP": 0x0002,
+        "KEYEVENTF_SCANCODE": 0x0008,
+        "MAPVK_VK_TO_VSC": 0,
+        "MOUSEEVENTF_LEFTDOWN": 0x0002,
+        "MOUSEEVENTF_LEFTUP": 0x0004,
+        "MOUSEEVENTF_RIGHTDOWN": 0x0008,
+        "MOUSEEVENTF_RIGHTUP": 0x0010,
+        "VK_I": 0x49,
+        "VK_MENU": 0x12,
+        "VK_ESCAPE": 0x1B,
+        "INPUT_STRUCT_SIZE": 40,   # sizeof(INPUT) on 64-bit Windows
+    },
+    "game_facts": {
+        "grid_size": 8,            # the inventory is 8x8, with 8 tabs
+        "agent_shop_tab": 8,       # where the Agent Shop key lives...
+        "agent_shop_slot": [1, 7], # ...and in which slot of that tab
+    },
+}
+
+
+def _merge_keeping_existing(fresh: dict, existing: dict) -> dict:
+    """`fresh` wins for measured sections; `existing` wins for tuned ones."""
+    out = dict(fresh)
+    for section in DEFAULTS:
+        merged = dict(DEFAULTS[section])
+        merged.update(existing.get(section) or {})
+        out[section] = merged
+    return out
+
 
 def load(force: bool = False) -> dict:
     """The measured screen, from calibration.json.
@@ -473,6 +522,13 @@ def main() -> None:
         "inventory": inventory,
         "shop": shop,
     }
+    existing = {}
+    if OUT.exists():
+        try:
+            existing = json.loads(OUT.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            existing = {}
+    data = _merge_keeping_existing(data, existing)
     OUT.write_text(json.dumps(data, indent=2), encoding="utf-8")
     print(f"\nwrote {OUT}")
 

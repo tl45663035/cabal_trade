@@ -13,18 +13,33 @@ import time
 
 import calibration
 
-# Scan code, not just the virtual key.
+# NOTHING IS DEFINED IN THIS FILE. Every value comes from calibration.json,
+# including the Windows API numbers and the durations, so that changing one --
+# `action_gap`, say -- changes it in every script at once instead of in three
+# places that can drift apart.
 #
-# The Cabal client reads the keyboard through raw input, which looks at the
-# SCAN code and ignores virtual-key-only events. A keybd_event-style press with
-# wScan left at 0 reaches Notepad and does nothing here.
-INPUT_MOUSE = 0
-INPUT_KEYBOARD = 1
-KEYEVENTF_KEYUP = 0x0002
-KEYEVENTF_SCANCODE = 0x0008
-MAPVK_VK_TO_VSC = 0
+# Scan code, not just the virtual key: the Cabal client reads the keyboard
+# through raw input, which looks at the SCAN code and ignores virtual-key-only
+# events. A keybd_event-style press with wScan left at 0 reaches Notepad and
+# does nothing here.
+_CAL = calibration.load()
+_IN = _CAL["input"]
+_T = _CAL["timing"]
 
-VK_I = 0x49
+INPUT_MOUSE = _IN["INPUT_MOUSE"]
+INPUT_KEYBOARD = _IN["INPUT_KEYBOARD"]
+KEYEVENTF_KEYUP = _IN["KEYEVENTF_KEYUP"]
+KEYEVENTF_SCANCODE = _IN["KEYEVENTF_SCANCODE"]
+MAPVK_VK_TO_VSC = _IN["MAPVK_VK_TO_VSC"]
+
+VK_I = _IN["VK_I"]
+VK_MENU = _IN["VK_MENU"]
+VK_ESCAPE = _IN["VK_ESCAPE"]
+
+KEY_HOLD = _T["key_hold"]
+FOCUS_SETTLE = _T["focus_settle"]
+
+GAME_TITLE = _CAL["game"]["title_hint"]
 
 # use_last_error=True, or GetLastError() reads whatever unrelated call ran
 # last. ctypes.windll does not arm it, so the first cut reported "[Errno 0]"
@@ -71,9 +86,10 @@ class _Input(ctypes.Structure):
 
 # Checked at import rather than trusted. If a future edit changes the structs,
 # this says so here instead of at a keystroke that quietly does nothing.
-assert ctypes.sizeof(_Input) == 40, (
-    f"sizeof(INPUT) is {ctypes.sizeof(_Input)}, must be 40 on 64-bit Windows; "
-    f"SendInput refuses anything else")
+assert ctypes.sizeof(_Input) == _IN["INPUT_STRUCT_SIZE"], (
+    f"sizeof(INPUT) is {ctypes.sizeof(_Input)}, must be "
+    f"{_IN['INPUT_STRUCT_SIZE']} on 64-bit Windows; SendInput refuses "
+    f"anything else")
 
 
 def _event(vk: int, up: bool) -> _Input:
@@ -96,17 +112,10 @@ def press(vk: int) -> None:
             err = ctypes.get_last_error()
             raise OSError(err, f"SendInput sent {sent} of 1 events "
                                f"(GetLastError {err}). Nothing was pressed.")
-        time.sleep(0.02)
+        time.sleep(KEY_HOLD)
     finally:
         _user32.SendInput(
             1, ctypes.byref(_event(vk, up=True)), ctypes.sizeof(_Input))
-
-
-# FROM calibration.json, not typed here. This is the only environment-specific
-# value in this file; everything else is a Windows API constant or a virtual
-# key code, which are facts about Windows rather than about this screen.
-GAME_TITLE = calibration.load()["game"]["title_hint"]
-VK_MENU = 0x12          # Alt
 
 
 def find_game_window() -> "int | None":
@@ -136,7 +145,7 @@ def find_game_window() -> "int | None":
     return found[0] if found else None
 
 
-def focus_game(settle: float = 0.35) -> bool:
+def focus_game(settle: float = FOCUS_SETTLE) -> bool:
     """Bring the game to the foreground. True if it ended up there."""
     hwnd = find_game_window()
     if hwnd is None:
