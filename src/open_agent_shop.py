@@ -51,6 +51,14 @@ GRID_SIZE = 8
 AGENT_SHOP_TAB = 8
 AGENT_SHOP_SLOT = (1, 7)
 
+# The gap between one action and the next, at the operator's instruction:
+# press I, wait, click the tab, wait, right-click the key. One number rather
+# than a different invented value at each step, which is what the settles here
+# used to be (0.9s, 0.35s, 0.6s -- none of them measured).
+#
+# Nothing follows the final right-click, so it is not waited on.
+ACTION_GAP = 0.05
+
 
 def grab():
     """One screenshot of the primary monitor."""
@@ -133,14 +141,8 @@ def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
     time.sleep(settle)
 
 
-def click(x: int, y: int, settle: float = 0.10) -> None:
-    """100ms, at the operator's instruction. It was 350ms, invented.
-
-    Something has to follow a tab click: the panel redraws, and find_panel
-    below reads it. Measured on this screen, the Inventory panel reaches its
-    new state within one screenshot -- 30ms polled, which is what a grab()
-    costs, so it was already there before the first poll finished.
-    """
+def click(x: int, y: int, settle: float = ACTION_GAP) -> None:
+    """Left-click, then wait ACTION_GAP before whatever comes next."""
     _button(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y, settle)
 
 
@@ -163,13 +165,10 @@ def ensure_inventory_open(verbose: bool = True) -> "tuple[int, int]":
         return anchor
 
     press(VK_I)
-    # 100ms, at the operator's instruction. It was 0.9s, invented -- and it
-    # was the whole remaining spread in this script's timing, since it runs
-    # only when the inventory was shut. Polled on this screen, the panel
-    # reaches its new state in 30ms, which is what a grab() costs, so it was
-    # already up before the first poll finished. find_panel below is the real
-    # check: if the panel is not there, this refuses rather than clicking.
-    time.sleep(0.1)
+    time.sleep(ACTION_GAP)
+    # The real check is this read, not the wait: if the panel is not there,
+    # the script refuses rather than clicking into the game world. Polled on
+    # this screen the panel is up within one screenshot (~30ms).
     anchor = find_panel()
     if anchor is None:
         raise RuntimeError(
