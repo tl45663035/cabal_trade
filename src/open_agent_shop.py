@@ -151,7 +151,13 @@ def ensure_inventory_open(verbose: bool = True) -> "tuple[int, int]":
         return anchor
 
     press(VK_I)
-    time.sleep(0.9)
+    # 100ms, at the operator's instruction. It was 0.9s, invented -- and it
+    # was the whole remaining spread in this script's timing, since it runs
+    # only when the inventory was shut. Polled on this screen, the panel
+    # reaches its new state in 30ms, which is what a grab() costs, so it was
+    # already up before the first poll finished. find_panel below is the real
+    # check: if the panel is not there, this refuses rather than clicking.
+    time.sleep(0.1)
     anchor = find_panel()
     if anchor is None:
         raise RuntimeError(
