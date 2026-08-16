@@ -1,9 +1,11 @@
-"""Open the Agent Shop: inventory -> tab VIII -> right-click slot (1,7).
+"""Open the Agent Shop with the key: inventory -> tab VIII -> right-click (1,7).
 
-    py src/open_agent_shop.py
+    py src/open_agent_shop_premium.py
 
-Slot (1,7) on tab VIII holds the Agent Shop key. Right-clicking it opens the
-shop from anywhere, without walking to the NPC.
+PREMIUM ONLY, which is what the name says. Slot (1,7) on tab VIII holds the
+Agent Shop key, and right-clicking it opens the shop from anywhere. An account
+without the key has to walk to the NPC and talk to her instead -- a different
+routine, not a fallback inside this one.
 """
 import ctypes
 import time
