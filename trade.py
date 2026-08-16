@@ -19882,9 +19882,40 @@ def relist_rows(
         if positional:
             top = goto_row(index, timeout=timeout, verbose=verbose)
             if top is None:
-                say(f"  row {index} could not be reached positionally; "
-                    f"falling back to the identity search.")
-                positional = False
+                # SKIP THE ROW. DO NOT FALL BACK TO THE IDENTITY SEARCH.
+                #
+                # The fallback used to run bring_into_view here, and that
+                # throws away both guarantees this path exists for. Identity
+                # CANNOT TELL SIBLINGS APART: on 2026-08-15 rows 11 and 12
+                # were both 'Force Core (Ultimate)' at qty 250, differing only
+                # in price, and the search picks by an ordinal counted over
+                # the whole 30-row shop then indexed into a 10-row view. That
+                # is the 2026-08-13 divergence exactly -- cycle 25 asked for
+                # absolute row 12, the search "followed" to screen 9 (absolute
+                # 20), cancelled it, and SHOP.cancel(12) then emptied a slot
+                # the game had not touched.
+                #
+                # It also skips SHOP.check, which is the ONLY thing that ever
+                # tests the model against the shop. So the fallback both
+                # picked a row it could not identify AND disabled the alarm.
+                #
+                # Skipping costs one row for one cycle. The work tab is
+                # untouched here -- nothing has been cancelled yet -- so
+                # relist_rows takes its "confined to this row" branch, keeps
+                # going, and retries next cycle. The batch still returns True
+                # and no breaker counts it.
+                #
+                # Live 2026-08-15 20:06: this fired once in 17 relists, when
+                # read_top_row missed a 1226x135 band. It happened to land on
+                # the right row that time. That is luck, not a guarantee.
+                say(f"  row {index} was scrolled to but could not be read, "
+                    f"so its position cannot be trusted. Leaving the row alone "
+                    f"this cycle rather than searching by identity, which "
+                    f"cannot tell same-named siblings apart.")
+                record("relist.positional_unreadable", row=index, item=name)
+                failed_rows.append(f"row {index} ({name}): the row could not "
+                                   f"be read after scrolling to it")
+                continue
             else:
                 # RAISES on divergence when enforcing. That is the point: the
                 # model claimed this slot, the shop disagrees, and acting on

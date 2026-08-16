@@ -24,6 +24,7 @@ ROOT = HERE.parent
 SUITES = [
     ("import / globals",      HERE / "import_smoke.py",      []),
     ("purchase dialog",       HERE / "purchase_dialog_test.py", []),
+    ("positional skip",       HERE / "positional_skip_test.py", []),
     ("record guard",          HERE / "record_guard_test.py", []),
     ("pure suite",            HERE / "suite_pure.py",        []),
     ("floors: both items",    HERE / "floor_siena_test.py",  []),
