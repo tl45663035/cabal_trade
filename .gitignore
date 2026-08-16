@@ -9,10 +9,15 @@ unit_tests/corpus/run_index.jsonl
 # and regenerated with `py unit_tests\baseline_rows.py save`.
 unit_tests/baseline_rows.json
 
-# Measured for one screen and one game window. Copying it to another machine is
-# actively harmful: the script would click at coordinates that do not apply.
-# It is re-measured automatically on every run.
-calibration.json
+# trade.py's calibration: a flat set of coordinates with nothing recording which
+# screen they came from. Copying it to another machine is actively harmful --
+# the script would click at coordinates that do not apply. Re-measured on every
+# run. ANCHORED to the repo root: src/calibration.json is a different file and
+# IS committed. It keys every position by resolution, so another machine reads
+# its own section or is refused; and its shared `timing` block only stops
+# drifting silently once git can see it. It had sat at action_gap 0.5 against a
+# DEFAULTS of 0.05 -- 10x every gap, unnoticed, because this line hid it.
+/calibration.json
 
 # Output of --shot.
 screenshots/*.png
