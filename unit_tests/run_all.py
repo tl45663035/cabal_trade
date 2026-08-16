@@ -23,6 +23,7 @@ ROOT = HERE.parent
 # as-is -- which was not true while half of these sat in a scratchpad.
 SUITES = [
     ("import / globals",      HERE / "import_smoke.py",      []),
+    ("purchase dialog",       HERE / "purchase_dialog_test.py", []),
     ("record guard",          HERE / "record_guard_test.py", []),
     ("pure suite",            HERE / "suite_pure.py",        []),
     ("floors: both items",    HERE / "floor_siena_test.py",  []),

@@ -2339,6 +2339,40 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
         label = w.text.strip().lower()
         if label in ("buy", "cancel") and w.centre[1] > PURCHASE_DIALOG_BUTTONS_Y:
             buttons[label] = w.centre
+
+    # READ THE BUTTONS FROM THEIR OWN CROP WHEN THE WIDE SWEEP MISSES THEM.
+    #
+    # The sweep above covers 1000x550 and the button labels are low-contrast
+    # grey-on-grey. Measured on unit_tests/corpus/run_69948.png they do not
+    # survive it AT ALL, while the same two words read at conf 96 and 97 from
+    # PURCHASE_DIALOG_BUTTONS -- a 380x50 crop over exactly that row.
+    # Tesseract upscales a small crop far more than a large one, and that is
+    # the whole difference.
+    #
+    # The consequence is not subtle. With no button this returns None and the
+    # caller reports "the Confirm Purchase dialog did not appear" with the
+    # dialog plainly on screen. Live on 2026-08-15 at 19:42 that abandoned a
+    # buy AND left the modal up, which then blocked the next five searches
+    # ("the results still show ... - the search did not run") until the shop
+    # was closed. An earlier run lost a whole chaos resupply the same way:
+    # three refusals, 0 of 200 Cores, and the breaker tripped.
+    #
+    # PURCHASE_DIALOG_BUTTONS already existed for this and had no reader. The
+    # words are LOCATED inside the crop rather than assumed, so a dialog that
+    # moves is still followed.
+    if "buy" not in buttons or "cancel" not in buttons:
+        for w in find_words(shot, PURCHASE_DIALOG_BUTTONS):
+            label = w.text.strip().lower()
+            # THE SAME BAND GUARD AS ABOVE, and it is not redundant. The
+            # table's own row buttons say "Buy" too, and clicking one buys a
+            # DIFFERENT listing at a different price -- so a label is only a
+            # dialog button when it sits below PURCHASE_DIALOG_BUTTONS_Y,
+            # wherever it was read from. The crop is chosen to cover only that
+            # row, but the crop is not what makes it safe; this check is.
+            if (label in ("buy", "cancel") and label not in buttons
+                    and w.centre[1] > PURCHASE_DIALOG_BUTTONS_Y):
+                buttons[label] = w.centre
+
     if "buy" not in buttons:
         return None
     # The price from its OWN crop first. The sweep below takes the last
