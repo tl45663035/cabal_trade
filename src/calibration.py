@@ -2,6 +2,7 @@ import csv
 import ctypes
 import io
 import json
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -219,6 +220,25 @@ def ocr(image: Image.Image, box, scale: int = 3, min_conf: float = 45.0):
         y = box[1] + int(row["top"]) / scale + int(row["height"]) / scale / 2
         found.append((text, round(conf), (round(x), round(y))))
     return found
+
+
+DIGIT_PSM = "13"
+DIGIT_WHITELIST = "0123456789,"
+_NOT_DIGIT = re.compile(r"[^0-9]")
+
+
+def read_digits(image: Image.Image, box, scale: int = 3):
+    crop = image.crop(box)
+    crop = crop.resize((crop.width * scale, crop.height * scale),
+                       Image.LANCZOS)
+    buf = io.BytesIO()
+    crop.save(buf, "PNG")
+    run = subprocess.run(
+        [TESSERACT, "stdin", "stdout", "--psm", DIGIT_PSM,
+         "-c", "tessedit_char_whitelist=" + DIGIT_WHITELIST],
+        input=buf.getvalue(), capture_output=True, timeout=60)
+    digits = _NOT_DIGIT.sub("", run.stdout.decode("utf-8", "replace"))
+    return int(digits) if digits else None
 
 
 def fit_periodic(profile, n, lo, hi, step=0.02):
