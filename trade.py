@@ -19550,48 +19550,6 @@ def note_chaos_lot(unit_cost: int, listed_price: int, qty: int) -> None:
             pass
 
 
-def chaos_sets_in_work_tab(verbose: bool = True) -> int:
-    """Crafted Chaos Core Sets sitting in the work tab, counted from their names.
-
-    THE FAILURE THIS EXISTS FOR. chaos_pass is a straight line -- count, price,
-    BUY, craft, compress, list -- and every step after the buy is unreachable
-    without one. So a pass that crafted its Sets and then failed to compress
-    them left them in the tab permanently: re-entering could not reach the
-    compress step, the work-tab gate refused every later cycle, and three of
-    those stopped the run.
-
-    Measured 2026-08-17: `crafted 183 Chaos Core Set(s)` at 1352s, `could not
-    reach inventory tab 4` at 1360s, and the run was dead 4 minutes later with
-    183 Sets and five uncollected sales behind the gate.
-
-    Counted by NAME, not by occupancy: a compressed bundle carries its own
-    count ("Chaos Core Set X 183"), and occupied_slots cannot tell a Set from
-    anything else that happens to be in the slot.
-    """
-    def say(message: str) -> None:
-        if verbose:
-            print(message)
-
-    origin = inventory_origin()
-    if origin is None:
-        return 0
-    if not select_inventory_tab(CHAOS_WORK_TAB, origin):
-        say(f"  could not reach inventory tab {CHAOS_WORK_TAB} to look for "
-            f"stranded Sets.")
-        return 0
-    park_cursor()
-    total = 0
-    for row, col in occupied_slots(grab(), origin):
-        name = (read_slot_tooltip(row, col) or {}).get("name") or ""
-        if not is_chaos_set(name):
-            continue
-        total += max(1, pack_size(name))
-    if total:
-        say(f"  {total} crafted Chaos Core Set(s) already in tab "
-            f"{CHAOS_WORK_TAB}.")
-    return total
-
-
 def chaos_lots_cheapest_first() -> list:
     """Outstanding lots THIS RUN listed, as (id, unit_cost), cheapest first."""
     conn = sales_db()
@@ -20702,46 +20660,30 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                        price=core.price,
                        spent=core.price * report.get("take", 0), running=got)
 
-            # NOTHING BOUGHT IS NOT NOTHING TO DO. A previous pass may have
-            # crafted its Sets and then failed to compress them, and those need
-            # FINISHING, not buying -- the buy is upstream of every step that
-            # would clear them, so returning here strands them for good.
-            resume = 0
             if got < 1:
-                resume = chaos_sets_in_work_tab(verbose=verbose)
-                if resume < 1:
-                    say("Chaos: nothing was bought; nothing to craft.")
-                    return False
-                say(f"Chaos: nothing was bought, but {resume} crafted Set(s) "
-                    f"are in the work tab from a pass that did not finish - "
-                    f"compressing and listing them instead.")
-                record("chaos.resume_uncompressed", sets=resume)
-            else:
-                say(f"Chaos: {got} Core(s) obtained"
-                    + ("." if got >= CHAOS_BUY_QUANTITY else
-                       f" of {CHAOS_BUY_QUANTITY} - crafting what there is "
-                       f"rather than leaving it in the bag."))
+                say("Chaos: nothing was bought; nothing to craft.")
+                return False
+            say(f"Chaos: {got} Core(s) obtained"
+                + ("." if got >= CHAOS_BUY_QUANTITY else
+                   f" of {CHAOS_BUY_QUANTITY} - crafting what there is rather "
+                   f"than leaving it in the bag."))
 
-            if resume:
-                # Already crafted. Straight to compress, below.
-                made = resume
-            else:
-                # 5. Craft. The shop covers the craft window, so it goes first.
-                leave_shop(verbose=verbose)
-                time.sleep(0.5)
-                if not open_craft_window(timeout=timeout, verbose=verbose):
-                    say("Chaos: the craft window would not open; the Cores are "
-                        "in the inventory, uncrafted.")
-                    record("chaos.craft_window_failed")
-                    note_chaos_strand()
-                    return False
-                made = craft_chaos_sets(timeout=timeout, verbose=verbose)
-                press_escape()          # the window closes with ESC
-                time.sleep(0.8)
-                if made < 1:
-                    say("Chaos: nothing was crafted; stopping before listing.")
-                    note_chaos_strand()
-                    return False
+            # 5. Craft. The shop covers the craft window, so it goes first.
+            leave_shop(verbose=verbose)
+            time.sleep(0.5)
+            if not open_craft_window(timeout=timeout, verbose=verbose):
+                say("Chaos: the craft window would not open; the Cores are in "
+                    "the inventory, uncrafted.")
+                record("chaos.craft_window_failed")
+                note_chaos_strand()
+                return False
+            made = craft_chaos_sets(timeout=timeout, verbose=verbose)
+            press_escape()          # the window closes with ESC
+            time.sleep(0.8)
+            if made < 1:
+                say("Chaos: nothing was crafted; stopping before listing.")
+                note_chaos_strand()
+                return False
 
             # 6. Compress into the single bundle the shop sells as one row.
             #
