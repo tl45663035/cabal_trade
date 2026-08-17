@@ -565,8 +565,17 @@ CHAOS_ENABLED = False
 # How many separate purchases one bundle may take. A row holds whatever the
 # seller listed -- 95 against a K of 200 on 2026-08-09 -- so reaching K means
 # buying row 1, searching again to bring the next row up, and buying that too.
-# The cap only stops a runaway; reaching it means the market is very thin.
-CHAOS_BUY_ORDERS = 15
+#
+# A RUNAWAY BACKSTOP, NOT A BUDGET. It was 15, sized when a row held ~40 Cores
+# and 200 took about five orders. A thin market makes it bind on the ordinary
+# case instead: on 2026-08-17 rows were coming up 1 to 14 Cores at a time, the
+# cap stopped a pass at 156 of 200 after fifteen orders, and the bundle was
+# short for no reason but the counter.
+#
+# What actually bounds the buying is CHAOS_BUY_LOST_LIMIT -- three refusals in
+# a row and it stops -- plus CHAOS_BUY_QUANTITY, the margin gate re-read before
+# every order, and the balance. This only has to stop an unbounded loop.
+CHAOS_BUY_ORDERS = 1000
 # How many orders in a row may fail before the buying stops. Losing a row to
 # another buyer is ordinary and the next search brings up a different listing,
 # so one loss is no reason to abandon the target -- but a market that refuses
