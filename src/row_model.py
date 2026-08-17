@@ -1,4 +1,5 @@
 import ctypes
+import re
 import time
 
 import calibration
@@ -22,9 +23,92 @@ GRID = _FACTS["grid_size"]
 
 MAX_TOP = CAPACITY - VISIBLE + 1
 
+EMPTY_MARKER = "premiumexclusiveslot"
+
+_NOT_ALNUM = re.compile(r"[^a-z0-9]")
+
 
 class Divergence(Exception):
     pass
+
+
+def _key(text):
+    return _NOT_ALNUM.sub("", (text or "").lower())
+
+
+def _shop():
+    return calibration.load()["shop"]
+
+
+def _need(name):
+    value = _shop().get(name)
+    if not value:
+        raise Divergence(
+            f"shop.{name} is not in calibration.json. Re-run "
+            f"py src/calibration.py once it measures the listing table.")
+    return value
+
+
+def table_point():
+    return tuple(_need("table_point"))
+
+
+def rows_per_notch():
+    return _need("rows_per_notch")
+
+
+def row_one_box():
+    shop = _shop()
+    x0, x1 = _need("table_x")
+    y = _need("row_one_y")
+    half = _need("row_pitch") // 2
+    return (x0, y - half, x1, y + half)
+
+
+def read_row_one():
+    tokens = calibration.ocr(calibration.grab(), row_one_box())
+    tokens.sort(key=lambda token: token[2][0])
+    return " ".join(token[0] for token in tokens)
+
+
+def row_one_is_empty(text=None):
+    text = read_row_one() if text is None else text
+    key = _key(text)
+    return (not key) or EMPTY_MARKER in key
+
+
+def _wheel_event(direction):
+    return inv._Input(
+        type=INPUT_MOUSE,
+        u=inv._InputUnion(mi=inv._MouseInput(
+            0, 0, ctypes.c_ulong(direction * WHEEL_DELTA & 0xFFFFFFFF).value,
+            MOUSEEVENTF_WHEEL, 0, None)))
+
+
+def wheel(rows, verbose=True):
+    if not rows:
+        return 0
+    x, y = table_point()
+    notches = int(round(abs(rows) / rows_per_notch()))
+    if not notches:
+        return 0
+    direction = -1 if rows > 0 else 1
+    inv._user32.SetCursorPos(int(x), int(y))
+    time.sleep(ACTION_GAP)
+    event = _wheel_event(direction)
+    for _ in range(notches):
+        sent = inv._user32.SendInput(1, ctypes.byref(event),
+                                     ctypes.sizeof(inv._Input))
+        if sent != 1:
+            raise Divergence(
+                f"SendInput sent {sent} of 1 wheel event "
+                f"(GetLastError {ctypes.get_last_error()})")
+        time.sleep(WHEEL_GAP)
+    time.sleep(ACTION_GAP)
+    if verbose:
+        print(f"  wheel {notches} event(s) {'down' if rows > 0 else 'up'} "
+              f"at ({x}, {y}) for {rows:+d} row(s)")
+    return notches
 
 
 class Row:
@@ -48,11 +132,9 @@ class Row:
     def margin(self):
         return self.list_total - self.cost_total
 
-    def same_identity(self, other):
-        return (other is not None
-                and self.name == other.name
-                and self.qty == other.qty
-                and self.list_price == other.list_price)
+    @property
+    def key(self):
+        return _key(self.name)
 
     def copy(self):
         return Row(self.name, self.qty, self.list_price, self.buy_cost)
@@ -104,8 +186,8 @@ class RowModel:
         return free[0] if free else None
 
     def holes(self):
-        top = max(self._slots) if self._slots else 0
-        return [i for i in range(1, top + 1) if i not in self._slots]
+        highest = max(self._slots) if self._slots else 0
+        return [i for i in range(1, highest + 1) if i not in self._slots]
 
     def register(self, row):
         index = self.next_slot()
@@ -194,97 +276,46 @@ class RowModel:
 
     def scroll_to(self, index, verbose=True):
         plan = self.scroll_plan(index)
+        if plan["clamped"]:
+            raise Divergence(
+                f"row {index} cannot be brought to position 1: with "
+                f"{CAPACITY} rows and {VISIBLE} visible the top can only "
+                f"reach {MAX_TOP}. Row {index} sits at position "
+                f"{plan['reachable_at_row']} when the table is scrolled to "
+                f"the end, and this model only ever operates on row 1.")
         if plan["notches"]:
             wheel(plan["notches"], verbose=verbose)
         self.note_scrolled(plan["to_top"])
         if verbose:
-            seen = self.visible()
-            print(f"  scrolled to row {plan['to_top']}: showing {seen[0]}-"
-                  f"{seen[-1]}, row {index} at position "
-                  f"{plan['reachable_at_row']}"
-                  + ("  (clamped -- it cannot reach position 1)"
-                     if plan["clamped"] else ""))
+            print(f"  row {index} is now at position 1")
         return plan
 
+    def at(self, index, verbose=False):
+        self.scroll_to(index, verbose=verbose)
+        return read_row_one()
 
-def table_point():
-    shop = calibration.load()["shop"]
-    point = shop.get("table_point")
-    if not point:
-        raise Divergence(
-            "shop.table_point is not in calibration.json, so there is nowhere "
-            "to put the cursor before scrolling. Re-run py src/calibration.py "
-            "once it measures the listing table.")
-    return tuple(point)
-
-
-def rows_per_notch():
-    shop = calibration.load()["shop"]
-    value = shop.get("rows_per_notch")
-    if not value:
-        raise Divergence(
-            "shop.rows_per_notch is not in calibration.json, so a notch count "
-            "cannot be turned into a row count. Re-run py src/calibration.py "
-            "once it measures the wheel.")
-    return value
-
-
-def _wheel_event(direction):
-    return inv._Input(
-        type=INPUT_MOUSE,
-        u=inv._InputUnion(mi=inv._MouseInput(
-            0, 0, ctypes.c_ulong(direction * WHEEL_DELTA & 0xFFFFFFFF).value,
-            MOUSEEVENTF_WHEEL, 0, None)))
-
-
-def wheel(rows, verbose=True):
-    if not rows:
-        return 0
-    x, y = table_point()
-    per = rows_per_notch()
-    notches = int(round(abs(rows) / per))
-    if not notches:
-        return 0
-    direction = -1 if rows > 0 else 1
-    inv._user32.SetCursorPos(int(x), int(y))
-    time.sleep(ACTION_GAP)
-    event = _wheel_event(direction)
-    for _ in range(notches):
-        sent = inv._user32.SendInput(1, ctypes.byref(event),
-                                     ctypes.sizeof(inv._Input))
-        if sent != 1:
+    def verify(self, text=None, index=None):
+        if self._top is None:
+            raise Divergence("the top visible row is unknown; nothing to verify")
+        index = self._top if index is None else int(index)
+        if index != self._top:
             raise Divergence(
-                f"SendInput sent {sent} of 1 wheel event "
-                f"(GetLastError {ctypes.get_last_error()})")
-        time.sleep(WHEEL_GAP)
-    time.sleep(ACTION_GAP)
-    if verbose:
-        print(f"  wheel {notches} event(s) {'down' if rows > 0 else 'up'} "
-              f"at ({x}, {y}) for {rows:+d} row(s)")
-    return notches
-
-    def compare(self, read, top=None):
-        top = self._top if top is None else int(top)
-        seen = self.visible(top)
-        wrong = []
-        for index in seen:
-            mine = self._slots.get(index)
-            theirs = (read or {}).get(index)
-            if mine is None and theirs is None:
-                continue
-            if mine is None or theirs is None:
-                wrong.append((index, mine, theirs))
-                continue
-            if not mine.same_identity(theirs):
-                wrong.append((index, mine, theirs))
-        if wrong:
-            self.divergences += len(wrong)
+                f"row {index} is not at position 1 (row {self._top} is). "
+                f"Scroll to it first.")
+        text = read_row_one() if text is None else text
+        mine = self._slots.get(index)
+        read_empty = row_one_is_empty(text)
+        if mine is None:
+            agrees = read_empty
+        else:
+            agrees = (not read_empty) and mine.key in _key(text)
+        if not agrees:
+            self.divergences += 1
             if self.enforce:
-                first = wrong[0]
                 raise Divergence(
-                    f"row {first[0]}: the model holds {first[1]!r} but the "
-                    f"screen reads {first[2]!r}. {len(wrong)} row(s) disagree.")
-        return wrong
+                    f"row {index}: the model holds {mine!r} but position 1 "
+                    f"reads {text!r}")
+        return {"row": index, "agrees": agrees, "model": mine, "read": text}
 
     def totals(self):
         rows = list(self._slots.values())
@@ -300,13 +331,12 @@ def wheel(rows, verbose=True):
         out = [f"  ROW MODEL -- {self.used()} of {CAPACITY} slot(s) in use, "
                f"next listing lands at row {self.next_slot()}"]
         if self._top is not None:
-            seen = self.visible()
-            out.append(f"  showing rows {seen[0]}-{seen[-1]} of {CAPACITY}")
+            out.append(f"  row {self._top} is at position 1")
         for index in self.occupied():
             row = self._slots[index]
-            out.append(f"    {index:2}  {row.name[:34]:34} x{row.qty:<4} "
-                       f"list {row.list_total:>14,}  cost {row.cost_total:>14,}"
-                       f"  {row.margin:>+13,}")
+            out.append(f"    {index:2}  {row.name} x{row.qty} "
+                       f"list {row.list_total:,} cost {row.cost_total:,} "
+                       f"margin {row.margin:+,}")
         gaps = self.holes()
         if gaps:
             out.append(f"  holes at {gaps} - these persist, nothing renumbers")

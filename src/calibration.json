@@ -444,7 +444,8 @@
           "register_conf": 96,
           "favourite_pitch_spread": 0,
           "purchase_is_derived": true,
-          "wheel": "one SendInput event moves exactly 1 row whatever its magnitude; 1/3/6 separate events moved 79/237/474px at a 79px pitch"
+          "wheel": "one SendInput event moves exactly 1 row whatever its magnitude; 1/3/6 separate events moved 79/237/474px at a 79px pitch",
+          "row_one": "row 1 centre y 228, pitch 79, table spans x 290..1190; read at this box on 15 rows and 6 verification jumps, all correct"
         },
         "table_point": [
           500,
@@ -452,7 +453,11 @@
         ],
         "row_one_y": 228,
         "row_pitch": 79,
-        "rows_per_notch": 1
+        "rows_per_notch": 1,
+        "table_x": [
+          290,
+          1190
+        ]
       }
     }
   }
