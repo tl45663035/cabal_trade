@@ -4271,11 +4271,6 @@ def clear_carried(slot: int) -> None:
 # reason -- a new launch cannot know what happened to the bag in between.
 _CHAOS_STRANDED = False
 
-# WHICH CYCLE IS RUNNING, so ensure_work_tab_empty can tell a tab this run
-# dirtied from one it merely inherited. 0 means no loop is running -- a
-# one-shot command -- which is treated as "not mine", the lenient reading.
-_CYCLE_NUMBER = 0
-
 # ONE RANGE WALK PER CYCLE, SHARED.
 #
 # chaos_pass and restock_pass both need to know what is listed past the first
@@ -14894,42 +14889,27 @@ def ensure_work_tab_empty(timeout: float = 8.0, verbose: bool = True) -> bool:
     if require_empty_work_tab(verbose=verbose):
         return True
 
-    # WHOSE MESS IS IT? That is the whole question, and the cycle number
-    # answers it.
+    # REFUSE THE CYCLE, NEVER THE RUN.
     #
-    # On cycle 1 the tab was dirty before this run touched anything. That is
-    # not this run's business -- it cannot know whether a human emptied the bag
-    # in between -- so it skips and carries on. Dying there is how four runs on
-    # 2026-08-09 ended before doing any work.
+    # It must refuse: relist() finds the cancelled item by diffing the
+    # inventory, and that diff is ambiguous while anything is in the tab -- on
+    # 2026-08-09, waving it through picked 7 carried Sets out of the diff
+    # instead of the 12 Epic Boosters that had just been cancelled, and
+    # stranded them. Listing it blind is worse still: that path reached for
+    # 175,000,000 twice against 54 Upgrade Core (Ultimate) worth 469,469 each.
     #
-    # After that the run dirtied it, and skipping only defers the same answer.
-    # Making every cycle skippable was too broad a reading of that rule: on
-    # 2026-08-17 it turned one clear stop into three failed cycles reaching the
-    # breaker fifteen seconds later, which is exactly what the comment this
-    # replaced predicted -- "a strand does not clear itself, so retrying it
-    # every cycle just spends the breaker's budget arriving at the same place".
-    #
-    # Either way it must refuse to RELIST: relist() finds the cancelled item by
-    # diffing the inventory, and that diff is ambiguous while anything is in
-    # the tab -- on 2026-08-09, waving it through picked 7 carried Sets out of
-    # the diff instead of the 12 Epic Boosters just cancelled. Listing the
-    # contents blind is worse: that path reached for 175,000,000 twice against
-    # 54 Upgrade Core (Ultimate) worth 469,469 each.
-    mine = carried_total() > 0 or chaos_stranded()
-    why = ("this run's own working stock" if mine
-           else "stock this script cannot name from a slot")
-    if _CYCLE_NUMBER <= 1:
-        if verbose:
-            print(f"  inventory tab {WORK_TAB} is not empty ({why}) and this "
-                  f"run has not touched it yet; skipping this cycle rather "
-                  f"than refusing the run. Nothing has been listed or "
-                  f"cancelled.")
-        return False
-    raise FatalAbort(
-        f"inventory tab {WORK_TAB} is not empty on cycle {_CYCLE_NUMBER} "
-        f"({why}), so this run put it there and it will not clear itself. "
-        f"Clear the tab by hand and start again. Nothing has been listed or "
-        f"cancelled.")
+    # But refusing the RUN is not the script's call to make. A tab left by a
+    # previous launch is not this run's business -- it cannot know whether a
+    # human emptied the bag in between -- and dying on cycle 1 over it is how
+    # four runs on 2026-08-09 ended before doing any work. The failure breaker
+    # already bounds a fault that repeats every cycle.
+    if verbose:
+        why = ("this run's own working stock" if carried_total() > 0
+               or chaos_stranded() else
+               "stock this script cannot name from a slot")
+        print(f"  inventory tab {WORK_TAB} is not empty ({why}); skipping "
+              f"this cycle. Nothing has been listed or cancelled.")
+    return False
 
 
 def changed_slots(
@@ -20531,19 +20511,6 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # minimum, so the overshoot is bounded by one row's depth.
                 order_size = max(1, core.available)
 
-                # NO PER-ORDER ALIGNMENT. The batch only has to divide the
-                # TOTAL that goes into the craft, and trimming every order to
-                # keep the running sum aligned was strictly worse: it refused a
-                # row 1 too small to trim and ENDED the pass, so a seller with
-                # one Core left blocked every Core behind them. Under "always
-                # row 1" that thin row is exactly what has to be cleared to
-                # reach the next seller's stock.
-                #
-                # Measured 2026-08-17: the market held one 1-Core row, the pass
-                # refused it, and the shelf sat at 3 of 6 with the margin at
-                # 19,947 against a 7,000 floor. The alignment is applied once,
-                # after this loop, where it belongs.
-
                 # BUT IT MUST STILL BE PAYABLE.
                 #
                 # affordable() had exactly one call site in the whole file, in
@@ -20628,48 +20595,6 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 record("chaos.bought", items=report.get("items"),
                        price=core.price,
                        spent=core.price * report.get("take", 0), running=got)
-
-            # ALIGN THE TOTAL, ONCE, HERE. The craft consumes `batch` Cores at
-            # a time and leaves total % batch behind, and that remainder is
-            # what strands the work tab. Topping UP is the cheap fix -- one or
-            # two more Cores at a price the margin gate has already cleared --
-            # and it is the only fix available once the Cores are bought.
-            batch = craft_material_cost()
-            short_of_batch = (held_already + got) % batch if batch > 1 else 0
-            if short_of_batch:
-                need = batch - short_of_batch
-                say(f"Chaos: {held_already + got} Core(s) is {short_of_batch} "
-                    f"past a multiple of {batch} - buying {need} more so "
-                    f"nothing is left uncraftable.")
-                # ROW 1 of a fresh search, like every other order here.
-                offers = (run_favourite_search(CHAOS_CORE_SLOT, verbose=verbose)
-                          if open_purchase_tab(verbose=verbose) else None)
-                core = _row_one(offers) if offers else None
-                if core is not None and core.available >= need:
-                    report = {}
-                    bought, why = buy_offer(core, need, timeout=timeout,
-                                            verbose=verbose, report=report)
-                    if bought:
-                        items = int(report.get("items") or need)
-                        got += items
-                        paid += int(report.get("spend")
-                                    or core.price * max(1, items))
-                        paid_units += items
-                        record("chaos.batch_topped_up", need=need, got=items,
-                               total=held_already + got)
-                    else:
-                        say(f"Chaos: the top-up of {need} Core(s) did not "
-                            f"complete: {why}")
-                        record("chaos.batch_topup_failed", need=need, why=why)
-                else:
-                    have = core.available if core is not None else 0
-                    say(f"Chaos: row 1 holds {have} Core(s), fewer than the "
-                        f"{need} needed to reach a multiple of {batch} - "
-                        f"crafting {(held_already + got) // batch * batch} and "
-                        f"leaving {short_of_batch} for the next pass.")
-                    record("chaos.batch_topup_unavailable", need=need,
-                           have=have, total=held_already + got)
-                    note_chaos_strand()
 
             if got < 1:
                 say("Chaos: nothing was bought; nothing to craft.")
@@ -21855,9 +21780,6 @@ def run_loop(
             apply_live_config(verbose=verbose)
 
             cycle += 1
-            # Published so ensure_work_tab_empty can tell whose mess the work
-            # tab is: inherited on cycle 1, this run's own after that.
-            globals()["_CYCLE_NUMBER"] = cycle
             started = time.monotonic()
             # THE OCR BILL SO FAR, EVERY CYCLE -- not only at exit.
             #
