@@ -31,6 +31,8 @@ DEFAULTS = {
         "MOUSEEVENTF_LEFTUP": 0x0004,
         "MOUSEEVENTF_RIGHTDOWN": 0x0008,
         "MOUSEEVENTF_RIGHTUP": 0x0010,
+        "MOUSEEVENTF_WHEEL": 0x0800,
+        "WHEEL_DELTA": 120,
         "VK_I": 0x49,
         "VK_MENU": 0x12,
         "VK_ESCAPE": 0x1B,
@@ -49,6 +51,9 @@ DEFAULTS = {
         "grid_size": 8,
         "agent_shop_tab": 8,
         "agent_shop_slot": [1, 7],
+        "work_tab": 4,
+        "shop_capacity": 30,
+        "shop_visible": 10,
     },
 }
 
