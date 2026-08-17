@@ -20,6 +20,7 @@ DEFAULTS = {
         "action_gap": 0.05,
         "key_hold": 0.02,
         "focus_settle": 0.35,
+        "wheel_gap": 0.12,
     },
     "input": {
         "INPUT_MOUSE": 0,

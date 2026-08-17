@@ -13,6 +13,7 @@ INPUT_MOUSE = _IN["INPUT_MOUSE"]
 MOUSEEVENTF_WHEEL = _IN["MOUSEEVENTF_WHEEL"]
 WHEEL_DELTA = _IN["WHEEL_DELTA"]
 ACTION_GAP = _T["action_gap"]
+WHEEL_GAP = _T["wheel_gap"]
 
 CAPACITY = _FACTS["shop_capacity"]
 VISIBLE = _FACTS["shop_visible"]
@@ -228,11 +229,11 @@ def rows_per_notch():
     return value
 
 
-def _wheel_event(clicks):
+def _wheel_event(direction):
     return inv._Input(
         type=INPUT_MOUSE,
         u=inv._InputUnion(mi=inv._MouseInput(
-            0, 0, ctypes.c_ulong(clicks * WHEEL_DELTA & 0xFFFFFFFF).value,
+            0, 0, ctypes.c_ulong(direction * WHEEL_DELTA & 0xFFFFFFFF).value,
             MOUSEEVENTF_WHEEL, 0, None)))
 
 
@@ -241,22 +242,25 @@ def wheel(rows, verbose=True):
         return 0
     x, y = table_point()
     per = rows_per_notch()
-    notches = int(round(rows / per))
+    notches = int(round(abs(rows) / per))
     if not notches:
         return 0
+    direction = -1 if rows > 0 else 1
     inv._user32.SetCursorPos(int(x), int(y))
     time.sleep(ACTION_GAP)
-    event = _wheel_event(-notches)
-    sent = inv._user32.SendInput(1, ctypes.byref(event),
-                                 ctypes.sizeof(inv._Input))
-    if sent != 1:
-        raise Divergence(
-            f"SendInput sent {sent} of 1 wheel event "
-            f"(GetLastError {ctypes.get_last_error()})")
+    event = _wheel_event(direction)
+    for _ in range(notches):
+        sent = inv._user32.SendInput(1, ctypes.byref(event),
+                                     ctypes.sizeof(inv._Input))
+        if sent != 1:
+            raise Divergence(
+                f"SendInput sent {sent} of 1 wheel event "
+                f"(GetLastError {ctypes.get_last_error()})")
+        time.sleep(WHEEL_GAP)
     time.sleep(ACTION_GAP)
     if verbose:
-        print(f"  wheel {notches:+d} notch(es) at ({x}, {y}) "
-              f"for {rows:+d} row(s)")
+        print(f"  wheel {notches} event(s) {'down' if rows > 0 else 'up'} "
+              f"at ({x}, {y}) for {rows:+d} row(s)")
     return notches
 
     def compare(self, read, top=None):
