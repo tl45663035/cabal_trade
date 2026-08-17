@@ -4245,69 +4245,12 @@ def carried_sets(slot: int) -> int:
     return max(0, int(_CARRIED_SETS.get(slot, 0)))
 
 
-def _persist_carried(slot: int, count: int) -> None:
-    """Mirror one carry row to the ledger. Never raises.
-
-    Bookkeeping that must survive the process, because the failure it prevents
-    only happens ACROSS one: a restart meeting a dirty work tab with no memory
-    of why raises FatalAbort and dies on cycle 1, repeatedly.
-    """
-    conn = sales_db()
-    if conn is None:
-        return
-    try:
-        with conn:
-            if count > 0:
-                conn.execute(
-                    "INSERT INTO carried (slot, count, noted) VALUES (?,?,?) "
-                    "ON CONFLICT(slot) DO UPDATE SET count=excluded.count, "
-                    "noted=excluded.noted",
-                    (int(slot), int(count),
-                     _dt.datetime.now().isoformat(" ", "seconds")))
-            else:
-                conn.execute("DELETE FROM carried WHERE slot = ?", (int(slot),))
-    except Exception:  # noqa: BLE001 - a carry note must never cost a listing
-        pass
-    finally:
-        try:
-            conn.close()
-        except Exception:  # noqa: BLE001
-            pass
-
-
-def load_carried() -> None:
-    """Restore the carry registry from the ledger, once per process.
-
-    Called before the first work-tab check. Without it a restart cannot tell
-    its own paid-for Sets from an item nobody can account for, and refuses the
-    only way it knows how -- fatally.
-    """
-    conn = sales_db()
-    if conn is None:
-        return
-    try:
-        for slot, count in conn.execute(
-                "SELECT slot, count FROM carried WHERE count > 0"):
-            if int(slot) == 0:
-                note_chaos_strand(True)
-            else:
-                _CARRIED_SETS[int(slot)] = int(count)
-    except Exception:  # noqa: BLE001
-        pass
-    finally:
-        try:
-            conn.close()
-        except Exception:  # noqa: BLE001
-            pass
-
-
 def note_carried_sets(slot: int, count: int) -> None:
     """Record that `count` Sets for `slot` are in the bag, unlisted."""
     if count > 0:
         _CARRIED_SETS[slot] = int(count)
     else:
         _CARRIED_SETS.pop(slot, None)
-    _persist_carried(slot, count)
 
 
 def clear_carried(slot: int) -> None:
@@ -4322,14 +4265,10 @@ def clear_carried(slot: int) -> None:
 # crafted UP into Sets -- so filing a chaos strand there would send
 # restock_core to the vendor to convert Chaos Cores as if they were Sets.
 #
-# Without some marker the tab reads as unaccountable and ensure_work_tab_empty
-# raises FatalAbort, ending the run with the goods in the bag. That has
-# happened six times on record -- 66,999,700 Alz of Cores left uncrafted on
-# 2026-08-09 and 65,392,205 of Sets left unmerged an hour later, each followed
-# by restarts that met the same tab and died again before doing anything.
-#
-# It IS recoverable: craft_chaos_sets reads the held-material count off the
-# craft window, so re-entering chaos_pass crafts whatever is sitting there.
+# It is recoverable WITHIN A RUN: craft_chaos_sets reads the held-material
+# count off the craft window, so a later chaos_pass crafts whatever this run
+# left sitting there. Process-lifetime, like _CARRIED_SETS, and for the same
+# reason -- a new launch cannot know what happened to the bag in between.
 _CHAOS_STRANDED = False
 
 # ONE RANGE WALK PER CYCLE, SHARED.
@@ -4451,19 +4390,15 @@ _CHAOS_STRAND_UNIT_COST = 0
 def note_chaos_strand(stranded: bool = True, unit_cost: int = 0) -> None:
     """Chaos left Cores or Sets in the work tab, or has just cleared them.
 
-    Persisted under slot 0 -- chaos has no favourite slot of its own -- so a
-    restart still recognises the goods as its own instead of raising
-    FatalAbort over a tab it could have crafted.
+    Process-lifetime only. It says what THIS run has done, so it is false at
+    startup however the last one ended.
     """
     global _CHAOS_STRANDED, _CHAOS_STRAND_UNIT_COST
     if stranded and unit_cost > 0:
         _CHAOS_STRAND_UNIT_COST = int(unit_cost)
     elif not stranded:
         _CHAOS_STRAND_UNIT_COST = 0
-    was = _CHAOS_STRANDED
     _CHAOS_STRANDED = bool(stranded)
-    if was != _CHAOS_STRANDED:
-        _persist_carried(0, 1 if _CHAOS_STRANDED else 0)
 
 
 def chaos_stranded() -> bool:
@@ -6010,7 +5945,7 @@ def restock_core(item_slot: int,
         # under the right name and price. A listing whose read-back FAILED may
         # not be on the board at all -- so counting it would clear the carry
         # for Sets still sitting in the work tab, and the next cycle then meets
-        # a dirty tab with carried_total() == 0, which is the FatalAbort state.
+        # a dirty tab it has no record of, and skips.
         #
         # Counted as a listed ROW either way, because a row was registered and
         # the shop-capacity arithmetic has to include it.
@@ -13815,22 +13750,6 @@ def sales_db() -> "sqlite3.Connection | None":
                 CREATE INDEX IF NOT EXISTS chaos_lots_price
                     ON chaos_lots (listed_price);
 
-                -- WORK LEFT IN THE INVENTORY, ACROSS RESTARTS.
-                --
-                -- The carry registry and the chaos strand flag were
-                -- process-lifetime, so a restart met a dirty work tab with
-                -- carried_total() == 0 and raised FatalAbort -- turning a
-                -- recoverable strand into a run that dies on cycle 1, every
-                -- time, until a human clears the tab. Four such deaths are on
-                -- record for 2026-08-09 alone.
-                --
-                -- One row per slot; slot 0 is the chaos strand, which has no
-                -- favourite slot of its own.
-                CREATE TABLE IF NOT EXISTS carried (
-                    slot    INTEGER PRIMARY KEY,
-                    count   INTEGER NOT NULL,
-                    noted   TEXT    NOT NULL
-                );
                 """
             )
             conn.commit()
@@ -14790,9 +14709,9 @@ def recover_stranded_work_tab(timeout: float = 8.0,
                               verbose: bool = True) -> bool:
     """List whatever is sitting in the work tab back onto the shop.
 
-    NO LONGER CALLED AUTOMATICALLY as of 2026-08-08. ensure_work_tab_empty now
-    raises FatalAbort on a dirty tab instead of invoking this, because pricing
-    an item that cannot be named means pricing it at the strictest floor on the
+    NO LONGER CALLED AUTOMATICALLY as of 2026-08-08. ensure_work_tab_empty
+    skips the cycle on a dirty tab instead of invoking this, because pricing an
+    item that cannot be named means pricing it at the strictest floor on the
     books -- 175,000,000 -- and that is real money committed to a guess.
 
     Kept rather than deleted: it is the only code that knows how to clear a
@@ -14905,69 +14824,42 @@ def recover_stranded_work_tab(timeout: float = 8.0,
 
 
 def ensure_work_tab_empty(timeout: float = 8.0, verbose: bool = True) -> bool:
-    """The work-tab precondition. Two kinds of dirty, two answers.
+    """The work-tab precondition. True only when the tab is empty.
 
-    A tab holding the restock's own paid-for Sets returns False -- this cycle
-    cannot relist, but the next resupply should convert and list them, so the
-    run continues and the failure breaker bounds it.
+    A dirty tab refuses the CYCLE and never the run, whatever put it there.
+    This cycle cannot relist; the next resupply converts and lists the script's
+    own working stock, and the failure breaker bounds anything that repeats.
 
-    Anything ELSE in the tab raises FatalAbort and stops the run, because it is
-    an item nobody can account for and the script has no safe way to identify
-    it. Neither case may be waved through: relist() finds the cancelled item by
-    diffing the inventory, and that diff is only unambiguous while the tab
-    starts empty.
-
-    This used to try to recover: list whatever was in the tab at
-    strictest_price_floor() -- 175,000,000, because an inventory slot cannot be
-    named -- and let the next cycle read the name off the table and re-price
-    it. That is the only path in this file that can commit real money to a
-    decision nobody made, and it fires exactly when the script is already
-    confused about what is where.
-
-    Measured on 2026-08-08: it reached for 175,000,000 twice against 54
-    Upgrade Core (Ultimate) worth 469,469 each, and was saved only by the
-    client being disconnected at the time.
-
-    So it refuses instead, and the refusal is FATAL rather than per-cycle: a
-    strand does not clear itself, so retrying it every cycle just spends the
-    breaker's budget arriving at the same place. A human clears the tab in a
-    minute; a wrong listing costs a row, a registration fee and a position
-    nobody chose.
-
-    Returns False for the ONE recoverable case and raises for everything else.
+    It may not be waved through. relist() finds the cancelled item by diffing
+    the inventory, and that diff is only unambiguous while the tab starts
+    empty. Nor may it be cleared by listing the contents blind: that path
+    priced an unnamed slot at strictest_price_floor() and reached for
+    175,000,000 twice against 54 Upgrade Core (Ultimate) worth 469,469 each.
     """
     if require_empty_work_tab(verbose=verbose):
         return True
 
-    # The restock's own working stock is the one dirty tab that clears itself.
+    # REFUSE THE CYCLE, NEVER THE RUN.
     #
-    # restock_core banks it deliberately (note_carried_sets) so the next pass
-    # converts and lists it instead of buying more, and raising here stops that
-    # pass from ever running -- permanently, because a restart meets the same
-    # dirty tab before restock_pass is reached and the process-lifetime carry
-    # record is lost with it.
-    #
-    # Refusing the CYCLE gets the recovery without the wedge. It must still
-    # refuse: relist() finds the cancelled item by diffing the inventory, and
-    # that diff is ambiguous while anything else is in the tab -- on
+    # It must refuse: relist() finds the cancelled item by diffing the
+    # inventory, and that diff is ambiguous while anything is in the tab -- on
     # 2026-08-09, waving it through picked 7 carried Sets out of the diff
     # instead of the 12 Epic Boosters that had just been cancelled, and
-    # stranded them.
-    if carried_total() > 0:
-        return False
-
-    # A chaos strand is the same shape: paid-for goods this script put there
-    # and can still craft, compress and list. Six runs on record died on this
-    # tab instead -- and every restart died again, because nothing recognised
-    # the Cores as chaos's own. See note_chaos_strand.
-    if chaos_stranded():
-        return False
-
-    raise FatalAbort(
-        f"inventory tab {WORK_TAB} is not empty. Everything in it is stock "
-        "this script cannot name from a slot, so it cannot be priced safely "
-        "-- clear it by hand (list it, or move it to another tab) and start "
-        "again. Nothing has been listed or cancelled.")
+    # stranded them. Listing it blind is worse still: that path reached for
+    # 175,000,000 twice against 54 Upgrade Core (Ultimate) worth 469,469 each.
+    #
+    # But refusing the RUN is not the script's call to make. A tab left by a
+    # previous launch is not this run's business -- it cannot know whether a
+    # human emptied the bag in between -- and dying on cycle 1 over it is how
+    # four runs on 2026-08-09 ended before doing any work. The failure breaker
+    # already bounds a fault that repeats every cycle.
+    if verbose:
+        why = ("this run's own working stock" if carried_total() > 0
+               or chaos_stranded() else
+               "stock this script cannot name from a slot")
+        print(f"  inventory tab {WORK_TAB} is not empty ({why}); skipping "
+              f"this cycle. Nothing has been listed or cancelled.")
+    return False
 
 
 def changed_slots(
@@ -20267,31 +20159,22 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
         # have been: COUNT -> PRICE -> BUY -> CRAFT.
         # ONLY ASK WHEN THERE COULD BE AN ANSWER.
         #
-        # This count exists for ONE case: a previous pass bought Cores and then
-        # failed to craft or compress them, so they are still in the work tab
-        # and buying again doubles the position. That happened -- cycle 1 bought
-        # 250 Cores (~175,000,000 Alz) and stranded them, cycle 2 bought another
-        # 250 -- and it is worth protecting against.
+        # This count exists for ONE case: an EARLIER PASS OF THIS RUN bought
+        # Cores and then failed to craft or compress them, so they are still in
+        # the work tab and buying again doubles the position. Cycle 1 bought 250
+        # Cores (~175,000,000 Alz) and stranded them; cycle 2 bought another 250.
         #
-        # But that case is already RECORDED. note_chaos_strand is called at
-        # every exit that can leave Cores behind (craft failure, nothing
-        # crafted, compress failure, shop-would-not-reopen, no cost basis, the
-        # listing failing, and the exception handler), and the flag is
-        # persisted to sales.db so it survives a restart. When it is clear,
-        # there is nothing in the work tab to count and the answer is zero.
+        # chaos_stranded() is set by note_chaos_strand at every exit that can
+        # leave Cores behind, and is process-lifetime. It is false at startup
+        # whatever a previous run did, so this never fires on the first pass.
         #
         # Asking anyway costs more than the seconds: chaos_cores_held reads the
         # CRAFT window, which the game cannot show beside the Trade window, so
         # every clean pass was shutting its own shop between pricing and buying.
-        #
-        # A hard kill between buying and crafting could leave Cores with the
-        # flag unset -- but relist_rows calls ensure_work_tab_empty on the way
-        # in and refuses the whole batch on leftover stock, so chaos never
-        # reaches here with an unexplained work tab.
         held_already = 0
         if chaos_stranded():
-            say("Chaos: a previous pass left Cores in the work tab; counting "
-                "them before buying so the position is not doubled.")
+            say("Chaos: an earlier pass this run left Cores in the work tab; "
+                "counting them before buying so the position is not doubled.")
             held_already = max(0, chaos_cores_held(verbose=verbose))
         if held_already:
             say(f"Chaos: {held_already} Core(s) already in hand - they count "
@@ -21777,20 +21660,9 @@ def run_loop(
     reported and retried on the next tick. Only a locked workstation stops the
     loop outright, since nothing can work through that.
     """
-    # RESTORE WHAT A PREVIOUS PROCESS LEFT IN THE BAG, before anything checks
-    # the work tab. Without this a restart after a strand meets a dirty tab it
-    # cannot account for and raises FatalAbort on cycle 1 -- four such deaths
-    # are on record for 2026-08-09, each with paid-for goods sitting there.
-    load_carried()
-    if carried_total() or chaos_stranded():
-        parts = []
-        if carried_total():
-            parts.append(f"{carried_total()} carried Set(s)")
-        if chaos_stranded():
-            parts.append("an unfinished chaos pass")
-        print(f"Resuming with {' and '.join(parts)} recorded by an earlier "
-              f"run; the work tab will be cleared rather than refused.")
-
+    # EACH LAUNCH IS A SEPARATE RUN. Nothing is restored from a previous one:
+    # the carry registry and the chaos strand flag both start empty, and what a
+    # dead process left in the bag is not this run's business.
     def say(message: str) -> None:
         if verbose:
             print(message)
