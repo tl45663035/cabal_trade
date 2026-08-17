@@ -20531,49 +20531,18 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # minimum, so the overshoot is bounded by one row's depth.
                 order_size = max(1, core.available)
 
-                # ALIGNED TO THE CRAFT BATCH, which overrides "take the whole
-                # row" above. Up to batch-1 Cores are left ON THE MARKET rather
-                # than bought, because a Core left in the seller's row costs
-                # nothing and a Core left in the work tab can end the run.
+                # NO PER-ORDER ALIGNMENT. The batch only has to divide the
+                # TOTAL that goes into the craft, and trimming every order to
+                # keep the running sum aligned was strictly worse: it refused a
+                # row 1 too small to trim and ENDED the pass, so a seller with
+                # one Core left blocked every Core behind them. Under "always
+                # row 1" that thin row is exactly what has to be cleared to
+                # reach the next seller's stock.
                 #
-                # Recipe 2 consumes 3 Cores per craft, so a stock that is not a
-                # multiple of 3 leaves held % 3 Cores that CANNOT be crafted.
-                # Normally the next pass absorbs them; when the spread turns and
-                # the next pass declines to buy, they sit in the work tab, and
-                # nothing marks a sub-batch remainder as chaos's own -- so
-                # ensure_work_tab_empty reads an item it cannot name and refuses
-                # every later relist. That ended the overnight run of
-                # 2026-08-16: 49 held, 48 crafted, one Core orphaned, the next
-                # margin read at -912 so nothing was bought to absorb it, and
-                # the breaker stopped a run with 11 hours left.
-                #
-                # Counted against everything that will go into the craft, not
-                # just this pass's purchases: craft_material_held reads Cores
-                # across all eight tabs, so a stray from an earlier pass is
-                # crafted too and has to be part of the arithmetic.
-                batch = craft_material_cost()
-                if batch > 1:
-                    total = held_already + got + order_size
-                    aligned = order_size - (total % batch)
-                    if aligned < 1:
-                        # The row is smaller than what alignment would drop.
-                        # Buying it would strand exactly what this exists to
-                        # prevent, so stop with what is already held.
-                        say(f"Chaos: the remaining offer of {order_size} "
-                            f"Core(s) cannot be taken without leaving a "
-                            f"remainder against the {batch}-Core craft - "
-                            f"stopping at {held_already + got}.")
-                        record("chaos.batch_align_stop", offer=order_size,
-                               held=held_already + got, batch=batch)
-                        break
-                    if aligned != order_size:
-                        say(f"Chaos: taking {aligned} of the {order_size} on "
-                            f"offer so the total stays a multiple of {batch} "
-                            f"- {order_size - aligned} left on the market "
-                            f"rather than stranded in the bag.")
-                        record("chaos.batch_aligned", offer=order_size,
-                               taking=aligned, batch=batch)
-                    order_size = aligned
+                # Measured 2026-08-17: the market held one 1-Core row, the pass
+                # refused it, and the shelf sat at 3 of 6 with the margin at
+                # 19,947 against a 7,000 floor. The alignment is applied once,
+                # after this loop, where it belongs.
 
                 # BUT IT MUST STILL BE PAYABLE.
                 #
@@ -20659,6 +20628,48 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 record("chaos.bought", items=report.get("items"),
                        price=core.price,
                        spent=core.price * report.get("take", 0), running=got)
+
+            # ALIGN THE TOTAL, ONCE, HERE. The craft consumes `batch` Cores at
+            # a time and leaves total % batch behind, and that remainder is
+            # what strands the work tab. Topping UP is the cheap fix -- one or
+            # two more Cores at a price the margin gate has already cleared --
+            # and it is the only fix available once the Cores are bought.
+            batch = craft_material_cost()
+            short_of_batch = (held_already + got) % batch if batch > 1 else 0
+            if short_of_batch:
+                need = batch - short_of_batch
+                say(f"Chaos: {held_already + got} Core(s) is {short_of_batch} "
+                    f"past a multiple of {batch} - buying {need} more so "
+                    f"nothing is left uncraftable.")
+                # ROW 1 of a fresh search, like every other order here.
+                offers = (run_favourite_search(CHAOS_CORE_SLOT, verbose=verbose)
+                          if open_purchase_tab(verbose=verbose) else None)
+                core = _row_one(offers) if offers else None
+                if core is not None and core.available >= need:
+                    report = {}
+                    bought, why = buy_offer(core, need, timeout=timeout,
+                                            verbose=verbose, report=report)
+                    if bought:
+                        items = int(report.get("items") or need)
+                        got += items
+                        paid += int(report.get("spend")
+                                    or core.price * max(1, items))
+                        paid_units += items
+                        record("chaos.batch_topped_up", need=need, got=items,
+                               total=held_already + got)
+                    else:
+                        say(f"Chaos: the top-up of {need} Core(s) did not "
+                            f"complete: {why}")
+                        record("chaos.batch_topup_failed", need=need, why=why)
+                else:
+                    have = core.available if core is not None else 0
+                    say(f"Chaos: row 1 holds {have} Core(s), fewer than the "
+                        f"{need} needed to reach a multiple of {batch} - "
+                        f"crafting {(held_already + got) // batch * batch} and "
+                        f"leaving {short_of_batch} for the next pass.")
+                    record("chaos.batch_topup_unavailable", need=need,
+                           have=have, total=held_already + got)
+                    note_chaos_strand()
 
             if got < 1:
                 say("Chaos: nothing was bought; nothing to craft.")
