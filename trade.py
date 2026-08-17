@@ -5292,15 +5292,38 @@ def open_purchase_tab(timeout: float = 10.0, verbose: bool = True) -> bool:
         if verbose:
             print(message)
 
+    # A TAB READ THAT SAYS "ALREADY THERE" IS NOT ALLOWED TO END THIS CALL.
+    #
+    # Both short-circuits below used to `return` the sort result, so a tab read
+    # that was wrong -- or right at the moment it was taken and stale a second
+    # later -- meant the function reported failure WITHOUT EVER CLICKING THE
+    # TAB. The window then sat on Register, and every retry took the same
+    # branch and failed the same way.
+    #
+    # Measured 2026-08-17, on the mid-buy reopen: "the Trade window closed
+    # during the search; reopening and trying this order once more" was
+    # followed by the sort attempt and "not on the Purchase tab - the sort
+    # control does not exist on the other tab", with no "switching to the
+    # Purchase tab" between them. Twice in one run, and the resupply could not
+    # proceed either time.
+    #
+    # Falling through costs one click on a tab that may already be right,
+    # which is a no-op. Returning early costs the pass.
     if purchase_tab_open():
-        return set_purchase_sort_low_to_high(verbose=verbose)
+        if set_purchase_sort_low_to_high(verbose=verbose):
+            return True
+        say("  the tab read as Purchase but the sort would not set; "
+            "clicking the tab rather than trusting that read.")
 
     if not trade_window_open():
         say("  the Trade window is shut; opening it first.")
         if not open_trade_window(timeout=max(timeout, 15.0), verbose=verbose):
             return False
         if purchase_tab_open():
-            return set_purchase_sort_low_to_high(verbose=verbose)
+            if set_purchase_sort_low_to_high(verbose=verbose):
+                return True
+            say("  the tab read as Purchase after opening the window but the "
+                "sort would not set; clicking the tab.")
 
     # THE TAB IS FIXED FURNITURE. DO NOT READ IT.
     #
