@@ -13087,7 +13087,19 @@ def core_behind(set_name: str) -> str:
     return FAVOURITE_SLOTS.get(core_slot, "")
 
 
-def purchase_cost_basis(name: str, this_run_only: bool = True) -> int:
+def run_id() -> str:
+    """This launch's identity in the ledger.
+
+    EVERY LAUNCH IS A SEPARATE RUN. What an earlier process bought, listed or
+    stranded is not evidence about this one -- it cannot know whether the bag
+    was emptied, the board cleared, or a row cancelled by hand in between --
+    so anything that feeds a decision is filtered on this value. The tables
+    stay whole; only the questions are scoped.
+    """
+    return _RUN_STARTED_AT.isoformat(timespec="seconds")
+
+
+def purchase_cost_basis(name: str) -> int:
     """What was paid per item for the Sets behind `name`. 0 if none were.
 
     A relist may never price a Core below what its Sets cost. The market can
@@ -13128,18 +13140,13 @@ def purchase_cost_basis(name: str, this_run_only: bool = True) -> int:
         # bookkeeping. Nothing bought this run means no cost floor, which is
         # correct: there is no fresh position to protect, and the catalogue
         # floor still applies to anything that has one.
-        # `this_run_only` is the FLOOR's question -- what did the position I am
-        # holding right now cost me. Reporting asks a different one: what did
-        # everything I have ever sold cost, so it passes False.
-        if this_run_only:
-            rows = conn.execute(
-                "SELECT item, price, qty FROM purchases "
-                "WHERE price > 0 AND qty > 0 AND run = ?",
-                (_RUN_STARTED_AT.isoformat(timespec="seconds"),)).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT item, price, qty FROM purchases "
-                "WHERE price > 0 AND qty > 0").fetchall()
+        # There was an all-runs branch here, reached by this_run_only=False.
+        # Nothing ever passed it, and it could only ever answer the wrong
+        # question -- what an earlier run paid is not what this position cost.
+        rows = conn.execute(
+            "SELECT item, price, qty FROM purchases "
+            "WHERE price > 0 AND qty > 0 AND run = ?",
+            (run_id(),)).fetchall()
     except Exception:  # noqa: BLE001 - bookkeeping must never block a listing
         return 0
     finally:
@@ -13740,18 +13747,37 @@ def sales_db() -> "sqlite3.Connection | None":
                 -- numbers shift on any cancel or register, so the price each
                 -- was listed at is the only thing that tells two apart. It is
                 -- rewritten on every relist so it tracks the row.
+                -- `run` scopes every read to the launch that wrote the row.
+                -- Without it, lots from earlier runs stay outstanding forever:
+                -- they are only ever deleted when a sale retires one, so
+                -- anything that sold while the script was off, or was
+                -- cancelled by hand, is inherited as though it were still on
+                -- the board. On 2026-08-16 that was 14 rows going back six
+                -- days, against a board the same run had just counted as
+                -- empty -- and the dearest of them set the relist floor.
                 CREATE TABLE IF NOT EXISTS chaos_lots (
                     id           INTEGER PRIMARY KEY AUTOINCREMENT,
                     unit_cost    INTEGER NOT NULL,
                     listed_price INTEGER NOT NULL,
                     qty          INTEGER NOT NULL,
-                    created      TEXT    NOT NULL
+                    created      TEXT    NOT NULL,
+                    run          TEXT
                 );
                 CREATE INDEX IF NOT EXISTS chaos_lots_price
                     ON chaos_lots (listed_price);
+                CREATE INDEX IF NOT EXISTS chaos_lots_run
+                    ON chaos_lots (run);
 
                 """
             )
+            # A database written before `run` existed keeps its old shape --
+            # CREATE TABLE IF NOT EXISTS does not alter one that is already
+            # there. Add the column rather than migrating the rows: the old
+            # ones SHOULD read as NULL, because they belong to no run this
+            # process can claim, and every query below asks for a run.
+            have = {r[1] for r in conn.execute("PRAGMA table_info(chaos_lots)")}
+            if "run" not in have:
+                conn.execute("ALTER TABLE chaos_lots ADD COLUMN run TEXT")
             conn.commit()
             _sales_db_ready = True
         return conn
@@ -13938,12 +13964,16 @@ def note_registration(item: str, price: int | None, qty: int | None) -> None:
 
 
 def registered_qty(item: str, price: int | None) -> "int | None":
-    """The largest quantity of `item` this script ever listed at `price`.
+    """The largest quantity of `item` THIS RUN listed at `price`.
 
     Largest rather than latest: the same stack can be relisted several times as
     it sells down, and the ceiling has to cover the biggest it ever was.
     Matched on the folded key so the game's spacing around the bracket, and the
     pack marker on a table name, cannot cause a miss.
+
+    Scoped to this run. The answer is used as a CEILING, so a row some earlier
+    run listed at the same price would raise it above anything on the board
+    now -- and a price this run has not listed at should have no answer at all.
     """
     if not item or not price:
         return None
@@ -13957,7 +13987,7 @@ def registered_qty(item: str, price: int | None) -> "int | None":
         best = None
         for name, qty in conn.execute(
                 "SELECT item, qty FROM registrations WHERE price = ? "
-                "AND qty > 0", (int(price),)):
+                "AND qty > 0 AND run = ?", (int(price), run_id())):
             if _floor_key(item_name(_PACK_ANYWHERE.sub(" ", name))) != wanted:
                 continue
             if best is None or int(qty) > best:
@@ -14110,8 +14140,14 @@ def all_time_totals() -> "tuple[int, int, int, int, int] | None":
             pass
 
 
-def costed_sales(run: "str | None" = None) -> "tuple[list, dict]":
-    """Every sale, costed against the purchase lots it ACTUALLY consumed.
+def costed_sales(run: "str | None" = None,
+                 all_runs: bool = False) -> "tuple[list, dict]":
+    """This run's sales, costed against the lots they ACTUALLY consumed.
+
+    SCOPED TO THIS RUN unless `all_runs`. Costing a sale against an earlier
+    run's purchases is inventing a cost basis this process cannot stand behind
+    -- it has no way to know what happened to that stock in between. Reports
+    that deliberately want the whole ledger pass all_runs=True.
 
     Returns (sales, lots_left):
       sales     [{at, item, key, units, proceeds, cost, uncosted}, ...] in time
@@ -14155,6 +14191,13 @@ def costed_sales(run: "str | None" = None) -> "tuple[list, dict]":
     try:
         def key(name: str) -> str:
             return _floor_key(item_name(_PACK_ANYWHERE.sub(" ", name or "")))
+
+        # THIS RUN unless a caller deliberately asked for the whole ledger.
+        # `run` was optional and defaulted to every run ever recorded, so the
+        # per-sale profit line and the COGS total were both costed against
+        # purchases made days earlier.
+        if not all_runs and not run:
+            run = run_id()
 
         # Lots, oldest first. `price` is the TOTAL paid for the row, so the
         # unit cost is that over the quantity -- see record_purchase_row.
@@ -14218,7 +14261,7 @@ def costed_sales(run: "str | None" = None) -> "tuple[list, dict]":
             pass
 
 
-def cost_of_goods_sold() -> "tuple[int, int, int, int]":
+def cost_of_goods_sold(all_runs: bool = False) -> "tuple[int, int, int, int]":
     """(cost of units sold, units priced, units unpriced, unpriced takings).
 
     A thin tally over costed_sales, which does the matching. It used to do its
@@ -14229,9 +14272,14 @@ def cost_of_goods_sold() -> "tuple[int, int, int, int]":
     zero and folded in silently. Most of what has sold on this account was
     bought before the purchases ledger existed, and treating those as free
     would overstate profit by exactly the amount nobody can account for.
+
+    `all_runs` MUST match whatever the caller pairs this with. The standing
+    position report subtracts this from an all-time spend, so a run-scoped
+    COGS there would report every run's outlay against one run's sales and
+    call the difference stock on hand.
     """
     try:
-        sales, _held = costed_sales()
+        sales, _held = costed_sales(all_runs=all_runs)
         cost = sum(s["cost"] for s in sales)
         priced = sum(s["units"] - s["uncosted"] for s in sales)
         unpriced = sum(s["uncosted"] for s in sales)
@@ -14562,7 +14610,9 @@ def profit_report() -> str:
         # It fires exactly when more has sold than the purchases cover, i.e.
         # when the shop is clearing stock bought before the ledger existed --
         # which is the normal state after a legacy restock, not a rare edge.
-        cogs, priced, unpriced, _uncosted = cost_of_goods_sold()
+        # ALL RUNS, to match all_spend and all_gross above. This block is the
+        # standing position -- what the account holds -- not this run's work.
+        cogs, priced, unpriced, _uncosted = cost_of_goods_sold(all_runs=True)
         # What has been paid for and NOT yet sold. Everything spent, less the
         # cost of the units that have left -- so a restock that just bought
         # 1,212 Sets shows as stock rather than as a loss.
@@ -19466,10 +19516,10 @@ def note_chaos_lot(unit_cost: int, listed_price: int, qty: int) -> None:
         return
     try:
         conn.execute(
-            "INSERT INTO chaos_lots (unit_cost, listed_price, qty, created) "
-            "VALUES (?,?,?,?)",
+            "INSERT INTO chaos_lots (unit_cost, listed_price, qty, created, "
+            "run) VALUES (?,?,?,?,?)",
             (int(unit_cost), int(listed_price), int(max(1, qty)),
-             _dt.datetime.now().isoformat(" ", "seconds")))
+             _dt.datetime.now().isoformat(" ", "seconds"), run_id()))
         conn.commit()
     except Exception:  # noqa: BLE001 - bookkeeping must never block a listing
         pass
@@ -19481,14 +19531,14 @@ def note_chaos_lot(unit_cost: int, listed_price: int, qty: int) -> None:
 
 
 def chaos_lots_cheapest_first() -> list:
-    """Outstanding lots as (id, unit_cost), cheapest first."""
+    """Outstanding lots THIS RUN listed, as (id, unit_cost), cheapest first."""
     conn = sales_db()
     if conn is None:
         return []
     try:
         return [(int(r[0]), int(r[1])) for r in conn.execute(
-            "SELECT id, unit_cost FROM chaos_lots "
-            "ORDER BY unit_cost ASC, id ASC").fetchall()]
+            "SELECT id, unit_cost FROM chaos_lots WHERE run = ? "
+            "ORDER BY unit_cost ASC, id ASC", (run_id(),)).fetchall()]
     except Exception:  # noqa: BLE001
         return []
     finally:
@@ -19509,8 +19559,8 @@ def chaos_lots() -> list:
         return []
     try:
         return [tuple(r) for r in conn.execute(
-            "SELECT id, unit_cost, listed_price FROM chaos_lots "
-            "ORDER BY unit_cost DESC, id ASC").fetchall()]
+            "SELECT id, unit_cost, listed_price FROM chaos_lots WHERE run = ? "
+            "ORDER BY unit_cost DESC, id ASC", (run_id(),)).fetchall()]
     except Exception:  # noqa: BLE001
         return []
     finally:
