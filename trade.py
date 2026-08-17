@@ -4271,6 +4271,11 @@ def clear_carried(slot: int) -> None:
 # reason -- a new launch cannot know what happened to the bag in between.
 _CHAOS_STRANDED = False
 
+# WHICH CYCLE IS RUNNING, so ensure_work_tab_empty can tell a tab this run
+# dirtied from one it merely inherited. 0 means no loop is running -- a
+# one-shot command -- which is treated as "not mine", the lenient reading.
+_CYCLE_NUMBER = 0
+
 # ONE RANGE WALK PER CYCLE, SHARED.
 #
 # chaos_pass and restock_pass both need to know what is listed past the first
@@ -14889,27 +14894,42 @@ def ensure_work_tab_empty(timeout: float = 8.0, verbose: bool = True) -> bool:
     if require_empty_work_tab(verbose=verbose):
         return True
 
-    # REFUSE THE CYCLE, NEVER THE RUN.
+    # WHOSE MESS IS IT? That is the whole question, and the cycle number
+    # answers it.
     #
-    # It must refuse: relist() finds the cancelled item by diffing the
-    # inventory, and that diff is ambiguous while anything is in the tab -- on
-    # 2026-08-09, waving it through picked 7 carried Sets out of the diff
-    # instead of the 12 Epic Boosters that had just been cancelled, and
-    # stranded them. Listing it blind is worse still: that path reached for
-    # 175,000,000 twice against 54 Upgrade Core (Ultimate) worth 469,469 each.
+    # On cycle 1 the tab was dirty before this run touched anything. That is
+    # not this run's business -- it cannot know whether a human emptied the bag
+    # in between -- so it skips and carries on. Dying there is how four runs on
+    # 2026-08-09 ended before doing any work.
     #
-    # But refusing the RUN is not the script's call to make. A tab left by a
-    # previous launch is not this run's business -- it cannot know whether a
-    # human emptied the bag in between -- and dying on cycle 1 over it is how
-    # four runs on 2026-08-09 ended before doing any work. The failure breaker
-    # already bounds a fault that repeats every cycle.
-    if verbose:
-        why = ("this run's own working stock" if carried_total() > 0
-               or chaos_stranded() else
-               "stock this script cannot name from a slot")
-        print(f"  inventory tab {WORK_TAB} is not empty ({why}); skipping "
-              f"this cycle. Nothing has been listed or cancelled.")
-    return False
+    # After that the run dirtied it, and skipping only defers the same answer.
+    # Making every cycle skippable was too broad a reading of that rule: on
+    # 2026-08-17 it turned one clear stop into three failed cycles reaching the
+    # breaker fifteen seconds later, which is exactly what the comment this
+    # replaced predicted -- "a strand does not clear itself, so retrying it
+    # every cycle just spends the breaker's budget arriving at the same place".
+    #
+    # Either way it must refuse to RELIST: relist() finds the cancelled item by
+    # diffing the inventory, and that diff is ambiguous while anything is in
+    # the tab -- on 2026-08-09, waving it through picked 7 carried Sets out of
+    # the diff instead of the 12 Epic Boosters just cancelled. Listing the
+    # contents blind is worse: that path reached for 175,000,000 twice against
+    # 54 Upgrade Core (Ultimate) worth 469,469 each.
+    mine = carried_total() > 0 or chaos_stranded()
+    why = ("this run's own working stock" if mine
+           else "stock this script cannot name from a slot")
+    if _CYCLE_NUMBER <= 1:
+        if verbose:
+            print(f"  inventory tab {WORK_TAB} is not empty ({why}) and this "
+                  f"run has not touched it yet; skipping this cycle rather "
+                  f"than refusing the run. Nothing has been listed or "
+                  f"cancelled.")
+        return False
+    raise FatalAbort(
+        f"inventory tab {WORK_TAB} is not empty on cycle {_CYCLE_NUMBER} "
+        f"({why}), so this run put it there and it will not clear itself. "
+        f"Clear the tab by hand and start again. Nothing has been listed or "
+        f"cancelled.")
 
 
 def changed_slots(
@@ -19530,6 +19550,48 @@ def note_chaos_lot(unit_cost: int, listed_price: int, qty: int) -> None:
             pass
 
 
+def chaos_sets_in_work_tab(verbose: bool = True) -> int:
+    """Crafted Chaos Core Sets sitting in the work tab, counted from their names.
+
+    THE FAILURE THIS EXISTS FOR. chaos_pass is a straight line -- count, price,
+    BUY, craft, compress, list -- and every step after the buy is unreachable
+    without one. So a pass that crafted its Sets and then failed to compress
+    them left them in the tab permanently: re-entering could not reach the
+    compress step, the work-tab gate refused every later cycle, and three of
+    those stopped the run.
+
+    Measured 2026-08-17: `crafted 183 Chaos Core Set(s)` at 1352s, `could not
+    reach inventory tab 4` at 1360s, and the run was dead 4 minutes later with
+    183 Sets and five uncollected sales behind the gate.
+
+    Counted by NAME, not by occupancy: a compressed bundle carries its own
+    count ("Chaos Core Set X 183"), and occupied_slots cannot tell a Set from
+    anything else that happens to be in the slot.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    origin = inventory_origin()
+    if origin is None:
+        return 0
+    if not select_inventory_tab(CHAOS_WORK_TAB, origin):
+        say(f"  could not reach inventory tab {CHAOS_WORK_TAB} to look for "
+            f"stranded Sets.")
+        return 0
+    park_cursor()
+    total = 0
+    for row, col in occupied_slots(grab(), origin):
+        name = (read_slot_tooltip(row, col) or {}).get("name") or ""
+        if not is_chaos_set(name):
+            continue
+        total += max(1, pack_size(name))
+    if total:
+        say(f"  {total} crafted Chaos Core Set(s) already in tab "
+            f"{CHAOS_WORK_TAB}.")
+    return total
+
+
 def chaos_lots_cheapest_first() -> list:
     """Outstanding lots THIS RUN listed, as (id, unit_cost), cheapest first."""
     conn = sales_db()
@@ -20596,30 +20658,46 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                        price=core.price,
                        spent=core.price * report.get("take", 0), running=got)
 
+            # NOTHING BOUGHT IS NOT NOTHING TO DO. A previous pass may have
+            # crafted its Sets and then failed to compress them, and those need
+            # FINISHING, not buying -- the buy is upstream of every step that
+            # would clear them, so returning here strands them for good.
+            resume = 0
             if got < 1:
-                say("Chaos: nothing was bought; nothing to craft.")
-                return False
-            say(f"Chaos: {got} Core(s) obtained"
-                + ("." if got >= CHAOS_BUY_QUANTITY else
-                   f" of {CHAOS_BUY_QUANTITY} - crafting what there is rather "
-                   f"than leaving it in the bag."))
+                resume = chaos_sets_in_work_tab(verbose=verbose)
+                if resume < 1:
+                    say("Chaos: nothing was bought; nothing to craft.")
+                    return False
+                say(f"Chaos: nothing was bought, but {resume} crafted Set(s) "
+                    f"are in the work tab from a pass that did not finish - "
+                    f"compressing and listing them instead.")
+                record("chaos.resume_uncompressed", sets=resume)
+            else:
+                say(f"Chaos: {got} Core(s) obtained"
+                    + ("." if got >= CHAOS_BUY_QUANTITY else
+                       f" of {CHAOS_BUY_QUANTITY} - crafting what there is "
+                       f"rather than leaving it in the bag."))
 
-            # 5. Craft. The shop covers the craft window, so it goes first.
-            leave_shop(verbose=verbose)
-            time.sleep(0.5)
-            if not open_craft_window(timeout=timeout, verbose=verbose):
-                say("Chaos: the craft window would not open; the Cores are in "
-                    "the inventory, uncrafted.")
-                record("chaos.craft_window_failed")
-                note_chaos_strand()
-                return False
-            made = craft_chaos_sets(timeout=timeout, verbose=verbose)
-            press_escape()          # the window closes with ESC
-            time.sleep(0.8)
-            if made < 1:
-                say("Chaos: nothing was crafted; stopping before listing.")
-                note_chaos_strand()
-                return False
+            if resume:
+                # Already crafted. Straight to compress, below.
+                made = resume
+            else:
+                # 5. Craft. The shop covers the craft window, so it goes first.
+                leave_shop(verbose=verbose)
+                time.sleep(0.5)
+                if not open_craft_window(timeout=timeout, verbose=verbose):
+                    say("Chaos: the craft window would not open; the Cores are "
+                        "in the inventory, uncrafted.")
+                    record("chaos.craft_window_failed")
+                    note_chaos_strand()
+                    return False
+                made = craft_chaos_sets(timeout=timeout, verbose=verbose)
+                press_escape()          # the window closes with ESC
+                time.sleep(0.8)
+                if made < 1:
+                    say("Chaos: nothing was crafted; stopping before listing.")
+                    note_chaos_strand()
+                    return False
 
             # 6. Compress into the single bundle the shop sells as one row.
             #
@@ -21780,6 +21858,9 @@ def run_loop(
             apply_live_config(verbose=verbose)
 
             cycle += 1
+            # Published so ensure_work_tab_empty can tell whose mess the work
+            # tab is: inherited on cycle 1, this run's own after that.
+            globals()["_CYCLE_NUMBER"] = cycle
             started = time.monotonic()
             # THE OCR BILL SO FAR, EVERY CYCLE -- not only at exit.
             #
