@@ -24425,7 +24425,16 @@ def main() -> None:
     # worth having -- a live run reaches states that sitting and capturing
     # never will, and the ones where it aborts are the most useful of all.
     global RECORD_ENABLED
-    RECORD_ENABLED = (args.record or clicking) and not args.no_record
+    # --debug-frames COUNTS AS ASKING FOR FRAMES. It set DEBUG_ACTIONS above and
+    # then recorded nothing, because `clicking` is False for a run driven by
+    # config.json's run block -- no action flag is on the command line, so the
+    # one kind of run most worth capturing was the one kind that could not be.
+    #
+    # Measured 2026-08-18: run_2026-08-18_131444 printed "--debug-frames is ON"
+    # and never printed "Recording frames to ...", and the newest frame in the
+    # corpus was from eight minutes before it started.
+    RECORD_ENABLED = ((args.record or clicking or args.debug_frames)
+                      and not args.no_record)
     if RECORD_ENABLED:
         print(f"Recording frames to {RECORD_DIR} (--no-record to turn off).")
 
