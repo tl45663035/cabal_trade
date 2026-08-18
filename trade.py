@@ -19774,6 +19774,33 @@ def chaos_margin_now(verbose: bool = True,
     return margin
 
 
+def chaos_set_unit_now(verbose: bool = True) -> "int | None":
+    """The Chaos Core Set's per-unit price, read NOW. None if it did not read.
+
+    The buy loop used to judge every order against a set_unit taken once at the
+    margin gate. Measured 2026-08-17: the gate read it at t=88.0 and fourteen
+    orders over the next 393 seconds all printed the same 708,994 while the
+    Core side moved 690,679 -> 719,000 under it. Half the margin was a
+    snapshot, and the stale half is the one that decides whether the trade is
+    still worth doing.
+
+    Row 1, like every other read here.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    sets_ = run_favourite_search(CHAOS_SET_SLOT, verbose=verbose)
+    if not sets_:
+        say("  the Chaos Core Set search returned nothing.")
+        return None
+    offer = _row_one(sets_)
+    if offer is None:
+        say("  row 1 of the Chaos Core Set search did not read.")
+        return None
+    return offer.price // max(1, offer.pack)
+
+
 def chaos_rows_in(listings: list, scope: "set | None") -> list:
     """The chaos bundles this batch is responsible for.
 
@@ -20494,6 +20521,30 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # down is dearer -- that is what sorted Low to High means -- so
                 # the margin is a different number on every order, and a buy
                 # made without showing it is a buy at a price nobody saw.
+                # BOTH SIDES LIVE. set_unit_price was bound once at the gate
+                # and reused for the whole pass, so the printed margin was a
+                # fresh Core price against a Set price that could be minutes
+                # old -- and a Set price that has FALLEN since is exactly the
+                # case where the trade has stopped being worth doing.
+                #
+                # Re-read here, and USE the new number: the reservation
+                # `set_unit_price` is replaced, not merely printed, so every
+                # later order judges against the newest reading too. A read
+                # that fails leaves the previous value in place rather than
+                # abandoning the order, because a missed search is not
+                # evidence that the price moved.
+                fresh_set = chaos_set_unit_now(verbose=verbose)
+                if fresh_set:
+                    if set_unit_price and fresh_set != set_unit_price:
+                        say(f"  the Set price moved {set_unit_price:,} -> "
+                            f"{fresh_set:,} since the last order.")
+                        record("chaos.set_price_moved", was=set_unit_price,
+                               now=fresh_set)
+                    set_unit_price = fresh_set
+                elif set_unit_price:
+                    say(f"  the Set price did not re-read; judging against "
+                        f"the last good {set_unit_price:,}.")
+
                 if set_unit_price:
                     here = chaos_margin(core.price, set_unit_price, 1)
                     say(f"  Chaos Core {core.price:,}  Set/unit "
