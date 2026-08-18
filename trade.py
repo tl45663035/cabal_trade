@@ -1944,6 +1944,10 @@ PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
 # the same x the Registration Extension dialog's Cancel has been recorded at
 # 1693 times, so the button column is shared furniture, not a coincidence.
 PURCHASE_CANCEL_DX = 180
+# How many times to re-press Confirmation when the shop slot will not clear.
+# The click is occasionally not taken; three is well past what has ever been
+# needed and still bounded.
+CONFIRM_RECLICKS = 3
 
 PURCHASE_NAME_MAX_X = 700          # the Name cell ends before the QTY column
 PURCHASE_PRICE_X = (900, 1080)     # the Price cell
@@ -16753,9 +16757,35 @@ def register_item(
                 f"a confirmation dialog is still open after {MAX_CONFIRM_STEPS} steps")
 
         # The shop slot emptying is the evidence the listing went through.
+        #
+        # AND IF IT HAS NOT EMPTIED, LOOK FOR THE BUTTON AGAIN. The
+        # Confirmation click is not always taken -- measured by hand
+        # 2026-08-18, the same button at the same coordinate needed two
+        # presses more than once, and in run_2026-08-18_134333 this aborted
+        # with "the shop slot did not clear after Confirmation" on a 210-Set
+        # bundle whose price had been verified on screen and whose dialog the
+        # band reader had just found at (1291, 853) conf 96.
+        #
+        # The require() above cannot catch it: await_dialog(None) asks
+        # dialog_kind, which is blind to this dialog, so it reports the dialog
+        # gone the instant it is asked and this loop starts against a modal
+        # that is still up. dialog_button_band can see it, and parks the cursor
+        # first so the button it is about to press is not hidden under it.
         deadline = time.monotonic() + timeout
+        reclicks = 0
         while time.monotonic() < deadline:
             after = read_register_panel(grab())
+            if after["loaded"] and reclicks < CONFIRM_RECLICKS:
+                again = dialog_button_band(CONFIRM_WORD)
+                if again is not None:
+                    reclicks += 1
+                    say(f"  the shop slot has not cleared and {CONFIRM_WORD} "
+                        f"is still on screen at {again.centre}; pressing it "
+                        f"again ({reclicks} of {CONFIRM_RECLICKS}).")
+                    record("register.reconfirm", attempt=reclicks)
+                    click(*again.centre)
+                    deadline = time.monotonic() + timeout
+                    continue
             if not after["loaded"]:
                 if report is not None:
                     report["price"] = price
