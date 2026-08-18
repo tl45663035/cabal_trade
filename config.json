@@ -38,7 +38,7 @@
   "CHAOS_MARGIN_FLOOR": 7000,
   "CHAOS_UNDERCUT": 1,
   "CHAOS_RECIPE": 2,
-  "BUY_ENABLED": false,
+  "BUY_ENABLED": true,
   "RESTOCK_TARGET": 200,
   "BUY_MAXIMUM": 500,
   "RESTOCK_AT_OR_BELOW_ROWS": 1,
@@ -57,7 +57,7 @@
     "Upgrade Core (Ultimate)": 10000
   },
   "run": {
-    "relist_rows": "1-8",
+    "relist_rows": "1-15",
     "for_minutes": 1000,
     "every_minutes": 0,
     "premium": true,
