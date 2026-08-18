@@ -11874,6 +11874,13 @@ def relist_rows(
                 record("relist.sibling_collision", item=name,
                        already=_absolute(match), taking=_absolute(spare[0]))
                 match = spare[0]
+            elif match.action == "receive":
+                say(f"  every row matching {name!r} has been handled this "
+                    f"cycle, but row {_absolute(match)} is SOLD and its Alz "
+                    f"is still on the table - collecting it. A collect cannot "
+                    f"be done twice: the row is empty afterwards.")
+                record("relist.receive_past_collision", item=name,
+                       row=_absolute(match))
             else:
                 say(f"  every row matching {name!r} has already been relisted "
                     "this cycle; skipping rather than doing one twice.")
