@@ -5314,15 +5314,31 @@ def open_purchase_tab(timeout: float = 10.0, verbose: bool = True) -> bool:
         if verbose:
             print(message)
 
-    if purchase_tab_open():
-        return set_purchase_sort_low_to_high(verbose=verbose)
+    # FALL THROUGH TO THE CLICK, DO NOT RETURN THE SORT'S VERDICT.
+    #
+    # These two short-circuits used to `return set_purchase_sort_low_to_high()`
+    # outright, which made the tab click below UNREACHABLE whenever
+    # purchase_tab_open() misread. Measured 2026-08-18, 86 idle cycles in a
+    # row: open_trade_window lands on the REGISTER tab, purchase_tab_open()
+    # said True on the settling frame, so the sort helper ran -- and its own
+    # attempt 2 correctly reported "not on the Purchase tab", returned False,
+    # and that False came straight back out. Nothing ever clicked Purchase, so
+    # chaos could not price, bought nothing, listed nothing, and the loop span
+    # for 92 minutes with an empty shop and ZERO failed cycles to trip the
+    # breaker.
+    #
+    # A sort that fails is evidence the tab may be wrong, not proof the whole
+    # call is lost. Clicking the tab and letting the verify loop below re-check
+    # costs one click on a path that was about to give up.
+    if purchase_tab_open() and set_purchase_sort_low_to_high(verbose=verbose):
+        return True
 
     if not trade_window_open():
         say("  the Trade window is shut; opening it first.")
         if not open_trade_window(timeout=max(timeout, 15.0), verbose=verbose):
             return False
-        if purchase_tab_open():
-            return set_purchase_sort_low_to_high(verbose=verbose)
+        if purchase_tab_open() and set_purchase_sort_low_to_high(verbose=verbose):
+            return True
 
     # THE TAB IS FIXED FURNITURE. DO NOT READ IT.
     #
