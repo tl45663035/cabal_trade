@@ -9807,13 +9807,54 @@ def read_register_panel(source: Image.Image | Path | str) -> dict:
             "net_sales": net, "loaded": loaded, "slot_stdev": round(stdev, 1)}
 
 
+def dialog_kind_by_buttons(shot) -> "str | None":
+    """Which dialog is up, decided by its BUTTON ROW rather than its title.
+
+    Every confirm-style dialog in this game is identified by the buttons it
+    carries: Confirmation+Cancel is the confirmation dialog, Register+Cancel is
+    the Registration Extension dialog, Receive is Confirm Receipt. The titles
+    are what will not read; the buttons read at confidence 96-97.
+    """
+    if dialog_button_band(RECEIPT_WORD, source=shot) is not None:
+        return "receipt"
+    has_confirm = dialog_button_band(CONFIRM_WORD, source=shot) is not None
+    has_register = dialog_button_band(REGISTER_TAB_WORD, source=shot) is not None
+    if has_confirm and not has_register:
+        return "confirm"
+    if has_register and not has_confirm:
+        return "extension"
+    return None
+
+
 def await_dialog(kind: str | None, timeout: float = 8.0, poll: float = 0.35):
     """Poll until the dialog state equals `kind`. Returns the screenshot proving
-    it, or None on timeout. `kind=None` waits for every dialog to be gone."""
+    it, or None on timeout. `kind=None` waits for every dialog to be gone.
+
+    ASK THE BUTTONS FIRST. dialog_kind reads the TITLE, and the titles of these
+    dialogs do not read -- so every wait used to burn its whole timeout and
+    then be rescued afterwards by a band read that succeeds instantly.
+
+    Measured on run_2026-08-18_145149, one cancel of one row:
+
+      12.0s  dialog_kind sees: None
+      10.9s  dialog_kind sees: None
+      12.6s  Confirmation button at (1291, 853) (conf 96)
+      10.7s  Cancel button at (1472, 853) (conf 97)
+
+    Three dialogs a cancel, ten to twelve seconds of pure waiting each, out of
+    39.6s for the whole step. The rescues restored correctness; they could not
+    give the time back. This does.
+
+    The cursor is parked once up front: a button under it is highlighted and
+    will not read, which is how a wait can be blind to the very dialog it is
+    waiting for.
+    """
+    if kind is not None:
+        park_cursor()
     deadline = time.monotonic() + timeout
     while True:
         shot = grab()
-        if dialog_kind(shot) == kind:
+        if dialog_kind_by_buttons(shot) == kind or dialog_kind(shot) == kind:
             return shot
         if time.monotonic() >= deadline:
             return None
