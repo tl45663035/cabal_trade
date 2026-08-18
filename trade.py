@@ -20792,8 +20792,36 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
             #
             # This call was here and was removed by a careless range edit,
             # which is how the bug arrived.
-            if not ensure_shop_ready(verbose=verbose):
+            # RETRY, AND OWN WHAT IS LEFT BEHIND IF IT STILL FAILS.
+            #
+            # One attempt, and the goods were already crafted and compressed --
+            # so a single transient here strands the pass's own output. It is
+            # transient: measured 2026-08-18 in run_2026-08-18_114558, "the
+            # Agent Shop did not open from the key" was followed by a plain
+            # "the Agent Shop is open" on the very next attempt, seconds later.
+            #
+            # The cost of not retrying was the whole run. 3 crafted Sets sat in
+            # the work tab, and because this was the ONE failure path in this
+            # function that did not note the strand, cycles 4 and 5 read them
+            # as "stock this script cannot name from a slot" rather than as
+            # chaos's own, aborted on the empty-work-tab gate, and the breaker
+            # ended a run that was otherwise working.
+            ready = ensure_shop_ready(verbose=verbose)
+            if not ready:
+                say("Chaos: the Agent Shop did not reopen; closing anything "
+                    "left over and trying once more before giving up.")
+                record("chaos.reopen_retry")
+                leave_shop(verbose=False)
+                time.sleep(1.0)
+                ready = ensure_shop_ready(verbose=verbose)
+            if not ready:
                 say("Chaos: the Agent Shop would not reopen to list the Sets.")
+                # Named so the next cycle can recover them instead of refusing
+                # over a tab it cannot account for. The cost basis goes with
+                # the flag: these Sets ARE paid for, and the listing path
+                # refuses without it.
+                note_chaos_strand(
+                    unit_cost=(-(-paid // paid_units)) if paid_units else 0)
                 return False
             # And back to the tab the compressed bundle is actually on.
             origin = inventory_origin()
