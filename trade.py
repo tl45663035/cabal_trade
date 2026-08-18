@@ -11863,7 +11863,9 @@ def relist_rows(
                 return view_row.index
             return top_index + view_row.index - 1
 
-        if _absolute(match) in handled:
+        same_name = [r for r in current
+                     if _canonical(r.name) == _canonical(name)]
+        if _absolute(match) in handled and len(same_name) > 1:
             spare = [r for r in current
                      if _absolute(r) not in handled
                      and _canonical(r.name) == _canonical(name)]
