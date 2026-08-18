@@ -93,11 +93,16 @@ def find_button(word, timeout=None):
     return None
 
 
+def dialog_buttons(image=None):
+    want = {_key(DISMISS_WORD), _key(CONFIRM_WORD)}
+    return [t for t, _c, _p in popup_words(image) if _key(t) in want]
+
+
 def dialog_gone(timeout=None):
     deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
                                    else timeout)
     while time.monotonic() < deadline:
-        if not popup_words():
+        if not dialog_buttons():
             return True
         time.sleep(ACTION_GAP)
     return False
