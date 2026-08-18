@@ -111,37 +111,60 @@ def wheel(rows, verbose=True):
     return notches
 
 
-class Row:
-    __slots__ = ("name", "qty", "list_price", "buy_cost")
+_PACK = re.compile(r"\bX\s*(\d+)\s*$", re.IGNORECASE)
 
-    def __init__(self, name, qty=1, list_price=0, buy_cost=0):
+
+def pack_size(name):
+    found = _PACK.search((name or "").strip())
+    return int(found.group(1)) if found else 1
+
+
+class Row:
+    __slots__ = ("name", "qty", "price", "buy_cost", "units")
+
+    def __init__(self, name, qty=1, price=0, buy_cost=0, units=None):
         self.name = name
         self.qty = int(qty)
-        self.list_price = int(list_price)
+        self.price = int(price)
         self.buy_cost = int(buy_cost)
+        self.units = int(units) if units is not None \
+            else int(qty) * pack_size(name)
 
     @property
-    def list_total(self):
-        return self.list_price * self.qty
+    def pack(self):
+        return pack_size(self.name)
+
+    @property
+    def sell_total(self):
+        return self.price * self.qty
+
+    @property
+    def sell_unit(self):
+        return self.sell_total // max(1, self.units)
 
     @property
     def cost_total(self):
-        return self.buy_cost * self.qty
+        return self.buy_cost * self.units
 
     @property
     def margin(self):
-        return self.list_total - self.cost_total
+        return self.sell_total - self.cost_total
+
+    @property
+    def margin_unit(self):
+        return self.sell_unit - self.buy_cost
 
     @property
     def key(self):
         return _key(self.name)
 
     def copy(self):
-        return Row(self.name, self.qty, self.list_price, self.buy_cost)
+        return Row(self.name, self.qty, self.price, self.buy_cost, self.units)
 
     def __repr__(self):
-        return (f"Row({self.name!r}, qty={self.qty}, "
-                f"list={self.list_price:,}, cost={self.buy_cost:,})")
+        return (f"Row({self.name!r}, qty={self.qty}, units={self.units}, "
+                f"price={self.price:,}, buy={self.buy_cost:,}, "
+                f"sell_unit={self.sell_unit:,}, margin={self.margin:+,})")
 
 
 class RowModel:
@@ -321,8 +344,9 @@ class RowModel:
         rows = list(self._slots.values())
         return {
             "rows": len(rows),
-            "units": sum(r.qty for r in rows),
-            "listed": sum(r.list_total for r in rows),
+            "items": sum(r.qty for r in rows),
+            "units": sum(r.units for r in rows),
+            "listed": sum(r.sell_total for r in rows),
             "cost": sum(r.cost_total for r in rows),
             "margin": sum(r.margin for r in rows),
         }
@@ -335,8 +359,10 @@ class RowModel:
         for index in self.occupied():
             row = self._slots[index]
             out.append(f"    {index:2}  {row.name} x{row.qty} "
-                       f"list {row.list_total:,} cost {row.cost_total:,} "
-                       f"margin {row.margin:+,}")
+                       f"({row.units} unit) sell {row.sell_total:,} "
+                       f"@ {row.sell_unit:,}/u  cost {row.cost_total:,} "
+                       f"@ {row.buy_cost:,}/u  margin {row.margin:+,} "
+                       f"({row.margin_unit:+,}/u)")
         gaps = self.holes()
         if gaps:
             out.append(f"  holes at {gaps} - these persist, nothing renumbers")
