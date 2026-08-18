@@ -71,7 +71,6 @@ def seed(verbose=True):
     found = {}
     for index in range(1, row_model.MAX_TOP + 1):
         model.scroll_to(index, verbose=False)
-        time.sleep(ACTION_GAP)
         text = row_model.read_row_one()
         if row_model.row_one_is_empty(text):
             continue

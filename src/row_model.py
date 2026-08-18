@@ -23,7 +23,7 @@ WORK_TAB = _FACTS["work_tab"]
 GRID = _FACTS["grid_size"]
 
 MAX_TOP = CAPACITY - VISIBLE + 1
-HOME_NOTCHES = CAPACITY + VISIBLE
+HOME_NOTCHES = MAX_TOP
 
 EMPTY_MARKER = _SHARED["text"]["empty_row"]
 _TEXT = _SHARED["text"]
@@ -136,7 +136,7 @@ def wheel(rows, verbose=True):
         return 0
     direction = -1 if rows > 0 else 1
     inv._user32.SetCursorPos(int(x), int(y))
-    time.sleep(ACTION_GAP)
+    time.sleep(WHEEL_GAP)
     event = _wheel_event(direction)
     for _ in range(notches):
         sent = inv._user32.SendInput(1, ctypes.byref(event),
@@ -146,7 +146,7 @@ def wheel(rows, verbose=True):
                 f"SendInput sent {sent} of 1 wheel event "
                 f"(GetLastError {ctypes.get_last_error()})")
         time.sleep(WHEEL_GAP)
-    time.sleep(ACTION_GAP)
+    time.sleep(WHEEL_GAP)
     if verbose:
         print(f"  wheel {notches} event(s) {'down' if rows > 0 else 'up'} "
               f"at ({x}, {y}) for {rows:+d} row(s)")
