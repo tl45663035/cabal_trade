@@ -25,7 +25,9 @@
     "VK_I": 73,
     "VK_MENU": 18,
     "VK_ESCAPE": 27,
-    "INPUT_STRUCT_SIZE": 40
+    "INPUT_STRUCT_SIZE": 40,
+    "SW_RESTORE": 9,
+    "DWORD_MASK": 4294967295
   },
   "game": {
     "title_hint": "PlayCabal"
@@ -52,7 +54,8 @@
     "psm": "11",
     "row_psm": "7",
     "digit_psm": "13",
-    "digit_whitelist": "0123456789,"
+    "digit_whitelist": "0123456789,",
+    "timeout": 60
   },
   "regions": {
     "park": [
@@ -133,7 +136,18 @@
     "purchase_header_up": 66,
     "purchase_header_down": 10,
     "purchase_divider_sigma": 3.0,
-    "purchase_cell_inset": 2
+    "purchase_cell_inset": 2,
+    "min_client_side": 100,
+    "fit_pitch_step": 0.02,
+    "fit_start_step": 0.5,
+    "fav_peak_cut": 0.6,
+    "fav_merge_gap": 40,
+    "fav_pitch_spread": 4,
+    "sort_pad_left": 40,
+    "sort_pad_right": 90,
+    "sort_pad_y": 16,
+    "scroll_point_inset": 600,
+    "panel_moved_slack": 30
   },
   "text": {
     "empty_row": "premiumexclusiveslot",
@@ -142,6 +156,7 @@
     "pack_marker": "\\bX\\s*(\\d+)\\s*$"
   },
   "game_facts": {
+    "favourite_count": 10,
     "grid_size": 8,
     "agent_shop_tab": 8,
     "agent_shop_slot": [
@@ -158,7 +173,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-08-17T23:21:46",
+      "measured_at": "2026-08-18T06:53:34",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -544,17 +559,17 @@
         ],
         "favourite_pitch": 57.0,
         "evidence": {
-          "register_conf": 96,
+          "register_conf": 97,
           "favourite_pitch_spread": 0,
           "purchase_is_derived": true
         },
         "purchase_sort_region": [
-          612,
+          803,
           178,
-          1043,
+          1045,
           214
         ],
-        "purchase_sort_text_seen": "ne y Price:Low to",
+        "purchase_sort_text_seen": "y to",
         "purchase_buy_x": 1124,
         "purchase_row_pitch": 76,
         "purchase_row_one_y": 340,

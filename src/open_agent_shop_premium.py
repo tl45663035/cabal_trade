@@ -16,6 +16,7 @@ ACTION_GAP = CAL["timing"]["action_gap"]
 
 
 CALIBRATED_ALZ = tuple(CAL["inventory"]["alz_box"])
+PANEL_MOVED_SLACK = CAL["detect"]["panel_moved_slack"]
 
 
 def grab():
@@ -32,7 +33,8 @@ def panel_open(image=None, verbose: bool = True) -> bool:
     if box is None:
         return False
     right, top = box[2], box[1]
-    if abs(right - CALIBRATED_ALZ[2]) > 30 or abs(top - CALIBRATED_ALZ[1]) > 30:
+    if (abs(right - CALIBRATED_ALZ[2]) > PANEL_MOVED_SLACK
+            or abs(top - CALIBRATED_ALZ[1]) > PANEL_MOVED_SLACK):
         if verbose:
             print(f"  the Inventory panel is open but has MOVED: balance at "
                   f"({right}, {top}), calibrated at ({CALIBRATED_ALZ[2]}, "

@@ -13,6 +13,7 @@ _T = _SHARED["timing"]
 INPUT_MOUSE = _IN["INPUT_MOUSE"]
 MOUSEEVENTF_WHEEL = _IN["MOUSEEVENTF_WHEEL"]
 WHEEL_DELTA = _IN["WHEEL_DELTA"]
+DWORD_MASK = _IN["DWORD_MASK"]
 ACTION_GAP = _T["action_gap"]
 WHEEL_GAP = _T["wheel_gap"]
 
@@ -81,7 +82,7 @@ def _wheel_event(direction):
     return inv._Input(
         type=INPUT_MOUSE,
         u=inv._InputUnion(mi=inv._MouseInput(
-            0, 0, ctypes.c_ulong(direction * WHEEL_DELTA & 0xFFFFFFFF).value,
+            0, 0, ctypes.c_ulong(direction * WHEEL_DELTA & DWORD_MASK).value,
             MOUSEEVENTF_WHEEL, 0, None)))
 
 

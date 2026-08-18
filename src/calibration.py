@@ -43,6 +43,8 @@ DEFAULTS = {
         "VK_MENU": 0x12,
         "VK_ESCAPE": 0x1B,
         "INPUT_STRUCT_SIZE": 40,
+        "SW_RESTORE": 9,
+        "DWORD_MASK": 0xFFFFFFFF,
     },
     "game": {
         "title_hint": "PlayCabal",
@@ -61,6 +63,7 @@ DEFAULTS = {
         "row_psm": "7",
         "digit_psm": "13",
         "digit_whitelist": "0123456789,",
+        "timeout": 60,
     },
     "regions": {
         "park": [0.5078, 0.7137],
@@ -93,6 +96,17 @@ DEFAULTS = {
         "purchase_header_down": 10,
         "purchase_divider_sigma": 3.0,
         "purchase_cell_inset": 2,
+        "min_client_side": 100,
+        "fit_pitch_step": 0.02,
+        "fit_start_step": 0.5,
+        "fav_peak_cut": 0.6,
+        "fav_merge_gap": 40,
+        "fav_pitch_spread": 4,
+        "sort_pad_left": 40,
+        "sort_pad_right": 90,
+        "sort_pad_y": 16,
+        "scroll_point_inset": 600,
+        "panel_moved_slack": 30,
     },
     "text": {
         "empty_row": "premiumexclusiveslot",
@@ -113,6 +127,7 @@ DEFAULTS = {
         "10": "Upgrade Core Set (Ultimate)",
     },
     "game_facts": {
+        "favourite_count": 10,
         "grid_size": 8,
         "agent_shop_tab": 8,
         "agent_shop_slot": [1, 7],
@@ -181,8 +196,10 @@ def load(force: bool = False) -> dict:
             f"here, so they are not reused.")
 
     merged = dict(per)
-    for shared in DEFAULTS:
-        merged[shared] = data.get(shared) or DEFAULTS[shared]
+    for shared, default in DEFAULTS.items():
+        section = dict(default)
+        section.update(data.get(shared) or {})
+        merged[shared] = section
     merged["resolution"] = key
     return merged
 
@@ -228,6 +245,18 @@ PURCHASE_HEADER_UP = _DET["purchase_header_up"]
 PURCHASE_HEADER_DOWN = _DET["purchase_header_down"]
 PURCHASE_DIVIDER_SIGMA = _DET["purchase_divider_sigma"]
 PURCHASE_CELL_INSET = _DET["purchase_cell_inset"]
+MIN_CLIENT_SIDE = _DET["min_client_side"]
+FIT_PITCH_STEP = _DET["fit_pitch_step"]
+FIT_START_STEP = _DET["fit_start_step"]
+FAV_PEAK_CUT = _DET["fav_peak_cut"]
+FAV_MERGE_GAP = _DET["fav_merge_gap"]
+FAV_PITCH_SPREAD = _DET["fav_pitch_spread"]
+SORT_PAD_LEFT = _DET["sort_pad_left"]
+SORT_PAD_RIGHT = _DET["sort_pad_right"]
+SORT_PAD_Y = _DET["sort_pad_y"]
+SCROLL_POINT_INSET = _DET["scroll_point_inset"]
+OCR_TIMEOUT = _OCR["timeout"]
+FAVOURITE_COUNT = _S["game_facts"]["favourite_count"]
 
 GRID = _S["game_facts"]["grid_size"]
 ACTION_GAP = _S["timing"]["action_gap"]
@@ -242,7 +271,7 @@ def _client_rect():
     win = find_game_window()
     if win is not None:
         x, y, w, h = win[2]
-        if w > 100 and h > 100:
+        if w > MIN_CLIENT_SIDE and h > MIN_CLIENT_SIDE:
             return x, y, w, h
     w, h = screen_size()
     return 0, 0, w, h
@@ -314,7 +343,7 @@ def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
     crop.save(buf, "PNG")
     run = subprocess.run(
         [TESSERACT, "stdin", "stdout", "--psm", OCR_PSM, "tsv"],
-        input=buf.getvalue(), capture_output=True, timeout=60)
+        input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
     found = []
     for row in csv.DictReader(
             io.StringIO(run.stdout.decode("utf-8", "replace")), delimiter="\t"):
@@ -342,7 +371,7 @@ def read_line(image: Image.Image, box, scale: int = None):
     crop.save(buf, "PNG")
     run = subprocess.run(
         [TESSERACT, "stdin", "stdout", "--psm", ROW_PSM, "tsv"],
-        input=buf.getvalue(), capture_output=True, timeout=60)
+        input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
     words = []
     for row in csv.DictReader(
             io.StringIO(run.stdout.decode("utf-8", "replace")), delimiter="	"):
@@ -362,12 +391,13 @@ def read_digits(image: Image.Image, box, scale: int = None):
     run = subprocess.run(
         [TESSERACT, "stdin", "stdout", "--psm", DIGIT_PSM,
          "-c", "tessedit_char_whitelist=" + DIGIT_WHITELIST],
-        input=buf.getvalue(), capture_output=True, timeout=60)
+        input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
     digits = _NOT_DIGIT.sub("", run.stdout.decode("utf-8", "replace"))
     return int(digits) if digits else None
 
 
-def fit_periodic(profile, n, lo, hi, step=0.02):
+def fit_periodic(profile, n, lo, hi, step=None):
+    step = FIT_PITCH_STEP if step is None else step
     d = np.abs(np.diff(profile))
     d = d / (d.max() or 1.0)
     length = len(d)
@@ -375,7 +405,7 @@ def fit_periodic(profile, n, lo, hi, step=0.02):
     for pitch in np.arange(lo, hi, step):
         if pitch * n >= length - 1:
             continue
-        for start in np.arange(0, length - 1 - pitch * n, 0.5):
+        for start in np.arange(0, length - 1 - pitch * n, FIT_START_STEP):
             pos = (start + pitch * np.arange(n + 1)).round().astype(int)
             score = float(d[pos].min())
             if score > best[0]:
@@ -502,10 +532,10 @@ def calibrate_shop(verbose=True):
 
     band = np.asarray(image.crop(_box(TAB_BAND_F)).convert("L"), dtype=float)
     d = np.abs(np.diff(band.mean(axis=0)))
-    edges = sorted(int(i) for i in np.argsort(d)[::-1][:40])
+    edges = sorted(int(i) for i in np.argsort(d)[::-1][:EDGE_CANDIDATES])
     picked = []
     for i in edges:
-        if all(abs(i - p) > 15 for p in picked):
+        if all(abs(i - p) > EDGE_MIN_GAP for p in picked):
             picked.append(i)
     _cw = _client_rect()[2]
     _lo, _hi = BOUNDARY_WINDOW_F[0] * _cw, BOUNDARY_WINDOW_F[1] * _cw
@@ -518,7 +548,7 @@ def calibrate_shop(verbose=True):
     FAV = _box(FAV_BAND_F)
     prof = np.asarray(image.crop(FAV).convert("L"), dtype=float).mean(axis=0)
     floor, ceiling = prof.min(), prof.max()
-    cut = floor + (ceiling - floor) * 0.6
+    cut = floor + (ceiling - floor) * FAV_PEAK_CUT
     peaks, run = [], []
     for i, v in enumerate(prof):
         if v >= cut:
@@ -530,7 +560,7 @@ def calibrate_shop(verbose=True):
         peaks.append(max(run, key=lambda j: prof[j]))
     merged = []
     for i in peaks:
-        if merged and i - merged[-1] < 40:
+        if merged and i - merged[-1] < FAV_MERGE_GAP:
             if prof[i] > prof[merged[-1]]:
                 merged[-1] = i
         else:
@@ -542,12 +572,12 @@ def calibrate_shop(verbose=True):
     say(f"  favourites: {len(favourites)} found, pitch {f_pitch:.2f}px, "
         f"first {favourites[0] if favourites else None} "
         f"last {favourites[-1] if favourites else None}")
-    if len(favourites) != 10:
+    if len(favourites) != FAVOURITE_COUNT:
         raise RuntimeError(
-            f"expected 10 favourite slots, found {len(favourites)} at "
+            f"expected {FAVOURITE_COUNT} favourite slots, found {len(favourites)} at "
             f"{[p[0] for p in favourites]}. Not writing a calibration that "
             f"does not describe the row.")
-    if len(gaps) and (max(gaps) - min(gaps)) > 4:
+    if len(gaps) and (max(gaps) - min(gaps)) > FAV_PITCH_SPREAD:
         raise RuntimeError(
             f"the favourite slots are not evenly spaced: gaps {list(gaps)}. "
             f"Something other than a slot was picked up.")
@@ -625,8 +655,8 @@ def calibrate_purchase(shop, verbose=True):
             f"not have opened, or the band is wrong for this screen.")
     xs = [p[0] for _, _, p in sort_words]
     ys = [p[1] for _, _, p in sort_words]
-    out["purchase_sort_region"] = [min(xs) - 40, min(ys) - 16,
-                          max(xs) + 90, max(ys) + 16]
+    out["purchase_sort_region"] = [min(xs) - SORT_PAD_LEFT, min(ys) - SORT_PAD_Y,
+                          max(xs) + SORT_PAD_RIGHT, max(ys) + SORT_PAD_Y]
     out["purchase_sort_text_seen"] = " ".join(t for t, _, _ in sort_words)
     say(f"  sort reads {out['purchase_sort_text_seen']!r} -> region "
         f"{out['purchase_sort_region']}")
@@ -745,7 +775,7 @@ def calibrate_register_table(shop, verbose=True):
         "row_pitch": int(pitch),
         "row_one_box": [band[0], int(ys[0]) - pitch // 2,
                         band[2], int(ys[0]) + pitch // 2],
-        "table_point": [int(xs[len(xs) // 2]) - 600, int(ys[0]) + pitch],
+        "table_point": [int(xs[len(xs) // 2]) - SCROLL_POINT_INSET, int(ys[0]) + pitch],
         "rows_per_notch": 1,
         "register_rows_seen": len(marks),
     }

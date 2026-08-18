@@ -14,6 +14,7 @@ KEYEVENTF_SCANCODE = _IN["KEYEVENTF_SCANCODE"]
 MAPVK_VK_TO_VSC = _IN["MAPVK_VK_TO_VSC"]
 
 VK_I = _IN["VK_I"]
+SW_RESTORE = _IN["SW_RESTORE"]
 VK_MENU = _IN["VK_MENU"]
 VK_ESCAPE = _IN["VK_ESCAPE"]
 
@@ -110,7 +111,7 @@ def focus_game(settle: float = FOCUS_SETTLE) -> bool:
         return True
 
     if _user32.IsIconic(hwnd):
-        _user32.ShowWindow(hwnd, 9)
+        _user32.ShowWindow(hwnd, SW_RESTORE)
     _user32.SetForegroundWindow(hwnd)
     time.sleep(settle)
     if _user32.GetForegroundWindow() == hwnd:
