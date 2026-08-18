@@ -23,7 +23,7 @@ GRID = _FACTS["grid_size"]
 
 MAX_TOP = CAPACITY - VISIBLE + 1
 
-EMPTY_MARKER = "premiumexclusiveslot"
+EMPTY_MARKER = _SHARED["text"]["empty_row"]
 
 _NOT_ALNUM = re.compile(r"[^a-z0-9]")
 
@@ -111,7 +111,7 @@ def wheel(rows, verbose=True):
     return notches
 
 
-_PACK = re.compile(r"\bX\s*(\d+)\s*$", re.IGNORECASE)
+_PACK = re.compile(_SHARED["text"]["pack_marker"], re.IGNORECASE)
 
 
 def pack_size(name):

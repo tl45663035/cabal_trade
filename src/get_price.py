@@ -5,13 +5,14 @@ import time
 import calibration
 import open_agent_shop_premium as shop
 import open_inventory as inv
+import row_model
 
 _SHARED = calibration.load_shared()
 ACTION_GAP = _SHARED["timing"]["action_gap"]
 
 _ROW = re.compile(r"^(?P<name>.*?)\s+(?P<qty>\d[\d,]*)\s+(?P<price>\d[\d,]*)\s*$")
-_PACK = re.compile(r"\bX\s*(\d+)\s*$", re.IGNORECASE)
-_LOW_TO_HIGH = re.compile(r"price\s*:?\s*low\s*to\s*high", re.IGNORECASE)
+_LOW_TO_HIGH = re.compile(_SHARED["text"]["sort_low_to_high"],
+                          re.IGNORECASE)
 
 
 class NotReady(Exception):
@@ -76,7 +77,7 @@ def parse_row(text):
     name = found.group("name").strip(" |-")
     qty = int(found.group("qty").replace(",", ""))
     price = int(found.group("price").replace(",", ""))
-    pack = _PACK.search(name)
+    pack = row_model._PACK.search(name)
     pack = int(pack.group(1)) if pack else 1
     units = max(1, qty * pack)
     total = price * qty

@@ -21,6 +21,8 @@ DEFAULTS = {
         "key_hold": 0.02,
         "focus_settle": 0.35,
         "wheel_gap": 0.12,
+        "park_settle": 0.25,
+        "tab_settle": 0.6,
     },
     "input": {
         "INPUT_MOUSE": 0,
@@ -47,6 +49,46 @@ DEFAULTS = {
         "slot_pitch": [73.3, 73.4],
         "tab_one": [-524, -668],
         "tab_pitch": 69.6,
+    },
+    "ocr": {
+        "tesseract": r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        "scale": 3,
+        "min_conf": 45.0,
+        "psm": "11",
+        "digit_psm": "13",
+        "digit_whitelist": "0123456789,",
+    },
+    "regions": {
+        "park": [0.5078, 0.7137],
+        "alz_search": [0.8750, 0.6245, 0.9805, 0.6567],
+        "top_strip": [0.0000, 0.0197, 0.5078, 0.1585],
+        "tab_band": [0.0000, 0.0270, 0.2734, 0.0709],
+        "fav_band": [0.2422, 0.7100, 0.4648, 0.7465],
+        "boundary_window": [0.0781, 0.1289],
+        "slot_pitch": [0.0266, 0.0312],
+        "purchase_sort_band": [0.2500, 0.1200, 0.5000, 0.1700],
+        "purchase_buy_band": [0.3000, 0.6800, 0.5100, 0.7300],
+        "purchase_table_band": [0.1000, 0.1500, 0.4800, 0.6600],
+    },
+    "detect": {
+        "alz_bright": 110,
+        "alz_saturation": 45,
+        "alz_min_pixels": 150,
+        "alz_line_half": 14,
+        "alz_max_width_fraction": 0.95,
+        "alz_min_height": 8,
+        "alz_max_height": 30,
+        "grid_fit_min": 0.02,
+        "panel_open_change": 0.30,
+        "edge_candidates": 40,
+        "edge_min_gap": 15,
+        "rule_candidates": 60,
+        "rule_min_gap": 30,
+    },
+    "text": {
+        "empty_row": "premiumexclusiveslot",
+        "sort_low_to_high": r"price\s*:?\s*low\s*to\s*high",
+        "pack_marker": r"\bX\s*(\d+)\s*$",
     },
     "game_facts": {
         "grid_size": 8,
@@ -122,15 +164,49 @@ def load(force: bool = False) -> dict:
     merged["resolution"] = key
     return merged
 
-TESSERACT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+_S = load_shared()
+_OCR = _S["ocr"]
+_REG = _S["regions"]
+_DET = _S["detect"]
 
-PARK_F = (0.5078, 0.7137)
-ALZ_SEARCH_F = (0.8750, 0.6245, 0.9805, 0.6567)
-TOP_STRIP_F = (0.0000, 0.0197, 0.5078, 0.1585)
-TAB_BAND_F = (0.0000, 0.0270, 0.2734, 0.0709)
-FAV_BAND_F = (0.2422, 0.7100, 0.4648, 0.7465)
-BOUNDARY_WINDOW_F = (0.0781, 0.1289)
-SLOT_PITCH_F = (0.0266, 0.0312)
+TESSERACT = _OCR["tesseract"]
+OCR_SCALE = _OCR["scale"]
+OCR_MIN_CONF = _OCR["min_conf"]
+OCR_PSM = _OCR["psm"]
+DIGIT_PSM = _OCR["digit_psm"]
+DIGIT_WHITELIST = _OCR["digit_whitelist"]
+
+PARK_F = tuple(_REG["park"])
+ALZ_SEARCH_F = tuple(_REG["alz_search"])
+TOP_STRIP_F = tuple(_REG["top_strip"])
+TAB_BAND_F = tuple(_REG["tab_band"])
+FAV_BAND_F = tuple(_REG["fav_band"])
+BOUNDARY_WINDOW_F = tuple(_REG["boundary_window"])
+SLOT_PITCH_F = tuple(_REG["slot_pitch"])
+PURCHASE_SORT_BAND_F = tuple(_REG["purchase_sort_band"])
+PURCHASE_BUY_BAND_F = tuple(_REG["purchase_buy_band"])
+PURCHASE_TABLE_BAND_F = tuple(_REG["purchase_table_band"])
+
+ALZ_BRIGHT = _DET["alz_bright"]
+ALZ_SATURATION = _DET["alz_saturation"]
+ALZ_MIN_PIXELS = _DET["alz_min_pixels"]
+ALZ_LINE_HALF = _DET["alz_line_half"]
+ALZ_MAX_WIDTH_FRACTION = _DET["alz_max_width_fraction"]
+ALZ_MIN_HEIGHT = _DET["alz_min_height"]
+ALZ_MAX_HEIGHT = _DET["alz_max_height"]
+GRID_FIT_MIN = _DET["grid_fit_min"]
+PANEL_OPEN_CHANGE = _DET["panel_open_change"]
+EDGE_CANDIDATES = _DET["edge_candidates"]
+EDGE_MIN_GAP = _DET["edge_min_gap"]
+RULE_CANDIDATES = _DET["rule_candidates"]
+RULE_MIN_GAP = _DET["rule_min_gap"]
+
+GRID = _S["game_facts"]["grid_size"]
+ACTION_GAP = _S["timing"]["action_gap"]
+PARK_SETTLE = _S["timing"]["park_settle"]
+TAB_SETTLE = _S["timing"]["tab_settle"]
+ALZ_SEARCH = None
+_NOT_DIGIT = re.compile("[^0-9]")
 
 
 def _client_rect():
@@ -153,10 +229,6 @@ def _point(frac, rect=None):
     x, y, w, h = rect or _client_rect()
     return (round(x + frac[0] * w), round(y + frac[1] * h))
 
-GRID = 8
-GRID_FIT_MIN = 0.02
-PANEL_OPEN_CHANGE = 0.30
-ACTION_GAP = 0.05
 
 
 def grab() -> Image.Image:
@@ -168,12 +240,12 @@ def grab() -> Image.Image:
 
 def park() -> None:
     ctypes.windll.user32.SetCursorPos(*_point(PARK_F))
-    time.sleep(0.25)
+    time.sleep(PARK_SETTLE)
 
 
 def _mouse_event(flags: int):
     from open_inventory import _Input, _InputUnion, _MouseInput
-    return _Input(type=0, u=_InputUnion(mi=_MouseInput(0, 0, 0, flags, 0, None)))
+    return _Input(type=_S["input"]["INPUT_MOUSE"], u=_InputUnion(mi=_MouseInput(0, 0, 0, flags, 0, None)))
 
 
 def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
@@ -203,14 +275,16 @@ def right_click(x: int, y: int, settle: float = None) -> None:
             shared["timing"]["action_gap"] if settle is None else settle)
 
 
-def ocr(image: Image.Image, box, scale: int = 3, min_conf: float = 45.0):
+def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
+    scale = OCR_SCALE if scale is None else scale
+    min_conf = OCR_MIN_CONF if min_conf is None else min_conf
     crop = image.crop(box)
     crop = crop.resize((crop.width * scale, crop.height * scale),
                        Image.LANCZOS)
     buf = io.BytesIO()
     crop.save(buf, "PNG")
     run = subprocess.run(
-        [TESSERACT, "stdin", "stdout", "--psm", "11", "tsv"],
+        [TESSERACT, "stdin", "stdout", "--psm", OCR_PSM, "tsv"],
         input=buf.getvalue(), capture_output=True, timeout=60)
     found = []
     for row in csv.DictReader(
@@ -228,12 +302,10 @@ def ocr(image: Image.Image, box, scale: int = 3, min_conf: float = 45.0):
     return found
 
 
-DIGIT_PSM = "13"
-DIGIT_WHITELIST = "0123456789,"
-_NOT_DIGIT = re.compile(r"[^0-9]")
 
 
-def read_digits(image: Image.Image, box, scale: int = 3):
+def read_digits(image: Image.Image, box, scale: int = None):
+    scale = OCR_SCALE if scale is None else scale
     crop = image.crop(box)
     crop = crop.resize((crop.width * scale, crop.height * scale),
                        Image.LANCZOS)
@@ -263,14 +335,6 @@ def fit_periodic(profile, n, lo, hi, step=0.02):
     return best
 
 
-ALZ_SEARCH = None
-ALZ_BRIGHT = 110
-ALZ_SATURATION = 45
-ALZ_MIN_PIXELS = 150
-ALZ_LINE_HALF = 14
-ALZ_MAX_WIDTH_FRACTION = 0.95
-ALZ_MIN_HEIGHT = 8
-ALZ_MAX_HEIGHT = 30
 
 
 def find_alz(image: Image.Image, search=None):
@@ -505,9 +569,6 @@ def find_game_window(title: str = "PlayCabal"):
     return hwnd, name, [pt[0], pt[1], r.right, r.bottom]
 
 
-PURCHASE_SORT_BAND_F = (0.2500, 0.1200, 0.5000, 0.1700)
-PURCHASE_BUY_BAND_F = (0.3000, 0.6800, 0.5100, 0.7300)
-PURCHASE_TABLE_BAND_F = (0.1000, 0.1500, 0.4800, 0.6600)
 
 
 def calibrate_purchase(shop, verbose=True):
@@ -518,9 +579,9 @@ def calibrate_purchase(shop, verbose=True):
     px, py = shop["purchase_tab"]
     say(f"  switching to the Purchase tab at ({px}, {py})")
     click(px, py)
-    time.sleep(0.6)
+    time.sleep(TAB_SETTLE)
     park()
-    time.sleep(0.3)
+    time.sleep(PARK_SETTLE)
     image = grab()
 
     out = {}
