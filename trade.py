@@ -6928,6 +6928,10 @@ def dialog_kind(source: Image.Image | Path | str,
     if _mentions(texts, "confirmation"):
         return "confirm"
     if _mentions(texts, "extension") or _mentions(texts, "registration"):
+        confirm_btn = dialog_button_band(CONFIRM_WORD, source=source)
+        register_btn = dialog_button_band(REGISTER_TAB_WORD, source=source)
+        if confirm_btn is not None and register_btn is None:
+            return "confirm"
         return "extension"
     return None
 
