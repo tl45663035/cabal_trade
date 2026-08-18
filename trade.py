@@ -11017,6 +11017,14 @@ def _relist_cycle(row, inv_row, inv_col, dry_run, timeout, verbose, attempts, sa
             if cancel_report.get("committed") is False and attempt < attempts:
                 say("The cancel did not commit - nothing was withdrawn and the "
                     "listing is untouched, so this row can be tried again.")
+                left = (dialog_button_band(DISMISS_WORD)
+                        or dialog_button_band(CONFIRM_WORD))
+                if left is not None:
+                    say(f"  a dialog is still open over the table at "
+                        f"{left.centre}; closing it before retrying.")
+                    record("relist.retry_dialog_left_open",
+                           row=row, at=str(left.centre))
+                    close_any_dialog()
                 continue
 
             say("Cancel did not complete - see above for what state it left. "
