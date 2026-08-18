@@ -6827,13 +6827,25 @@ def await_dialog_button(
     lower confidence bar before giving up.
     """
     if source is not None:
-        button = dialog_button(source, word)
+        button = (dialog_button_band(word, source=source)
+                  or dialog_button(source, word))
         if button is not None:
             return button
 
+    # BAND FIRST, HERE TOO. Same lesson as await_dialog: dialog_button reads
+    # POPUP_REGION, these buttons do not read in it, and polling that for the
+    # whole timeout before trying the band that works costs the timeout every
+    # single time. Measured on run_2026-08-18_153026 with await_dialog already
+    # fixed, one cancel still spent 13.5s on "Cancel button" and 12.8s on
+    # "Confirmation button" -- both of which the band finds at 96-97.
+    #
+    # Parked once up front: a button under the cursor is highlighted and will
+    # not read.
+    park_cursor()
     deadline = time.monotonic() + timeout
     while True:
-        button = dialog_button(grab(), word)
+        shot = grab()
+        button = dialog_button_band(word, source=shot) or dialog_button(shot, word)
         if button is not None:
             return button
         if time.monotonic() >= deadline:
