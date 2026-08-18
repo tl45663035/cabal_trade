@@ -16441,6 +16441,61 @@ def register_item(
         # rather than assuming a single dialog.
         click(*button.centre)
         shot = await_dialog("confirm", timeout)
+        if shot is None:
+            # THE GATE WAS STRICTER THAN THE MACHINERY IT GUARDS.
+            #
+            # await_dialog decides by OCR'ing "Confirmation" out of the title,
+            # and dialog_kind's own docstring records that POPUP_REGION-scale
+            # crops drop ornate title glyphs entirely and split titles into
+            # fragments that match nothing. Step 5 below already knows this --
+            # "a single dialog_kind() read can flake to None and end the chain
+            # with a dialog still up" -- and is driven by the button finder for
+            # exactly that reason. This gate was left on the fragile detector.
+            #
+            # POLLING DOES NOT HELP. The dialog is static and tesseract is
+            # deterministic, so `timeout` seconds of grab-and-read is ONE answer
+            # repeated, not N chances. The wait defends against a LATE dialog,
+            # never against a misread one.
+            #
+            # A false abort here leaves the item in the shop slot, which strands
+            # it on the work tab and fails every later cycle. Seen 2026-08-18 on
+            # a 51-Set bundle whose price had already been verified on screen.
+            probe = grab()
+            say(f"  dialog_kind sees: {dialog_kind(probe)!r}")
+            say(f"  any dialog present: {dialog_present(probe)}")
+            words = sorted(find_words(probe, POPUP_REGION, DIALOG_TEXT_MIN_CONF),
+                           key=lambda w: -w.conf)[:12]
+            say("  strongest words in the dialog area: "
+                + ", ".join(f"{w.text!r}@{w.conf:.0f}" for w in words))
+            record("register.no_confirm", probe, price=price,
+                   qty=panel.get("qty"), item=expect_item)
+            if dialog_kind(probe) == "confirm":
+                say("  ...but it IS up on a fresh frame: it arrived after the "
+                    "wait expired. Continuing rather than aborting.")
+                shot = probe
+            else:
+                shot = await_dialog("confirm", EXTENSION_RECHECK_SECONDS)
+                if shot is not None:
+                    say("  ...it IS up on a fresh frame after a second look; "
+                        "continuing rather than aborting.")
+            if shot is None:
+                # LAST TIER, AND THE ONLY ONE THAT SURVIVES AN UNREADABLE TITLE.
+                # dialog_present falls back to the Cancel button every dialog
+                # carries, and a CONFIRMATION BUTTON distinguishes this dialog
+                # from the extension dialog ([Register] [Cancel]), the only
+                # other thing this click can raise. Guarded on dialog_present
+                # first because await_dialog_button ends with a 15%-confidence
+                # sweep of a region that is mostly scenery once dialogs close.
+                probe = grab()
+                if dialog_present(probe):
+                    accept = await_dialog_button(CONFIRM_WORD,
+                                                 EXTENSION_RECHECK_SECONDS)
+                    if accept is not None:
+                        say(f"  ...a dialog IS up and carries a {CONFIRM_WORD} "
+                            f"button at {accept.centre} (conf "
+                            f"{accept.conf:.0f}); its title would not read. "
+                            f"Continuing on the button rather than aborting.")
+                        shot = probe
         require(shot is not None, "no confirmation dialog appeared after Register")
 
         # THE FOURTH WITNESS, and the last chance to stop: this dialog is the
