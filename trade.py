@@ -631,6 +631,24 @@ CHAOS_WORK_TAB = 4                # crafted Sets land on whatever tab is showing
 
 CRAFT_CATEGORY_POINT = (121, 236)   # the "1000 - 1999" tree node
 CRAFT_RECIPE_POINT = (216, 318)     # "[1500] Chaos Core Set (x1)" under it
+# WHICH RECIPE CHAOS CRAFTS. The two above are recipe 1 and stay the default,
+# so a config without this knob behaves exactly as before.
+#
+# Recipe 2 is "[2500] Chaos Core Set (x3)" under the 2000-2999 tier: 3 Cores in,
+# 3 Sets out, a third of the craft operations for the same stock.
+#
+# THIS IS NOT COSMETIC. config.json has carried "CHAOS_RECIPE": 2 since before
+# this build was restored, and this build did not know the key -- so it silently
+# clicked recipe 1's points, the material counter read "no Chaos Cores are held"
+# against 96 Cores actually in the bag, nothing was crafted, and every Core
+# bought that cycle was stranded on the work tab. Measured 2026-08-18 in
+# run_2026-08-18_102807: 29 Cores stranded on one cycle, 96 on the next, then
+# three failed cycles on the empty-work-tab gate and the breaker.
+CHAOS_RECIPE_POINTS = {
+    1: ((121, 236), (216, 318)),
+    2: ((121, 276), (216, 359)),
+}
+CHAOS_RECIPE = 1
 CRAFT_REPEAT_POINT = (104, 981)     # the Repeat checkbox
 CRAFT_REQUEST_ALL = (355, 980)      # queues one craft per available material
 CRAFT_COMPLETE_ALL = (1181, 980)    # collects every finished craft
@@ -6271,6 +6289,9 @@ LIVE_KNOBS = {
     "RESTOCK_AT_OR_BELOW_ROWS":       (int, "restock a Core at/below this many rows"),
     "SHOP_MODEL_SHADOW":              (bool, "track the row model without acting"),
     "COST_FLOOR_ON_RELIST":           (bool, "never relist below what the stock cost"),
+    "CHAOS_RECIPE":                   (int, "which craft recipe chaos uses: "
+                                            "1 = [1500] Chaos Core Set (x1), "
+                                            "2 = [2500] Chaos Core Set (x3)"),
 }
 
 
@@ -19278,10 +19299,16 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
         say("  the craft window is not open.")
         return 0
 
-    say("  selecting the Chaos Core Set recipe")
-    click(*CRAFT_CATEGORY_POINT)
+    # Points by recipe, not the module constants: CHAOS_RECIPE is a live knob
+    # and the pair must move together. An unknown value falls back to recipe 1
+    # rather than clicking a coordinate nobody measured.
+    tier, recipe = CHAOS_RECIPE_POINTS.get(
+        CHAOS_RECIPE, CHAOS_RECIPE_POINTS[1])
+    say(f"  selecting the Chaos Core Set recipe (chaos_recipe {CHAOS_RECIPE}): "
+        f"tier at {tier}, recipe at {recipe}")
+    click(*tier)
     time.sleep(0.8)
-    click(*CRAFT_RECIPE_POINT)
+    click(*recipe)
     time.sleep(1.2)
 
     shot = grab()
