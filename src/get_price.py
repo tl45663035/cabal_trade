@@ -9,8 +9,13 @@ import row_model
 
 _SHARED = calibration.load_shared()
 ACTION_GAP = _SHARED["timing"]["action_gap"]
+TAB_SETTLE = _SHARED["timing"]["tab_settle"]
+SEARCH_TIMEOUT = _SHARED["timing"]["search_timeout"]
+RETRY_GAP = _SHARED["timing"]["retry_gap"]
+RETRIES = _SHARED["timing"]["search_retries"]
+EXPECTED = _SHARED["favourite_items"]
 
-_ROW = re.compile(r"^(?P<name>.*?)\s+(?P<qty>\d[\d,]*)\s+(?P<price>\d[\d,]*)\s*$")
+_NUMBER = re.compile(r"\d[\d,]*")
 _SORT_DIRECTION = re.compile(_SHARED["text"]["sort_direction"],
                              re.IGNORECASE)
 
@@ -48,6 +53,24 @@ def purchase_row_one_box():
     return tuple(_need("purchase_row_one"))
 
 
+def column_box(field):
+    cols = _need("purchase_columns")
+    if field not in cols:
+        raise NotReady(f"shop.purchase_columns has no {field!r} box.")
+    return tuple(cols[field])
+
+
+def read_field(field, image=None):
+    image = image if image is not None else calibration.grab()
+    return calibration.read_line(image, column_box(field)).strip()
+
+
+def read_fields(image=None):
+    image = image if image is not None else calibration.grab()
+    return {f: calibration.read_line(image, column_box(f)).strip()
+            for f in ("name", "qty", "price")}
+
+
 def read_sort(image=None):
     image = image if image is not None else calibration.grab()
     tokens = calibration.ocr(image, sort_box())
@@ -71,13 +94,17 @@ def ensure_sort_low_to_high(verbose=True):
         f"nothing here may be trusted until it is set.")
 
 
-def parse_row(text):
-    found = _ROW.match((text or "").strip())
-    if found is None:
+def _digits(text):
+    found = _NUMBER.search(text or "")
+    return int(found.group(0).replace(",", "")) if found else None
+
+
+def parse_fields(fields):
+    name = (fields.get("name") or "").strip(" |-)(")
+    qty = _digits(fields.get("qty"))
+    price = _digits(fields.get("price"))
+    if not name or qty is None or price is None:
         return None
-    name = found.group("name").strip(" |-")
-    qty = int(found.group("qty").replace(",", ""))
-    price = int(found.group("price").replace(",", ""))
     pack = row_model._PACK.search(name)
     pack = int(pack.group(1)) if pack else 1
     units = max(1, qty * pack)
@@ -93,30 +120,65 @@ def parse_row(text):
     }
 
 
+def expected_item(slot):
+    return EXPECTED.get(str(int(slot)))
+
+
 def read_row_one(image=None):
     image = image if image is not None else calibration.grab()
-    tokens = calibration.ocr(image, purchase_row_one_box())
-    tokens.sort(key=lambda token: token[2][0])
-    return " ".join(token[0] for token in tokens)
+    return calibration.read_line(image, purchase_row_one_box())
+
+
+def name_matches(slot, text):
+    want = expected_item(slot)
+    if not want:
+        return True
+    fold = lambda v: "".join(ch for ch in (v or "").lower() if ch.isalnum())
+    return fold(want) in fold(text)
 
 
 def get_price(slot, verbose=True):
     inv.focus_game()
     if not calibration._trade_window_open():
-        raise NotReady("the Trade window is not open.")
+        if verbose:
+            print("  the Trade window is shut; opening the Agent Shop.")
+        shop.open_agent_shop(verbose=verbose)
+        time.sleep(TAB_SETTLE)
+    shop.click(*_need("purchase_tab"))
+    time.sleep(TAB_SETTLE)
     ensure_sort_low_to_high(verbose=verbose)
 
     x, y = favourite_point(slot)
     if verbose:
         print(f"  favourite slot {slot} at ({x}, {y})")
-    shop.click(x, y)
-    time.sleep(ACTION_GAP)
+    want = expected_item(slot)
+    if verbose and want:
+        print(f"  expecting {want!r} at row 1")
 
-    text = read_row_one()
-    row = parse_row(text)
+    text, row = "", None
+    for attempt in range(1, RETRIES + 1):
+        before = read_field("name")
+        shop.click(x, y)
+        deadline = time.monotonic() + SEARCH_TIMEOUT
+        while time.monotonic() < deadline:
+            time.sleep(ACTION_GAP)
+            image = calibration.grab()
+            text = read_field("name", image)
+            if text == before or not name_matches(slot, text):
+                continue
+            row = parse_fields(read_fields(image))
+            if row is not None:
+                break
+        if row is not None:
+            break
+        if verbose:
+            print(f"  attempt {attempt}/{RETRIES}: row 1 name reads {text!r}, "
+                  f"expected {want!r} - retrying in {RETRY_GAP}s")
+        time.sleep(RETRY_GAP)
+
     if row is None:
         if verbose:
-            print(f"  row 1 did not parse: {text!r}")
+            print(f"  row 1 did not parse; name read {text!r}")
         return None
     units = row["qty"] * row["pack"]
     row["slot"] = int(slot)

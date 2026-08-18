@@ -24,6 +24,8 @@ DEFAULTS = {
         "park_settle": 0.25,
         "tab_settle": 0.6,
         "search_timeout": 8.0,
+        "search_retries": 3,
+        "retry_gap": 1.0,
     },
     "input": {
         "INPUT_MOUSE": 0,
@@ -56,6 +58,7 @@ DEFAULTS = {
         "scale": 3,
         "min_conf": 45.0,
         "psm": "11",
+        "row_psm": "7",
         "digit_psm": "13",
         "digit_whitelist": "0123456789,",
     },
@@ -86,11 +89,28 @@ DEFAULTS = {
         "edge_min_gap": 15,
         "rule_candidates": 60,
         "rule_min_gap": 30,
+        "purchase_header_up": 66,
+        "purchase_header_down": 10,
+        "purchase_divider_sigma": 3.0,
+        "purchase_cell_inset": 2,
     },
     "text": {
         "empty_row": "premiumexclusiveslot",
         "sort_direction": r"price\s*:?\s*(low|high)",
+        "purchase_row": r"^(?P<name>.*?)\s+(?P<qty>\d[\d,]*)\s+(?P<price>\d[\d,]*)\s*\D*$",
         "pack_marker": r"\bX\s*(\d+)\s*$",
+    },
+    "favourite_items": {
+        "1": "Force Core(Highest)",
+        "2": "Force Core Set (Highest)",
+        "3": "Chaos Core",
+        "4": "Chaos Core Set",
+        "5": "Force Core (Ultimate)",
+        "6": "Force Core Set (Ultimate)",
+        "7": "Force Core(High)",
+        "8": "Force Core Set (High)",
+        "9": "Upgrade Core (Ultimate)",
+        "10": "Upgrade Core Set (Ultimate)",
     },
     "game_facts": {
         "grid_size": 8,
@@ -175,6 +195,7 @@ TESSERACT = _OCR["tesseract"]
 OCR_SCALE = _OCR["scale"]
 OCR_MIN_CONF = _OCR["min_conf"]
 OCR_PSM = _OCR["psm"]
+ROW_PSM = _OCR["row_psm"]
 DIGIT_PSM = _OCR["digit_psm"]
 DIGIT_WHITELIST = _OCR["digit_whitelist"]
 
@@ -203,6 +224,10 @@ EDGE_CANDIDATES = _DET["edge_candidates"]
 EDGE_MIN_GAP = _DET["edge_min_gap"]
 RULE_CANDIDATES = _DET["rule_candidates"]
 RULE_MIN_GAP = _DET["rule_min_gap"]
+PURCHASE_HEADER_UP = _DET["purchase_header_up"]
+PURCHASE_HEADER_DOWN = _DET["purchase_header_down"]
+PURCHASE_DIVIDER_SIGMA = _DET["purchase_divider_sigma"]
+PURCHASE_CELL_INSET = _DET["purchase_cell_inset"]
 
 GRID = _S["game_facts"]["grid_size"]
 ACTION_GAP = _S["timing"]["action_gap"]
@@ -306,6 +331,25 @@ def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
     return found
 
 
+
+
+def read_line(image: Image.Image, box, scale: int = None):
+    scale = OCR_SCALE if scale is None else scale
+    crop = image.crop(box)
+    crop = crop.resize((crop.width * scale, crop.height * scale),
+                       Image.LANCZOS)
+    buf = io.BytesIO()
+    crop.save(buf, "PNG")
+    run = subprocess.run(
+        [TESSERACT, "stdin", "stdout", "--psm", ROW_PSM, "tsv"],
+        input=buf.getvalue(), capture_output=True, timeout=60)
+    words = []
+    for row in csv.DictReader(
+            io.StringIO(run.stdout.decode("utf-8", "replace")), delimiter="	"):
+        text = (row.get("text") or "").strip()
+        if text:
+            words.append((int(row["left"]), text))
+    return " ".join(t for _, t in sorted(words))
 
 
 def read_digits(image: Image.Image, box, scale: int = None):
@@ -631,6 +675,44 @@ def calibrate_purchase(shop, verbose=True):
     out["purchase_row_one_y"] = int(ys[0])
     out["purchase_row_one"] = [x0, int(ys[0]) - half, x1, int(ys[0]) + half]
     out["purchase_rows_seen"] = len(buys)
+    top, bot = out["purchase_row_one"][1], out["purchase_row_one"][3]
+    hdr = (table_band[0], top - PURCHASE_HEADER_UP, table_band[2],
+           top - PURCHASE_HEADER_DOWN)
+    words = sorted(((p[0], t.strip().lower()) for t, _, p in ocr(image, hdr)
+                    if t.strip().lower() in ("name", "qty", "price",
+                                             "function")))
+    missing = [w for w in ("name", "qty", "price", "function")
+               if w not in [n for _, n in words]]
+    if missing:
+        raise RuntimeError(
+            f"the offers header is missing {missing}; read "
+            f"{[n for _, n in words]}. Cannot place the per-column boxes.")
+
+    prof = np.abs(np.diff(np.asarray(
+        image.crop(hdr).convert("L"), dtype=float).mean(axis=0)))
+    hot = prof.mean() + PURCHASE_DIVIDER_SIGMA * prof.std()
+    rules = []
+    for i in [int(i) for i in np.where(prof > hot)[0]]:
+        if all(abs(i - k) > EDGE_MIN_GAP for k in rules):
+            rules.append(i)
+    rules = [hdr[0] + r for r in rules]
+
+    edges = [table_band[0]]
+    for (ax, an), (bx, bn) in zip(words, words[1:]):
+        mid = (ax + bx) // 2
+        between = [d for d in rules if ax < d < bx]
+        edges.append(max(between) if (an == "price" and between) else mid)
+    edges.append(table_band[2])
+
+    cols = {}
+    for i, (_, field) in enumerate(words):
+        cols[field] = [edges[i] + PURCHASE_CELL_INSET, top,
+                       edges[i + 1] - PURCHASE_CELL_INSET, bot]
+    out["purchase_columns"] = cols
+    say(f"  header {[(n, x) for x, n in words]}")
+    for field, box in cols.items():
+        say(f"    {field:9} {box}  -> {read_line(image, tuple(box))!r}")
+
     say(f"  Buy column x={out['purchase_buy_x']}, {len(buys)} row(s), pitch {pitch}px")
     say(f"  row 1 centre y={out['purchase_row_one_y']}, box {out['purchase_row_one']}")
     return out

@@ -6,7 +6,9 @@
     "wheel_gap": 0.12,
     "park_settle": 0.25,
     "tab_settle": 0.6,
-    "search_timeout": 8.0
+    "search_timeout": 8.0,
+    "search_retries": 3,
+    "retry_gap": 1.0
   },
   "input": {
     "INPUT_MOUSE": 0,
@@ -48,6 +50,7 @@
     "scale": 3,
     "min_conf": 45.0,
     "psm": "11",
+    "row_psm": "7",
     "digit_psm": "13",
     "digit_whitelist": "0123456789,"
   },
@@ -126,11 +129,16 @@
     "edge_candidates": 40,
     "edge_min_gap": 15,
     "rule_candidates": 60,
-    "rule_min_gap": 30
+    "rule_min_gap": 30,
+    "purchase_header_up": 66,
+    "purchase_header_down": 10,
+    "purchase_divider_sigma": 3.0,
+    "purchase_cell_inset": 2
   },
   "text": {
     "empty_row": "premiumexclusiveslot",
     "sort_direction": "price\\s*:?\\s*(low|high)",
+    "purchase_row": "^(?P<name>.*?)\\s+(?P<qty>\\d[\\d,]*)\\s+(?P<price>\\d[\\d,]*)\\s*\\D*$",
     "pack_marker": "\\bX\\s*(\\d+)\\s*$"
   },
   "game_facts": {
@@ -150,7 +158,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-08-17T23:06:33",
+      "measured_at": "2026-08-17T23:21:46",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -536,17 +544,17 @@
         ],
         "favourite_pitch": 57.0,
         "evidence": {
-          "register_conf": 97,
+          "register_conf": 96,
           "favourite_pitch_spread": 0,
           "purchase_is_derived": true
         },
         "purchase_sort_region": [
-          803,
+          612,
           178,
-          1045,
+          1043,
           214
         ],
-        "purchase_sort_text_seen": "y to",
+        "purchase_sort_text_seen": "ne y Price:Low to",
         "purchase_buy_x": 1124,
         "purchase_row_pitch": 76,
         "purchase_row_one_y": 340,
@@ -557,6 +565,32 @@
           378
         ],
         "purchase_rows_seen": 8,
+        "purchase_columns": {
+          "name": [
+            258,
+            302,
+            674,
+            378
+          ],
+          "qty": [
+            678,
+            302,
+            885,
+            378
+          ],
+          "price": [
+            889,
+            302,
+            1109,
+            378
+          ],
+          "function": [
+            1113,
+            302,
+            1227,
+            378
+          ]
+        },
         "table_x": [
           256,
           1229
@@ -577,5 +611,17 @@
         "register_rows_seen": 9
       }
     }
+  },
+  "favourite_items": {
+    "1": "Force Core(Highest)",
+    "2": "Force Core Set (Highest)",
+    "3": "Chaos Core",
+    "4": "Chaos Core Set",
+    "5": "Force Core (Ultimate)",
+    "6": "Force Core Set (Ultimate)",
+    "7": "Force Core(High)",
+    "8": "Force Core Set (High)",
+    "9": "Upgrade Core (Ultimate)",
+    "10": "Upgrade Core Set (Ultimate)"
   }
 }
