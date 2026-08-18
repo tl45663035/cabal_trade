@@ -2330,6 +2330,28 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
         label = w.text.strip().lower()
         if label in ("buy", "cancel") and w.centre[1] > PURCHASE_DIALOG_BUTTONS_Y:
             buttons[label] = w.centre
+    # THE BUTTONS DO NOT ALWAYS READ IN THIS CROP, AND THAT IS NOT ABSENCE.
+    #
+    # PURCHASE_DIALOG_REGION is 1000x550 and tesseract mis-segments the button
+    # row inside it -- the same crop-dependence dialog_kind documents, and the
+    # reason dialog_button_band exists. When it fails, the only "Buy" words in
+    # frame are the TABLE's own Buy buttons, which sit above
+    # PURCHASE_DIALOG_BUTTONS_Y and are correctly ignored, so `buttons` comes
+    # back empty and this returns None with the dialog plainly on screen.
+    #
+    # Measured on the debug frames from run_2026-08-18_133641, both labelled
+    # buy.no_dialog and both showing the dialog: purchase_confirm returned None
+    # while the band read 'Buy'@97 at (1291, 855) and 'Cancel'@97 at
+    # (1472, 853). That is what "the Confirm Purchase dialog did not appear"
+    # has been -- three of those in a row end a chaos pass at 0 of 200.
+    if "buy" not in buttons:
+        band = dialog_button_band("Buy", source=shot)
+        if band is not None:
+            buttons["buy"] = band.centre
+    if "cancel" not in buttons:
+        band = dialog_button_band(DISMISS_WORD, source=shot)
+        if band is not None:
+            buttons["cancel"] = band.centre
     if "buy" not in buttons:
         return None
     # The price from its OWN crop first. The sweep below takes the last
