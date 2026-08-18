@@ -21,6 +21,7 @@ MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
 PRICE_MIN_DIGITS = _DET["price_min_digits"]
 
 _NUMBER = re.compile(r"\d[\d,]*")
+_NOT_DIGIT = re.compile(r"[^0-9]")
 _ROW = re.compile(_SHARED["text"]["purchase_row"])
 _SORT_DIRECTION = re.compile(_SHARED["text"]["sort_direction"],
                              re.IGNORECASE)
