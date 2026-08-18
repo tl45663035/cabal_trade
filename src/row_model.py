@@ -25,6 +25,12 @@ GRID = _FACTS["grid_size"]
 MAX_TOP = CAPACITY - VISIBLE + 1
 
 EMPTY_MARKER = _SHARED["text"]["empty_row"]
+_TEXT = _SHARED["text"]
+CHANGE_WORD = _TEXT["change_word"]
+DISMISS_WORD = _TEXT["dismiss_word"]
+CONFIRM_WORD = _TEXT["confirm_word"]
+DIALOG_TIMEOUT = _T["dialog_timeout"]
+TAB_SETTLE = _T["tab_settle"]
 
 _NOT_ALNUM = re.compile(r"[^a-z0-9]")
 
@@ -64,6 +70,37 @@ def row_one_box():
     y = _need("row_one_y")
     half = _need("row_pitch") // 2
     return (x0, y - half, x1, y + half)
+
+
+def button_point():
+    return (_need("button_x"), _need("row_one_y"))
+
+
+def popup_words(image=None):
+    image = image if image is not None else calibration.grab()
+    return calibration.ocr(image, calibration._box(calibration.POPUP_F))
+
+
+def find_button(word, timeout=None):
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    want = _key(word)
+    while time.monotonic() < deadline:
+        for text, _conf, point in popup_words():
+            if _key(text) == want:
+                return point
+        time.sleep(ACTION_GAP)
+    return None
+
+
+def dialog_gone(timeout=None):
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    while time.monotonic() < deadline:
+        if not popup_words():
+            return True
+        time.sleep(ACTION_GAP)
+    return False
 
 
 def read_row_one():
@@ -225,7 +262,7 @@ class RowModel:
                     return (row, col)
         return None
 
-    def cancel(self, index):
+    def note_cancel(self, index):
         index = int(index)
         row = self._slots.get(index)
         if row is None:
@@ -242,6 +279,63 @@ class RowModel:
             "lands_in_tab": WORK_TAB,
             "lands_in_slot": landing,
         }
+
+    def cancel(self, index, verbose=True):
+        index = int(index)
+        expected = self._slots.get(index)
+        if expected is None:
+            raise ValueError(f"row {index} is empty in the model; refusing to "
+                             f"cancel a slot nothing is listed in")
+        self.scroll_to(index, verbose=verbose)
+        time.sleep(TAB_SETTLE)
+
+        seen = read_row_one()
+        if not expected.key or expected.key not in _key(seen):
+            raise Divergence(
+                f"row {index} should hold {expected.name!r} but position 1 "
+                f"reads {seen!r}. Not cancelling a row that is not the one "
+                f"the model names.")
+        if verbose:
+            print(f"  row {index} at position 1: {seen!r}")
+
+        point = button_point()
+        if verbose:
+            print(f"  {CHANGE_WORD} at {point}")
+        inv._user32.SetCursorPos(*point)
+        time.sleep(ACTION_GAP)
+        calibration.click(*point)
+        calibration.park()
+        time.sleep(ACTION_GAP)
+
+        dismiss = find_button(DISMISS_WORD)
+        if dismiss is None:
+            raise Divergence(
+                f"no {DISMISS_WORD} button appeared after clicking "
+                f"{CHANGE_WORD} on row {index}. Nothing has been cancelled.")
+        if verbose:
+            print(f"  {DISMISS_WORD} at {dismiss}")
+        calibration.click(*dismiss)
+        calibration.park()
+
+        confirm = find_button(CONFIRM_WORD)
+        if confirm is None:
+            raise Divergence(
+                f"no {CONFIRM_WORD} button appeared after {DISMISS_WORD} on "
+                f"row {index}. The dialog is still open; nothing committed.")
+        if verbose:
+            print(f"  {CONFIRM_WORD} at {confirm}")
+        calibration.click(*confirm)
+        calibration.park()
+
+        if not dialog_gone():
+            raise Divergence(
+                f"the dialog stayed open after {CONFIRM_WORD} on row {index}. "
+                f"Whether the cancel committed is unknown -- check by hand.")
+        result = self.note_cancel(index)
+        if verbose:
+            print(f"  row {index} cancelled; {expected.name!r} lands in tab "
+                  f"{result['lands_in_tab']} slot {result['lands_in_slot']}")
+        return result
 
     def collect(self, index, remaining=0):
         index = int(index)

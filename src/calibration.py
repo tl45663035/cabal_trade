@@ -25,6 +25,7 @@ DEFAULTS = {
         "tab_settle": 0.6,
         "search_timeout": 8.0,
         "search_retries": 3,
+        "dialog_timeout": 8.0,
         "retry_gap": 1.0,
     },
     "input": {
@@ -76,6 +77,7 @@ DEFAULTS = {
         "purchase_sort_band": [0.2500, 0.1200, 0.5000, 0.1700],
         "purchase_buy_band": [0.3000, 0.6800, 0.5100, 0.7300],
         "purchase_table_band": [0.1000, 0.1500, 0.4800, 0.6600],
+        "popup": [0.1953, 0.2389, 0.8203, 0.8232],
         "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
     },
     "detect": {
@@ -124,6 +126,9 @@ DEFAULTS = {
         "sort_direction": r"price\s*:?\s*(low|high)",
         "purchase_row": r"^(?P<name>.*?)\s+(?P<qty>\d[\d,]*)\s+(?P<price>\d[\d,]*)\s*\D*$",
         "pack_marker": r"\bX\s*(\d+)\s*$",
+        "change_word": "Change",
+        "dismiss_word": "Cancel",
+        "confirm_word": "Confirmation",
     },
     "favourite_items": {
         "1": "Force Core(Highest)",
@@ -237,6 +242,7 @@ SLOT_PITCH_F = tuple(_REG["slot_pitch"])
 PURCHASE_SORT_BAND_F = tuple(_REG["purchase_sort_band"])
 PURCHASE_BUY_BAND_F = tuple(_REG["purchase_buy_band"])
 PURCHASE_TABLE_BAND_F = tuple(_REG["purchase_table_band"])
+POPUP_F = tuple(_REG["popup"])
 REGISTER_TABLE_BAND_F = tuple(_REG["register_table_band"])
 
 ALZ_BRIGHT = _DET["alz_bright"]
@@ -838,6 +844,7 @@ def calibrate_register_table(shop, verbose=True):
         "row_pitch": int(pitch),
         "row_one_box": [band[0], int(ys[0]) - pitch // 2,
                         band[2], int(ys[0]) + pitch // 2],
+        "button_x": int(xs[len(xs) // 2]),
         "table_point": [int(xs[len(xs) // 2]) - SCROLL_POINT_INSET, int(ys[0]) + pitch],
         "rows_per_notch": 1,
         "register_rows_seen": len(marks),
