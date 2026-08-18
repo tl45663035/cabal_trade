@@ -19126,6 +19126,13 @@ def chaos_cores_held(verbose: bool = True) -> int:
             print(message)
 
     try:
+        # THE SHOP COVERS THE CRAFT WINDOW. The caller's own comment says the
+        # game cannot show the two together -- and this function never shut it,
+        # so during a pass open_craft_window simply failed and the silent
+        # `return 0` made 125 held Cores look like none. craft_chaos_sets does
+        # leave_shop() before its own open for exactly this reason.
+        leave_shop(verbose=False)
+        time.sleep(0.5)
         if not open_craft_window(timeout=6.0, verbose=False):
             return 0
         # SELECT THE RECIPE FIRST. There is no Required Material counter until
