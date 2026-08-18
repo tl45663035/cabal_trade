@@ -11800,16 +11800,21 @@ def relist_rows(
                            rows_left=left, done=position)
                     return True
             continue
-        if match.index in handled:
+        def _absolute(view_row):
+            if top_index is None:
+                return view_row.index
+            return top_index + view_row.index - 1
+
+        if _absolute(match) in handled:
             spare = [r for r in current
-                     if r.index not in handled
+                     if _absolute(r) not in handled
                      and _canonical(r.name) == _canonical(name)]
             if spare:
-                say(f"  row {match.index} was already relisted this cycle; "
-                    f"taking row {spare[0].index} instead -- identical stacks "
-                    "cannot be told apart by name.")
+                say(f"  row {_absolute(match)} was already relisted this "
+                    f"cycle; taking row {_absolute(spare[0])} instead -- "
+                    "identical stacks cannot be told apart by name.")
                 record("relist.sibling_collision", item=name,
-                       already=match.index, taking=spare[0].index)
+                       already=_absolute(match), taking=_absolute(spare[0]))
                 match = spare[0]
             else:
                 say(f"  every row matching {name!r} has already been relisted "
@@ -11817,7 +11822,7 @@ def relist_rows(
                 record("relist.sibling_exhausted", item=name,
                        already=sorted(handled))
                 continue
-        handled.add(match.index)
+        handled.add(_absolute(match))
 
         if note:
             say(f"  {note}")
