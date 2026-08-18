@@ -4326,6 +4326,7 @@ CONFIRM_WORD = "Confirmation"
 DISMISS_WORD = "Cancel"
 RECEIPT_WORD = "Receive"
 DIALOG_BUTTON_MIN_X = 1200
+DIALOG_BUTTON_MIN_Y = 800
 MAX_CONFIRM_STEPS = 3
 EXTENSION_RECHECK_SECONDS = 4.0
 DIALOG_TEXT_MIN_CONF = 25.0
@@ -6811,7 +6812,8 @@ def dialog_button(
             if words is not None
             else find_text(source, word, POPUP_REGION, min_conf))
     hits = [w for w in sorted(pool, key=lambda w: w.top)
-            if abs(w.centre[0] - column_x) > keep_away]
+            if abs(w.centre[0] - column_x) > keep_away
+            and w.centre[1] >= DIALOG_BUTTON_MIN_Y]
     return hits[-1] if hits else None
 
 
@@ -6837,6 +6839,9 @@ def await_dialog_button(
         if time.monotonic() >= deadline:
             break
         time.sleep(poll)
+    banded = dialog_button_band(word)
+    if banded is not None:
+        return banded
     faint = dialog_button(grab(), word, min_conf=15.0)
     if faint is not None:
         return faint
