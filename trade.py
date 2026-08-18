@@ -5061,6 +5061,15 @@ def scroll_wheel(x: int, y: int, notches: int, settle: float = WHEEL_SETTLE,
             f"refusing to scroll {notches:+d} notch(es) at ({x}, {y}): the "
             "listings table is not what the wheel would reach")
 
+    blocker = dialog_button_band(DISMISS_WORD) or dialog_button_band(CONFIRM_WORD)
+    if blocker is not None:
+        raise Aborted(
+            f"refusing to scroll {notches:+d} notch(es) at ({x}, {y}): a "
+            f"dialog is open over the table (its {DISMISS_WORD}/"
+            f"{CONFIRM_WORD} button reads at {blocker.centre}), so the wheel "
+            f"would move nothing and the row under the cursor afterwards "
+            f"would not be the row that was asked for")
+
     make_dpi_aware()
     if cursor_position() != (int(x), int(y)):
         if not move_mouse(x, y):
