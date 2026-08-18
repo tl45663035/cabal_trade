@@ -9954,6 +9954,19 @@ def cancel_item(
                 if shot is not None:
                     say("  ...it IS up on a fresh frame after a second look; "
                         "continuing rather than aborting.")
+            if shot is None:
+                probe = grab()
+                by_register = dialog_button_band(REGISTER_TAB_WORD, source=probe)
+                by_confirm = dialog_button_band(CONFIRM_WORD, source=probe)
+                if by_register is not None and by_confirm is None:
+                    say(f"  ...its title would not read, but the button row "
+                        f"carries {REGISTER_TAB_WORD} at {by_register.centre} "
+                        f"(conf {by_register.conf:.0f}) and no "
+                        f"{CONFIRM_WORD}, which is this dialog and no other. "
+                        f"Continuing on the buttons rather than aborting.")
+                    record("cancel.extension_by_button",
+                           at=str(by_register.centre))
+                    shot = probe
         require(shot is not None, "the Registration Extension dialog did not appear")
 
         cancel = await_dialog_button(DISMISS_WORD, timeout, source=shot)
