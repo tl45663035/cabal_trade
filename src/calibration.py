@@ -23,6 +23,7 @@ DEFAULTS = {
         "wheel_gap": 0.12,
         "park_settle": 0.25,
         "tab_settle": 0.6,
+        "search_timeout": 8.0,
     },
     "input": {
         "INPUT_MOUSE": 0,
@@ -69,6 +70,7 @@ DEFAULTS = {
         "purchase_sort_band": [0.2500, 0.1200, 0.5000, 0.1700],
         "purchase_buy_band": [0.3000, 0.6800, 0.5100, 0.7300],
         "purchase_table_band": [0.1000, 0.1500, 0.4800, 0.6600],
+        "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
     },
     "detect": {
         "alz_bright": 110,
@@ -87,7 +89,7 @@ DEFAULTS = {
     },
     "text": {
         "empty_row": "premiumexclusiveslot",
-        "sort_low_to_high": r"price\s*:?\s*low\s*to\s*high",
+        "sort_direction": r"price\s*:?\s*(low|high)",
         "pack_marker": r"\bX\s*(\d+)\s*$",
     },
     "game_facts": {
@@ -186,6 +188,7 @@ SLOT_PITCH_F = tuple(_REG["slot_pitch"])
 PURCHASE_SORT_BAND_F = tuple(_REG["purchase_sort_band"])
 PURCHASE_BUY_BAND_F = tuple(_REG["purchase_buy_band"])
 PURCHASE_TABLE_BAND_F = tuple(_REG["purchase_table_band"])
+REGISTER_TABLE_BAND_F = tuple(_REG["register_table_band"])
 
 ALZ_BRIGHT = _DET["alz_bright"]
 ALZ_SATURATION = _DET["alz_saturation"]
@@ -205,6 +208,7 @@ GRID = _S["game_facts"]["grid_size"]
 ACTION_GAP = _S["timing"]["action_gap"]
 PARK_SETTLE = _S["timing"]["park_settle"]
 TAB_SETTLE = _S["timing"]["tab_settle"]
+SEARCH_TIMEOUT = _S["timing"]["search_timeout"]
 ALZ_SEARCH = None
 _NOT_DIGIT = re.compile("[^0-9]")
 
@@ -594,41 +598,95 @@ def calibrate_purchase(shop, verbose=True):
             f"not have opened, or the band is wrong for this screen.")
     xs = [p[0] for _, _, p in sort_words]
     ys = [p[1] for _, _, p in sort_words]
-    out["sort_region"] = [min(xs) - 40, min(ys) - 16,
+    out["purchase_sort_region"] = [min(xs) - 40, min(ys) - 16,
                           max(xs) + 90, max(ys) + 16]
-    out["sort_text_seen"] = " ".join(t for t, _, _ in sort_words)
-    say(f"  sort reads {out['sort_text_seen']!r} -> region "
-        f"{out['sort_region']}")
+    out["purchase_sort_text_seen"] = " ".join(t for t, _, _ in sort_words)
+    say(f"  sort reads {out['purchase_sort_text_seen']!r} -> region "
+        f"{out['purchase_sort_region']}")
 
-    buy_band = _box(PURCHASE_BUY_BAND_F)
-    buy = next(((t, c, p) for t, c, p in ocr(image, buy_band)
-                if t.strip().lower() == "buy"), None)
-    if buy is None:
+    favs = shop.get("favourites") or []
+    if not favs:
+        raise RuntimeError("no favourite slots measured; cannot populate the "
+                           "offers table to find the Buy column.")
+    fx, fy = favs[0]
+    say(f"  running favourite 1 at ({fx}, {fy}) to fill the table")
+    click(fx, fy)
+    park()
+    deadline = time.monotonic() + SEARCH_TIMEOUT
+    image = None
+    while time.monotonic() < deadline:
+        time.sleep(ACTION_GAP)
+        image = grab()
+        if [1 for t, _, _ in ocr(image, _box(PURCHASE_TABLE_BAND_F))
+                if t.strip().lower() == "buy"]:
+            break
+    else:
         raise RuntimeError(
-            f"the Buy button was not found in {buy_band}. Seen: "
-            f"{[t for t, _, _ in ocr(image, buy_band)]}")
-    out["buy_button"] = list(buy[2])
-    say(f"  Buy button at {out['buy_button']} (conf {buy[1]})")
+            f"favourite 1 returned no offers within {SEARCH_TIMEOUT}s, so the "
+            f"table has no rows to measure.")
+    say(f"  offers arrived after "
+        f"{SEARCH_TIMEOUT - (deadline - time.monotonic()):.1f}s")
 
     table_band = _box(PURCHASE_TABLE_BAND_F)
-    strip = np.asarray(image.crop(table_band).convert("L"), dtype=float)
-    profile = np.abs(np.diff(strip.mean(axis=1)))
-    lines = [int(i) for i in np.argsort(profile)[::-1][:60]]
-    kept = []
-    for i in sorted(lines):
-        if all(abs(i - k) > 30 for k in kept):
-            kept.append(i)
-    if len(kept) < 3:
+    buys = [p for t, c, p in ocr(image, table_band)
+            if t.strip().lower() == "buy"]
+    if len(buys) < 2:
         raise RuntimeError(
-            f"only {len(kept)} horizontal rule(s) found in the offers table; "
-            f"cannot place row 1.")
-    pitch = float(np.median(np.diff(kept[:6]))) if len(kept) > 2 else 0.0
-    top = table_band[1] + kept[0]
-    out["row_pitch"] = round(pitch, 1)
-    out["row_one_box"] = [table_band[0], round(top),
-                          table_band[2], round(top + pitch)]
-    say(f"  offers table: {len(kept)} rule(s), pitch {pitch:.1f}px, "
-        f"row 1 box {out['row_one_box']}")
+            f"found {len(buys)} Buy button(s) in {table_band}; need at least "
+            f"two to measure the row pitch. Did favourite 1 return offers?")
+
+    xs = sorted(p[0] for p in buys)
+    ys = sorted(p[1] for p in buys)
+    out["purchase_buy_x"] = int(round(xs[len(xs) // 2]))
+    gaps = [b - a for a, b in zip(ys, ys[1:]) if b - a > 1]
+    pitch = sorted(gaps)[len(gaps) // 2] if gaps else 0
+    if not pitch:
+        raise RuntimeError("the Buy buttons gave no usable row pitch.")
+    half = pitch // 2
+    x0, x1 = table_band[0], table_band[2]
+    out["purchase_row_pitch"] = int(pitch)
+    out["purchase_row_one_y"] = int(ys[0])
+    out["purchase_row_one"] = [x0, int(ys[0]) - half, x1, int(ys[0]) + half]
+    out["purchase_rows_seen"] = len(buys)
+    say(f"  Buy column x={out['purchase_buy_x']}, {len(buys)} row(s), pitch {pitch}px")
+    say(f"  row 1 centre y={out['purchase_row_one_y']}, box {out['purchase_row_one']}")
+    return out
+
+
+def calibrate_register_table(shop, verbose=True):
+    say = print if verbose else (lambda *a: None)
+    click(*shop["register_tab"])
+    time.sleep(TAB_SETTLE)
+    park()
+    time.sleep(PARK_SETTLE)
+    image = grab()
+
+    band = _box(REGISTER_TABLE_BAND_F)
+    marks = [p for t, _, p in ocr(image, band)
+             if t.strip().lower() in ("change", "register")]
+    if len(marks) < 2:
+        raise RuntimeError(
+            f"found {len(marks)} row button(s) in the Register table {band}; "
+            f"need at least two to measure the row pitch.")
+    xs = sorted(p[0] for p in marks)
+    ys = sorted(p[1] for p in marks)
+    gaps = [b - a for a, b in zip(ys, ys[1:]) if b - a > 1]
+    pitch = sorted(gaps)[len(gaps) // 2] if gaps else 0
+    if not pitch:
+        raise RuntimeError("the Register row buttons gave no usable pitch.")
+    out = {
+        "table_x": [band[0], band[2]],
+        "row_one_y": int(ys[0]),
+        "row_pitch": int(pitch),
+        "row_one_box": [band[0], int(ys[0]) - pitch // 2,
+                        band[2], int(ys[0]) + pitch // 2],
+        "table_point": [int(xs[len(xs) // 2]) - 600, int(ys[0]) + pitch],
+        "rows_per_notch": 1,
+        "register_rows_seen": len(marks),
+    }
+    say(f"  Register table: {len(marks)} row(s), pitch {pitch}px, "
+        f"row 1 y={out['row_one_y']}")
+    say(f"  table_x {out['table_x']}, scroll point {out['table_point']}")
     return out
 
 
@@ -695,6 +753,9 @@ def main() -> None:
 
     print("purchase tab:")
     shop.update(calibrate_purchase(shop))
+
+    print("register table:")
+    shop.update(calibrate_register_table(shop))
 
     win = find_game_window()
     measured = {

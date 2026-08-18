@@ -11,8 +11,8 @@ _SHARED = calibration.load_shared()
 ACTION_GAP = _SHARED["timing"]["action_gap"]
 
 _ROW = re.compile(r"^(?P<name>.*?)\s+(?P<qty>\d[\d,]*)\s+(?P<price>\d[\d,]*)\s*$")
-_LOW_TO_HIGH = re.compile(_SHARED["text"]["sort_low_to_high"],
-                          re.IGNORECASE)
+_SORT_DIRECTION = re.compile(_SHARED["text"]["sort_direction"],
+                             re.IGNORECASE)
 
 
 class NotReady(Exception):
@@ -41,7 +41,7 @@ def favourite_point(slot):
 
 
 def sort_box():
-    return tuple(_need("sort_region"))
+    return tuple(_need("purchase_sort_region"))
 
 
 def purchase_row_one_box():
@@ -56,7 +56,8 @@ def read_sort(image=None):
 
 
 def sort_is_low_to_high(image=None):
-    return _LOW_TO_HIGH.search(read_sort(image).replace(" ", " ")) is not None
+    found = _SORT_DIRECTION.search(read_sort(image))
+    return found is not None and found.group(1).lower() == "low"
 
 
 def ensure_sort_low_to_high(verbose=True):
