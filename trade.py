@@ -1936,6 +1936,14 @@ PURCHASE_DLG_PRICE = (1150, 712, 1380, 758)
 # used a bare `> 800`; this is that number, scalable.
 PURCHASE_DIALOG_BUTTONS_Y = 800
 PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
+# Cancel sits this far right of Buy, on the same row, on the Confirm Purchase
+# dialog. Needed because the word "Cancel" does not always OCR on it: measured
+# live 2026-08-18, find_words over the button band returned '<=' and 'if' and
+# nothing else at every confidence from 60 down to 15, while "Buy" read at 96.
+# Buy was at (1292, 857) and Cancel at (1471, 857) on that frame -- and 1472 is
+# the same x the Registration Extension dialog's Cancel has been recorded at
+# 1693 times, so the button column is shared furniture, not a coincidence.
+PURCHASE_CANCEL_DX = 180
 
 PURCHASE_NAME_MAX_X = 700          # the Name cell ends before the QTY column
 PURCHASE_PRICE_X = (900, 1080)     # the Price cell
@@ -2359,8 +2367,40 @@ def purchase_confirm(source: "Image.Image | None" = None) -> dict | None:
     # Cores (64,610,000 Alz) fell back to limit=1 and bought a single Core.
     qty_max = read_number(shot, PURCHASE_DLG_QTY_MAX, 20.0)
 
-    return {"buy": buttons["buy"], "cancel": buttons.get("cancel"),
+    # DERIVED WHEN IT WILL NOT READ. An absent "cancel" is not an absent
+    # button -- refuse() dismisses only `if dialog.get("cancel")`, so a failed
+    # word read meant the dialog was silently left on screen, and the next
+    # order inherited it. Buy is the anchor because it reads far more reliably
+    # (96 against nothing, on the frame that stranded a run).
+    cancel = buttons.get("cancel")
+    if cancel is None and "buy" in buttons:
+        cancel = (buttons["buy"][0] + PURCHASE_CANCEL_DX, buttons["buy"][1])
+    return {"buy": buttons["buy"], "cancel": cancel,
             "price": price, "text": text, "qty": qty, "qty_max": qty_max}
+
+
+def dismiss_purchase_dialog(verbose: bool = False) -> bool:
+    """Close the Confirm Purchase dialog if it is up. True if it went away.
+
+    close_any_dialog() cannot do this job: it is driven by dialog_kind and the
+    Cancel-button finder over POPUP_REGION, and purchase_confirm's own
+    docstring records why that fails here -- the title reads "Confirm Purchase"
+    and is not among DIALOG_KINDS, so dialog_present() answers False with the
+    dialog plainly on screen. Measured live 2026-08-18 against a dialog that
+    had been up for over an hour: dialog_kind None, dialog_present False,
+    purchase_confirm read it perfectly.
+    """
+    dialog = purchase_confirm()
+    if dialog is None:
+        return True
+    target = dialog.get("cancel")
+    if target is None:
+        return False
+    if verbose:
+        print(f"  dismissing the Confirm Purchase dialog at {target}")
+    click(*target)
+    time.sleep(1.0)
+    return purchase_confirm() is None
 
 
 def offers_match_slot(slot: int, offers: list[Offer]) -> bool:
@@ -3007,7 +3047,7 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         # dialog says 1,420,000 but 1 x 710,000 is 710,000" -- 1,420,000 being
         # order 7's total, still on screen two orders later. Three orders lost
         # to one undismissed dialog, and the pass stopped at 14 of 200.
-        close_any_dialog()
+        dismiss_purchase_dialog()
         return False, "the Confirm Purchase dialog did not appear"
 
     # The last frame before real Alz moves, and the only step in the buying
@@ -3223,7 +3263,7 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
             # Unreadable, not necessarily absent -- see the note on the
             # no-dialog path above. Dismiss it so the NEXT order does not
             # inherit this one's total.
-            close_any_dialog()
+            dismiss_purchase_dialog()
             return False, ("the Confirm Purchase dialog vanished while the "
                            "quantity was being typed")
 
@@ -3256,7 +3296,7 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         time.sleep(QTY_READBACK_PAUSE)
         again = purchase_confirm()
         if again is None:
-            close_any_dialog()
+            dismiss_purchase_dialog()
             return False, ("the Confirm Purchase dialog vanished while the "
                            "price was being read")
         dialog = again
@@ -21832,6 +21872,19 @@ def leave_shop(verbose: bool = True) -> bool:
         if dialog_present():
             say("Closing the dialog left on screen...")
             close_any_dialog()
+        # AND THE ONE dialog_present() CANNOT SEE.
+        #
+        # The Confirm Purchase dialog is titled "Confirm Purchase", which is
+        # not among DIALOG_KINDS, so dialog_present() answers False with it on
+        # screen -- and it blocks Escape, which is precisely the "the Trade
+        # window would not close with Escape - close it by hand before the next
+        # run" note this function prints. Measured 2026-08-18: that dialog sat
+        # up for over an hour across three runs, and every leave_shop in that
+        # window printed the note and gave up.
+        #
+        # Cheap when nothing is open: purchase_confirm returns None on the
+        # first read and this returns immediately.
+        dismiss_purchase_dialog(verbose=verbose)
         for _ in range(ESCAPE_ATTEMPTS):
             if not trade_window_open():
                 say("Agent Shop closed; the game is back to its default state.")
