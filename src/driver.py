@@ -66,7 +66,8 @@ def market(slot, verbose=True):
 
 def seed(verbose=True):
     register_tab(verbose=verbose)
-    model = row_model.RowModel().seed({}, top=1)
+    model = row_model.RowModel().seed({})
+    model.home(verbose=verbose)
     found = {}
     for index in range(1, row_model.MAX_TOP + 1):
         model.scroll_to(index, verbose=False)
@@ -84,6 +85,7 @@ def seed(verbose=True):
             print(f"    {index:2}  {row.name[:34]:34} x{row.qty:<4} "
                   f"{row.price:>14,}")
     model.seed(found, top=row_model.MAX_TOP)
+    model.home(verbose=verbose)
     if verbose:
         print(f"  seeded {len(found)} of rows 1-{row_model.MAX_TOP}")
         print(f"  rows {row_model.MAX_TOP + 1}-{CAPACITY} are NOT reachable at "

@@ -23,6 +23,7 @@ WORK_TAB = _FACTS["work_tab"]
 GRID = _FACTS["grid_size"]
 
 MAX_TOP = CAPACITY - VISIBLE + 1
+HOME_NOTCHES = CAPACITY + VISIBLE
 
 EMPTY_MARKER = _SHARED["text"]["empty_row"]
 _TEXT = _SHARED["text"]
@@ -217,7 +218,7 @@ class RowModel:
         self.enforce = enforce
         self.divergences = 0
 
-    def seed(self, rows, top=1):
+    def seed(self, rows, top=None):
         self._slots = {}
         for index, row in (rows or {}).items():
             index = int(index)
@@ -225,7 +226,7 @@ class RowModel:
                 raise ValueError(f"row {index} is outside 1..{CAPACITY}")
             if row is not None:
                 self._slots[index] = row
-        self._top = int(top)
+        self._top = None if top is None else int(top)
         self.ready = True
         return self
 
@@ -291,6 +292,7 @@ class RowModel:
         if expected is None:
             raise ValueError(f"row {index} is empty in the model; refusing to "
                              f"cancel a slot nothing is listed in")
+        self.home(verbose=verbose)
         self.scroll_to(index, verbose=verbose)
         time.sleep(TAB_SETTLE)
 
@@ -395,7 +397,17 @@ class RowModel:
         self._top = int(to_top)
         return self._top
 
+    def home(self, verbose=True):
+        wheel(-HOME_NOTCHES, verbose=False)
+        time.sleep(ACTION_GAP)
+        self._top = 1
+        if verbose:
+            print(f"  scrolled to the top; row 1 is at position 1")
+        return 1
+
     def scroll_to(self, index, verbose=True):
+        if self._top is None:
+            self.home(verbose=verbose)
         plan = self.scroll_plan(index)
         if plan["clamped"]:
             raise Divergence(
