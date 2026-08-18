@@ -4265,6 +4265,12 @@ def load_carried() -> None:
                 "SELECT slot, count FROM carried WHERE count > 0"):
             if int(slot) == 0:
                 note_chaos_strand(True)
+            elif int(slot) == -1:
+                # What the stranded Cores cost, written beside the flag. Set
+                # directly rather than through note_chaos_strand: the rows
+                # arrive in whatever order the SELECT yields, and that call
+                # only records a cost while the flag is already up.
+                globals()["_CHAOS_STRAND_UNIT_COST"] = int(count)
             else:
                 _CARRIED_SETS[int(slot)] = int(count)
     except Exception:  # noqa: BLE001
@@ -4439,6 +4445,11 @@ def note_chaos_strand(stranded: bool = True, unit_cost: int = 0) -> None:
     _CHAOS_STRANDED = bool(stranded)
     if was != _CHAOS_STRANDED:
         _persist_carried(0, 1 if _CHAOS_STRANDED else 0)
+    # THE PRICE HAS TO SURVIVE THE PROCESS TOO, or the flag survives alone and
+    # the recovery it enables cannot price what it recovers. Slot -1 rather
+    # than a schema change: favourites are 1..10 and chaos already owns 0, so
+    # -1 is free, and _persist_carried deletes the row when the value is 0.
+    _persist_carried(-1, _CHAOS_STRAND_UNIT_COST if _CHAOS_STRANDED else 0)
 
 
 def chaos_stranded() -> bool:
