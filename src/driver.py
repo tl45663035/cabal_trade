@@ -14,6 +14,7 @@ _T = _SHARED["timing"]
 ACTION_GAP = _T["action_gap"]
 TAB_SETTLE = _T["tab_settle"]
 _ROW = re.compile(_SHARED["text"]["purchase_row"])
+MIN_PLAUSIBLE_PRICE = _SHARED["detect"]["min_plausible_price"]
 CAPACITY = _SHARED["game_facts"]["shop_capacity"]
 VISIBLE = _SHARED["game_facts"]["shop_visible"]
 
@@ -49,7 +50,22 @@ def initialise(verbose=True):
     return cal
 
 
+def require_shop(verbose=True):
+    if calibration._trade_window_open():
+        return True
+    if verbose:
+        print("  the Trade window is shut; opening the Agent Shop.")
+    shop.open_agent_shop(verbose=verbose)
+    time.sleep(TAB_SETTLE)
+    if not calibration._trade_window_open():
+        raise NotReady(
+            "the Trade window would not open. Refusing to click Trade window "
+            "coordinates while the game world is underneath them.")
+    return True
+
+
 def register_tab(verbose=True):
+    require_shop(verbose=verbose)
     calibration.click(*calibration.load()["shop"]["register_tab"])
     time.sleep(TAB_SETTLE)
     calibration.park()
@@ -96,10 +112,14 @@ def _row_from(text):
     found = _ROW.match((text or "").strip())
     if found is None:
         return None
+    qty = int(found.group("qty").replace(",", ""))
+    price = int(found.group("price").replace(",", ""))
+    if price < MIN_PLAUSIBLE_PRICE:
+        return None
     return row_model.Row(
         found.group("name").strip(" |-)("),
-        qty=int(found.group("qty").replace(",", "")),
-        price=int(found.group("price").replace(",", "")))
+        qty=qty if qty >= 1 else 1,
+        price=price)
 
 
 def cancel(model, index, verbose=True):
