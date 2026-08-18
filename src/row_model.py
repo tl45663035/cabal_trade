@@ -213,6 +213,7 @@ def wheel(rows, verbose=True):
                 f"SendInput sent {sent} of 1 wheel event "
                 f"(GetLastError {ctypes.get_last_error()})")
         time.sleep(WHEEL_GAP)
+    calibration.park()
     if verbose:
         print(f"  wheel {notches} event(s) {'down' if rows > 0 else 'up'} "
               f"at ({x}, {y}) for {rows:+d} row(s)")
