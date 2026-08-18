@@ -19128,6 +19128,19 @@ def chaos_cores_held(verbose: bool = True) -> int:
     try:
         if not open_craft_window(timeout=6.0, verbose=False):
             return 0
+        # SELECT THE RECIPE FIRST. There is no Required Material counter until
+        # one is picked: the craft window opens with every tier COLLAPSED, so
+        # this read was answering 0 unconditionally and held_already was always
+        # zero. The "already in hand" line has never once appeared in a log.
+        #
+        # Same two clicks and the same points craft_chaos_sets uses, so the
+        # number read here is the number a craft would consume.
+        tier, recipe = CHAOS_RECIPE_POINTS.get(
+            CHAOS_RECIPE, CHAOS_RECIPE_POINTS[1])
+        click(*tier)
+        time.sleep(0.8)
+        click(*recipe)
+        time.sleep(1.2)
         held = craft_material_held(grab())
         # Same settle as the craft itself: the counter reads 0 while the recipe
         # panel is still switching.
@@ -20307,7 +20320,31 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
             say(f"Chaos: margin {margin:,} does not clear the "
                 f"{CHAOS_MARGIN_FLOOR:,} floor - not buying.")
             record("chaos.margin_low", margin=margin)
-            return True
+            # STOCK ALREADY PAID FOR IS NOT PART OF THIS DECISION.
+            #
+            # The margin answers "is buying MORE worth it". Cores already in
+            # the bag are sunk: holding them as Cores is strictly worse than
+            # crafting them, because the Set sells for more per unit than the
+            # loose Core (720,720 against 720,000 when this was measured), and
+            # leaving them on the work tab fails require_empty_work_tab on
+            # every later cycle until the breaker ends the run.
+            #
+            # Measured 2026-08-18, run_2026-08-18_105652: 96 Cores bought the
+            # cycle before sat on the work tab while this gate returned, three
+            # cycles in a row, each one printing "The work tab holds goods from
+            # a chaos pass that did not finish. Crafting and listing them
+            # before anything else" and then not doing it. Dead in 4m 37s.
+            #
+            # Falling through costs no Alz: the per-order margin check inside
+            # the buy loop breaks on the same thin spread, so `got` stays at
+            # held_already and the craft runs on what is already owned.
+            if not held_already:
+                return True
+            say(f"Chaos: but {held_already} Core(s) are already paid for - "
+                f"crafting and listing them rather than leaving them on the "
+                f"work tab.")
+            record("chaos.craft_held_on_thin_margin",
+                   held=held_already, margin=margin)
 
         # 4. Buy. Re-searched so the receipt names the Core: buy_offer refuses
         #    a Buy that is not row 1 of a search that just ran.
@@ -20651,7 +20688,12 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
 
             if got < 1:
                 say("Chaos: nothing was bought; nothing to craft.")
-                return False
+                # Declining on margin is DELIBERATE, and the gate above says so
+                # in its own comment. Reporting it as a failed pass spends the
+                # three-strike breaker on a quiet market -- and once the held
+                # stock has been crafted on an earlier iteration, every later
+                # one arrives here with an empty bag by design.
+                return bool(CHAOS_HELD_OFF_ON_MARGIN)
             say(f"Chaos: {got} Core(s) obtained"
                 + ("." if got >= CHAOS_BUY_QUANTITY else
                    f" of {CHAOS_BUY_QUANTITY} - crafting what there is rather "
