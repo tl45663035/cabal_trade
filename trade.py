@@ -8536,6 +8536,12 @@ def scroll_wheel(x: int, y: int, notches: int, settle: float = WHEEL_SETTLE,
     cooldown()
 
 
+# How a click approaches its target. See click() for the measurement.
+CLICK_APPROACH_DY = 24        # hop this far above, then down onto the control
+CLICK_APPROACH_SETTLE = 0.12  # let the move land before moving on
+CLICK_HOVER_SETTLE = 0.30     # let the hover register before pressing
+
+
 def click(x: int, y: int, settle: float = 0.15) -> None:
     """Left-click at a screen coordinate.
 
@@ -8545,9 +8551,28 @@ def click(x: int, y: int, settle: float = 0.15) -> None:
     if _suppressed(f"click ({x}, {y})"):
         return
     make_dpi_aware()
+    # APPROACH, THEN SETTLE, THEN PRESS. The game wants a hover before it will
+    # take a click, and a single SetCursorPos followed by 0.15s did not give it
+    # one reliably.
+    #
+    # Measured live 2026-08-18, same button, same coordinate, back to back:
+    # click(178, 1014) on Register did nothing at all -- no dialog, and the
+    # register path aborted with "no confirmation dialog appeared after
+    # Register" while its own diagnostic showed the TABLE behind, not a dialog.
+    # move_mouse(x, y-60), pause, move_mouse(x, y), pause, then click raised the
+    # Confirm Registration dialog within 2s. The same held for the
+    # Confirmation button at (1291, 855): a bare click left it on screen, the
+    # approach cleared it first time.
+    #
+    # A short hop rather than a long one: it only has to be a MOVE ONTO the
+    # control, so the cursor cannot already be sitting there when the press
+    # lands. Costs one extra SetCursorPos and CLICK_APPROACH_SETTLE per click.
+    if not move_mouse(x, y - CLICK_APPROACH_DY):
+        raise PermissionError(CURSOR_BLOCKED_HINT)
+    time.sleep(CLICK_APPROACH_SETTLE)
     if not move_mouse(x, y):
         raise PermissionError(CURSOR_BLOCKED_HINT)
-    time.sleep(settle)
+    time.sleep(max(settle, CLICK_HOVER_SETTLE))
 
     # The button-up must fire even if something goes wrong in between: a left
     # button left logically down turns every later cursor move into a drag.
