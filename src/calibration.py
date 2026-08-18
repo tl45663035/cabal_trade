@@ -471,22 +471,6 @@ def calibrate_shop(verbose=True):
     purchase = [2 * boundary - reg[0], reg[1]]
     say(f"  Purchase {purchase}  (mirrored about the boundary at x={boundary})")
 
-    sort = None
-    for want in ("price", "low", "high", "to"):
-        hits = [(t, c, p) for t, c, p in words
-                if want in t.lower() and 150 < p[1] < 230]
-        if hits:
-            t, c, p = max(hits, key=lambda h: h[1])
-            sort = p
-            say(f"  sort dropdown anchored on {t!r} (conf {c})")
-            break
-    if sort is None:
-        raise RuntimeError(
-            "the sort dropdown was not found: none of 'price', 'low', 'high' "
-            "or 'to' read anywhere on the filter row. Is the Trade window on "
-            "the Purchase tab?")
-    say(f"  sort dropdown at {sort}")
-
     FAV = _box(FAV_BAND_F)
     prof = np.asarray(image.crop(FAV).convert("L"), dtype=float).mean(axis=0)
     floor, ceiling = prof.min(), prof.max()
@@ -528,7 +512,6 @@ def calibrate_shop(verbose=True):
         "purchase_tab": purchase,
         "register_tab": list(reg),
         "tab_boundary_x": boundary,
-        "sort_dropdown": list(sort),
         "favourites": favourites,
         "favourite_pitch": round(f_pitch, 2),
         "evidence": {
