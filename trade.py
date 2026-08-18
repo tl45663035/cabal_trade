@@ -19501,12 +19501,31 @@ def compress_stack(row: int, col: int, verbose: bool = True,
         if verbose:
             print(message)
 
-    origin = inventory_origin()
-    if origin is None and open_inventory(verbose=verbose):
-        origin = inventory_origin()
-    if origin is None:
+    # OPEN THE PANEL FIRST, THEN MEASURE. NOT THE OTHER WAY ROUND.
+    #
+    # inventory_origin() prefers find_alz, which locates an Alz box BY COLOUR
+    # and does not care which window it belongs to. This measured first and
+    # only opened the panel if the measurement came back None -- so with the
+    # Inventory shut it did not fail, it succeeded against somebody else's Alz
+    # box and returned a confidently wrong origin.
+    #
+    # The craft closes the Inventory (press_escape) immediately before this
+    # runs, which is exactly when there is no panel to measure and other Alz
+    # displays are on screen.
+    #
+    # Measured 2026-08-18 in run_2026-08-18_122650: slot (1,1) resolved to
+    # (1855, 319) where every healthy log in this repo puts it at (1981, 293)
+    # -- out by (-126, +26). alt_click's own guard caught it and refused, which
+    # is the only reason the character did not walk off, but the pass died with
+    # 39 freshly crafted Sets stranded on the work tab.
+    if not open_inventory(verbose=verbose):
         say("  the Inventory panel is not open and would not open.")
         record("chaos.compress_no_panel")
+        return False
+    origin = inventory_origin()
+    if origin is None:
+        say("  the Inventory panel is open but its anchor would not read.")
+        record("chaos.compress_no_anchor")
         return False
 
     # THE TAB, BEFORE THE SLOT. A slot number means nothing without it.
@@ -19532,6 +19551,23 @@ def compress_stack(row: int, col: int, verbose: bool = True,
         origin = inventory_origin() or origin
 
     point = slot_centre_at(origin, row, col)
+    # PROVE THE POINT BEFORE CLICKING IT, and re-measure once if it is wrong.
+    #
+    # alt_click refuses a point outside the grid, but it refuses by RAISING --
+    # which surfaced as "Chaos pass did not run: refusing Alt+Click at
+    # (1855, 319)" and skipped note_chaos_strand entirely, so the crafted Sets
+    # were left unclaimed. Checking here turns that into an ordinary False,
+    # which the caller already handles by noting the strand.
+    if not _point_in_inventory_grid(*point):
+        again = inventory_origin()
+        if again is not None and again != origin:
+            origin = again
+            point = slot_centre_at(origin, row, col)
+    if not _point_in_inventory_grid(*point):
+        say(f"  slot ({row},{col}) resolves to {point}, which is not inside "
+            f"the inventory grid - refusing to click it.")
+        record("chaos.compress_bad_origin", point=str(point), tab=tab)
+        return False
     say(f"  compressing at tab {tab if tab is not None else '?'} "
         f"({row},{col}) {point}")
     alt_click(*point)
