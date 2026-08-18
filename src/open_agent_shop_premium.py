@@ -88,12 +88,16 @@ def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
     time.sleep(settle)
 
 
-def click(x: int, y: int, settle: float = ACTION_GAP) -> None:
-    _button(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y, settle)
+def click(x: int, y: int, settle: float = None) -> None:
+    gap = calibration.load_shared()["timing"]["action_gap"]
+    _button(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y,
+            gap if settle is None else settle)
 
 
-def right_click(x: int, y: int, settle: float = 0.0) -> None:
-    _button(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y, settle)
+def right_click(x: int, y: int, settle: float = None) -> None:
+    gap = calibration.load_shared()["timing"]["action_gap"]
+    _button(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y,
+            gap if settle is None else settle)
 
 
 def ensure_inventory_open(verbose: bool = True) -> None:

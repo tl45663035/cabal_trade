@@ -138,13 +138,73 @@ def report(model):
     print(model.report())
 
 
-def main():
-    verbose = True
-    cal = initialise(verbose=verbose)
+def row_at(model, index, verbose=True):
+    model.scroll_to(index, verbose=False)
+    text = row_model.read_row_one()
+    row = _row_from(text)
+    if verbose:
+        print(f"  row {index}: {text[:66]!r}")
+        print(f"    function {row_model.row_function(text)!r}  "
+              f"complete {row_model.row_complete(text)}")
+    return text, row
+
+
+def do_cancel(index, verbose=True):
+    initialise(verbose=verbose)
+    register_tab(verbose=verbose)
+    model = row_model.RowModel().seed({})
+    text, row = row_at(model, index, verbose=verbose)
+    if row is None:
+        print(f"  row {index} did not parse; nothing cancelled.")
+        return None
+    print(f"    target {row.name!r} x{row.qty} at {row.price:,}")
+    model._slots[index] = row
+    started = time.perf_counter()
+    out = model.cancel(index, verbose=verbose)
+    print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
+    return out
+
+
+def do_scan(verbose=True):
+    initialise(verbose=verbose)
     print(f"  balance {balance() or 'unreadable'}")
     model = seed(verbose=verbose)
     report(model)
     return model
+
+
+def usage():
+    print("usage:")
+    print("  py src/driver.py                 open the shop, read the balance,")
+    print("                                   walk rows 1-21, print the model")
+    print("  py src/driver.py cancel N        cancel row N (collects it first")
+    print("                                   if it has sold)")
+    print("  py src/driver.py row N           read row N without touching it")
+    print("  py src/driver.py price N         market price for favourite slot N")
+    print("  py src/driver.py alz             read the balance")
+
+
+def main():
+    args = sys.argv[1:]
+    if not args:
+        do_scan()
+        return
+    what = args[0].lower()
+    if what == "cancel" and len(args) > 1:
+        do_cancel(int(args[1]))
+    elif what == "row" and len(args) > 1:
+        initialise()
+        register_tab()
+        row_at(row_model.RowModel().seed({}), int(args[1]))
+    elif what == "price" and len(args) > 1:
+        initialise()
+        market(int(args[1]))
+    elif what == "alz":
+        initialise()
+        print(f"  balance {balance() or 'unreadable'}")
+    else:
+        usage()
+        sys.exit(2)
 
 
 if __name__ == "__main__":

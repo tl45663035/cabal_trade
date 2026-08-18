@@ -17,7 +17,7 @@ _CACHE = None
 
 DEFAULTS = {
     "timing": {
-        "action_gap": 0.05,
+        "action_gap": 0.5,
         "key_hold": 0.02,
         "focus_settle": 0.35,
         "wheel_gap": 0.12,
