@@ -96,6 +96,11 @@ DEFAULTS = {
         "purchase_header_down": 10,
         "purchase_divider_sigma": 3.0,
         "purchase_cell_inset": 2,
+        "row_border_candidates": 30,
+        "row_border_min_gap": 15,
+        "qty_half_width": 45,
+        "function_half_width": 46,
+        "price_right_gap": 46,
         "min_client_side": 100,
         "fit_pitch_step": 0.02,
         "fit_start_step": 0.5,
@@ -245,6 +250,11 @@ PURCHASE_HEADER_UP = _DET["purchase_header_up"]
 PURCHASE_HEADER_DOWN = _DET["purchase_header_down"]
 PURCHASE_DIVIDER_SIGMA = _DET["purchase_divider_sigma"]
 PURCHASE_CELL_INSET = _DET["purchase_cell_inset"]
+ROW_BORDER_CANDIDATES = _DET["row_border_candidates"]
+ROW_BORDER_MIN_GAP = _DET["row_border_min_gap"]
+QTY_HALF_WIDTH = _DET["qty_half_width"]
+FUNCTION_HALF_WIDTH = _DET["function_half_width"]
+PRICE_RIGHT_GAP = _DET["price_right_gap"]
 MIN_CLIENT_SIDE = _DET["min_client_side"]
 FIT_PITCH_STEP = _DET["fit_pitch_step"]
 FIT_START_STEP = _DET["fit_start_step"]
@@ -711,37 +721,49 @@ def calibrate_purchase(shop, verbose=True):
     words = sorted(((p[0], t.strip().lower()) for t, _, p in ocr(image, hdr)
                     if t.strip().lower() in ("name", "qty", "price",
                                              "function")))
-    missing = [w for w in ("name", "qty", "price", "function")
-               if w not in [n for _, n in words]]
+    have = [n for _, n in words]
+    missing = [w for w in ("name", "qty", "price", "function") if w not in have]
     if missing:
         raise RuntimeError(
-            f"the offers header is missing {missing}; read "
-            f"{[n for _, n in words]}. Cannot place the per-column boxes.")
+            f"the offers header is missing {missing}; read {have}. "
+            f"Cannot place the per-column boxes.")
+    centre = {n: x for x, n in words}
 
-    prof = np.abs(np.diff(np.asarray(
-        image.crop(hdr).convert("L"), dtype=float).mean(axis=0)))
-    hot = prof.mean() + PURCHASE_DIVIDER_SIGMA * prof.std()
-    rules = []
-    for i in [int(i) for i in np.where(prof > hot)[0]]:
-        if all(abs(i - k) > EDGE_MIN_GAP for k in rules):
-            rules.append(i)
-    rules = [hdr[0] + r for r in rules]
+    band = np.asarray(image.crop((table_band[0], top, table_band[2], bot))
+                      .convert("L"), dtype=float)
+    solid = np.abs(np.diff(band, axis=1)).min(axis=0)
+    picks = []
+    for x in sorted(int(v) for v in
+                    np.argsort(solid)[::-1][:ROW_BORDER_CANDIDATES]):
+        if all(abs(x - k) > ROW_BORDER_MIN_GAP for k in picks):
+            picks.append(x)
+    inner = [table_band[0] + p for p in picks]
+    left = max([e for e in inner if e < centre["name"]],
+               default=table_band[0])
+    right = min([e for e in inner if e > centre["function"]],
+                default=table_band[2])
+    out["purchase_row_content"] = [left + PURCHASE_CELL_INSET, top,
+                                   right - PURCHASE_CELL_INSET, bot]
 
-    edges = [table_band[0]]
-    for (ax, an), (bx, bn) in zip(words, words[1:]):
-        mid = (ax + bx) // 2
-        between = [d for d in rules if ax < d < bx]
-        edges.append(max(between) if (an == "price" and between) else mid)
-    edges.append(table_band[2])
-
-    cols = {}
-    for i, (_, field) in enumerate(words):
-        cols[field] = [edges[i] + PURCHASE_CELL_INSET, top,
-                       edges[i + 1] - PURCHASE_CELL_INSET, bot]
+    buy_x = out["purchase_buy_x"]
+    qty_lo = centre["qty"] - QTY_HALF_WIDTH
+    qty_hi = centre["qty"] + QTY_HALF_WIDTH
+    fn_lo = buy_x - FUNCTION_HALF_WIDTH
+    fn_hi = buy_x + FUNCTION_HALF_WIDTH
+    cols = {
+        "name": [left + PURCHASE_CELL_INSET, top, qty_lo - PURCHASE_CELL_INSET,
+                 bot],
+        "qty": [qty_lo, top, qty_hi, bot],
+        "price": [(centre["qty"] + centre["price"]) // 2, top,
+                  fn_lo - PRICE_RIGHT_GAP + FUNCTION_HALF_WIDTH, bot],
+        "function": [fn_lo, top, fn_hi, bot],
+    }
     out["purchase_columns"] = cols
-    say(f"  header {[(n, x) for x, n in words]}")
-    for field, box in cols.items():
-        say(f"    {field:9} {box}  -> {read_line(image, tuple(box))!r}")
+    say(f"  row content {out['purchase_row_content']} -> "
+        f"{read_line(image, tuple(out['purchase_row_content']))!r}")
+    for field in ("name", "qty", "price", "function"):
+        say(f"    {field:9} {cols[field]}  -> "
+            f"{read_line(image, tuple(cols[field]))!r}")
 
     say(f"  Buy column x={out['purchase_buy_x']}, {len(buys)} row(s), pitch {pitch}px")
     say(f"  row 1 centre y={out['purchase_row_one_y']}, box {out['purchase_row_one']}")

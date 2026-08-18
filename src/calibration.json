@@ -137,6 +137,11 @@
     "purchase_header_down": 10,
     "purchase_divider_sigma": 3.0,
     "purchase_cell_inset": 2,
+    "row_border_candidates": 30,
+    "row_border_min_gap": 15,
+    "qty_half_width": 45,
+    "function_half_width": 46,
+    "price_right_gap": 46,
     "min_client_side": 100,
     "fit_pitch_step": 0.02,
     "fit_start_step": 0.5,
@@ -173,7 +178,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-08-18T06:57:48",
+      "measured_at": "2026-08-18T07:06:57",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -564,12 +569,12 @@
           "purchase_is_derived": true
         },
         "purchase_sort_region": [
-          616,
-          176,
-          1112,
+          612,
+          178,
+          1043,
           214
         ],
-        "purchase_sort_text_seen": "v pic * yrprice:Low to",
+        "purchase_sort_text_seen": "ne y Price:Low to",
         "purchase_buy_x": 1124,
         "purchase_row_pitch": 76,
         "purchase_row_one_y": 340,
@@ -580,29 +585,35 @@
           378
         ],
         "purchase_rows_seen": 8,
+        "purchase_row_content": [
+          308,
+          302,
+          1181,
+          378
+        ],
         "purchase_columns": {
           "name": [
-            258,
+            308,
             302,
-            674,
+            768,
             378
           ],
           "qty": [
-            678,
+            770,
             302,
-            885,
+            860,
             378
           ],
           "price": [
-            889,
+            887,
             302,
-            1109,
+            1078,
             378
           ],
           "function": [
-            1113,
+            1078,
             302,
-            1227,
+            1170,
             378
           ]
         },
@@ -610,20 +621,20 @@
           256,
           1229
         ],
-        "row_one_y": 230,
-        "row_pitch": 80,
+        "row_one_y": 229,
+        "row_pitch": 79,
         "row_one_box": [
           256,
           190,
           1229,
-          270
+          268
         ],
         "table_point": [
           526,
-          310
+          308
         ],
         "rows_per_notch": 1,
-        "register_rows_seen": 6
+        "register_rows_seen": 9
       }
     }
   },

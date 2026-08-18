@@ -50,7 +50,7 @@ def sort_box():
 
 
 def purchase_row_one_box():
-    return tuple(_need("purchase_row_one"))
+    return tuple(_need("purchase_row_content"))
 
 
 def column_box(field):
@@ -67,8 +67,18 @@ def read_field(field, image=None):
 
 def read_fields(image=None):
     image = image if image is not None else calibration.grab()
-    return {f: calibration.read_line(image, column_box(f)).strip()
-            for f in ("name", "qty", "price")}
+    whole = calibration.read_line(image, purchase_row_one_box()).strip()
+    numbers = _NUMBER.findall(whole)
+    fields = {
+        "name": calibration.read_line(image, column_box("name")).strip(),
+        "qty": numbers[-2] if len(numbers) >= 2 else "",
+        "price": calibration.read_line(image, column_box("price")).strip(),
+        "row": whole,
+    }
+    if not fields["qty"]:
+        fields["qty"] = calibration.read_line(
+            image, column_box("qty")).strip()
+    return fields
 
 
 def read_sort(image=None):
