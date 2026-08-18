@@ -30,6 +30,10 @@ _TEXT = _SHARED["text"]
 CHANGE_WORD = _TEXT["change_word"]
 DISMISS_WORD = _TEXT["dismiss_word"]
 CONFIRM_WORD = _TEXT["confirm_word"]
+RECEIPT_WORD = _TEXT["receipt_word"]
+REGISTER_WORD = _TEXT["register_word"]
+STATUS_COMPLETE = _TEXT["status_complete"]
+DIALOG_BUTTON_MIN_X = _SHARED["detect"]["dialog_button_min_x"]
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
 
@@ -88,10 +92,24 @@ def find_button(word, timeout=None):
     want = _key(word)
     while time.monotonic() < deadline:
         for text, _conf, point in popup_words():
-            if _key(text) == want:
+            if _key(text) == want and point[0] >= DIALOG_BUTTON_MIN_X:
                 return point
         time.sleep(ACTION_GAP)
     return None
+
+
+def row_function(text=None):
+    text = read_row_one() if text is None else text
+    key = _key(text)
+    for word in (RECEIPT_WORD, CHANGE_WORD, REGISTER_WORD):
+        if _key(word) in key:
+            return word
+    return None
+
+
+def row_complete(text=None):
+    text = read_row_one() if text is None else text
+    return _key(STATUS_COMPLETE) in _key(text)
 
 
 def dialog_buttons(image=None):
@@ -284,6 +302,27 @@ class RowModel:
             "lands_in_slot": landing,
         }
 
+    def receive(self, index, verbose=True):
+        point = button_point()
+        if verbose:
+            print(f"  {RECEIPT_WORD} at {point}")
+        calibration.click(*point)
+        calibration.park()
+        accept = find_button(RECEIPT_WORD)
+        if accept is None:
+            raise Divergence(
+                f"no Confirm Receipt dialog appeared after {RECEIPT_WORD} on "
+                f"row {index}. Nothing has been collected.")
+        if verbose:
+            print(f"  Confirm Receipt: accepting at {accept}")
+        calibration.click(*accept)
+        calibration.park()
+        if not dialog_gone():
+            raise Divergence(
+                f"the Confirm Receipt dialog stayed open on row {index}. "
+                f"Whether the Alz was taken is unknown -- check by hand.")
+        return True
+
     def cancel(self, index, verbose=True):
         index = int(index)
         expected = self._slots.get(index)
@@ -295,6 +334,25 @@ class RowModel:
         time.sleep(TAB_SETTLE)
 
         seen = read_row_one()
+        action = row_function(seen)
+        if action == RECEIPT_WORD:
+            complete = row_complete(seen)
+            if verbose:
+                print(f"  row {index} has SOLD "
+                      f"({'fully' if complete else 'partially'}); collecting "
+                      f"before anything else")
+            self.receive(index, verbose=verbose)
+            time.sleep(TAB_SETTLE)
+            seen = read_row_one()
+            if complete or row_function(seen) == REGISTER_WORD:
+                if verbose:
+                    print(f"  row {index} is empty after the collection; "
+                          f"nothing left to cancel")
+                return self.note_cancel(index)
+            action = row_function(seen)
+        if action == REGISTER_WORD:
+            raise Divergence(
+                f"row {index} is empty on screen; nothing to cancel.")
         if not expected.key or expected.key not in _key(seen):
             raise Divergence(
                 f"row {index} should hold {expected.name!r} but position 1 "

@@ -98,6 +98,7 @@ DEFAULTS = {
         "purchase_header_down": 10,
         "purchase_divider_sigma": 3.0,
         "purchase_cell_inset": 2,
+        "dialog_button_min_x": 1200,
         "row_border_candidates": 30,
         "row_border_min_gap": 15,
         "qty_half_width": 45,
@@ -129,6 +130,9 @@ DEFAULTS = {
         "change_word": "Change",
         "dismiss_word": "Cancel",
         "confirm_word": "Confirmation",
+        "receipt_word": "Receive",
+        "register_word": "Register",
+        "status_complete": "Complete",
     },
     "favourite_items": {
         "1": "Force Core(Highest)",
