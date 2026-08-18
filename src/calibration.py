@@ -103,6 +103,10 @@ DEFAULTS = {
         "price_right_gap": 46,
         "ink_threshold": 160,
         "ink_pad": 4,
+        "bulk_min_conf": 55.0,
+        "rescue_min_conf": 30.0,
+        "min_plausible_price": 1000,
+        "price_min_digits": 4,
         "min_client_side": 100,
         "fit_pitch_step": 0.02,
         "fit_start_step": 0.5,
@@ -259,6 +263,10 @@ FUNCTION_HALF_WIDTH = _DET["function_half_width"]
 PRICE_RIGHT_GAP = _DET["price_right_gap"]
 INK_THRESHOLD = _DET["ink_threshold"]
 INK_PAD = _DET["ink_pad"]
+BULK_MIN_CONF = _DET["bulk_min_conf"]
+RESCUE_MIN_CONF = _DET["rescue_min_conf"]
+MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
+PRICE_MIN_DIGITS = _DET["price_min_digits"]
 MIN_CLIENT_SIDE = _DET["min_client_side"]
 FIT_PITCH_STEP = _DET["fit_pitch_step"]
 FIT_START_STEP = _DET["fit_start_step"]

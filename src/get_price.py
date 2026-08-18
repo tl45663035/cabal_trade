@@ -14,6 +14,11 @@ SEARCH_TIMEOUT = _SHARED["timing"]["search_timeout"]
 RETRY_GAP = _SHARED["timing"]["retry_gap"]
 RETRIES = _SHARED["timing"]["search_retries"]
 EXPECTED = _SHARED["favourite_items"]
+_DET = _SHARED["detect"]
+BULK_MIN_CONF = _DET["bulk_min_conf"]
+RESCUE_MIN_CONF = _DET["rescue_min_conf"]
+MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
+PRICE_MIN_DIGITS = _DET["price_min_digits"]
 
 _NUMBER = re.compile(r"\d[\d,]*")
 _ROW = re.compile(_SHARED["text"]["purchase_row"])
@@ -67,23 +72,53 @@ def read_field(field, image=None):
 
 
 def row_name(image=None):
-    found = _ROW.match(read_row_one(image).strip())
-    return found.group("name").strip() if found else ""
+    return (read_fields(image).get("name") or "").strip()
+
+
+def column_edges():
+    cols = _need("purchase_columns")
+    return (cols["qty"][0], cols["price"][0], cols["function"][0])
 
 
 def read_fields(image=None):
     image = image if image is not None else calibration.grab()
-    whole = calibration.read_line(image, purchase_row_one_box()).strip()
-    found = _ROW.match(whole)
-    if found is None:
-        return {"row": whole}
+    band = purchase_row_one_box()
+    qty_lo, price_lo, function_lo = column_edges()
+    tokens = calibration.ocr(image, band, min_conf=BULK_MIN_CONF)
+
+    name_words, qty_words, price_words = [], [], []
+    for text, _, (x, _y) in sorted(tokens, key=lambda t: t[2][0]):
+        if x < qty_lo:
+            name_words.append(text)
+        elif x < price_lo:
+            qty_words.append(text)
+        elif x < function_lo:
+            price_words.append(text)
+
+    price = None
+    for text in price_words:
+        digits = _NOT_DIGIT.sub("", text)
+        if len(digits) >= PRICE_MIN_DIGITS:
+            price = int(digits)
+
+    qty = None
+    joined = _NOT_DIGIT.sub("", "".join(qty_words))
+    if joined:
+        qty = int(joined)
+    if qty is None:
+        qty = calibration.read_number(image, tuple(_need("purchase_columns")["qty"]))
+    if qty is None:
+        rescue = calibration.ocr(image,
+                                 tuple(_need("purchase_columns")["qty"]),
+                                 min_conf=RESCUE_MIN_CONF)
+        digits = _NOT_DIGIT.sub("", "".join(t for t, _, _ in rescue))
+        qty = int(digits) if digits else None
+
     return {
-        "name": found.group("name"),
-        "qty": found.group("qty"),
-        "price": found.group("price"),
-        "row": whole,
-        "price_cell": calibration.read_line(
-            image, column_box("price")).strip(),
+        "name": " ".join(name_words).strip(),
+        "qty": qty,
+        "price": price,
+        "row": " ".join(t for t, _, _ in sorted(tokens, key=lambda t: t[2][0])),
     }
 
 
@@ -117,13 +152,12 @@ def _digits(text):
 
 def parse_fields(fields):
     name = (fields.get("name") or "").strip(" |-)(")
-    qty = _digits(fields.get("qty"))
-    price = _digits(fields.get("price"))
-    if not name or qty is None or price is None:
+    qty = fields.get("qty")
+    price = fields.get("price")
+    if not name or price is None or price < MIN_PLAUSIBLE_PRICE:
         return None
-    anchor = _digits(fields.get("price_cell"))
-    if anchor is not None and anchor != price:
-        return None
+    if not qty or qty < 1:
+        qty = 1
     pack = row_model._PACK.search(name)
     pack = int(pack.group(1)) if pack else 1
     units = max(1, qty * pack)
