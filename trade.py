@@ -8115,7 +8115,10 @@ def choose_price(
 
     relative = 0
     if floor_price and floor_price >= MIN_PLAUSIBLE_PRICE:
-        relative = -(-floor_price * int(RELATIVE_PRICE_FLOOR * 100) // 100)
+        if absolute_floor:
+            relative = -(-floor_price * int(RELATIVE_PRICE_FLOOR * 100) // 100)
+        else:
+            relative = floor_price
 
     guard = max(absolute_floor, relative)
     if guard and suggested < guard:
@@ -10451,6 +10454,8 @@ def register_item(
         undercut_applied = False
         if undercut and price > 0:
             floor_now = max(absolute_floor or 0, MIN_PLAUSIBLE_PRICE)
+            if not absolute_floor and floor_price:
+                floor_now = max(floor_now, floor_price)
             lowered = max(price - undercut, floor_now)
             if lowered != price:
                 say(f"  undercutting {price:,} by {price - lowered:,} to "
