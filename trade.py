@@ -11100,7 +11100,66 @@ def await_dialog_button(
             break
         time.sleep(poll)
     # Last resort: the same frame often does contain the word, just faintly.
-    return dialog_button(grab(), word, min_conf=15.0)
+    faint = dialog_button(grab(), word, min_conf=15.0)
+    if faint is not None:
+        return faint
+    # AND IF IT STILL WILL NOT READ, READ A SMALLER PICTURE.
+    #
+    # dialog_button works over POPUP_REGION, 1600x800, and dialog_kind's own
+    # docstring records that tesseract's segmentation is crop-dependent at that
+    # size. This is the same failure from the other end: measured on
+    # unit_tests/corpus/run_00221.png, "Confirmation" was NOT FOUND anywhere in
+    # POPUP_REGION, and read at confidence 96 at (1291, 856) from the button
+    # band alone. "Cancel" read at 97 on the same crop.
+    #
+    # That frame is the Confirm Registration dialog sitting plainly on screen
+    # immediately after the Register click landed -- the click worked, the
+    # dialog opened, and every reader in the file said nothing was there.
+    return dialog_button_band(word)
+
+
+# TIGHT, AND THE TIGHTNESS IS THE POINT. Measured on run_00221.png:
+#   (1150, 800, 1700, 910) -> 'we', 'oe.', 'Le'          -- nothing
+#   (1150, 820, 1650, 900) -> 'Confirmation'@96, 'Cancel'@97
+# Fifty pixels of extra margin is the difference between reading the button
+# and reading noise, which is the same crop-dependence dialog_kind documents.
+#
+# MORE THAN ONE BAND, because the dialogs do not all put their buttons on the
+# same row: Confirm Registration reads at y 853, Confirm Receipt at y 878, and
+# a band tight enough for one misses the other. Measured across three captured
+# dialogs -- the first band finds Confirmation and Cancel and nothing else, the
+# second finds Receive and Cancel. Each is a small crop, so trying both is
+# cheap and only runs when every other reader has already failed.
+# Left edge at DIALOG_BUTTON_MIN_X, which exists precisely so a table button is
+# never mistaken for a dialog one -- the Function column's own Change / Receive
+# / Register buttons sit at x 1126 and would otherwise be in frame. Verified the
+# words still read there: 'Confirmation'@96, 'Cancel'@97.
+DIALOG_BUTTON_BANDS = (
+    (DIALOG_BUTTON_MIN_X, 820, 1650, 900),
+    (DIALOG_BUTTON_MIN_X, 855, 1600, 900),
+)
+
+
+def dialog_button_band(word: str, source=None, min_conf: float = 40.0):
+    """Find a dialog button by reading ONLY the row the buttons sit on.
+
+    A deliberately tiny crop. Every confirm-style dialog in this game puts its
+    buttons on the same row -- Confirmation (1291, 856), Cancel (1472, 853),
+    Receive (1290, 878) -- so one band covers them all, and a band that holds
+    little else gives tesseract nothing to mis-segment against.
+    """
+    shot = source if source is not None else grab()
+    want = _normalise(word)
+    best = None
+    for band in DIALOG_BUTTON_BANDS:
+        for w in find_words(shot, band, min_conf):
+            if _normalise(w.text) != want:
+                continue
+            if best is None or w.conf > best.conf:
+                best = w
+        if best is not None:
+            return best
+    return best
 
 
 def _mentions(texts: list[str], keyword: str, threshold: float = 0.85) -> bool:
@@ -16508,19 +16567,26 @@ def register_item(
                 # dialog_present falls back to the Cancel button every dialog
                 # carries, and a CONFIRMATION BUTTON distinguishes this dialog
                 # from the extension dialog ([Register] [Cancel]), the only
-                # other thing this click can raise. Guarded on dialog_present
-                # first because await_dialog_button ends with a 15%-confidence
-                # sweep of a region that is mostly scenery once dialogs close.
+                # other thing this click can raise.
                 probe = grab()
-                if dialog_present(probe):
+                # NOT gated on dialog_present(): it answers False for this very
+                # dialog -- measured on run_00221.png, where the Confirm
+                # Registration dialog was plainly up and dialog_kind,
+                # dialog_present and dialog_button over POPUP_REGION all said
+                # nothing was there. The band reader is its own gate: it is
+                # tight, it starts at DIALOG_BUTTON_MIN_X so no table button is
+                # in frame, and finding the word CONFIRMATION there means a
+                # confirm dialog is up.
+                accept = dialog_button_band(CONFIRM_WORD, source=probe)
+                if accept is None:
                     accept = await_dialog_button(CONFIRM_WORD,
                                                  EXTENSION_RECHECK_SECONDS)
-                    if accept is not None:
-                        say(f"  ...a dialog IS up and carries a {CONFIRM_WORD} "
-                            f"button at {accept.centre} (conf "
-                            f"{accept.conf:.0f}); its title would not read. "
-                            f"Continuing on the button rather than aborting.")
-                        shot = probe
+                if accept is not None:
+                    say(f"  ...a dialog IS up and carries a {CONFIRM_WORD} "
+                        f"button at {accept.centre} (conf {accept.conf:.0f}); "
+                        f"its title would not read. Continuing on the button "
+                        f"rather than aborting.")
+                    shot = probe
         require(shot is not None, "no confirmation dialog appeared after Register")
 
         # THE FOURTH WITNESS, and the last chance to stop: this dialog is the
