@@ -16,6 +16,7 @@ RETRIES = _SHARED["timing"]["search_retries"]
 EXPECTED = _SHARED["favourite_items"]
 
 _NUMBER = re.compile(r"\d[\d,]*")
+_ROW = re.compile(_SHARED["text"]["purchase_row"])
 _SORT_DIRECTION = re.compile(_SHARED["text"]["sort_direction"],
                              re.IGNORECASE)
 
@@ -68,17 +69,25 @@ def read_field(field, image=None):
 def read_fields(image=None):
     image = image if image is not None else calibration.grab()
     whole = calibration.read_line(image, purchase_row_one_box()).strip()
-    numbers = _NUMBER.findall(whole)
-    fields = {
-        "name": calibration.read_line(image, column_box("name")).strip(),
-        "qty": numbers[-2] if len(numbers) >= 2 else "",
-        "price": calibration.read_line(image, column_box("price")).strip(),
+    found = _ROW.match(whole)
+    if found is None:
+        return {"row": whole}
+    checks = []
+    tight = calibration.read_number(image, column_box("qty"))
+    if tight is not None:
+        checks.append(tight)
+    cell = _digits(calibration.read_line(image, column_box("qty")))
+    if cell is not None:
+        checks.append(cell)
+    return {
+        "name": found.group("name"),
+        "qty": found.group("qty"),
+        "price": found.group("price"),
         "row": whole,
+        "qty_checks": checks,
+        "name_cell": calibration.read_line(image, column_box("name")).strip(),
+        "price_cell": calibration.read_line(image, column_box("price")).strip(),
     }
-    if not fields["qty"]:
-        fields["qty"] = calibration.read_line(
-            image, column_box("qty")).strip()
-    return fields
 
 
 def read_sort(image=None):
@@ -114,6 +123,12 @@ def parse_fields(fields):
     qty = _digits(fields.get("qty"))
     price = _digits(fields.get("price"))
     if not name or qty is None or price is None:
+        return None
+    checks = fields.get("qty_checks") or []
+    if checks and qty not in checks:
+        return None
+    seen = _digits(fields.get("price_cell"))
+    if seen is not None and seen != price:
         return None
     pack = row_model._PACK.search(name)
     pack = int(pack.group(1)) if pack else 1

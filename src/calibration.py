@@ -101,6 +101,8 @@ DEFAULTS = {
         "qty_half_width": 45,
         "function_half_width": 46,
         "price_right_gap": 46,
+        "ink_threshold": 160,
+        "ink_pad": 4,
         "min_client_side": 100,
         "fit_pitch_step": 0.02,
         "fit_start_step": 0.5,
@@ -255,6 +257,8 @@ ROW_BORDER_MIN_GAP = _DET["row_border_min_gap"]
 QTY_HALF_WIDTH = _DET["qty_half_width"]
 FUNCTION_HALF_WIDTH = _DET["function_half_width"]
 PRICE_RIGHT_GAP = _DET["price_right_gap"]
+INK_THRESHOLD = _DET["ink_threshold"]
+INK_PAD = _DET["ink_pad"]
 MIN_CLIENT_SIDE = _DET["min_client_side"]
 FIT_PITCH_STEP = _DET["fit_pitch_step"]
 FIT_START_STEP = _DET["fit_start_step"]
@@ -389,6 +393,35 @@ def read_line(image: Image.Image, box, scale: int = None):
         if text:
             words.append((int(row["left"]), text))
     return " ".join(t for _, t in sorted(words))
+
+
+def ink_box(image: Image.Image, box):
+    grey = np.asarray(image.crop(box).convert("L"), dtype=float)
+    rows, cols = np.where(grey > INK_THRESHOLD)
+    if not len(rows):
+        return None
+    x0 = max(0, int(cols.min()) - INK_PAD)
+    x1 = min(grey.shape[1], int(cols.max()) + 1 + INK_PAD)
+    y0 = max(0, int(rows.min()) - INK_PAD)
+    y1 = min(grey.shape[0], int(rows.max()) + 1 + INK_PAD)
+    return (box[0] + x0, box[1] + y0, box[0] + x1, box[1] + y1)
+
+
+def read_number(image: Image.Image, box):
+    tight = ink_box(image, box)
+    if tight is None:
+        return None
+    crop = image.crop(tight)
+    crop = crop.resize((crop.width * OCR_SCALE, crop.height * OCR_SCALE),
+                       Image.LANCZOS)
+    buf = io.BytesIO()
+    crop.save(buf, "PNG")
+    run = subprocess.run(
+        [TESSERACT, "stdin", "stdout", "--psm", ROW_PSM,
+         "-c", "tessedit_char_whitelist=" + DIGIT_WHITELIST],
+        input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
+    digits = _NOT_DIGIT.sub("", run.stdout.decode("utf-8", "replace"))
+    return int(digits) if digits else None
 
 
 def read_digits(image: Image.Image, box, scale: int = None):
