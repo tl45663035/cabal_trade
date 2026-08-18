@@ -505,6 +505,72 @@ def find_game_window(title: str = "PlayCabal"):
     return hwnd, name, [pt[0], pt[1], r.right, r.bottom]
 
 
+PURCHASE_SORT_BAND_F = (0.2500, 0.1200, 0.5000, 0.1700)
+PURCHASE_BUY_BAND_F = (0.3000, 0.6800, 0.5100, 0.7300)
+PURCHASE_TABLE_BAND_F = (0.1000, 0.1500, 0.4800, 0.6600)
+
+
+def calibrate_purchase(shop, verbose=True):
+    say = print if verbose else (lambda *a: None)
+    if "purchase_tab" not in shop:
+        raise RuntimeError("the Purchase tab point is not measured yet.")
+
+    px, py = shop["purchase_tab"]
+    say(f"  switching to the Purchase tab at ({px}, {py})")
+    click(px, py)
+    time.sleep(0.6)
+    park()
+    time.sleep(0.3)
+    image = grab()
+
+    out = {}
+
+    sort_band = _box(PURCHASE_SORT_BAND_F)
+    sort_words = ocr(image, sort_band)
+    if not sort_words:
+        raise RuntimeError(
+            f"nothing read in the sort band {sort_band}. The Purchase tab may "
+            f"not have opened, or the band is wrong for this screen.")
+    xs = [p[0] for _, _, p in sort_words]
+    ys = [p[1] for _, _, p in sort_words]
+    out["sort_region"] = [min(xs) - 40, min(ys) - 16,
+                          max(xs) + 90, max(ys) + 16]
+    out["sort_text_seen"] = " ".join(t for t, _, _ in sort_words)
+    say(f"  sort reads {out['sort_text_seen']!r} -> region "
+        f"{out['sort_region']}")
+
+    buy_band = _box(PURCHASE_BUY_BAND_F)
+    buy = next(((t, c, p) for t, c, p in ocr(image, buy_band)
+                if t.strip().lower() == "buy"), None)
+    if buy is None:
+        raise RuntimeError(
+            f"the Buy button was not found in {buy_band}. Seen: "
+            f"{[t for t, _, _ in ocr(image, buy_band)]}")
+    out["buy_button"] = list(buy[2])
+    say(f"  Buy button at {out['buy_button']} (conf {buy[1]})")
+
+    table_band = _box(PURCHASE_TABLE_BAND_F)
+    strip = np.asarray(image.crop(table_band).convert("L"), dtype=float)
+    profile = np.abs(np.diff(strip.mean(axis=1)))
+    lines = [int(i) for i in np.argsort(profile)[::-1][:60]]
+    kept = []
+    for i in sorted(lines):
+        if all(abs(i - k) > 30 for k in kept):
+            kept.append(i)
+    if len(kept) < 3:
+        raise RuntimeError(
+            f"only {len(kept)} horizontal rule(s) found in the offers table; "
+            f"cannot place row 1.")
+    pitch = float(np.median(np.diff(kept[:6]))) if len(kept) > 2 else 0.0
+    top = table_band[1] + kept[0]
+    out["row_pitch"] = round(pitch, 1)
+    out["row_one_box"] = [table_band[0], round(top),
+                          table_band[2], round(top + pitch)]
+    say(f"  offers table: {len(kept)} rule(s), pitch {pitch:.1f}px, "
+        f"row 1 box {out['row_one_box']}")
+    return out
+
+
 def main() -> None:
     from open_inventory import VK_I, VK_ESCAPE, focus_game, press
 
@@ -565,6 +631,9 @@ def main() -> None:
     print("agent shop:")
     park()
     shop = calibrate_shop()
+
+    print("purchase tab:")
+    shop.update(calibrate_purchase(shop))
 
     win = find_game_window()
     measured = {
