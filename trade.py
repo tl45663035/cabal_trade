@@ -2992,6 +2992,22 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
                         f"bought that this run cannot account for")
             return False, (f"the dialog did not appear AND {moved:,} Alz was "
                            f"spent - buying halted for a human to look")
+        # CLEAR WHATEVER IS STILL ON SCREEN BEFORE GIVING UP ON THIS ORDER.
+        #
+        # purchase_confirm() returning None means the dialog COULD NOT BE READ,
+        # not that it is gone -- and this path used to return without touching
+        # it, while refuse() ten lines up has always clicked Cancel. A dialog
+        # left up is not a private failure: it belongs to THIS order and the
+        # next one meets it as a stale frame.
+        #
+        # Measured 2026-08-18 in run_2026-08-18_122650. Order 7 asked for
+        # 2 x 710,000 and reported "vanished while the quantity was being
+        # typed". Order 8 then read "the Confirm Purchase dialog did not
+        # appear". Order 9 asked for 1 x 710,000 and was refused with "the
+        # dialog says 1,420,000 but 1 x 710,000 is 710,000" -- 1,420,000 being
+        # order 7's total, still on screen two orders later. Three orders lost
+        # to one undismissed dialog, and the pass stopped at 14 of 200.
+        close_any_dialog()
         return False, "the Confirm Purchase dialog did not appear"
 
     # The last frame before real Alz moves, and the only step in the buying
@@ -3204,6 +3220,10 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         # Re-read here so the price reflects what was just typed.
         dialog = purchase_confirm()
         if dialog is None:
+            # Unreadable, not necessarily absent -- see the note on the
+            # no-dialog path above. Dismiss it so the NEXT order does not
+            # inherit this one's total.
+            close_any_dialog()
             return False, ("the Confirm Purchase dialog vanished while the "
                            "quantity was being typed")
 
@@ -3236,6 +3256,7 @@ def buy_offer(offer: Offer, want: int = 1, timeout: float = 8.0,
         time.sleep(QTY_READBACK_PAUSE)
         again = purchase_confirm()
         if again is None:
+            close_any_dialog()
             return False, ("the Confirm Purchase dialog vanished while the "
                            "price was being read")
         dialog = again
