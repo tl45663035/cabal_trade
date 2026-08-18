@@ -83,7 +83,8 @@ def button_point():
 
 def popup_words(image=None):
     image = image if image is not None else calibration.grab()
-    return calibration.ocr(image, calibration._box(calibration.POPUP_F))
+    return calibration.ocr(image,
+                           calibration._box(calibration.DIALOG_BUTTONS_F))
 
 
 def find_button(word, timeout=None):
@@ -329,7 +330,6 @@ class RowModel:
         if expected is None:
             raise ValueError(f"row {index} is empty in the model; refusing to "
                              f"cancel a slot nothing is listed in")
-        self.home(verbose=verbose)
         self.scroll_to(index, verbose=verbose)
         time.sleep(TAB_SETTLE)
 

@@ -78,6 +78,7 @@ DEFAULTS = {
         "purchase_buy_band": [0.3000, 0.6800, 0.5100, 0.7300],
         "purchase_table_band": [0.1000, 0.1500, 0.4800, 0.6600],
         "popup": [0.1953, 0.2389, 0.8203, 0.8232],
+        "dialog_buttons": [0.4688, 0.5296, 0.6641, 0.7085],
         "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
     },
     "detect": {
@@ -99,6 +100,7 @@ DEFAULTS = {
         "purchase_divider_sigma": 3.0,
         "purchase_cell_inset": 2,
         "dialog_button_min_x": 1200,
+        "min_plausible_balance": 1000,
         "row_border_candidates": 30,
         "row_border_min_gap": 15,
         "qty_half_width": 45,
@@ -247,6 +249,7 @@ PURCHASE_SORT_BAND_F = tuple(_REG["purchase_sort_band"])
 PURCHASE_BUY_BAND_F = tuple(_REG["purchase_buy_band"])
 PURCHASE_TABLE_BAND_F = tuple(_REG["purchase_table_band"])
 POPUP_F = tuple(_REG["popup"])
+DIALOG_BUTTONS_F = tuple(_REG["dialog_buttons"])
 REGISTER_TABLE_BAND_F = tuple(_REG["register_table_band"])
 
 ALZ_BRIGHT = _DET["alz_bright"]

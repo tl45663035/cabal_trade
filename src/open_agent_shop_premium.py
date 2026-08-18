@@ -17,6 +17,7 @@ ACTION_GAP = CAL["timing"]["action_gap"]
 
 CALIBRATED_ALZ = tuple(CAL["inventory"]["alz_box"])
 PANEL_MOVED_SLACK = CAL["detect"]["panel_moved_slack"]
+MIN_PLAUSIBLE_BALANCE = CAL["detect"]["min_plausible_balance"]
 
 
 def grab():
@@ -29,16 +30,13 @@ def grab():
 
 def panel_open(image=None, verbose: bool = True) -> bool:
     image = image if image is not None else grab()
-    box = calibration.find_alz(image)
-    if box is None:
+    value = calibration.read_digits(image, CALIBRATED_ALZ)
+    if value is None:
         return False
-    right, top = box[2], box[1]
-    if (abs(right - CALIBRATED_ALZ[2]) > PANEL_MOVED_SLACK
-            or abs(top - CALIBRATED_ALZ[1]) > PANEL_MOVED_SLACK):
+    if value < MIN_PLAUSIBLE_BALANCE:
         if verbose:
-            print(f"  the Inventory panel is open but has MOVED: balance at "
-                  f"({right}, {top}), calibrated at ({CALIBRATED_ALZ[2]}, "
-                  f"{CALIBRATED_ALZ[1]}). Re-run py src/calibration.py")
+            print(f"  the balance box reads {value}, below "
+                  f"{MIN_PLAUSIBLE_BALANCE} -- treating the panel as shut.")
         return False
     return True
 
