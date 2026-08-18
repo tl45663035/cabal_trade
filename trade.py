@@ -1,4 +1,4 @@
-﻿"""Cabal Online automation: screen capture, Alz reading and Agent Shop trading.
+"""Cabal Online automation: screen capture, Alz reading and Agent Shop trading.
 
 Everything lives here -- capture, OCR, input and the trade automation -- so
 there is one file to read and one to run.
@@ -545,6 +545,9 @@ SHOP_MODEL_SHADOW = True
 # register_item clamps it back above the cost floor and MIN_PLAUSIBLE_PRICE, so
 # it can never be the thing that lists below what the Cores cost.
 CHAOS_UNDERCUT = 1
+# Which craft recipe the chaos pass uses. 1 = the [1500] x1, 2 = the [2500] x3.
+# See CRAFT_RECIPES for where each one's two clicks land.
+CHAOS_RECIPE = 1
 
 # Set by --chaos. Off unless asked for, like BUY_ENABLED: it spends money.
 CHAOS_ENABLED = False
@@ -562,8 +565,17 @@ CHAOS_ENABLED = False
 # How many separate purchases one bundle may take. A row holds whatever the
 # seller listed -- 95 against a K of 200 on 2026-08-09 -- so reaching K means
 # buying row 1, searching again to bring the next row up, and buying that too.
-# The cap only stops a runaway; reaching it means the market is very thin.
-CHAOS_BUY_ORDERS = 15
+#
+# A RUNAWAY BACKSTOP, NOT A BUDGET. It was 15, sized when a row held ~40 Cores
+# and 200 took about five orders. A thin market makes it bind on the ordinary
+# case instead: on 2026-08-17 rows were coming up 1 to 14 Cores at a time, the
+# cap stopped a pass at 156 of 200 after fifteen orders, and the bundle was
+# short for no reason but the counter.
+#
+# What actually bounds the buying is CHAOS_BUY_LOST_LIMIT -- three refusals in
+# a row and it stops -- plus CHAOS_BUY_QUANTITY, the margin gate re-read before
+# every order, and the balance. This only has to stop an unbounded loop.
+CHAOS_BUY_ORDERS = 1000
 # How many orders in a row may fail before the buying stops. Losing a row to
 # another buyer is ordinary and the next search brings up a different listing,
 # so one loss is no reason to abandon the target -- but a market that refuses
@@ -629,26 +641,26 @@ CHAOS_CRAFT_TAB = 8               # the last inventory tab, where the card lives
 CHAOS_CRAFT_KEY_SLOT = (1, 8)     # row, col of the Remote Request Card
 CHAOS_WORK_TAB = 4                # crafted Sets land on whatever tab is showing
 
-CRAFT_CATEGORY_POINT = (121, 236)   # the "1000 - 1999" tree node
-CRAFT_RECIPE_POINT = (216, 318)     # "[1500] Chaos Core Set (x1)" under it
-# WHICH RECIPE CHAOS CRAFTS. The two above are recipe 1 and stay the default,
-# so a config without this knob behaves exactly as before.
+# WHICH RECIPE TO CRAFT, AND WHERE ITS TWO CLICKS LAND.
 #
-# Recipe 2 is "[2500] Chaos Core Set (x3)" under the 2000-2999 tier: 3 Cores in,
-# 3 Sets out, a third of the craft operations for the same stock.
+# Keyed by the `chaos_recipe` config setting: 1 is the [1500] x1 under the
+# "1000 - 1999" tier, 2 is the [2500] x3 under "2000 - 2999", which takes three
+# Cores and yields three Sets per craft -- a third of the craft operations for
+# the same stock.
 #
-# THIS IS NOT COSMETIC. config.json has carried "CHAOS_RECIPE": 2 since before
-# this build was restored, and this build did not know the key -- so it silently
-# clicked recipe 1's points, the material counter read "no Chaos Cores are held"
-# against 96 Cores actually in the bag, nothing was crafted, and every Core
-# bought that cycle was stranded on the work tab. Measured 2026-08-18 in
-# run_2026-08-18_102807: 29 Cores stranded on one cycle, 96 on the next, then
-# three failed cycles on the empty-work-tab gate and the breaker.
-CHAOS_RECIPE_POINTS = {
-    1: ((121, 236), (216, 318)),
-    2: ((121, 276), (216, 359)),
+# TWO FIXED CLICKS, NO OCR, at the operator's instruction: "i dont want any
+# OCR, i want precise coordinate, click on the craft tier, then click on
+# recipe, then click Request all." An earlier version read the tree to find the
+# row and was rejected.
+#
+# Both points assume the tree is in its RESTING state -- every tier collapsed,
+# which is what the window opens to. A tier left open from an earlier action
+# moves the recipe row and the second click lands somewhere else; there is no
+# reader here to catch that.
+CRAFT_RECIPES = {
+    1: ((121, 236), (216, 318), "[1500] Chaos Core Set (x1)"),
+    2: ((121, 276), (216, 359), "[2500] Chaos Core Set (x3)"),
 }
-CHAOS_RECIPE = 1
 CRAFT_REPEAT_POINT = (104, 981)     # the Repeat checkbox
 CRAFT_REQUEST_ALL = (355, 980)      # queues one craft per available material
 CRAFT_COMPLETE_ALL = (1181, 980)    # collects every finished craft
@@ -668,8 +680,19 @@ CRAFT_WINDOW_REGION = (10, 30, 1300, 1020)
 # Rounded up, and never below one block: waiting too long costs seconds, while
 # clicking Complete All early leaves paid-for material sitting in the queue and
 # reports the shortfall as "the craft only made N", with no error anywhere.
-CRAFT_SETTLE_PER_BLOCK = 30.0
-CRAFT_SETTLE_BLOCK = 100
+# PER TIER, at the operator's instruction: "wait time for tier 1 is 30s per
+# 100 chaos, rounding up to nearest granularity, tier 2 is 10s per 100 chaos".
+# An unknown setting falls back to the SLOWER rate: waiting too long costs
+# seconds, while collecting early leaves paid-for material in the queue and
+# reports it as "the craft only made N", with no error anywhere.
+#
+# GRANULARITY 50, NOT 100 -- "Lets do in the granularity of 50. i.e. if we have
+# 230 chaos core, we need to wait 25s."
+#   tier 1: 30s per 100 -> 15s per 50   (230 Cores -> 5 blocks -> 75s)
+#   tier 2: 10s per 100 ->  5s per 50   (230 Cores -> 5 blocks -> 25s)
+CRAFT_SETTLE_PER_BLOCK_BY_RECIPE = {1: 15.0, 2: 5.0}
+CRAFT_SETTLE_PER_BLOCK = 15.0
+CRAFT_SETTLE_BLOCK = 50
 # The ceiling moves with the rate, or the scaling dies at three blocks: at 30s
 # per 100 the old 180s cap bit at 600 items, and a queue that accumulated after
 # a failed craft would have been under-waited by exactly the amount the rate
@@ -681,10 +704,21 @@ CRAFT_SETTLE_BLOCK = 100
 CRAFT_SETTLE_MAX = 300.0
 
 
+def craft_settle_rate() -> float:
+    """Seconds per CRAFT_SETTLE_BLOCK for the recipe in force."""
+    return CRAFT_SETTLE_PER_BLOCK_BY_RECIPE.get(
+        int(CHAOS_RECIPE or 1), CRAFT_SETTLE_PER_BLOCK)
+
+
+def craft_material_cost() -> int:
+    """Cores consumed per craft by the recipe in force: 1 for x1, 3 for x3."""
+    return 3 if int(CHAOS_RECIPE or 1) == 2 else 1
+
+
 def craft_settle_seconds(made: int) -> float:
     """How long to wait between queueing `made` crafts and collecting them."""
     blocks = -(-max(0, int(made)) // CRAFT_SETTLE_BLOCK)   # ceiling division
-    return min(CRAFT_SETTLE_MAX, CRAFT_SETTLE_PER_BLOCK * max(1, blocks))
+    return min(CRAFT_SETTLE_MAX, craft_settle_rate() * max(1, blocks))
 
 # "Required Material: Chaos Core  N/1" -- how many are held, and how many each
 # craft needs.
@@ -4220,75 +4254,12 @@ def carried_sets(slot: int) -> int:
     return max(0, int(_CARRIED_SETS.get(slot, 0)))
 
 
-def _persist_carried(slot: int, count: int) -> None:
-    """Mirror one carry row to the ledger. Never raises.
-
-    Bookkeeping that must survive the process, because the failure it prevents
-    only happens ACROSS one: a restart meeting a dirty work tab with no memory
-    of why raises FatalAbort and dies on cycle 1, repeatedly.
-    """
-    conn = sales_db()
-    if conn is None:
-        return
-    try:
-        with conn:
-            if count > 0:
-                conn.execute(
-                    "INSERT INTO carried (slot, count, noted) VALUES (?,?,?) "
-                    "ON CONFLICT(slot) DO UPDATE SET count=excluded.count, "
-                    "noted=excluded.noted",
-                    (int(slot), int(count),
-                     _dt.datetime.now().isoformat(" ", "seconds")))
-            else:
-                conn.execute("DELETE FROM carried WHERE slot = ?", (int(slot),))
-    except Exception:  # noqa: BLE001 - a carry note must never cost a listing
-        pass
-    finally:
-        try:
-            conn.close()
-        except Exception:  # noqa: BLE001
-            pass
-
-
-def load_carried() -> None:
-    """Restore the carry registry from the ledger, once per process.
-
-    Called before the first work-tab check. Without it a restart cannot tell
-    its own paid-for Sets from an item nobody can account for, and refuses the
-    only way it knows how -- fatally.
-    """
-    conn = sales_db()
-    if conn is None:
-        return
-    try:
-        for slot, count in conn.execute(
-                "SELECT slot, count FROM carried WHERE count > 0"):
-            if int(slot) == 0:
-                note_chaos_strand(True)
-            elif int(slot) == -1:
-                # What the stranded Cores cost, written beside the flag. Set
-                # directly rather than through note_chaos_strand: the rows
-                # arrive in whatever order the SELECT yields, and that call
-                # only records a cost while the flag is already up.
-                globals()["_CHAOS_STRAND_UNIT_COST"] = int(count)
-            else:
-                _CARRIED_SETS[int(slot)] = int(count)
-    except Exception:  # noqa: BLE001
-        pass
-    finally:
-        try:
-            conn.close()
-        except Exception:  # noqa: BLE001
-            pass
-
-
 def note_carried_sets(slot: int, count: int) -> None:
     """Record that `count` Sets for `slot` are in the bag, unlisted."""
     if count > 0:
         _CARRIED_SETS[slot] = int(count)
     else:
         _CARRIED_SETS.pop(slot, None)
-    _persist_carried(slot, count)
 
 
 def clear_carried(slot: int) -> None:
@@ -4303,14 +4274,10 @@ def clear_carried(slot: int) -> None:
 # crafted UP into Sets -- so filing a chaos strand there would send
 # restock_core to the vendor to convert Chaos Cores as if they were Sets.
 #
-# Without some marker the tab reads as unaccountable and ensure_work_tab_empty
-# raises FatalAbort, ending the run with the goods in the bag. That has
-# happened six times on record -- 66,999,700 Alz of Cores left uncrafted on
-# 2026-08-09 and 65,392,205 of Sets left unmerged an hour later, each followed
-# by restarts that met the same tab and died again before doing anything.
-#
-# It IS recoverable: craft_chaos_sets reads the held-material count off the
-# craft window, so re-entering chaos_pass crafts whatever is sitting there.
+# It is recoverable WITHIN A RUN: craft_chaos_sets reads the held-material
+# count off the craft window, so a later chaos_pass crafts whatever this run
+# left sitting there. Process-lifetime, like _CARRIED_SETS, and for the same
+# reason -- a new launch cannot know what happened to the bag in between.
 _CHAOS_STRANDED = False
 
 # ONE RANGE WALK PER CYCLE, SHARED.
@@ -4432,24 +4399,15 @@ _CHAOS_STRAND_UNIT_COST = 0
 def note_chaos_strand(stranded: bool = True, unit_cost: int = 0) -> None:
     """Chaos left Cores or Sets in the work tab, or has just cleared them.
 
-    Persisted under slot 0 -- chaos has no favourite slot of its own -- so a
-    restart still recognises the goods as its own instead of raising
-    FatalAbort over a tab it could have crafted.
+    Process-lifetime only. It says what THIS run has done, so it is false at
+    startup however the last one ended.
     """
     global _CHAOS_STRANDED, _CHAOS_STRAND_UNIT_COST
     if stranded and unit_cost > 0:
         _CHAOS_STRAND_UNIT_COST = int(unit_cost)
     elif not stranded:
         _CHAOS_STRAND_UNIT_COST = 0
-    was = _CHAOS_STRANDED
     _CHAOS_STRANDED = bool(stranded)
-    if was != _CHAOS_STRANDED:
-        _persist_carried(0, 1 if _CHAOS_STRANDED else 0)
-    # THE PRICE HAS TO SURVIVE THE PROCESS TOO, or the flag survives alone and
-    # the recovery it enables cannot price what it recovers. Slot -1 rather
-    # than a schema change: favourites are 1..10 and chaos already owns 0, so
-    # -1 is free, and _persist_carried deletes the row when the value is 0.
-    _persist_carried(-1, _CHAOS_STRAND_UNIT_COST if _CHAOS_STRANDED else 0)
 
 
 def chaos_stranded() -> bool:
@@ -5343,31 +5301,38 @@ def open_purchase_tab(timeout: float = 10.0, verbose: bool = True) -> bool:
         if verbose:
             print(message)
 
-    # FALL THROUGH TO THE CLICK, DO NOT RETURN THE SORT'S VERDICT.
+    # A TAB READ THAT SAYS "ALREADY THERE" IS NOT ALLOWED TO END THIS CALL.
     #
-    # These two short-circuits used to `return set_purchase_sort_low_to_high()`
-    # outright, which made the tab click below UNREACHABLE whenever
-    # purchase_tab_open() misread. Measured 2026-08-18, 86 idle cycles in a
-    # row: open_trade_window lands on the REGISTER tab, purchase_tab_open()
-    # said True on the settling frame, so the sort helper ran -- and its own
-    # attempt 2 correctly reported "not on the Purchase tab", returned False,
-    # and that False came straight back out. Nothing ever clicked Purchase, so
-    # chaos could not price, bought nothing, listed nothing, and the loop span
-    # for 92 minutes with an empty shop and ZERO failed cycles to trip the
-    # breaker.
+    # Both short-circuits below used to `return` the sort result, so a tab read
+    # that was wrong -- or right at the moment it was taken and stale a second
+    # later -- meant the function reported failure WITHOUT EVER CLICKING THE
+    # TAB. The window then sat on Register, and every retry took the same
+    # branch and failed the same way.
     #
-    # A sort that fails is evidence the tab may be wrong, not proof the whole
-    # call is lost. Clicking the tab and letting the verify loop below re-check
-    # costs one click on a path that was about to give up.
-    if purchase_tab_open() and set_purchase_sort_low_to_high(verbose=verbose):
-        return True
+    # Measured 2026-08-17, on the mid-buy reopen: "the Trade window closed
+    # during the search; reopening and trying this order once more" was
+    # followed by the sort attempt and "not on the Purchase tab - the sort
+    # control does not exist on the other tab", with no "switching to the
+    # Purchase tab" between them. Twice in one run, and the resupply could not
+    # proceed either time.
+    #
+    # Falling through costs one click on a tab that may already be right,
+    # which is a no-op. Returning early costs the pass.
+    if purchase_tab_open():
+        if set_purchase_sort_low_to_high(verbose=verbose):
+            return True
+        say("  the tab read as Purchase but the sort would not set; "
+            "clicking the tab rather than trusting that read.")
 
     if not trade_window_open():
         say("  the Trade window is shut; opening it first.")
         if not open_trade_window(timeout=max(timeout, 15.0), verbose=verbose):
             return False
-        if purchase_tab_open() and set_purchase_sort_low_to_high(verbose=verbose):
-            return True
+        if purchase_tab_open():
+            if set_purchase_sort_low_to_high(verbose=verbose):
+                return True
+            say("  the tab read as Purchase after opening the window but the "
+                "sort would not set; clicking the tab.")
 
     # THE TAB IS FIXED FURNITURE. DO NOT READ IT.
     #
@@ -6012,7 +5977,7 @@ def restock_core(item_slot: int,
         # under the right name and price. A listing whose read-back FAILED may
         # not be on the board at all -- so counting it would clear the carry
         # for Sets still sitting in the work tab, and the next cycle then meets
-        # a dirty tab with carried_total() == 0, which is the FatalAbort state.
+        # a dirty tab it has no record of, and skips.
         #
         # Counted as a listed ROW either way, because a row was registered and
         # the shop-capacity arithmetic has to include it.
@@ -6293,6 +6258,9 @@ LIVE_KNOBS = {
     "CHAOS_BUY_QUANTITY":             (int, "Cores per top-up"),
     "CHAOS_MARGIN_FLOOR":             (int, "min Set-over-Core spread per unit"),
     "CHAOS_UNDERCUT":                 (int, "Alz shaved off a chaos listing"),
+    "CHAOS_RECIPE":                   (int, "which craft recipe chaos uses: "
+                                            "1 = [1500] Chaos Core Set (x1), "
+                                            "2 = [2500] Chaos Core Set (x3)"),
     "BUY_ENABLED":                    (bool, "restock the ordinary Cores"),
     "RESTOCK_TARGET":                 (int, "core min: hard floor per restock"),
     "BUY_MAXIMUM":                    (int, "core max: soft ceiling, and "
@@ -6300,9 +6268,6 @@ LIVE_KNOBS = {
     "RESTOCK_AT_OR_BELOW_ROWS":       (int, "restock a Core at/below this many rows"),
     "SHOP_MODEL_SHADOW":              (bool, "track the row model without acting"),
     "COST_FLOOR_ON_RELIST":           (bool, "never relist below what the stock cost"),
-    "CHAOS_RECIPE":                   (int, "which craft recipe chaos uses: "
-                                            "1 = [1500] Chaos Core Set (x1), "
-                                            "2 = [2500] Chaos Core Set (x3)"),
 }
 
 
@@ -13154,7 +13119,19 @@ def core_behind(set_name: str) -> str:
     return FAVOURITE_SLOTS.get(core_slot, "")
 
 
-def purchase_cost_basis(name: str, this_run_only: bool = True) -> int:
+def run_id() -> str:
+    """This launch's identity in the ledger.
+
+    EVERY LAUNCH IS A SEPARATE RUN. What an earlier process bought, listed or
+    stranded is not evidence about this one -- it cannot know whether the bag
+    was emptied, the board cleared, or a row cancelled by hand in between --
+    so anything that feeds a decision is filtered on this value. The tables
+    stay whole; only the questions are scoped.
+    """
+    return _RUN_STARTED_AT.isoformat(timespec="seconds")
+
+
+def purchase_cost_basis(name: str) -> int:
     """What was paid per item for the Sets behind `name`. 0 if none were.
 
     A relist may never price a Core below what its Sets cost. The market can
@@ -13195,18 +13172,13 @@ def purchase_cost_basis(name: str, this_run_only: bool = True) -> int:
         # bookkeeping. Nothing bought this run means no cost floor, which is
         # correct: there is no fresh position to protect, and the catalogue
         # floor still applies to anything that has one.
-        # `this_run_only` is the FLOOR's question -- what did the position I am
-        # holding right now cost me. Reporting asks a different one: what did
-        # everything I have ever sold cost, so it passes False.
-        if this_run_only:
-            rows = conn.execute(
-                "SELECT item, price, qty FROM purchases "
-                "WHERE price > 0 AND qty > 0 AND run = ?",
-                (_RUN_STARTED_AT.isoformat(timespec="seconds"),)).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT item, price, qty FROM purchases "
-                "WHERE price > 0 AND qty > 0").fetchall()
+        # There was an all-runs branch here, reached by this_run_only=False.
+        # Nothing ever passed it, and it could only ever answer the wrong
+        # question -- what an earlier run paid is not what this position cost.
+        rows = conn.execute(
+            "SELECT item, price, qty FROM purchases "
+            "WHERE price > 0 AND qty > 0 AND run = ?",
+            (run_id(),)).fetchall()
     except Exception:  # noqa: BLE001 - bookkeeping must never block a listing
         return 0
     finally:
@@ -13807,34 +13779,37 @@ def sales_db() -> "sqlite3.Connection | None":
                 -- numbers shift on any cancel or register, so the price each
                 -- was listed at is the only thing that tells two apart. It is
                 -- rewritten on every relist so it tracks the row.
+                -- `run` scopes every read to the launch that wrote the row.
+                -- Without it, lots from earlier runs stay outstanding forever:
+                -- they are only ever deleted when a sale retires one, so
+                -- anything that sold while the script was off, or was
+                -- cancelled by hand, is inherited as though it were still on
+                -- the board. On 2026-08-16 that was 14 rows going back six
+                -- days, against a board the same run had just counted as
+                -- empty -- and the dearest of them set the relist floor.
                 CREATE TABLE IF NOT EXISTS chaos_lots (
                     id           INTEGER PRIMARY KEY AUTOINCREMENT,
                     unit_cost    INTEGER NOT NULL,
                     listed_price INTEGER NOT NULL,
                     qty          INTEGER NOT NULL,
-                    created      TEXT    NOT NULL
+                    created      TEXT    NOT NULL,
+                    run          TEXT
                 );
                 CREATE INDEX IF NOT EXISTS chaos_lots_price
                     ON chaos_lots (listed_price);
+                CREATE INDEX IF NOT EXISTS chaos_lots_run
+                    ON chaos_lots (run);
 
-                -- WORK LEFT IN THE INVENTORY, ACROSS RESTARTS.
-                --
-                -- The carry registry and the chaos strand flag were
-                -- process-lifetime, so a restart met a dirty work tab with
-                -- carried_total() == 0 and raised FatalAbort -- turning a
-                -- recoverable strand into a run that dies on cycle 1, every
-                -- time, until a human clears the tab. Four such deaths are on
-                -- record for 2026-08-09 alone.
-                --
-                -- One row per slot; slot 0 is the chaos strand, which has no
-                -- favourite slot of its own.
-                CREATE TABLE IF NOT EXISTS carried (
-                    slot    INTEGER PRIMARY KEY,
-                    count   INTEGER NOT NULL,
-                    noted   TEXT    NOT NULL
-                );
                 """
             )
+            # A database written before `run` existed keeps its old shape --
+            # CREATE TABLE IF NOT EXISTS does not alter one that is already
+            # there. Add the column rather than migrating the rows: the old
+            # ones SHOULD read as NULL, because they belong to no run this
+            # process can claim, and every query below asks for a run.
+            have = {r[1] for r in conn.execute("PRAGMA table_info(chaos_lots)")}
+            if "run" not in have:
+                conn.execute("ALTER TABLE chaos_lots ADD COLUMN run TEXT")
             conn.commit()
             _sales_db_ready = True
         return conn
@@ -14021,12 +13996,16 @@ def note_registration(item: str, price: int | None, qty: int | None) -> None:
 
 
 def registered_qty(item: str, price: int | None) -> "int | None":
-    """The largest quantity of `item` this script ever listed at `price`.
+    """The largest quantity of `item` THIS RUN listed at `price`.
 
     Largest rather than latest: the same stack can be relisted several times as
     it sells down, and the ceiling has to cover the biggest it ever was.
     Matched on the folded key so the game's spacing around the bracket, and the
     pack marker on a table name, cannot cause a miss.
+
+    Scoped to this run. The answer is used as a CEILING, so a row some earlier
+    run listed at the same price would raise it above anything on the board
+    now -- and a price this run has not listed at should have no answer at all.
     """
     if not item or not price:
         return None
@@ -14040,7 +14019,7 @@ def registered_qty(item: str, price: int | None) -> "int | None":
         best = None
         for name, qty in conn.execute(
                 "SELECT item, qty FROM registrations WHERE price = ? "
-                "AND qty > 0", (int(price),)):
+                "AND qty > 0 AND run = ?", (int(price), run_id())):
             if _floor_key(item_name(_PACK_ANYWHERE.sub(" ", name))) != wanted:
                 continue
             if best is None or int(qty) > best:
@@ -14193,8 +14172,14 @@ def all_time_totals() -> "tuple[int, int, int, int, int] | None":
             pass
 
 
-def costed_sales(run: "str | None" = None) -> "tuple[list, dict]":
-    """Every sale, costed against the purchase lots it ACTUALLY consumed.
+def costed_sales(run: "str | None" = None,
+                 all_runs: bool = False) -> "tuple[list, dict]":
+    """This run's sales, costed against the lots they ACTUALLY consumed.
+
+    SCOPED TO THIS RUN unless `all_runs`. Costing a sale against an earlier
+    run's purchases is inventing a cost basis this process cannot stand behind
+    -- it has no way to know what happened to that stock in between. Reports
+    that deliberately want the whole ledger pass all_runs=True.
 
     Returns (sales, lots_left):
       sales     [{at, item, key, units, proceeds, cost, uncosted}, ...] in time
@@ -14238,6 +14223,13 @@ def costed_sales(run: "str | None" = None) -> "tuple[list, dict]":
     try:
         def key(name: str) -> str:
             return _floor_key(item_name(_PACK_ANYWHERE.sub(" ", name or "")))
+
+        # THIS RUN unless a caller deliberately asked for the whole ledger.
+        # `run` was optional and defaulted to every run ever recorded, so the
+        # per-sale profit line and the COGS total were both costed against
+        # purchases made days earlier.
+        if not all_runs and not run:
+            run = run_id()
 
         # Lots, oldest first. `price` is the TOTAL paid for the row, so the
         # unit cost is that over the quantity -- see record_purchase_row.
@@ -14301,7 +14293,7 @@ def costed_sales(run: "str | None" = None) -> "tuple[list, dict]":
             pass
 
 
-def cost_of_goods_sold() -> "tuple[int, int, int, int]":
+def cost_of_goods_sold(all_runs: bool = False) -> "tuple[int, int, int, int]":
     """(cost of units sold, units priced, units unpriced, unpriced takings).
 
     A thin tally over costed_sales, which does the matching. It used to do its
@@ -14312,9 +14304,14 @@ def cost_of_goods_sold() -> "tuple[int, int, int, int]":
     zero and folded in silently. Most of what has sold on this account was
     bought before the purchases ledger existed, and treating those as free
     would overstate profit by exactly the amount nobody can account for.
+
+    `all_runs` MUST match whatever the caller pairs this with. The standing
+    position report subtracts this from an all-time spend, so a run-scoped
+    COGS there would report every run's outlay against one run's sales and
+    call the difference stock on hand.
     """
     try:
-        sales, _held = costed_sales()
+        sales, _held = costed_sales(all_runs=all_runs)
         cost = sum(s["cost"] for s in sales)
         priced = sum(s["units"] - s["uncosted"] for s in sales)
         unpriced = sum(s["uncosted"] for s in sales)
@@ -14645,7 +14642,9 @@ def profit_report() -> str:
         # It fires exactly when more has sold than the purchases cover, i.e.
         # when the shop is clearing stock bought before the ledger existed --
         # which is the normal state after a legacy restock, not a rare edge.
-        cogs, priced, unpriced, _uncosted = cost_of_goods_sold()
+        # ALL RUNS, to match all_spend and all_gross above. This block is the
+        # standing position -- what the account holds -- not this run's work.
+        cogs, priced, unpriced, _uncosted = cost_of_goods_sold(all_runs=True)
         # What has been paid for and NOT yet sold. Everything spent, less the
         # cost of the units that have left -- so a restock that just bought
         # 1,212 Sets shows as stock rather than as a loss.
@@ -14792,9 +14791,9 @@ def recover_stranded_work_tab(timeout: float = 8.0,
                               verbose: bool = True) -> bool:
     """List whatever is sitting in the work tab back onto the shop.
 
-    NO LONGER CALLED AUTOMATICALLY as of 2026-08-08. ensure_work_tab_empty now
-    raises FatalAbort on a dirty tab instead of invoking this, because pricing
-    an item that cannot be named means pricing it at the strictest floor on the
+    NO LONGER CALLED AUTOMATICALLY as of 2026-08-08. ensure_work_tab_empty
+    skips the cycle on a dirty tab instead of invoking this, because pricing an
+    item that cannot be named means pricing it at the strictest floor on the
     books -- 175,000,000 -- and that is real money committed to a guess.
 
     Kept rather than deleted: it is the only code that knows how to clear a
@@ -14907,69 +14906,42 @@ def recover_stranded_work_tab(timeout: float = 8.0,
 
 
 def ensure_work_tab_empty(timeout: float = 8.0, verbose: bool = True) -> bool:
-    """The work-tab precondition. Two kinds of dirty, two answers.
+    """The work-tab precondition. True only when the tab is empty.
 
-    A tab holding the restock's own paid-for Sets returns False -- this cycle
-    cannot relist, but the next resupply should convert and list them, so the
-    run continues and the failure breaker bounds it.
+    A dirty tab refuses the CYCLE and never the run, whatever put it there.
+    This cycle cannot relist; the next resupply converts and lists the script's
+    own working stock, and the failure breaker bounds anything that repeats.
 
-    Anything ELSE in the tab raises FatalAbort and stops the run, because it is
-    an item nobody can account for and the script has no safe way to identify
-    it. Neither case may be waved through: relist() finds the cancelled item by
-    diffing the inventory, and that diff is only unambiguous while the tab
-    starts empty.
-
-    This used to try to recover: list whatever was in the tab at
-    strictest_price_floor() -- 175,000,000, because an inventory slot cannot be
-    named -- and let the next cycle read the name off the table and re-price
-    it. That is the only path in this file that can commit real money to a
-    decision nobody made, and it fires exactly when the script is already
-    confused about what is where.
-
-    Measured on 2026-08-08: it reached for 175,000,000 twice against 54
-    Upgrade Core (Ultimate) worth 469,469 each, and was saved only by the
-    client being disconnected at the time.
-
-    So it refuses instead, and the refusal is FATAL rather than per-cycle: a
-    strand does not clear itself, so retrying it every cycle just spends the
-    breaker's budget arriving at the same place. A human clears the tab in a
-    minute; a wrong listing costs a row, a registration fee and a position
-    nobody chose.
-
-    Returns False for the ONE recoverable case and raises for everything else.
+    It may not be waved through. relist() finds the cancelled item by diffing
+    the inventory, and that diff is only unambiguous while the tab starts
+    empty. Nor may it be cleared by listing the contents blind: that path
+    priced an unnamed slot at strictest_price_floor() and reached for
+    175,000,000 twice against 54 Upgrade Core (Ultimate) worth 469,469 each.
     """
     if require_empty_work_tab(verbose=verbose):
         return True
 
-    # The restock's own working stock is the one dirty tab that clears itself.
+    # REFUSE THE CYCLE, NEVER THE RUN.
     #
-    # restock_core banks it deliberately (note_carried_sets) so the next pass
-    # converts and lists it instead of buying more, and raising here stops that
-    # pass from ever running -- permanently, because a restart meets the same
-    # dirty tab before restock_pass is reached and the process-lifetime carry
-    # record is lost with it.
-    #
-    # Refusing the CYCLE gets the recovery without the wedge. It must still
-    # refuse: relist() finds the cancelled item by diffing the inventory, and
-    # that diff is ambiguous while anything else is in the tab -- on
+    # It must refuse: relist() finds the cancelled item by diffing the
+    # inventory, and that diff is ambiguous while anything is in the tab -- on
     # 2026-08-09, waving it through picked 7 carried Sets out of the diff
     # instead of the 12 Epic Boosters that had just been cancelled, and
-    # stranded them.
-    if carried_total() > 0:
-        return False
-
-    # A chaos strand is the same shape: paid-for goods this script put there
-    # and can still craft, compress and list. Six runs on record died on this
-    # tab instead -- and every restart died again, because nothing recognised
-    # the Cores as chaos's own. See note_chaos_strand.
-    if chaos_stranded():
-        return False
-
-    raise FatalAbort(
-        f"inventory tab {WORK_TAB} is not empty. Everything in it is stock "
-        "this script cannot name from a slot, so it cannot be priced safely "
-        "-- clear it by hand (list it, or move it to another tab) and start "
-        "again. Nothing has been listed or cancelled.")
+    # stranded them. Listing it blind is worse still: that path reached for
+    # 175,000,000 twice against 54 Upgrade Core (Ultimate) worth 469,469 each.
+    #
+    # But refusing the RUN is not the script's call to make. A tab left by a
+    # previous launch is not this run's business -- it cannot know whether a
+    # human emptied the bag in between -- and dying on cycle 1 over it is how
+    # four runs on 2026-08-09 ended before doing any work. The failure breaker
+    # already bounds a fault that repeats every cycle.
+    if verbose:
+        why = ("this run's own working stock" if carried_total() > 0
+               or chaos_stranded() else
+               "stock this script cannot name from a slot")
+        print(f"  inventory tab {WORK_TAB} is not empty ({why}); skipping "
+              f"this cycle. Nothing has been listed or cancelled.")
+    return False
 
 
 def changed_slots(
@@ -19137,24 +19109,25 @@ def chaos_cores_held(verbose: bool = True) -> int:
             print(message)
 
     try:
-        # THE SHOP COVERS THE CRAFT WINDOW. The caller's own comment says the
-        # game cannot show the two together -- and this function never shut it,
-        # so during a pass open_craft_window simply failed and the silent
-        # `return 0` made 125 held Cores look like none. craft_chaos_sets does
-        # leave_shop() before its own open for exactly this reason.
+        # THE SHOP COVERS THE CRAFT WINDOW, AND THERE IS NO COUNTER UNTIL A
+        # RECIPE IS PICKED. This function did neither, so it answered 0 every
+        # time and held_already has never once been non-zero on this account --
+        # "Chaos: N Core(s) already in hand" appears in no log. Measured
+        # 2026-08-18: 125 Cores in the bag, read as none.
+        #
+        # craft_chaos_sets already does leave_shop() and the CRAFT_RECIPES
+        # clicks before its own read; this is the same two steps, in the one
+        # place that skipped them, so the number here is the number a craft
+        # would consume.
         leave_shop(verbose=False)
         time.sleep(0.5)
         if not open_craft_window(timeout=6.0, verbose=False):
             return 0
-        # SELECT THE RECIPE FIRST. There is no Required Material counter until
-        # one is picked: the craft window opens with every tier COLLAPSED, so
-        # this read was answering 0 unconditionally and held_already was always
-        # zero. The "already in hand" line has never once appeared in a log.
-        #
-        # Same two clicks and the same points craft_chaos_sets uses, so the
-        # number read here is the number a craft would consume.
-        tier, recipe = CHAOS_RECIPE_POINTS.get(
-            CHAOS_RECIPE, CHAOS_RECIPE_POINTS[1])
+        entry = CRAFT_RECIPES.get(int(CHAOS_RECIPE or 1))
+        if entry is None:
+            press_escape()
+            return 0
+        tier, recipe, _label = entry
         click(*tier)
         time.sleep(0.8)
         click(*recipe)
@@ -19330,17 +19303,21 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
         say("  the craft window is not open.")
         return 0
 
-    # Points by recipe, not the module constants: CHAOS_RECIPE is a live knob
-    # and the pair must move together. An unknown value falls back to recipe 1
-    # rather than clicking a coordinate nobody measured.
-    tier, recipe = CHAOS_RECIPE_POINTS.get(
-        CHAOS_RECIPE, CHAOS_RECIPE_POINTS[1])
-    say(f"  selecting the Chaos Core Set recipe (chaos_recipe {CHAOS_RECIPE}): "
-        f"tier at {tier}, recipe at {recipe}")
+    entry = CRAFT_RECIPES.get(int(CHAOS_RECIPE or 1))
+    if entry is None:
+        say(f"  chaos_recipe {CHAOS_RECIPE} is not a known recipe "
+            f"({sorted(CRAFT_RECIPES)}); not crafting.")
+        record("craft.recipe_unknown", setting=CHAOS_RECIPE)
+        return 0
+    tier, recipe, label = entry
+    say(f"  selecting {label} (chaos_recipe {CHAOS_RECIPE}): tier at {tier}, "
+        f"recipe at {recipe}")
     click(*tier)
     time.sleep(0.8)
     click(*recipe)
     time.sleep(1.2)
+    record("craft.recipe_selected", setting=CHAOS_RECIPE,
+           tier=str(tier), recipe=str(recipe))
 
     shot = grab()
     if not craft_window_open(shot):
@@ -19434,7 +19411,8 @@ def craft_chaos_sets(timeout: float = 8.0, verbose: bool = True) -> int:
     # chaos.craft_settled records made/waited every time, so if a live run ever
     # shows the queue outlasting the wait, the block size is set from evidence.
     say(f"  waiting {settle:.0f}s for {made} craft(s) to finish "
-        f"({CRAFT_SETTLE_PER_BLOCK:.0f}s per {CRAFT_SETTLE_BLOCK}, rounded up)")
+        f"({craft_settle_rate():.0f}s per {CRAFT_SETTLE_BLOCK}, rounded up, "
+        f"chaos_recipe {CHAOS_RECIPE})")
     time.sleep(settle)
     waited = settle
     say(f"  waited {waited:.0f}s")
@@ -19591,10 +19569,10 @@ def note_chaos_lot(unit_cost: int, listed_price: int, qty: int) -> None:
         return
     try:
         conn.execute(
-            "INSERT INTO chaos_lots (unit_cost, listed_price, qty, created) "
-            "VALUES (?,?,?,?)",
+            "INSERT INTO chaos_lots (unit_cost, listed_price, qty, created, "
+            "run) VALUES (?,?,?,?,?)",
             (int(unit_cost), int(listed_price), int(max(1, qty)),
-             _dt.datetime.now().isoformat(" ", "seconds")))
+             _dt.datetime.now().isoformat(" ", "seconds"), run_id()))
         conn.commit()
     except Exception:  # noqa: BLE001 - bookkeeping must never block a listing
         pass
@@ -19606,14 +19584,14 @@ def note_chaos_lot(unit_cost: int, listed_price: int, qty: int) -> None:
 
 
 def chaos_lots_cheapest_first() -> list:
-    """Outstanding lots as (id, unit_cost), cheapest first."""
+    """Outstanding lots THIS RUN listed, as (id, unit_cost), cheapest first."""
     conn = sales_db()
     if conn is None:
         return []
     try:
         return [(int(r[0]), int(r[1])) for r in conn.execute(
-            "SELECT id, unit_cost FROM chaos_lots "
-            "ORDER BY unit_cost ASC, id ASC").fetchall()]
+            "SELECT id, unit_cost FROM chaos_lots WHERE run = ? "
+            "ORDER BY unit_cost ASC, id ASC", (run_id(),)).fetchall()]
     except Exception:  # noqa: BLE001
         return []
     finally:
@@ -19634,8 +19612,8 @@ def chaos_lots() -> list:
         return []
     try:
         return [tuple(r) for r in conn.execute(
-            "SELECT id, unit_cost, listed_price FROM chaos_lots "
-            "ORDER BY unit_cost DESC, id ASC").fetchall()]
+            "SELECT id, unit_cost, listed_price FROM chaos_lots WHERE run = ? "
+            "ORDER BY unit_cost DESC, id ASC", (run_id(),)).fetchall()]
     except Exception:  # noqa: BLE001
         return []
     finally:
@@ -19815,6 +19793,33 @@ def chaos_margin_now(verbose: bool = True,
         f"{offer.price // max(1, offer.pack):,}  margin {margin:,} "
         f"(floor {CHAOS_MARGIN_FLOOR:,})")
     return margin
+
+
+def chaos_set_unit_now(verbose: bool = True) -> "int | None":
+    """The Chaos Core Set's per-unit price, read NOW. None if it did not read.
+
+    The buy loop used to judge every order against a set_unit taken once at the
+    margin gate. Measured 2026-08-17: the gate read it at t=88.0 and fourteen
+    orders over the next 393 seconds all printed the same 708,994 while the
+    Core side moved 690,679 -> 719,000 under it. Half the margin was a
+    snapshot, and the stale half is the one that decides whether the trade is
+    still worth doing.
+
+    Row 1, like every other read here.
+    """
+    def say(message: str) -> None:
+        if verbose:
+            print(message)
+
+    sets_ = run_favourite_search(CHAOS_SET_SLOT, verbose=verbose)
+    if not sets_:
+        say("  the Chaos Core Set search returned nothing.")
+        return None
+    offer = _row_one(sets_)
+    if offer is None:
+        say("  row 1 of the Chaos Core Set search did not read.")
+        return None
+    return offer.price // max(1, offer.pack)
 
 
 def chaos_rows_in(listings: list, scope: "set | None") -> list:
@@ -20284,31 +20289,22 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
         # have been: COUNT -> PRICE -> BUY -> CRAFT.
         # ONLY ASK WHEN THERE COULD BE AN ANSWER.
         #
-        # This count exists for ONE case: a previous pass bought Cores and then
-        # failed to craft or compress them, so they are still in the work tab
-        # and buying again doubles the position. That happened -- cycle 1 bought
-        # 250 Cores (~175,000,000 Alz) and stranded them, cycle 2 bought another
-        # 250 -- and it is worth protecting against.
+        # This count exists for ONE case: an EARLIER PASS OF THIS RUN bought
+        # Cores and then failed to craft or compress them, so they are still in
+        # the work tab and buying again doubles the position. Cycle 1 bought 250
+        # Cores (~175,000,000 Alz) and stranded them; cycle 2 bought another 250.
         #
-        # But that case is already RECORDED. note_chaos_strand is called at
-        # every exit that can leave Cores behind (craft failure, nothing
-        # crafted, compress failure, shop-would-not-reopen, no cost basis, the
-        # listing failing, and the exception handler), and the flag is
-        # persisted to sales.db so it survives a restart. When it is clear,
-        # there is nothing in the work tab to count and the answer is zero.
+        # chaos_stranded() is set by note_chaos_strand at every exit that can
+        # leave Cores behind, and is process-lifetime. It is false at startup
+        # whatever a previous run did, so this never fires on the first pass.
         #
         # Asking anyway costs more than the seconds: chaos_cores_held reads the
         # CRAFT window, which the game cannot show beside the Trade window, so
         # every clean pass was shutting its own shop between pricing and buying.
-        #
-        # A hard kill between buying and crafting could leave Cores with the
-        # flag unset -- but relist_rows calls ensure_work_tab_empty on the way
-        # in and refuses the whole batch on leftover stock, so chaos never
-        # reaches here with an unexplained work tab.
         held_already = 0
         if chaos_stranded():
-            say("Chaos: a previous pass left Cores in the work tab; counting "
-                "them before buying so the position is not doubled.")
+            say("Chaos: an earlier pass this run left Cores in the work tab; "
+                "counting them before buying so the position is not doubled.")
             held_already = max(0, chaos_cores_held(verbose=verbose))
         if held_already:
             say(f"Chaos: {held_already} Core(s) already in hand - they count "
@@ -20338,24 +20334,15 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
             say(f"Chaos: margin {margin:,} does not clear the "
                 f"{CHAOS_MARGIN_FLOOR:,} floor - not buying.")
             record("chaos.margin_low", margin=margin)
-            # STOCK ALREADY PAID FOR IS NOT PART OF THIS DECISION.
-            #
-            # The margin answers "is buying MORE worth it". Cores already in
-            # the bag are sunk: holding them as Cores is strictly worse than
-            # crafting them, because the Set sells for more per unit than the
-            # loose Core (720,720 against 720,000 when this was measured), and
+            # STOCK ALREADY PAID FOR IS NOT PART OF THIS DECISION. The margin
+            # answers "is buying MORE worth it"; Cores already in the bag are
+            # sunk, the Set sells for more per unit than the loose Core, and
             # leaving them on the work tab fails require_empty_work_tab on
             # every later cycle until the breaker ends the run.
             #
-            # Measured 2026-08-18, run_2026-08-18_105652: 96 Cores bought the
-            # cycle before sat on the work tab while this gate returned, three
-            # cycles in a row, each one printing "The work tab holds goods from
-            # a chaos pass that did not finish. Crafting and listing them
-            # before anything else" and then not doing it. Dead in 4m 37s.
-            #
             # Falling through costs no Alz: the per-order margin check inside
             # the buy loop breaks on the same thin spread, so `got` stays at
-            # held_already and the craft runs on what is already owned.
+            # held_already and only the craft runs.
             if not held_already:
                 return True
             say(f"Chaos: but {held_already} Core(s) are already paid for - "
@@ -20366,7 +20353,30 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
 
         # 4. Buy. Re-searched so the receipt names the Core: buy_offer refuses
         #    a Buy that is not row 1 of a search that just ran.
-        for _ in range(short):
+        for filling_row in range(short):
+            # ONE SET READ PER ROW. The gate above read it once for the whole
+            # pass, and a pass fills several rows: measured 2026-08-17, the Set
+            # search ran at t=88.0 and FOUR bundles were bought and listed --
+            # 236.7, 725.0, 1268.2, 1467.1 -- against that one reading, the
+            # last of them 23 minutes stale. Every order in between printed
+            # Set/unit 708,994 while the Core side moved 690,679 -> 719,000.
+            #
+            # Refreshed per row rather than per order, at the operator's rule:
+            # the Core price comes free with the search each order has to run
+            # anyway, the Set price does not, and one row's worth of orders is
+            # the span over which it is worth paying for.
+            if filling_row:
+                fresh_set = chaos_set_unit_now(verbose=verbose)
+                if fresh_set:
+                    if set_unit_price and fresh_set != set_unit_price:
+                        say(f"Chaos: the Set price moved {set_unit_price:,} "
+                            f"-> {fresh_set:,} since the last row.")
+                        record("chaos.set_price_moved", was=set_unit_price,
+                               now=fresh_set)
+                    set_unit_price = fresh_set
+                elif set_unit_price:
+                    say(f"Chaos: the Set price did not re-read; judging this "
+                        f"row against the last good {set_unit_price:,}.")
             # THE LAST POINT WHERE STOPPING IS FREE -- said of the war lag
             # just below, and just as true of a stop request. Past the buy
             # the sequence MUST reach the listing or it strands paid-for
@@ -20570,6 +20580,12 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # down is dearer -- that is what sorted Low to High means -- so
                 # the margin is a different number on every order, and a buy
                 # made without showing it is a buy at a price nobody saw.
+                # The Set price is NOT re-read here. It is refreshed once per
+                # row, at the top of this loop's parent, and reused across
+                # every order that fills that row -- the operator's rule:
+                # "we reuse the set price only for chaos, the core price is
+                # refreshed for free every buy order". The Core side above IS
+                # live, because each order re-searches to take row 1 anyway.
                 if set_unit_price:
                     here = chaos_margin(core.price, set_unit_price, 1)
                     say(f"  Chaos Core {core.price:,}  Set/unit "
@@ -20706,12 +20722,14 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
 
             if got < 1:
                 say("Chaos: nothing was bought; nothing to craft.")
-                # Declining on margin is DELIBERATE, and the gate above says so
+                # Declining on margin is DELIBERATE -- the gate above says so
                 # in its own comment. Reporting it as a failed pass spends the
-                # three-strike breaker on a quiet market -- and once the held
-                # stock has been crafted on an earlier iteration, every later
+                # three-strike breaker on a quiet market, and once the held
+                # stock has been crafted on an earlier iteration every later
                 # one arrives here with an empty bag by design.
-                return bool(CHAOS_HELD_OFF_ON_MARGIN)
+                if CHAOS_HELD_OFF_ON_MARGIN:
+                    return True
+                return False
             say(f"Chaos: {got} Core(s) obtained"
                 + ("." if got >= CHAOS_BUY_QUANTITY else
                    f" of {CHAOS_BUY_QUANTITY} - crafting what there is rather "
@@ -21823,20 +21841,9 @@ def run_loop(
     reported and retried on the next tick. Only a locked workstation stops the
     loop outright, since nothing can work through that.
     """
-    # RESTORE WHAT A PREVIOUS PROCESS LEFT IN THE BAG, before anything checks
-    # the work tab. Without this a restart after a strand meets a dirty tab it
-    # cannot account for and raises FatalAbort on cycle 1 -- four such deaths
-    # are on record for 2026-08-09, each with paid-for goods sitting there.
-    load_carried()
-    if carried_total() or chaos_stranded():
-        parts = []
-        if carried_total():
-            parts.append(f"{carried_total()} carried Set(s)")
-        if chaos_stranded():
-            parts.append("an unfinished chaos pass")
-        print(f"Resuming with {' and '.join(parts)} recorded by an earlier "
-              f"run; the work tab will be cleared rather than refused.")
-
+    # EACH LAUNCH IS A SEPARATE RUN. Nothing is restored from a previous one:
+    # the carry registry and the chaos strand flag both start empty, and what a
+    # dead process left in the bag is not this run's business.
     def say(message: str) -> None:
         if verbose:
             print(message)
@@ -22270,8 +22277,9 @@ _TRADE_FRAME_GEOMETRY = {
     # The Remote Request (craft) window. Its own panel, mapped through the
     # Trade frame like the vendor regions above -- and every one of these is
     # CLICKED, so an unscaled value here lands somewhere unintended.
-    "CRAFT_CATEGORY_POINT": "point",
-    "CRAFT_RECIPE_POINT": "point",
+    # A DICT of points, not a bare point -- see apply_layout. Registered so the
+    # recipe clicks scale with the window like every other coordinate.
+    "CRAFT_RECIPES": "recipe_points",
     "CRAFT_REPEAT_POINT": "point",
     "CRAFT_REQUEST_ALL": "point",
     "CRAFT_COMPLETE_ALL": "point",
@@ -22380,6 +22388,12 @@ def _capture_reference_geometry() -> None:
             value = (value[0] - ox, value[1] - oy, value[2] - ox, value[3] - oy)
         elif kind == "point":
             value = (value[0] - ox, value[1] - oy)
+        elif kind == "recipe_points":
+            # {setting: (tier_point, recipe_point, label)} -- both points move,
+            # the label does not.
+            value = {k: ((v[0][0] - ox, v[0][1] - oy),
+                         (v[1][0] - ox, v[1][1] - oy), v[2])
+                     for k, v in value.items()}
         elif kind == "x":
             value = value - ox
         elif kind == "y":
@@ -22433,6 +22447,9 @@ def apply_layout(layout: "Layout") -> None:
             value = layout.box(ref)
         elif kind == "point":
             value = layout.point(ref)
+        elif kind == "recipe_points":
+            value = {k: (layout.point(v[0]), layout.point(v[1]), v[2])
+                     for k, v in ref.items()}
         elif kind == "x":
             value = layout.x(ref)
         elif kind == "y":
