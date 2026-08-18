@@ -34,6 +34,7 @@ RECEIPT_WORD = _TEXT["receipt_word"]
 REGISTER_WORD = _TEXT["register_word"]
 STATUS_COMPLETE = _TEXT["status_complete"]
 DIALOG_BUTTON_MIN_X = _SHARED["detect"]["dialog_button_min_x"]
+BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
 
@@ -87,7 +88,24 @@ def popup_words(image=None):
                            calibration._box(calibration.DIALOG_BUTTONS_F))
 
 
-def find_button(word, timeout=None):
+def _button_key(word):
+    return "button_" + _key(word)
+
+
+def remembered(word):
+    point = _shop().get(_button_key(word))
+    return tuple(point) if point else None
+
+
+def button_here(word, point, image=None):
+    image = image if image is not None else calibration.grab()
+    dx, dy = BUTTON_HALF
+    box = (point[0] - dx, point[1] - dy, point[0] + dx, point[1] + dy)
+    want = _key(word)
+    return any(_key(t) == want for t, _c, _p in calibration.ocr(image, box))
+
+
+def search_button(word, timeout=None):
     deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
                                    else timeout)
     want = _key(word)
@@ -97,6 +115,25 @@ def find_button(word, timeout=None):
                 return point
         time.sleep(ACTION_GAP)
     return None
+
+
+def find_button(word, timeout=None, verbose=False):
+    known = remembered(word)
+    if known is not None:
+        deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                       else timeout)
+        while time.monotonic() < deadline:
+            if button_here(word, known):
+                return known
+            time.sleep(ACTION_GAP)
+        if verbose:
+            print(f"  {word} is not at the remembered {known}; searching")
+    point = search_button(word, timeout=timeout)
+    if point is not None and point != known:
+        calibration.remember_shop(_button_key(word), list(point))
+        if verbose:
+            print(f"  learned {word} at {point}")
+    return point
 
 
 def row_function(text=None):
@@ -114,8 +151,20 @@ def row_complete(text=None):
 
 
 def dialog_buttons(image=None):
-    want = {_key(DISMISS_WORD), _key(CONFIRM_WORD)}
-    return [t for t, _c, _p in popup_words(image) if _key(t) in want]
+    image = image if image is not None else calibration.grab()
+    seen = []
+    for word in (DISMISS_WORD, CONFIRM_WORD, RECEIPT_WORD):
+        known = remembered(word)
+        if known is not None:
+            if button_here(word, known, image):
+                seen.append(word)
+            continue
+        want = _key(word)
+        if any(_key(t) == want and p[0] >= DIALOG_BUTTON_MIN_X
+               for t, _c, p in calibration.ocr(
+                   image, calibration._box(calibration.DIALOG_BUTTONS_F))):
+            seen.append(word)
+    return seen
 
 
 def dialog_gone(timeout=None):

@@ -100,6 +100,7 @@ DEFAULTS = {
         "purchase_divider_sigma": 3.0,
         "purchase_cell_inset": 2,
         "dialog_button_min_x": 1200,
+        "dialog_button_half": [70, 24],
         "min_plausible_balance": 1000,
         "row_border_candidates": 30,
         "row_border_min_gap": 15,
@@ -194,6 +195,15 @@ def load_shared() -> dict:
         merged.update(data.get(section) or {})
         out[section] = merged
     return out
+
+
+def remember_shop(key, value) -> None:
+    global _CACHE
+    data = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
+    per = data.setdefault("by_resolution", {}).setdefault(resolution_key(), {})
+    per.setdefault("shop", {})[key] = value
+    OUT.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    _CACHE = None
 
 
 def load(force: bool = False) -> dict:
