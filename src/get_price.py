@@ -66,27 +66,24 @@ def read_field(field, image=None):
     return calibration.read_line(image, column_box(field)).strip()
 
 
+def row_name(image=None):
+    found = _ROW.match(read_row_one(image).strip())
+    return found.group("name").strip() if found else ""
+
+
 def read_fields(image=None):
     image = image if image is not None else calibration.grab()
     whole = calibration.read_line(image, purchase_row_one_box()).strip()
     found = _ROW.match(whole)
     if found is None:
         return {"row": whole}
-    checks = []
-    tight = calibration.read_number(image, column_box("qty"))
-    if tight is not None:
-        checks.append(tight)
-    cell = _digits(calibration.read_line(image, column_box("qty")))
-    if cell is not None:
-        checks.append(cell)
     return {
         "name": found.group("name"),
         "qty": found.group("qty"),
         "price": found.group("price"),
         "row": whole,
-        "qty_checks": checks,
-        "name_cell": calibration.read_line(image, column_box("name")).strip(),
-        "price_cell": calibration.read_line(image, column_box("price")).strip(),
+        "price_cell": calibration.read_line(
+            image, column_box("price")).strip(),
     }
 
 
@@ -124,11 +121,8 @@ def parse_fields(fields):
     price = _digits(fields.get("price"))
     if not name or qty is None or price is None:
         return None
-    checks = fields.get("qty_checks") or []
-    if checks and qty not in checks:
-        return None
-    seen = _digits(fields.get("price_cell"))
-    if seen is not None and seen != price:
+    anchor = _digits(fields.get("price_cell"))
+    if anchor is not None and anchor != price:
         return None
     pack = row_model._PACK.search(name)
     pack = int(pack.group(1)) if pack else 1
@@ -182,13 +176,13 @@ def get_price(slot, verbose=True):
 
     text, row = "", None
     for attempt in range(1, RETRIES + 1):
-        before = read_field("name")
+        before = row_name()
         shop.click(x, y)
         deadline = time.monotonic() + SEARCH_TIMEOUT
         while time.monotonic() < deadline:
             time.sleep(ACTION_GAP)
             image = calibration.grab()
-            text = read_field("name", image)
+            text = row_name(image)
             if text == before or not name_matches(slot, text):
                 continue
             row = parse_fields(read_fields(image))

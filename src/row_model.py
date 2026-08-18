@@ -67,9 +67,7 @@ def row_one_box():
 
 
 def read_row_one():
-    tokens = calibration.ocr(calibration.grab(), row_one_box())
-    tokens.sort(key=lambda token: token[2][0])
-    return " ".join(token[0] for token in tokens)
+    return calibration.read_line(calibration.grab(), row_one_box())
 
 
 def row_one_is_empty(text=None):
