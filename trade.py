@@ -11148,6 +11148,18 @@ def dialog_button_band(word: str, source=None, min_conf: float = 40.0):
     Receive (1290, 878) -- so one band covers them all, and a band that holds
     little else gives tesseract nothing to mis-segment against.
     """
+    # PARK FIRST WHEN TAKING OUR OWN FRAME. A button under the cursor is
+    # HIGHLIGHTED, and the highlight defeats the read: measured 2026-08-18 on a
+    # live Confirm Registration dialog, 'Cancel'@97 read fine while
+    # 'Confirmation' -- the button the cursor happened to be resting on, having
+    # just clicked it -- was not found at all. The dialog was plainly up.
+    #
+    # This is the shape of a whole class of "the dialog did not appear": click
+    # a button, leave the cursor on it, and every later read of that same
+    # dialog is blind to the one button that matters.
+    if source is None:
+        park_cursor()
+        time.sleep(0.25)
     shot = source if source is not None else grab()
     want = _normalise(word)
     best = None
