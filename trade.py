@@ -20317,7 +20317,30 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
 
         # 4. Buy. Re-searched so the receipt names the Core: buy_offer refuses
         #    a Buy that is not row 1 of a search that just ran.
-        for _ in range(short):
+        for filling_row in range(short):
+            # ONE SET READ PER ROW. The gate above read it once for the whole
+            # pass, and a pass fills several rows: measured 2026-08-17, the Set
+            # search ran at t=88.0 and FOUR bundles were bought and listed --
+            # 236.7, 725.0, 1268.2, 1467.1 -- against that one reading, the
+            # last of them 23 minutes stale. Every order in between printed
+            # Set/unit 708,994 while the Core side moved 690,679 -> 719,000.
+            #
+            # Refreshed per row rather than per order, at the operator's rule:
+            # the Core price comes free with the search each order has to run
+            # anyway, the Set price does not, and one row's worth of orders is
+            # the span over which it is worth paying for.
+            if filling_row:
+                fresh_set = chaos_set_unit_now(verbose=verbose)
+                if fresh_set:
+                    if set_unit_price and fresh_set != set_unit_price:
+                        say(f"Chaos: the Set price moved {set_unit_price:,} "
+                            f"-> {fresh_set:,} since the last row.")
+                        record("chaos.set_price_moved", was=set_unit_price,
+                               now=fresh_set)
+                    set_unit_price = fresh_set
+                elif set_unit_price:
+                    say(f"Chaos: the Set price did not re-read; judging this "
+                        f"row against the last good {set_unit_price:,}.")
             # THE LAST POINT WHERE STOPPING IS FREE -- said of the war lag
             # just below, and just as true of a stop request. Past the buy
             # the sequence MUST reach the listing or it strands paid-for
@@ -20521,30 +20544,12 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 # down is dearer -- that is what sorted Low to High means -- so
                 # the margin is a different number on every order, and a buy
                 # made without showing it is a buy at a price nobody saw.
-                # BOTH SIDES LIVE. set_unit_price was bound once at the gate
-                # and reused for the whole pass, so the printed margin was a
-                # fresh Core price against a Set price that could be minutes
-                # old -- and a Set price that has FALLEN since is exactly the
-                # case where the trade has stopped being worth doing.
-                #
-                # Re-read here, and USE the new number: the reservation
-                # `set_unit_price` is replaced, not merely printed, so every
-                # later order judges against the newest reading too. A read
-                # that fails leaves the previous value in place rather than
-                # abandoning the order, because a missed search is not
-                # evidence that the price moved.
-                fresh_set = chaos_set_unit_now(verbose=verbose)
-                if fresh_set:
-                    if set_unit_price and fresh_set != set_unit_price:
-                        say(f"  the Set price moved {set_unit_price:,} -> "
-                            f"{fresh_set:,} since the last order.")
-                        record("chaos.set_price_moved", was=set_unit_price,
-                               now=fresh_set)
-                    set_unit_price = fresh_set
-                elif set_unit_price:
-                    say(f"  the Set price did not re-read; judging against "
-                        f"the last good {set_unit_price:,}.")
-
+                # The Set price is NOT re-read here. It is refreshed once per
+                # row, at the top of this loop's parent, and reused across
+                # every order that fills that row -- the operator's rule:
+                # "we reuse the set price only for chaos, the core price is
+                # refreshed for free every buy order". The Core side above IS
+                # live, because each order re-searches to take row 1 anyway.
                 if set_unit_price:
                     here = chaos_margin(core.price, set_unit_price, 1)
                     say(f"  Chaos Core {core.price:,}  Set/unit "
