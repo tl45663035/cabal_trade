@@ -708,6 +708,7 @@ PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
 PURCHASE_CANCEL_DX = 180
 CONFIRM_RECLICKS = 5
 CONFIRM_RECHECK_SECONDS = 2.0
+DIALOG_GONE_READS = 2
 INVENTORY_FULL_BAND = (500, 95, 1235, 125)
 INVENTORY_FULL_WORDS = ("enough space", "space in the")
 
@@ -7414,11 +7415,25 @@ def dialog_kind_by_buttons(shot) -> "str | None":
 def await_dialog(kind: str | None, timeout: float = 8.0, poll: float = 0.35):
     if kind is not None:
         park_cursor()
+    clear_reads = 0
     deadline = time.monotonic() + timeout
     while True:
         shot = grab()
-        if dialog_kind_by_buttons(shot) == kind or dialog_kind(shot) == kind:
-            return shot
+        if kind is None:
+            settled = (dialog_kind_by_buttons(shot) is None
+                       and dialog_kind(shot) is None)
+            if settled:
+                clear_reads += 1
+                if clear_reads >= DIALOG_GONE_READS:
+                    return shot
+                time.sleep(poll)
+                continue
+            clear_reads = 0
+        else:
+            settled = (dialog_kind_by_buttons(shot) == kind
+                       or dialog_kind(shot) == kind)
+            if settled:
+                return shot
         if time.monotonic() >= deadline:
             return None
         time.sleep(poll)
