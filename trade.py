@@ -9004,6 +9004,10 @@ def relist_rows(
     failed_rows: list[str] = []
     handled: set = set()
     handled_by_name: dict = {}
+    targets_by_name: dict = {}
+    for _i, _ref, _a in targets:
+        _k = _canonical(_ref.name)
+        targets_by_name[_k] = targets_by_name.get(_k, 0) + 1
     forget_collected()
 
     for position, (index, ref, action) in enumerate(targets, start=1):
@@ -9202,7 +9206,8 @@ def relist_rows(
                      if _canonical(r.name) == _canonical(name)]
         canon = _canonical(name)
         done_for_name = handled_by_name.get(canon, 0)
-        if done_for_name >= len(same_name) and len(same_name) >= 1:
+        allowed = max(targets_by_name.get(canon, 1), len(same_name))
+        if done_for_name >= allowed:
             spare = [r for r in current
                      if _absolute(r) not in handled
                      and _canonical(r.name) == _canonical(name)]
