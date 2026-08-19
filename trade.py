@@ -707,6 +707,7 @@ PURCHASE_DIALOG_BUTTONS_Y = 800
 PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
 PURCHASE_CANCEL_DX = 180
 CONFIRM_RECLICKS = 3
+CHAOS_TOPUP_ORDERS = 4
 
 PURCHASE_NAME_MAX_X = 700
 PURCHASE_PRICE_X = (900, 1080)
@@ -10142,6 +10143,48 @@ def chaos_pass(timeout: float = 8.0, verbose: bool = True,
                 record("chaos.bought", items=report.get("items"),
                        price=core.price,
                        spent=core.price * report.get("take", 0), running=got)
+
+            per_craft = craft_material_cost()
+            if got and per_craft > 1 and got % per_craft:
+                say(f"Chaos: {got} Core(s) is not a whole multiple of "
+                    f"{per_craft}; topping up so nothing is left uncraftable "
+                    f"in the work tab.")
+                record("chaos.topup_start", got=got, per_craft=per_craft)
+                for attempt in range(1, CHAOS_TOPUP_ORDERS + 1):
+                    need = per_craft - (got % per_craft)
+                    if not need or got % per_craft == 0:
+                        break
+                    offers = run_favourite_search(CHAOS_CORE_SLOT,
+                                                  verbose=verbose)
+                    if not offers:
+                        say("Chaos: no Core offer to top up against.")
+                        break
+                    core = offers[0]
+                    say(f"Chaos: top-up {attempt} - buying {need} x "
+                        f"{core.name!r} at {core.price:,} = "
+                        f"{core.price * need:,} Alz ({got} held)")
+                    report = {}
+                    bought, why = buy_offer(core, want=need, report=report,
+                                            verbose=verbose)
+                    if not bought:
+                        say(f"Chaos: top-up {attempt} not bought - {why}")
+                        record("chaos.topup_refused", why=why, got=got)
+                        continue
+                    items = int(report.get("items") or need)
+                    got += items
+                    paid += int(report.get("spend")
+                                or core.price * max(1, report.get("take", 0)))
+                    paid_units += items
+                    record("chaos.topup_bought", items=items, running=got)
+                if got % per_craft:
+                    say(f"Chaos: still {got % per_craft} Core(s) over a "
+                        f"multiple of {per_craft}; that many will be left in "
+                        f"the work tab after the craft.")
+                    record("chaos.topup_incomplete",
+                           got=got, over=got % per_craft)
+                else:
+                    say(f"Chaos: {got} Core(s) now divides by {per_craft} "
+                        f"exactly - nothing will be left over.")
 
             if got < 1:
                 say("Chaos: nothing was bought; nothing to craft.")
