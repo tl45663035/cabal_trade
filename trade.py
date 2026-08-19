@@ -706,7 +706,8 @@ PURCHASE_DLG_PRICE = (1150, 712, 1380, 758)
 PURCHASE_DIALOG_BUTTONS_Y = 800
 PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
 PURCHASE_CANCEL_DX = 180
-CONFIRM_RECLICKS = 3
+CONFIRM_RECLICKS = 5
+CONFIRM_RECHECK_SECONDS = 2.0
 CHAOS_TOPUP_ORDERS = 4
 
 PURCHASE_NAME_MAX_X = 700
@@ -7562,7 +7563,7 @@ def cancel_item(
             record("cancel.reconfirm", attempt=reclicks, row=row)
             click(*again.centre)
             park_cursor()
-            gone = await_dialog(None, timeout) is not None
+            gone = await_dialog(None, CONFIRM_RECHECK_SECONDS) is not None
         require(gone, "the dialog stayed open after Confirmation")
 
         record("cancel.committed", row=row, name=target.name,
