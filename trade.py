@@ -7549,8 +7549,21 @@ def cancel_item(
         forget_range_view()
         click(*confirm.centre)
         committed = True
-        require(await_dialog(None, timeout) is not None,
-                "the dialog stayed open after Confirmation")
+        gone = await_dialog(None, timeout) is not None
+        reclicks = 0
+        while not gone and reclicks < CONFIRM_RECLICKS:
+            again = dialog_button_band(CONFIRM_WORD)
+            if again is None:
+                break
+            reclicks += 1
+            say(f"  the dialog is still open and {CONFIRM_WORD} is still on "
+                f"screen at {again.centre}; pressing it again "
+                f"({reclicks} of {CONFIRM_RECLICKS}).")
+            record("cancel.reconfirm", attempt=reclicks, row=row)
+            click(*again.centre)
+            park_cursor()
+            gone = await_dialog(None, timeout) is not None
+        require(gone, "the dialog stayed open after Confirmation")
 
         record("cancel.committed", row=row, name=target.name,
                price=target.price, qty=target.qty)
