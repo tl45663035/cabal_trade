@@ -6285,14 +6285,22 @@ def prime_counterpart_prices(verbose: bool = True) -> None:
     global _COUNTERPART_PRIMED
     if _COUNTERPART_PRIMED:
         return
-    _COUNTERPART_PRIMED = True
     pairs = [s for s in sorted(FAVOURITE_SLOTS) if counterpart_slot(s)]
     if not pairs:
+        _COUNTERPART_PRIMED = True
         return
     if verbose:
         print("")
         print("Pricing every core type, so a listing with no cost basis "
               "still has a floor:")
+    if not open_purchase_tab(verbose=verbose):
+        if verbose:
+            print("  the Purchase tab would not open - core prices stay "
+                  "unread and every floor falls back to the catalogue. "
+                  "Trying again next cycle.")
+        record("prices.prime_failed", reason="purchase_tab")
+        return
+    _COUNTERPART_PRIMED = True
     for slot in pairs:
         note_counterpart_price(slot, run_favourite_search(slot, verbose=False))
     for slot in pairs:
