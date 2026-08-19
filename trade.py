@@ -5062,7 +5062,14 @@ def scroll_wheel(x: int, y: int, notches: int, settle: float = WHEEL_SETTLE,
             f"refusing to scroll {notches:+d} notch(es) at ({x}, {y}): the "
             "listings table is not what the wheel would reach")
 
-    blocker = dialog_button_band(DISMISS_WORD) or dialog_button_band(CONFIRM_WORD)
+    # ONE FRAME, ONE PARK. This used to call dialog_button_band twice with no
+    # source, and each call parks the cursor and grabs its own screenshot --
+    # so a goto_row, which scrolls twice, paid four parks and four grabs
+    # before a single notch was sent. Take the frame once and test it twice.
+    park_cursor()
+    _guard_shot = grab()
+    blocker = (dialog_button_band(DISMISS_WORD, source=_guard_shot)
+               or dialog_button_band(CONFIRM_WORD, source=_guard_shot))
     if blocker is not None:
         raise Aborted(
             f"refusing to scroll {notches:+d} notch(es) at ({x}, {y}): a "
@@ -10626,12 +10633,21 @@ def register_item(
         require(await_dialog(None, timeout) is not None,
                 f"a confirmation dialog is still open after {MAX_CONFIRM_STEPS} steps")
 
+        # PARK ONCE, THEN REUSE EACH FRAME. The cursor is sitting on the
+        # Confirmation button it just clicked, and a button under the cursor is
+        # highlighted and will not read -- so a park is genuinely needed here.
+        # It is needed ONCE, not per poll: dialog_button_band with no source
+        # parks and grabs its own screenshot, so every iteration was paying a
+        # park plus a second grab on top of the one read_register_panel had
+        # just taken.
+        park_cursor()
         deadline = time.monotonic() + timeout
         reclicks = 0
         while time.monotonic() < deadline:
-            after = read_register_panel(grab())
+            shot = grab()
+            after = read_register_panel(shot)
             if after["loaded"] and reclicks < CONFIRM_RECLICKS:
-                again = dialog_button_band(CONFIRM_WORD)
+                again = dialog_button_band(CONFIRM_WORD, source=shot)
                 if again is not None:
                     reclicks += 1
                     say(f"  the shop slot has not cleared and {CONFIRM_WORD} "
@@ -10639,6 +10655,7 @@ def register_item(
                         f"again ({reclicks} of {CONFIRM_RECLICKS}).")
                     record("register.reconfirm", attempt=reclicks)
                     click(*again.centre)
+                    park_cursor()
                     deadline = time.monotonic() + timeout
                     continue
             if not after["loaded"]:
