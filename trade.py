@@ -731,8 +731,9 @@ PRICE_DIFF_FLOOR = 10_000
 SET_SAVING_THRESHOLD = PRICE_DIFF_FLOOR
 
 PRICE_DIFF_FLOOR_BY_ITEM: dict[str, int] = {
-    "Force Core(High)":      5_000,
-    "Force Core(Highest)":   5_000,
+    "Force Core(High)":        5_000,
+    "Force Core(Highest)":     5_000,
+    "Upgrade Core (Ultimate)": 20_000,
 }
 
 
