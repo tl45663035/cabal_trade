@@ -6271,6 +6271,16 @@ def note_counterpart_price(slot: int, offers: list) -> None:
         _COUNTERPART_PRICE[slot] = unit
 
 
+def listed_pack(name: str) -> int:
+    found = _PACK_ANYWHERE.findall(name or "")
+    if not found:
+        return 1
+    digits = re.sub(r"[^\d]", "", found[-1])
+    if not digits.isdigit():
+        return 1
+    return max(1, int(digits))
+
+
 def counterpart_floor(name: str) -> int:
     slot = favourite_for(name)
     if slot is None:
@@ -6278,7 +6288,8 @@ def counterpart_floor(name: str) -> int:
     partner = counterpart_slot(slot)
     if partner is None:
         return 0
-    return _COUNTERPART_PRICE.get(partner, 0)
+    unit = _COUNTERPART_PRICE.get(partner, 0)
+    return unit * listed_pack(name) if unit else 0
 
 
 def prime_counterpart_prices(verbose: bool = True) -> None:
