@@ -708,6 +708,15 @@ PURCHASE_DIALOG_BUTTONS = (1190, 830, 1570, 880)
 PURCHASE_CANCEL_DX = 180
 CONFIRM_RECLICKS = 5
 CONFIRM_RECHECK_SECONDS = 2.0
+INVENTORY_FULL_BAND = (500, 95, 1235, 125)
+INVENTORY_FULL_WORDS = ("enough space", "space in the")
+
+
+def inventory_full_refusal(source=None) -> bool:
+    shot = source if source is not None else grab()
+    text = " ".join(w.text for w in find_words(shot, INVENTORY_FULL_BAND, 40))
+    folded = " ".join(text.lower().replace(".", "").split())
+    return any(phrase in folded for phrase in INVENTORY_FULL_WORDS)
 CHAOS_TOPUP_ORDERS = 4
 
 PURCHASE_NAME_MAX_X = 700
@@ -7553,6 +7562,14 @@ def cancel_item(
         gone = await_dialog(None, timeout) is not None
         reclicks = 0
         while not gone and reclicks < CONFIRM_RECLICKS:
+            if inventory_full_refusal():
+                say("  the game is showing 'Not enough space in the "
+                    "inventory' - it has REFUSED this cancellation, and no "
+                    "number of presses will change that. Stopping here; the "
+                    "listing is untouched.")
+                record("cancel.inventory_full", row=row, item=target.name,
+                       qty=target.qty)
+                break
             again = dialog_button_band(CONFIRM_WORD)
             if again is None:
                 break
