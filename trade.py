@@ -8057,8 +8057,11 @@ def register_item(
                     note_purchase(f"registration fee: {expect_item or 'item'}",
                                   0, fee, 0, note="Agent Shop registration fee")
 
-        require(await_dialog(None, timeout) is not None,
-                f"a confirmation dialog is still open after {MAX_CONFIRM_STEPS} steps")
+        if await_dialog(None, timeout) is None:
+            say(f"  a dialog is still on screen after {MAX_CONFIRM_STEPS} "
+                f"confirm step(s); the shop-slot check below decides whether "
+                f"the listing went through, and re-presses if it did not.")
+            record("register.dialog_after_steps", steps=MAX_CONFIRM_STEPS)
 
         park_cursor()
         deadline = time.monotonic() + timeout
