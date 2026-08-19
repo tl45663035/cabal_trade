@@ -1162,6 +1162,7 @@ def run_favourite_search(slot: int, settle: float = 3.0,
                 print(f"  slot {slot} ({FAVOURITE_SLOTS.get(slot, '?')}): "
                       f"{len(offers)} offer(s)")
             note_favourite_search(slot, offers)
+            note_counterpart_price(slot, offers)
             return offers
         if verbose:
             sample = offers[0].name if offers else "(nothing)"
@@ -6243,14 +6244,85 @@ def effective_floor(catalogue: int, reason: str,
     return catalogue, reason
 
 
+_COUNTERPART_PRICE: dict[int, int] = {}
+
+_COUNTERPART_PRIMED = False
+
+
+def counterpart_slot(slot: int) -> int | None:
+    partner = favourite_set_slot(slot)
+    if partner is not None:
+        return partner
+    if favourite_set_slot(slot - 1) == slot:
+        return slot - 1
+    return None
+
+
+def counterpart_name(name: str) -> str:
+    return set_behind(name) or core_behind(name)
+
+
+def note_counterpart_price(slot: int, offers: list) -> None:
+    best = cheapest_per_unit(offers)
+    if best is None:
+        return
+    unit = int(best.unit)
+    if unit >= MIN_PLAUSIBLE_PRICE:
+        _COUNTERPART_PRICE[slot] = unit
+
+
+def counterpart_floor(name: str) -> int:
+    slot = favourite_for(name)
+    if slot is None:
+        return 0
+    partner = counterpart_slot(slot)
+    if partner is None:
+        return 0
+    return _COUNTERPART_PRICE.get(partner, 0)
+
+
+def prime_counterpart_prices(verbose: bool = True) -> None:
+    global _COUNTERPART_PRIMED
+    if _COUNTERPART_PRIMED:
+        return
+    _COUNTERPART_PRIMED = True
+    pairs = [s for s in sorted(FAVOURITE_SLOTS) if counterpart_slot(s)]
+    if not pairs:
+        return
+    if verbose:
+        print("")
+        print("Pricing every core type, so a listing with no cost basis "
+              "still has a floor:")
+    for slot in pairs:
+        note_counterpart_price(slot, run_favourite_search(slot, verbose=False))
+    for slot in pairs:
+        partner = counterpart_slot(slot)
+        seen = _COUNTERPART_PRICE.get(slot, 0)
+        floor = _COUNTERPART_PRICE.get(partner, 0)
+        record("prices.primed", slot=slot, name=FAVOURITE_SLOTS[slot],
+               price=seen, floor=floor,
+               floor_from=FAVOURITE_SLOTS.get(partner, ""))
+        if verbose:
+            market = f"{seen:>14,}" if seen else "        unread"
+            guard = (f"{floor:>14,} from {FAVOURITE_SLOTS.get(partner, '?')}"
+                     if floor else "          none")
+            print(f"  {FAVOURITE_SLOTS[slot]:<26} market {market}   "
+                  f"floor {guard}")
+
+
 def listing_floor(name: str) -> tuple[int, str]:
-    catalogue = item_price_floor(name)
+    floor = item_price_floor(name)
+    why = "the floor set for this item"
+    market = counterpart_floor(name)
+    if market > floor:
+        floor = market
+        why = f"what a {counterpart_name(name)} costs on the market"
     if not COST_FLOOR_ON_RELIST:
-        return catalogue, "the floor set for this item"
+        return floor, why
     cost = purchase_cost_basis(name)
-    if cost > catalogue:
+    if cost > floor:
         return cost, "what its Sets were bought for"
-    return catalogue, "the floor set for this item"
+    return floor, why
 
 
 def item_price_floor(name: str) -> int:
@@ -10921,6 +10993,8 @@ def run_loop(
 
             try:
                 if dry_run or prepare_for_actions(verbose=verbose):
+                    if not dry_run:
+                        prime_counterpart_prices(verbose=verbose)
                     if run_sequence(actions, dry_run=dry_run, verbose=verbose):
                         succeeded += 1
                         consecutive = 0
