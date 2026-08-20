@@ -6292,6 +6292,21 @@ def note_counterpart_price(slot: int, offers: list) -> None:
         _COUNTERPART_PRICE[slot] = unit
 
 
+UNIT_FLOOR_BY_ITEM: dict[str, int] = {
+    "Chaos Core Set": 690_000,
+}
+
+
+def unit_floor_for(name: str) -> int:
+    want = _floor_key(item_name(_PACK_ANYWHERE.sub(" ", name or "")))
+    if not want:
+        return 0
+    for listed, floor in UNIT_FLOOR_BY_ITEM.items():
+        if _floor_key(item_name(listed)) == want:
+            return int(floor)
+    return 0
+
+
 def listed_pack(name: str) -> int:
     found = _PACK_ANYWHERE.findall(name or "")
     if not found:
@@ -6309,7 +6324,7 @@ def counterpart_floor(name: str) -> int:
     partner = counterpart_slot(slot)
     if partner is None:
         return 0
-    unit = _COUNTERPART_PRICE.get(partner, 0)
+    unit = max(_COUNTERPART_PRICE.get(partner, 0), unit_floor_for(name))
     return unit * listed_pack(name) if unit else 0
 
 
