@@ -6267,6 +6267,8 @@ def effective_floor(catalogue: int, reason: str,
 
 _COUNTERPART_PRICE: dict[int, int] = {}
 
+_COUNTERPART_START: dict[int, int] = {}
+
 _COUNTERPART_PRIMED = False
 
 
@@ -6290,6 +6292,7 @@ def note_counterpart_price(slot: int, offers: list) -> None:
     unit = int(best.unit)
     if unit >= MIN_PLAUSIBLE_PRICE:
         _COUNTERPART_PRICE[slot] = unit
+        _COUNTERPART_START.setdefault(slot, unit)
 
 
 UNIT_FLOOR_BY_ITEM: dict[str, int] = {
@@ -6317,14 +6320,15 @@ def listed_pack(name: str) -> int:
     return max(1, int(digits))
 
 
-def counterpart_floor(name: str) -> int:
+def counterpart_floor(name: str, known_cost: bool = False) -> int:
     slot = favourite_for(name)
     if slot is None:
         return 0
     partner = counterpart_slot(slot)
     if partner is None:
         return 0
-    unit = max(_COUNTERPART_PRICE.get(partner, 0), unit_floor_for(name))
+    table = _COUNTERPART_PRICE if known_cost else _COUNTERPART_START
+    unit = max(table.get(partner, 0), unit_floor_for(name))
     return unit * listed_pack(name) if unit else 0
 
 
@@ -6365,13 +6369,15 @@ def prime_counterpart_prices(verbose: bool = True) -> None:
                   f"floor {guard}")
 
 
-def listing_floor(name: str) -> tuple[int, str]:
+def listing_floor(name: str, known_cost: bool = False) -> tuple[int, str]:
     floor = item_price_floor(name)
     why = "the floor set for this item"
-    market = counterpart_floor(name)
+    market = counterpart_floor(name, known_cost=known_cost)
     if market > floor:
         floor = market
-        why = f"what a {counterpart_name(name)} costs on the market"
+        why = (f"what a {counterpart_name(name)} costs on the market"
+               if known_cost else
+               f"what a {counterpart_name(name)} cost when this run started")
     if not COST_FLOOR_ON_RELIST:
         return floor, why
     cost = purchase_cost_basis(name)
@@ -7993,7 +7999,8 @@ def register_item(
         rows_seen = panel["price_rows"]
 
         if expect_item:
-            absolute_floor, floor_reason_text = listing_floor(expect_item)
+            absolute_floor, floor_reason_text = listing_floor(
+                expect_item, known_cost=bool(cost_floor))
 
             absolute_floor, floor_reason_text = effective_floor(
                 absolute_floor, floor_reason_text, cost_floor)
