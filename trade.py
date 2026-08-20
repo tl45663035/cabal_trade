@@ -6295,9 +6295,7 @@ def note_counterpart_price(slot: int, offers: list) -> None:
         _COUNTERPART_START.setdefault(slot, unit)
 
 
-UNIT_FLOOR_BY_ITEM: dict[str, int] = {
-    "Chaos Core Set": 690_000,
-}
+UNIT_FLOOR_BY_ITEM: dict[str, int] = {}
 
 
 def unit_floor_for(name: str) -> int:
