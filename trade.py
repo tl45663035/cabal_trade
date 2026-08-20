@@ -6456,6 +6456,10 @@ TAB_COUNT = 8
 TAB_ACTIVE_MARGIN = 6.0
 SLOT_OCCUPIED_STDEV = 8.0
 
+INVENTORY_SLOTS = 64
+
+WORK_TAB_RECHECK_SETTLE = 1.0
+
 SLOT_INSET = 26
 
 TAB_SAMPLE_HALF_W = 22
@@ -6509,6 +6513,16 @@ def require_empty_work_tab(verbose: bool = True) -> bool:
 
     park_cursor()
     occupied = occupied_slots(grab(), origin)
+    if len(occupied) == INVENTORY_SLOTS:
+        time.sleep(WORK_TAB_RECHECK_SETTLE)
+        park_cursor()
+        again = occupied_slots(grab(), origin)
+        record("worktab.full_recheck", first=len(occupied), second=len(again))
+        if len(again) < len(occupied):
+            say(f"  every one of the {INVENTORY_SLOTS} slots read as full, "
+                f"which is what a panel that is not showing looks like; the "
+                f"re-read found {len(again)}. Trusting the re-read.")
+            occupied = again
     if occupied and carried_total() > 0:
         say(f"Inventory tab {WORK_TAB} holds {len(occupied)} slot(s), and "
             f"{carried_total()} Set(s) are on the books as bought and not yet "
