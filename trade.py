@@ -4512,10 +4512,19 @@ class ShopModel:
 
         self.divergences += 1
         record("shopmodel.diverged", row=index, seen=seen,
-               model=(mine or {}).get("name"), enforcing=self.enforce)
+               model=(mine or {}).get("name"), enforcing=self.enforce,
+               board_empty=theirs is None)
         enforcing = self.enforce
         self.reset("diverged")
         self.enforce = enforcing
+        if enforcing and theirs is None:
+            print(f"  [row model] {why} The row is EMPTY, so there is no "
+                  f"listing here to act on wrongly. Dropping the model and "
+                  f"reseeding from the board next pass rather than ending the "
+                  f"run.")
+            record("shopmodel.stale_slot_dropped", row=index,
+                   model=(mine or {}).get("name"))
+            return
         if enforcing:
             raise ShopDiverged(why + " Stopping rather than acting on it.")
         print(f"  [row model] {why} Not enforcing; the model stands down.")
