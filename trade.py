@@ -12471,7 +12471,11 @@ def main() -> None:
         )
 
     global RECORD_ENABLED
-    RECORD_ENABLED = ((args.record or clicking or args.debug_frames)
+    _shape_early = read_run_shape(verbose=False) or {}
+    wants_frames = bool(args.debug_frames or _shape_early.get("debug_frames"))
+    if wants_frames and not DEBUG_ACTIONS:
+        globals()["DEBUG_ACTIONS"] = True
+    RECORD_ENABLED = ((args.record or clicking or wants_frames)
                       and not args.no_record)
     if RECORD_ENABLED:
         print(f"Recording frames to {RECORD_DIR} (--no-record to turn off).")
@@ -12650,7 +12654,9 @@ def main() -> None:
             print("  config.json: premium shop entry is ON.")
         if _shape.get("debug_frames") and not args.debug_frames:
             globals()["DEBUG_ACTIONS"] = True
-            print("  config.json: debug frames are ON.")
+            print("  config.json: debug frames are ON"
+                  + ("." if RECORD_ENABLED else
+                     ", but --no-record is stopping them being kept."))
         if _shape.get("row_model") and not args.row_model:
             SHOP.enforce = True
             print("  config.json: --row-model is ON. The 30-slot model is "
