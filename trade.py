@@ -4499,6 +4499,17 @@ class ShopModel:
         if why is None:
             return
 
+        if game_disconnected():
+            self.divergences += 1
+            record("shopmodel.diverged_disconnected", row=index, seen=seen,
+                   model=(mine or {}).get("name"))
+            raise ShopDiverged(
+                "the game is showing its Disconnected dialog. The table on "
+                "screen is the last picture the client drew, and nothing sent "
+                "to it since -- a scroll, a click -- has had any effect, so "
+                "the rows being read are not the rows being asked for. The "
+                f"model is not wrong here ({why}) Log back in, then restart.")
+
         self.divergences += 1
         record("shopmodel.diverged", row=index, seen=seen,
                model=(mine or {}).get("name"), enforcing=self.enforce)
