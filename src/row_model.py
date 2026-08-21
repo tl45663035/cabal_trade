@@ -38,6 +38,7 @@ BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
 STALE_SWEEP = _T.get("stale_sweep", 1.0)
+POLL_GAP = _T.get("poll_gap", 0.0)
 
 _NOT_ALNUM = re.compile(r"[^a-z0-9]")
 
@@ -114,7 +115,7 @@ def search_button(word, timeout=None):
         for text, _conf, point in popup_words():
             if _key(text) == want and point[0] >= DIALOG_BUTTON_MIN_X:
                 return point
-        time.sleep(ACTION_GAP)
+        time.sleep(POLL_GAP)
     return None
 
 
@@ -128,7 +129,7 @@ def find_button(word, timeout=None, verbose=False):
         while time.monotonic() < deadline:
             if button_here(word, known):
                 return known
-            time.sleep(ACTION_GAP)
+            time.sleep(POLL_GAP)
         if verbose:
             print(f"  {word} never appeared at the calibrated {known} in "
                   f"{budget:.0f}s; one sweep in case the calibration is stale")
@@ -177,7 +178,7 @@ def dialog_gone(timeout=None):
     while time.monotonic() < deadline:
         if not dialog_buttons():
             return True
-        time.sleep(ACTION_GAP)
+        time.sleep(POLL_GAP)
     return False
 
 
