@@ -326,8 +326,18 @@ def dialog_gone(timeout=None):
     return False
 
 
+def trim_borders(text):
+    parts = (text or "").strip().split()
+    while parts and len(parts[0]) == 1:
+        parts.pop(0)
+    while parts and len(parts[-1]) == 1:
+        parts.pop()
+    return " ".join(parts)
+
+
 def read_row_one():
-    return calibration.read_line(calibration.grab(), row_one_box())
+    return trim_borders(
+        calibration.read_line(calibration.grab(), row_one_box()))
 
 
 def row_one_is_empty(text=None):
