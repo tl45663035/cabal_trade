@@ -447,7 +447,7 @@ class RowModel:
             print(f"  {CHANGE_WORD} at {point}")
         inv._user32.SetCursorPos(*point)
         time.sleep(ACTION_GAP)
-        calibration.click(*point)
+        calibration.click(*point, settle=0.0)
 
         dismiss = find_button(DISMISS_WORD)
         if dismiss is None:
@@ -456,7 +456,7 @@ class RowModel:
                 f"{CHANGE_WORD} on row {index}. Nothing has been cancelled.")
         if verbose:
             print(f"  {DISMISS_WORD} at {dismiss}")
-        calibration.click(*dismiss)
+        calibration.click(*dismiss, settle=0.0)
 
         confirm = find_button(CONFIRM_WORD)
         if confirm is None:
@@ -465,7 +465,7 @@ class RowModel:
                 f"row {index}. The dialog is still open; nothing committed.")
         if verbose:
             print(f"  {CONFIRM_WORD} at {confirm}")
-        calibration.click(*confirm)
+        calibration.click(*confirm, settle=0.0)
         calibration.park()
 
         if not dialog_gone():
