@@ -486,16 +486,22 @@ def resupply_pass(model, first, last, verbose=True):
               f"{run['rows_threshold']} row(s) and convertible.")
         return []
     done = []
-    for slot in short:
-        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
-        try:
-            out = resupply_one(model, slot, held[slot], verbose=verbose)
-        except (convert.Refused, buy.Refused, NotReady) as exc:
-            print(f"  resupply of "
-                  f"{calibration.FAVOURITE_ITEMS[str(slot)]!r} stopped: {exc}")
-            out = None
-        if out:
-            done.append(out)
+    try:
+        for slot in short:
+            war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+            try:
+                out = resupply_one(model, slot, held[slot], verbose=verbose)
+            except (convert.Refused, buy.Refused, NotReady) as exc:
+                print(f"  resupply of "
+                      f"{calibration.FAVOURITE_ITEMS[str(slot)]!r} stopped: "
+                      f"{exc}")
+                out = None
+            if out:
+                done.append(out)
+    finally:
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady("the Agent Shop is not open after resupplying.")
+        register_tab(verbose=verbose)
     return done
 
 
