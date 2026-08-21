@@ -210,15 +210,21 @@ def reopen_shop(slot, verbose=True):
 
 
 def get_price(slot, verbose=True):
-    inv.focus_game()
-    if not calibration._trade_window_open():
+    with calibration.step("get_price: focus the game"):
+        inv.focus_game()
+    with calibration.step("get_price: _trade_window_open (OCR 1300x190)"):
+        shop_up = calibration._trade_window_open()
+    if not shop_up:
         if verbose:
             print("  the Trade window is shut; opening the Agent Shop.")
         shop.open_agent_shop(verbose=verbose)
         time.sleep(TAB_SETTLE)
-    if not calibration.purchase_tab_showing():
-        shop.click(*_need("purchase_tab"))
-        time.sleep(TAB_SETTLE)
+    with calibration.step("get_price: purchase_tab_showing"):
+        on_purchase = calibration.purchase_tab_showing()
+    if not on_purchase:
+        with calibration.step("get_price: click the Purchase tab + settle"):
+            shop.click(*_need("purchase_tab"))
+            time.sleep(TAB_SETTLE)
 
     x, y = favourite_point(slot)
     if verbose:
@@ -231,16 +237,23 @@ def get_price(slot, verbose=True):
     for attempt in range(1, RETRIES + 1):
         if not calibration.purchase_tab_showing():
             reopen_shop(slot, verbose=verbose)
-        before = row_name()
+        with calibration.step("get_price: read row 1 before the search"):
+            before = row_name()
         stale = None if name_matches(slot, before) else before
-        shop.click(x, y)
-        confirm_sort_low_to_high(slot, verbose=verbose and attempt == 1)
+        with calibration.step(f"get_price: click favourite slot {slot}"):
+            shop.click(x, y, settle=0.0)
+        with calibration.step("get_price: confirm the sort"):
+            confirm_sort_low_to_high(slot, verbose=verbose and attempt == 1)
         deadline = time.monotonic() + SEARCH_TIMEOUT
         next_check = time.monotonic() + SHOP_CHECK_GAP
         gone = False
+        polls = 0
+        poll_started = time.monotonic()
         while time.monotonic() < deadline:
+            polls += 1
             image = calibration.grab()
-            text = row_name(image)
+            fields = read_fields(image)
+            text = (fields.get("name") or "").strip()
             if text == stale or not name_matches(slot, text):
                 if time.monotonic() >= next_check:
                     if not calibration.purchase_tab_showing(image):
@@ -248,10 +261,13 @@ def get_price(slot, verbose=True):
                         break
                     next_check = time.monotonic() + SHOP_CHECK_GAP
                 continue
-            row = parse_fields(read_fields(image))
+            row = parse_fields(fields)
             if row is not None:
                 break
             time.sleep(POLL_GAP)
+        calibration._STEPS.append(
+            (f"get_price: poll row 1 until it answers ({polls} read(s))",
+             (time.monotonic() - poll_started) * 1000))
         if row is not None:
             break
         if gone:

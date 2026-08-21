@@ -1,4 +1,3 @@
-import contextlib
 import re
 import sys
 import time
@@ -24,32 +23,10 @@ ROW_SELECT_X = _SHARED["detect"]["purchase_row_select_x"]
 BUY_ROW = 1
 
 
-_STEPS = []
-
-
-@contextlib.contextmanager
-def step(label):
-    started = time.perf_counter()
-    try:
-        yield
-    finally:
-        _STEPS.append((label, (time.perf_counter() - started) * 1000))
-
-
-def steps_reset():
-    _STEPS.clear()
-
-
-def steps_table(title):
-    total = sum(ms for _l, ms in _STEPS)
-    print("")
-    print(f"  {title}")
-    print(f"  {'#':>3}  {'ms':>9}  {'share':>6}  step")
-    for i, (label, ms) in enumerate(_STEPS, start=1):
-        share = (ms / total * 100) if total else 0
-        print(f"  {i:>3}  {ms:>9.1f}  {share:>5.1f}%  {label}")
-    print(f"       {total:>9.1f}  100.0%  TOTAL")
-    return total
+step = calibration.step
+steps_reset = calibration.steps_reset
+steps_table = calibration.steps_table
+_STEPS = calibration._STEPS
 
 
 class Refused(Exception):

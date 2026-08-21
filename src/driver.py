@@ -73,7 +73,13 @@ def balance(verbose=True):
 
 
 def market(slot, verbose=True):
-    return get_price.get_price(slot, verbose=verbose)
+    calibration.steps_reset()
+    out = get_price.get_price(slot, verbose=verbose)
+    name = calibration.FAVOURITE_ITEMS[str(int(slot))]
+    calibration.steps_table(
+        f"price slot {slot} {name!r}: "
+        + (f"{out['unit_price']:,}/unit" if out else "UNREAD"))
+    return out
 
 
 def seed(verbose=True):
