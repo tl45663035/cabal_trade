@@ -204,13 +204,13 @@ def await_panel_qty(timeout=None):
 
 def read_panel_price():
     box = _panel()["price_field"]
-    return calibration.read_number(calibration.grab(), tuple(box)) or 0
+    return calibration.read_money(calibration.grab(), tuple(box)) or 0
 
 
 def suggested_price():
     prices = []
     for box in _panel()["suggestion_boxes"]:
-        value = calibration.read_number(calibration.grab(), tuple(box))
+        value = calibration.read_money(calibration.grab(), tuple(box))
         if value and value >= MIN_PLAUSIBLE_PRICE:
             prices.append(value)
     return min(prices) if prices else None
@@ -220,7 +220,7 @@ def read_panel_net():
     box = _panel().get("net_sales_box")
     if not box:
         return None
-    return calibration.read_number(calibration.grab(), tuple(box)) or 0
+    return calibration.read_money(calibration.grab(), tuple(box)) or 0
 
 
 def panel_agrees(want_qty, want_price, verbose=False):
@@ -602,7 +602,8 @@ class RowModel:
         if verbose:
             print(f"  loaded {held[0]} of {held[1]}")
 
-        want = price if price is not None else suggested_price()
+        want = (price if price is not None
+                else calibration.undercut(suggested_price()))
         if want is None:
             raise Divergence(
                 "no price was given and the panel suggests none, so there is "

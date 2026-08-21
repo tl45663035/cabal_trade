@@ -20,6 +20,7 @@ DEFAULTS = {
     "run": {
         "relist_from": 1,
         "relist_to": 22,
+        "undercut_by": 1,
     },
     "debug": {
         "frames": False,
@@ -516,6 +517,11 @@ def type_number(value: int) -> None:
         time.sleep(KEY_GAP)
 
 
+def read_money(image, box):
+    hits = re.findall(r"\d[\d,]*", read_line(image, tuple(box)))
+    return int(re.sub(r"[^\d]", "", hits[0])) if hits else None
+
+
 def panel_qty(panel):
     text = read_line(grab(), tuple(panel["qty_box"]))
     nums = [int(re.sub(r"[^\d]", "", m)) for m in re.findall(r"\d[\d,]*", text)]
@@ -524,11 +530,19 @@ def panel_qty(panel):
     return (nums[0], nums[-1])
 
 
+def undercut(price):
+    by = int(load_shared()["run"]["undercut_by"])
+    if by <= 0 or price is None:
+        return price
+    lowered = price - by
+    return lowered if lowered >= MIN_PLAUSIBLE_PRICE else price
+
+
 def panel_suggestion(panel):
     seen = []
     image = grab()
     for box in panel["suggestion_boxes"]:
-        value = read_number(image, tuple(box))
+        value = read_money(image, tuple(box))
         if value and value >= MIN_PLAUSIBLE_PRICE:
             seen.append(value)
     return min(seen) if seen else None
@@ -1100,8 +1114,8 @@ def panel_agrees(panel, want_qty, want_price, say=lambda *a: None):
     expect = want_qty * want_price
     for attempt in range(1, PANEL_REREADS + 2):
         image = grab()
-        price = read_number(image, tuple(panel["price_field"])) or 0
-        net = read_number(image, tuple(box)) or 0
+        price = read_money(image, tuple(panel["price_field"])) or 0
+        net = read_money(image, tuple(box)) or 0
         checks = {
             "price field": price == want_price,
             "net sales": net == expect,
@@ -1359,7 +1373,7 @@ def calibrate_actions(shop, verbose=True):
             f"nothing loaded from tab {WORK_TAB} slot {landing} after two "
             f"ctrl-clicks, so it cannot be listed back. The item is in the "
             f"bag; list it by hand.")
-    price = panel_suggestion(panel)
+    price = undercut(panel_suggestion(panel))
     if price is None:
         raise RuntimeError(
             f"the panel suggests no price for the {held[1]} withdrawn, so "
