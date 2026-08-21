@@ -1096,26 +1096,26 @@ def panel_agrees(panel, want_qty, want_price, say=lambda *a: None):
     if not box:
         raise RuntimeError(
             "the net sales box was never measured, so a price cannot be "
-            "checked three ways. Recalibrate before listing anything.")
+            "checked. Recalibrate before listing anything.")
     expect = want_qty * want_price
     for attempt in range(1, PANEL_REREADS + 2):
         image = grab()
-        qty = panel_qty(panel)[0]
         price = read_number(image, tuple(panel["price_field"])) or 0
         net = read_number(image, tuple(box)) or 0
-        derived = net // want_qty if want_qty and net % want_qty == 0 else None
         checks = {
-            "quantity field": qty == want_qty,
             "price field": price == want_price,
             "net sales": net == expect,
-            "net / quantity": derived == want_price,
+            "net / quantity": net // want_qty == want_price
+            if want_qty and net % want_qty == 0 else False,
+            "net / price": net // want_price == want_qty
+            if want_price and net % want_price == 0 else False,
         }
         if all(checks.values()):
-            say(f"  panel agrees four ways: {qty} x {price:,} = {net:,}")
+            say(f"  panel agrees four ways: {want_qty} x {price:,} = {net:,}")
             return True
         bad = ", ".join(k for k, ok in checks.items() if not ok)
-        say(f"  read {attempt}: {qty} at {price:,}, net {net:,}"
-            f" (wanted {want_qty} at {want_price:,} = {expect:,})"
+        say(f"  read {attempt}: price {price:,}, net {net:,} "
+            f"(wanted {want_qty} x {want_price:,} = {expect:,})"
             f" -- disagrees on {bad}")
     return False
 
