@@ -98,10 +98,13 @@ def read_fields(image=None):
             price_words.append(text)
 
     price = None
+    joined_price = _NOT_DIGIT.sub("", "".join(price_words))
     for text in price_words:
         digits = _NOT_DIGIT.sub("", text)
         if len(digits) >= PRICE_MIN_DIGITS:
             price = int(digits)
+    if price is None and len(joined_price) >= PRICE_MIN_DIGITS:
+        price = int(joined_price)
 
     qty = None
     joined = _NOT_DIGIT.sub("", "".join(qty_words))

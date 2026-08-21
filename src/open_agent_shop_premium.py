@@ -78,26 +78,12 @@ def _mouse(flags: int) -> _Input:
                   u=_InputUnion(mi=_MouseInput(0, 0, 0, flags, 0, None)))
 
 
-def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
-    _user32.SetCursorPos(int(x), int(y))
-    _user32.SendInput(1, ctypes.byref(_mouse(down)), ctypes.sizeof(_Input))
-    try:
-        pass
-    finally:
-        _user32.SendInput(1, ctypes.byref(_mouse(up)), ctypes.sizeof(_Input))
-    time.sleep(settle)
-
-
 def click(x: int, y: int, settle: float = None) -> None:
-    gap = calibration.load_shared()["timing"]["action_gap"]
-    _button(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y,
-            gap if settle is None else settle)
+    calibration.click(x, y, settle=settle)
 
 
 def right_click(x: int, y: int, settle: float = None) -> None:
-    gap = calibration.load_shared()["timing"]["action_gap"]
-    _button(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y,
-            gap if settle is None else settle)
+    calibration.right_click(x, y, settle=settle)
 
 
 def ensure_inventory_open(verbose: bool = True) -> None:
