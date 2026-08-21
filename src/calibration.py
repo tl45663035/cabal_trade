@@ -28,7 +28,7 @@ DEFAULTS = {
     },
     "resupply": {
         "enabled": False,
-        "only": [],
+        "enable_buying": {},
         "rows_threshold": 3,
         "buy_min": 250,
         "price_diff_threshold": {},

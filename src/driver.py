@@ -285,6 +285,15 @@ def core_slots():
             and "set" not in calibration.FAVOURITE_ITEMS[slot].lower()]
 
 
+def buying_enabled(core_name):
+    table = calibration.load_shared()["resupply"].get("enable_buying") or {}
+    want = re.sub(r"[^a-z0-9]", "", (core_name or "").lower())
+    for name, on in table.items():
+        if re.sub(r"[^a-z0-9]", "", name.lower()) == want:
+            return bool(on)
+    return False
+
+
 def rows_by_core(model, first, last):
     held = {slot: 0 for slot in core_slots()}
     for index, row in (model._slots or {}).items():
@@ -377,16 +386,10 @@ def do_resupply(first=None, last=None, verbose=True):
         if count < run["rows_threshold"]:
             mark = "YES" if convert.cell_for(core) else "not convertible"
         print(f"  {core:<30}{count:>6}   {mark}")
-    only = run.get("only") or []
-    fold = lambda v: "".join(ch for ch in (v or "").lower() if ch.isalnum())
-    wanted = {fold(name) for name in only}
-    if wanted:
-        print(f"  resupply.only names {only}; every other core is left alone")
     short = [slot for slot, count in sorted(held.items())
              if count < run["rows_threshold"]
              and convert.cell_for(calibration.FAVOURITE_ITEMS[str(slot)])
-             and (not wanted
-                  or fold(calibration.FAVOURITE_ITEMS[str(slot)]) in wanted)]
+             and buying_enabled(calibration.FAVOURITE_ITEMS[str(slot)])]
     if not short:
         print("")
         print(f"  nothing inside rows {first}-{last} is both short of "

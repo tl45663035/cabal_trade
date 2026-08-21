@@ -1,9 +1,13 @@
 {
   "resupply": {
     "enabled": true,
-    "only": [
-      "Force Core(High)"
-    ],
+    "enable_buying": {
+      "Force Core(Highest)": false,
+      "Chaos Core": false,
+      "Force Core (Ultimate)": false,
+      "Force Core(High)": true,
+      "Upgrade Core (Ultimate)": false
+    },
     "rows_threshold": 3,
     "buy_min": 250,
     "price_diff_threshold": {
