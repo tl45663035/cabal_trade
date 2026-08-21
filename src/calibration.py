@@ -464,10 +464,11 @@ def _mouse_event(flags: int):
 def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
     from open_inventory import _user32
     _user32.SetCursorPos(int(x), int(y))
+    time.sleep(HOVER_SETTLE)
     _user32.SendInput(1, ctypes.byref(_mouse_event(down)),
                       ctypes.sizeof(_mouse_event(down)))
     try:
-        pass
+        time.sleep(CLICK_HOLD)
     finally:
         _user32.SendInput(1, ctypes.byref(_mouse_event(up)),
                           ctypes.sizeof(_mouse_event(up)))
