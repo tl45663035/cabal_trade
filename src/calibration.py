@@ -1323,12 +1323,21 @@ def await_vendor(timeout=None, verbose=False):
             print(f"  pressing N to open the vendor Shop "
                   f"(attempt {attempt})")
         press(keys["VK_N"])
-        snap("press_N")
         deadline = time.monotonic() + span
         while time.monotonic() < deadline:
             if vendor_open():
+                snap(f"vendor_open_attempt_{attempt}")
                 return True
             time.sleep(POLL_GAP)
+        image = grab()
+        snap(f"vendor_not_seen_attempt_{attempt}")
+        if verbose:
+            print(f"    after {span:g}s the title band "
+                  f"{_box(VENDOR_TITLE_BAND_F)} reads "
+                  f"{[t for t, _c, _p in ocr(image, _box(VENDOR_TITLE_BAND_F))]}")
+        if attempt == 1 and verbose:
+            print(f"    pressing N again would close it if it is open and "
+                  f"only unrecognised")
     return False
 
 
