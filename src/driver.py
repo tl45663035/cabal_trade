@@ -23,22 +23,13 @@ class NotReady(Exception):
     pass
 
 
-def calibrated():
-    try:
-        calibration.load(force=True)
-        return True
-    except RuntimeError:
-        return False
-
-
 def initialise(verbose=True):
     if not inv.focus_game():
         raise NotReady("could not bring the game to the foreground.")
-    if not calibrated():
-        raise NotReady(
-            "this screen is not calibrated. Run py src/calibration.py first; "
-            "the driver will not measure the game itself.")
-    cal = calibration.load()
+    if verbose:
+        print("  measuring this screen before touching anything")
+    calibration.main(close=False)
+    cal = calibration.load(force=True)
     if verbose:
         print(f"  calibrated for {cal['resolution']}, measured "
               f"{cal.get('measured_at')}")

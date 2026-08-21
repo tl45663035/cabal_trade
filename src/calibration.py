@@ -872,7 +872,7 @@ def calibrate_register_table(shop, verbose=True):
     return out
 
 
-def main() -> None:
+def main(close: bool = True) -> None:
     from open_inventory import VK_I, VK_ESCAPE, focus_game, press
 
     shared = load_shared()
@@ -975,7 +975,8 @@ def main() -> None:
     print(f"\nwrote {OUT}  [{resolution_key()}]")
     print(f"  resolutions in the file: {sorted(out['by_resolution'])}")
 
-    close_everything(verbose=True)
+    if close:
+        close_everything(verbose=True)
 
 
 def close_everything(verbose: bool = False) -> None:
