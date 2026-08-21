@@ -256,12 +256,13 @@ def get_price(slot, verbose=True):
     text, row = "", None
     for attempt in range(1, RETRIES + 1):
         before = row_name()
+        stale = None if name_matches(slot, before) else before
         shop.click(x, y)
         deadline = time.monotonic() + SEARCH_TIMEOUT
         while time.monotonic() < deadline:
             image = calibration.grab()
             text = row_name(image)
-            if text == before or not name_matches(slot, text):
+            if text == stale or not name_matches(slot, text):
                 continue
             row = parse_fields(read_fields(image))
             if row is not None:

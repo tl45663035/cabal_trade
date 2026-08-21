@@ -211,12 +211,12 @@
     "panel_field_half": 14,
     "panel_label_gap": 22,
     "panel_rereads": 5,
+    "min_name_overlap": 6,
+    "alz_min_digits": 4,
     "slot_half": 24,
     "slot_occupied_stdev": 8.0,
     "panel_moved_slack": 30,
     "type_clear_presses": 16,
-    "min_name_overlap": 6,
-    "alz_min_digits": 4,
     "sort_list_heights": 6
   },
   "text": {
@@ -249,7 +249,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-08-21T13:36:47",
+      "measured_at": "2026-08-21T14:14:51",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -644,12 +644,12 @@
           "purchase_is_derived": true
         },
         "purchase_sort_region": [
-          803,
+          616,
           178,
           1043,
           214
         ],
-        "purchase_sort_text_seen": "y Price:Low to",
+        "purchase_sort_text_seen": "pic y Price:Low to",
         "purchase_buy_x": 1124,
         "purchase_row_pitch": 76,
         "purchase_row_one_y": 340,
@@ -697,20 +697,20 @@
           1229
         ],
         "row_one_y": 230,
-        "row_pitch": 79,
+        "row_pitch": 80,
         "row_one_box": [
           256,
-          191,
+          190,
           1229,
-          269
+          270
         ],
         "button_x": 1126,
         "table_point": [
           526,
-          309
+          310
         ],
         "rows_per_notch": 1,
-        "register_rows_seen": 8,
+        "register_rows_seen": 7,
         "panel": {
           "panel_box": [
             10,
@@ -789,5 +789,20 @@
     "8": "Force Core Set (High)",
     "9": "Upgrade Core (Ultimate)",
     "10": "Upgrade Core Set (Ultimate)"
+  },
+  "market": {
+    "measured_at": "2026-08-21T14:14:51",
+    "unit_price": {
+      "1": 239999,
+      "2": 212000,
+      "3": 689999,
+      "4": 697000,
+      "5": 466991,
+      "6": 434431,
+      "7": 236000,
+      "8": 222443,
+      "9": 457994,
+      "10": 424489
+    }
   }
 }
