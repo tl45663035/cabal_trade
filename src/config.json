@@ -1,0 +1,29 @@
+{
+  "_README": [
+    "The knobs. calibration.json holds what was measured off the",
+    "screen; nothing in here is measured and a calibration pass",
+    "never writes to this file."
+  ],
+  "run": {
+    "relist_from": 1,
+    "relist_to": 22
+  },
+  "debug": {
+    "frames": false,
+    "keep_frames": 2000
+  },
+  "timing": {
+    "action_gap": 0.5,
+    "key_hold": 0.02,
+    "key_gap": 0.05,
+    "focus_settle": 0.35,
+    "wheel_gap": 0.12,
+    "park_settle": 0.25,
+    "tab_settle": 0.6,
+    "poll_gap": 0.0,
+    "search_timeout": 8.0,
+    "search_retries": 3,
+    "dialog_timeout": 8.0,
+    "retry_gap": 1.0
+  }
+}

@@ -12,6 +12,7 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "calibration.json"
+CONFIG = HERE / "config.json"
 
 _CACHE = None
 
@@ -201,17 +202,39 @@ def resolution_key(size=None) -> str:
     return f"{w}x{h}"
 
 
+CONFIG_SECTIONS = ("run", "debug", "timing")
+
+
+def _read(path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def write_config_if_absent() -> None:
+    if CONFIG.exists():
+        return
+    CONFIG.write_text(json.dumps(
+        {"_README": [
+            "The knobs. calibration.json holds what was measured off the",
+            "screen; nothing in here is measured and a calibration pass",
+            "never writes to this file.",
+        ]} | {k: dict(DEFAULTS[k]) for k in CONFIG_SECTIONS},
+        indent=2), encoding="utf-8")
+
+
 def load_shared() -> dict:
-    data = {}
-    if OUT.exists():
-        try:
-            data = json.loads(OUT.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            data = {}
+    measured = _read(OUT)
+    knobs = _read(CONFIG)
     out = {}
     for section, default in DEFAULTS.items():
         merged = dict(default)
-        merged.update(data.get(section) or {})
+        merged.update(measured.get(section) or {})
+        if section in CONFIG_SECTIONS:
+            merged.update(knobs.get(section) or {})
         out[section] = merged
     return out
 
@@ -1293,6 +1316,8 @@ def calibrate_actions(shop, verbose=True):
 def main(close: bool = True) -> None:
     from open_inventory import VK_I, VK_ESCAPE, focus_game, press
 
+    write_config_if_absent()
+
     shared = load_shared()
     gap = shared["timing"]["action_gap"]
     facts = shared["game_facts"]
@@ -1395,6 +1420,9 @@ def main(close: bool = True) -> None:
 
     out = dict(existing)
     for section in DEFAULTS:
+        if section in CONFIG_SECTIONS:
+            out.pop(section, None)
+            continue
         merged = dict(DEFAULTS[section])
         merged.update(existing.get(section) or {})
         out[section] = merged
