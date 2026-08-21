@@ -149,6 +149,7 @@ DEFAULTS = {
         "panel_field_half": 14,
         "panel_label_gap": 22,
         "panel_rereads": 5,
+        "min_name_overlap": 6,
         "slot_half": 24,
         "slot_occupied_stdev": 8.0,
         "panel_moved_slack": 30,
@@ -327,6 +328,8 @@ CLICK_HOLD = _S["timing"]["click_hold"]
 PANEL_REREADS = _S["detect"]["panel_rereads"]
 PANEL_REREAD_GAP = _S["timing"]["panel_reread_gap"]
 MIN_PLAUSIBLE_PRICE = _S["detect"]["min_plausible_price"]
+FAVOURITE_ITEMS = _S["favourite_items"]
+MIN_NAME_OVERLAP = _S["detect"]["min_name_overlap"]
 SLOT_HALF = _S["detect"]["slot_half"]
 SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
 POLL_GAP = _S["timing"].get("poll_gap", 0.0)
@@ -1139,6 +1142,64 @@ def panel_agrees(panel, want_qty, want_price, say=lambda *a: None):
     return False
 
 
+def pair_slot(slot):
+    slot = int(slot)
+    if slot % 2:
+        return slot + 1 if str(slot + 1) in FAVOURITE_ITEMS else None
+    return slot - 1 if str(slot - 1) in FAVOURITE_ITEMS else None
+
+
+def favourite_slot_of(name):
+    want = re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    if not want:
+        return None
+    best = None
+    for slot, item in FAVOURITE_ITEMS.items():
+        key = re.sub(r"[^a-z0-9]", "", item.lower())
+        if not key:
+            continue
+        shared = 0
+        for a, b in zip(want, key):
+            if a != b:
+                break
+            shared += 1
+        if shared < MIN_NAME_OVERLAP:
+            continue
+        exact = key == want
+        score = (shared, exact, -abs(len(key) - len(want)))
+        if best is None or score > best[0]:
+            best = (score, int(slot))
+    return best[1] if best else None
+
+
+def price_floor(name):
+    prices = _read(OUT).get("market", {}).get("unit_price", {})
+    slot = favourite_slot_of(name)
+    if slot is None:
+        return 0, ""
+    pair = pair_slot(slot)
+    if pair is None:
+        return 0, ""
+    floor = int(prices.get(str(pair)) or 0)
+    if floor < MIN_PLAUSIBLE_PRICE:
+        return 0, ""
+    return floor, FAVOURITE_ITEMS[str(pair)]
+
+
+def calibrate_prices(verbose=True):
+    import get_price
+    say = print if verbose else (lambda *a: None)
+    seen = {}
+    for slot in sorted(FAVOURITE_ITEMS, key=int):
+        row = get_price.get_price(int(slot), verbose=False)
+        if row and row.get("unit_price"):
+            seen[str(slot)] = int(row["unit_price"])
+            say(f"  {FAVOURITE_ITEMS[slot]:<28}{seen[str(slot)]:>12,}")
+        else:
+            say(f"  {FAVOURITE_ITEMS[slot]:<28}{'unread':>12}")
+    return seen
+
+
 def calibrate_panel(verbose=True):
     say = print if verbose else (lambda *a: None)
     box = _box(REGISTER_PANEL_F)
@@ -1500,6 +1561,9 @@ def main(close: bool = True) -> None:
     print("register table:")
     shop.update(calibrate_register_table(shop))
 
+    print("market prices:")
+    prices = calibrate_prices()
+
     print("register panel:")
     shop["panel"] = calibrate_panel()
 
@@ -1552,6 +1616,9 @@ def main(close: bool = True) -> None:
             kept[section] = missing
             measured[section] = {**missing, **measured[section]}
     per[resolution_key()] = measured
+    if prices:
+        out["market"] = {"measured_at": measured["measured_at"],
+                         "unit_price": prices}
     OUT.write_text(json.dumps(out, indent=2), encoding="utf-8")
     print(f"\nwrote {OUT}  [{resolution_key()}]")
     print(f"  resolutions in the file: {sorted(out['by_resolution'])}")

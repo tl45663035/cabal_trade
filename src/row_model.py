@@ -601,7 +601,7 @@ class RowModel:
                   f"{result['lands_in_tab']} slot {result['lands_in_slot']}")
         return result
 
-    def list_slot(self, row, col, price=None, verbose=True):
+    def list_slot(self, row, col, price=None, floor=0, why="", verbose=True):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -633,6 +633,11 @@ class RowModel:
             raise Divergence(
                 "no price was given and the panel suggests none, so there is "
                 "nothing to list at. Nothing has been listed.")
+        if floor and want < floor:
+            if verbose:
+                print(f"    market {want:,} is under the {floor:,} floor"
+                      + (f" ({why})" if why else "") + f"; listing at the floor")
+            want = floor
         if want < MIN_PLAUSIBLE_PRICE:
             raise Divergence(
                 f"refusing to list at {want:,}, under the "

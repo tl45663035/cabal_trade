@@ -158,7 +158,8 @@ def relist_one(model, index, verbose=True):
     model._slots[index] = row
     model.cancel(index, verbose=False, tab_ready=True)
     calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
-    out = model.list_slot(*landing, verbose=False)
+    floor, why = calibration.price_floor(row.name)
+    out = model.list_slot(*landing, floor=floor, why=why, verbose=verbose)
     if verbose:
         print(f"    relisted {out['qty']} at {out['price']:,}")
     return out
