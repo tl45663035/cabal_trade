@@ -396,6 +396,8 @@ CONVERT_GRADES = _S["game_facts"]["convert_grades"]
 CONVERT_ROW_COUNT = _S["game_facts"]["convert_rows"]
 CONVERT_SET_TO_CORE_ROWS = _S["game_facts"]["convert_set_to_core_rows"]
 CONVERT_TAB = _S["game_facts"]["convert_tab"]
+VENDOR_TAB_WORDS = {w.strip().lower() for w in
+                    _S["text"]["vendor_tab_words"].split("|")}
 CONVERT_INVENTORY_TAB = _S["game_facts"]["convert_inventory_tab"]
 
 GRID = _S["game_facts"]["grid_size"]
@@ -1309,7 +1311,7 @@ def vendor_open(image=None) -> bool:
                  for t, _c, _p in ocr(image, _box(VENDOR_TITLE_BAND_F))}
     except Exception:
         return False
-    return {"shop", "normal", "repurchase"} <= words
+    return VENDOR_TAB_WORDS <= words
 
 
 def await_vendor(timeout=None, verbose=False):
