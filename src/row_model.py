@@ -37,7 +37,7 @@ DIALOG_BUTTON_MIN_X = _SHARED["detect"]["dialog_button_min_x"]
 BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
-REMEMBERED_TIMEOUT = _T.get("remembered_timeout", 1.0)
+STALE_SWEEP = _T.get("stale_sweep", 1.0)
 
 _NOT_ALNUM = re.compile(r"[^a-z0-9]")
 
@@ -121,18 +121,18 @@ def search_button(word, timeout=None):
 def find_button(word, timeout=None, verbose=False):
     known = remembered(word)
     budget = DIALOG_TIMEOUT if timeout is None else timeout
-    spent = 0.0
-    if known is not None:
-        started = time.monotonic()
-        deadline = started + min(REMEMBERED_TIMEOUT, budget)
+    if known is None:
+        point = search_button(word, timeout=budget)
+    else:
+        deadline = time.monotonic() + budget
         while time.monotonic() < deadline:
             if button_here(word, known):
                 return known
             time.sleep(ACTION_GAP)
-        spent = time.monotonic() - started
         if verbose:
-            print(f"  {word} is not at the remembered {known}; searching")
-    point = search_button(word, timeout=max(0.0, budget - spent))
+            print(f"  {word} never appeared at the calibrated {known} in "
+                  f"{budget:.0f}s; one sweep in case the calibration is stale")
+        point = search_button(word, timeout=STALE_SWEEP)
     if point is not None and point != known:
         calibration.remember_shop(_button_key(word), list(point))
         if verbose:
