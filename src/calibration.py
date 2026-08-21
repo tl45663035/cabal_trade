@@ -819,9 +819,10 @@ def _trade_window_open() -> bool:
     return any(t.lower() in ("register", "purchase") for t, _c, _p in words)
 
 
-def purchase_tab_showing() -> bool:
+def purchase_tab_showing(image=None) -> bool:
     try:
-        words = ocr(grab(), _box(PURCHASE_HEADER_BAND_F))
+        words = ocr(image if image is not None else grab(),
+                    _box(PURCHASE_HEADER_BAND_F))
     except Exception:
         return False
     return any(t.strip().lower() == "category" for t, _c, _p in words)
@@ -1219,7 +1220,7 @@ def price_floor(name):
         return 0, ""
     floor = int(prices.get(str(pair)) or 0)
     if floor < MIN_PLAUSIBLE_PRICE:
-        return 0, ""
+        return None, FAVOURITE_ITEMS[str(pair)]
     return floor, FAVOURITE_ITEMS[str(pair)]
 
 

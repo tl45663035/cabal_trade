@@ -21,6 +21,7 @@ RESCUE_MIN_CONF = _DET["rescue_min_conf"]
 MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
 PRICE_MIN_DIGITS = _DET["price_min_digits"]
 SORT_LIST_HEIGHTS = _DET["sort_list_heights"]
+SHOP_CHECK_GAP = _SHARED["timing"]["shop_check_gap"]
 
 _NUMBER = re.compile(r"\d[\d,]*")
 _NOT_DIGIT = re.compile(r"[^0-9]")
@@ -234,6 +235,19 @@ def name_matches(slot, text):
     return fold(want) in fold(text)
 
 
+def reopen_shop(slot, verbose=True):
+    if verbose:
+        print(f"  slot {slot}: the Purchase tab is not on screen; "
+              f"reopening the Agent Shop")
+    calibration.snap(f"slot_{slot}_shop_gone")
+    if not calibration._trade_window_open():
+        shop.open_agent_shop(verbose=False)
+        time.sleep(TAB_SETTLE)
+    shop.click(*_need("purchase_tab"))
+    time.sleep(TAB_SETTLE)
+    ensure_sort_low_to_high(verbose=False)
+
+
 def get_price(slot, verbose=True):
     inv.focus_game()
     if not calibration._trade_window_open():
@@ -255,14 +269,23 @@ def get_price(slot, verbose=True):
 
     text, row = "", None
     for attempt in range(1, RETRIES + 1):
+        if not calibration.purchase_tab_showing():
+            reopen_shop(slot, verbose=verbose)
         before = row_name()
         stale = None if name_matches(slot, before) else before
         shop.click(x, y)
         deadline = time.monotonic() + SEARCH_TIMEOUT
+        next_check = time.monotonic() + SHOP_CHECK_GAP
+        gone = False
         while time.monotonic() < deadline:
             image = calibration.grab()
             text = row_name(image)
             if text == stale or not name_matches(slot, text):
+                if time.monotonic() >= next_check:
+                    if not calibration.purchase_tab_showing(image):
+                        gone = True
+                        break
+                    next_check = time.monotonic() + SHOP_CHECK_GAP
                 continue
             row = parse_fields(read_fields(image))
             if row is not None:
@@ -270,9 +293,13 @@ def get_price(slot, verbose=True):
             time.sleep(POLL_GAP)
         if row is not None:
             break
-        print(f"  slot {slot}: attempt {attempt}/{RETRIES} timed out after "
-              f"{SEARCH_TIMEOUT:g}s; row 1 reads {text[:40]!r}, expected "
-              f"{want!r}")
+        if gone:
+            print(f"  slot {slot}: attempt {attempt}/{RETRIES} -- the shop "
+                  f"closed mid-search; the row band read {text[:40]!r}")
+        else:
+            print(f"  slot {slot}: attempt {attempt}/{RETRIES} timed out "
+                  f"after {SEARCH_TIMEOUT:g}s; row 1 reads {text[:40]!r}, "
+                  f"expected {want!r}")
         time.sleep(RETRY_GAP)
 
     if row is None:
