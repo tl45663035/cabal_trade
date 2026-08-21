@@ -119,6 +119,12 @@
       0.8203,
       0.8232
     ],
+    "dialog_buttons": [
+      0.4688,
+      0.5296,
+      0.6641,
+      0.7085
+    ],
     "register_table_band": [
       0.1,
       0.12,
@@ -144,6 +150,12 @@
     "purchase_header_down": 10,
     "purchase_divider_sigma": 3.0,
     "purchase_cell_inset": 2,
+    "dialog_button_min_x": 1200,
+    "dialog_button_half": [
+      70,
+      24
+    ],
+    "min_plausible_balance": 1000,
     "row_border_candidates": 30,
     "row_border_min_gap": 15,
     "qty_half_width": 45,
@@ -174,7 +186,10 @@
     "pack_marker": "\\bX\\s*(\\d+)\\s*$",
     "change_word": "Change",
     "dismiss_word": "Cancel",
-    "confirm_word": "Confirmation"
+    "confirm_word": "Confirmation",
+    "receipt_word": "Receive",
+    "register_word": "Register",
+    "status_complete": "Complete"
   },
   "game_facts": {
     "favourite_count": 10,
@@ -194,7 +209,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-08-18T05:34:54",
+      "measured_at": "2026-08-21T08:54:39",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -580,17 +595,17 @@
         ],
         "favourite_pitch": 57.0,
         "evidence": {
-          "register_conf": 96,
+          "register_conf": 97,
           "favourite_pitch_spread": 0,
           "purchase_is_derived": true
         },
         "purchase_sort_region": [
           616,
-          177,
-          1195,
-          214
+          176,
+          1362,
+          224
         ],
-        "purchase_sort_text_seen": "> pic y to",
+        "purchase_sort_text_seen": "pic * yrprice:Low to v \u201c4",
         "purchase_buy_x": 1124,
         "purchase_row_pitch": 76,
         "purchase_row_one_y": 340,
@@ -637,18 +652,18 @@
           256,
           1229
         ],
-        "row_one_y": 229,
+        "row_one_y": 230,
         "row_pitch": 79,
         "row_one_box": [
           256,
-          190,
+          191,
           1229,
-          268
+          269
         ],
         "button_x": 1126,
         "table_point": [
           526,
-          308
+          309
         ],
         "rows_per_notch": 1,
         "register_rows_seen": 9,

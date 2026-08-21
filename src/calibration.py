@@ -970,10 +970,24 @@ def main(close: bool = True) -> None:
         merged = dict(DEFAULTS[section])
         merged.update(existing.get(section) or {})
         out[section] = merged
-    out.setdefault("by_resolution", {})[resolution_key()] = measured
+    per = out.setdefault("by_resolution", {})
+    prior = dict(per.get(resolution_key()) or {})
+    kept = {}
+    for section, values in prior.items():
+        if not isinstance(values, dict) or section not in measured:
+            continue
+        missing = {k: v for k, v in values.items()
+                   if k not in measured[section]}
+        if missing:
+            kept[section] = missing
+            measured[section] = {**missing, **measured[section]}
+    per[resolution_key()] = measured
     OUT.write_text(json.dumps(out, indent=2), encoding="utf-8")
     print(f"\nwrote {OUT}  [{resolution_key()}]")
     print(f"  resolutions in the file: {sorted(out['by_resolution'])}")
+    for section, values in kept.items():
+        print(f"  kept {len(values)} value(s) this pass does not measure in "
+              f"{section}: {', '.join(sorted(values))}")
 
     if close:
         close_everything(verbose=True)
