@@ -278,6 +278,8 @@ REGISTER_PANEL_F = _S["regions"]["register_panel"]
 PANEL_FIELD_INSET = _S["detect"]["panel_field_inset"]
 PANEL_FIELD_HALF = _S["detect"]["panel_field_half"]
 PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
+TYPE_CLEAR_PRESSES = _S["detect"]["type_clear_presses"]
+MIN_PLAUSIBLE_PRICE = _S["detect"]["min_plausible_price"]
 POLL_GAP = _S["timing"].get("poll_gap", 0.0)
 
 ALZ_BRIGHT = _DET["alz_bright"]
@@ -443,6 +445,34 @@ def ctrl_click(x: int, y: int, settle: float = None) -> None:
         _user32.SendInput(1, ctypes.byref(_event(vk, up=True)),
                           ctypes.sizeof(_Input))
     snap(f"ctrlclick_{x}_{y}")
+
+
+def type_number(value: int) -> None:
+    from open_inventory import press
+    keys = load_shared()["input"]
+    for _ in range(TYPE_CLEAR_PRESSES):
+        press(keys["VK_BACK"])
+    for ch in str(int(value)):
+        press(keys[f"VK_{ch}"])
+
+
+def panel_qty(panel):
+    text = read_line(grab(), tuple(panel["qty_box"]))
+    found = re.search(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)", text)
+    if not found:
+        return (0, 0)
+    return (int(found.group(1).replace(",", "")),
+            int(found.group(2).replace(",", "")))
+
+
+def panel_suggestion(panel):
+    seen = []
+    image = grab()
+    for box in panel["suggestion_boxes"]:
+        value = read_number(image, tuple(box))
+        if value and value >= MIN_PLAUSIBLE_PRICE:
+            seen.append(value)
+    return min(seen) if seen else None
 
 
 def click(x: int, y: int, settle: float = None) -> None:
@@ -1050,8 +1080,19 @@ def calibrate_panel(verbose=True):
     return out
 
 
+def inventory_slot_point(row, col):
+    slots = load()["inventory"]["slots"]
+    key = f"{int(row)}x{int(col)}"
+    if key not in slots:
+        raise RuntimeError(f"inventory slot {key} is not in calibration.json")
+    return tuple(slots[key])
+
+
 def calibrate_actions(shop, verbose=True):
     say = print if verbose else (lambda *a: None)
+    panel = shop.get("panel")
+    if not panel:
+        raise RuntimeError("the register panel must be measured first.")
     timing = load_shared()["timing"]
     budget = timing["dialog_timeout"]
     dialog = _box(DIALOG_BUTTONS_F)
@@ -1130,6 +1171,61 @@ def calibrate_actions(shop, verbose=True):
 
     after = read_line(grab(), row_one)
     say(f"  row 1 now reads {after[:48]!r}")
+
+    slot = inventory_slot_point(1, 1)
+    say(f"  listing it back from tab {WORK_TAB} slot (1,1) at {slot}")
+    ctrl_click(*slot)
+    held = (0, 0)
+    deadline = time.monotonic() + budget
+    while time.monotonic() < deadline:
+        held = panel_qty(panel)
+        if held[1]:
+            break
+        time.sleep(POLL_GAP)
+    if not held[1]:
+        raise RuntimeError(
+            f"nothing loaded from tab {WORK_TAB} slot (1,1) after the "
+            f"withdrawal, so it cannot be listed back. The item is in the "
+            f"bag; list it by hand.")
+    price = panel_suggestion(panel)
+    if price is None:
+        raise RuntimeError(
+            f"the panel suggests no price for the {held[1]} withdrawn, so "
+            f"there is nothing to list at. The item is in the bag.")
+    say(f"  {held[1]} held, panel suggests {price:,}")
+
+    click(*panel["qty_point"])
+    type_number(held[1])
+    click(*panel["price_point"])
+    type_number(price)
+    park()
+    typed, shown = panel_qty(panel), read_number(grab(),
+                                                 tuple(panel["price_field"]))
+    if typed[0] != held[1] or shown != price:
+        raise RuntimeError(
+            f"the panel reads {typed[0]} at {shown} but {held[1]} at {price} "
+            f"was typed. Nothing has been listed; the item is in the bag.")
+
+    click(*panel["register_button"], settle=0.0)
+    learned["button_register"] = list(panel["register_button"])
+    confirm = await_button("Confirmation")
+    if confirm is None:
+        raise RuntimeError(
+            "no Confirmation appeared after Register. Nothing committed; the "
+            "item is in the bag.")
+    click(*confirm, settle=0.0)
+    park()
+    deadline = time.monotonic() + budget
+    while time.monotonic() < deadline:
+        if not buttons_now():
+            break
+        time.sleep(POLL_GAP)
+    else:
+        raise RuntimeError(
+            "the dialog stayed open after Confirmation on the relist. Whether "
+            "it committed is unknown -- check the shop by hand.")
+    back = read_line(grab(), row_one)
+    say(f"  row 1 reads {back[:48]!r} again")
     say(f"  learned {', '.join(sorted(learned))}")
     return learned
 
