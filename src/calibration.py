@@ -96,6 +96,7 @@ DEFAULTS = {
         "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
         "register_button_band": [0.41, 0.12, 0.48, 0.66],
         "purchase_button_band": [0.41, 0.15, 0.48, 0.66],
+        "purchase_header_band": [0.02, 0.155, 0.48, 0.205],
         "trade_tabs_band": [0.0, 0.035, 0.24, 0.08],
         "register_panel": [0.0039, 0.0709, 0.1133, 0.7597],
     },
@@ -309,6 +310,7 @@ DIALOG_BUTTONS_F = tuple(_REG["dialog_buttons"])
 REGISTER_TABLE_BAND_F = tuple(_REG["register_table_band"])
 REGISTER_BUTTON_BAND_F = _S["regions"]["register_button_band"]
 PURCHASE_BUTTON_BAND_F = _S["regions"]["purchase_button_band"]
+PURCHASE_HEADER_BAND_F = _S["regions"]["purchase_header_band"]
 TRADE_TABS_BAND_F = _S["regions"]["trade_tabs_band"]
 REGISTER_PANEL_F = _S["regions"]["register_panel"]
 PANEL_FIELD_INSET = _S["detect"]["panel_field_inset"]
@@ -761,10 +763,10 @@ def _trade_window_open() -> bool:
 
 def purchase_tab_showing() -> bool:
     try:
-        words = ocr(grab(), _box(PURCHASE_SORT_BAND_F))
+        words = ocr(grab(), _box(PURCHASE_HEADER_BAND_F))
     except Exception:
         return False
-    return any("price" in t.lower() for t, _c, _p in words)
+    return any(t.strip().lower() == "category" for t, _c, _p in words)
 
 
 def calibrate_shop(verbose=True):
