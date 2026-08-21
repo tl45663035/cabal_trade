@@ -617,6 +617,7 @@ class RowModel:
         type_number(held[1])
         calibration.click(*panel["price_point"])
         type_number(want)
+        calibration.click(*panel["qty_point"])
         calibration.park()
 
         if not panel_agrees(held[1], want, verbose):

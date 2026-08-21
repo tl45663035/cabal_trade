@@ -1370,6 +1370,7 @@ def calibrate_actions(shop, verbose=True):
     type_number(held[1])
     click(*panel["price_point"])
     type_number(price)
+    click(*panel["qty_point"])
     park()
     if not panel_agrees(panel, held[1], price, say):
         raise RuntimeError(
