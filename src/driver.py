@@ -8,6 +8,7 @@ import convert
 import get_alz
 import get_price
 import row_model
+import war
 import open_agent_shop_premium as shop
 import open_inventory as inv
 
@@ -43,6 +44,16 @@ def initialise(verbose=True):
     if verbose:
         print(f"  calibrated for {cal['resolution']}, measured "
               f"{cal.get('measured_at')}, shop open")
+    if war.ENABLED:
+        if war.sync(verbose=verbose):
+            at = war.now()
+            start, end = war.quiet_window(at)
+            print(f"  server {at:%H:%M:%S}; the next war quiet runs "
+                  f"{start:%H:%M:%S} to {end:%H:%M:%S}, in "
+                  f"{(start - at).total_seconds() / 60:.1f} min")
+        else:
+            print("  the server clock would not anchor, so the war schedule "
+                  "is not being followed this run.")
     return cal
 
 
@@ -193,6 +204,9 @@ def relist_one(model, index, verbose=True):
     return out
 
 
+PASS_ALLOWANCE = _SHARED["war"]["quiet_before_end"]
+
+
 def relist_pass(model, first, last, verbose=True):
     model.home(verbose=False)
     done = skipped = 0
@@ -220,6 +234,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     passes = done = skipped = 0
     started = time.perf_counter()
     while True:
+        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
         passes += 1
         print("")
         print(f"-- pass {passes} --")
@@ -403,6 +418,7 @@ def do_resupply(first=None, last=None, verbose=True):
         return []
     done = []
     for slot in short:
+        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
         out = resupply_one(slot, held[slot], verbose=verbose)
         if out:
             done.append(out)

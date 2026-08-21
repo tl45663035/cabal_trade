@@ -257,6 +257,12 @@
       0.0526,
       0.4824,
       0.0745
+    ],
+    "server_clock": [
+      0.0078,
+      0.9145,
+      0.0469,
+      0.9401
     ]
   },
   "detect": {
@@ -335,7 +341,8 @@
     "convert_cancel_word": "Cancel",
     "buy_confirm_word": "Buy",
     "buy_cancel_word": "Cancel",
-    "buy_dialog_marker": "Purchase"
+    "buy_dialog_marker": "Purchase",
+    "server_clock": "^([01]\\d|2[0-3])[:.]([0-5]\\d)"
   },
   "game_facts": {
     "favourite_count": 10,

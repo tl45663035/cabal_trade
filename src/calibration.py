@@ -27,6 +27,17 @@ DEFAULTS = {
         "home_notches": 30,
         "for_minutes": 60,
     },
+    "war": {
+        "enabled": False,
+        "start_hours": [1, 4, 7, 10, 13, 16, 19, 22],
+        "war_minutes": 30,
+        "quiet_before_end": 60,
+        "quiet_seconds": 300,
+        "clock_uncertainty": 59,
+        "clock_resync": 1800.0,
+        "clock_confirm_pause": 1.0,
+        "clock_max_drift": 150.0,
+    },
     "resupply": {
         "enabled": False,
         "enable_buying": {},
@@ -223,7 +234,7 @@ def resolution_key(size=None) -> str:
     return f"{w}x{h}"
 
 
-CONFIG_SECTIONS = ("run", "debug", "timing", "resupply")
+CONFIG_SECTIONS = ("run", "debug", "timing", "resupply", "war")
 
 
 def _read(path) -> dict:
