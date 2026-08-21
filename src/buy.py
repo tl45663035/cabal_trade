@@ -158,6 +158,8 @@ def buy_row_one(slot, want, verbose=True):
         raise Refused(
             f"the dialog stayed open after {CONFIRM_WORD}. Whether anything "
             f"was bought is unknown -- look before running again.")
-    say(f"    bought {asked} {name}")
-    return {"slot": int(slot), "name": name, "bought": asked,
+    units = asked * max(1, row_model.pack_size(offer["name"]))
+    say(f"    bought {asked} x {offer['name']} = {units} core(s) for "
+        f"{asked * offer['price']:,}")
+    return {"slot": int(slot), "name": name, "packs": asked, "bought": units,
             "unit_price": offer["unit_price"], "price": offer["price"]}
