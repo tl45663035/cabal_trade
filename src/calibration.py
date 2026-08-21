@@ -787,22 +787,23 @@ def inventory_open(image=None):
 
 def await_inventory(timeout=None, verbose=False):
     from open_inventory import VK_I, press
-    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
-                                   else timeout)
+    span = DIALOG_TIMEOUT if timeout is None else timeout
+    park()
+    box = inventory_open()
+    if box is not None:
+        return box
     for attempt in (1, 2):
-        park()
-        while time.monotonic() < deadline:
-            box = inventory_open()
-            if box is not None:
-                return box
-            time.sleep(POLL_GAP)
         if verbose:
             print(f"  no balance is readable, so the Inventory panel is not "
                   f"open; pressing I (attempt {attempt})")
         press(VK_I)
         snap("press_I")
-        deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
-                                       else timeout)
+        deadline = time.monotonic() + span
+        while time.monotonic() < deadline:
+            box = inventory_open()
+            if box is not None:
+                return box
+            time.sleep(POLL_GAP)
     return None
 
 
@@ -1305,20 +1306,20 @@ def vendor_open(image=None) -> bool:
 def await_vendor(timeout=None, verbose=False):
     from open_inventory import press
     keys = load_shared()["input"]
-    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
-                                   else timeout)
+    span = DIALOG_TIMEOUT if timeout is None else timeout
+    if vendor_open():
+        return True
     for attempt in (1, 2):
+        if verbose:
+            print(f"  pressing N to open the vendor Shop "
+                  f"(attempt {attempt})")
+        press(keys["VK_N"])
+        snap("press_N")
+        deadline = time.monotonic() + span
         while time.monotonic() < deadline:
             if vendor_open():
                 return True
             time.sleep(POLL_GAP)
-        if verbose:
-            print(f"  the vendor Shop is not open; pressing N "
-                  f"(attempt {attempt})")
-        press(keys["VK_N"])
-        snap("press_N")
-        deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
-                                       else timeout)
     return False
 
 
@@ -1790,7 +1791,18 @@ def main(close: bool = True) -> None:
     shop.update(calibrate_actions(shop))
 
     convert_block = None
-    if shared["resupply"]["enabled"]:
+    vendor_visited = False
+    known_convert = (_read(OUT).get("by_resolution", {})
+                     .get(resolution_key(), {}).get("convert"))
+    if shared["resupply"]["enabled"] and known_convert:
+        print("conversion vendor:")
+        print(f"  already measured at {known_convert['tab']} "
+              f"{tuple(known_convert['tab_point'])}, columns "
+              f"{known_convert['columns']}, rows {known_convert['rows']}. "
+              f"The vendor is fixed furniture, so it is not opened again. "
+              f"Delete the convert block to re-measure it.")
+        convert_block = known_convert
+    elif shared["resupply"]["enabled"]:
         print("conversion vendor:")
         press(VK_ESCAPE)
         time.sleep(gap)
@@ -1800,6 +1812,7 @@ def main(close: bool = True) -> None:
                 "the Agent Shop would not close, and the vendor will not open "
                 "on top of it. Nothing written.")
         convert_block = calibrate_convert()
+        vendor_visited = True
         press(VK_ESCAPE)
         time.sleep(gap)
         snap("press_escape_after_vendor")
@@ -1864,7 +1877,7 @@ def main(close: bool = True) -> None:
 
     if close:
         close_everything(verbose=True)
-    elif convert_block is not None:
+    elif vendor_visited:
         print("reopening the Agent Shop the caller was promised:")
         if await_inventory(verbose=True) is None:
             raise RuntimeError(
