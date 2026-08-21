@@ -144,6 +144,7 @@ DEFAULTS = {
         "panel_field_inset": 30,
         "panel_field_half": 14,
         "panel_label_gap": 22,
+        "panel_rereads": 3,
         "slot_half": 24,
         "slot_occupied_stdev": 8.0,
         "panel_moved_slack": 30,
@@ -318,6 +319,7 @@ KEY_GAP = _S["timing"]["key_gap"]
 HOVER_SETTLE = _S["timing"]["hover_settle"]
 MODIFIER_SETTLE = _S["timing"]["modifier_settle"]
 CLICK_HOLD = _S["timing"]["click_hold"]
+PANEL_REREADS = _S["detect"]["panel_rereads"]
 MIN_PLAUSIBLE_PRICE = _S["detect"]["min_plausible_price"]
 SLOT_HALF = _S["detect"]["slot_half"]
 SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
@@ -1325,10 +1327,16 @@ def calibrate_actions(shop, verbose=True):
     park()
     typed, shown = panel_qty(panel), read_number(grab(),
                                                  tuple(panel["price_field"]))
+    for _ in range(PANEL_REREADS):
+        if typed[0] == held[1] and shown == price:
+            break
+        typed = panel_qty(panel)
+        shown = read_number(grab(), tuple(panel["price_field"]))
     if typed[0] != held[1] or shown != price:
         raise RuntimeError(
-            f"the panel reads {typed[0]} at {shown} but {held[1]} at {price} "
-            f"was typed. Nothing has been listed; the item is in the bag.")
+            f"the panel still reads {typed[0]} at {shown} after "
+            f"{PANEL_REREADS + 1} reads, but {held[1]} at {price} was typed. "
+            f"Nothing has been listed; the item is in the bag.")
 
     click(*panel["register_button"], settle=0.0)
     learned["button_register"] = list(panel["register_button"])

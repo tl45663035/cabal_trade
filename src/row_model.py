@@ -39,6 +39,7 @@ DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
 TYPE_CLEAR_PRESSES = _SHARED["detect"]["type_clear_presses"]
 KEY_GAP = _T["key_gap"]
+PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 STALE_SWEEP = _T.get("stale_sweep", 1.0)
 POLL_GAP = _T.get("poll_gap", 0.0)
 
@@ -581,12 +582,16 @@ class RowModel:
         type_number(want)
         calibration.park()
 
-        typed = read_panel_qty()
-        shown = read_panel_price()
+        typed, shown = read_panel_qty(), read_panel_price()
+        for _ in range(PANEL_REREADS):
+            if typed[0] == held[1] and shown == want:
+                break
+            typed, shown = read_panel_qty(), read_panel_price()
         if typed[0] != held[1] or shown != want:
             raise Divergence(
-                f"the panel reads quantity {typed[0]} at {shown} but "
-                f"{held[1]} at {want} was typed. Nothing has been listed.")
+                f"the panel still reads quantity {typed[0]} at {shown} after "
+                f"{PANEL_REREADS + 1} reads, but {held[1]} at {want} was "
+                f"typed. Nothing has been listed.")
         if verbose:
             print(f"  panel confirms {typed[0]} at {shown:,}")
 
