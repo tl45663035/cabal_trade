@@ -240,6 +240,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         print(f"-- pass {passes} --")
         try:
             made, missed = relist_pass(model, first, last, verbose=verbose)
+            resupply_pass(model, first, last, verbose=verbose)
         except row_model.Divergence as exc:
             print(f"  STOPPED: {exc}")
             break
@@ -384,18 +385,24 @@ def resupply_one(slot, held, verbose=True):
             "bought": bought, "converted": out["converted"]}
 
 
-def do_resupply(first=None, last=None, verbose=True):
-    shared = calibration.load_shared()
-    run, rows = shared["resupply"], shared["run"]
+def back_to_the_shop(verbose=True):
+    from open_inventory import VK_ESCAPE, press
+    if calibration.vendor_open():
+        press(VK_ESCAPE)
+        time.sleep(row_model.ACTION_GAP)
+    if calibration._trade_window_open():
+        return True
+    if verbose:
+        print("  reopening the Agent Shop after the vendor")
+    shop.open_agent_shop(verbose=False)
+    time.sleep(row_model.TAB_SETTLE)
+    return calibration._trade_window_open()
+
+
+def resupply_pass(model, first, last, verbose=True):
+    run = calibration.load_shared()["resupply"]
     if not run["enabled"]:
-        print("  resupply is off in config.json (resupply.enabled). The "
-              "conversion vendor is not measured when it is off, so there is "
-              "nothing to convert with.")
         return []
-    first = rows["relist_from"] if first is None else int(first)
-    last = rows["relist_to"] if last is None else int(last)
-    initialise(verbose=verbose)
-    model = seed(verbose=verbose)
     held = rows_by_core(model, first, last)
     print("")
     print(f"  counting only rows {first}-{last}; rows outside it are not "
@@ -419,9 +426,18 @@ def do_resupply(first=None, last=None, verbose=True):
     done = []
     for slot in short:
         war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
-        out = resupply_one(slot, held[slot], verbose=verbose)
+        try:
+            out = resupply_one(slot, held[slot], verbose=verbose)
+        except (convert.Refused, buy.Refused, NotReady) as exc:
+            print(f"  resupply of "
+                  f"{calibration.FAVOURITE_ITEMS[str(slot)]!r} stopped: {exc}")
+            out = None
         if out:
             done.append(out)
+    if not back_to_the_shop(verbose=verbose):
+        raise NotReady(
+            "the Agent Shop would not reopen after resupplying, so there is "
+            "nothing to relist into.")
     return done
 
 
@@ -435,8 +451,12 @@ def do_scan(verbose=True):
 
 def usage():
     print("usage:")
-    print("  py src/driver.py                 open the shop, read the balance,")
-    print("                                   walk rows 1-21, print the model")
+    print("  py src/driver.py                 relist rows N-M for the minutes")
+    print("                                   in config.json, resupplying any")
+    print("                                   core that runs short if")
+    print("                                   resupply.enabled is on")
+    print("  py src/driver.py scan            read the balance, walk rows 1-21")
+    print("                                   and print the model, no changes")
     print("  py src/driver.py cancel N        cancel row N (collects it first")
     print("                                   if it has sold)")
     print("  py src/driver.py relist [N M [MIN]]  cancel and relist rows N-M,")
@@ -445,9 +465,6 @@ def usage():
     print("                                   if no range is given")
     print("  py src/driver.py list R C [PRICE] list inventory slot (R,C); the")
     print("                                   panel's own suggestion if no PRICE")
-    print("  py src/driver.py resupply        buy Sets for any core short of")
-    print("                                   rows and convert them; the")
-    print("                                   resupply block in config.json")
     print("  py src/driver.py row N           read row N without touching it")
     print("  py src/driver.py price N         market price for favourite slot N")
     print("  py src/driver.py alz             read the balance")
@@ -455,10 +472,10 @@ def usage():
 
 def main():
     args = [a for a in sys.argv[1:] if a != "--frames"]
-    calibration.log_to_file(args[0].lower() if args else "scan")
+    calibration.log_to_file(args[0].lower() if args else "run")
     calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
     if not args:
-        do_scan()
+        do_relist()
         return
     what = args[0].lower()
     if what == "cancel" and len(args) > 1:
@@ -474,9 +491,8 @@ def main():
         initialise()
         register_tab()
         row_at(row_model.RowModel().seed({}), int(args[1]))
-    elif what == "resupply":
-        do_resupply(args[1] if len(args) > 1 else None,
-                    args[2] if len(args) > 2 else None)
+    elif what == "scan":
+        do_scan()
     elif what == "price" and len(args) > 1:
         initialise()
         market(int(args[1]))
