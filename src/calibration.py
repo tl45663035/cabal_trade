@@ -907,9 +907,7 @@ def calibrate_actions(shop, verbose=True):
             "a dialog is already open over the Register table. Close it and "
             "calibrate again; nothing was clicked.")
 
-    half = shop["row_pitch"] // 2
-    row_one = (shop["table_x"][0], shop["row_one_y"] - half,
-               shop["table_x"][1], shop["row_one_y"] + half)
+    row_one = tuple(shop["row_one_box"])
     before = read_line(grab(), row_one)
     if "change" not in before.lower():
         say(f"  row 1 reads {before[:48]!r} and has no Change button; the "

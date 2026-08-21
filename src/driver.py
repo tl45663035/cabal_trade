@@ -23,12 +23,20 @@ class NotReady(Exception):
     pass
 
 
+_MEASURED = False
+
+
 def initialise(verbose=True):
+    global _MEASURED
     if not inv.focus_game():
         raise NotReady("could not bring the game to the foreground.")
-    if verbose:
-        print("  measuring this screen before touching anything")
-    calibration.main(close=False)
+    if not _MEASURED:
+        if verbose:
+            print("  measuring this screen before touching anything")
+        calibration.main(close=False)
+        _MEASURED = True
+    elif verbose:
+        print("  already measured this start; not walking the actions again")
     cal = calibration.load(force=True)
     if verbose:
         print(f"  calibrated for {cal['resolution']}, measured "
