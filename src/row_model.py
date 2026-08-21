@@ -38,6 +38,7 @@ BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
 TYPE_CLEAR_PRESSES = _SHARED["detect"]["type_clear_presses"]
+KEY_GAP = _T["key_gap"]
 STALE_SWEEP = _T.get("stale_sweep", 1.0)
 POLL_GAP = _T.get("poll_gap", 0.0)
 
@@ -219,8 +220,10 @@ def type_number(value):
     keys = _SHARED["input"]
     for _ in range(TYPE_CLEAR_PRESSES):
         press(keys["VK_BACK"])
+        time.sleep(KEY_GAP)
     for ch in str(int(value)):
         press(keys[f"VK_{ch}"])
+        time.sleep(KEY_GAP)
 
 
 def row_function(text=None):
@@ -599,8 +602,16 @@ class RowModel:
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
                 f"listing committed is unknown -- check the shop by hand.")
+        landed = read_row_one()
+        digits = [int(re.sub(r"[^\d]", "", m))
+                  for m in re.findall(r"\d[\d,]*", landed)]
+        if want not in digits:
+            raise Divergence(
+                f"the listing went through but row 1 reads {landed!r}, which "
+                f"does not show {want:,}. Check the shop by hand -- something "
+                f"is on the board at a price nobody chose.")
         if verbose:
-            print(f"  listed {held[1]} at {want:,}")
+            print(f"  listed {held[1]} at {want:,}; row 1 confirms it")
         return {"slot": (int(row), int(col)), "qty": held[1], "price": want}
 
     def collect(self, index, remaining=0):

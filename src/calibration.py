@@ -23,6 +23,7 @@ DEFAULTS = {
     "timing": {
         "action_gap": 0.5,
         "key_hold": 0.02,
+        "key_gap": 0.05,
         "focus_settle": 0.35,
         "wheel_gap": 0.12,
         "park_settle": 0.25,
@@ -283,6 +284,7 @@ PANEL_FIELD_INSET = _S["detect"]["panel_field_inset"]
 PANEL_FIELD_HALF = _S["detect"]["panel_field_half"]
 PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
 TYPE_CLEAR_PRESSES = _S["detect"]["type_clear_presses"]
+KEY_GAP = _S["timing"]["key_gap"]
 MIN_PLAUSIBLE_PRICE = _S["detect"]["min_plausible_price"]
 SLOT_HALF = _S["detect"]["slot_half"]
 SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
@@ -458,8 +460,10 @@ def type_number(value: int) -> None:
     keys = load_shared()["input"]
     for _ in range(TYPE_CLEAR_PRESSES):
         press(keys["VK_BACK"])
+        time.sleep(KEY_GAP)
     for ch in str(int(value)):
         press(keys[f"VK_{ch}"])
+        time.sleep(KEY_GAP)
 
 
 def panel_qty(panel):
@@ -1270,7 +1274,14 @@ def calibrate_actions(shop, verbose=True):
             "the dialog stayed open after Confirmation on the relist. Whether "
             "it committed is unknown -- check the shop by hand.")
     back = read_line(grab(), row_one)
-    say(f"  row 1 reads {back[:48]!r} again")
+    digits = [int(re.sub(r"[^\d]", "", m))
+              for m in re.findall(r"\d[\d,]*", back)]
+    if price not in digits:
+        raise RuntimeError(
+            f"the listing went through but row 1 reads {back[:48]!r}, which "
+            f"does not show {price:,}. Check the shop by hand -- something is "
+            f"on the board at a price nobody chose.")
+    say(f"  row 1 reads {back[:48]!r} again, at {price:,} as typed")
     say(f"  learned {', '.join(sorted(learned))}")
     return learned
 
