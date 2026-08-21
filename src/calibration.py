@@ -327,6 +327,7 @@ PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
 CLEAR_PRESSES_QTY = _S["detect"]["clear_presses_qty"]
 CLEAR_PRESSES_PRICE = _S["detect"]["clear_presses_price"]
 KEY_GAP = _S["timing"]["key_gap"]
+CLEAR_GAP = _S["timing"]["clear_gap"]
 HOVER_SETTLE = _S["timing"]["hover_settle"]
 MODIFIER_SETTLE = _S["timing"]["modifier_settle"]
 CLICK_HOLD = _S["timing"]["click_hold"]
@@ -1563,6 +1564,15 @@ def main(close: bool = True) -> None:
     for attempt in (1, 2):
         if _trade_window_open():
             break
+        if inventory_open() is None:
+            print(f"  the Inventory panel is not on screen; the key at {key} "
+                  f"is not there to right-click")
+            snap("inventory_gone_before_rightclick")
+            if await_inventory(verbose=True) is None:
+                raise RuntimeError(
+                    "the Inventory panel would not open, so the Agent Shop "
+                    "key cannot be right-clicked. Nothing written.")
+            click(*tab)
         print(f"  right-clicking slot ({row},{col}) at {key}")
         right_click(*key)
         time.sleep(gap)
