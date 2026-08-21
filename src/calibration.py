@@ -520,8 +520,9 @@ def type_number(value: int) -> None:
 
 
 def read_money(image, box):
-    hits = re.findall(r"\d[\d,]*", read_line(image, tuple(box)))
-    return int(re.sub(r"[^\d]", "", hits[0])) if hits else None
+    text = re.sub(r"[,\s]", "", read_line(image, tuple(box)))
+    runs = re.findall(r"\d+", text)
+    return int(max(runs, key=len)) if runs else None
 
 
 def panel_qty(panel):
