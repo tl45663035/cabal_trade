@@ -84,6 +84,7 @@ DEFAULTS = {
         "popup": [0.1953, 0.2389, 0.8203, 0.8232],
         "dialog_buttons": [0.4688, 0.5296, 0.6641, 0.7085],
         "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
+        "register_button_band": [0.41, 0.12, 0.48, 0.66],
     },
     "detect": {
         "alz_bright": 110,
@@ -265,6 +266,7 @@ PURCHASE_TABLE_BAND_F = tuple(_REG["purchase_table_band"])
 POPUP_F = tuple(_REG["popup"])
 DIALOG_BUTTONS_F = tuple(_REG["dialog_buttons"])
 REGISTER_TABLE_BAND_F = tuple(_REG["register_table_band"])
+REGISTER_BUTTON_BAND_F = _S["regions"]["register_button_band"]
 
 ALZ_BRIGHT = _DET["alz_bright"]
 ALZ_SATURATION = _DET["alz_saturation"]
@@ -894,12 +896,13 @@ def calibrate_register_table(shop, verbose=True):
     image = grab()
 
     band = _box(REGISTER_TABLE_BAND_F)
-    marks = [p for t, _, p in ocr(image, band)
+    buttons = _box(REGISTER_BUTTON_BAND_F)
+    marks = [p for t, _, p in ocr(image, buttons)
              if t.strip().lower() in ("change", "register")]
     if len(marks) < 2:
         raise RuntimeError(
-            f"found {len(marks)} row button(s) in the Register table {band}; "
-            f"need at least two to measure the row pitch.")
+            f"found {len(marks)} row button(s) in the Register button column "
+            f"{buttons}; need at least two to measure the row pitch.")
     xs = sorted(p[0] for p in marks)
     ys = sorted(p[1] for p in marks)
     gaps = [b - a for a, b in zip(ys, ys[1:]) if b - a > 1]
@@ -917,6 +920,7 @@ def calibrate_register_table(shop, verbose=True):
         "rows_per_notch": 1,
         "register_rows_seen": len(marks),
     }
+    say(f"  button column {buttons}")
     say(f"  Register table: {len(marks)} row(s), pitch {pitch}px, "
         f"row 1 y={out['row_one_y']}")
     say(f"  table_x {out['table_x']}, scroll point {out['table_point']}")
