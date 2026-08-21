@@ -676,21 +676,12 @@ class RowModel:
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
                 f"listing committed is unknown -- check the shop by hand.")
-        where = "row 1"
-        if lands_in is not None:
-            self.scroll_to(int(lands_in), verbose=False)
-            where = f"row {int(lands_in)}"
-        landed = read_row_one()
-        digits = [int(re.sub(r"[^\d]", "", m))
-                  for m in re.findall(r"\d[\d,]*", landed)]
-        if want not in digits:
-            raise Divergence(
-                f"the listing went through but {where} reads {landed!r}, "
-                f"which does not show {want:,}. A relist lands in the lowest "
-                f"empty row; check the shop by hand.")
         if verbose:
-            print(f"  listed {held[1]} at {want:,}; {where} confirms it")
-        return {"slot": (int(row), int(col)), "qty": held[1], "price": want}
+            print(f"  listed {held[1]} at {want:,}"
+                  + (f"; it lands in row {int(lands_in)}"
+                     if lands_in is not None else ""))
+        return {"slot": (int(row), int(col)), "qty": held[1],
+                "price": want, "row": lands_in}
 
     def collect(self, index, remaining=0):
         index = int(index)

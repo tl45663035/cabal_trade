@@ -205,8 +205,12 @@ def relist_one(model, index, verbose=True):
             why += f", and this listing carries {pack}"
     out = model.list_slot(*landing, floor=floor, why=why, verbose=verbose,
                           lands_in=lands_in)
+    model._slots.pop(index, None)
+    model._slots[lands_in] = row_model.Row(row.name, qty=out["qty"],
+                                           price=out["price"])
     if verbose:
-        print(f"    relisted {out['qty']} at {out['price']:,}")
+        print(f"    relisted {out['qty']} at {out['price']:,} in row "
+              f"{lands_in}")
     return out
 
 
