@@ -352,6 +352,11 @@ def resupply_one(slot, held, verbose=True):
 def do_resupply(first=None, last=None, verbose=True):
     shared = calibration.load_shared()
     run, rows = shared["resupply"], shared["run"]
+    if not run["enabled"]:
+        print("  resupply is off in config.json (resupply.enabled). The "
+              "conversion vendor is not measured when it is off, so there is "
+              "nothing to convert with.")
+        return []
     first = rows["relist_from"] if first is None else int(first)
     last = rows["relist_to"] if last is None else int(last)
     initialise(verbose=verbose)

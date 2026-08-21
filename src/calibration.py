@@ -27,6 +27,7 @@ DEFAULTS = {
         "for_minutes": 60,
     },
     "resupply": {
+        "enabled": False,
         "rows_threshold": 3,
         "price_diff_threshold": 10_000,
         "buy_min": 250,
@@ -1780,6 +1781,21 @@ def main(close: bool = True) -> None:
     print("actions:")
     shop.update(calibrate_actions(shop))
 
+    convert_block = None
+    if shared["resupply"]["enabled"]:
+        print("conversion vendor:")
+        press(VK_ESCAPE)
+        time.sleep(gap)
+        snap("press_escape_before_vendor")
+        if _trade_window_open():
+            raise RuntimeError(
+                "the Agent Shop would not close, and the vendor will not open "
+                "on top of it. Nothing written.")
+        convert_block = calibrate_convert()
+        press(VK_ESCAPE)
+        time.sleep(gap)
+        snap("press_escape_after_vendor")
+
     win = find_game_window()
     measured = {
         "screen": list(screen_size()),
@@ -1798,6 +1814,8 @@ def main(close: bool = True) -> None:
         "inventory": inventory,
         "shop": shop,
     }
+    if convert_block is not None:
+        measured["convert"] = convert_block
 
     existing = {}
     if OUT.exists():
@@ -1838,6 +1856,24 @@ def main(close: bool = True) -> None:
 
     if close:
         close_everything(verbose=True)
+    elif convert_block is not None:
+        print("reopening the Agent Shop the caller was promised:")
+        if await_inventory(verbose=True) is None:
+            raise RuntimeError(
+                "the Inventory panel would not reopen after the vendor, so "
+                "the Agent Shop cannot be brought back. calibration.json is "
+                "written; the game is not where the caller expects it.")
+        click(*inventory["tabs"][str(facts["agent_shop_tab"])])
+        time.sleep(gap)
+        right_click(*inventory["slots"][f"{row}x{col}"])
+        time.sleep(gap)
+        park()
+        if not _trade_window_open():
+            raise RuntimeError(
+                "the Agent Shop would not reopen after the vendor. "
+                "calibration.json is written; the game is not where the "
+                "caller expects it.")
+        print("  the Agent Shop is open again")
 
 
 def close_everything(verbose: bool = False) -> None:
