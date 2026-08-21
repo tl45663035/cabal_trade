@@ -141,6 +141,30 @@ def find_button(word, timeout=None, verbose=False):
     return point
 
 
+def show_work_tab(verbose=False):
+    import open_agent_shop_premium as shop
+    import open_inventory as inv_panel
+    if calibration.find_alz(calibration.grab()) is None:
+        if verbose:
+            print("  the Inventory panel is shut; opening it so the cancelled "
+                  "item has a tab to land on")
+        inv_panel.open_inventory()
+        time.sleep(TAB_SETTLE)
+        if calibration.find_alz(calibration.grab()) is None:
+            raise Divergence(
+                "the Inventory panel did not open, so there is no way to say "
+                "which tab a cancelled item would return to. Nothing "
+                "cancelled.")
+    point = shop.tab_point(WORK_TAB)
+    if verbose:
+        print(f"  inventory tab {WORK_TAB} at {point}, so the cancelled item "
+              f"has nowhere else to land")
+    calibration.click(*point)
+    time.sleep(TAB_SETTLE)
+    calibration.park()
+    return point
+
+
 def row_function(text=None):
     text = read_row_one() if text is None else text
     key = _key(text)
@@ -415,6 +439,8 @@ class RowModel:
                 f"the model names.")
         if verbose:
             print(f"  row {index} at position 1: {seen!r}")
+
+        show_work_tab(verbose=verbose)
 
         point = button_point()
         if verbose:
