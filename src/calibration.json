@@ -327,7 +327,7 @@
   },
   "text": {
     "empty_row": "premiumexclusiveslot",
-    "sort_direction": "price\\s*:?\\s*(low|high)",
+    "sort_direction": "(low|high)\\s*to",
     "purchase_row": "^(?P<name>.*?)\\s+(?P<qty>\\d[\\d,]*)\\s+(?P<price>\\d[\\d,]*)\\s*\\D*$",
     "pack_marker": "\\bX\\s*(\\d+)\\s*$",
     "change_word": "Change",
