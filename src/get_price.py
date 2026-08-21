@@ -20,7 +20,6 @@ BULK_MIN_CONF = _DET["bulk_min_conf"]
 RESCUE_MIN_CONF = _DET["rescue_min_conf"]
 MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
 PRICE_MIN_DIGITS = _DET["price_min_digits"]
-SORT_LIST_HEIGHTS = _DET["sort_list_heights"]
 SHOP_CHECK_GAP = _SHARED["timing"]["shop_check_gap"]
 
 _NUMBER = re.compile(r"\d[\d,]*")
@@ -141,53 +140,16 @@ def sort_is_low_to_high(image=None):
     return found is not None and found.group(1).lower() == "low"
 
 
-def sort_option_lines(image=None):
-    image = image if image is not None else calibration.grab()
-    left, top, right, bottom = sort_box()
-    height = bottom - top
-    band = (left, bottom, right, min(image.height, bottom + height * SORT_LIST_HEIGHTS))
-    lines = {}
-    for text, _, (x, y) in calibration.ocr(image, band):
-        lines.setdefault(round(y / max(1, height // 2)), []).append((x, y, text))
-    out = []
-    for words in lines.values():
-        words.sort()
-        out.append((" ".join(w[2] for w in words),
-                    (words[0][0] + words[-1][0]) // 2,
-                    sum(w[1] for w in words) // len(words)))
-    return out
-
-
-def set_sort_low_to_high(verbose=True):
-    left, top, right, bottom = sort_box()
-    calibration.click((left + right) // 2, (top + bottom) // 2)
-    time.sleep(TAB_SETTLE)
-    for text, x, y in sort_option_lines():
-        found = _SORT_DIRECTION.search(text)
-        if found is not None and found.group(1).lower() == "low":
-            if verbose:
-                print(f"  sort reads {read_sort()!r}; clicking {text!r} at ({x}, {y})")
-            calibration.click(x, y)
-            time.sleep(TAB_SETTLE)
-            return sort_is_low_to_high()
-    raise NotReady(
-        f"the sort list offers no Price: Low to High. It offers "
-        f"{[text for text, _, _ in sort_option_lines()]}.")
-
-
-def ensure_sort_low_to_high(verbose=True):
+def confirm_sort_low_to_high(slot, verbose=True):
     if sort_is_low_to_high():
         if verbose:
             print("  sort confirmed Price: Low to High")
         return True
-    if set_sort_low_to_high(verbose=verbose):
-        if verbose:
-            print("  sort set to Price: Low to High")
-        return True
+    calibration.snap(f"slot_{slot}_sort_wrong")
     raise NotReady(
-        f"the sort does not read Price: Low to High -- it reads "
-        f"{read_sort()!r}. Row 1 is only the cheapest under that sort, so "
-        f"nothing here may be trusted until it is set.")
+        f"the sort reads {read_sort()!r}, not Price: Low to High. Row 1 is "
+        f"the dearest offer under that sort, so nothing here may be acted "
+        f"on. Set it by hand and run again.")
 
 
 def _digits(text):
@@ -245,7 +207,6 @@ def reopen_shop(slot, verbose=True):
         time.sleep(TAB_SETTLE)
     shop.click(*_need("purchase_tab"))
     time.sleep(TAB_SETTLE)
-    ensure_sort_low_to_high(verbose=False)
 
 
 def get_price(slot, verbose=True):
@@ -258,7 +219,6 @@ def get_price(slot, verbose=True):
     if not calibration.purchase_tab_showing():
         shop.click(*_need("purchase_tab"))
         time.sleep(TAB_SETTLE)
-    ensure_sort_low_to_high(verbose=verbose)
 
     x, y = favourite_point(slot)
     if verbose:
@@ -274,6 +234,7 @@ def get_price(slot, verbose=True):
         before = row_name()
         stale = None if name_matches(slot, before) else before
         shop.click(x, y)
+        confirm_sort_low_to_high(slot, verbose=verbose and attempt == 1)
         deadline = time.monotonic() + SEARCH_TIMEOUT
         next_check = time.monotonic() + SHOP_CHECK_GAP
         gone = False

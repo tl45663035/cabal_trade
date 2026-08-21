@@ -1027,11 +1027,20 @@ def calibrate_purchase(shop, verbose=True):
         raise RuntimeError(
             f"nothing read in the sort band {sort_band}. The Purchase tab may "
             f"not have opened, or the band is wrong for this screen.")
-    xs = [p[0] for _, _, p in sort_words]
-    ys = [p[1] for _, _, p in sort_words]
-    out["purchase_sort_region"] = [min(xs) - SORT_PAD_LEFT, min(ys) - SORT_PAD_Y,
-                          max(xs) + SORT_PAD_RIGHT, max(ys) + SORT_PAD_Y]
-    out["purchase_sort_text_seen"] = " ".join(t for t, _, _ in sort_words)
+    seen = " ".join(t for t, _, _ in sort_words)
+    anchor = next((p for t, _c, p in sort_words
+                   if "price" in re.sub(r"[^a-z]", "", t.lower())), None)
+    if anchor is None:
+        raise RuntimeError(
+            f"no word naming the sort was read in {sort_band}; it read "
+            f"{seen!r}. The control's position cannot be taken from whatever "
+            f"else is in the band. Nothing written.")
+    out["purchase_sort_region"] = [anchor[0] - SORT_PAD_LEFT,
+                                   anchor[1] - SORT_PAD_Y,
+                                   anchor[0] + SORT_PAD_RIGHT,
+                                   anchor[1] + SORT_PAD_Y]
+    out["purchase_sort_text_seen"] = seen
+    out["purchase_sort_anchor"] = list(anchor)
     say(f"  sort reads {out['purchase_sort_text_seen']!r} -> region "
         f"{out['purchase_sort_region']}")
 
