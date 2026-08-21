@@ -310,11 +310,16 @@ def resupply_one(slot, held, verbose=True):
         print(f"  {core if core_row is None else set_name} would not price; "
               f"not buying blind.")
         return None
+    threshold = calibration.price_diff_threshold(core)
+    if threshold is None:
+        print(f"  {core} has no price_diff_threshold in config.json, so "
+              f"there is no gap it is worth buying at. Not buying.")
+        return None
     diff = core_row["unit_price"] - set_row["unit_price"]
     print(f"  {core} {core_row['unit_price']:,} - {set_name} "
           f"{set_row['unit_price']:,} = {diff:,} "
-          f"(threshold {run['price_diff_threshold']:,})")
-    if diff <= run["price_diff_threshold"]:
+          f"(threshold {threshold:,})")
+    if diff <= threshold:
         print(f"  the gap does not clear the threshold; not buying.")
         return None
 
@@ -323,16 +328,16 @@ def resupply_one(slot, held, verbose=True):
     time.sleep(row_model.TAB_SETTLE)
 
     bought = 0
-    for order in range(1, run["max_orders"] + 1):
-        if bought >= run["buy_min"]:
-            break
-        print(f"  buy {order}/{run['max_orders']}: {bought}/{run['buy_min']} "
-              f"{set_name} held")
+    while bought < run["buy_min"]:
+        print(f"  {bought}/{run['buy_min']} {set_name} held")
         try:
             got = buy.buy_row_one(pair, run["buy_min"] - bought,
                                   verbose=verbose)
         except buy.Refused as exc:
             print(f"  stopping: {exc}")
+            break
+        if got["bought"] <= 0:
+            print(f"  the last order bought nothing; stopping.")
             break
         bought += got["bought"]
     if bought <= 0:

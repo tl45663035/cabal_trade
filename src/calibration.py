@@ -29,9 +29,8 @@ DEFAULTS = {
     "resupply": {
         "enabled": False,
         "rows_threshold": 3,
-        "price_diff_threshold": 10_000,
         "buy_min": 250,
-        "max_orders": 10,
+        "price_diff_threshold": {},
     },
     "debug": {
         "frames": False,
@@ -222,7 +221,7 @@ def resolution_key(size=None) -> str:
     return f"{w}x{h}"
 
 
-CONFIG_SECTIONS = ("run", "debug", "timing")
+CONFIG_SECTIONS = ("run", "debug", "timing", "resupply")
 
 
 def _read(path) -> dict:
@@ -1389,6 +1388,15 @@ def calibrate_convert(verbose=True):
     return {"tab": CONVERT_TAB, "tab_point": list(tab),
             "cells": cells, "set_to_core": pairs,
             "columns": [int(v) for v in xs], "rows": [int(v) for v in ys]}
+
+
+def price_diff_threshold(core_name):
+    table = load_shared()["resupply"]["price_diff_threshold"] or {}
+    want = re.sub(r"[^a-z0-9]", "", (core_name or "").lower())
+    for name, value in table.items():
+        if re.sub(r"[^a-z0-9]", "", name.lower()) == want:
+            return int(value)
+    return None
 
 
 def calibrate_prices(verbose=True):
