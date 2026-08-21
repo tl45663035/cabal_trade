@@ -165,31 +165,54 @@ def relist_one(model, index, verbose=True):
     return out
 
 
-def do_relist(first=None, last=None, verbose=True):
+def relist_pass(model, first, last, verbose=True):
+    model.home(verbose=False)
+    done = skipped = 0
+    for index in range(first, last + 1):
+        if relist_one(model, index, verbose=verbose):
+            done += 1
+        else:
+            skipped += 1
+    return done, skipped
+
+
+def do_relist(first=None, last=None, minutes=None, verbose=True):
     run = calibration.load_shared()["run"]
     first = run["relist_from"] if first is None else int(first)
     last = run["relist_to"] if last is None else int(last)
+    minutes = run["for_minutes"] if minutes is None else float(minutes)
     if first < 1 or last < first:
         raise NotReady(f"rows {first}-{last} is not a range to relist")
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
     model = row_model.RowModel().seed({})
-    model.home(verbose=verbose)
-    print(f"relisting rows {first}-{last}")
-    done = skipped = 0
+
+    deadline = time.monotonic() + minutes * 60
+    print(f"relisting rows {first}-{last} for {minutes:g} minute(s)")
+    passes = done = skipped = 0
     started = time.perf_counter()
-    for index in range(first, last + 1):
+    while True:
+        passes += 1
+        print("")
+        print(f"-- pass {passes} --")
         try:
-            if relist_one(model, index, verbose=verbose):
-                done += 1
-            else:
-                skipped += 1
+            made, missed = relist_pass(model, first, last, verbose=verbose)
         except row_model.Divergence as exc:
-            print(f"  row {index} STOPPED: {exc}")
+            print(f"  STOPPED: {exc}")
             break
+        done += made
+        skipped += missed
+        left = deadline - time.monotonic()
+        if left <= 0:
+            print(f"  {minutes:g} minute(s) are up after pass {passes}")
+            break
+        print(f"  pass {passes}: {made} relisted, {missed} skipped; "
+              f"{left/60:.1f} minute(s) left")
     span = (time.perf_counter() - started) * 1000
-    print(f"  {done} relisted, {skipped} skipped in {span:.0f} ms"
-          + (f" ({span/done:.0f} ms each)" if done else ""))
+    print("")
+    print(f"{passes} pass(es), {done} relisted, {skipped} skipped "
+          f"in {span/1000:.0f}s"
+          + (f" ({span/done:.0f} ms a row)" if done else ""))
     return done
 
 
@@ -248,7 +271,8 @@ def usage():
     print("                                   walk rows 1-21, print the model")
     print("  py src/driver.py cancel N        cancel row N (collects it first")
     print("                                   if it has sold)")
-    print("  py src/driver.py relist [N M]    cancel and relist rows N-M;")
+    print("  py src/driver.py relist [N M [MIN]]  cancel and relist rows N-M,")
+    print("                                   looping for MIN minutes;")
     print("                                   the run block in calibration.json")
     print("                                   if no range is given")
     print("  py src/driver.py list R C [PRICE] list inventory slot (R,C); the")
@@ -269,7 +293,8 @@ def main():
         do_cancel(int(args[1]))
     elif what == "relist":
         do_relist(args[1] if len(args) > 1 else None,
-                  args[2] if len(args) > 2 else None)
+                  args[2] if len(args) > 2 else None,
+                  args[3] if len(args) > 3 else None)
     elif what == "list" and len(args) > 2:
         do_list(int(args[1]), int(args[2]),
                 int(args[3]) if len(args) > 3 else None)
