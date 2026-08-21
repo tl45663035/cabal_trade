@@ -135,6 +135,8 @@ DEFAULTS = {
         "panel_field_inset": 30,
         "panel_field_half": 14,
         "panel_label_gap": 22,
+        "slot_half": 24,
+        "slot_occupied_stdev": 8.0,
         "panel_moved_slack": 30,
     },
     "text": {
@@ -282,6 +284,8 @@ PANEL_FIELD_HALF = _S["detect"]["panel_field_half"]
 PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
 TYPE_CLEAR_PRESSES = _S["detect"]["type_clear_presses"]
 MIN_PLAUSIBLE_PRICE = _S["detect"]["min_plausible_price"]
+SLOT_HALF = _S["detect"]["slot_half"]
+SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
 POLL_GAP = _S["timing"].get("poll_gap", 0.0)
 
 ALZ_BRIGHT = _DET["alz_bright"]
@@ -1083,6 +1087,32 @@ def calibrate_panel(verbose=True):
     return out
 
 
+def slot_is_empty(image, row, col):
+    point = inventory_slot_point(row, col)
+    half = SLOT_HALF
+    crop = image.crop((point[0] - half, point[1] - half,
+                       point[0] + half, point[1] + half)).convert("L")
+    data = list(crop.getdata())
+    mean = sum(data) / len(data)
+    stdev = (sum((v - mean) ** 2 for v in data) / len(data)) ** 0.5
+    return stdev < SLOT_OCCUPIED_STDEV
+
+
+def first_free_slot(tab, verbose=False):
+    click(*inventory_tab_point(tab))
+    park()
+    image = grab()
+    grid = _S["game_facts"]["grid_size"]
+    for row in range(1, grid + 1):
+        for col in range(1, grid + 1):
+            if slot_is_empty(image, row, col):
+                if verbose:
+                    print(f"  tab {tab} slot ({row},{col}) is the first free "
+                          f"one; a withdrawal lands there")
+                return (row, col)
+    return None
+
+
 def inventory_slot_point(row, col):
     slots = load()["inventory"]["slots"]
     key = f"{int(row)}x{int(col)}"
@@ -1135,9 +1165,12 @@ def calibrate_actions(shop, verbose=True):
             f"pass can withdraw. Earlier positions stand.")
         return {}
 
-    tab = inventory_tab_point(WORK_TAB)
-    say(f"  inventory tab {WORK_TAB} at {tab}, so what comes back lands there")
-    click(*tab)
+    landing = first_free_slot(WORK_TAB, verbose=verbose)
+    if landing is None:
+        say(f"  inventory tab {WORK_TAB} is full, so a withdrawal would land "
+            f"somewhere this pass cannot follow. Not walking the actions; "
+            f"earlier positions stand.")
+        return {}
 
     change = (shop["button_x"], shop["row_one_y"])
     say(f"  row 1 is {before[:48]!r}")
@@ -1175,8 +1208,17 @@ def calibrate_actions(shop, verbose=True):
     after = read_line(grab(), row_one)
     say(f"  row 1 now reads {after[:48]!r}")
 
-    slot = inventory_slot_point(1, 1)
-    say(f"  listing it back from tab {WORK_TAB} slot (1,1) at {slot}")
+    tab = inventory_tab_point(WORK_TAB)
+    say(f"  back to inventory tab {WORK_TAB} at {tab}; the withdrawal moves "
+        f"the panel to whichever tab it landed on")
+    click(*tab)
+    slot = inventory_slot_point(*landing)
+    if slot_is_empty(grab(), *landing):
+        raise RuntimeError(
+            f"tab {WORK_TAB} slot {landing} is empty after the withdrawal, so "
+            f"the item did not land where the free slot was. It is in the "
+            f"bag; list it by hand.")
+    say(f"  listing it back from tab {WORK_TAB} slot {landing} at {slot}")
     ctrl_click(*slot)
     held = (0, 0)
     deadline = time.monotonic() + budget
@@ -1187,7 +1229,7 @@ def calibrate_actions(shop, verbose=True):
         time.sleep(POLL_GAP)
     if not held[1]:
         raise RuntimeError(
-            f"nothing loaded from tab {WORK_TAB} slot (1,1) after the "
+            f"nothing loaded from tab {WORK_TAB} slot {landing} after the "
             f"withdrawal, so it cannot be listed back. The item is in the "
             f"bag; list it by hand.")
     price = panel_suggestion(panel)
