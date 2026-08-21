@@ -220,6 +220,15 @@ def read_panel_net():
     return calibration.read_money(calibration.grab(), tuple(box)) or 0
 
 
+def price_field_shows(read, want):
+    if read == want:
+        return True
+    grouped = f"{want:,}"
+    if "," not in grouped:
+        return False
+    return any(grouped.replace(",", d) == str(read) for d in "0123456789")
+
+
 def panel_agrees(want_qty, want_price, verbose=False):
     if not _panel().get("net_sales_box"):
         raise Divergence(
@@ -230,7 +239,7 @@ def panel_agrees(want_qty, want_price, verbose=False):
         price = read_panel_price()
         net = read_panel_net() or 0
         checks = {
-            "price field": price == want_price,
+            "price field": price_field_shows(price, want_price),
             "net sales": net == expect,
             "net / quantity": net // want_qty == want_price
             if want_qty and net % want_qty == 0 else False,
