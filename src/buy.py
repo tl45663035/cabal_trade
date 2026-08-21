@@ -1,4 +1,6 @@
+import contextlib
 import re
+import sys
 import time
 
 import calibration
@@ -20,6 +22,34 @@ REREADS = _SHARED["detect"]["panel_rereads"]
 REREAD_GAP = _SHARED["timing"]["panel_reread_gap"]
 ROW_SELECT_X = _SHARED["detect"]["purchase_row_select_x"]
 BUY_ROW = 1
+
+
+_STEPS = []
+
+
+@contextlib.contextmanager
+def step(label):
+    started = time.perf_counter()
+    try:
+        yield
+    finally:
+        _STEPS.append((label, (time.perf_counter() - started) * 1000))
+
+
+def steps_reset():
+    _STEPS.clear()
+
+
+def steps_table(title):
+    total = sum(ms for _l, ms in _STEPS)
+    print("")
+    print(f"  {title}")
+    print(f"  {'#':>3}  {'ms':>9}  {'share':>6}  step")
+    for i, (label, ms) in enumerate(_STEPS, start=1):
+        share = (ms / total * 100) if total else 0
+        print(f"  {i:>3}  {ms:>9.1f}  {share:>5.1f}%  {label}")
+    print(f"       {total:>9.1f}  100.0%  TOTAL")
+    return total
 
 
 class Refused(Exception):
@@ -96,7 +126,8 @@ def _cancel(why):
 
 def buy_row_one(slot, want, verbose=True):
     say = print if verbose else (lambda *a: None)
-    offer = get_price.get_price(int(slot), verbose=False)
+    with step("get_price: search the favourite and read row 1"):
+        offer = get_price.get_price(int(slot), verbose=False)
     if offer is None:
         raise Refused(f"favourite slot {slot} would not price, so there is "
                       f"nothing to buy from.")
@@ -104,15 +135,21 @@ def buy_row_one(slot, want, verbose=True):
     say(f"  row 1 offers {offer['name']!r} x{offer['qty']} at "
         f"{offer['price']:,} ({offer['unit_price']:,}/unit)")
 
-    calibration.click(*row_point())
-    time.sleep(ACTION_GAP)
-    calibration.click(*buy_point())
-    if not await_dialog():
+    with step(f"click the row at {row_point()}"):
+        calibration.click(*row_point())
+    with step(f"sleep(action_gap {ACTION_GAP:g})"):
+        time.sleep(ACTION_GAP)
+    with step(f"click Buy at {buy_point()}"):
+        calibration.click(*buy_point())
+    with step("await the Purchase dialog"):
+        appeared = await_dialog()
+    if not appeared:
         raise Refused(
             f"no {DIALOG_MARKER} dialog appeared after clicking Buy on row 1. "
             f"Nothing was confirmed.")
 
-    detail = dialog_details()
+    with step("read the dialog (item, price, qty, qty_max)"):
+        detail = dialog_details()
     say(f"    dialog: {detail['item']!r}  qty {detail['qty']} of "
         f"{detail['qty_max']}  price {detail['price']}")
     fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
@@ -125,16 +162,18 @@ def buy_row_one(slot, want, verbose=True):
 
     asked = min(int(want), int(detail["qty_max"]))
     if detail["qty"] != asked:
-        calibration.click(*calibration._point(
-            tuple(calibration._REG["buy_dialog_qty"])[:2]))
-        row_model.type_number(asked, CLEAR_PRESSES_QTY)
-        calibration.park()
+        with step(f"click the quantity field and type {asked}"):
+            calibration.click(*calibration._point(
+                tuple(calibration._REG["buy_dialog_qty"])[:2]))
+            row_model.type_number(asked, CLEAR_PRESSES_QTY)
+            calibration.park()
     elif verbose:
         say(f"    the quantity field already reads {asked}; not retyping it")
 
     again = None
     for attempt in range(1, REREADS + 2):
-        again = dialog_details()
+        with step(f"re-read the dialog ({attempt})"):
+            again = dialog_details()
         if again["qty"] == asked and again["price"] == detail["price"]:
             break
         if verbose:
@@ -148,13 +187,19 @@ def buy_row_one(slot, want, verbose=True):
         _cancel(f"the dialog price moved from {detail['price']} to "
                 f"{again['price']}. Cancelled without buying.")
 
-    point = dialog_button(CONFIRM_WORD)
+    with step(f"find the {CONFIRM_WORD} button"):
+        point = dialog_button(CONFIRM_WORD)
     if point is None:
         _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
-    calibration.click(*point)
-    time.sleep(ACTION_GAP)
-    calibration.park()
-    if dialog_open():
+    with step(f"click {CONFIRM_WORD}"):
+        calibration.click(*point)
+    with step(f"sleep(action_gap {ACTION_GAP:g})"):
+        time.sleep(ACTION_GAP)
+    with step("park"):
+        calibration.park()
+    with step("confirm the dialog is gone"):
+        still = dialog_open()
+    if still:
         raise Refused(
             f"the dialog stayed open after {CONFIRM_WORD}. Whether anything "
             f"was bought is unknown -- look before running again.")
@@ -163,3 +208,47 @@ def buy_row_one(slot, want, verbose=True):
         f"{asked * offer['price']:,}")
     return {"slot": int(slot), "name": name, "packs": asked, "bought": units,
             "unit_price": offer["unit_price"], "price": offer["price"]}
+
+
+def buy_item(slot, want=None, verbose=True):
+    import driver
+    driver.initialise(verbose=verbose)
+    name = calibration.FAVOURITE_ITEMS[str(int(slot))]
+    want = int(want) if want is not None else int(
+        _SHARED["resupply"]["buy_min"])
+    print(f"buy_item({slot}) {name!r}, wanting {want} core(s)")
+    calibration.click(*calibration.inventory_tab_point(
+        calibration.CONVERT_INVENTORY_TAB))
+    time.sleep(TAB_SETTLE)
+
+    steps_reset()
+    started = time.perf_counter()
+    try:
+        out = buy_row_one(int(slot), want, verbose=verbose)
+    except Refused as exc:
+        steps_table(f"buy_item({slot}) REFUSED after "
+                    f"{(time.perf_counter() - started) * 1000:.0f} ms")
+        print(f"  refused: {exc}")
+        return None
+    steps_table(f"buy_item({slot}) bought {out['bought']} core(s) in "
+                f"{out['packs']} order(s)")
+    return out
+
+
+def main():
+    calibration.log_to_file("buy")
+    args = [a for a in sys.argv[1:] if a != "--frames"]
+    calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
+    if not args:
+        print("usage:")
+        print("  py src/buy.py N [WANT]   buy from favourite slot N, timing")
+        print("                           every step; WANT defaults to")
+        print("                           resupply.buy_min in config.json")
+        for slot in sorted(calibration.FAVOURITE_ITEMS, key=int):
+            print(f"      {slot:>2}  {calibration.FAVOURITE_ITEMS[slot]}")
+        sys.exit(2)
+    buy_item(int(args[0]), int(args[1]) if len(args) > 1 else None)
+
+
+if __name__ == "__main__":
+    main()
