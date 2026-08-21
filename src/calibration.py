@@ -1792,17 +1792,7 @@ def main(close: bool = True) -> None:
 
     convert_block = None
     vendor_visited = False
-    known_convert = (_read(OUT).get("by_resolution", {})
-                     .get(resolution_key(), {}).get("convert"))
-    if shared["resupply"]["enabled"] and known_convert:
-        print("conversion vendor:")
-        print(f"  already measured at {known_convert['tab']} "
-              f"{tuple(known_convert['tab_point'])}, columns "
-              f"{known_convert['columns']}, rows {known_convert['rows']}. "
-              f"The vendor is fixed furniture, so it is not opened again. "
-              f"Delete the convert block to re-measure it.")
-        convert_block = known_convert
-    elif shared["resupply"]["enabled"]:
+    if shared["resupply"]["enabled"]:
         print("conversion vendor:")
         press(VK_ESCAPE)
         time.sleep(gap)
