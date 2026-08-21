@@ -324,7 +324,8 @@ REGISTER_PANEL_F = _S["regions"]["register_panel"]
 PANEL_FIELD_INSET = _S["detect"]["panel_field_inset"]
 PANEL_FIELD_HALF = _S["detect"]["panel_field_half"]
 PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
-TYPE_CLEAR_PRESSES = _S["detect"]["type_clear_presses"]
+CLEAR_PRESSES_QTY = _S["detect"]["clear_presses_qty"]
+CLEAR_PRESSES_PRICE = _S["detect"]["clear_presses_price"]
 KEY_GAP = _S["timing"]["key_gap"]
 HOVER_SETTLE = _S["timing"]["hover_settle"]
 MODIFIER_SETTLE = _S["timing"]["modifier_settle"]
@@ -517,12 +518,12 @@ def ctrl_click(x: int, y: int, settle: float = None) -> None:
     snap(f"ctrlclick_{x}_{y}")
 
 
-def type_number(value: int) -> None:
+def type_number(value: int, clear: int) -> None:
     from open_inventory import press
     keys = load_shared()["input"]
-    for _ in range(TYPE_CLEAR_PRESSES):
+    for _ in range(clear):
         press(keys["VK_BACK"])
-        time.sleep(KEY_GAP)
+        time.sleep(CLEAR_GAP)
     for ch in str(int(value)):
         press(keys[f"VK_{ch}"])
         time.sleep(KEY_GAP)
@@ -1485,9 +1486,9 @@ def calibrate_actions(shop, verbose=True):
     say(f"  {held[1]} held, panel suggests {price:,}")
 
     click(*panel["price_point"])
-    type_number(price)
+    type_number(price, CLEAR_PRESSES_PRICE)
     click(*panel["qty_point"])
-    type_number(held[1])
+    type_number(held[1], CLEAR_PRESSES_QTY)
     park()
     if not panel_agrees(panel, held[1], price, say):
         raise RuntimeError(

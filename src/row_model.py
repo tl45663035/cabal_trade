@@ -37,8 +37,11 @@ DIALOG_BUTTON_MIN_X = _SHARED["detect"]["dialog_button_min_x"]
 BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
-TYPE_CLEAR_PRESSES = _SHARED["detect"]["type_clear_presses"]
+CLEAR_PRESSES_QTY = _SHARED["detect"]["clear_presses_qty"]
+CLEAR_PRESSES_PRICE = _SHARED["detect"]["clear_presses_price"]
 KEY_GAP = _T["key_gap"]
+CLEAR_GAP = _T["clear_gap"]
+FIELD_SETTLE = _T["field_settle"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
 STALE_SWEEP = _T.get("stale_sweep", 1.0)
@@ -248,12 +251,12 @@ def panel_agrees(want_qty, want_price, verbose=False):
     return False
 
 
-def type_number(value):
+def type_number(value, clear):
     from open_inventory import press
     keys = _SHARED["input"]
-    for _ in range(TYPE_CLEAR_PRESSES):
+    for _ in range(clear):
         press(keys["VK_BACK"])
-        time.sleep(KEY_GAP)
+        time.sleep(CLEAR_GAP)
     for ch in str(int(value)):
         press(keys[f"VK_{ch}"])
         time.sleep(KEY_GAP)
@@ -650,10 +653,10 @@ class RowModel:
                 f"refusing to list at {want:,}, under the "
                 f"{MIN_PLAUSIBLE_PRICE:,} plausibility floor.")
 
-        calibration.click(*panel["price_point"])
-        type_number(want)
-        calibration.click(*panel["qty_point"])
-        type_number(held[1])
+        calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
+        type_number(want, CLEAR_PRESSES_PRICE)
+        calibration.click(*panel["qty_point"], settle=FIELD_SETTLE)
+        type_number(held[1], CLEAR_PRESSES_QTY)
         calibration.park()
 
         if not panel_agrees(held[1], want, verbose):
