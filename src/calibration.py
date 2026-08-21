@@ -27,6 +27,7 @@ DEFAULTS = {
         "wheel_gap": 0.12,
         "park_settle": 0.25,
         "tab_settle": 0.6,
+        "poll_gap": 0.0,
         "search_timeout": 8.0,
         "search_retries": 3,
         "dialog_timeout": 8.0,
@@ -85,6 +86,7 @@ DEFAULTS = {
         "dialog_buttons": [0.4688, 0.5296, 0.6641, 0.7085],
         "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
         "register_button_band": [0.41, 0.12, 0.48, 0.66],
+        "trade_tabs_band": [0.0, 0.035, 0.24, 0.08],
     },
     "detect": {
         "alz_bright": 110,
@@ -267,6 +269,8 @@ POPUP_F = tuple(_REG["popup"])
 DIALOG_BUTTONS_F = tuple(_REG["dialog_buttons"])
 REGISTER_TABLE_BAND_F = tuple(_REG["register_table_band"])
 REGISTER_BUTTON_BAND_F = _S["regions"]["register_button_band"]
+TRADE_TABS_BAND_F = _S["regions"]["trade_tabs_band"]
+POLL_GAP = _S["timing"].get("poll_gap", 0.0)
 
 ALZ_BRIGHT = _DET["alz_bright"]
 ALZ_SATURATION = _DET["alz_saturation"]
@@ -313,6 +317,7 @@ GRID = _S["game_facts"]["grid_size"]
 ACTION_GAP = _S["timing"]["action_gap"]
 PARK_SETTLE = _S["timing"]["park_settle"]
 TAB_SETTLE = _S["timing"]["tab_settle"]
+DIALOG_TIMEOUT = _S["timing"]["dialog_timeout"]
 SEARCH_TIMEOUT = _S["timing"]["search_timeout"]
 ALZ_SEARCH = None
 _NOT_DIGIT = re.compile("[^0-9]")
@@ -347,9 +352,10 @@ def grab() -> Image.Image:
     return Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
 
 
-def park() -> None:
+def park(settle: bool = True) -> None:
     ctypes.windll.user32.SetCursorPos(*_point(PARK_F))
-    time.sleep(PARK_SETTLE)
+    if settle:
+        time.sleep(PARK_SETTLE)
 
 
 FRAME_DIR = Path(__file__).resolve().parent / "debug_frames"
@@ -636,10 +642,10 @@ def calibrate_inventory(verbose=True):
 
 def _trade_window_open() -> bool:
     try:
-        words = ocr(grab(), _box(TOP_STRIP_F))
+        words = ocr(grab(), _box(TRADE_TABS_BAND_F))
     except Exception:
         return False
-    return any(t.lower() == "register" for t, _c, _p in words)
+    return any(t.lower() in ("register", "purchase") for t, _c, _p in words)
 
 
 def calibrate_shop(verbose=True):
@@ -797,13 +803,14 @@ def calibrate_purchase(shop, verbose=True):
     click(fx, fy)
     park()
     deadline = time.monotonic() + SEARCH_TIMEOUT
-    image = None
+    table_band = _box(PURCHASE_TABLE_BAND_F)
+    image, seen = None, []
     while time.monotonic() < deadline:
-        time.sleep(ACTION_GAP)
         image = grab()
-        if [1 for t, _, _ in ocr(image, _box(PURCHASE_TABLE_BAND_F))
-                if t.strip().lower() == "buy"]:
+        seen = ocr(image, table_band)
+        if [1 for t, _, _ in seen if t.strip().lower() == "buy"]:
             break
+        time.sleep(POLL_GAP)
     else:
         raise RuntimeError(
             f"favourite 1 returned no offers within {SEARCH_TIMEOUT}s, so the "
@@ -811,9 +818,7 @@ def calibrate_purchase(shop, verbose=True):
     say(f"  offers arrived after "
         f"{SEARCH_TIMEOUT - (deadline - time.monotonic()):.1f}s")
 
-    table_band = _box(PURCHASE_TABLE_BAND_F)
-    buys = [p for t, c, p in ocr(image, table_band)
-            if t.strip().lower() == "buy"]
+    buys = [p for t, c, p in seen if t.strip().lower() == "buy"]
     if len(buys) < 2:
         raise RuntimeError(
             f"found {len(buys)} Buy button(s) in {table_band}; need at least "
@@ -890,10 +895,15 @@ def calibrate_purchase(shop, verbose=True):
 def calibrate_register_table(shop, verbose=True):
     say = print if verbose else (lambda *a: None)
     click(*shop["register_tab"])
-    time.sleep(TAB_SETTLE)
     park()
-    time.sleep(PARK_SETTLE)
     image = grab()
+    deadline = time.monotonic() + DIALOG_TIMEOUT
+    while not [1 for t, _c, _p in ocr(image, _box(REGISTER_BUTTON_BAND_F))
+               if t.strip().lower() in ("change", "register")]:
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(POLL_GAP)
+        image = grab()
 
     band = _box(REGISTER_TABLE_BAND_F)
     buttons = _box(REGISTER_BUTTON_BAND_F)
@@ -925,6 +935,19 @@ def calibrate_register_table(shop, verbose=True):
         f"row 1 y={out['row_one_y']}")
     say(f"  table_x {out['table_x']}, scroll point {out['table_point']}")
     return out
+
+
+WORK_TAB = _S["game_facts"]["work_tab"]
+
+
+def inventory_tab_point(tab):
+    tabs = load()["inventory"]["tabs"]
+    key = str(int(tab))
+    if key not in tabs:
+        raise RuntimeError(
+            f"inventory tab {key} is not in calibration.json, which has "
+            f"{sorted(tabs)}")
+    return tuple(tabs[key])
 
 
 ACTION_BUTTON_WORDS = ("Confirmation", "Cancel", "Receive", "Register")
@@ -973,11 +996,15 @@ def calibrate_actions(shop, verbose=True):
             f"pass can withdraw. Earlier positions stand.")
         return {}
 
+    tab = inventory_tab_point(WORK_TAB)
+    say(f"  inventory tab {WORK_TAB} at {tab}, so what comes back lands there")
+    click(*tab)
+
     change = (shop["button_x"], shop["row_one_y"])
     say(f"  row 1 is {before[:48]!r}")
     say(f"  Change at {change}")
     click(*change)
-    park()
+    park(settle=False)
 
     cancel = await_button("Cancel")
     if cancel is None:
@@ -986,7 +1013,7 @@ def calibrate_actions(shop, verbose=True):
             "been withdrawn.")
     say(f"  Cancel at {cancel}")
     click(*cancel)
-    park()
+    park(settle=False)
 
     confirm = await_button("Confirmation")
     if confirm is None:
