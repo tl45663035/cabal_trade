@@ -872,6 +872,63 @@ def calibrate_register_table(shop, verbose=True):
     return out
 
 
+ACTION_BUTTON_WORDS = ("Confirmation", "Cancel", "Receive")
+
+
+def calibrate_actions(shop, verbose=True):
+    from open_inventory import VK_ESCAPE, press
+    say = print if verbose else (lambda *a: None)
+    gap = load_shared()["timing"]["action_gap"]
+    dialog = _box(DIALOG_BUTTONS_F)
+    min_x = load_shared()["detect"]["dialog_button_min_x"]
+
+    def buttons_on_screen():
+        found = {}
+        for text, conf, point in ocr(grab(), dialog):
+            key = text.strip().lower()
+            for word in ACTION_BUTTON_WORDS:
+                if key == word.lower() and point[0] >= min_x:
+                    found[word] = [int(point[0]), int(point[1])]
+        return found
+
+    if buttons_on_screen():
+        say("  a dialog is already open over the table; not opening another.")
+        return {}
+
+    change = (shop["button_x"], shop["row_one_y"])
+    say(f"  opening the row 1 panel at {change} to see its buttons")
+    click(*change)
+    park()
+
+    seen = {}
+    deadline = time.monotonic() + load_shared()["timing"]["dialog_timeout"]
+    while time.monotonic() < deadline:
+        seen = buttons_on_screen()
+        if seen:
+            break
+
+    for _ in range(3):
+        if not buttons_on_screen():
+            break
+        press(VK_ESCAPE)
+        time.sleep(gap)
+        park()
+    still = buttons_on_screen()
+    if still:
+        raise RuntimeError(
+            f"the row 1 panel would not close with Escape and its buttons are "
+            f"still on screen at {still}. Neither of them was clicked, so "
+            f"nothing was withdrawn or registered -- close it by hand.")
+
+    out = {f"button_{w.lower()}": p for w, p in seen.items()}
+    if out:
+        say(f"  learned {', '.join(sorted(out))}")
+    else:
+        say("  the panel showed no buttons to learn; the earlier positions "
+            "stand.")
+    return out
+
+
 def main(close: bool = True) -> None:
     from open_inventory import VK_I, VK_ESCAPE, focus_game, press
 
@@ -938,6 +995,9 @@ def main(close: bool = True) -> None:
 
     print("register table:")
     shop.update(calibrate_register_table(shop))
+
+    print("actions:")
+    shop.update(calibrate_actions(shop))
 
     win = find_game_window()
     measured = {
