@@ -120,12 +120,14 @@ def cancel(model, index, verbose=True):
     return model.cancel(index, verbose=verbose)
 
 
-def list_row(model, index, verbose=True):
-    raise NotImplementedError(
-        "listing is not built yet. cancel(N) was specified step by step -- "
-        "scroll, Change, Cancel, Confirmation -- and listing needs the same: "
-        "which button opens the register panel, where the price and quantity "
-        "go, and what confirms it. Guessing that flow would commit real money.")
+def do_list(row, col, price=None, verbose=True):
+    initialise(verbose=verbose)
+    register_tab(verbose=verbose)
+    model = row_model.RowModel().seed({})
+    started = time.perf_counter()
+    out = model.list_slot(row, col, price=price, verbose=verbose)
+    print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
+    return out
 
 
 def report(model):
@@ -173,6 +175,8 @@ def usage():
     print("                                   walk rows 1-21, print the model")
     print("  py src/driver.py cancel N        cancel row N (collects it first")
     print("                                   if it has sold)")
+    print("  py src/driver.py list R C [PRICE] list inventory slot (R,C); the")
+    print("                                   panel's own suggestion if no PRICE")
     print("  py src/driver.py row N           read row N without touching it")
     print("  py src/driver.py price N         market price for favourite slot N")
     print("  py src/driver.py alz             read the balance")
@@ -187,6 +191,9 @@ def main():
     what = args[0].lower()
     if what == "cancel" and len(args) > 1:
         do_cancel(int(args[1]))
+    elif what == "list" and len(args) > 2:
+        do_list(int(args[1]), int(args[2]),
+                int(args[3]) if len(args) > 3 else None)
     elif what == "row" and len(args) > 1:
         initialise()
         register_tab()

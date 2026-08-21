@@ -87,6 +87,7 @@ DEFAULTS = {
         "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
         "register_button_band": [0.41, 0.12, 0.48, 0.66],
         "trade_tabs_band": [0.0, 0.035, 0.24, 0.08],
+        "register_panel": [0.0039, 0.0709, 0.1133, 0.7597],
     },
     "detect": {
         "alz_bright": 110,
@@ -130,6 +131,9 @@ DEFAULTS = {
         "sort_pad_right": 90,
         "sort_pad_y": 16,
         "scroll_point_inset": 600,
+        "panel_field_inset": 30,
+        "panel_field_half": 14,
+        "panel_label_gap": 22,
         "panel_moved_slack": 30,
     },
     "text": {
@@ -270,6 +274,10 @@ DIALOG_BUTTONS_F = tuple(_REG["dialog_buttons"])
 REGISTER_TABLE_BAND_F = tuple(_REG["register_table_band"])
 REGISTER_BUTTON_BAND_F = _S["regions"]["register_button_band"]
 TRADE_TABS_BAND_F = _S["regions"]["trade_tabs_band"]
+REGISTER_PANEL_F = _S["regions"]["register_panel"]
+PANEL_FIELD_INSET = _S["detect"]["panel_field_inset"]
+PANEL_FIELD_HALF = _S["detect"]["panel_field_half"]
+PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
 POLL_GAP = _S["timing"].get("poll_gap", 0.0)
 
 ALZ_BRIGHT = _DET["alz_bright"]
@@ -419,6 +427,22 @@ def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
         _user32.SendInput(1, ctypes.byref(_mouse_event(up)),
                           ctypes.sizeof(_mouse_event(up)))
     time.sleep(settle)
+
+
+def ctrl_click(x: int, y: int, settle: float = None) -> None:
+    from open_inventory import _user32, _Input, _event
+    shared = load_shared()
+    vk = shared["input"]["VK_CONTROL"]
+    _user32.SendInput(1, ctypes.byref(_event(vk, up=False)),
+                      ctypes.sizeof(_Input))
+    try:
+        _button(shared["input"]["MOUSEEVENTF_LEFTDOWN"],
+                shared["input"]["MOUSEEVENTF_LEFTUP"], x, y,
+                shared["timing"]["action_gap"] if settle is None else settle)
+    finally:
+        _user32.SendInput(1, ctypes.byref(_event(vk, up=True)),
+                          ctypes.sizeof(_Input))
+    snap(f"ctrlclick_{x}_{y}")
 
 
 def click(x: int, y: int, settle: float = None) -> None:
@@ -955,6 +979,77 @@ ACTION_BUTTON_WORDS = ("Confirmation", "Cancel", "Receive", "Register")
 RECEIPT_WORD = "Receive"
 
 
+def calibrate_panel(verbose=True):
+    say = print if verbose else (lambda *a: None)
+    box = _box(REGISTER_PANEL_F)
+    words = ocr(grab(), box)
+
+    def below(word, after_y=0):
+        hits = [p for t, _c, p in words
+                if t.strip().lower() == word and p[1] > after_y]
+        return min(hits, key=lambda p: p[1]) if hits else None
+
+    price = below("price")
+    qty_label = below("qty")
+    if price is None or qty_label is None:
+        raise RuntimeError(
+            f"the register panel {box} does not read as a panel: found "
+            f"{[t for t, _c, _p in words][:8]}. Nothing measured.")
+
+    alz = [p for t, _c, p in words
+           if t.strip().lower() == "alz" and price[1] < p[1] < qty_label[1]]
+    if not alz:
+        raise RuntimeError(
+            "no Alz label between Price and Register QTY, so the price field "
+            "cannot be placed.")
+    alz = min(alz, key=lambda p: p[1])
+
+    slash = [p for t, _c, p in words
+             if t.strip().startswith("/") and p[1] > qty_label[1]]
+    digit = [p for t, _c, p in words
+             if t.strip().rstrip("/").isdigit() and p[1] > qty_label[1]
+             and (not slash or p[0] < slash[0][0])]
+    if not digit:
+        raise RuntimeError(
+            "no quantity field found under Register QTY; nothing measured.")
+    qty = min(digit, key=lambda p: p[1])
+
+    button = [p for t, _c, p in words
+              if t.strip().lower() == "register" and p[1] > qty[1]]
+    if not button:
+        raise RuntimeError(
+            "no Register button below the quantity field; nothing measured.")
+    button = max(button, key=lambda p: p[1])
+
+    rows = []
+    for _t, _c, point in words:
+        if not price[1] < point[1] < alz[1] - PANEL_FIELD_HALF:
+            continue
+        if not any(abs(point[1] - y) <= PANEL_FIELD_HALF for y in rows):
+            rows.append(point[1])
+    rows.sort()
+
+    left = box[0] + PANEL_FIELD_INSET
+    right = alz[0] - PANEL_LABEL_GAP
+    out = {
+        "panel_box": list(box),
+        "price_field": [left, alz[1] - PANEL_FIELD_HALF,
+                        right, alz[1] + PANEL_FIELD_HALF],
+        "price_point": [(left + right) // 2, alz[1]],
+        "qty_point": [qty[0], qty[1]],
+        "qty_box": [left, qty[1] - PANEL_FIELD_HALF,
+                    right, qty[1] + PANEL_FIELD_HALF],
+        "suggestion_boxes": [[left, y - PANEL_FIELD_HALF,
+                              right, y + PANEL_FIELD_HALF] for y in rows],
+        "register_button": [button[0], button[1]],
+    }
+    say(f"  price field {out['price_field']} (click {out['price_point']})")
+    say(f"  quantity box {out['qty_box']} (click {out['qty_point']})")
+    say(f"  {len(rows)} suggested price row(s) at y {rows}")
+    say(f"  Register button at {out['register_button']}")
+    return out
+
+
 def calibrate_actions(shop, verbose=True):
     say = print if verbose else (lambda *a: None)
     timing = load_shared()["timing"]
@@ -1109,6 +1204,9 @@ def main(close: bool = True) -> None:
 
     print("register table:")
     shop.update(calibrate_register_table(shop))
+
+    print("register panel:")
+    shop["panel"] = calibrate_panel()
 
     print("actions:")
     shop.update(calibrate_actions(shop))

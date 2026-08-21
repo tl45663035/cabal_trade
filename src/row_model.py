@@ -37,6 +37,7 @@ DIALOG_BUTTON_MIN_X = _SHARED["detect"]["dialog_button_min_x"]
 BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
+TYPE_CLEAR_PRESSES = _SHARED["detect"]["type_clear_presses"]
 STALE_SWEEP = _T.get("stale_sweep", 1.0)
 POLL_GAP = _T.get("poll_gap", 0.0)
 
@@ -163,6 +164,63 @@ def show_work_tab(verbose=False):
               f"has nowhere else to land")
     calibration.click(*point)
     return point
+
+
+MIN_PLAUSIBLE_PRICE = _SHARED["detect"]["min_plausible_price"]
+
+_QTY = re.compile(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)")
+
+
+def _panel():
+    part = _shop().get("panel")
+    if not part:
+        raise Divergence(
+            "the register panel has not been measured; run "
+            "py src/calibration.py before listing anything.")
+    return part
+
+
+def read_panel_qty():
+    box = _panel()["qty_box"]
+    found = _QTY.search(calibration.read_line(calibration.grab(), tuple(box)))
+    if not found:
+        return (0, 0)
+    return (int(found.group(1).replace(",", "")),
+            int(found.group(2).replace(",", "")))
+
+
+def await_panel_qty(timeout=None):
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    while time.monotonic() < deadline:
+        held = read_panel_qty()
+        if held[1]:
+            return held
+        time.sleep(POLL_GAP)
+    return None
+
+
+def read_panel_price():
+    box = _panel()["price_field"]
+    return calibration.read_number(calibration.grab(), tuple(box)) or 0
+
+
+def suggested_price():
+    prices = []
+    for box in _panel()["suggestion_boxes"]:
+        value = calibration.read_number(calibration.grab(), tuple(box))
+        if value and value >= MIN_PLAUSIBLE_PRICE:
+            prices.append(value)
+    return min(prices) if prices else None
+
+
+def type_number(value):
+    from open_inventory import press
+    keys = _SHARED["input"]
+    for _ in range(TYPE_CLEAR_PRESSES):
+        press(keys["VK_BACK"])
+    for ch in str(int(value)):
+        press(keys[f"VK_{ch}"])
 
 
 def row_function(text=None):
@@ -477,6 +535,73 @@ class RowModel:
             print(f"  row {index} cancelled; {expected.name!r} lands in tab "
                   f"{result['lands_in_tab']} slot {result['lands_in_slot']}")
         return result
+
+    def list_slot(self, row, col, price=None, verbose=True):
+        import open_agent_shop_premium as shop
+        panel = _shop().get("panel")
+        if not panel:
+            raise Divergence(
+                "the register panel has not been measured; run "
+                "py src/calibration.py before listing anything.")
+
+        point = shop.slot_point(int(row), int(col))
+        if verbose:
+            print(f"  inventory slot ({row},{col}) at {point}")
+        before = read_panel_qty()
+        if before[1]:
+            raise Divergence(
+                f"the shop slot already holds {before[0]} of {before[1]}; "
+                f"clear it before listing another item.")
+
+        calibration.ctrl_click(*point)
+        held = await_panel_qty()
+        if held is None:
+            raise Divergence(
+                f"nothing loaded into the shop slot from ({row},{col}). "
+                f"Nothing has been listed.")
+        if verbose:
+            print(f"  loaded {held[0]} of {held[1]}")
+
+        want = price if price is not None else suggested_price()
+        if want is None:
+            raise Divergence(
+                "no price was given and the panel suggests none, so there is "
+                "nothing to list at. Nothing has been listed.")
+        if want < MIN_PLAUSIBLE_PRICE:
+            raise Divergence(
+                f"refusing to list at {want:,}, under the "
+                f"{MIN_PLAUSIBLE_PRICE:,} plausibility floor.")
+
+        calibration.click(*panel["qty_point"])
+        type_number(held[1])
+        calibration.click(*panel["price_point"])
+        type_number(want)
+        calibration.park()
+
+        typed = read_panel_qty()
+        shown = read_panel_price()
+        if typed[0] != held[1] or shown != want:
+            raise Divergence(
+                f"the panel reads quantity {typed[0]} at {shown} but "
+                f"{held[1]} at {want} was typed. Nothing has been listed.")
+        if verbose:
+            print(f"  panel confirms {typed[0]} at {shown:,}")
+
+        calibration.click(*panel["register_button"], settle=0.0)
+        confirm = find_button(CONFIRM_WORD)
+        if confirm is None:
+            raise Divergence(
+                f"no {CONFIRM_WORD} appeared after Register. Nothing "
+                f"committed.")
+        calibration.click(*confirm, settle=0.0)
+        calibration.park()
+        if not dialog_gone():
+            raise Divergence(
+                f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
+                f"listing committed is unknown -- check the shop by hand.")
+        if verbose:
+            print(f"  listed {held[1]} at {want:,}")
+        return {"slot": (int(row), int(col)), "qty": held[1], "price": want}
 
     def collect(self, index, remaining=0):
         index = int(index)
