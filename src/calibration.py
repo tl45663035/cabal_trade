@@ -756,6 +756,14 @@ def _trade_window_open() -> bool:
     return any(t.lower() in ("register", "purchase") for t, _c, _p in words)
 
 
+def purchase_tab_showing() -> bool:
+    try:
+        words = ocr(grab(), _box(PURCHASE_SORT_BAND_F))
+    except Exception:
+        return False
+    return any("price" in t.lower() for t, _c, _p in words)
+
+
 def calibrate_shop(verbose=True):
     say = print if verbose else (lambda *a: None)
     image = grab()
@@ -785,6 +793,20 @@ def calibrate_shop(verbose=True):
         raise RuntimeError("could not find the Purchase/Register boundary.")
     purchase = [2 * boundary - reg[0], reg[1]]
     say(f"  Purchase {purchase}  (mirrored about the boundary at x={boundary})")
+
+    if not purchase_tab_showing():
+        say(f"  the favourites live on the Purchase tab; switching to "
+            f"{purchase} to measure them")
+        click(*purchase)
+        park()
+        deadline = time.monotonic() + DIALOG_TIMEOUT
+        while not purchase_tab_showing():
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"the Purchase tab would not open at {purchase}, so the "
+                    f"favourite row cannot be measured.")
+            time.sleep(POLL_GAP)
+        image = grab()
 
     FAV = _box(FAV_BAND_F)
     prof = np.asarray(image.crop(FAV).convert("L"), dtype=float).mean(axis=0)
