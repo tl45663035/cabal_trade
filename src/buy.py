@@ -76,7 +76,31 @@ def buy_point(index=BUY_ROW):
     return cal["purchase_buy_x"], y
 
 
+def _fold(text):
+    return re.sub(r"[^a-z]", "", (text or "").lower())
+
+
+def _button_key(word):
+    return f"buy_button_{_fold(word)}"
+
+
+def remembered(word):
+    point = _shop_cal().get(_button_key(word))
+    return tuple(point) if point else None
+
+
+def button_here(word, point, image=None):
+    image = image if image is not None else calibration.grab()
+    dx, dy = row_model.BUTTON_HALF
+    box = (point[0] - dx, point[1] - dy, point[0] + dx, point[1] + dy)
+    want = _fold(word)
+    return any(_fold(t) == want for t, _c, _p in calibration.ocr(image, box))
+
+
 def dialog_open(image=None):
+    known = remembered(CONFIRM_WORD)
+    if known is not None:
+        return button_here(CONFIRM_WORD, known, image)
     image = image if image is not None else calibration.grab()
     words = calibration.ocr(image, _reg("buy_dialog"))
     text = " ".join(t for t, _c, _p in words).lower()
@@ -84,10 +108,17 @@ def dialog_open(image=None):
 
 
 def dialog_button(word, image=None):
+    known = remembered(word)
+    if known is not None and button_here(word, known, image):
+        return known
     image = image if image is not None else calibration.grab()
-    want = re.sub(r"[^a-z]", "", word.lower())
+    want = _fold(word)
     for text, _c, point in calibration.ocr(image, _reg("buy_dialog_buttons")):
-        if re.sub(r"[^a-z]", "", text.lower()) == want:
+        if _fold(text) == want:
+            if known is None:
+                calibration.remember_shop(_button_key(word), list(point))
+                print(f"    learned the {word} button at {point}; it will be "
+                      f"looked for there from now on")
             return point
     return None
 
@@ -149,8 +180,6 @@ def _buy_row_one(slot, want, verbose=True):
 
     with step(f"click the row at {row_point()}"):
         calibration.click(*row_point())
-    with step(f"sleep(action_gap {ACTION_GAP:g})"):
-        time.sleep(ACTION_GAP)
     with step(f"click Buy at {buy_point()}"):
         calibration.click(*buy_point())
     with step("await the Purchase dialog"):
@@ -180,8 +209,8 @@ def _buy_row_one(slot, want, verbose=True):
             f"pack(s); {detail['qty_max']} available, taking {asked}")
     if detail["qty"] != asked:
         with step(f"click the quantity field and type {asked}"):
-            calibration.click(*calibration._point(
-                tuple(calibration._REG["buy_dialog_qty"])[:2]))
+            calibration.click(*calibration._centre(
+                tuple(calibration._REG["buy_dialog_qty"])))
             row_model.type_number(asked, CLEAR_PRESSES_QTY)
             calibration.park()
     elif verbose:
@@ -210,8 +239,6 @@ def _buy_row_one(slot, want, verbose=True):
         _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
     with step(f"click {CONFIRM_WORD}"):
         calibration.click(*point)
-    with step(f"sleep(action_gap {ACTION_GAP:g})"):
-        time.sleep(ACTION_GAP)
     with step("park"):
         calibration.park()
     with step("confirm the dialog is gone"):

@@ -148,8 +148,7 @@ def convert(core_name, quantity, verbose=True):
 
     asked = min(int(quantity), int(detail["qty_max"]))
     if detail["qty"] != asked:
-        calibration.click(*calibration._point(
-            tuple(calibration._REG["convert_dialog_qty"])[:2]))
+        calibration.click(*calibration._centre(tuple(calibration._REG["convert_dialog_qty"])))
         row_model.type_number(asked, CLEAR_PRESSES_QTY)
         calibration.park()
     else:

@@ -427,6 +427,11 @@ def _box(frac, rect=None):
             round(x + frac[2] * w), round(y + frac[3] * h))
 
 
+def _centre(frac, rect=None):
+    x0, y0, x1, y1 = _box(frac, rect)
+    return ((x0 + x1) // 2, (y0 + y1) // 2)
+
+
 def _point(frac, rect=None):
     x, y, w, h = rect or _client_rect()
     return (round(x + frac[0] * w), round(y + frac[1] * h))
