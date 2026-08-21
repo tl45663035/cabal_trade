@@ -277,6 +277,11 @@ def row_button(image=None):
     return None
 
 
+def row_button_text(image=None):
+    image = image if image is not None else calibration.grab()
+    return " ".join(t for t, _c, _p in calibration.ocr(image, row_button_box()))
+
+
 def row_function(text=None):
     seen = row_button()
     if seen is not None:

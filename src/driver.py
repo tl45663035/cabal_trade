@@ -140,10 +140,18 @@ def relist_one(model, index, verbose=True):
         if verbose:
             print(f"    collected; {row.qty} left to relist")
 
-    if row is None or button == row_model.REGISTER_WORD:
+    if row_model.row_one_is_empty(text):
         if verbose:
-            print(f"  row {index}: {text[:44]!r} is not a live listing; "
-                  f"leaving it alone")
+            print(f"  row {index} is empty; nothing to relist")
+        return None
+
+    if row is None or button != row_model.CHANGE_WORD:
+        calibration.snap(f"row_{index}_button_disagrees")
+        print(f"  row {index}: SKIPPED and it should not have been. The row "
+              f"reads {text[:60]!r}")
+        print(f"    parsed  {'nothing' if row is None else str(row.qty) + ' at ' + format(row.price, ',')}")
+        print(f"    button  {button!r}, box reads "
+              f"{row_model.row_button_text()!r}")
         return None
 
     landing = calibration.first_free_slot(row_model.WORK_TAB, verbose=False)
