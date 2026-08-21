@@ -335,7 +335,7 @@ def rows_by_core(model, first, last):
     return held
 
 
-def resupply_one(slot, held, verbose=True):
+def resupply_one(model, slot, held, verbose=True):
     run = calibration.load_shared()["resupply"]
     core = calibration.FAVOURITE_ITEMS[str(slot)]
     pair = calibration.pair_slot(slot)
@@ -385,12 +385,34 @@ def resupply_one(slot, held, verbose=True):
     if bought < run["buy_min"]:
         print(f"  bought {bought} of the {run['buy_min']} wanted.")
 
+    landing = calibration.first_free_slot(calibration.CONVERT_INVENTORY_TAB,
+                                          verbose=False)
+    if landing is None:
+        raise NotReady(
+            f"inventory tab {calibration.CONVERT_INVENTORY_TAB} is full; the "
+            f"converted {core} would have nowhere to land.")
     print(f"  closing the Agent Shop to open the vendor")
     calibration.close_everything()
     convert.open_vendor(verbose=verbose)
     out = convert.convert(core, bought, verbose=verbose)
+
+    if not back_to_the_shop(verbose=verbose):
+        raise NotReady("the Agent Shop would not reopen after the vendor.")
+    register_tab(verbose=verbose)
+    unit_floor, floor_pair = calibration.price_floor(core)
+    floor = 0 if unit_floor is None else unit_floor
+    lands_in = min(model.empty() or [1])
+    print(f"  listing {out['converted']} {core} from tab "
+          f"{calibration.CONVERT_INVENTORY_TAB} slot {landing}")
+    listed = model.list_slot(*landing, floor=floor,
+                             why=f"a {floor_pair} costs {unit_floor:,}"
+                             if unit_floor else "",
+                             verbose=verbose, lands_in=lands_in)
+    model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
+                                           price=listed["price"])
     return {"slot": slot, "core": core, "set": set_name, "diff": diff,
-            "bought": bought, "converted": out["converted"]}
+            "bought": bought, "converted": out["converted"],
+            "listed": listed["qty"], "row": lands_in}
 
 
 def back_to_the_shop(verbose=True):
@@ -435,17 +457,13 @@ def resupply_pass(model, first, last, verbose=True):
     for slot in short:
         war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
         try:
-            out = resupply_one(slot, held[slot], verbose=verbose)
+            out = resupply_one(model, slot, held[slot], verbose=verbose)
         except (convert.Refused, buy.Refused, NotReady) as exc:
             print(f"  resupply of "
                   f"{calibration.FAVOURITE_ITEMS[str(slot)]!r} stopped: {exc}")
             out = None
         if out:
             done.append(out)
-    if not back_to_the_shop(verbose=verbose):
-        raise NotReady(
-            "the Agent Shop would not reopen after resupplying, so there is "
-            "nothing to relist into.")
     return done
 
 
