@@ -1,4 +1,11 @@
 {
+  "resupply": {
+    "enabled": false,
+    "rows_threshold": 3,
+    "price_diff_threshold": 10000,
+    "buy_min": 250,
+    "max_orders": 10
+  },
   "run": {
     "relist_from": 1,
     "relist_to": 10,
@@ -30,12 +37,5 @@
     "shop_check_gap": 1.0,
     "field_settle": 0.15,
     "clear_gap": 0.02
-  },
-  "resupply": {
-    "enabled": false,
-    "rows_threshold": 3,
-    "price_diff_threshold": 10000,
-    "buy_min": 250,
-    "max_orders": 10
   }
 }
