@@ -86,6 +86,7 @@ DEFAULTS = {
         "dialog_buttons": [0.4688, 0.5296, 0.6641, 0.7085],
         "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
         "register_button_band": [0.41, 0.12, 0.48, 0.66],
+        "purchase_button_band": [0.41, 0.15, 0.48, 0.66],
         "trade_tabs_band": [0.0, 0.035, 0.24, 0.08],
         "register_panel": [0.0039, 0.0709, 0.1133, 0.7597],
     },
@@ -273,6 +274,7 @@ POPUP_F = tuple(_REG["popup"])
 DIALOG_BUTTONS_F = tuple(_REG["dialog_buttons"])
 REGISTER_TABLE_BAND_F = tuple(_REG["register_table_band"])
 REGISTER_BUTTON_BAND_F = _S["regions"]["register_button_band"]
+PURCHASE_BUTTON_BAND_F = _S["regions"]["purchase_button_band"]
 TRADE_TABS_BAND_F = _S["regions"]["trade_tabs_band"]
 REGISTER_PANEL_F = _S["regions"]["register_panel"]
 PANEL_FIELD_INSET = _S["detect"]["panel_field_inset"]
@@ -858,10 +860,11 @@ def calibrate_purchase(shop, verbose=True):
     park()
     deadline = time.monotonic() + SEARCH_TIMEOUT
     table_band = _box(PURCHASE_TABLE_BAND_F)
+    button_band = _box(PURCHASE_BUTTON_BAND_F)
     image, seen = None, []
     while time.monotonic() < deadline:
         image = grab()
-        seen = ocr(image, table_band)
+        seen = ocr(image, button_band)
         if [1 for t, _, _ in seen if t.strip().lower() == "buy"]:
             break
         time.sleep(POLL_GAP)
@@ -875,7 +878,7 @@ def calibrate_purchase(shop, verbose=True):
     buys = [p for t, c, p in seen if t.strip().lower() == "buy"]
     if len(buys) < 2:
         raise RuntimeError(
-            f"found {len(buys)} Buy button(s) in {table_band}; need at least "
+            f"found {len(buys)} Buy button(s) in {button_band}; need at least "
             f"two to measure the row pitch. Did favourite 1 return offers?")
 
     xs = sorted(p[0] for p in buys)
