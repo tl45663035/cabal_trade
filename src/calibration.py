@@ -872,61 +872,87 @@ def calibrate_register_table(shop, verbose=True):
     return out
 
 
-ACTION_BUTTON_WORDS = ("Confirmation", "Cancel", "Receive")
+ACTION_BUTTON_WORDS = ("Confirmation", "Cancel", "Receive", "Register")
 
 
 def calibrate_actions(shop, verbose=True):
-    from open_inventory import VK_ESCAPE, press
     say = print if verbose else (lambda *a: None)
-    gap = load_shared()["timing"]["action_gap"]
+    timing = load_shared()["timing"]
+    gap, budget = timing["action_gap"], timing["dialog_timeout"]
     dialog = _box(DIALOG_BUTTONS_F)
     min_x = load_shared()["detect"]["dialog_button_min_x"]
+    learned = {}
 
-    def buttons_on_screen():
+    def buttons_now():
         found = {}
-        for text, conf, point in ocr(grab(), dialog):
+        for text, _conf, point in ocr(grab(), dialog):
             key = text.strip().lower()
             for word in ACTION_BUTTON_WORDS:
                 if key == word.lower() and point[0] >= min_x:
-                    found[word] = [int(point[0]), int(point[1])]
+                    found[word] = (int(point[0]), int(point[1]))
         return found
 
-    if buttons_on_screen():
-        say("  a dialog is already open over the table; not opening another.")
+    def await_button(word):
+        deadline = time.monotonic() + budget
+        while time.monotonic() < deadline:
+            here = buttons_now()
+            for name, point in here.items():
+                learned[f"button_{name.lower()}"] = list(point)
+            if word in here:
+                return here[word]
+        return None
+
+    if buttons_now():
+        raise RuntimeError(
+            "a dialog is already open over the Register table. Close it and "
+            "calibrate again; nothing was clicked.")
+
+    half = shop["row_pitch"] // 2
+    row_one = (shop["table_x"][0], shop["row_one_y"] - half,
+               shop["table_x"][1], shop["row_one_y"] + half)
+    before = read_line(grab(), row_one)
+    if "change" not in before.lower():
+        say(f"  row 1 reads {before[:48]!r} and has no Change button; the "
+            f"cancel path cannot be walked. Earlier positions stand.")
         return {}
 
     change = (shop["button_x"], shop["row_one_y"])
-    say(f"  opening the row 1 panel at {change} to see its buttons")
+    say(f"  row 1 is {before[:48]!r}")
+    say(f"  Change at {change}")
     click(*change)
     park()
 
-    seen = {}
-    deadline = time.monotonic() + load_shared()["timing"]["dialog_timeout"]
-    while time.monotonic() < deadline:
-        seen = buttons_on_screen()
-        if seen:
-            break
-
-    for _ in range(3):
-        if not buttons_on_screen():
-            break
-        press(VK_ESCAPE)
-        time.sleep(gap)
-        park()
-    still = buttons_on_screen()
-    if still:
+    cancel = await_button("Cancel")
+    if cancel is None:
         raise RuntimeError(
-            f"the row 1 panel would not close with Escape and its buttons are "
-            f"still on screen at {still}. Neither of them was clicked, so "
-            f"nothing was withdrawn or registered -- close it by hand.")
+            "no Cancel button appeared after Change on row 1. Nothing has "
+            "been withdrawn.")
+    say(f"  Cancel at {cancel}")
+    click(*cancel)
+    park()
 
-    out = {f"button_{w.lower()}": p for w, p in seen.items()}
-    if out:
-        say(f"  learned {', '.join(sorted(out))}")
+    confirm = await_button("Confirmation")
+    if confirm is None:
+        raise RuntimeError(
+            "no Confirmation button appeared after Cancel on row 1. The "
+            "dialog is open and nothing is committed -- close it by hand.")
+    say(f"  Confirmation at {confirm}")
+    click(*confirm)
+    park()
+
+    deadline = time.monotonic() + budget
+    while time.monotonic() < deadline:
+        if not buttons_now():
+            break
     else:
-        say("  the panel showed no buttons to learn; the earlier positions "
-            "stand.")
-    return out
+        raise RuntimeError(
+            "the dialog stayed open after Confirmation on row 1. Whether the "
+            "cancel committed is unknown -- check the shop by hand.")
+
+    after = read_line(grab(), row_one)
+    say(f"  row 1 now reads {after[:48]!r}")
+    say(f"  learned {', '.join(sorted(learned))}")
+    return learned
 
 
 def main(close: bool = True) -> None:
