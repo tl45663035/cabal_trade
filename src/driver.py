@@ -32,12 +32,7 @@ def initialise(verbose=True):
     cal = calibration.load(force=True)
     if verbose:
         print(f"  calibrated for {cal['resolution']}, measured "
-              f"{cal.get('measured_at')}")
-    if not calibration._trade_window_open():
-        if verbose:
-            print("  opening the Agent Shop")
-        shop.open_agent_shop(verbose=verbose)
-        time.sleep(TAB_SETTLE)
+              f"{cal.get('measured_at')}, shop open")
     return cal
 
 
