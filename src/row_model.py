@@ -611,7 +611,8 @@ class RowModel:
                   f"{result['lands_in_tab']} slot {result['lands_in_slot']}")
         return result
 
-    def list_slot(self, row, col, price=None, floor=0, why="", verbose=True):
+    def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
+                  lands_in=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -675,16 +676,20 @@ class RowModel:
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
                 f"listing committed is unknown -- check the shop by hand.")
+        where = "row 1"
+        if lands_in is not None:
+            self.scroll_to(int(lands_in), verbose=False)
+            where = f"row {int(lands_in)}"
         landed = read_row_one()
         digits = [int(re.sub(r"[^\d]", "", m))
                   for m in re.findall(r"\d[\d,]*", landed)]
         if want not in digits:
             raise Divergence(
-                f"the listing went through but row 1 reads {landed!r}, which "
-                f"does not show {want:,}. Check the shop by hand -- something "
-                f"is on the board at a price nobody chose.")
+                f"the listing went through but {where} reads {landed!r}, "
+                f"which does not show {want:,}. A relist lands in the lowest "
+                f"empty row; check the shop by hand.")
         if verbose:
-            print(f"  listed {held[1]} at {want:,}; row 1 confirms it")
+            print(f"  listed {held[1]} at {want:,}; {where} confirms it")
         return {"slot": (int(row), int(col)), "qty": held[1], "price": want}
 
     def collect(self, index, remaining=0):

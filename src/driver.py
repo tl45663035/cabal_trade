@@ -184,6 +184,10 @@ def relist_one(model, index, verbose=True):
         print(f"  row {index}: {row.name!r} x{row.qty} at {row.price:,} "
               f"-> tab {row_model.WORK_TAB} slot {landing}")
     model._slots[index] = row
+    lands_in = min([i for i in model.empty() if i < index] + [index])
+    if verbose and lands_in != index:
+        print(f"    rows {[i for i in model.empty() if i < index]} are empty, "
+              f"so it will come back in row {lands_in}")
     model.cancel(index, verbose=False, tab_ready=True)
     calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
     unit_floor, pair = calibration.price_floor(row.name)
@@ -199,7 +203,8 @@ def relist_one(model, index, verbose=True):
         why = f"a {pair} costs {unit_floor:,}"
         if pack > 1:
             why += f", and this listing carries {pack}"
-    out = model.list_slot(*landing, floor=floor, why=why, verbose=verbose)
+    out = model.list_slot(*landing, floor=floor, why=why, verbose=verbose,
+                          lands_in=lands_in)
     if verbose:
         print(f"    relisted {out['qty']} at {out['price']:,}")
     return out
