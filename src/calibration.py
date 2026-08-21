@@ -26,6 +26,12 @@ DEFAULTS = {
         "home_notches": 30,
         "for_minutes": 60,
     },
+    "resupply": {
+        "rows_threshold": 3,
+        "price_diff_threshold": 10_000,
+        "buy_min": 250,
+        "max_orders": 10,
+    },
     "debug": {
         "frames": False,
         "keep_frames": 2000,
@@ -308,6 +314,9 @@ ALZ_SEARCH_F = tuple(_REG["alz_search"])
 TOP_STRIP_F = tuple(_REG["top_strip"])
 TAB_BAND_F = tuple(_REG["tab_band"])
 FAV_BAND_F = tuple(_REG["fav_band"])
+VENDOR_TITLE_BAND_F = tuple(_REG["vendor_title_band"])
+VENDOR_TAB_BAND_F = tuple(_REG["vendor_tab_band"])
+CONVERT_GRID_BAND_F = tuple(_REG["convert_grid_band"])
 BOUNDARY_WINDOW_F = tuple(_REG["boundary_window"])
 SLOT_PITCH_F = tuple(_REG["slot_pitch"])
 PURCHASE_SORT_BAND_F = tuple(_REG["purchase_sort_band"])
@@ -374,6 +383,8 @@ FIT_PITCH_STEP = _DET["fit_pitch_step"]
 FIT_START_STEP = _DET["fit_start_step"]
 FAV_PEAK_CUT = _DET["fav_peak_cut"]
 FAV_MERGE_GAP = _DET["fav_merge_gap"]
+CONVERT_PEAK_CUT = _DET["convert_peak_cut"]
+CONVERT_MERGE_GAP = _DET["convert_merge_gap"]
 FAV_PITCH_SPREAD = _DET["fav_pitch_spread"]
 SORT_PAD_LEFT = _DET["sort_pad_left"]
 SORT_PAD_RIGHT = _DET["sort_pad_right"]
@@ -381,6 +392,11 @@ SORT_PAD_Y = _DET["sort_pad_y"]
 SCROLL_POINT_INSET = _DET["scroll_point_inset"]
 OCR_TIMEOUT = _OCR["timeout"]
 FAVOURITE_COUNT = _S["game_facts"]["favourite_count"]
+CONVERT_GRADES = _S["game_facts"]["convert_grades"]
+CONVERT_ROW_COUNT = _S["game_facts"]["convert_rows"]
+CONVERT_SET_TO_CORE_ROWS = _S["game_facts"]["convert_set_to_core_rows"]
+CONVERT_TAB = _S["game_facts"]["convert_tab"]
+CONVERT_INVENTORY_TAB = _S["game_facts"]["convert_inventory_tab"]
 
 GRID = _S["game_facts"]["grid_size"]
 ACTION_GAP = _S["timing"]["action_gap"]
@@ -517,6 +533,34 @@ def ctrl_click(x: int, y: int, settle: float = None) -> None:
                           ctypes.sizeof(_Input))
     time.sleep(gap)
     snap(f"ctrlclick_{x}_{y}")
+
+
+def alt_click(x: int, y: int, settle: float = None) -> None:
+    from open_inventory import _user32, _Input, _event
+    shared = load_shared()
+    keys, timing = shared["input"], shared["timing"]
+    vk = keys["VK_MENU"]
+    gap = timing["action_gap"] if settle is None else settle
+
+    _user32.SetCursorPos(int(x), int(y))
+    time.sleep(HOVER_SETTLE)
+    _user32.SendInput(1, ctypes.byref(_event(vk, up=False)),
+                      ctypes.sizeof(_Input))
+    try:
+        time.sleep(MODIFIER_SETTLE)
+        _user32.SendInput(1, ctypes.byref(_mouse_event(
+            keys["MOUSEEVENTF_LEFTDOWN"])), ctypes.sizeof(_Input))
+        try:
+            time.sleep(CLICK_HOLD)
+        finally:
+            _user32.SendInput(1, ctypes.byref(_mouse_event(
+                keys["MOUSEEVENTF_LEFTUP"])), ctypes.sizeof(_Input))
+        time.sleep(MODIFIER_SETTLE)
+    finally:
+        _user32.SendInput(1, ctypes.byref(_event(vk, up=True)),
+                          ctypes.sizeof(_Input))
+    time.sleep(gap)
+    snap(f"altclick_{x}_{y}")
 
 
 def type_number(value: int, clear: int) -> None:
@@ -1224,6 +1268,126 @@ def price_floor(name):
     if floor < MIN_PLAUSIBLE_PRICE:
         return None, FAVOURITE_ITEMS[str(pair)]
     return floor, FAVOURITE_ITEMS[str(pair)]
+
+
+def _peaks(profile, cut_at, merge_gap):
+    floor, ceiling = profile.min(), profile.max()
+    cut = floor + (ceiling - floor) * cut_at
+    peaks, run = [], []
+    for i, v in enumerate(profile):
+        if v >= cut:
+            run.append(i)
+        elif run:
+            peaks.append(max(run, key=lambda j: profile[j]))
+            run = []
+    if run:
+        peaks.append(max(run, key=lambda j: profile[j]))
+    merged = []
+    for i in peaks:
+        if merged and i - merged[-1] < merge_gap:
+            if profile[i] > profile[merged[-1]]:
+                merged[-1] = i
+        else:
+            merged.append(i)
+    return merged
+
+
+def vendor_open(image=None) -> bool:
+    image = image if image is not None else grab()
+    try:
+        words = {t.strip().lower()
+                 for t, _c, _p in ocr(image, _box(VENDOR_TITLE_BAND_F))}
+    except Exception:
+        return False
+    return {"shop", "normal", "repurchase"} <= words
+
+
+def await_vendor(timeout=None, verbose=False):
+    from open_inventory import press
+    keys = load_shared()["input"]
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    for attempt in (1, 2):
+        while time.monotonic() < deadline:
+            if vendor_open():
+                return True
+            time.sleep(POLL_GAP)
+        if verbose:
+            print(f"  the vendor Shop is not open; pressing N "
+                  f"(attempt {attempt})")
+        press(keys["VK_N"])
+        snap("press_N")
+        deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                       else timeout)
+    return False
+
+
+def vendor_tab_point(name, image=None):
+    image = image if image is not None else grab()
+    want = re.sub(r"[^a-z]", "", name.lower())
+    for text, _c, point in ocr(image, _box(VENDOR_TAB_BAND_F)):
+        if re.sub(r"[^a-z]", "", text.lower()) == want:
+            return point
+    return None
+
+
+def calibrate_convert(verbose=True):
+    say = print if verbose else (lambda *a: None)
+    if _trade_window_open():
+        raise RuntimeError(
+            "the Agent Shop is open. The vendor will not open on top of it, "
+            "so the conversion grid cannot be measured. Nothing written.")
+    if not await_vendor(verbose=verbose):
+        raise RuntimeError(
+            "the vendor Shop did not open on N, so the conversion grid "
+            "cannot be measured. Nothing written.")
+
+    tab = vendor_tab_point(CONVERT_TAB)
+    if tab is None:
+        raise RuntimeError(
+            f"the {CONVERT_TAB} tab was not found in the vendor tab band "
+            f"{_box(VENDOR_TAB_BAND_F)}. Nothing written.")
+    say(f"  {CONVERT_TAB} tab at {tab}")
+    click(*tab)
+    time.sleep(TAB_SETTLE)
+    park()
+
+    image = grab()
+    band = _box(CONVERT_GRID_BAND_F)
+    grid = np.asarray(image.crop(band).convert("L"), dtype=float)
+    cols = _peaks(grid.mean(axis=0), CONVERT_PEAK_CUT, CONVERT_MERGE_GAP)
+    rows = _peaks(grid.mean(axis=1), CONVERT_PEAK_CUT, CONVERT_MERGE_GAP)
+    xs = [band[0] + i for i in cols]
+    ys = [band[1] + i for i in rows]
+    say(f"  grid band {band}: {len(xs)} column(s) at {xs}, "
+        f"{len(ys)} row(s) at {ys}")
+    if len(xs) != len(CONVERT_GRADES):
+        raise RuntimeError(
+            f"expected {len(CONVERT_GRADES)} conversion columns, one a grade, "
+            f"and found {len(xs)} at {xs}. Nothing written.")
+    if len(ys) != CONVERT_ROW_COUNT:
+        raise RuntimeError(
+            f"expected {CONVERT_ROW_COUNT} conversion rows and found "
+            f"{len(ys)} at {ys}. Nothing written.")
+
+    cells, pairs = {}, {}
+    for r, y in enumerate(ys, start=1):
+        for col, x in enumerate(xs, start=1):
+            cells[f"{r}x{col}"] = [int(x), int(y)]
+    for row_key, family in CONVERT_SET_TO_CORE_ROWS.items():
+        r = int(row_key)
+        for col, grade in enumerate(CONVERT_GRADES, start=1):
+            core = (f"{family} Core ({grade})" if grade == "Ultimate"
+                    else f"{family} Core({grade})")
+            pairs[core] = {"cell": f"{r}x{col}",
+                           "point": cells[f"{r}x{col}"],
+                           "costs": f"{family} Core Set ({grade})"}
+            say(f"    {core:<28} <- {pairs[core]['costs']:<30} "
+                f"r{r}c{col} at {tuple(cells[f'{r}x{col}'])}")
+    snap("convert_grid")
+    return {"tab": CONVERT_TAB, "tab_point": list(tab),
+            "cells": cells, "set_to_core": pairs,
+            "columns": [int(v) for v in xs], "rows": [int(v) for v in ys]}
 
 
 def calibrate_prices(verbose=True):

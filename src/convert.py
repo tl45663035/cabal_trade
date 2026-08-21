@@ -1,0 +1,170 @@
+import re
+import time
+
+import calibration
+import row_model
+
+_SHARED = calibration.load_shared()
+_TEXT = _SHARED["text"]
+CONFIRM_WORD = _TEXT["convert_confirm_word"]
+CANCEL_WORD = _TEXT["convert_cancel_word"]
+TAB_SETTLE = _SHARED["timing"]["tab_settle"]
+ACTION_GAP = _SHARED["timing"]["action_gap"]
+POLL_GAP = _SHARED["timing"]["poll_gap"]
+DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
+CLEAR_PRESSES_QTY = _SHARED["detect"]["clear_presses_qty"]
+INVENTORY_TAB = calibration.CONVERT_INVENTORY_TAB
+
+
+class Refused(Exception):
+    pass
+
+
+def _convert_cal():
+    block = calibration.load().get("convert")
+    if not block:
+        raise Refused(
+            "the conversion grid has not been measured. Run "
+            "py src/calibration.py with the Agent Shop shut so the vendor "
+            "can be opened.")
+    return block
+
+
+def cell_for(core_name):
+    pairs = _convert_cal()["set_to_core"]
+    want = re.sub(r"[^a-z0-9]", "", (core_name or "").lower())
+    for core, entry in pairs.items():
+        if re.sub(r"[^a-z0-9]", "", core.lower()) == want:
+            return entry
+    return None
+
+
+def open_vendor(verbose=True):
+    if calibration._trade_window_open():
+        raise Refused(
+            "the Agent Shop is open and the vendor will not open on top of "
+            "it. Nothing pressed.")
+    if not calibration.await_vendor(verbose=verbose):
+        raise Refused("the vendor Shop did not open on N.")
+    tab = _convert_cal()
+    showing = calibration.vendor_tab_point(tab["tab"])
+    calibration.click(*(showing or tab["tab_point"]))
+    time.sleep(TAB_SETTLE)
+    calibration.park()
+    if not calibration.vendor_open():
+        raise Refused("the vendor Shop closed while selecting its tab.")
+    return True
+
+
+def dialog_open(image=None):
+    image = image if image is not None else calibration.grab()
+    box = calibration._box(tuple(calibration._REG["convert_dialog_buttons"]))
+    words = {re.sub(r"[^a-z]", "", t.lower())
+             for t, _c, _p in calibration.ocr(image, box)}
+    return re.sub(r"[^a-z]", "", CONFIRM_WORD.lower()) in words
+
+
+def dialog_button(word, image=None):
+    image = image if image is not None else calibration.grab()
+    box = calibration._box(tuple(calibration._REG["convert_dialog_buttons"]))
+    want = re.sub(r"[^a-z]", "", word.lower())
+    for text, _c, point in calibration.ocr(image, box):
+        if re.sub(r"[^a-z]", "", text.lower()) == want:
+            return point
+    return None
+
+
+def await_dialog(timeout=None):
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    while time.monotonic() < deadline:
+        if dialog_open():
+            return True
+        time.sleep(POLL_GAP)
+    return False
+
+
+def dialog_details(image=None):
+    image = image if image is not None else calibration.grab()
+    reg = calibration._REG
+    read = lambda key: calibration.read_line(
+        image, calibration._box(tuple(reg[key])))
+    return {"item": read("convert_dialog_item"),
+            "price": read("convert_dialog_price"),
+            "qty": calibration.read_money(
+                image, calibration._box(tuple(reg["convert_dialog_qty"]))),
+            "qty_max": calibration.read_money(
+                image, calibration._box(tuple(reg["convert_dialog_qty_max"])))}
+
+
+def _cancel(why):
+    point = dialog_button(CANCEL_WORD)
+    if point is not None:
+        calibration.click(*point)
+        time.sleep(ACTION_GAP)
+    if dialog_open():
+        from open_inventory import press
+        press(calibration.load_shared()["input"]["VK_ESCAPE"])
+        time.sleep(ACTION_GAP)
+    calibration.park()
+    raise Refused(why)
+
+
+def convert(core_name, quantity, verbose=True):
+    say = print if verbose else (lambda *a: None)
+    entry = cell_for(core_name)
+    if entry is None:
+        raise Refused(
+            f"{core_name!r} is not a Set-to-Core conversion this grid offers. "
+            f"It offers {sorted(_convert_cal()['set_to_core'])}.")
+    if not calibration.vendor_open():
+        raise Refused("the vendor Shop is not open. Nothing clicked.")
+
+    calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB))
+    time.sleep(TAB_SETTLE)
+
+    x, y = entry["point"]
+    say(f"  {entry['cell']} at ({x}, {y}): {entry['costs']} -> {core_name}")
+    calibration.alt_click(x, y)
+    if not await_dialog():
+        raise Refused(
+            "no Purchase Item dialog appeared after Alt+click. Nothing was "
+            "confirmed. A plain click here buys immediately and must never "
+            "be used instead.")
+
+    detail = dialog_details()
+    say(f"    dialog: item {detail['item']!r}  qty {detail['qty']} of "
+        f"{detail['qty_max']}  price {detail['price']!r}")
+    want = re.sub(r"[^a-z0-9]", "", core_name.lower())
+    seen = re.sub(r"[^a-z0-9]", "", (detail["item"] or "").lower())
+    if want not in seen:
+        _cancel(f"the dialog offers {detail['item']!r}, not {core_name!r}. "
+                f"Cancelled without converting.")
+    if not detail["qty_max"]:
+        _cancel(f"the dialog offers a maximum of {detail['qty_max']} "
+                f"{entry['costs']} to convert. Cancelled.")
+
+    asked = min(int(quantity), int(detail["qty_max"]))
+    calibration.click(
+        *calibration._point(tuple(calibration._REG["convert_dialog_qty"])[:2]))
+    row_model.type_number(asked, CLEAR_PRESSES_QTY)
+    calibration.park()
+
+    again = dialog_details()
+    if again["qty"] != asked:
+        _cancel(f"the dialog reads {again['qty']} after typing {asked}. "
+                f"Cancelled without converting.")
+
+    point = dialog_button(CONFIRM_WORD)
+    if point is None:
+        _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
+    calibration.click(*point)
+    time.sleep(ACTION_GAP)
+    calibration.park()
+    if dialog_open():
+        raise Refused(
+            f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
+            f"conversion happened is unknown -- look before running again.")
+    say(f"    converted {asked} {entry['costs']} into {core_name}")
+    return {"core": core_name, "costs": entry["costs"], "converted": asked,
+            "cell": entry["cell"]}

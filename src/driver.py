@@ -2,7 +2,9 @@ import re
 import sys
 import time
 
+import buy
 import calibration
+import convert
 import get_alz
 import get_price
 import row_model
@@ -277,6 +279,110 @@ def do_cancel(index, verbose=True):
     return out
 
 
+def core_slots():
+    return [int(slot) for slot in sorted(calibration.FAVOURITE_ITEMS, key=int)
+            if calibration.pair_slot(int(slot)) is not None
+            and "set" not in calibration.FAVOURITE_ITEMS[slot].lower()]
+
+
+def rows_by_core(model, first, last):
+    held = {slot: 0 for slot in core_slots()}
+    for index, row in (model._slots or {}).items():
+        if row is None or not first <= index <= last:
+            continue
+        slot = calibration.favourite_slot_of(row.name)
+        if slot in held:
+            held[slot] += 1
+    return held
+
+
+def resupply_one(slot, held, verbose=True):
+    run = calibration.load_shared()["resupply"]
+    core = calibration.FAVOURITE_ITEMS[str(slot)]
+    pair = calibration.pair_slot(slot)
+    set_name = calibration.FAVOURITE_ITEMS[str(pair)]
+    print("")
+    print(f"-- {core}: {held} row(s), threshold {run['rows_threshold']} --")
+
+    core_row = get_price.get_price(slot, verbose=False)
+    set_row = get_price.get_price(pair, verbose=False)
+    if core_row is None or set_row is None:
+        print(f"  {core if core_row is None else set_name} would not price; "
+              f"not buying blind.")
+        return None
+    diff = core_row["unit_price"] - set_row["unit_price"]
+    print(f"  {core} {core_row['unit_price']:,} - {set_name} "
+          f"{set_row['unit_price']:,} = {diff:,} "
+          f"(threshold {run['price_diff_threshold']:,})")
+    if diff <= run["price_diff_threshold"]:
+        print(f"  the gap does not clear the threshold; not buying.")
+        return None
+
+    calibration.click(*calibration.inventory_tab_point(
+        calibration.CONVERT_INVENTORY_TAB))
+    time.sleep(row_model.TAB_SETTLE)
+
+    bought = 0
+    for order in range(1, run["max_orders"] + 1):
+        if bought >= run["buy_min"]:
+            break
+        print(f"  buy {order}/{run['max_orders']}: {bought}/{run['buy_min']} "
+              f"{set_name} held")
+        try:
+            got = buy.buy_row_one(pair, run["buy_min"] - bought,
+                                  verbose=verbose)
+        except buy.Refused as exc:
+            print(f"  stopping: {exc}")
+            break
+        bought += got["bought"]
+    if bought <= 0:
+        print(f"  nothing bought; not opening the vendor.")
+        return None
+    if bought < run["buy_min"]:
+        print(f"  bought {bought} of the {run['buy_min']} wanted.")
+
+    print(f"  closing the Agent Shop to open the vendor")
+    calibration.close_everything()
+    convert.open_vendor(verbose=verbose)
+    out = convert.convert(core, bought, verbose=verbose)
+    return {"slot": slot, "core": core, "set": set_name, "diff": diff,
+            "bought": bought, "converted": out["converted"]}
+
+
+def do_resupply(first=None, last=None, verbose=True):
+    shared = calibration.load_shared()
+    run, rows = shared["resupply"], shared["run"]
+    first = rows["relist_from"] if first is None else int(first)
+    last = rows["relist_to"] if last is None else int(last)
+    initialise(verbose=verbose)
+    model = seed(verbose=verbose)
+    held = rows_by_core(model, first, last)
+    print("")
+    print(f"  counting only rows {first}-{last}; rows outside it are not "
+          f"repriced and do not count")
+    print(f"  {'core':<30}{'rows':>6}   short of {run['rows_threshold']}")
+    for slot, count in sorted(held.items()):
+        core = calibration.FAVOURITE_ITEMS[str(slot)]
+        mark = ""
+        if count < run["rows_threshold"]:
+            mark = "YES" if convert.cell_for(core) else "not convertible"
+        print(f"  {core:<30}{count:>6}   {mark}")
+    short = [slot for slot, count in sorted(held.items())
+             if count < run["rows_threshold"]
+             and convert.cell_for(calibration.FAVOURITE_ITEMS[str(slot)])]
+    if not short:
+        print("")
+        print(f"  nothing inside rows {first}-{last} is both short of "
+              f"{run['rows_threshold']} row(s) and convertible.")
+        return []
+    done = []
+    for slot in short:
+        out = resupply_one(slot, held[slot], verbose=verbose)
+        if out:
+            done.append(out)
+    return done
+
+
 def do_scan(verbose=True):
     initialise(verbose=verbose)
     print(f"  balance {balance() or 'unreadable'}")
@@ -297,6 +403,9 @@ def usage():
     print("                                   if no range is given")
     print("  py src/driver.py list R C [PRICE] list inventory slot (R,C); the")
     print("                                   panel's own suggestion if no PRICE")
+    print("  py src/driver.py resupply        buy Sets for any core short of")
+    print("                                   rows and convert them; the")
+    print("                                   resupply block in config.json")
     print("  py src/driver.py row N           read row N without touching it")
     print("  py src/driver.py price N         market price for favourite slot N")
     print("  py src/driver.py alz             read the balance")
@@ -323,6 +432,9 @@ def main():
         initialise()
         register_tab()
         row_at(row_model.RowModel().seed({}), int(args[1]))
+    elif what == "resupply":
+        do_resupply(args[1] if len(args) > 1 else None,
+                    args[2] if len(args) > 2 else None)
     elif what == "price" and len(args) > 1:
         initialise()
         market(int(args[1]))

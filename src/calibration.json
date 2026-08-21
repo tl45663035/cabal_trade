@@ -28,7 +28,8 @@
     "VK_7": 55,
     "VK_8": 56,
     "VK_9": 57,
-    "VK_BACK": 8
+    "VK_BACK": 8,
+    "VK_N": 78
   },
   "game": {
     "title_hint": "PlayCabal"
@@ -160,6 +161,102 @@
       0.0709,
       0.1133,
       0.7597
+    ],
+    "vendor_title_band": [
+      0.0,
+      0.095,
+      0.24,
+      0.175
+    ],
+    "vendor_tab_band": [
+      0.0,
+      0.095,
+      0.3,
+      0.14
+    ],
+    "convert_grid_band": [
+      0.085,
+      0.74,
+      0.215,
+      0.93
+    ],
+    "convert_dialog": [
+      0.3809,
+      0.3265,
+      0.6133,
+      0.6735
+    ],
+    "convert_dialog_item": [
+      0.3906,
+      0.3762,
+      0.5547,
+      0.4039
+    ],
+    "convert_dialog_price": [
+      0.4531,
+      0.458,
+      0.5938,
+      0.4887
+    ],
+    "convert_dialog_qty": [
+      0.4543,
+      0.4156,
+      0.4891,
+      0.4434
+    ],
+    "convert_dialog_qty_max": [
+      0.4953,
+      0.4171,
+      0.5227,
+      0.4419
+    ],
+    "convert_dialog_buttons": [
+      0.4492,
+      0.626,
+      0.6094,
+      0.6698
+    ],
+    "buy_dialog": [
+      0.2734,
+      0.2754,
+      0.6641,
+      0.6771
+    ],
+    "buy_dialog_item": [
+      0.4023,
+      0.4215,
+      0.5195,
+      0.4543
+    ],
+    "buy_dialog_qty": [
+      0.45,
+      0.4711,
+      0.4758,
+      0.496
+    ],
+    "buy_dialog_qty_max": [
+      0.4746,
+      0.469,
+      0.5062,
+      0.4982
+    ],
+    "buy_dialog_price": [
+      0.4492,
+      0.5033,
+      0.5391,
+      0.5369
+    ],
+    "buy_dialog_buttons": [
+      0.4648,
+      0.5895,
+      0.6133,
+      0.626
+    ],
+    "inventory_full_band": [
+      0.1953,
+      0.0526,
+      0.4824,
+      0.0745
     ]
   },
   "detect": {
@@ -218,7 +315,10 @@
     "panel_moved_slack": 30,
     "sort_list_heights": 6,
     "clear_presses_qty": 3,
-    "clear_presses_price": 16
+    "clear_presses_price": 16,
+    "convert_peak_cut": 0.55,
+    "convert_merge_gap": 20,
+    "purchase_row_select_x": 500
   },
   "text": {
     "empty_row": "premiumexclusiveslot",
@@ -230,7 +330,13 @@
     "confirm_word": "Confirmation",
     "receipt_word": "Receive",
     "register_word": "Register",
-    "status_complete": "Complete"
+    "status_complete": "Complete",
+    "vendor_tab_words": "shop|normal|dungeon|repurchase",
+    "convert_confirm_word": "OK",
+    "convert_cancel_word": "Cancel",
+    "buy_confirm_word": "Buy",
+    "buy_cancel_word": "Cancel",
+    "buy_dialog_marker": "Purchase"
   },
   "game_facts": {
     "favourite_count": 10,
@@ -242,7 +348,21 @@
     ],
     "work_tab": 4,
     "shop_capacity": 30,
-    "shop_visible": 10
+    "shop_visible": 10,
+    "convert_grades": [
+      "Low",
+      "Medium",
+      "High",
+      "Highest",
+      "Ultimate"
+    ],
+    "convert_rows": 4,
+    "convert_set_to_core_rows": {
+      "2": "Force",
+      "4": "Upgrade"
+    },
+    "convert_tab": "Dungeon",
+    "convert_inventory_tab": 4
   },
   "by_resolution": {
     "2560x1440": {
