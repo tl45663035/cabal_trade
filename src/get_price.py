@@ -9,6 +9,7 @@ import row_model
 
 _SHARED = calibration.load_shared()
 ACTION_GAP = _SHARED["timing"]["action_gap"]
+POLL_GAP = _SHARED["timing"]["poll_gap"]
 TAB_SETTLE = _SHARED["timing"]["tab_settle"]
 SEARCH_TIMEOUT = _SHARED["timing"]["search_timeout"]
 RETRY_GAP = _SHARED["timing"]["retry_gap"]
@@ -215,7 +216,6 @@ def get_price(slot, verbose=True):
         shop.click(x, y)
         deadline = time.monotonic() + SEARCH_TIMEOUT
         while time.monotonic() < deadline:
-            time.sleep(ACTION_GAP)
             image = calibration.grab()
             text = row_name(image)
             if text == before or not name_matches(slot, text):
@@ -223,11 +223,12 @@ def get_price(slot, verbose=True):
             row = parse_fields(read_fields(image))
             if row is not None:
                 break
+            time.sleep(POLL_GAP)
         if row is not None:
             break
-        if verbose:
-            print(f"  attempt {attempt}/{RETRIES}: row 1 name reads {text!r}, "
-                  f"expected {want!r} - retrying in {RETRY_GAP}s")
+        print(f"  slot {slot}: attempt {attempt}/{RETRIES} timed out after "
+              f"{SEARCH_TIMEOUT:g}s; row 1 reads {text[:40]!r}, expected "
+              f"{want!r}")
         time.sleep(RETRY_GAP)
 
     if row is None:

@@ -1588,6 +1588,15 @@ def main(close: bool = True) -> None:
     prices = calibrate_prices()
 
     print("register panel:")
+    click(*shop["register_tab"])
+    park()
+    deadline = time.monotonic() + DIALOG_TIMEOUT
+    while purchase_tab_showing():
+        if time.monotonic() >= deadline:
+            raise RuntimeError(
+                "the Purchase tab is still showing after clicking Register, "
+                "so the register panel cannot be measured.")
+        time.sleep(POLL_GAP)
     shop["panel"] = calibrate_panel()
 
     print("actions:")
