@@ -29,6 +29,9 @@ DEFAULTS = {
         "action_gap": 0.5,
         "key_hold": 0.02,
         "key_gap": 0.05,
+        "hover_settle": 0.15,
+        "modifier_settle": 0.25,
+        "click_hold": 0.12,
         "focus_settle": 0.35,
         "wheel_gap": 0.12,
         "park_settle": 0.25,
@@ -312,6 +315,9 @@ PANEL_FIELD_HALF = _S["detect"]["panel_field_half"]
 PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
 TYPE_CLEAR_PRESSES = _S["detect"]["type_clear_presses"]
 KEY_GAP = _S["timing"]["key_gap"]
+HOVER_SETTLE = _S["timing"]["hover_settle"]
+MODIFIER_SETTLE = _S["timing"]["modifier_settle"]
+CLICK_HOLD = _S["timing"]["click_hold"]
 MIN_PLAUSIBLE_PRICE = _S["detect"]["min_plausible_price"]
 SLOT_HALF = _S["detect"]["slot_half"]
 SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
@@ -469,16 +475,28 @@ def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
 def ctrl_click(x: int, y: int, settle: float = None) -> None:
     from open_inventory import _user32, _Input, _event
     shared = load_shared()
-    vk = shared["input"]["VK_CONTROL"]
+    keys, timing = shared["input"], shared["timing"]
+    vk = keys["VK_CONTROL"]
+    gap = timing["action_gap"] if settle is None else settle
+
+    _user32.SetCursorPos(int(x), int(y))
+    time.sleep(HOVER_SETTLE)
     _user32.SendInput(1, ctypes.byref(_event(vk, up=False)),
                       ctypes.sizeof(_Input))
     try:
-        _button(shared["input"]["MOUSEEVENTF_LEFTDOWN"],
-                shared["input"]["MOUSEEVENTF_LEFTUP"], x, y,
-                shared["timing"]["action_gap"] if settle is None else settle)
+        time.sleep(MODIFIER_SETTLE)
+        _user32.SendInput(1, ctypes.byref(_mouse_event(
+            keys["MOUSEEVENTF_LEFTDOWN"])), ctypes.sizeof(_Input))
+        try:
+            time.sleep(CLICK_HOLD)
+        finally:
+            _user32.SendInput(1, ctypes.byref(_mouse_event(
+                keys["MOUSEEVENTF_LEFTUP"])), ctypes.sizeof(_Input))
+        time.sleep(MODIFIER_SETTLE)
     finally:
         _user32.SendInput(1, ctypes.byref(_event(vk, up=True)),
                           ctypes.sizeof(_Input))
+    time.sleep(gap)
     snap(f"ctrlclick_{x}_{y}")
 
 
@@ -1259,9 +1277,18 @@ def calibrate_actions(shop, verbose=True):
             break
         time.sleep(POLL_GAP)
     if not held[1]:
+        say(f"  nothing loaded on the first ctrl-click; trying once more")
+        ctrl_click(*slot)
+        deadline = time.monotonic() + budget
+        while time.monotonic() < deadline:
+            held = panel_qty(panel)
+            if held[1]:
+                break
+            time.sleep(POLL_GAP)
+    if not held[1]:
         raise RuntimeError(
-            f"nothing loaded from tab {WORK_TAB} slot {landing} after the "
-            f"withdrawal, so it cannot be listed back. The item is in the "
+            f"nothing loaded from tab {WORK_TAB} slot {landing} after two "
+            f"ctrl-clicks, so it cannot be listed back. The item is in the "
             f"bag; list it by hand.")
     price = panel_suggestion(panel)
     if price is None:

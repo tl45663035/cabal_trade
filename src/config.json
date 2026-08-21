@@ -6,10 +6,10 @@
   ],
   "run": {
     "relist_from": 1,
-    "relist_to": 22
+    "relist_to": 5
   },
   "debug": {
-    "frames": false,
+    "frames": true,
     "keep_frames": 2000
   },
   "timing": {
@@ -24,6 +24,9 @@
     "search_timeout": 8.0,
     "search_retries": 3,
     "dialog_timeout": 8.0,
-    "retry_gap": 1.0
+    "retry_gap": 1.0,
+    "hover_settle": 0.15,
+    "modifier_settle": 0.25,
+    "click_hold": 0.12
   }
 }
