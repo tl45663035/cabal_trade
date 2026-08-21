@@ -280,7 +280,7 @@ def usage():
     print("                                   if it has sold)")
     print("  py src/driver.py relist [N M [MIN]]  cancel and relist rows N-M,")
     print("                                   looping for MIN minutes;")
-    print("                                   the run block in calibration.json")
+    print("                                   the run block in config.json")
     print("                                   if no range is given")
     print("  py src/driver.py list R C [PRICE] list inventory slot (R,C); the")
     print("                                   panel's own suggestion if no PRICE")
