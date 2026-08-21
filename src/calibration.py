@@ -431,6 +431,34 @@ def step(label):
         _STEPS.append((label, (time.perf_counter() - started) * 1000))
 
 
+_PHASES = []
+
+
+@contextlib.contextmanager
+def phase(label):
+    started = time.perf_counter()
+    try:
+        yield
+    finally:
+        _PHASES.append((label, (time.perf_counter() - started) * 1000))
+
+
+def phases_reset():
+    _PHASES.clear()
+
+
+def phases_table(title):
+    total = sum(ms for _l, ms in _PHASES)
+    print("")
+    print(f"  {title}")
+    print(f"  {'#':>3}  {'ms':>9}  {'share':>6}  phase")
+    for i, (label, ms) in enumerate(_PHASES, start=1):
+        print(f"  {i:>3}  {ms:>9.1f}  {(ms / total * 100) if total else 0:>5.1f}%"
+              f"  {label}")
+    print(f"       {total:>9.1f}  100.0%  TOTAL")
+    return total
+
+
 def steps_reset():
     _STEPS.clear()
 

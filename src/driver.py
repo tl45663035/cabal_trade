@@ -343,8 +343,11 @@ def resupply_one(model, slot, held, verbose=True):
     print("")
     print(f"-- {core}: {held} row(s), threshold {run['rows_threshold']} --")
 
-    core_row = get_price.get_price(slot, verbose=False)
-    set_row = get_price.get_price(pair, verbose=False)
+    calibration.phases_reset()
+    with calibration.phase(f"price {core}"):
+        core_row = get_price.get_price(slot, verbose=False)
+    with calibration.phase(f"price {set_name}"):
+        set_row = get_price.get_price(pair, verbose=False)
     if core_row is None or set_row is None:
         print(f"  {core if core_row is None else set_name} would not price; "
               f"not buying blind.")
@@ -362,16 +365,20 @@ def resupply_one(model, slot, held, verbose=True):
         print(f"  the gap does not clear the threshold; not buying.")
         return None
 
-    calibration.click(*calibration.inventory_tab_point(
-        calibration.CONVERT_INVENTORY_TAB))
-    time.sleep(row_model.TAB_SETTLE)
+    with calibration.phase(f"select inventory tab "
+                           f"{calibration.CONVERT_INVENTORY_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(
+            calibration.CONVERT_INVENTORY_TAB))
+        time.sleep(row_model.TAB_SETTLE)
 
-    bought = 0
+    bought = orders = 0
     while bought < run["buy_min"]:
         print(f"  {bought}/{run['buy_min']} {set_name} held")
+        orders += 1
         try:
-            got = buy.buy_row_one(pair, run["buy_min"] - bought,
-                                  verbose=verbose)
+            with calibration.phase(f"buy order {orders}"):
+                got = buy.buy_row_one(pair, run["buy_min"] - bought,
+                                      verbose=verbose)
         except buy.Refused as exc:
             print(f"  stopping: {exc}")
             break
@@ -385,29 +392,40 @@ def resupply_one(model, slot, held, verbose=True):
     if bought < run["buy_min"]:
         print(f"  bought {bought} of the {run['buy_min']} wanted.")
 
-    landing = calibration.first_free_slot(calibration.CONVERT_INVENTORY_TAB,
-                                          verbose=False)
+    with calibration.phase("find the free inventory slot"):
+        landing = calibration.first_free_slot(
+            calibration.CONVERT_INVENTORY_TAB, verbose=False)
     if landing is None:
         raise NotReady(
             f"inventory tab {calibration.CONVERT_INVENTORY_TAB} is full; the "
             f"converted {core} would have nowhere to land.")
     print(f"  closing the Agent Shop to open the vendor")
-    calibration.close_everything()
-    convert.open_vendor(verbose=verbose)
-    out = convert.convert(core, bought, verbose=verbose)
+    with calibration.phase("close the Agent Shop"):
+        calibration.close_everything()
+    with calibration.phase("open the vendor and its Dungeon tab"):
+        convert.open_vendor(verbose=verbose)
+    with calibration.phase(f"convert {bought} into {core}"):
+        out = convert.convert(core, bought, verbose=verbose)
 
-    if not back_to_the_shop(verbose=verbose):
+    with calibration.phase("reopen the Agent Shop"):
+        reopened = back_to_the_shop(verbose=verbose)
+    if not reopened:
         raise NotReady("the Agent Shop would not reopen after the vendor.")
-    register_tab(verbose=verbose)
+    with calibration.phase("select the Register tab"):
+        register_tab(verbose=verbose)
     unit_floor, floor_pair = calibration.price_floor(core)
     floor = 0 if unit_floor is None else unit_floor
     lands_in = min(model.empty() or [1])
     print(f"  listing {out['converted']} {core} from tab "
           f"{calibration.CONVERT_INVENTORY_TAB} slot {landing}")
-    listed = model.list_slot(*landing, floor=floor,
-                             why=f"a {floor_pair} costs {unit_floor:,}"
-                             if unit_floor else "",
-                             verbose=verbose, lands_in=lands_in)
+    with calibration.phase(f"list {out['converted']} {core}"):
+        listed = model.list_slot(*landing, floor=floor,
+                                 why=f"a {floor_pair} costs {unit_floor:,}"
+                                 if unit_floor else "",
+                                 verbose=verbose, lands_in=lands_in)
+    calibration.phases_table(
+        f"resupply {core}: bought {bought}, converted {out['converted']}, "
+        f"listed in row {lands_in}")
     model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
                                            price=listed["price"])
     return {"slot": slot, "core": core, "set": set_name, "diff": diff,
