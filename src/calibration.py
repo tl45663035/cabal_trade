@@ -38,6 +38,7 @@ DEFAULTS = {
         "park_settle": 0.25,
         "tab_settle": 0.6,
         "poll_gap": 0.0,
+        "panel_reread_gap": 1.0,
         "search_timeout": 8.0,
         "search_retries": 3,
         "dialog_timeout": 8.0,
@@ -146,7 +147,7 @@ DEFAULTS = {
         "panel_field_inset": 30,
         "panel_field_half": 14,
         "panel_label_gap": 22,
-        "panel_rereads": 3,
+        "panel_rereads": 5,
         "slot_half": 24,
         "slot_occupied_stdev": 8.0,
         "panel_moved_slack": 30,
@@ -323,6 +324,7 @@ HOVER_SETTLE = _S["timing"]["hover_settle"]
 MODIFIER_SETTLE = _S["timing"]["modifier_settle"]
 CLICK_HOLD = _S["timing"]["click_hold"]
 PANEL_REREADS = _S["detect"]["panel_rereads"]
+PANEL_REREAD_GAP = _S["timing"]["panel_reread_gap"]
 MIN_PLAUSIBLE_PRICE = _S["detect"]["min_plausible_price"]
 SLOT_HALF = _S["detect"]["slot_half"]
 SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
@@ -1131,6 +1133,7 @@ def panel_agrees(panel, want_qty, want_price, say=lambda *a: None):
         say(f"  read {attempt}: price {price:,}, net {net:,} "
             f"(wanted {want_qty} x {want_price:,} = {expect:,})"
             f" -- disagrees on {bad}")
+        time.sleep(PANEL_REREAD_GAP)
     return False
 
 

@@ -143,6 +143,12 @@
       0.48,
       0.66
     ],
+    "purchase_header_band": [
+      0.02,
+      0.155,
+      0.48,
+      0.205
+    ],
     "trade_tabs_band": [
       0.0,
       0.035,
@@ -154,12 +160,6 @@
       0.0709,
       0.1133,
       0.7597
-    ],
-    "purchase_header_band": [
-      0.02,
-      0.155,
-      0.48,
-      0.205
     ]
   },
   "detect": {
@@ -210,11 +210,11 @@
     "panel_field_inset": 30,
     "panel_field_half": 14,
     "panel_label_gap": 22,
+    "panel_rereads": 5,
     "slot_half": 24,
     "slot_occupied_stdev": 8.0,
     "panel_moved_slack": 30,
-    "type_clear_presses": 16,
-    "panel_rereads": 3
+    "type_clear_presses": 16
   },
   "text": {
     "empty_row": "premiumexclusiveslot",
@@ -246,7 +246,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-08-21T12:12:21",
+      "measured_at": "2026-08-21T12:56:59",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -642,11 +642,11 @@
         },
         "purchase_sort_region": [
           765,
-          177,
-          1043,
-          212
+          176,
+          1345,
+          238
         ],
-        "purchase_sort_text_seen": "* yrprice:Low to",
+        "purchase_sort_text_seen": "v y Price:Low to aa",
         "purchase_buy_x": 1124,
         "purchase_row_pitch": 76,
         "purchase_row_one_y": 340,
@@ -707,7 +707,7 @@
           309
         ],
         "rows_per_notch": 1,
-        "register_rows_seen": 9,
+        "register_rows_seen": 8,
         "panel": {
           "panel_box": [
             10,
@@ -744,27 +744,33 @@
             ],
             [
               40,
-              495,
+              498,
               204,
-              523
+              526
             ]
           ],
           "register_button": [
             178,
             1014
+          ],
+          "net_sales_box": [
+            40,
+            774,
+            204,
+            802
           ]
         },
+        "button_cancel": [
+          1472,
+          854
+        ],
         "button_register": [
           178,
           1014
         ],
-        "button_cancel": [
-          1472,
-          853
-        ],
         "button_confirmation": [
           1291,
-          853
+          854
         ]
       }
     }

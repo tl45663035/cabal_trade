@@ -40,6 +40,7 @@ TAB_SETTLE = _T["tab_settle"]
 TYPE_CLEAR_PRESSES = _SHARED["detect"]["type_clear_presses"]
 KEY_GAP = _T["key_gap"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
+PANEL_REREAD_GAP = _T["panel_reread_gap"]
 STALE_SWEEP = _T.get("stale_sweep", 1.0)
 POLL_GAP = _T.get("poll_gap", 0.0)
 
@@ -249,6 +250,7 @@ def panel_agrees(want_qty, want_price, verbose=False):
             bad = ", ".join(k for k, ok in checks.items() if not ok)
             print(f"    read {attempt}: price {price:,}, net {net:,} "
                   f"-- disagrees on {bad}")
+        time.sleep(PANEL_REREAD_GAP)
     return False
 
 
