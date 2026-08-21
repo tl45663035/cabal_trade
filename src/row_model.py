@@ -645,9 +645,6 @@ class RowModel:
             raise Divergence(
                 f"the panel does not agree that it holds {held[1]} at "
                 f"{want:,}. Nothing has been listed.")
-        if verbose:
-            print(f"  panel confirms {typed[0]} at {shown:,}")
-
         calibration.click(*panel["register_button"], settle=0.0)
         confirm = find_button(CONFIRM_WORD)
         if confirm is None:

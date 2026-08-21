@@ -71,3 +71,8 @@ ocr_boundaries/
 # Screenshots written by src/ when --frames is passed. Same reason as the
 # trade.py corpus: pictures of a live account, regenerated on demand.
 src/debug_frames/
+
+# Run logs, one per launch, named for the date and what was run. Generated,
+# and they hold screenshots-in-words of a live session: balances, item names,
+# prices. Kept on disk so a crash can be read after the fact, not in git.
+src/logs/

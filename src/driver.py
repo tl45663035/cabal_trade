@@ -291,6 +291,7 @@ def usage():
 
 def main():
     args = [a for a in sys.argv[1:] if a != "--frames"]
+    calibration.log_to_file(args[0].lower() if args else "scan")
     calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
     if not args:
         do_scan()

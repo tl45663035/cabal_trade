@@ -1,5 +1,6 @@
 import csv
 import ctypes
+import datetime
 import io
 import json
 import re
@@ -13,6 +14,7 @@ from PIL import Image
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "calibration.json"
 CONFIG = HERE / "config.json"
+LOG_DIR = HERE / "logs"
 
 _CACHE = None
 
@@ -1692,7 +1694,45 @@ def close_everything(verbose: bool = False) -> None:
                   "panel did not close. Close it by hand.")
 
 
+class _Tee:
+    def __init__(self, stream, handle):
+        self.stream = stream
+        self.handle = handle
+
+    def write(self, text):
+        self.stream.write(text)
+        self.handle.write(text)
+        self.handle.flush()
+        return len(text)
+
+    def flush(self):
+        self.stream.flush()
+        self.handle.flush()
+
+    def isatty(self):
+        return self.stream.isatty()
+
+    def fileno(self):
+        return self.stream.fileno()
+
+
+def log_to_file(what="run"):
+    import sys
+    if isinstance(sys.stdout, _Tee):
+        return Path(sys.stdout.handle.name)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    path = LOG_DIR / f"{stamp}_{what}.log"
+    handle = open(path, "a", encoding="utf-8", buffering=1)
+    handle.write(stamp + "  " + " ".join(sys.argv) + chr(10))
+    sys.stdout = _Tee(sys.stdout, handle)
+    sys.stderr = _Tee(sys.stderr, handle)
+    print(f"  logging to {path}")
+    return path
+
+
 if __name__ == "__main__":
     import sys as _sys
+    log_to_file("calibrate")
     frames_on(True if "--frames" in _sys.argv else None)
     main()
