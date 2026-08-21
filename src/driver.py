@@ -160,6 +160,7 @@ def relist_one(model, index, verbose=True):
             print(f"    collected; {row.qty} left to relist")
 
     if row_model.row_one_is_empty(text):
+        model._slots.pop(index, None)
         if verbose:
             print(f"  row {index} is empty; nothing to relist")
         return None
@@ -227,7 +228,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         raise NotReady(f"rows {first}-{last} is not a range to relist")
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
-    model = row_model.RowModel().seed({})
+    model = seed(verbose=verbose)
 
     deadline = time.monotonic() + minutes * 60
     print(f"relisting rows {first}-{last} for {minutes:g} minute(s)")
@@ -239,8 +240,8 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         print("")
         print(f"-- pass {passes} --")
         try:
-            made, missed = relist_pass(model, first, last, verbose=verbose)
             resupply_pass(model, first, last, verbose=verbose)
+            made, missed = relist_pass(model, first, last, verbose=verbose)
         except row_model.Divergence as exc:
             print(f"  STOPPED: {exc}")
             break
