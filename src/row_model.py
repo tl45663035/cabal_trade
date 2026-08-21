@@ -265,7 +265,28 @@ def type_number(value):
         time.sleep(KEY_GAP)
 
 
+def row_button_box():
+    shop = _shop()
+    half_x = BUTTON_HALF[0]
+    half_y = max(1, int(shop["row_pitch"]) // 2)
+    x, y = int(shop["button_x"]), int(shop["row_one_y"])
+    return (x - half_x, y - half_y, x + half_x, y + half_y)
+
+
+def row_button(image=None):
+    image = image if image is not None else calibration.grab()
+    for text, _conf, _point in calibration.ocr(image, row_button_box()):
+        key = _key(text)
+        for word in (RECEIPT_WORD, CHANGE_WORD, REGISTER_WORD):
+            if _key(word) == key:
+                return word
+    return None
+
+
 def row_function(text=None):
+    seen = row_button()
+    if seen is not None:
+        return seen
     text = read_row_one() if text is None else text
     key = _key(text)
     for word in (RECEIPT_WORD, CHANGE_WORD, REGISTER_WORD):

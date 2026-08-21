@@ -122,15 +122,28 @@ def cancel(model, index, verbose=True):
 
 def relist_one(model, index, verbose=True):
     text, row = row_at(model, index, verbose=False)
-    if row is None:
+    button = row_model.row_button()
+
+    if button == row_model.RECEIPT_WORD:
+        complete = row_model.row_complete(text)
+        if verbose:
+            print(f"  row {index} has SOLD "
+                  f"({'fully' if complete else 'partly'}); collecting")
+        model.receive(index, verbose=False)
+        text, row = row_at(model, index, verbose=False)
+        button = row_model.row_button()
+        if complete or button == row_model.REGISTER_WORD or row is None:
+            if verbose:
+                print(f"    collected; row {index} is empty, nothing to "
+                      f"relist")
+            return None
+        if verbose:
+            print(f"    collected; {row.qty} left to relist")
+
+    if row is None or button == row_model.REGISTER_WORD:
         if verbose:
             print(f"  row {index}: {text[:44]!r} is not a live listing; "
                   f"leaving it alone")
-        return None
-    if row_model.RECEIPT_WORD.lower() in (text or "").lower():
-        if verbose:
-            print(f"  row {index} has SOLD; not relisting a row that needs "
-                  f"collecting")
         return None
 
     landing = calibration.first_free_slot(row_model.WORK_TAB, verbose=False)
