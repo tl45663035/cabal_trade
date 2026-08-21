@@ -37,6 +37,7 @@ DIALOG_BUTTON_MIN_X = _SHARED["detect"]["dialog_button_min_x"]
 BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
+REMEMBERED_TIMEOUT = _T.get("remembered_timeout", 1.0)
 
 _NOT_ALNUM = re.compile(r"[^a-z0-9]")
 
@@ -119,16 +120,19 @@ def search_button(word, timeout=None):
 
 def find_button(word, timeout=None, verbose=False):
     known = remembered(word)
+    budget = DIALOG_TIMEOUT if timeout is None else timeout
+    spent = 0.0
     if known is not None:
-        deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
-                                       else timeout)
+        started = time.monotonic()
+        deadline = started + min(REMEMBERED_TIMEOUT, budget)
         while time.monotonic() < deadline:
             if button_here(word, known):
                 return known
             time.sleep(ACTION_GAP)
+        spent = time.monotonic() - started
         if verbose:
             print(f"  {word} is not at the remembered {known}; searching")
-    point = search_button(word, timeout=timeout)
+    point = search_button(word, timeout=max(0.0, budget - spent))
     if point is not None and point != known:
         calibration.remember_shop(_button_key(word), list(point))
         if verbose:
@@ -380,8 +384,8 @@ class RowModel:
         if expected is None:
             raise ValueError(f"row {index} is empty in the model; refusing to "
                              f"cancel a slot nothing is listed in")
-        self.scroll_to(index, verbose=verbose)
-        time.sleep(TAB_SETTLE)
+        if self.scroll_to(index, verbose=verbose):
+            time.sleep(TAB_SETTLE)
 
         seen = read_row_one()
         action = row_function(seen)
@@ -418,7 +422,6 @@ class RowModel:
         time.sleep(ACTION_GAP)
         calibration.click(*point)
         calibration.park()
-        time.sleep(ACTION_GAP)
 
         dismiss = find_button(DISMISS_WORD)
         if dismiss is None:
