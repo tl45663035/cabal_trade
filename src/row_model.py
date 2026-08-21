@@ -145,9 +145,11 @@ def find_button(word, timeout=None, verbose=False):
     return point
 
 
-def show_work_tab(verbose=False):
+def show_work_tab(verbose=False, already=False):
     import open_agent_shop_premium as shop
     import open_inventory as inv_panel
+    if already:
+        return shop.tab_point(WORK_TAB)
     if calibration.find_alz(calibration.grab()) is None:
         if verbose:
             print("  the Inventory panel is shut; opening it so the cancelled "
@@ -524,7 +526,7 @@ class RowModel:
                 f"Whether the Alz was taken is unknown -- check by hand.")
         return True
 
-    def cancel(self, index, verbose=True):
+    def cancel(self, index, verbose=True, tab_ready=False):
         index = int(index)
         expected = self._slots.get(index)
         if expected is None:
@@ -561,7 +563,7 @@ class RowModel:
         if verbose:
             print(f"  row {index} at position 1: {seen!r}")
 
-        show_work_tab(verbose=verbose)
+        show_work_tab(verbose=verbose, already=tab_ready)
 
         point = button_point()
         if verbose:
