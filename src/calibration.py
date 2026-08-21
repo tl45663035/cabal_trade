@@ -151,6 +151,7 @@ DEFAULTS = {
         "panel_label_gap": 22,
         "panel_rereads": 5,
         "min_name_overlap": 6,
+        "alz_min_digits": 4,
         "slot_half": 24,
         "slot_occupied_stdev": 8.0,
         "panel_moved_slack": 30,
@@ -331,6 +332,7 @@ PANEL_REREAD_GAP = _S["timing"]["panel_reread_gap"]
 MIN_PLAUSIBLE_PRICE = _S["detect"]["min_plausible_price"]
 FAVOURITE_ITEMS = _S["favourite_items"]
 MIN_NAME_OVERLAP = _S["detect"]["min_name_overlap"]
+ALZ_MIN_DIGITS = _S["detect"]["alz_min_digits"]
 SLOT_HALF = _S["detect"]["slot_half"]
 SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
 POLL_GAP = _S["timing"].get("poll_gap", 0.0)
@@ -722,6 +724,38 @@ def find_alz(image: Image.Image, search=None):
 def _pitch_bounds():
     w = _client_rect()[2]
     return SLOT_PITCH_F[0] * w, SLOT_PITCH_F[1] * w
+
+
+def inventory_open(image=None):
+    image = image if image is not None else grab()
+    box = find_alz(image)
+    if box is None:
+        return None
+    digits = re.sub(r"[^0-9]", "", read_line(image, box))
+    if len(digits) < ALZ_MIN_DIGITS:
+        return None
+    return box
+
+
+def await_inventory(timeout=None, verbose=False):
+    from open_inventory import VK_I, press
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    for attempt in (1, 2):
+        park()
+        while time.monotonic() < deadline:
+            box = inventory_open()
+            if box is not None:
+                return box
+            time.sleep(POLL_GAP)
+        if verbose:
+            print(f"  no balance is readable, so the Inventory panel is not "
+                  f"open; pressing I (attempt {attempt})")
+        press(VK_I)
+        snap("press_I")
+        deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                       else timeout)
+    return None
 
 
 def calibrate_inventory(verbose=True):
@@ -1505,23 +1539,11 @@ def main(close: bool = True) -> None:
 
     print("inventory:")
 
-    for attempt in (1, 2):
-        park()
-        if find_alz(grab()) is not None:
-            break
-        press(VK_I)
-        time.sleep(gap)
-        park()
-        snap("press_I")
-        if find_alz(grab()) is not None:
-            if attempt == 2:
-                print("  (the panel had been left open by an earlier run; "
-                      "pressed I twice to get back to a known state)")
-            break
-        if attempt == 2:
-            raise RuntimeError(
-                "pressed I twice and the Alz balance never appeared, so the "
-                "Inventory panel is not opening. Nothing measured.")
+    if await_inventory(verbose=True) is None:
+        raise RuntimeError(
+            "no readable Alz balance after pressing I twice, so the Inventory "
+            "panel is not open. Measuring from a guessed anchor would put "
+            "every click somewhere in the world. Nothing measured.")
 
     snap("inventory_as_measured")
     inventory = calibrate_inventory()

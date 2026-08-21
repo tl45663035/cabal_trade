@@ -150,19 +150,11 @@ def show_work_tab(verbose=False, already=False):
     import open_inventory as inv_panel
     if already:
         return shop.tab_point(WORK_TAB)
-    if calibration.find_alz(calibration.grab()) is None:
-        if verbose:
-            print("  the Inventory panel is shut; opening it so the cancelled "
-                  "item has a tab to land on")
-        inv_panel.open_inventory()
-        deadline = time.monotonic() + DIALOG_TIMEOUT
-        while calibration.find_alz(calibration.grab()) is None:
-            if time.monotonic() >= deadline:
-                raise Divergence(
-                    "the Inventory panel did not open, so there is no way to "
-                    "say which tab a cancelled item would return to. Nothing "
-                    "cancelled.")
-            time.sleep(POLL_GAP)
+    if calibration.await_inventory(verbose=verbose) is None:
+        raise Divergence(
+            "no readable Alz balance, so the Inventory panel is not open and "
+            "there is no saying which tab a cancelled item would return to. "
+            "Nothing cancelled.")
     point = shop.tab_point(WORK_TAB)
     if verbose:
         print(f"  inventory tab {WORK_TAB} at {point}, so the cancelled item "
