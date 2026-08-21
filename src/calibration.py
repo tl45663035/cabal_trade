@@ -1088,6 +1088,30 @@ ACTION_BUTTON_WORDS = ("Confirmation", "Cancel", "Receive", "Register")
 RECEIPT_WORD = "Receive"
 
 
+def panel_agrees(panel, want_qty, want_price, say=lambda *a: None):
+    box = panel.get("net_sales_box")
+    for attempt in range(PANEL_REREADS + 1):
+        image = grab()
+        qty = panel_qty(panel)
+        price = read_number(image, tuple(panel["price_field"])) or 0
+        net = read_number(image, tuple(box)) or 0 if box else 0
+        if qty[0] == want_qty and price == want_price:
+            if not box:
+                return True
+            if net == want_qty * want_price:
+                say(f"  panel agrees: {qty[0]} x {price:,} = {net:,}")
+                return True
+            say(f"  panel reads {qty[0]} at {price:,} but net sales {net:,}, "
+                f"not {want_qty * want_price:,}")
+        elif box and net == want_qty * want_price:
+            say(f"  net sales {net:,} is {want_qty} x {want_price:,}, so the "
+                f"{price:,} read off the price field is a misread")
+            return True
+        else:
+            say(f"  read {attempt + 1}: {qty[0]} at {price:,}, net {net:,}")
+    return False
+
+
 def calibrate_panel(verbose=True):
     say = print if verbose else (lambda *a: None)
     box = _box(REGISTER_PANEL_F)
@@ -1123,6 +1147,16 @@ def calibrate_panel(verbose=True):
             "no quantity field found under Register QTY; nothing measured.")
     qty = min(digit, key=lambda p: p[1])
 
+    net_label = [p for t, _c, p in words
+                 if t.strip().lower() == "net" and p[1] > qty[1]]
+    net_row = None
+    if net_label:
+        after = min(net_label, key=lambda p: p[1])[1]
+        tails = [p for t, _c, p in words
+                 if t.strip().lower() == "alz" and p[1] > after]
+        if tails:
+            net_row = min(tails, key=lambda p: p[1])[1]
+
     button = [p for t, _c, p in words
               if t.strip().lower() == "register" and p[1] > qty[1]]
     if not button:
@@ -1152,9 +1186,13 @@ def calibrate_panel(verbose=True):
                               right, y + PANEL_FIELD_HALF] for y in rows],
         "register_button": [button[0], button[1]],
     }
+    if net_row is not None:
+        out["net_sales_box"] = [left, net_row - PANEL_FIELD_HALF,
+                                right, net_row + PANEL_FIELD_HALF]
     say(f"  price field {out['price_field']} (click {out['price_point']})")
     say(f"  quantity box {out['qty_box']} (click {out['qty_point']})")
     say(f"  {len(rows)} suggested price row(s) at y {rows}")
+    say(f"  net sales box {out.get('net_sales_box')}")
     say(f"  Register button at {out['register_button']}")
     return out
 
@@ -1325,17 +1363,10 @@ def calibrate_actions(shop, verbose=True):
     click(*panel["price_point"])
     type_number(price)
     park()
-    typed, shown = panel_qty(panel), read_number(grab(),
-                                                 tuple(panel["price_field"]))
-    for _ in range(PANEL_REREADS):
-        if typed[0] == held[1] and shown == price:
-            break
-        typed = panel_qty(panel)
-        shown = read_number(grab(), tuple(panel["price_field"]))
-    if typed[0] != held[1] or shown != price:
+    agreed = panel_agrees(panel, held[1], price, say)
+    if not agreed:
         raise RuntimeError(
-            f"the panel still reads {typed[0]} at {shown} after "
-            f"{PANEL_REREADS + 1} reads, but {held[1]} at {price} was typed. "
+            f"the panel does not agree that it holds {held[1]} at {price:,}. "
             f"Nothing has been listed; the item is in the bag.")
 
     click(*panel["register_button"], settle=0.0)

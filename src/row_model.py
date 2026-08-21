@@ -216,6 +216,29 @@ def suggested_price():
     return min(prices) if prices else None
 
 
+def read_panel_net():
+    box = _panel().get("net_sales_box")
+    if not box:
+        return None
+    return calibration.read_number(calibration.grab(), tuple(box)) or 0
+
+
+def panel_agrees(want_qty, want_price, verbose=False):
+    for _ in range(PANEL_REREADS + 1):
+        qty = read_panel_qty()
+        price = read_panel_price()
+        net = read_panel_net()
+        if qty[0] == want_qty and price == want_price:
+            if net is None or net == want_qty * want_price:
+                return True
+        elif net is not None and net == want_qty * want_price:
+            if verbose:
+                print(f"    net sales {net:,} is {want_qty} x {want_price:,}; "
+                      f"the {price:,} off the price field is a misread")
+            return True
+    return False
+
+
 def type_number(value):
     from open_inventory import press
     keys = _SHARED["input"]
@@ -582,16 +605,10 @@ class RowModel:
         type_number(want)
         calibration.park()
 
-        typed, shown = read_panel_qty(), read_panel_price()
-        for _ in range(PANEL_REREADS):
-            if typed[0] == held[1] and shown == want:
-                break
-            typed, shown = read_panel_qty(), read_panel_price()
-        if typed[0] != held[1] or shown != want:
+        if not panel_agrees(held[1], want, verbose):
             raise Divergence(
-                f"the panel still reads quantity {typed[0]} at {shown} after "
-                f"{PANEL_REREADS + 1} reads, but {held[1]} at {want} was "
-                f"typed. Nothing has been listed.")
+                f"the panel does not agree that it holds {held[1]} at "
+                f"{want:,}. Nothing has been listed.")
         if verbose:
             print(f"  panel confirms {typed[0]} at {shown:,}")
 
