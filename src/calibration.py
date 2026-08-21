@@ -1383,11 +1383,10 @@ def calibrate_actions(shop, verbose=True):
             f"there is nothing to list at. The item is in the bag.")
     say(f"  {held[1]} held, panel suggests {price:,}")
 
-    click(*panel["qty_point"])
-    type_number(held[1])
     click(*panel["price_point"])
     type_number(price)
     click(*panel["qty_point"])
+    type_number(held[1])
     park()
     if not panel_agrees(panel, held[1], price, say):
         raise RuntimeError(

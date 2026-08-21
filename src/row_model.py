@@ -615,11 +615,10 @@ class RowModel:
                 f"refusing to list at {want:,}, under the "
                 f"{MIN_PLAUSIBLE_PRICE:,} plausibility floor.")
 
-        calibration.click(*panel["qty_point"])
-        type_number(held[1])
         calibration.click(*panel["price_point"])
         type_number(want)
         calibration.click(*panel["qty_point"])
+        type_number(held[1])
         calibration.park()
 
         if not panel_agrees(held[1], want, verbose):
