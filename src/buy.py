@@ -125,6 +125,18 @@ def _cancel(why):
 
 
 def buy_row_one(slot, want, verbose=True):
+    steps_reset()
+    outcome = "REFUSED"
+    try:
+        out = _buy_row_one(slot, want, verbose=verbose)
+        outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
+        return out
+    finally:
+        if verbose and _STEPS:
+            steps_table(f"buy from favourite slot {slot}: {outcome}")
+
+
+def _buy_row_one(slot, want, verbose=True):
     say = print if verbose else (lambda *a: None)
     with step("get_price: search the favourite and read row 1"):
         offer = get_price.get_price(int(slot), verbose=False)
@@ -160,7 +172,12 @@ def buy_row_one(slot, want, verbose=True):
         _cancel(f"the dialog offers a maximum of {detail['qty_max']}. "
                 f"Cancelled without buying.")
 
-    asked = min(int(want), int(detail["qty_max"]))
+    pack = max(1, row_model.pack_size(offer["name"]))
+    want_packs = max(1, -(-int(want) // pack))
+    asked = min(want_packs, int(detail["qty_max"]))
+    if verbose:
+        say(f"    {want} core(s) wanted, {pack} to a pack -> {want_packs} "
+            f"pack(s); {detail['qty_max']} available, taking {asked}")
     if detail["qty"] != asked:
         with step(f"click the quantity field and type {asked}"):
             calibration.click(*calibration._point(
@@ -221,18 +238,11 @@ def buy_item(slot, want=None, verbose=True):
         calibration.CONVERT_INVENTORY_TAB))
     time.sleep(TAB_SETTLE)
 
-    steps_reset()
-    started = time.perf_counter()
     try:
-        out = buy_row_one(int(slot), want, verbose=verbose)
+        return buy_row_one(int(slot), want, verbose=verbose)
     except Refused as exc:
-        steps_table(f"buy_item({slot}) REFUSED after "
-                    f"{(time.perf_counter() - started) * 1000:.0f} ms")
         print(f"  refused: {exc}")
         return None
-    steps_table(f"buy_item({slot}) bought {out['bought']} core(s) in "
-                f"{out['packs']} order(s)")
-    return out
 
 
 def main():
