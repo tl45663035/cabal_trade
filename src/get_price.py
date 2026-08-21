@@ -147,9 +147,7 @@ def confirm_sort_low_to_high(slot, verbose=True):
         return True
     calibration.snap(f"slot_{slot}_sort_wrong")
     raise NotReady(
-        f"the sort reads {read_sort()!r}, not Price: Low to High. Row 1 is "
-        f"the dearest offer under that sort, so nothing here may be acted "
-        f"on. Set it by hand and run again.")
+        f"the sort reads {read_sort()!r}, not Price: Low to High.")
 
 
 def _digits(text):

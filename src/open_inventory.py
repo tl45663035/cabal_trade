@@ -137,8 +137,7 @@ def focus_game(settle: float = FOCUS_SETTLE) -> bool:
 def open_inventory() -> None:
     if not focus_game():
         raise RuntimeError(
-            f"could not bring the {GAME_TITLE!r} window to the foreground. "
-            f"Not pressing I -- it would go to whatever is in front instead.")
+            f"could not bring the {GAME_TITLE!r} window to the foreground.")
     press(VK_I)
 
 

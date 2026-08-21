@@ -26,9 +26,7 @@ def _convert_cal():
     block = calibration.load().get("convert")
     if not block:
         raise Refused(
-            "the conversion grid has not been measured. Run "
-            "py src/calibration.py with the Agent Shop shut so the vendor "
-            "can be opened.")
+            "the conversion grid has not been measured.")
     return block
 
 
@@ -130,9 +128,8 @@ def convert(core_name, quantity, verbose=True):
     calibration.alt_click(x, y)
     if not await_dialog():
         raise Refused(
-            "no Purchase Item dialog appeared after Alt+click. Nothing was "
-            "confirmed. A plain click here buys immediately and must never "
-            "be used instead.")
+            "no Purchase Item dialog appeared after Alt+click; nothing "
+            "confirmed.")
 
     detail = dialog_details()
     say(f"    dialog: item {detail['item']!r}  qty {detail['qty']} of "

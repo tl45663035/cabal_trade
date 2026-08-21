@@ -155,8 +155,7 @@ def show_work_tab(verbose=False, already=False):
         return shop.tab_point(WORK_TAB)
     if calibration.await_inventory(verbose=verbose) is None:
         raise Divergence(
-            "no readable Alz balance, so the Inventory panel is not open and "
-            "there is no saying which tab a cancelled item would return to. "
+            "no readable Alz balance; the Inventory panel is not open. "
             "Nothing cancelled.")
     point = shop.tab_point(WORK_TAB)
     if verbose:
@@ -750,11 +749,9 @@ class RowModel:
         plan = self.scroll_plan(index)
         if plan["clamped"]:
             raise Divergence(
-                f"row {index} cannot be brought to position 1: with "
-                f"{CAPACITY} rows and {VISIBLE} visible the top can only "
-                f"reach {MAX_TOP}. Row {index} sits at position "
-                f"{plan['reachable_at_row']} when the table is scrolled to "
-                f"the end, and this model only ever operates on row 1.")
+                f"row {index} cannot reach position 1: {CAPACITY} rows, "
+                f"{VISIBLE} visible, top reaches {MAX_TOP}; it sits at "
+                f"{plan['reachable_at_row']}.")
         if plan["notches"]:
             wheel(plan["notches"], verbose=verbose)
         self.note_scrolled(plan["to_top"])

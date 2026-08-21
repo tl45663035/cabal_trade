@@ -66,8 +66,7 @@ def require_shop(verbose=True):
     time.sleep(TAB_SETTLE)
     if not calibration._trade_window_open():
         raise NotReady(
-            "the Trade window would not open. Refusing to click Trade window "
-            "coordinates while the game world is underneath them.")
+            "the Trade window would not open.")
     return True
 
 
@@ -192,9 +191,8 @@ def relist_one(model, index, verbose=True):
     calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
     unit_floor, pair = calibration.price_floor(row.name)
     if unit_floor is None:
-        print(f"  row {index}: {row.name!r} is floored by a {pair}, whose "
-              f"price did not read this run. Leaving it listed at "
-              f"{row.price:,} rather than relisting with no floor.")
+        print(f"  row {index}: {row.name!r} is floored by a {pair}, which did "
+              f"not price this run; left at {row.price:,}.")
         return None
     pack = row.pack
     floor = unit_floor * pack

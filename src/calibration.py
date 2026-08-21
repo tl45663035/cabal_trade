@@ -285,9 +285,7 @@ def load(force: bool = False) -> dict:
     if _CACHE is None or force:
         if not OUT.exists():
             raise RuntimeError(
-                f"{OUT.name} is missing. Run `py src/calibration.py` once to "
-                f"measure this screen; nothing else in src/ carries a "
-                f"coordinate of its own.")
+                f"{OUT.name} is missing.")
         _CACHE = json.loads(OUT.read_text(encoding="utf-8"))
 
     data = _CACHE
@@ -296,10 +294,8 @@ def load(force: bool = False) -> dict:
     if per is None:
         known = sorted((data.get("by_resolution") or {}))
         raise RuntimeError(
-            f"calibration.json has no measurements for {key}. It knows "
-            f"{known or 'nothing'}. Run `py src/calibration.py` on this "
-            f"monitor -- the positions from another resolution would be wrong "
-            f"here, so they are not reused.")
+            f"calibration.json has no measurements for {key}; it has "
+            f"{known or 'nothing'}.")
 
     merged = dict(per)
     for shared, default in DEFAULTS.items():
@@ -892,8 +888,8 @@ def calibrate_inventory(verbose=True):
     if outside:
         raise RuntimeError(
             f"{len(outside)} of {len(every)} positions fall outside the game "
-            f"window ({cx},{cy} {cw}x{chh}) -- e.g. {outside[0]}. The anchor "
-            f"at {anchor} must be wrong. Nothing measured.")
+            f"window ({cx},{cy} {cw}x{chh}), e.g. {outside[0]}, anchor "
+            f"{anchor}. Nothing measured.")
 
     return {
         "alz_box": list(alz),
@@ -1081,8 +1077,7 @@ def calibrate_purchase(shop, verbose=True):
     if anchor is None:
         raise RuntimeError(
             f"no word naming the sort was read in {sort_band}; it read "
-            f"{seen!r}. The control's position cannot be taken from whatever "
-            f"else is in the band. Nothing written.")
+            f"{seen!r}. Nothing written.")
     out["purchase_sort_region"] = [anchor[0] - SORT_PAD_LEFT,
                                    anchor[1] - SORT_PAD_Y,
                                    anchor[0] + SORT_PAD_RIGHT,
@@ -1402,8 +1397,8 @@ def calibrate_convert(verbose=True):
     say = print if verbose else (lambda *a: None)
     if _trade_window_open():
         raise RuntimeError(
-            "the Agent Shop is open. The vendor will not open on top of it, "
-            "so the conversion grid cannot be measured. Nothing written.")
+            "the Agent Shop is open; the vendor cannot open over it. "
+            "Nothing written.")
     if not await_vendor(verbose=verbose):
         raise RuntimeError(
             "the vendor Shop did not open on N, so the conversion grid "
@@ -1645,9 +1640,8 @@ def calibrate_actions(shop, verbose=True):
 
     landing = first_free_slot(WORK_TAB, verbose=verbose)
     if landing is None:
-        say(f"  inventory tab {WORK_TAB} is full, so a withdrawal would land "
-            f"somewhere this pass cannot follow. Not walking the actions; "
-            f"earlier positions stand.")
+        say(f"  inventory tab {WORK_TAB} is full; not walking the actions. "
+            f"Earlier positions stand.")
         return {}
 
     change = (shop["button_x"], shop["row_one_y"])
@@ -1668,8 +1662,8 @@ def calibrate_actions(shop, verbose=True):
     confirm = await_button("Confirmation")
     if confirm is None:
         raise RuntimeError(
-            "no Confirmation button appeared after Cancel on row 1. The "
-            "dialog is open and nothing is committed -- close it by hand.")
+            "no Confirmation button appeared after Cancel on row 1; nothing "
+            "committed.")
     say(f"  Confirmation at {confirm}")
     click(*confirm)
     park()
@@ -1680,8 +1674,8 @@ def calibrate_actions(shop, verbose=True):
             break
     else:
         raise RuntimeError(
-            "the dialog stayed open after Confirmation on row 1. Whether the "
-            "cancel committed is unknown -- check the shop by hand.")
+            "the dialog stayed open after Confirmation on row 1; the cancel "
+            "is unconfirmed.")
 
     after = read_line(grab(), row_one)
     say(f"  row 1 now reads {after[:48]!r}")
@@ -1693,9 +1687,7 @@ def calibrate_actions(shop, verbose=True):
     slot = inventory_slot_point(*landing)
     if slot_is_empty(grab(), *landing):
         raise RuntimeError(
-            f"tab {WORK_TAB} slot {landing} is empty after the withdrawal, so "
-            f"the item did not land where the free slot was. It is in the "
-            f"bag; list it by hand.")
+            f"tab {WORK_TAB} slot {landing} is empty after the withdrawal.")
     say(f"  listing it back from tab {WORK_TAB} slot {landing} at {slot}")
     ctrl_click(*slot)
     held = (0, 0)
@@ -1717,8 +1709,7 @@ def calibrate_actions(shop, verbose=True):
     if not held[1]:
         raise RuntimeError(
             f"nothing loaded from tab {WORK_TAB} slot {landing} after two "
-            f"ctrl-clicks, so it cannot be listed back. The item is in the "
-            f"bag; list it by hand.")
+            f"ctrl-clicks.")
     price = undercut(panel_suggestion(panel))
     if price is None:
         raise RuntimeError(
@@ -1733,9 +1724,8 @@ def calibrate_actions(shop, verbose=True):
     park()
     if not panel_agrees(panel, held[1], price, say):
         raise RuntimeError(
-            f"the panel will not confirm {held[1]} at {price:,} on every "
-            f"check after {PANEL_REREADS + 1} reads. Nothing has been listed; "
-            f"the item is in the bag.")
+            f"the panel will not confirm {held[1]} at {price:,} after "
+            f"{PANEL_REREADS + 1} reads. Nothing listed.")
 
     click(*panel["register_button"], settle=0.0)
     learned["button_register"] = list(panel["register_button"])
@@ -1753,16 +1743,15 @@ def calibrate_actions(shop, verbose=True):
         time.sleep(POLL_GAP)
     else:
         raise RuntimeError(
-            "the dialog stayed open after Confirmation on the relist. Whether "
-            "it committed is unknown -- check the shop by hand.")
+            "the dialog stayed open after Confirmation on the relist; "
+            "unconfirmed.")
     back = read_line(grab(), row_one)
     digits = [int(re.sub(r"[^\d]", "", m))
               for m in re.findall(r"\d[\d,]*", back)]
     if price not in digits:
         raise RuntimeError(
-            f"the listing went through but row 1 reads {back[:48]!r}, which "
-            f"does not show {price:,}. Check the shop by hand -- something is "
-            f"on the board at a price nobody chose.")
+            f"the listing went through; row 1 reads {back[:48]!r}, not "
+            f"{price:,}.")
     say(f"  row 1 reads {back[:48]!r} again, at {price:,} as typed")
     say(f"  learned {', '.join(sorted(learned))}")
     return learned
@@ -1786,9 +1775,8 @@ def main(close: bool = True) -> None:
 
     if await_inventory(verbose=True) is None:
         raise RuntimeError(
-            "no readable Alz balance after pressing I twice, so the Inventory "
-            "panel is not open. Measuring from a guessed anchor would put "
-            "every click somewhere in the world. Nothing measured.")
+            "no readable Alz balance after pressing I twice; the Inventory "
+            "panel is not open. Nothing measured.")
 
     snap("inventory_as_measured")
     inventory = calibrate_inventory()
@@ -1937,9 +1925,8 @@ def main(close: bool = True) -> None:
         print("reopening the Agent Shop the caller was promised:")
         if await_inventory(verbose=True) is None:
             raise RuntimeError(
-                "the Inventory panel would not reopen after the vendor, so "
-                "the Agent Shop cannot be brought back. calibration.json is "
-                "written; the game is not where the caller expects it.")
+                "the Inventory panel would not reopen after the vendor. "
+                "calibration.json is written.")
         click(*inventory["tabs"][str(facts["agent_shop_tab"])])
         time.sleep(gap)
         right_click(*inventory["slots"][f"{row}x{col}"])
@@ -1948,8 +1935,7 @@ def main(close: bool = True) -> None:
         if not _trade_window_open():
             raise RuntimeError(
                 "the Agent Shop would not reopen after the vendor. "
-                "calibration.json is written; the game is not where the "
-                "caller expects it.")
+                "calibration.json is written.")
         print("  the Agent Shop is open again")
 
 

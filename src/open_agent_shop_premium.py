@@ -102,9 +102,8 @@ def ensure_inventory_open(verbose: bool = True) -> None:
                          if attempt == 2 else ""))
             return
     raise RuntimeError(
-        "pressed I twice and the Inventory panel is not open where "
-        "calibration.json says it is. Not clicking: those coordinates would "
-        "be the game world.")
+        "pressed I twice; the Inventory panel is not open where "
+        "calibration.json says it is.")
 
 
 def open_agent_shop(verbose: bool = True) -> None:
