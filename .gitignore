@@ -67,3 +67,7 @@ backups/
 
 # Annotated OCR boundary captures. Screenshots of a live account.
 ocr_boundaries/
+
+# Screenshots written by src/ when --frames is passed. Same reason as the
+# trade.py corpus: pictures of a live account, regenerated on demand.
+src/debug_frames/

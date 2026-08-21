@@ -16,6 +16,10 @@ OUT = HERE / "calibration.json"
 _CACHE = None
 
 DEFAULTS = {
+    "debug": {
+        "frames": False,
+        "keep_frames": 2000,
+    },
     "timing": {
         "action_gap": 0.5,
         "key_hold": 0.02,
@@ -346,6 +350,51 @@ def park() -> None:
     time.sleep(PARK_SETTLE)
 
 
+FRAME_DIR = Path(__file__).resolve().parent / "debug_frames"
+FRAMES_ON = False
+_FRAME_N = 0
+
+
+def frames_on(enabled: "bool | None" = None) -> bool:
+    global FRAMES_ON
+    if enabled is None:
+        enabled = bool(load_shared()["debug"]["frames"])
+    FRAMES_ON = bool(enabled)
+    if FRAMES_ON:
+        FRAME_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"  debug frames -> {FRAME_DIR}")
+    return FRAMES_ON
+
+
+def prune_frames() -> None:
+    keep = int(load_shared()["debug"]["keep_frames"])
+    if keep <= 0 or not FRAME_DIR.exists():
+        return
+    shots = sorted(FRAME_DIR.glob("*.png"), key=lambda f: f.stat().st_mtime)
+    for old_frame in shots[:max(0, len(shots) - keep)]:
+        try:
+            old_frame.unlink()
+        except OSError:
+            pass
+
+
+def snap(label: str) -> "Path | None":
+    global _FRAME_N
+    if not FRAMES_ON:
+        return None
+    _FRAME_N += 1
+    if _FRAME_N == 1:
+        prune_frames()
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", label).strip("_") or "frame"
+    out = FRAME_DIR / f"{_FRAME_N:05d}_{safe}.png"
+    try:
+        grab().save(out)
+    except Exception as exc:
+        print(f"  could not write {out.name}: {exc}")
+        return None
+    return out
+
+
 def _mouse_event(flags: int):
     from open_inventory import _Input, _InputUnion, _MouseInput
     return _Input(type=_S["input"]["INPUT_MOUSE"], u=_InputUnion(mi=_MouseInput(0, 0, 0, flags, 0, None)))
@@ -369,6 +418,7 @@ def click(x: int, y: int, settle: float = None) -> None:
     _button(shared["input"]["MOUSEEVENTF_LEFTDOWN"],
             shared["input"]["MOUSEEVENTF_LEFTUP"], x, y,
             shared["timing"]["action_gap"] if settle is None else settle)
+    snap(f"click_{x}_{y}")
 
 
 def right_click(x: int, y: int, settle: float = None) -> None:
@@ -376,6 +426,7 @@ def right_click(x: int, y: int, settle: float = None) -> None:
     _button(shared["input"]["MOUSEEVENTF_RIGHTDOWN"],
             shared["input"]["MOUSEEVENTF_RIGHTUP"], x, y,
             shared["timing"]["action_gap"] if settle is None else settle)
+    snap(f"rightclick_{x}_{y}")
 
 
 def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
@@ -874,6 +925,8 @@ def calibrate_register_table(shop, verbose=True):
 
 ACTION_BUTTON_WORDS = ("Confirmation", "Cancel", "Receive", "Register")
 
+RECEIPT_WORD = "Receive"
+
 
 def calibrate_actions(shop, verbose=True):
     say = print if verbose else (lambda *a: None)
@@ -909,9 +962,11 @@ def calibrate_actions(shop, verbose=True):
 
     row_one = tuple(shop["row_one_box"])
     before = read_line(grab(), row_one)
-    if "change" not in before.lower():
-        say(f"  row 1 reads {before[:48]!r} and has no Change button; the "
-            f"cancel path cannot be walked. Earlier positions stand.")
+    lowered = before.lower()
+    listed = re.search(r"\d[\d,]{2,}", before) is not None
+    if not listed or RECEIPT_WORD.lower() in lowered:
+        say(f"  row 1 reads {before[:48]!r}; it is not a live listing this "
+            f"pass can withdraw. Earlier positions stand.")
         return {}
 
     change = (shop["button_x"], shop["row_one_y"])
@@ -974,6 +1029,7 @@ def main(close: bool = True) -> None:
         press(VK_I)
         time.sleep(gap)
         park()
+        snap("press_I")
         if find_alz(grab()) is not None:
             if attempt == 2:
                 print("  (the panel had been left open by an earlier run; "
@@ -984,7 +1040,9 @@ def main(close: bool = True) -> None:
                 "pressed I twice and the Alz balance never appeared, so the "
                 "Inventory panel is not opening. Nothing measured.")
 
+    snap("inventory_as_measured")
     inventory = calibrate_inventory()
+    snap("inventory_after_measure")
 
     print("opening the Agent Shop:")
     tab = inventory["tabs"][str(facts["agent_shop_tab"])]
@@ -1010,6 +1068,7 @@ def main(close: bool = True) -> None:
                 "right-clicked the Agent Shop key twice and the Trade window "
                 "never appeared. Nothing written.")
 
+    snap("shop_open")
     print("agent shop:")
     park()
     shop = calibrate_shop()
@@ -1087,6 +1146,7 @@ def close_everything(verbose: bool = False) -> None:
 
     press(VK_ESCAPE)
     time.sleep(gap)
+    snap("press_escape")
     if verbose:
         print("  Escape: Trade window closed")
 
@@ -1107,4 +1167,6 @@ def close_everything(verbose: bool = False) -> None:
 
 
 if __name__ == "__main__":
+    import sys as _sys
+    frames_on(True if "--frames" in _sys.argv else None)
     main()
