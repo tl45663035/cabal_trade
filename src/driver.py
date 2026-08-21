@@ -377,9 +377,16 @@ def do_resupply(first=None, last=None, verbose=True):
         if count < run["rows_threshold"]:
             mark = "YES" if convert.cell_for(core) else "not convertible"
         print(f"  {core:<30}{count:>6}   {mark}")
+    only = run.get("only") or []
+    fold = lambda v: "".join(ch for ch in (v or "").lower() if ch.isalnum())
+    wanted = {fold(name) for name in only}
+    if wanted:
+        print(f"  resupply.only names {only}; every other core is left alone")
     short = [slot for slot, count in sorted(held.items())
              if count < run["rows_threshold"]
-             and convert.cell_for(calibration.FAVOURITE_ITEMS[str(slot)])]
+             and convert.cell_for(calibration.FAVOURITE_ITEMS[str(slot)])
+             and (not wanted
+                  or fold(calibration.FAVOURITE_ITEMS[str(slot)]) in wanted)]
     if not short:
         print("")
         print(f"  nothing inside rows {first}-{last} is both short of "

@@ -1,6 +1,9 @@
 {
   "resupply": {
     "enabled": true,
+    "only": [
+      "Force Core(High)"
+    ],
     "rows_threshold": 3,
     "buy_min": 250,
     "price_diff_threshold": {
