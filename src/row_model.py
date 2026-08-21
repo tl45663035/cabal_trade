@@ -183,11 +183,11 @@ def _panel():
 
 def read_panel_qty():
     box = _panel()["qty_box"]
-    found = _QTY.search(calibration.read_line(calibration.grab(), tuple(box)))
-    if not found:
+    text = calibration.read_line(calibration.grab(), tuple(box))
+    nums = [int(re.sub(r"[^\d]", "", m)) for m in re.findall(r"\d[\d,]*", text)]
+    if len(nums) < 2:
         return (0, 0)
-    return (int(found.group(1).replace(",", "")),
-            int(found.group(2).replace(",", "")))
+    return (nums[0], nums[-1])
 
 
 def await_panel_qty(timeout=None):

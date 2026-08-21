@@ -513,11 +513,10 @@ def type_number(value: int) -> None:
 
 def panel_qty(panel):
     text = read_line(grab(), tuple(panel["qty_box"]))
-    found = re.search(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)", text)
-    if not found:
+    nums = [int(re.sub(r"[^\d]", "", m)) for m in re.findall(r"\d[\d,]*", text)]
+    if len(nums) < 2:
         return (0, 0)
-    return (int(found.group(1).replace(",", "")),
-            int(found.group(2).replace(",", "")))
+    return (nums[0], nums[-1])
 
 
 def panel_suggestion(panel):
