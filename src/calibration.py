@@ -21,6 +21,7 @@ DEFAULTS = {
         "relist_from": 1,
         "relist_to": 22,
         "undercut_by": 1,
+        "home_notches": 30,
     },
     "debug": {
         "frames": False,

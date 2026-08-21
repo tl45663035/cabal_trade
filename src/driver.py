@@ -173,6 +173,7 @@ def do_relist(first=None, last=None, verbose=True):
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
     model = row_model.RowModel().seed({})
+    model.home(verbose=verbose)
     print(f"relisting rows {first}-{last}")
     done = skipped = 0
     started = time.perf_counter()

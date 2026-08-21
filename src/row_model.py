@@ -23,7 +23,7 @@ WORK_TAB = _FACTS["work_tab"]
 GRID = _FACTS["grid_size"]
 
 MAX_TOP = CAPACITY - VISIBLE + 1
-HOME_NOTCHES = MAX_TOP
+HOME_NOTCHES = _SHARED["run"]["home_notches"]
 
 EMPTY_MARKER = _SHARED["text"]["empty_row"]
 _TEXT = _SHARED["text"]
