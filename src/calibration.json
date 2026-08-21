@@ -6,6 +6,7 @@
   "timing": {
     "action_gap": 0.5,
     "key_hold": 0.02,
+    "key_gap": 0.05,
     "focus_settle": 0.35,
     "wheel_gap": 0.12,
     "park_settle": 0.25,
@@ -14,8 +15,7 @@
     "search_timeout": 8.0,
     "search_retries": 3,
     "dialog_timeout": 8.0,
-    "retry_gap": 1.0,
-    "key_gap": 0.05
+    "retry_gap": 1.0
   },
   "input": {
     "INPUT_MOUSE": 0,
@@ -257,7 +257,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-08-21T11:52:37",
+      "measured_at": "2026-08-21T11:58:44",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -647,17 +647,17 @@
         ],
         "favourite_pitch": 57.0,
         "evidence": {
-          "register_conf": 96,
+          "register_conf": 97,
           "favourite_pitch_spread": 0,
           "purchase_is_derived": true
         },
         "purchase_sort_region": [
-          616,
-          177,
+          765,
+          176,
           1043,
           214
         ],
-        "purchase_sort_text_seen": "pic * yPrice:Low to",
+        "purchase_sort_text_seen": "v y Price:Low to",
         "purchase_buy_x": 1124,
         "purchase_row_pitch": 76,
         "purchase_row_one_y": 340,
@@ -718,7 +718,7 @@
           309
         ],
         "rows_per_notch": 1,
-        "register_rows_seen": 8,
+        "register_rows_seen": 9,
         "panel": {
           "panel_box": [
             10,
@@ -791,5 +791,9 @@
     "8": "Force Core Set (High)",
     "9": "Upgrade Core (Ultimate)",
     "10": "Upgrade Core Set (Ultimate)"
+  },
+  "run": {
+    "relist_from": 1,
+    "relist_to": 22
   }
 }

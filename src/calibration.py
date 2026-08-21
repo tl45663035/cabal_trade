@@ -16,6 +16,10 @@ OUT = HERE / "calibration.json"
 _CACHE = None
 
 DEFAULTS = {
+    "run": {
+        "relist_from": 1,
+        "relist_to": 22,
+    },
     "debug": {
         "frames": False,
         "keep_frames": 2000,

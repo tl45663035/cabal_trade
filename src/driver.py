@@ -120,6 +120,64 @@ def cancel(model, index, verbose=True):
     return model.cancel(index, verbose=verbose)
 
 
+def relist_one(model, index, verbose=True):
+    text, row = row_at(model, index, verbose=False)
+    if row is None:
+        if verbose:
+            print(f"  row {index}: {text[:44]!r} is not a live listing; "
+                  f"leaving it alone")
+        return None
+    if row_model.RECEIPT_WORD.lower() in (text or "").lower():
+        if verbose:
+            print(f"  row {index} has SOLD; not relisting a row that needs "
+                  f"collecting")
+        return None
+
+    landing = calibration.first_free_slot(row_model.WORK_TAB, verbose=False)
+    if landing is None:
+        raise NotReady(
+            f"inventory tab {row_model.WORK_TAB} is full, so row {index} "
+            f"would come back with nowhere to go. Nothing cancelled.")
+
+    if verbose:
+        print(f"  row {index}: {row.name!r} x{row.qty} at {row.price:,} "
+              f"-> tab {row_model.WORK_TAB} slot {landing}")
+    model._slots[index] = row
+    model.cancel(index, verbose=False)
+    calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
+    out = model.list_slot(*landing, verbose=False)
+    if verbose:
+        print(f"    relisted {out['qty']} at {out['price']:,}")
+    return out
+
+
+def do_relist(first=None, last=None, verbose=True):
+    run = calibration.load_shared()["run"]
+    first = run["relist_from"] if first is None else int(first)
+    last = run["relist_to"] if last is None else int(last)
+    if first < 1 or last < first:
+        raise NotReady(f"rows {first}-{last} is not a range to relist")
+    initialise(verbose=verbose)
+    register_tab(verbose=verbose)
+    model = row_model.RowModel().seed({})
+    print(f"relisting rows {first}-{last}")
+    done = skipped = 0
+    started = time.perf_counter()
+    for index in range(first, last + 1):
+        try:
+            if relist_one(model, index, verbose=verbose):
+                done += 1
+            else:
+                skipped += 1
+        except row_model.Divergence as exc:
+            print(f"  row {index} STOPPED: {exc}")
+            break
+    span = (time.perf_counter() - started) * 1000
+    print(f"  {done} relisted, {skipped} skipped in {span:.0f} ms"
+          + (f" ({span/done:.0f} ms each)" if done else ""))
+    return done
+
+
 def do_list(row, col, price=None, verbose=True):
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
@@ -175,6 +233,9 @@ def usage():
     print("                                   walk rows 1-21, print the model")
     print("  py src/driver.py cancel N        cancel row N (collects it first")
     print("                                   if it has sold)")
+    print("  py src/driver.py relist [N M]    cancel and relist rows N-M;")
+    print("                                   the run block in calibration.json")
+    print("                                   if no range is given")
     print("  py src/driver.py list R C [PRICE] list inventory slot (R,C); the")
     print("                                   panel's own suggestion if no PRICE")
     print("  py src/driver.py row N           read row N without touching it")
@@ -191,6 +252,9 @@ def main():
     what = args[0].lower()
     if what == "cancel" and len(args) > 1:
         do_cancel(int(args[1]))
+    elif what == "relist":
+        do_relist(args[1] if len(args) > 1 else None,
+                  args[2] if len(args) > 2 else None)
     elif what == "list" and len(args) > 2:
         do_list(int(args[1]), int(args[2]),
                 int(args[3]) if len(args) > 3 else None)
