@@ -224,18 +224,32 @@ def read_panel_net():
 
 
 def panel_agrees(want_qty, want_price, verbose=False):
-    for _ in range(PANEL_REREADS + 1):
-        qty = read_panel_qty()
+    box = _panel().get("net_sales_box")
+    if not box:
+        raise Divergence(
+            "the net sales box was never measured, so a price cannot be "
+            "checked three ways. Recalibrate before listing anything.")
+    expect = want_qty * want_price
+    for attempt in range(1, PANEL_REREADS + 2):
+        qty = read_panel_qty()[0]
         price = read_panel_price()
-        net = read_panel_net()
-        if qty[0] == want_qty and price == want_price:
-            if net is None or net == want_qty * want_price:
-                return True
-        elif net is not None and net == want_qty * want_price:
+        net = read_panel_net() or 0
+        derived = net // want_qty if want_qty and net % want_qty == 0 else None
+        checks = {
+            "quantity field": qty == want_qty,
+            "price field": price == want_price,
+            "net sales": net == expect,
+            "net / quantity": derived == want_price,
+        }
+        if all(checks.values()):
             if verbose:
-                print(f"    net sales {net:,} is {want_qty} x {want_price:,}; "
-                      f"the {price:,} off the price field is a misread")
+                print(f"    panel agrees four ways: {qty} x {price:,} "
+                      f"= {net:,}")
             return True
+        if verbose:
+            bad = ", ".join(k for k, ok in checks.items() if not ok)
+            print(f"    read {attempt}: {qty} at {price:,}, net {net:,} "
+                  f"-- disagrees on {bad}")
     return False
 
 
