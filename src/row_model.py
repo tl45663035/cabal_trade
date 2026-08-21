@@ -422,7 +422,6 @@ class RowModel:
         inv._user32.SetCursorPos(*point)
         time.sleep(ACTION_GAP)
         calibration.click(*point)
-        calibration.park()
 
         dismiss = find_button(DISMISS_WORD)
         if dismiss is None:
@@ -432,7 +431,6 @@ class RowModel:
         if verbose:
             print(f"  {DISMISS_WORD} at {dismiss}")
         calibration.click(*dismiss)
-        calibration.park()
 
         confirm = find_button(CONFIRM_WORD)
         if confirm is None:
