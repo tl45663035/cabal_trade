@@ -13,6 +13,8 @@ ACTION_GAP = _SHARED["timing"]["action_gap"]
 POLL_GAP = _SHARED["timing"]["poll_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
 CLEAR_PRESSES_QTY = _SHARED["detect"]["clear_presses_qty"]
+REREADS = _SHARED["detect"]["panel_rereads"]
+REREAD_GAP = _SHARED["timing"]["panel_reread_gap"]
 INVENTORY_TAB = calibration.CONVERT_INVENTORY_TAB
 
 
@@ -145,15 +147,24 @@ def convert(core_name, quantity, verbose=True):
                 f"{entry['costs']} to convert. Cancelled.")
 
     asked = min(int(quantity), int(detail["qty_max"]))
-    calibration.click(
-        *calibration._point(tuple(calibration._REG["convert_dialog_qty"])[:2]))
-    row_model.type_number(asked, CLEAR_PRESSES_QTY)
-    calibration.park()
+    if detail["qty"] != asked:
+        calibration.click(*calibration._point(
+            tuple(calibration._REG["convert_dialog_qty"])[:2]))
+        row_model.type_number(asked, CLEAR_PRESSES_QTY)
+        calibration.park()
+    else:
+        say(f"    the quantity field already reads {asked}; not retyping it")
 
-    again = dialog_details()
+    again = None
+    for attempt in range(1, REREADS + 2):
+        again = dialog_details()
+        if again["qty"] == asked:
+            break
+        say(f"    read {attempt}: qty {again['qty']} -- wanted {asked}")
+        time.sleep(REREAD_GAP)
     if again["qty"] != asked:
-        _cancel(f"the dialog reads {again['qty']} after typing {asked}. "
-                f"Cancelled without converting.")
+        _cancel(f"the dialog reads {again['qty']} after {REREADS + 1} reads, "
+                f"not {asked}. Cancelled without converting.")
 
     point = dialog_button(CONFIRM_WORD)
     if point is None:

@@ -16,6 +16,8 @@ TAB_SETTLE = _SHARED["timing"]["tab_settle"]
 POLL_GAP = _SHARED["timing"]["poll_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
 CLEAR_PRESSES_QTY = _SHARED["detect"]["clear_presses_qty"]
+REREADS = _SHARED["detect"]["panel_rereads"]
+REREAD_GAP = _SHARED["timing"]["panel_reread_gap"]
 ROW_SELECT_X = _SHARED["detect"]["purchase_row_select_x"]
 BUY_ROW = 1
 
@@ -122,18 +124,29 @@ def buy_row_one(slot, want, verbose=True):
                 f"Cancelled without buying.")
 
     asked = min(int(want), int(detail["qty_max"]))
-    calibration.click(*calibration._point(
-        tuple(calibration._REG["buy_dialog_qty"])[:2]))
-    row_model.type_number(asked, CLEAR_PRESSES_QTY)
-    calibration.park()
+    if detail["qty"] != asked:
+        calibration.click(*calibration._point(
+            tuple(calibration._REG["buy_dialog_qty"])[:2]))
+        row_model.type_number(asked, CLEAR_PRESSES_QTY)
+        calibration.park()
+    elif verbose:
+        say(f"    the quantity field already reads {asked}; not retyping it")
 
-    again = dialog_details()
+    again = None
+    for attempt in range(1, REREADS + 2):
+        again = dialog_details()
+        if again["qty"] == asked and again["price"] == detail["price"]:
+            break
+        if verbose:
+            say(f"    read {attempt}: qty {again['qty']}, price "
+                f"{again['price']} -- wanted {asked} at {detail['price']}")
+        time.sleep(REREAD_GAP)
     if again["qty"] != asked:
-        _cancel(f"the dialog reads {again['qty']} after typing {asked}. "
-                f"Cancelled without buying.")
+        _cancel(f"the dialog reads {again['qty']} after {REREADS + 1} reads, "
+                f"not {asked}. Cancelled without buying.")
     if again["price"] != detail["price"]:
         _cancel(f"the dialog price moved from {detail['price']} to "
-                f"{again['price']} while typing. Cancelled without buying.")
+                f"{again['price']}. Cancelled without buying.")
 
     point = dialog_button(CONFIRM_WORD)
     if point is None:
