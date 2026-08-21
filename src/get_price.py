@@ -141,13 +141,20 @@ def sort_is_low_to_high(image=None):
 
 
 def confirm_sort_low_to_high(slot, verbose=True):
-    if sort_is_low_to_high():
+    deadline = time.monotonic() + SEARCH_TIMEOUT
+    seen, found = "", None
+    while time.monotonic() < deadline:
+        seen = read_sort()
+        found = _SORT_DIRECTION.search(seen)
+        if found is not None:
+            break
+        time.sleep(POLL_GAP)
+    if found is not None and found.group(1).lower() == "low":
         if verbose:
             print("  sort confirmed Price: Low to High")
         return True
     calibration.snap(f"slot_{slot}_sort_wrong")
-    raise NotReady(
-        f"the sort reads {read_sort()!r}, not Price: Low to High.")
+    raise NotReady(f"the sort reads {seen!r}, not Price: Low to High.")
 
 
 def _digits(text):
