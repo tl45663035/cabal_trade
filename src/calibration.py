@@ -43,6 +43,8 @@ DEFAULTS = {
         "enable_buying": {},
         "rows_threshold": 3,
         "buy_min": 250,
+        "buy_max": 500,
+        "buy_retries": 3,
         "price_diff_threshold": {},
     },
     "debug": {
@@ -209,6 +211,7 @@ DEFAULTS = {
         "work_tab": 4,
         "shop_capacity": 30,
         "shop_visible": 10,
+        "max_stack": 250,
     },
 }
 
@@ -1322,9 +1325,10 @@ def inventory_tab_point(tab):
     return tuple(tabs[key])
 
 
-ACTION_BUTTON_WORDS = ("Confirmation", "Cancel", "Receive", "Register")
+ACTION_BUTTON_WORDS = (_S["text"]["confirm_word"], _S["text"]["dismiss_word"],
+                       _S["text"]["receipt_word"], _S["text"]["register_word"])
 
-RECEIPT_WORD = "Receive"
+RECEIPT_WORD = _S["text"]["receipt_word"]
 
 
 def panel_agrees(panel, want_qty, want_price, say=lambda *a: None):
@@ -1607,7 +1611,7 @@ def calibrate_panel(verbose=True):
     if price is None or qty_label is None:
         raise RuntimeError(
             f"the register panel {box} does not read as a panel: found "
-            f"{[t for t, _c, _p in words][:8]}. Nothing measured.")
+            f"{[t for t, _c, _p in words]}. Nothing measured.")
 
     alz = [p for t, _c, p in words
            if t.strip().lower() == "alz" and price[1] < p[1] < qty_label[1]]
@@ -1761,7 +1765,7 @@ def calibrate_actions(shop, verbose=True):
     listed = re.search(r"\d[\d,]{2,}", before) is not None
     if listed and RECEIPT_WORD.lower() in lowered:
         receipt = (shop["button_x"], shop["row_one_y"])
-        say(f"  row 1 has SOLD: {before[:48]!r}")
+        say(f"  row 1 has SOLD: {before!r}")
         say(f"  {RECEIPT_WORD} at {receipt}")
         click(*receipt)
         park(settle=False)
@@ -1776,9 +1780,9 @@ def calibrate_actions(shop, verbose=True):
         before = read_line(grab(), row_one)
         lowered = before.lower()
         listed = re.search(r"\d[\d,]{2,}", before) is not None
-        say(f"  collected; row 1 now reads {before[:48]!r}")
+        say(f"  collected; row 1 now reads {before!r}")
     if not listed or RECEIPT_WORD.lower() in lowered:
-        say(f"  row 1 reads {before[:48]!r}; it is not a live listing this "
+        say(f"  row 1 reads {before!r}; it is not a live listing this "
             f"pass can withdraw. Earlier positions stand.")
         return {}
 
@@ -1789,12 +1793,12 @@ def calibrate_actions(shop, verbose=True):
         return {}
 
     change = (shop["button_x"], shop["row_one_y"])
-    say(f"  row 1 is {before[:48]!r}")
+    say(f"  row 1 is {before!r}")
     say(f"  Change at {change}")
     click(*change)
     park(settle=False)
 
-    cancel = await_button("Cancel")
+    cancel = await_button(_S["text"]["dismiss_word"])
     if cancel is None:
         raise RuntimeError(
             "no Cancel button appeared after Change on row 1. Nothing has "
@@ -1803,7 +1807,7 @@ def calibrate_actions(shop, verbose=True):
     click(*cancel)
     park(settle=False)
 
-    confirm = await_button("Confirmation")
+    confirm = await_button(_S["text"]["confirm_word"])
     if confirm is None:
         raise RuntimeError(
             "no Confirmation button appeared after Cancel on row 1; nothing "
@@ -1822,7 +1826,7 @@ def calibrate_actions(shop, verbose=True):
             "is unconfirmed.")
 
     after = read_line(grab(), row_one)
-    say(f"  row 1 now reads {after[:48]!r}")
+    say(f"  row 1 now reads {after!r}")
 
     tab = inventory_tab_point(WORK_TAB)
     say(f"  back to inventory tab {WORK_TAB} at {tab}; the withdrawal moves "
@@ -1873,7 +1877,7 @@ def calibrate_actions(shop, verbose=True):
 
     click(*panel["register_button"], settle=0.0)
     learned["button_register"] = list(panel["register_button"])
-    confirm = await_button("Confirmation")
+    confirm = await_button(_S["text"]["confirm_word"])
     if confirm is None:
         raise RuntimeError(
             "no Confirmation appeared after Register. Nothing committed; the "
@@ -1894,9 +1898,9 @@ def calibrate_actions(shop, verbose=True):
               for m in re.findall(r"\d[\d,]*", back)]
     if price not in digits:
         raise RuntimeError(
-            f"the listing went through; row 1 reads {back[:48]!r}, not "
+            f"the listing went through; row 1 reads {back!r}, not "
             f"{price:,}.")
-    say(f"  row 1 reads {back[:48]!r} again, at {price:,} as typed")
+    say(f"  row 1 reads {back!r} again, at {price:,} as typed")
     say(f"  learned {', '.join(sorted(learned))}")
     return learned
 

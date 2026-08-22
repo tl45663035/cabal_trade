@@ -105,7 +105,7 @@ def seed(verbose=True):
         row = _row_from(text)
         if row is None:
             if verbose:
-                print(f"    {index:2}  UNREAD {text[:56]!r}")
+                print(f"    {index:2}  UNREAD {text!r}")
             continue
         found[index] = row
         if verbose:
@@ -167,7 +167,7 @@ def relist_one(model, index, verbose=True):
     if row is None or button != row_model.CHANGE_WORD:
         calibration.snap(f"row_{index}_button_disagrees")
         print(f"  row {index}: SKIPPED and it should not have been. The row "
-              f"reads {text[:60]!r}")
+              f"reads {text!r}")
         print(f"    parsed  {'nothing' if row is None else str(row.qty) + ' at ' + format(row.price, ',')}")
         print(f"    button  {button!r}, box reads "
               f"{row_model.row_button_text()!r}")
@@ -294,7 +294,7 @@ def row_at(model, index, verbose=True):
     text = row_model.read_row_one()
     row = _row_from(text)
     if verbose:
-        print(f"  row {index}: {text[:66]!r}")
+        print(f"  row {index}: {text!r}")
         print(f"    function {row_model.row_function(text)!r}  "
               f"complete {row_model.row_complete(text)}")
     return text, row

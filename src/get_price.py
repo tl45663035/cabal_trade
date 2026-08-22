@@ -287,10 +287,10 @@ def get_price(slot, verbose=True):
             break
         if gone:
             print(f"  slot {slot}: attempt {attempt}/{RETRIES} -- the shop "
-                  f"closed mid-search; the row band read {text[:40]!r}")
+                  f"closed mid-search; the row band read {text!r}")
         else:
             print(f"  slot {slot}: attempt {attempt}/{RETRIES} timed out "
-                  f"after {SEARCH_TIMEOUT:g}s; row 1 reads {text[:40]!r}, "
+                  f"after {SEARCH_TIMEOUT:g}s; row 1 reads {text!r}, "
                   f"expected {want!r}")
         time.sleep(RETRY_GAP)
 
