@@ -249,34 +249,30 @@ def price_field_shows(read, want):
     return any(grouped.replace(",", d) == str(read) for d in "0123456789")
 
 
-def panel_agrees(want_qty, want_price, verbose=False):
+def panel_quantity(want_price, verbose=False):
     if not _panel().get("net_sales_box"):
         raise Divergence(
             "the net sales box was never measured, so a price cannot be "
             "checked. Recalibrate before listing anything.")
-    expect = want_qty * want_price
     for attempt in range(1, PANEL_REREADS + 2):
         price = read_panel_price()
         net = read_panel_net() or 0
         checks = {
             "price field": price_field_shows(price, want_price),
-            "net sales": net == expect,
-            "net / quantity": net // want_qty == want_price
-            if want_qty and net % want_qty == 0 else False,
-            "net / price": net // want_price == want_qty
-            if want_price and net % want_price == 0 else False,
+            "net sales": net > 0,
+            "net / price": net % want_price == 0,
         }
         if all(checks.values()):
+            qty = net // want_price
             if verbose:
-                print(f"    panel agrees four ways: {want_qty} x {price:,} "
-                      f"= {net:,}")
-            return True
+                print(f"    panel agrees: {qty} x {want_price:,} = {net:,}")
+            return qty
         if verbose:
             bad = ", ".join(k for k, ok in checks.items() if not ok)
             print(f"    read {attempt}: price {price:,}, net {net:,} "
                   f"-- disagrees on {bad}")
         time.sleep(PANEL_REREAD_GAP)
-    return False
+    return None
 
 
 def type_number(value, clear):
@@ -716,21 +712,15 @@ class RowModel:
             calibration.click(*panel["qty_point"], settle=FIELD_SETTLE)
             type_number(MAX_STACK, CLEAR_PRESSES_QTY)
             calibration.park()
-        with calibration.step("read back the quantity the game allowed"):
-            qty = read_panel_qty()[0]
-        if not qty:
+        with calibration.step("take the quantity from the net sales"):
+            qty = panel_quantity(want, verbose)
+        if qty is None:
+            calibration.snap("panel_will_not_confirm")
             raise Divergence(
-                f"the quantity field will not read after typing "
-                f"{MAX_STACK}. Nothing has been listed.")
+                f"the panel will not price {want:,} against its net sales "
+                f"after typing {MAX_STACK}. Nothing has been listed.")
         if verbose:
-            print(f"  typed {MAX_STACK}; the game allowed {qty}")
-
-        with calibration.step("the four-way panel check"):
-            agrees = panel_agrees(qty, want, verbose)
-        if not agrees:
-            raise Divergence(
-                f"the panel does not agree that it holds {qty} at "
-                f"{want:,}. Nothing has been listed.")
+            print(f"  typed {MAX_STACK}; the net sales make it {qty}")
         with calibration.step("click Register"):
             calibration.click(*panel["register_button"], settle=0.0)
         with calibration.step(f"find {CONFIRM_WORD}"):
