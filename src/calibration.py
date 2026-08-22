@@ -2014,11 +2014,14 @@ def close_everything(verbose: bool = False) -> None:
     if verbose:
         print("restoring the default state:")
 
-    press(VK_ESCAPE)
-    time.sleep(gap)
-    snap("press_escape")
-    if verbose:
-        print("  Escape: Trade window closed")
+    if _trade_window_open() or vendor_open():
+        press(VK_ESCAPE)
+        time.sleep(gap)
+        snap("press_escape")
+        if verbose:
+            print("  Escape: window closed")
+    elif verbose:
+        print("  no Trade window or vendor open; not pressing Escape")
 
     park()
     if find_alz(grab()) is None:
