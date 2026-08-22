@@ -3,6 +3,7 @@ import sys
 import time
 
 import calibration
+import get_alz
 import get_price
 import row_model
 import open_agent_shop_premium as shop
@@ -132,6 +133,18 @@ def _cancel(why):
     raise Refused(why)
 
 
+def await_balance(differs_from=None, timeout=None):
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    seen = None
+    while time.monotonic() < deadline:
+        seen = get_alz.read_balance()
+        if seen is not None and seen != differs_from:
+            return seen
+        time.sleep(POLL_GAP)
+    return seen
+
+
 def buy_row_one(slot, want, verbose=True):
     steps_reset()
     outcome = "REFUSED"
@@ -214,6 +227,13 @@ def _buy_row_one(slot, want, verbose=True):
     if verbose:
         say(f"    dialog confirms {asked} pack(s) at {want_total:,}")
 
+    with step("read the balance before buying"):
+        before_alz = get_alz.read_balance()
+    if before_alz is None:
+        _cancel("the Alz balance would not read, so a purchase could not be "
+                "checked against it. Cancelled without buying.")
+    say(f"    balance before {before_alz:,}")
+
     with step(f"find the {CONFIRM_WORD} button"):
         point = dialog_button(CONFIRM_WORD)
     if point is None:
@@ -228,11 +248,26 @@ def _buy_row_one(slot, want, verbose=True):
         raise Refused(
             f"the dialog stayed open after {CONFIRM_WORD}. Whether anything "
             f"was bought is unknown -- look before running again.")
+    with step("read the balance after buying"):
+        after_alz = await_balance(differs_from=before_alz)
     units = asked * max(1, row_model.pack_size(offer["name"]))
+    if after_alz is None:
+        raise Refused(
+            f"the Alz balance would not read after {CONFIRM_WORD}. Whether "
+            f"{want_total:,} was spent is unknown -- check by hand.")
+    spent = before_alz - after_alz
+    per_unit = spent // units if units else 0
+    say(f"    balance after  {after_alz:,}; spent {spent:,} "
+        f"({per_unit:,} a core)")
+    if spent != want_total:
+        raise Refused(
+            f"{spent:,} left the account for an order the dialog priced at "
+            f"{want_total:,}. Balance {before_alz:,} -> {after_alz:,}.")
     say(f"    bought {asked} x {offer['name']} = {units} core(s) for "
         f"{want_total:,}")
     return {"slot": int(slot), "name": name, "packs": asked, "bought": units,
-            "unit_price": offer["unit_price"], "price": offer["price"]}
+            "unit_price": per_unit, "price": offer["price"],
+            "spent": spent, "balance": after_alz}
 
 
 def buy_item(slot, want=None, verbose=True):
