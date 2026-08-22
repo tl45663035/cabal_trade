@@ -18,6 +18,7 @@ TAB_SETTLE = _SHARED["timing"]["tab_settle"]
 POLL_GAP = _SHARED["timing"]["poll_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
 CLEAR_PRESSES_QTY = _SHARED["detect"]["clear_presses_qty"]
+FIELD_SETTLE = _SHARED["timing"]["field_settle"]
 REREADS = _SHARED["detect"]["panel_rereads"]
 REREAD_GAP = _SHARED["timing"]["panel_reread_gap"]
 ROW_SELECT_X = _SHARED["detect"]["purchase_row_select_x"]
@@ -169,9 +170,9 @@ def _buy_row_one(slot, want, verbose=True):
         f"{offer['price']:,} ({offer['unit_price']:,}/unit)")
 
     with step(f"click the row at {row_point()}"):
-        calibration.click(*row_point())
+        calibration.click(*row_point(), settle=FIELD_SETTLE)
     with step(f"click Buy at {buy_point()}"):
-        calibration.click(*buy_point())
+        calibration.click(*buy_point(), settle=0.0)
     with step("await the Purchase dialog"):
         appeared = await_dialog()
     if not appeared:
@@ -239,7 +240,7 @@ def _buy_row_one(slot, want, verbose=True):
     if point is None:
         _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
     with step(f"click {CONFIRM_WORD}"):
-        calibration.click(*point)
+        calibration.click(*point, settle=0.0)
     with step("park"):
         calibration.park()
     with step("confirm the dialog is gone"):

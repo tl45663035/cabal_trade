@@ -125,7 +125,7 @@ def convert(core_name, quantity, verbose=True):
 
     x, y = entry["point"]
     say(f"  {entry['cell']} at ({x}, {y}): {entry['costs']} -> {core_name}")
-    calibration.alt_click(x, y)
+    calibration.alt_click(x, y, settle=0.0)
     if not await_dialog():
         raise Refused(
             "no Purchase Item dialog appeared after Alt+click; nothing "
@@ -173,8 +173,7 @@ def convert(core_name, quantity, verbose=True):
         _cancel(f"the dialog closed while selecting inventory tab "
                 f"{INVENTORY_TAB}. Nothing converted.")
     point = dialog_button(CONFIRM_WORD) or point
-    calibration.click(*point)
-    time.sleep(ACTION_GAP)
+    calibration.click(*point, settle=0.0)
     calibration.park()
     if dialog_open():
         raise Refused(

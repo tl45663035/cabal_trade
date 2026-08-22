@@ -106,6 +106,8 @@ def read_fields(image=None):
             price = int(digits)
     if price is None and len(joined_price) >= PRICE_MIN_DIGITS:
         price = int(joined_price)
+    if price is None:
+        price = calibration.read_money(image, column_box("price"))
 
     qty = None
     joined = _NOT_DIGIT.sub("", "".join(qty_words))
