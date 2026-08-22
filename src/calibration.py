@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "calibration.json"
@@ -384,6 +384,7 @@ FUNCTION_HALF_WIDTH = _DET["function_half_width"]
 PRICE_RIGHT_GAP = _DET["price_right_gap"]
 INK_THRESHOLD = _DET["ink_threshold"]
 INK_PAD = _DET["ink_pad"]
+INK_CONTRAST_MIN = _DET["ink_contrast_min"]
 BULK_MIN_CONF = _DET["bulk_min_conf"]
 RESCUE_MIN_CONF = _DET["rescue_min_conf"]
 MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
@@ -699,14 +700,25 @@ def right_click(x: int, y: int, settle: float = None) -> None:
     snap(f"rightclick_{x}_{y}")
 
 
+def prep_for_text(image: Image.Image, box, scale: int):
+    crop = image.crop(box).convert("L")
+    crop = crop.resize((crop.width * scale, crop.height * scale),
+                       Image.LANCZOS)
+    return ImageOps.autocontrast(ImageOps.invert(crop))
+
+
+def has_ink(image: Image.Image, box) -> bool:
+    lo, hi = image.crop(box).convert("L").getextrema()
+    return hi - lo >= INK_CONTRAST_MIN
+
+
 def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
     scale = OCR_SCALE if scale is None else scale
     min_conf = OCR_MIN_CONF if min_conf is None else min_conf
-    crop = image.crop(box)
-    crop = crop.resize((crop.width * scale, crop.height * scale),
-                       Image.LANCZOS)
+    if not has_ink(image, box):
+        return []
     buf = io.BytesIO()
-    crop.save(buf, "PNG")
+    prep_for_text(image, box, scale).save(buf, "PNG")
     run = subprocess.run(
         [TESSERACT, "stdin", "stdout", "--psm", OCR_PSM, "tsv"],
         input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
@@ -730,11 +742,10 @@ def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
 
 def read_line(image: Image.Image, box, scale: int = None):
     scale = OCR_SCALE if scale is None else scale
-    crop = image.crop(box)
-    crop = crop.resize((crop.width * scale, crop.height * scale),
-                       Image.LANCZOS)
+    if not has_ink(image, box):
+        return ""
     buf = io.BytesIO()
-    crop.save(buf, "PNG")
+    prep_for_text(image, box, scale).save(buf, "PNG")
     run = subprocess.run(
         [TESSERACT, "stdin", "stdout", "--psm", ROW_PSM, "tsv"],
         input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
@@ -763,11 +774,9 @@ def read_number(image: Image.Image, box):
     tight = ink_box(image, box)
     if tight is None:
         return None
-    crop = image.crop(tight)
-    crop = crop.resize((crop.width * OCR_SCALE, crop.height * OCR_SCALE),
-                       Image.LANCZOS)
     buf = io.BytesIO()
-    crop.save(buf, "PNG")
+    ImageOps.expand(prep_for_text(image, tight, OCR_SCALE),
+                    border=INK_PAD, fill=255).save(buf, "PNG")
     run = subprocess.run(
         [TESSERACT, "stdin", "stdout", "--psm", ROW_PSM,
          "-c", "tessedit_char_whitelist=" + DIGIT_WHITELIST],
@@ -778,11 +787,10 @@ def read_number(image: Image.Image, box):
 
 def read_digits(image: Image.Image, box, scale: int = None):
     scale = OCR_SCALE if scale is None else scale
-    crop = image.crop(box)
-    crop = crop.resize((crop.width * scale, crop.height * scale),
-                       Image.LANCZOS)
+    if not has_ink(image, box):
+        return None
     buf = io.BytesIO()
-    crop.save(buf, "PNG")
+    prep_for_text(image, box, scale).save(buf, "PNG")
     run = subprocess.run(
         [TESSERACT, "stdin", "stdout", "--psm", DIGIT_PSM,
          "-c", "tessedit_char_whitelist=" + DIGIT_WHITELIST],
