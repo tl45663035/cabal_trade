@@ -41,6 +41,7 @@ CLEAR_PRESSES_QTY = _SHARED["detect"]["clear_presses_qty"]
 CLEAR_PRESSES_PRICE = _SHARED["detect"]["clear_presses_price"]
 KEY_GAP = _T["key_gap"]
 CLEAR_GAP = _T["clear_gap"]
+LOAD_ATTEMPTS = _SHARED["detect"]["load_attempts"]
 FIELD_SETTLE = _T["field_settle"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
@@ -637,12 +638,20 @@ class RowModel:
                 f"the shop slot already holds {before[0]} of {before[1]}; "
                 f"clear it before listing another item.")
 
-        calibration.ctrl_click(*point)
-        held = await_panel_qty()
+        held = None
+        for attempt in range(1, LOAD_ATTEMPTS + 1):
+            calibration.ctrl_click(*point)
+            held = await_panel_qty()
+            if held is not None:
+                break
+            calibration.snap(f"nothing_loaded_{row}x{col}_{attempt}")
+            if verbose:
+                print(f"  ctrl-click {attempt}/{LOAD_ATTEMPTS} loaded nothing "
+                      f"from ({row},{col})")
         if held is None:
             raise Divergence(
-                f"nothing loaded into the shop slot from ({row},{col}). "
-                f"Nothing has been listed.")
+                f"nothing loaded into the shop slot from ({row},{col}) after "
+                f"{LOAD_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
         if verbose:
             print(f"  loaded {held[0]} of {held[1]}")
 
