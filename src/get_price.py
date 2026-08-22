@@ -152,7 +152,10 @@ def confirm_sort_low_to_high(slot, verbose=True):
     if found is not None and found.group(1).lower() == "low":
         if verbose:
             print("  sort confirmed Price: Low to High")
-        return True
+        return "ok"
+    if not calibration.purchase_tab_showing():
+        calibration.snap(f"slot_{slot}_shop_gone_at_sort")
+        return "gone"
     calibration.snap(f"slot_{slot}_sort_wrong")
     raise NotReady(f"the sort reads {seen!r}, not Price: Low to High.")
 
@@ -248,13 +251,13 @@ def get_price(slot, verbose=True):
         with calibration.step(f"get_price: click favourite slot {slot}"):
             shop.click(x, y, settle=0.0)
         with calibration.step("get_price: confirm the sort"):
-            confirm_sort_low_to_high(slot, verbose=verbose and attempt == 1)
+            gone = confirm_sort_low_to_high(
+                slot, verbose=verbose and attempt == 1) == "gone"
         deadline = time.monotonic() + SEARCH_TIMEOUT
         next_check = time.monotonic() + SHOP_CHECK_GAP
-        gone = False
         polls = 0
         poll_started = time.monotonic()
-        while time.monotonic() < deadline:
+        while not gone and time.monotonic() < deadline:
             polls += 1
             image = calibration.grab()
             fields = read_fields(image)
