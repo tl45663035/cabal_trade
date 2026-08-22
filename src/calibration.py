@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image, ImageChops, ImageOps
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "calibration.json"
@@ -314,6 +314,7 @@ TESSERACT = _OCR["tesseract"]
 OCR_SCALE = _OCR["scale"]
 OCR_MIN_CONF = _OCR["min_conf"]
 OCR_PSM = _OCR["psm"]
+OCR_BORDER = _OCR["border"]
 ROW_PSM = _OCR["row_psm"]
 DIGIT_PSM = _OCR["digit_psm"]
 DIGIT_WHITELIST = _OCR["digit_whitelist"]
@@ -385,6 +386,9 @@ PRICE_RIGHT_GAP = _DET["price_right_gap"]
 INK_THRESHOLD = _DET["ink_threshold"]
 INK_PAD = _DET["ink_pad"]
 INK_CONTRAST_MIN = _DET["ink_contrast_min"]
+WARM_MIN_BRIGHT = _DET["warm_min_bright"]
+WARM_MIN_SATURATION = _DET["warm_min_saturation"]
+ALZ_MAX_TEXT_HEIGHT = _DET["alz_max_text_height"]
 BULK_MIN_CONF = _DET["bulk_min_conf"]
 RESCUE_MIN_CONF = _DET["rescue_min_conf"]
 MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
@@ -407,6 +411,7 @@ CONVERT_GRADES = _S["game_facts"]["convert_grades"]
 CONVERT_ROW_COUNT = _S["game_facts"]["convert_rows"]
 CONVERT_SET_TO_CORE_ROWS = _S["game_facts"]["convert_set_to_core_rows"]
 CONVERT_TAB = _S["game_facts"]["convert_tab"]
+LETTER_DIGITS = _S["text"]["letter_digits"]
 SERVER_LAG_TEXT = re.compile(_S["text"]["server_lag"],
                              re.IGNORECASE)
 SERVER_LAG_IDLE = _S["timing"]["server_lag_idle"]
@@ -652,10 +657,40 @@ def type_number(value: int, clear: int) -> None:
         time.sleep(KEY_GAP)
 
 
-def read_money(image, box):
-    text = re.sub(r"[,\s]", "", read_line(image, tuple(box)))
-    runs = re.findall(r"\d+", text)
+def digits_only(text):
+    return "".join(ch if ch.isdigit() else LETTER_DIGITS.get(ch, " ")
+                   for ch in text or "")
+
+
+def _tesseract(prepared, psm, whitelist=None):
+    buf = io.BytesIO()
+    prepared.save(buf, "PNG")
+    args = [TESSERACT, "stdin", "stdout", "--psm", str(psm)]
+    if whitelist:
+        args += ["-c", "tessedit_char_whitelist=" + whitelist]
+    run = subprocess.run(args, input=buf.getvalue(), capture_output=True,
+                         timeout=OCR_TIMEOUT)
+    return run.stdout.decode("utf-8", "replace")
+
+
+def _longest_run(text):
+    runs = re.findall(r"\d+", re.sub(r"[,\s]", "", text))
     return int(max(runs, key=len)) if runs else None
+
+
+def read_money(image, box):
+    box = tuple(box)
+    if not has_ink(image, box):
+        return None
+    text = re.sub(r"[,\s]", "", read_line(image, box))
+    if text.isdigit():
+        return _longest_run(text)
+    for prepared in (prep_for_text(image, box, OCR_SCALE),
+                     warm_text(image, box, OCR_SCALE)):
+        value = _longest_run(_tesseract(prepared, ROW_PSM, DIGIT_WHITELIST))
+        if value is not None:
+            return value
+    return _longest_run(text)
 
 
 def panel_qty(panel):
@@ -700,11 +735,45 @@ def right_click(x: int, y: int, settle: float = None) -> None:
     snap(f"rightclick_{x}_{y}")
 
 
-def prep_for_text(image: Image.Image, box, scale: int):
+def prep_for_text(image: Image.Image, box, scale: int, border=None):
     crop = image.crop(box).convert("L")
     crop = crop.resize((crop.width * scale, crop.height * scale),
                        Image.LANCZOS)
-    return ImageOps.autocontrast(ImageOps.invert(crop))
+    out = ImageOps.autocontrast(ImageOps.invert(crop))
+    pad = OCR_BORDER if border is None else border
+    return ImageOps.expand(out, border=pad, fill=255) if pad else out
+
+
+def warm_text(image: Image.Image, box, scale: int, border=None):
+    r, g, b = image.crop(box).convert("RGB").split()
+    warm = ImageChops.subtract(r, ImageChops.lighter(g, b))
+    warm = warm.resize((warm.width * scale, warm.height * scale),
+                       Image.LANCZOS)
+    out = ImageOps.autocontrast(ImageOps.invert(warm))
+    pad = OCR_BORDER if border is None else border
+    return ImageOps.expand(out, border=pad, fill=255) if pad else out
+
+
+def isolate_digits(image: Image.Image, box, scale: int = None):
+    scale = OCR_SCALE if scale is None else scale
+    crop = image.crop(box).convert("RGB")
+    crop = crop.resize((crop.width * scale, crop.height * scale),
+                       Image.LANCZOS)
+    px = crop.load()
+    mask = Image.new("L", crop.size, 255)
+    m = mask.load()
+    for y in range(crop.height):
+        for x in range(crop.width):
+            red, green, blue = px[x, y]
+            hi, lo = max(red, green, blue), min(red, green, blue)
+            if hi > WARM_MIN_BRIGHT and hi - lo > WARM_MIN_SATURATION:
+                m[x, y] = 0
+    bbox = ImageOps.invert(mask).getbbox()
+    if not bbox:
+        return None
+    if (bbox[3] - bbox[1]) > crop.height * ALZ_MAX_TEXT_HEIGHT:
+        return None
+    return ImageOps.expand(mask.crop(bbox), border=OCR_BORDER, fill=255)
 
 
 def has_ink(image: Image.Image, box) -> bool:

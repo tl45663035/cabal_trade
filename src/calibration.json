@@ -51,13 +51,14 @@
   },
   "ocr": {
     "tesseract": "C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
-    "scale": 3,
+    "scale": 4,
     "min_conf": 45.0,
     "psm": "11",
     "row_psm": "7",
     "digit_psm": "13",
     "digit_whitelist": "0123456789,",
-    "timeout": 60
+    "timeout": 60,
+    "border": 24
   },
   "regions": {
     "park": [
@@ -331,7 +332,10 @@
     "convert_merge_gap": 30,
     "purchase_row_select_x": 500,
     "load_attempts": 3,
-    "ink_contrast_min": 40
+    "ink_contrast_min": 40,
+    "warm_min_bright": 110,
+    "warm_min_saturation": 45,
+    "alz_max_text_height": 0.5
   },
   "text": {
     "empty_row": "premiumexclusiveslot",
@@ -360,7 +364,15 @@
       "O": "0",
       "o": "0",
       "S": "5",
-      "B": "8"
+      "B": "8",
+      "Z": "2",
+      "z": "2",
+      "G": "6",
+      "b": "6",
+      "s": "5",
+      "g": "9",
+      "q": "9",
+      "D": "0"
     }
   },
   "game_facts": {

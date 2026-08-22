@@ -22,20 +22,20 @@
   "resupply": {
     "enabled": true,
     "enable_buying": {
-      "Force Core(Highest)": false,
+      "Force Core(Highest)": true,
       "Chaos Core": false,
-      "Force Core (Ultimate)": false,
+      "Force Core (Ultimate)": true,
       "Force Core(High)": true,
-      "Upgrade Core (Ultimate)": false
+      "Upgrade Core (Ultimate)": true
     },
     "rows_threshold": 3,
     "buy_min": 10,
     "price_diff_threshold": {
-      "Force Core(Highest)": 500000,
+      "Force Core(Highest)": 10000,
       "Chaos Core": 1000000,
-      "Force Core (Ultimate)": 1000000,
+      "Force Core (Ultimate)": 10000,
       "Force Core(High)": 5000,
-      "Upgrade Core (Ultimate)": 2000000
+      "Upgrade Core (Ultimate)": 20000
     }
   },
   "run": {
