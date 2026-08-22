@@ -335,15 +335,6 @@ def rows_by_core(model, first, last):
     return held
 
 
-def occupied_slots(tab):
-    calibration.click(*calibration.inventory_tab_point(tab))
-    time.sleep(row_model.TAB_SETTLE)
-    image = calibration.grab()
-    grid = _SHARED["game_facts"]["grid_size"]
-    return {(r, c) for r in range(1, grid + 1) for c in range(1, grid + 1)
-            if not calibration.slot_is_empty(image, r, c)}
-
-
 def resupply_one(model, slot, held, verbose=True):
     run = calibration.load_shared()["resupply"]
     core = calibration.FAVOURITE_ITEMS[str(slot)]

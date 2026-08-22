@@ -1,14 +1,12 @@
-import ctypes
 import time
 
 import calibration
-from open_inventory import (VK_I, _Input, _InputUnion, _MouseInput, _user32,
+from open_inventory import (VK_I, _Input, _InputUnion, _MouseInput,
                             focus_game, press)
 
 CAL = calibration.load()
 
 _FACTS = CAL["game_facts"]
-GRID_SIZE = _FACTS["grid_size"]
 AGENT_SHOP_TAB = _FACTS["agent_shop_tab"]
 AGENT_SHOP_SLOT = tuple(_FACTS["agent_shop_slot"])
 
@@ -16,7 +14,6 @@ ACTION_GAP = CAL["timing"]["action_gap"]
 
 
 CALIBRATED_ALZ = tuple(CAL["inventory"]["alz_box"])
-PANEL_MOVED_SLACK = CAL["detect"]["panel_moved_slack"]
 MIN_PLAUSIBLE_BALANCE = CAL["detect"]["min_plausible_balance"]
 
 

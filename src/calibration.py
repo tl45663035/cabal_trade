@@ -213,15 +213,6 @@ DEFAULTS = {
 }
 
 
-def _merge_keeping_existing(fresh: dict, existing: dict) -> dict:
-    out = dict(fresh)
-    for section in DEFAULTS:
-        merged = dict(DEFAULTS[section])
-        merged.update(existing.get(section) or {})
-        out[section] = merged
-    return out
-
-
 def screen_size() -> "tuple[int, int]":
     import mss
     with mss.MSS() as sct:
@@ -329,11 +320,8 @@ VENDOR_TAB_BAND_F = tuple(_REG["vendor_tab_band"])
 CONVERT_GRID_BAND_F = tuple(_REG["convert_grid_band"])
 SERVER_LAG_BAND_F = tuple(_REG["server_lag_band"])
 BOUNDARY_WINDOW_F = tuple(_REG["boundary_window"])
-SLOT_PITCH_F = tuple(_REG["slot_pitch"])
 PURCHASE_SORT_BAND_F = tuple(_REG["purchase_sort_band"])
-PURCHASE_BUY_BAND_F = tuple(_REG["purchase_buy_band"])
 PURCHASE_TABLE_BAND_F = tuple(_REG["purchase_table_band"])
-POPUP_F = tuple(_REG["popup"])
 DIALOG_BUTTONS_F = tuple(_REG["dialog_buttons"])
 REGISTER_TABLE_BAND_F = tuple(_REG["register_table_band"])
 REGISTER_BUTTON_BAND_F = _S["regions"]["register_button_band"]
@@ -368,15 +356,10 @@ ALZ_LINE_HALF = _DET["alz_line_half"]
 ALZ_MAX_WIDTH_FRACTION = _DET["alz_max_width_fraction"]
 ALZ_MIN_HEIGHT = _DET["alz_min_height"]
 ALZ_MAX_HEIGHT = _DET["alz_max_height"]
-GRID_FIT_MIN = _DET["grid_fit_min"]
-PANEL_OPEN_CHANGE = _DET["panel_open_change"]
 EDGE_CANDIDATES = _DET["edge_candidates"]
 EDGE_MIN_GAP = _DET["edge_min_gap"]
-RULE_CANDIDATES = _DET["rule_candidates"]
-RULE_MIN_GAP = _DET["rule_min_gap"]
 PURCHASE_HEADER_UP = _DET["purchase_header_up"]
 PURCHASE_HEADER_DOWN = _DET["purchase_header_down"]
-PURCHASE_DIVIDER_SIGMA = _DET["purchase_divider_sigma"]
 PURCHASE_CELL_INSET = _DET["purchase_cell_inset"]
 ROW_BORDER_CANDIDATES = _DET["row_border_candidates"]
 ROW_BORDER_MIN_GAP = _DET["row_border_min_gap"]
@@ -394,8 +377,6 @@ RESCUE_MIN_CONF = _DET["rescue_min_conf"]
 MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
 PRICE_MIN_DIGITS = _DET["price_min_digits"]
 MIN_CLIENT_SIDE = _DET["min_client_side"]
-FIT_PITCH_STEP = _DET["fit_pitch_step"]
-FIT_START_STEP = _DET["fit_start_step"]
 FAV_PEAK_CUT = _DET["fav_peak_cut"]
 FAV_MERGE_GAP = _DET["fav_merge_gap"]
 CONVERT_PEAK_CUT = _DET["convert_peak_cut"]
@@ -688,7 +669,10 @@ def read_money(image, box):
     if value is not None:
         return value
     for prepared in (prep_for_text(image, box, OCR_SCALE, OCR_BORDER),
-                     warm_text(image, box, OCR_SCALE, OCR_BORDER)):
+                     warm_text(image, box, OCR_SCALE, OCR_BORDER),
+                     isolate_digits(image, box)):
+        if prepared is None:
+            continue
         value = _digits(_tesseract(prepared, ROW_PSM, DIGIT_WHITELIST))
         if value is not None:
             return value
@@ -867,25 +851,6 @@ def read_digits(image: Image.Image, box, scale: int = None):
     return int(digits) if digits else None
 
 
-def fit_periodic(profile, n, lo, hi, step=None):
-    step = FIT_PITCH_STEP if step is None else step
-    d = np.abs(np.diff(profile))
-    d = d / (d.max() or 1.0)
-    length = len(d)
-    best = (-1.0, None, None)
-    for pitch in np.arange(lo, hi, step):
-        if pitch * n >= length - 1:
-            continue
-        for start in np.arange(0, length - 1 - pitch * n, FIT_START_STEP):
-            pos = (start + pitch * np.arange(n + 1)).round().astype(int)
-            score = float(d[pos].min())
-            if score > best[0]:
-                best = (score, float(pitch), float(start))
-    return best
-
-
-
-
 def find_alz(image: Image.Image, search=None):
     search = search or _box(ALZ_SEARCH_F)
     crop = image.crop(search)
@@ -920,11 +885,6 @@ def find_alz(image: Image.Image, search=None):
     if not ALZ_MIN_HEIGHT <= height <= ALZ_MAX_HEIGHT:
         return None
     return box
-
-
-def _pitch_bounds():
-    w = _client_rect()[2]
-    return SLOT_PITCH_F[0] * w, SLOT_PITCH_F[1] * w
 
 
 def inventory_open(image=None):

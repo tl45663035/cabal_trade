@@ -135,11 +135,6 @@ def read_sort(image=None):
     return calibration.read_line(image, sort_box())
 
 
-def sort_is_low_to_high(image=None):
-    found = _SORT_DIRECTION.search(read_sort(image))
-    return found is not None and found.group(1).lower() == "low"
-
-
 def confirm_sort_low_to_high(slot, verbose=True):
     deadline = time.monotonic() + SEARCH_TIMEOUT
     seen, found = "", None

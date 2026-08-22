@@ -110,14 +110,6 @@ def quiet_window(after):
     return best
 
 
-def seconds_until_quiet(verbose=False):
-    at = now(verbose=verbose)
-    if at is None:
-        return None
-    start, _end = quiet_window(at)
-    return (start - at).total_seconds()
-
-
 def avoid(allowance=0.0, verbose=True):
     say = print if verbose else (lambda *a: None)
     if not ENABLED:
