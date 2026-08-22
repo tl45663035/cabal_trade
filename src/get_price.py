@@ -130,9 +130,7 @@ def read_fields(image=None):
 
 def read_sort(image=None):
     image = image if image is not None else calibration.grab()
-    tokens = calibration.ocr(image, sort_box())
-    tokens.sort(key=lambda token: token[2][0])
-    return " ".join(token[0] for token in tokens)
+    return calibration.read_line(image, sort_box())
 
 
 def sort_is_low_to_high(image=None):
