@@ -411,6 +411,10 @@ def resupply_one(model, slot, held, first, last, verbose=True):
                     print(f"  stopping: {exc}")
                     break
                 print(f"  attempt {attempt}/{run['buy_retries']}: {exc}")
+                if attempt == int(run["buy_retries"]):
+                    print(f"  the board kept moving through "
+                          f"{run['buy_retries']} attempt(s); giving up on "
+                          f"{set_name} this cycle.")
         if got is None:
             break
         if got["bought"] <= 0:
@@ -428,8 +432,9 @@ def resupply_one(model, slot, held, first, last, verbose=True):
     why = f"a {floor_pair} costs {unit_floor:,}" if unit_floor else ""
     rows, listed_total, converted_total = [], 0, 0
     left_to_convert = bought
+    max_rounds = max(1, -(-bought // row_model.MAX_STACK)) + 1
     rounds = 0
-    while left_to_convert > 0:
+    while left_to_convert > 0 and rounds < max_rounds:
         rounds += 1
         print("")
         print(f"  -- round {rounds}: convert up to {row_model.MAX_STACK}, "
@@ -478,9 +483,10 @@ def resupply_one(model, slot, held, first, last, verbose=True):
             listed_total += listed["qty"]
             still = calibration.occupied_slots()
             remaining = [w for w in remaining if w in still]
-        if out["converted"] <= 0:
-            print(f"  round {rounds} converted nothing; stopping.")
-            break
+    if left_to_convert > 0:
+        print(f"  {left_to_convert} of {bought} {set_name} are still "
+              f"unconverted after {rounds} round(s); they are on tab "
+              f"{calibration.CONVERT_INVENTORY_TAB}.")
     calibration.phases_table(
         f"resupply {core}: bought {bought}, converted {converted_total}, "
         f"listed {listed_total} in rows {rows}")

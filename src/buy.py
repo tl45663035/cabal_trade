@@ -195,17 +195,23 @@ def _buy_row_one(slot, want, verbose=True):
                 f"Cancelled without buying.")
 
     pack = max(1, row_model.pack_size(offer["name"]))
-    if ceiling is not None and held + pack > ceiling:
-        if held >= floor_qty:
-            _cancel(f"{held} already held and row 1 bundles {pack}, which "
-                    f"would take the total to {held + pack}, past the "
-                    f"{ceiling} ceiling. Cancelled without buying.")
-        say(f"    {held} held, under the {floor_qty} minimum: taking row 1's "
-            f"bundle of {pack} even though {held + pack} passes the "
-            f"{ceiling} ceiling -- a bundle cannot be split and buying is "
-            f"row 1 only")
     want_packs = max(1, -(-int(want) // pack))
     asked = min(want_packs, int(detail["qty_max"]))
+    if ceiling is not None and held + pack * asked > ceiling:
+        if held < floor_qty:
+            say(f"    {held} held, under the {floor_qty} minimum: taking row "
+                f"1's bundle of {pack} even though {held + pack * asked} "
+                f"passes the {ceiling} ceiling -- a bundle cannot be split "
+                f"and buying is row 1 only")
+        else:
+            fits = max(0, ceiling - held) // pack
+            if fits < 1:
+                _cancel(f"{held} already held and row 1 bundles {pack}, so "
+                        f"even one would pass the {ceiling} ceiling. "
+                        f"Cancelled without buying.")
+            say(f"    {held} held; trimming this order from {asked} to "
+                f"{fits} pack(s) to stay under the {ceiling} ceiling")
+            asked = fits
     if verbose:
         say(f"    {want} core(s) wanted, {pack} to a pack -> {want_packs} "
             f"pack(s); {detail['qty_max']} available, taking {asked}")
