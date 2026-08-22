@@ -410,6 +410,11 @@ def resupply_one(model, slot, held, verbose=True):
         raise NotReady("the Agent Shop would not reopen after the vendor.")
     with calibration.phase("select the Register tab"):
         register_tab(verbose=verbose)
+    with calibration.phase(f"select inventory tab "
+                           f"{calibration.CONVERT_INVENTORY_TAB} to list from"):
+        calibration.click(*calibration.inventory_tab_point(
+            calibration.CONVERT_INVENTORY_TAB), settle=0.0)
+        time.sleep(row_model.TAB_SETTLE)
     unit_floor, floor_pair = calibration.price_floor(core)
     floor = 0 if unit_floor is None else unit_floor
     lands_in = min(model.empty() or [1])
