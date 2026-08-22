@@ -13,6 +13,7 @@ ACTION_GAP = _SHARED["timing"]["action_gap"]
 POLL_GAP = _SHARED["timing"]["poll_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
 CLEAR_PRESSES_QTY = _SHARED["detect"]["clear_presses_qty"]
+FIELD_SETTLE = _SHARED["timing"]["field_settle"]
 REREADS = _SHARED["detect"]["panel_rereads"]
 REREAD_GAP = _SHARED["timing"]["panel_reread_gap"]
 INVENTORY_TAB = calibration.CONVERT_INVENTORY_TAB
@@ -121,10 +122,6 @@ def convert(core_name, quantity, verbose=True):
         raise Refused("the vendor Shop is not open. Nothing clicked.")
 
     calibration.steps_reset()
-    with calibration.step(f"select inventory tab {INVENTORY_TAB}"):
-        calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB))
-        time.sleep(TAB_SETTLE)
-
     x, y = entry["point"]
     say(f"  {entry['cell']} at ({x}, {y}): {entry['costs']} -> {core_name}")
     with calibration.step(f"alt-click the cell at ({x}, {y})"):
@@ -153,9 +150,9 @@ def convert(core_name, quantity, verbose=True):
     if detail["qty"] != asked:
         with calibration.step(f"type the quantity {asked}"):
             calibration.click(*calibration._centre(
-                tuple(calibration._REG["convert_dialog_qty"])))
+                tuple(calibration._REG["convert_dialog_qty"])),
+                settle=FIELD_SETTLE)
             row_model.type_number(asked, CLEAR_PRESSES_QTY)
-            calibration.park()
     else:
         say(f"    the quantity field already reads {asked}; not retyping it")
 
@@ -174,8 +171,9 @@ def convert(core_name, quantity, verbose=True):
     point = dialog_button(CONFIRM_WORD)
     if point is None:
         _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
-    with calibration.step(f"reselect inventory tab {INVENTORY_TAB}"):
-        calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB))
+    with calibration.step(f"select inventory tab {INVENTORY_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB),
+                          settle=0.0)
         time.sleep(TAB_SETTLE)
     say(f"    inventory tab {INVENTORY_TAB} selected so the {core_name} "
         f"lands there")

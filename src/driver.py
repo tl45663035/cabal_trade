@@ -374,9 +374,15 @@ def resupply_one(model, slot, held, verbose=True):
         print(f"  the gap does not clear the threshold; not buying.")
         return None
 
-    with calibration.phase(f"read inventory tab "
-                           f"{calibration.CONVERT_INVENTORY_TAB} before buying"):
-        before_buy = occupied_slots(calibration.CONVERT_INVENTORY_TAB)
+    with calibration.phase(f"find the free slot on tab "
+                           f"{calibration.CONVERT_INVENTORY_TAB}"):
+        landing = calibration.first_free_slot(
+            calibration.CONVERT_INVENTORY_TAB, verbose=False)
+    if landing is None:
+        raise NotReady(
+            f"inventory tab {calibration.CONVERT_INVENTORY_TAB} is full.")
+    print(f"  buying onto tab {calibration.CONVERT_INVENTORY_TAB} slot "
+          f"{landing}; the {core} is there after converting")
 
     bought = orders = 0
     while bought < run["buy_min"]:
@@ -399,10 +405,6 @@ def resupply_one(model, slot, held, verbose=True):
     if bought < run["buy_min"]:
         print(f"  bought {bought} of the {run['buy_min']} wanted.")
 
-    with calibration.phase("read the tab after buying"):
-        after_buy = occupied_slots(calibration.CONVERT_INVENTORY_TAB)
-    sets_in = sorted(after_buy - before_buy)
-    print(f"  the {set_name} landed in {sets_in or 'no new slot'}")
     print(f"  closing the Agent Shop to open the vendor")
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
@@ -417,16 +419,6 @@ def resupply_one(model, slot, held, verbose=True):
         raise NotReady("the Agent Shop would not reopen after the vendor.")
     with calibration.phase("select the Register tab"):
         register_tab(verbose=verbose)
-    with calibration.phase("read the tab after converting"):
-        after_convert = occupied_slots(calibration.CONVERT_INVENTORY_TAB)
-    fresh = sorted(after_convert - after_buy)
-    landing = fresh[0] if fresh else (sets_in[0] if sets_in else None)
-    if landing is None:
-        raise NotReady(
-            f"nothing changed in tab {calibration.CONVERT_INVENTORY_TAB} "
-            f"across the conversion; the {core} cannot be found to list.")
-    print(f"  the {core} is in slot {landing}"
-          + ("" if fresh else f", where the {set_name} was"))
     unit_floor, floor_pair = calibration.price_floor(core)
     floor = 0 if unit_floor is None else unit_floor
     lands_in = min(model.empty() or [1])
