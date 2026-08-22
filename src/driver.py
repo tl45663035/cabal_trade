@@ -372,8 +372,8 @@ def resupply_one(model, slot, held, verbose=True):
     if landing is None:
         raise NotReady(
             f"inventory tab {calibration.CONVERT_INVENTORY_TAB} is full.")
-    print(f"  buying onto tab {calibration.CONVERT_INVENTORY_TAB} slot "
-          f"{landing}; the {core} is there after converting")
+    print(f"  tab {calibration.CONVERT_INVENTORY_TAB} is showing and free "
+          f"from {landing}, so the {set_name} and the {core} land there")
 
     bought = orders = 0
     while bought < run["buy_min"]:
@@ -417,23 +417,30 @@ def resupply_one(model, slot, held, verbose=True):
         time.sleep(row_model.TAB_SETTLE)
     unit_floor, floor_pair = calibration.price_floor(core)
     floor = 0 if unit_floor is None else unit_floor
-    lands_in = min(model.empty() or [1])
+    why = f"a {floor_pair} costs {unit_floor:,}" if unit_floor else ""
     print(f"  listing {out['converted']} {core} from tab "
-          f"{calibration.CONVERT_INVENTORY_TAB} slot {landing}")
-    with calibration.phase(f"list {out['converted']} {core}"):
-        listed = model.list_slot(*landing, floor=floor,
-                                 why=f"a {floor_pair} costs {unit_floor:,}"
-                                 if unit_floor else "",
-                                 verbose=verbose, lands_in=lands_in,
-                                 expect_qty=out["converted"])
+          f"{calibration.CONVERT_INVENTORY_TAB} slot(s) {out['slots'][0]} to "
+          f"{out['slots'][-1]}")
+    rows = []
+    for where in out["slots"]:
+        empty = model.empty()
+        if not empty:
+            print(f"  the board is full; {len(out['slots']) - len(rows)} "
+                  f"{core} stay in the bag.")
+            break
+        lands_in = min(empty)
+        with calibration.phase(f"list {core} from {where}"):
+            listed = model.list_slot(*where, floor=floor, why=why,
+                                     verbose=verbose, lands_in=lands_in)
+        model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
+                                               price=listed["price"])
+        rows.append(lands_in)
     calibration.phases_table(
         f"resupply {core}: bought {bought}, converted {out['converted']}, "
-        f"listed in row {lands_in}")
-    model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
-                                           price=listed["price"])
+        f"listed in rows {rows}")
     return {"slot": slot, "core": core, "set": set_name, "diff": diff,
             "bought": bought, "converted": out["converted"],
-            "listed": listed["qty"], "row": lands_in}
+            "listed": len(rows), "rows": rows}
 
 
 def back_to_the_shop(verbose=True):

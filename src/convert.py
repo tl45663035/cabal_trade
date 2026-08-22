@@ -7,7 +7,6 @@ import row_model
 _SHARED = calibration.load_shared()
 _TEXT = _SHARED["text"]
 CONFIRM_WORD = _TEXT["convert_confirm_word"]
-COMMIT_WORD = _TEXT["confirm_word"]
 CANCEL_WORD = _TEXT["convert_cancel_word"]
 TAB_SETTLE = _SHARED["timing"]["tab_settle"]
 ACTION_GAP = _SHARED["timing"]["action_gap"]
@@ -58,18 +57,15 @@ def open_vendor(verbose=True):
     return True
 
 
-def buttons(image=None, wide=False):
+def buttons(image=None):
     image = image if image is not None else calibration.grab()
-    reg = calibration._REG
-    boxes = [calibration._box(tuple(reg["convert_dialog_buttons"]))]
-    if wide:
-        boxes.append(calibration._box(tuple(reg["dialog_buttons"])))
+    box = calibration._box(
+        tuple(calibration._REG["convert_dialog_buttons"]))
     found = {}
-    for box in boxes:
-        for text, _c, point in calibration.ocr(image, box):
-            key = re.sub(r"[^a-z]", "", text.lower())
-            if key:
-                found.setdefault(key, point)
+    for text, _c, point in calibration.ocr(image, box):
+        key = re.sub(r"[^a-z]", "", text.lower())
+        if key:
+            found.setdefault(key, point)
     return found
 
 
@@ -79,19 +75,6 @@ def dialog_open(image=None):
 
 def dialog_button(word, image=None):
     return buttons(image).get(re.sub(r"[^a-z]", "", word.lower()))
-
-
-def await_button(word, timeout=None):
-    want = re.sub(r"[^a-z]", "", word.lower())
-    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
-                                   else timeout)
-    seen = {}
-    while time.monotonic() < deadline:
-        seen = buttons(wide=True)
-        if want in seen:
-            return seen[want], seen
-        time.sleep(POLL_GAP)
-    return None, seen
 
 
 def await_dialog(timeout=None):
@@ -126,6 +109,18 @@ def dialog_details(image=None):
             "price": read("convert_dialog_price"),
             "qty": held,
             "qty_max": total}
+
+
+def _await_arrivals(before, asked, timeout=None):
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    arrived = set()
+    while time.monotonic() < deadline:
+        arrived = calibration.occupied_slots() - before
+        if len(arrived) >= asked:
+            break
+        time.sleep(POLL_GAP)
+    return arrived
 
 
 def _cancel(why):
@@ -205,31 +200,28 @@ def convert(core_name, quantity, verbose=True):
         calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB),
                           settle=0.0)
         time.sleep(TAB_SETTLE)
-    say(f"    inventory tab {INVENTORY_TAB} selected so the {core_name} "
-        f"lands there")
+    with calibration.step(f"read tab {INVENTORY_TAB} before converting"):
+        before = calibration.occupied_slots()
+    say(f"    inventory tab {INVENTORY_TAB} holds {len(before)} slot(s) and "
+        f"is showing, so the {core_name} lands there")
     if not dialog_open():
         _cancel(f"the dialog closed while selecting inventory tab "
                 f"{INVENTORY_TAB}. Nothing converted.")
     point = dialog_button(CONFIRM_WORD) or point
     with calibration.step(f"click {CONFIRM_WORD}"):
         calibration.click(*point, settle=0.0)
-    with calibration.step(f"await {COMMIT_WORD}"):
-        commit, seen = await_button(COMMIT_WORD)
-    if commit is None:
-        raise Refused(
-            f"no {COMMIT_WORD} button appeared after {CONFIRM_WORD}; the "
-            f"buttons read {sorted(seen)}. Nothing is confirmed converted.")
-    with calibration.step(f"click {COMMIT_WORD}"):
-        calibration.click(*commit, settle=0.0)
     with calibration.step("park"):
         calibration.park()
-    with calibration.step("confirm the dialog is gone"):
-        left = buttons(wide=True)
-    if re.sub(r"[^a-z]", "", COMMIT_WORD.lower()) in left:
+    with calibration.step(f"read tab {INVENTORY_TAB} after converting"):
+        arrived = _await_arrivals(before, asked)
+    if not arrived:
         raise Refused(
-            f"the dialog stayed open after {COMMIT_WORD}. Whether the "
-            f"conversion happened is unknown -- look before running again.")
+            f"no slot on tab {INVENTORY_TAB} filled after {CONFIRM_WORD}. "
+            f"Nothing converted.")
     calibration.steps_table(f"convert {asked} into {core_name}")
-    say(f"    converted {asked} {entry['costs']} into {core_name}")
-    return {"core": core_name, "costs": entry["costs"], "converted": asked,
+    where = sorted(arrived)
+    say(f"    converted {len(where)} {entry['costs']} into {core_name}, "
+        f"landing in {where[0]} to {where[-1]}")
+    return {"core": core_name, "costs": entry["costs"],
+            "converted": len(where), "slots": where, "asked": asked,
             "cell": entry["cell"]}

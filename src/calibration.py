@@ -1679,6 +1679,15 @@ def slot_is_empty(image, row, col):
     return stdev < SLOT_OCCUPIED_STDEV
 
 
+def occupied_slots(image=None):
+    image = image if image is not None else grab()
+    grid = _S["game_facts"]["grid_size"]
+    return {(row, col)
+            for row in range(1, grid + 1)
+            for col in range(1, grid + 1)
+            if not slot_is_empty(image, row, col)}
+
+
 def first_free_slot(tab, verbose=False):
     click(*inventory_tab_point(tab))
     park()

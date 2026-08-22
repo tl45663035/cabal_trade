@@ -208,6 +208,11 @@ def _buy_row_one(slot, want, verbose=True):
         say(f"    the quantity field already reads {asked}; not retyping it")
 
     per_pack = detail["price"] // max(1, detail["qty"] or 1)
+    if per_pack != offer["price"]:
+        _cancel(f"the table row priced {offer['name']!r} at "
+                f"{offer['price']:,} but the dialog prices one pack at "
+                f"{per_pack:,}. The gap that chose this order was measured "
+                f"off the row. Cancelled without buying.")
     want_total = per_pack * asked
     agreed, again = False, None
     for attempt in range(1, REREADS + 2):
