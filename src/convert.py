@@ -120,18 +120,24 @@ def convert(core_name, quantity, verbose=True):
     if not calibration.vendor_open():
         raise Refused("the vendor Shop is not open. Nothing clicked.")
 
-    calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB))
-    time.sleep(TAB_SETTLE)
+    calibration.steps_reset()
+    with calibration.step(f"select inventory tab {INVENTORY_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB))
+        time.sleep(TAB_SETTLE)
 
     x, y = entry["point"]
     say(f"  {entry['cell']} at ({x}, {y}): {entry['costs']} -> {core_name}")
-    calibration.alt_click(x, y, settle=0.0)
-    if not await_dialog():
+    with calibration.step(f"alt-click the cell at ({x}, {y})"):
+        calibration.alt_click(x, y, settle=0.0)
+    with calibration.step("await the Purchase Item dialog"):
+        appeared = await_dialog()
+    if not appeared:
         raise Refused(
             "no Purchase Item dialog appeared after Alt+click; nothing "
             "confirmed.")
 
-    detail = dialog_details()
+    with calibration.step("read the dialog"):
+        detail = dialog_details()
     say(f"    dialog: item {detail['item']!r}  qty {detail['qty']} of "
         f"{detail['qty_max']}  price {detail['price']!r}")
     want = re.sub(r"[^a-z0-9]", "", core_name.lower())
@@ -145,15 +151,18 @@ def convert(core_name, quantity, verbose=True):
 
     asked = min(int(quantity), int(detail["qty_max"]))
     if detail["qty"] != asked:
-        calibration.click(*calibration._centre(tuple(calibration._REG["convert_dialog_qty"])))
-        row_model.type_number(asked, CLEAR_PRESSES_QTY)
-        calibration.park()
+        with calibration.step(f"type the quantity {asked}"):
+            calibration.click(*calibration._centre(
+                tuple(calibration._REG["convert_dialog_qty"])))
+            row_model.type_number(asked, CLEAR_PRESSES_QTY)
+            calibration.park()
     else:
         say(f"    the quantity field already reads {asked}; not retyping it")
 
     again = None
     for attempt in range(1, REREADS + 2):
-        again = dialog_details()
+        with calibration.step(f"re-read the dialog ({attempt})"):
+            again = dialog_details()
         if again["qty"] == asked:
             break
         say(f"    read {attempt}: qty {again['qty']} -- wanted {asked}")
@@ -165,20 +174,26 @@ def convert(core_name, quantity, verbose=True):
     point = dialog_button(CONFIRM_WORD)
     if point is None:
         _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
-    calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB))
-    time.sleep(TAB_SETTLE)
+    with calibration.step(f"reselect inventory tab {INVENTORY_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB))
+        time.sleep(TAB_SETTLE)
     say(f"    inventory tab {INVENTORY_TAB} selected so the {core_name} "
         f"lands there")
     if not dialog_open():
         _cancel(f"the dialog closed while selecting inventory tab "
                 f"{INVENTORY_TAB}. Nothing converted.")
     point = dialog_button(CONFIRM_WORD) or point
-    calibration.click(*point, settle=0.0)
-    calibration.park()
-    if dialog_open():
+    with calibration.step(f"click {CONFIRM_WORD}"):
+        calibration.click(*point, settle=0.0)
+    with calibration.step("park"):
+        calibration.park()
+    with calibration.step("confirm the dialog is gone"):
+        still = dialog_open()
+    if still:
         raise Refused(
             f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
             f"conversion happened is unknown -- look before running again.")
+    calibration.steps_table(f"convert {asked} into {core_name}")
     say(f"    converted {asked} {entry['costs']} into {core_name}")
     return {"core": core_name, "costs": entry["costs"], "converted": asked,
             "cell": entry["cell"]}

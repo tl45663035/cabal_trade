@@ -642,10 +642,12 @@ class RowModel:
                 "the register panel has not been measured; run "
                 "py src/calibration.py before listing anything.")
 
+        calibration.steps_reset()
         point = shop.slot_point(int(row), int(col))
         if verbose:
             print(f"  inventory slot ({row},{col}) at {point}")
-        before = read_panel_qty()
+        with calibration.step("read the panel before loading"):
+            before = read_panel_qty()
         if before[1]:
             raise Divergence(
                 f"the shop slot already holds {before[0]} of {before[1]}; "
@@ -653,8 +655,10 @@ class RowModel:
 
         deadline = time.monotonic() + DIALOG_TIMEOUT
         while time.monotonic() < deadline:
-            if not calibration.slot_is_empty(calibration.grab(),
-                                             int(row), int(col)):
+            with calibration.step(f"wait for slot ({row},{col}) to fill"):
+                filled = not calibration.slot_is_empty(calibration.grab(),
+                                                       int(row), int(col))
+            if filled:
                 break
             time.sleep(POLL_GAP)
         else:
@@ -665,8 +669,10 @@ class RowModel:
 
         held = None
         for attempt in range(1, LOAD_ATTEMPTS + 1):
-            calibration.ctrl_click(*point)
-            held = await_panel_qty()
+            with calibration.step(f"ctrl-click ({row},{col}) attempt {attempt}"):
+                calibration.ctrl_click(*point)
+            with calibration.step("await the panel quantity"):
+                held = await_panel_qty()
             if held is not None:
                 break
             calibration.snap(f"nothing_loaded_{row}x{col}_{attempt}")
@@ -680,8 +686,9 @@ class RowModel:
         if verbose:
             print(f"  loaded {held[0]} of {held[1]}")
 
-        want = (price if price is not None
-                else calibration.undercut(suggested_price()))
+        with calibration.step("read the suggested price"):
+            want = (price if price is not None
+                    else calibration.undercut(suggested_price()))
         if want is None:
             raise Divergence(
                 "no price was given and the panel suggests none, so there is "
@@ -696,28 +703,39 @@ class RowModel:
                 f"refusing to list at {want:,}, under the "
                 f"{MIN_PLAUSIBLE_PRICE:,} plausibility floor.")
 
-        calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
-        type_number(want, CLEAR_PRESSES_PRICE)
-        calibration.click(*panel["qty_point"], settle=FIELD_SETTLE)
-        type_number(held[1], CLEAR_PRESSES_QTY)
-        calibration.park()
+        with calibration.step(f"type the price {want:,}"):
+            calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
+            type_number(want, CLEAR_PRESSES_PRICE)
+        with calibration.step(f"type the quantity {held[1]}"):
+            calibration.click(*panel["qty_point"], settle=FIELD_SETTLE)
+            type_number(held[1], CLEAR_PRESSES_QTY)
+            calibration.park()
 
-        if not panel_agrees(held[1], want, verbose):
+        with calibration.step("the four-way panel check"):
+            agrees = panel_agrees(held[1], want, verbose)
+        if not agrees:
             raise Divergence(
                 f"the panel does not agree that it holds {held[1]} at "
                 f"{want:,}. Nothing has been listed.")
-        calibration.click(*panel["register_button"], settle=0.0)
-        confirm = find_button(CONFIRM_WORD)
+        with calibration.step("click Register"):
+            calibration.click(*panel["register_button"], settle=0.0)
+        with calibration.step(f"find {CONFIRM_WORD}"):
+            confirm = find_button(CONFIRM_WORD)
         if confirm is None:
             raise Divergence(
                 f"no {CONFIRM_WORD} appeared after Register. Nothing "
                 f"committed.")
-        calibration.click(*confirm, settle=0.0)
-        calibration.park()
-        if not dialog_gone():
+        with calibration.step(f"click {CONFIRM_WORD}"):
+            calibration.click(*confirm, settle=0.0)
+        with calibration.step("park"):
+            calibration.park()
+        with calibration.step("confirm the dialog is gone"):
+            gone = dialog_gone()
+        if not gone:
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
                 f"listing committed is unknown -- check the shop by hand.")
+        calibration.steps_table(f"list {held[1]} at {want:,}")
         if verbose:
             print(f"  listed {held[1]} at {want:,}"
                   + (f"; it lands in row {int(lands_in)}"
