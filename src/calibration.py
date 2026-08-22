@@ -412,6 +412,7 @@ CONVERT_ROW_COUNT = _S["game_facts"]["convert_rows"]
 CONVERT_SET_TO_CORE_ROWS = _S["game_facts"]["convert_set_to_core_rows"]
 CONVERT_TAB = _S["game_facts"]["convert_tab"]
 LETTER_DIGITS = _S["text"]["letter_digits"]
+_ALZ_WORD = _S["text"]["alz_word"]
 SERVER_LAG_TEXT = re.compile(_S["text"]["server_lag"],
                              re.IGNORECASE)
 SERVER_LAG_IDLE = _S["timing"]["server_lag_idle"]
@@ -673,32 +674,25 @@ def _tesseract(prepared, psm, whitelist=None):
     return run.stdout.decode("utf-8", "replace")
 
 
-def _longest_run(text):
-    runs = re.findall(r"\d+", re.sub(r"[,\s]", "", text))
-    return int(max(runs, key=len)) if runs else None
+def _digits(text):
+    cleaned = re.sub(_ALZ_WORD, "", text or "", flags=re.IGNORECASE)
+    cleaned = re.sub(r"[^0-9]", "", cleaned)
+    return int(cleaned) if cleaned else None
 
 
 def read_money(image, box):
     box = tuple(box)
     if not has_ink(image, box):
         return None
-    seen = read_line(image, box)
-    parts = []
-    for token in seen.split():
-        token = re.sub(r"[,\s]", "", token)
-        if not any(ch.isdigit() for ch in token):
-            continue
-        parts.append(re.sub(r"[^\d]+$", "", token))
-    joined = "".join(parts)
-    if joined.isdigit() and joined:
-        return int(joined)
-    text = re.sub(r"[,\s]", "", seen)
+    value = _digits(read_line(image, box))
+    if value is not None:
+        return value
     for prepared in (prep_for_text(image, box, OCR_SCALE, OCR_BORDER),
                      warm_text(image, box, OCR_SCALE, OCR_BORDER)):
-        value = _longest_run(_tesseract(prepared, ROW_PSM, DIGIT_WHITELIST))
+        value = _digits(_tesseract(prepared, ROW_PSM, DIGIT_WHITELIST))
         if value is not None:
             return value
-    return _longest_run(text)
+    return None
 
 
 def panel_qty(panel):
