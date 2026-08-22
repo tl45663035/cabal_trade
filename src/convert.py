@@ -16,6 +16,7 @@ CLEAR_PRESSES_QTY = _SHARED["detect"]["clear_presses_qty"]
 FIELD_SETTLE = _SHARED["timing"]["field_settle"]
 INVENTORY_TAB = calibration.CONVERT_INVENTORY_TAB
 MAX_STACK = _SHARED["game_facts"]["max_stack"]
+ARRIVAL_SETTLE = _SHARED["detect"]["panel_rereads"]
 
 
 class Refused(Exception):
@@ -86,37 +87,15 @@ def await_dialog(timeout=None):
     return False
 
 
-def _read_qty_field(image):
-    reg = calibration._REG
-    left = calibration._box(tuple(reg["convert_dialog_qty"]))
-    right = calibration._box(tuple(reg["convert_dialog_qty_max"]))
-    box = (left[0], min(left[1], right[1]), right[2], max(left[3], right[3]))
-    text = calibration.read_line(image, box, border=calibration.OCR_BORDER)
-    found = [int(n) for n in re.findall(r"\d+", text)]
-    if len(found) < 2:
-        return None, None
-    return found[0], found[-1]
-
-
-def dialog_details(image=None):
-    image = image if image is not None else calibration.grab()
-    reg = calibration._REG
-    read = lambda key: calibration.read_line(
-        image, calibration._box(tuple(reg[key])))
-    held, total = _read_qty_field(image)
-    return {"item": read("convert_dialog_item"),
-            "price": read("convert_dialog_price"),
-            "qty": held,
-            "qty_max": total}
-
-
-def _await_arrivals(before, offered, timeout=None):
+def _await_arrivals(before, timeout=None):
     deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
                                    else timeout)
-    arrived = set()
+    arrived, steady = set(), 0
     while time.monotonic() < deadline:
-        arrived = calibration.occupied_slots() - before
-        if len(arrived) >= offered:
+        now = calibration.occupied_slots() - before
+        steady = steady + 1 if now and now == arrived else 0
+        arrived = now
+        if steady >= ARRIVAL_SETTLE:
             break
         time.sleep(POLL_GAP)
     return arrived
@@ -157,20 +136,17 @@ def convert(core_name, verbose=True):
             "no Purchase Item dialog appeared after Alt+click; nothing "
             "confirmed.")
 
-    with calibration.step("read the dialog"):
-        detail = dialog_details()
-    say(f"    dialog: item {detail['item']!r}  qty {detail['qty']} of "
-        f"{detail['qty_max']}  price {detail['price']!r}")
+    with calibration.step("read what the dialog offers"):
+        offering = calibration.read_line(
+            calibration.grab(),
+            calibration._box(tuple(calibration._REG["convert_dialog_item"])))
+    say(f"    dialog offers {offering!r}")
     want = re.sub(r"[^a-z0-9]", "", core_name.lower())
-    seen = re.sub(r"[^a-z0-9]", "", (detail["item"] or "").lower())
+    seen = re.sub(r"[^a-z0-9]", "", (offering or "").lower())
     if want not in seen:
-        _cancel(f"the dialog offers {detail['item']!r}, not {core_name!r}. "
+        _cancel(f"the dialog offers {offering!r}, not {core_name!r}. "
                 f"Cancelled without converting.")
-    if not detail["qty_max"]:
-        _cancel(f"the dialog offers a maximum of {detail['qty_max']} "
-                f"{entry['costs']} to convert. Cancelled.")
 
-    offered = int(detail["qty_max"])
     with calibration.step(f"type the quantity {MAX_STACK}"):
         calibration.click(*calibration._centre(
             tuple(calibration._REG["convert_dialog_qty"])),
@@ -198,16 +174,15 @@ def convert(core_name, verbose=True):
     with calibration.step("park"):
         calibration.park()
     with calibration.step(f"read tab {INVENTORY_TAB} after converting"):
-        arrived = _await_arrivals(before, offered)
+        arrived = _await_arrivals(before)
     if not arrived:
         raise Refused(
             f"no slot on tab {INVENTORY_TAB} filled after {CONFIRM_WORD}. "
             f"Nothing converted.")
-    calibration.steps_table(f"convert {offered} into {core_name}")
+    calibration.steps_table(f"convert into {core_name}")
     where = sorted(arrived)
     say(f"    converted {len(where)} {entry['costs']} into {core_name}, "
         f"landing in {where[0]} to {where[-1]}")
     return {"core": core_name, "costs": entry["costs"],
             "converted": len(where), "slots": where,
-            "offered": offered,
             "cell": entry["cell"]}
