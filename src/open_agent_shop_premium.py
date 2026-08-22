@@ -115,9 +115,12 @@ def open_agent_shop(verbose: bool = True) -> None:
     click(*tab)
 
     if not panel_open():
+        calibration.snap("inventory_gone_after_tab")
         raise RuntimeError(
-            f"the Inventory panel is gone or has moved after clicking tab "
-            f"{AGENT_SHOP_TAB}. Not right-clicking.")
+            f"the Inventory panel is not open after pressing I and clicking "
+            f"tab {AGENT_SHOP_TAB}. The game is showing something else -- a "
+            f"loading screen, a transfer, or another window has the focus. "
+            f"Not right-clicking into the world.")
 
     row, col = AGENT_SHOP_SLOT
     point = slot_point(row, col)

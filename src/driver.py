@@ -454,13 +454,17 @@ def resupply_one(model, slot, held, verbose=True):
 
 def back_to_the_shop(verbose=True):
     from open_inventory import VK_ESCAPE, press
-    if calibration.vendor_open():
+    vendor = calibration.vendor_open()
+    if vendor:
         press(VK_ESCAPE)
         time.sleep(row_model.ACTION_GAP)
     if calibration._trade_window_open():
         return True
     if verbose:
-        print("  reopening the Agent Shop after the vendor")
+        print(f"  the Agent Shop is shut"
+              + (" after the vendor" if vendor else
+                 " and the vendor is not open either")
+              + "; reopening it")
     shop.open_agent_shop(verbose=False)
     time.sleep(row_model.TAB_SETTLE)
     return calibration._trade_window_open()
