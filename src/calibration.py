@@ -685,8 +685,8 @@ def read_money(image, box):
     text = re.sub(r"[,\s]", "", read_line(image, box))
     if text.isdigit():
         return _longest_run(text)
-    for prepared in (prep_for_text(image, box, OCR_SCALE),
-                     warm_text(image, box, OCR_SCALE)):
+    for prepared in (prep_for_text(image, box, OCR_SCALE, OCR_BORDER),
+                     warm_text(image, box, OCR_SCALE, OCR_BORDER)):
         value = _longest_run(_tesseract(prepared, ROW_PSM, DIGIT_WHITELIST))
         if value is not None:
             return value
@@ -735,23 +735,21 @@ def right_click(x: int, y: int, settle: float = None) -> None:
     snap(f"rightclick_{x}_{y}")
 
 
-def prep_for_text(image: Image.Image, box, scale: int, border=None):
+def prep_for_text(image: Image.Image, box, scale: int, border=0):
     crop = image.crop(box).convert("L")
     crop = crop.resize((crop.width * scale, crop.height * scale),
                        Image.LANCZOS)
     out = ImageOps.autocontrast(ImageOps.invert(crop))
-    pad = OCR_BORDER if border is None else border
-    return ImageOps.expand(out, border=pad, fill=255) if pad else out
+    return ImageOps.expand(out, border=border, fill=255) if border else out
 
 
-def warm_text(image: Image.Image, box, scale: int, border=None):
+def warm_text(image: Image.Image, box, scale: int, border=0):
     r, g, b = image.crop(box).convert("RGB").split()
     warm = ImageChops.subtract(r, ImageChops.lighter(g, b))
     warm = warm.resize((warm.width * scale, warm.height * scale),
                        Image.LANCZOS)
     out = ImageOps.autocontrast(ImageOps.invert(warm))
-    pad = OCR_BORDER if border is None else border
-    return ImageOps.expand(out, border=pad, fill=255) if pad else out
+    return ImageOps.expand(out, border=border, fill=255) if border else out
 
 
 def isolate_digits(image: Image.Image, box, scale: int = None):
@@ -844,8 +842,7 @@ def read_number(image: Image.Image, box):
     if tight is None:
         return None
     buf = io.BytesIO()
-    ImageOps.expand(prep_for_text(image, tight, OCR_SCALE),
-                    border=INK_PAD, fill=255).save(buf, "PNG")
+    prep_for_text(image, tight, OCR_SCALE, OCR_BORDER).save(buf, "PNG")
     run = subprocess.run(
         [TESSERACT, "stdin", "stdout", "--psm", ROW_PSM,
          "-c", "tessedit_char_whitelist=" + DIGIT_WHITELIST],
