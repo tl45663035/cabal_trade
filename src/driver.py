@@ -246,14 +246,8 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     print(f"relisting rows {first}-{last} for {minutes:g} minute(s)")
     passes = done = skipped = 0
     started = time.perf_counter()
-    rest_every = float(run["default_state_every_minutes"]) * 60
-    rested_at = time.monotonic()
     while True:
         war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
-        if rest_every > 0 and time.monotonic() - rested_at >= rest_every:
-            rest_the_game(verbose=verbose)
-            model.home(verbose=False)
-            rested_at = time.monotonic()
         passes += 1
         print("")
         print(f"-- pass {passes} --")
@@ -265,6 +259,8 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
             break
         done += made
         skipped += missed
+        rest_the_game(verbose=verbose)
+        model.home(verbose=False)
         left = deadline - time.monotonic()
         if left <= 0:
             print(f"  {minutes:g} minute(s) are up after pass {passes}")
