@@ -651,6 +651,18 @@ class RowModel:
                 f"the shop slot already holds {before[0]} of {before[1]}; "
                 f"clear it before listing another item.")
 
+        deadline = time.monotonic() + DIALOG_TIMEOUT
+        while time.monotonic() < deadline:
+            if not calibration.slot_is_empty(calibration.grab(),
+                                             int(row), int(col)):
+                break
+            time.sleep(POLL_GAP)
+        else:
+            calibration.snap(f"slot_{row}x{col}_never_filled")
+            raise Divergence(
+                f"tab {WORK_TAB} slot ({row},{col}) is still empty "
+                f"{DIALOG_TIMEOUT:g}s after the withdrawal. Nothing listed.")
+
         held = None
         for attempt in range(1, LOAD_ATTEMPTS + 1):
             calibration.ctrl_click(*point)
