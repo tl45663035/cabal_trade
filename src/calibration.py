@@ -1432,7 +1432,7 @@ def price_floor(name):
     return floor, FAVOURITE_ITEMS[str(pair)]
 
 
-def _peaks(profile, cut_at, merge_gap):
+def _peaks(profile, cut_at, merge_gap, keep=None):
     floor, ceiling = profile.min(), profile.max()
     cut = floor + (ceiling - floor) * cut_at
     peaks, run = [], []
@@ -1451,6 +1451,9 @@ def _peaks(profile, cut_at, merge_gap):
                 merged[-1] = i
         else:
             merged.append(i)
+    if keep and len(merged) > keep:
+        merged = sorted(sorted(merged, key=lambda i: profile[i],
+                               reverse=True)[:keep])
     return merged
 
 
@@ -1560,8 +1563,10 @@ def calibrate_convert(verbose=True):
     image = grab()
     band = _box(CONVERT_GRID_BAND_F)
     grid = np.asarray(image.crop(band).convert("L"), dtype=float)
-    cols = _peaks(grid.mean(axis=0), CONVERT_PEAK_CUT, CONVERT_MERGE_GAP)
-    rows = _peaks(grid.mean(axis=1), CONVERT_PEAK_CUT, CONVERT_MERGE_GAP)
+    cols = _peaks(grid.mean(axis=0), CONVERT_PEAK_CUT, CONVERT_MERGE_GAP,
+                  keep=len(CONVERT_GRADES))
+    rows = _peaks(grid.mean(axis=1), CONVERT_PEAK_CUT, CONVERT_MERGE_GAP,
+                  keep=CONVERT_ROW_COUNT)
     xs = [band[0] + i for i in cols]
     ys = [band[1] + i for i in rows]
     say(f"  grid band {band}: {len(xs)} column(s) at {xs}, "

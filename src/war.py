@@ -16,8 +16,10 @@ UNCERTAINTY = _WAR["clock_uncertainty"]
 RESYNC = _WAR["clock_resync"]
 CONFIRM_PAUSE = _WAR["clock_confirm_pause"]
 MAX_DRIFT = _WAR["clock_max_drift"]
+LAG_POLL = _SHARED["timing"]["server_lag_poll"]
 _CLOCK = re.compile(_SHARED["text"]["server_clock"])
-EPOCH = datetime.datetime(2024, 1, 3)
+EPOCH = datetime.datetime.strptime(
+    _SHARED["game_facts"]["clock_epoch"], "%Y-%m-%d")
 
 _SYNC = None
 
@@ -144,7 +146,7 @@ def avoid(allowance=0.0, verbose=True):
             f"waiting anyway.")
     deadline = time.monotonic() + wait
     while time.monotonic() < deadline:
-        time.sleep(min(5.0, deadline - time.monotonic()))
+        time.sleep(min(LAG_POLL, deadline - time.monotonic()))
     say(f"WAR LAG: done waiting; resuming.")
     return wait
 

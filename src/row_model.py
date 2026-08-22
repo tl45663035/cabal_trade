@@ -44,6 +44,7 @@ CLEAR_GAP = _T["clear_gap"]
 LOAD_ATTEMPTS = _SHARED["detect"]["load_attempts"]
 LETTER_DIGITS = _SHARED["text"]["letter_digits"]
 FIELD_SETTLE = _T["field_settle"]
+SUGGESTION_RADIO_DX = _SHARED["detect"]["suggestion_radio_dx"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
 STALE_SWEEP = _T.get("stale_sweep", 1.0)
@@ -218,13 +219,17 @@ def read_panel_price():
     return calibration.read_money(calibration.grab(), tuple(box)) or 0
 
 
-def suggested_price():
-    prices = []
-    for box in _panel()["suggestion_boxes"]:
-        value = calibration.read_money(calibration.grab(), tuple(box))
-        if value and value >= MIN_PLAUSIBLE_PRICE:
-            prices.append(value)
-    return min(prices) if prices else None
+def suggested_price(verbose=False):
+    box = tuple(_panel()["suggestion_boxes"][-1])
+    radio = (box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
+    calibration.click(*radio, settle=FIELD_SETTLE)
+    value = calibration.read_money(calibration.grab(), box)
+    if verbose:
+        print(f"    the lowest listed price is {value:,}"
+              if value else "    the lowest listed price would not read")
+    if value and value >= MIN_PLAUSIBLE_PRICE:
+        return value
+    return None
 
 
 def read_panel_net():
@@ -688,7 +693,7 @@ class RowModel:
 
         with calibration.step("read the suggested price"):
             want = (price if price is not None
-                    else calibration.undercut(suggested_price()))
+                    else calibration.undercut(suggested_price(verbose)))
         if want is None:
             raise Divergence(
                 "no price was given and the panel suggests none, so there is "
