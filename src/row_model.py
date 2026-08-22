@@ -20,6 +20,7 @@ WHEEL_GAP = _T["wheel_gap"]
 CAPACITY = _FACTS["shop_capacity"]
 VISIBLE = _FACTS["shop_visible"]
 WORK_TAB = _FACTS["work_tab"]
+MAX_STACK = _FACTS["max_stack"]
 GRID = _FACTS["grid_size"]
 
 MAX_TOP = CAPACITY - VISIBLE + 1
@@ -711,16 +712,24 @@ class RowModel:
         with calibration.step(f"type the price {want:,}"):
             calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
             type_number(want, CLEAR_PRESSES_PRICE)
-        with calibration.step(f"type the quantity {held[1]}"):
+        with calibration.step(f"type the quantity {MAX_STACK}"):
             calibration.click(*panel["qty_point"], settle=FIELD_SETTLE)
-            type_number(held[1], CLEAR_PRESSES_QTY)
+            type_number(MAX_STACK, CLEAR_PRESSES_QTY)
             calibration.park()
+        with calibration.step("read back the quantity the game allowed"):
+            qty = read_panel_qty()[0]
+        if not qty:
+            raise Divergence(
+                f"the quantity field will not read after typing "
+                f"{MAX_STACK}. Nothing has been listed.")
+        if verbose:
+            print(f"  typed {MAX_STACK}; the game allowed {qty}")
 
         with calibration.step("the four-way panel check"):
-            agrees = panel_agrees(held[1], want, verbose)
+            agrees = panel_agrees(qty, want, verbose)
         if not agrees:
             raise Divergence(
-                f"the panel does not agree that it holds {held[1]} at "
+                f"the panel does not agree that it holds {qty} at "
                 f"{want:,}. Nothing has been listed.")
         with calibration.step("click Register"):
             calibration.click(*panel["register_button"], settle=0.0)
@@ -740,12 +749,12 @@ class RowModel:
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
                 f"listing committed is unknown -- check the shop by hand.")
-        calibration.steps_table(f"list {held[1]} at {want:,}")
+        calibration.steps_table(f"list {qty} at {want:,}")
         if verbose:
-            print(f"  listed {held[1]} at {want:,}"
+            print(f"  listed {qty} at {want:,}"
                   + (f"; it lands in row {int(lands_in)}"
                      if lands_in is not None else ""))
-        return {"slot": (int(row), int(col)), "qty": held[1],
+        return {"slot": (int(row), int(col)), "qty": qty,
                 "price": want, "row": lands_in}
 
     def collect(self, index, remaining=0):

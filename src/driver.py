@@ -401,8 +401,8 @@ def resupply_one(model, slot, held, verbose=True):
         calibration.close_everything()
     with calibration.phase("open the vendor and its Dungeon tab"):
         convert.open_vendor(verbose=verbose)
-    with calibration.phase(f"convert {bought} into {core}"):
-        out = convert.convert(core, bought, verbose=verbose)
+    with calibration.phase(f"convert into {core}"):
+        out = convert.convert(core, verbose=verbose)
 
     with calibration.phase("reopen the Agent Shop"):
         reopened = back_to_the_shop(verbose=verbose)
@@ -421,26 +421,30 @@ def resupply_one(model, slot, held, verbose=True):
     print(f"  listing {out['converted']} {core} from tab "
           f"{calibration.CONVERT_INVENTORY_TAB} slot(s) {out['slots'][0]} to "
           f"{out['slots'][-1]}")
-    rows = []
-    for where in out["slots"]:
+    rows, listed_total = [], 0
+    left = list(out["slots"])
+    while left:
         empty = model.empty()
         if not empty:
-            print(f"  the board is full; {len(out['slots']) - len(rows)} "
-                  f"{core} stay in the bag.")
+            print(f"  the board is full; {len(left)} slot(s) of {core} stay "
+                  f"in the bag.")
             break
         lands_in = min(empty)
-        with calibration.phase(f"list {core} from {where}"):
-            listed = model.list_slot(*where, floor=floor, why=why,
+        with calibration.phase(f"list {core} from {left[0]}"):
+            listed = model.list_slot(*left[0], floor=floor, why=why,
                                      verbose=verbose, lands_in=lands_in)
         model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
                                                price=listed["price"])
         rows.append(lands_in)
+        listed_total += listed["qty"]
+        still = calibration.occupied_slots()
+        left = [where for where in left if where in still]
     calibration.phases_table(
         f"resupply {core}: bought {bought}, converted {out['converted']}, "
-        f"listed in rows {rows}")
+        f"listed {listed_total} in rows {rows}")
     return {"slot": slot, "core": core, "set": set_name, "diff": diff,
             "bought": bought, "converted": out["converted"],
-            "listed": len(rows), "rows": rows}
+            "listed": listed_total, "rows": rows}
 
 
 def back_to_the_shop(verbose=True):
