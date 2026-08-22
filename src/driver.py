@@ -183,17 +183,22 @@ def relist_one(model, index, verbose=True):
         print(f"  row {index}: {row.name!r} x{row.qty} at {row.price:,} "
               f"-> tab {row_model.WORK_TAB} slot {landing}")
     model._slots[index] = row
+    unit_floor, pair = calibration.price_floor(row.name)
+    if unit_floor is None:
+        print(f"  row {index}: {row.name!r} is floored by a {pair}, which did "
+              f"not price this run; left listed at {row.price:,}.")
+        return None
+    held = row_model.read_panel_qty()
+    if held[1]:
+        raise row_model.Divergence(
+            f"the shop slot already holds {held[0]} of {held[1]}; row "
+            f"{index} has NOT been cancelled. Clear the slot first.")
     lands_in = min([i for i in model.empty() if i < index] + [index])
     if verbose and lands_in != index:
         print(f"    rows {[i for i in model.empty() if i < index]} are empty, "
               f"so it will come back in row {lands_in}")
     model.cancel(index, verbose=False, tab_ready=True)
     calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
-    unit_floor, pair = calibration.price_floor(row.name)
-    if unit_floor is None:
-        print(f"  row {index}: {row.name!r} is floored by a {pair}, which did "
-              f"not price this run; left at {row.price:,}.")
-        return None
     pack = row.pack
     floor = unit_floor * pack
     why = ""

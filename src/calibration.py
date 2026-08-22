@@ -1270,8 +1270,12 @@ def calibrate_register_table(shop, verbose=True):
 
     band = _box(REGISTER_TABLE_BAND_F)
     buttons = _box(REGISTER_BUTTON_BAND_F)
+    words = _S["text"]
+    wanted = {w.strip().lower() for w in
+              (words["change_word"], words["register_word"],
+               words["receipt_word"])}
     marks = [p for t, _, p in ocr(image, buttons)
-             if t.strip().lower() in ("change", "register")]
+             if t.strip().lower() in wanted]
     if len(marks) < 2:
         raise RuntimeError(
             f"found {len(marks)} row button(s) in the Register button column "
@@ -1282,6 +1286,11 @@ def calibrate_register_table(shop, verbose=True):
     pitch = sorted(gaps)[len(gaps) // 2] if gaps else 0
     if not pitch:
         raise RuntimeError("the Register row buttons gave no usable pitch.")
+    top = int(ys[0])
+    while top - pitch >= band[1] + pitch // 2:
+        top -= pitch
+        say(f"  a row sits at y={top} with no button that read; counting it")
+    ys = [top] + [y for y in ys if y > top]
     out = {
         "table_x": [band[0], band[2]],
         "row_one_y": int(ys[0]),
@@ -1750,6 +1759,24 @@ def calibrate_actions(shop, verbose=True):
     before = read_line(grab(), row_one)
     lowered = before.lower()
     listed = re.search(r"\d[\d,]{2,}", before) is not None
+    if listed and RECEIPT_WORD.lower() in lowered:
+        receipt = (shop["button_x"], shop["row_one_y"])
+        say(f"  row 1 has SOLD: {before[:48]!r}")
+        say(f"  {RECEIPT_WORD} at {receipt}")
+        click(*receipt)
+        park(settle=False)
+        accept = await_button(RECEIPT_WORD)
+        if accept is None:
+            raise RuntimeError(
+                f"no Confirm Receipt dialog appeared after {RECEIPT_WORD} on "
+                f"row 1. Nothing has been collected.")
+        say(f"  Confirm Receipt at {accept}")
+        click(*accept)
+        park(settle=False)
+        before = read_line(grab(), row_one)
+        lowered = before.lower()
+        listed = re.search(r"\d[\d,]{2,}", before) is not None
+        say(f"  collected; row 1 now reads {before[:48]!r}")
     if not listed or RECEIPT_WORD.lower() in lowered:
         say(f"  row 1 reads {before[:48]!r}; it is not a live listing this "
             f"pass can withdraw. Earlier positions stand.")
