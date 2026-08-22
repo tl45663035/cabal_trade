@@ -350,7 +350,17 @@
     "buy_cancel_word": "Cancel",
     "buy_dialog_marker": "Purchase",
     "server_clock": "^([01]\\d|2[0-3])[:.]([0-5]\\d)",
-    "server_lag": "server\\s*respon|waiting\\s*for\\s*the\\s*server"
+    "server_lag": "server\\s*respon|waiting\\s*for\\s*the\\s*server",
+    "letter_digits": {
+      "l": "1",
+      "I": "1",
+      "i": "1",
+      "|": "1",
+      "O": "0",
+      "o": "0",
+      "S": "5",
+      "B": "8"
+    }
   },
   "game_facts": {
     "favourite_count": 10,

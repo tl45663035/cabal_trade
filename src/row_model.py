@@ -42,6 +42,7 @@ CLEAR_PRESSES_PRICE = _SHARED["detect"]["clear_presses_price"]
 KEY_GAP = _T["key_gap"]
 CLEAR_GAP = _T["clear_gap"]
 LOAD_ATTEMPTS = _SHARED["detect"]["load_attempts"]
+LETTER_DIGITS = _SHARED["text"]["letter_digits"]
 FIELD_SETTLE = _T["field_settle"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
@@ -180,10 +181,22 @@ def _panel():
     return part
 
 
+def digits_only(text):
+    out = []
+    for ch in text or "":
+        if ch.isdigit():
+            out.append(ch)
+        elif ch in LETTER_DIGITS:
+            out.append(LETTER_DIGITS[ch])
+        else:
+            out.append(" ")
+    return "".join(out)
+
+
 def read_panel_qty():
     box = _panel()["qty_box"]
     text = calibration.read_line(calibration.grab(), tuple(box))
-    nums = [int(re.sub(r"[^\d]", "", m)) for m in re.findall(r"\d[\d,]*", text)]
+    nums = [int(m) for m in re.findall(r"\d+", digits_only(text))]
     if len(nums) < 2:
         return (0, 0)
     return (nums[0], nums[-1])
