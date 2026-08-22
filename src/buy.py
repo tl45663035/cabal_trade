@@ -193,22 +193,26 @@ def _buy_row_one(slot, want, verbose=True):
     elif verbose:
         say(f"    the quantity field already reads {asked}; not retyping it")
 
-    again = None
+    per_pack = detail["price"] // max(1, detail["qty"] or 1)
+    want_total = per_pack * asked
+    agreed, again = False, None
     for attempt in range(1, REREADS + 2):
         with step(f"re-read the dialog ({attempt})"):
             again = dialog_details()
-        if again["qty"] == asked and again["price"] == detail["price"]:
+        if again["qty"] == asked and again["price"] == want_total:
+            agreed = True
             break
         if verbose:
             say(f"    read {attempt}: qty {again['qty']}, price "
-                f"{again['price']} -- wanted {asked} at {detail['price']}")
+                f"{again['price']} -- wanted {asked} at {want_total:,}")
         time.sleep(REREAD_GAP)
-    if again["qty"] != asked:
-        _cancel(f"the dialog reads {again['qty']} after {REREADS + 1} reads, "
-                f"not {asked}. Cancelled without buying.")
-    if again["price"] != detail["price"]:
-        _cancel(f"the dialog price moved from {detail['price']} to "
-                f"{again['price']}. Cancelled without buying.")
+    if not agreed:
+        _cancel(f"the dialog will not confirm {asked} pack(s) at "
+                f"{want_total:,} after {REREADS + 1} reads; it reads "
+                f"{again['qty']} at {again['price']}. Cancelled without "
+                f"buying.")
+    if verbose:
+        say(f"    dialog confirms {asked} pack(s) at {want_total:,}")
 
     with step(f"find the {CONFIRM_WORD} button"):
         point = dialog_button(CONFIRM_WORD)
@@ -226,7 +230,7 @@ def _buy_row_one(slot, want, verbose=True):
             f"was bought is unknown -- look before running again.")
     units = asked * max(1, row_model.pack_size(offer["name"]))
     say(f"    bought {asked} x {offer['name']} = {units} core(s) for "
-        f"{asked * offer['price']:,}")
+        f"{want_total:,}")
     return {"slot": int(slot), "name": name, "packs": asked, "bought": units,
             "unit_price": offer["unit_price"], "price": offer["price"]}
 
