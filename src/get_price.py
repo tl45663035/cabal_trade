@@ -99,14 +99,15 @@ def read_fields(image=None):
             price_words.append(text)
 
     price = None
+    widest = 0
     joined_price = _NOT_DIGIT.sub("", "".join(price_words))
     for text in price_words:
         digits = _NOT_DIGIT.sub("", text)
         if len(digits) >= PRICE_MIN_DIGITS:
-            price = int(digits)
-    if price is None and len(joined_price) >= PRICE_MIN_DIGITS:
+            price, widest = int(digits), len(digits)
+    if len(joined_price) >= PRICE_MIN_DIGITS and len(joined_price) > widest:
         price = int(joined_price)
-    if price is None:
+    if price is None or price < MIN_PLAUSIBLE_PRICE:
         price = calibration.read_money(image, column_box("price"))
 
     qty = None
