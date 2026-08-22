@@ -682,9 +682,17 @@ def read_money(image, box):
     box = tuple(box)
     if not has_ink(image, box):
         return None
-    text = re.sub(r"[,\s]", "", read_line(image, box))
-    if text.isdigit():
-        return _longest_run(text)
+    seen = read_line(image, box)
+    parts = []
+    for token in seen.split():
+        token = re.sub(r"[,\s]", "", token)
+        if not any(ch.isdigit() for ch in token):
+            continue
+        parts.append(re.sub(r"[^\d]+$", "", token))
+    joined = "".join(parts)
+    if joined.isdigit() and joined:
+        return int(joined)
+    text = re.sub(r"[,\s]", "", seen)
     for prepared in (prep_for_text(image, box, OCR_SCALE, OCR_BORDER),
                      warm_text(image, box, OCR_SCALE, OCR_BORDER)):
         value = _longest_run(_tesseract(prepared, ROW_PSM, DIGIT_WHITELIST))
