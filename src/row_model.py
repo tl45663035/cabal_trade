@@ -636,7 +636,7 @@ class RowModel:
         return result
 
     def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
-                  lands_in=None):
+                  lands_in=None, expect_at_least=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -721,6 +721,12 @@ class RowModel:
                 f"after typing {MAX_STACK}. Nothing has been listed.")
         if verbose:
             print(f"  typed {MAX_STACK}; the net sales make it {qty}")
+        if expect_at_least is not None and qty < expect_at_least:
+            calibration.snap(f"panel_short_of_{expect_at_least}")
+            raise Divergence(
+                f"the panel holds {qty} from ({row},{col}) but "
+                f"{expect_at_least} were just converted into it. Nothing has "
+                f"been listed.")
         with calibration.step("click Register"):
             calibration.click(*panel["register_button"], settle=0.0)
         with calibration.step(f"find {CONFIRM_WORD}"):

@@ -30,6 +30,8 @@
     },
     "rows_threshold": 5,
     "buy_min": 10,
+    "buy_max": 500,
+    "buy_retries": 3,
     "price_diff_threshold": {
       "Force Core(Highest)": 10000,
       "Chaos Core": 1000000,
@@ -43,7 +45,8 @@
     "relist_to": 15,
     "undercut_by": 1,
     "home_notches": 30,
-    "for_minutes": 60
+    "for_minutes": 60,
+    "default_state_every_minutes": 15
   },
   "debug": {
     "frames": true,

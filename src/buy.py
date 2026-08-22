@@ -32,7 +32,9 @@ _STEPS = calibration._STEPS
 
 
 class Refused(Exception):
-    pass
+    def __init__(self, message, retryable=False):
+        super().__init__(message)
+        self.retryable = retryable
 
 
 def _reg(name):
@@ -121,7 +123,7 @@ def dialog_details(image=None):
                                               _reg("buy_dialog_qty_max"))}
 
 
-def _cancel(why):
+def _cancel(why, retryable=False):
     point = dialog_button(CANCEL_WORD)
     if point is not None:
         calibration.click(*point)
@@ -131,7 +133,7 @@ def _cancel(why):
         press(_SHARED["input"]["VK_ESCAPE"])
         time.sleep(ACTION_GAP)
     calibration.park()
-    raise Refused(why)
+    raise Refused(why, retryable=retryable)
 
 
 def await_balance(differs_from=None, timeout=None):
@@ -178,7 +180,7 @@ def _buy_row_one(slot, want, verbose=True):
     if not appeared:
         raise Refused(
             f"no {DIALOG_MARKER} dialog appeared after clicking Buy on row 1. "
-            f"Nothing was confirmed.")
+            f"Nothing was confirmed.", retryable=True)
 
     with step("read the dialog (item, price, qty, qty_max)"):
         detail = dialog_details()
@@ -187,12 +189,21 @@ def _buy_row_one(slot, want, verbose=True):
     fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
     if fold(name) not in fold(detail["item"]):
         _cancel(f"the dialog offers {detail['item']!r}, not {name!r}. "
-                f"Cancelled without buying.")
+                f"Cancelled without buying.", retryable=True)
     if not detail["qty_max"]:
         _cancel(f"the dialog offers a maximum of {detail['qty_max']}. "
                 f"Cancelled without buying.")
 
     pack = max(1, row_model.pack_size(offer["name"]))
+    if ceiling is not None and held + pack > ceiling:
+        if held >= floor_qty:
+            _cancel(f"{held} already held and row 1 bundles {pack}, which "
+                    f"would take the total to {held + pack}, past the "
+                    f"{ceiling} ceiling. Cancelled without buying.")
+        say(f"    {held} held, under the {floor_qty} minimum: taking row 1's "
+            f"bundle of {pack} even though {held + pack} passes the "
+            f"{ceiling} ceiling -- a bundle cannot be split and buying is "
+            f"row 1 only")
     want_packs = max(1, -(-int(want) // pack))
     asked = min(want_packs, int(detail["qty_max"]))
     if verbose:
@@ -212,7 +223,7 @@ def _buy_row_one(slot, want, verbose=True):
         _cancel(f"the table row priced {offer['name']!r} at "
                 f"{offer['price']:,} but the dialog prices one pack at "
                 f"{per_pack:,}. The gap that chose this order was measured "
-                f"off the row. Cancelled without buying.")
+                f"off the row. Cancelled without buying.", retryable=True)
     want_total = per_pack * asked
     agreed, again = False, None
     for attempt in range(1, REREADS + 2):
@@ -229,7 +240,7 @@ def _buy_row_one(slot, want, verbose=True):
         _cancel(f"the dialog will not confirm {asked} pack(s) at "
                 f"{want_total:,} after {REREADS + 1} reads; it reads "
                 f"{again['qty']} at {again['price']}. Cancelled without "
-                f"buying.")
+                f"buying.", retryable=True)
     if verbose:
         say(f"    dialog confirms {asked} pack(s) at {want_total:,}")
 
@@ -239,6 +250,10 @@ def _buy_row_one(slot, want, verbose=True):
         _cancel("the Alz balance would not read, so a purchase could not be "
                 "checked against it. Cancelled without buying.")
     say(f"    balance before {before_alz:,}")
+    if before_alz < want_total:
+        _cancel(f"the order costs {want_total:,} and only {before_alz:,} is "
+                f"held. Cancelled without buying; this core waits for the "
+                f"next cycle.")
 
     with step(f"find the {CONFIRM_WORD} button"):
         point = dialog_button(CONFIRM_WORD)

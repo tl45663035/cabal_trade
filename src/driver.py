@@ -246,8 +246,14 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     print(f"relisting rows {first}-{last} for {minutes:g} minute(s)")
     passes = done = skipped = 0
     started = time.perf_counter()
+    rest_every = float(run["default_state_every_minutes"]) * 60
+    rested_at = time.monotonic()
     while True:
         war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        if rest_every > 0 and time.monotonic() - rested_at >= rest_every:
+            rest_the_game(verbose=verbose)
+            model.home(verbose=False)
+            rested_at = time.monotonic()
         passes += 1
         print("")
         print(f"-- pass {passes} --")
@@ -340,7 +346,7 @@ def rows_by_core(model, first, last):
     return held
 
 
-def resupply_one(model, slot, held, verbose=True):
+def resupply_one(model, slot, held, first, last, verbose=True):
     run = calibration.load_shared()["resupply"]
     core = calibration.FAVOURITE_ITEMS[str(slot)]
     pair = calibration.pair_slot(slot)
@@ -370,6 +376,17 @@ def resupply_one(model, slot, held, verbose=True):
         print(f"  the gap does not clear the threshold; not buying.")
         return None
 
+    rounds_needed = max(1, -(-int(run["buy_max"]) // row_model.MAX_STACK))
+    free_rows = [i for i in model.empty() if first <= i <= last]
+    if len(free_rows) < rounds_needed:
+        print(f"  rows {first}-{last} have {len(free_rows)} free and a "
+              f"resupply can need {rounds_needed}; not buying, because a "
+              f"Core with nowhere to list stays on tab "
+              f"{calibration.CONVERT_INVENTORY_TAB}.")
+        return None
+    print(f"  {len(free_rows)} row(s) free inside {first}-{last}; a resupply "
+          f"needs up to {rounds_needed}")
+
     with calibration.phase(f"find the free slot on tab "
                            f"{calibration.CONVERT_INVENTORY_TAB}"):
         landing = calibration.first_free_slot(
@@ -384,12 +401,21 @@ def resupply_one(model, slot, held, verbose=True):
     while bought < run["buy_min"]:
         print(f"  {bought}/{run['buy_min']} {set_name} held")
         orders += 1
-        try:
-            with calibration.phase(f"buy order {orders}"):
-                got = buy.buy_row_one(pair, run["buy_min"] - bought,
-                                      verbose=verbose)
-        except buy.Refused as exc:
-            print(f"  stopping: {exc}")
+        got = None
+        for attempt in range(1, int(run["buy_retries"]) + 1):
+            try:
+                with calibration.phase(f"buy order {orders}"):
+                    got = buy.buy_row_one(pair, run["buy_min"] - bought,
+                                          verbose=verbose, held=bought,
+                                          floor_qty=run["buy_min"],
+                                          ceiling=run["buy_max"])
+                break
+            except buy.Refused as exc:
+                if not getattr(exc, "retryable", False):
+                    print(f"  stopping: {exc}")
+                    break
+                print(f"  attempt {attempt}/{run['buy_retries']}: {exc}")
+        if got is None:
             break
         if got["bought"] <= 0:
             print(f"  the last order bought nothing; stopping.")
@@ -401,55 +427,79 @@ def resupply_one(model, slot, held, verbose=True):
     if bought < run["buy_min"]:
         print(f"  bought {bought} of the {run['buy_min']} wanted.")
 
-    print(f"  closing the Agent Shop to open the vendor")
-    with calibration.phase("close the Agent Shop"):
-        calibration.close_everything()
-    with calibration.phase("open the vendor and its Dungeon tab"):
-        convert.open_vendor(verbose=verbose)
-    with calibration.phase(f"convert into {core}"):
-        out = convert.convert(core, verbose=verbose)
-
-    with calibration.phase("reopen the Agent Shop"):
-        reopened = back_to_the_shop(verbose=verbose)
-    if not reopened:
-        raise NotReady("the Agent Shop would not reopen after the vendor.")
-    with calibration.phase("select the Register tab"):
-        register_tab(verbose=verbose)
-    with calibration.phase(f"select inventory tab "
-                           f"{calibration.CONVERT_INVENTORY_TAB} to list from"):
-        calibration.click(*calibration.inventory_tab_point(
-            calibration.CONVERT_INVENTORY_TAB), settle=0.0)
-        time.sleep(row_model.TAB_SETTLE)
     unit_floor, floor_pair = calibration.price_floor(core)
     floor = 0 if unit_floor is None else unit_floor
     why = f"a {floor_pair} costs {unit_floor:,}" if unit_floor else ""
-    print(f"  listing {out['converted']} {core} from tab "
-          f"{calibration.CONVERT_INVENTORY_TAB} slot(s) {out['slots'][0]} to "
-          f"{out['slots'][-1]}")
-    rows, listed_total = [], 0
-    left = list(out["slots"])
-    while left:
-        empty = model.empty()
-        if not empty:
-            print(f"  the board is full; {len(left)} slot(s) of {core} stay "
-                  f"in the bag.")
+    rows, listed_total, converted_total = [], 0, 0
+    left_to_convert = bought
+    rounds = 0
+    while left_to_convert > 0:
+        rounds += 1
+        print("")
+        print(f"  -- round {rounds}: convert up to {row_model.MAX_STACK}, "
+              f"then list -- {left_to_convert} of {bought} left --")
+        with calibration.phase(f"round {rounds}: close the Agent Shop"):
+            calibration.close_everything()
+        with calibration.phase(f"round {rounds}: open the vendor"):
+            convert.open_vendor(verbose=verbose)
+        with calibration.phase(f"round {rounds}: convert into {core}"):
+            out = convert.convert(core, verbose=verbose)
+        converted_total += out["converted"]
+        left_to_convert -= out["converted"]
+
+        with calibration.phase(f"round {rounds}: reopen the Agent Shop"):
+            if not back_to_the_shop(verbose=verbose):
+                raise NotReady("the Agent Shop would not reopen after the "
+                               "vendor.")
+        with calibration.phase(f"round {rounds}: select the Register tab"):
+            register_tab(verbose=verbose)
+        with calibration.phase(f"round {rounds}: select inventory tab "
+                               f"{calibration.CONVERT_INVENTORY_TAB}"):
+            calibration.click(*calibration.inventory_tab_point(
+                calibration.CONVERT_INVENTORY_TAB), settle=0.0)
+            time.sleep(row_model.TAB_SETTLE)
+
+        print(f"  listing {out['converted']} {core} from slot(s) "
+              f"{out['slots'][0]} to {out['slots'][-1]}")
+        remaining = list(out["slots"])
+        while remaining:
+            empty = [i for i in model.empty() if first <= i <= last]
+            if not empty:
+                print(f"  rows {first}-{last} are full; {len(remaining)} "
+                      f"slot(s) of {core} stay on tab "
+                      f"{calibration.CONVERT_INVENTORY_TAB}.")
+                left_to_convert = 0
+                break
+            lands_in = min(empty)
+            with calibration.phase(f"round {rounds}: list {core} from "
+                                   f"{remaining[0]}"):
+                listed = model.list_slot(*remaining[0], floor=floor, why=why,
+                                         verbose=verbose, lands_in=lands_in,
+                                         expect_at_least=out["converted"])
+            model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
+                                                   price=listed["price"])
+            rows.append(lands_in)
+            listed_total += listed["qty"]
+            still = calibration.occupied_slots()
+            remaining = [w for w in remaining if w in still]
+        if out["converted"] <= 0:
+            print(f"  round {rounds} converted nothing; stopping.")
             break
-        lands_in = min(empty)
-        with calibration.phase(f"list {core} from {left[0]}"):
-            listed = model.list_slot(*left[0], floor=floor, why=why,
-                                     verbose=verbose, lands_in=lands_in)
-        model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
-                                               price=listed["price"])
-        rows.append(lands_in)
-        listed_total += listed["qty"]
-        still = calibration.occupied_slots()
-        left = [where for where in left if where in still]
     calibration.phases_table(
-        f"resupply {core}: bought {bought}, converted {out['converted']}, "
+        f"resupply {core}: bought {bought}, converted {converted_total}, "
         f"listed {listed_total} in rows {rows}")
     return {"slot": slot, "core": core, "set": set_name, "diff": diff,
-            "bought": bought, "converted": out["converted"],
+            "bought": bought, "converted": converted_total,
             "listed": listed_total, "rows": rows}
+
+
+def rest_the_game(verbose=True):
+    print("")
+    print(f"  returning the game to its default state")
+    calibration.close_everything(verbose=verbose)
+    if not back_to_the_shop(verbose=verbose):
+        raise NotReady("the Agent Shop would not reopen after resting.")
+    register_tab(verbose=verbose)
 
 
 def back_to_the_shop(verbose=True):
@@ -499,7 +549,8 @@ def resupply_pass(model, first, last, verbose=True):
         for slot in short:
             war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
             try:
-                out = resupply_one(model, slot, held[slot], verbose=verbose)
+                out = resupply_one(model, slot, held[slot], first, last,
+                                   verbose=verbose)
             except (convert.Refused, buy.Refused, NotReady) as exc:
                 print(f"  resupply of "
                       f"{calibration.FAVOURITE_ITEMS[str(slot)]!r} stopped: "
