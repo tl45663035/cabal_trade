@@ -155,6 +155,8 @@ def confirm_sort_low_to_high(slot, verbose=True):
         return "ok"
     if not calibration.purchase_tab_showing():
         calibration.snap(f"slot_{slot}_shop_gone_at_sort")
+        if calibration.wait_out_server_lag(verbose=verbose):
+            return "lagged"
         return "gone"
     calibration.snap(f"slot_{slot}_sort_wrong")
     raise NotReady(f"the sort reads {seen!r}, not Price: Low to High.")
@@ -251,8 +253,11 @@ def get_price(slot, verbose=True):
         with calibration.step(f"get_price: click favourite slot {slot}"):
             shop.click(x, y, settle=0.0)
         with calibration.step("get_price: confirm the sort"):
-            gone = confirm_sort_low_to_high(
-                slot, verbose=verbose and attempt == 1) == "gone"
+            sort = confirm_sort_low_to_high(
+                slot, verbose=verbose and attempt == 1)
+        gone = sort == "gone"
+        if sort == "lagged":
+            continue
         deadline = time.monotonic() + SEARCH_TIMEOUT
         next_check = time.monotonic() + SHOP_CHECK_GAP
         polls = 0
@@ -265,6 +270,10 @@ def get_price(slot, verbose=True):
             if text == stale or not name_matches(slot, text):
                 if time.monotonic() >= next_check:
                     if not calibration.purchase_tab_showing(image):
+                        if calibration.wait_out_server_lag(verbose=verbose):
+                            deadline = time.monotonic() + SEARCH_TIMEOUT
+                            next_check = time.monotonic() + SHOP_CHECK_GAP
+                            continue
                         gone = True
                         break
                     next_check = time.monotonic() + SHOP_CHECK_GAP

@@ -326,6 +326,7 @@ FAV_BAND_F = tuple(_REG["fav_band"])
 VENDOR_TITLE_BAND_F = tuple(_REG["vendor_title_band"])
 VENDOR_TAB_BAND_F = tuple(_REG["vendor_tab_band"])
 CONVERT_GRID_BAND_F = tuple(_REG["convert_grid_band"])
+SERVER_LAG_BAND_F = tuple(_REG["server_lag_band"])
 BOUNDARY_WINDOW_F = tuple(_REG["boundary_window"])
 SLOT_PITCH_F = tuple(_REG["slot_pitch"])
 PURCHASE_SORT_BAND_F = tuple(_REG["purchase_sort_band"])
@@ -405,6 +406,10 @@ CONVERT_GRADES = _S["game_facts"]["convert_grades"]
 CONVERT_ROW_COUNT = _S["game_facts"]["convert_rows"]
 CONVERT_SET_TO_CORE_ROWS = _S["game_facts"]["convert_set_to_core_rows"]
 CONVERT_TAB = _S["game_facts"]["convert_tab"]
+SERVER_LAG_TEXT = re.compile(_S["text"]["server_lag"],
+                             re.IGNORECASE)
+SERVER_LAG_IDLE = _S["timing"]["server_lag_idle"]
+SERVER_LAG_BUDGET = _S["timing"]["server_lag_budget"]
 VENDOR_TAB_WORDS = {w.strip().lower() for w in
                     _S["text"]["vendor_tab_words"].split("|")}
 CONVERT_INVENTORY_TAB = _S["game_facts"]["convert_inventory_tab"]
@@ -1371,6 +1376,40 @@ def _peaks(profile, cut_at, merge_gap):
         else:
             merged.append(i)
     return merged
+
+
+def server_busy(image=None) -> bool:
+    try:
+        seen = read_line(image if image is not None else grab(),
+                         _box(SERVER_LAG_BAND_F))
+    except Exception:
+        return False
+    return SERVER_LAG_TEXT.search(seen) is not None
+
+
+def wait_out_server_lag(verbose=True):
+    if not server_busy():
+        return 0.0
+    snap("server_busy")
+    started = time.monotonic()
+    deadline = started + SERVER_LAG_BUDGET
+    if verbose:
+        print(f"  the server is not answering; idling {SERVER_LAG_IDLE:g}s "
+              f"rather than reading a screen it cannot serve")
+    while time.monotonic() < deadline:
+        time.sleep(SERVER_LAG_IDLE)
+        if not server_busy():
+            waited = time.monotonic() - started
+            snap("server_answered")
+            if verbose:
+                print(f"  the server is answering again after {waited:.0f}s")
+            return waited
+        if verbose:
+            print(f"  still not answering; idling another "
+                  f"{SERVER_LAG_IDLE:g}s")
+    snap("server_still_down")
+    raise RuntimeError(
+        f"the server did not answer within {SERVER_LAG_BUDGET:g}s.")
 
 
 def vendor_open(image=None) -> bool:
