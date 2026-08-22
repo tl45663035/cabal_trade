@@ -165,6 +165,14 @@ def convert(core_name, quantity, verbose=True):
     point = dialog_button(CONFIRM_WORD)
     if point is None:
         _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
+    calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB))
+    time.sleep(TAB_SETTLE)
+    say(f"    inventory tab {INVENTORY_TAB} selected so the {core_name} "
+        f"lands there")
+    if not dialog_open():
+        _cancel(f"the dialog closed while selecting inventory tab "
+                f"{INVENTORY_TAB}. Nothing converted.")
+    point = dialog_button(CONFIRM_WORD) or point
     calibration.click(*point)
     time.sleep(ACTION_GAP)
     calibration.park()
