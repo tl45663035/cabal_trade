@@ -639,7 +639,7 @@ class RowModel:
         return result
 
     def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
-                  lands_in=None):
+                  lands_in=None, expect_qty=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -690,6 +690,10 @@ class RowModel:
                 f"{LOAD_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
         if verbose:
             print(f"  loaded {held[0]} of {held[1]}")
+        if expect_qty is not None and held[1] != expect_qty:
+            raise Divergence(
+                f"the panel holds {held[1]} from ({row},{col}), not the "
+                f"{expect_qty} expected. Nothing has been listed.")
 
         with calibration.step("read the suggested price"):
             want = (price if price is not None

@@ -7,6 +7,7 @@ import row_model
 _SHARED = calibration.load_shared()
 _TEXT = _SHARED["text"]
 CONFIRM_WORD = _TEXT["convert_confirm_word"]
+COMMIT_WORD = _TEXT["confirm_word"]
 CANCEL_WORD = _TEXT["convert_cancel_word"]
 TAB_SETTLE = _SHARED["timing"]["tab_settle"]
 ACTION_GAP = _SHARED["timing"]["action_gap"]
@@ -57,22 +58,40 @@ def open_vendor(verbose=True):
     return True
 
 
-def dialog_open(image=None):
+def buttons(image=None, wide=False):
     image = image if image is not None else calibration.grab()
-    box = calibration._box(tuple(calibration._REG["convert_dialog_buttons"]))
-    words = {re.sub(r"[^a-z]", "", t.lower())
-             for t, _c, _p in calibration.ocr(image, box)}
-    return re.sub(r"[^a-z]", "", CONFIRM_WORD.lower()) in words
+    reg = calibration._REG
+    boxes = [calibration._box(tuple(reg["convert_dialog_buttons"]))]
+    if wide:
+        boxes.append(calibration._box(tuple(reg["dialog_buttons"])))
+    found = {}
+    for box in boxes:
+        for text, _c, point in calibration.ocr(image, box):
+            key = re.sub(r"[^a-z]", "", text.lower())
+            if key:
+                found.setdefault(key, point)
+    return found
+
+
+def dialog_open(image=None):
+    return re.sub(r"[^a-z]", "", CONFIRM_WORD.lower()) in buttons(image)
 
 
 def dialog_button(word, image=None):
-    image = image if image is not None else calibration.grab()
-    box = calibration._box(tuple(calibration._REG["convert_dialog_buttons"]))
+    return buttons(image).get(re.sub(r"[^a-z]", "", word.lower()))
+
+
+def await_button(word, timeout=None):
     want = re.sub(r"[^a-z]", "", word.lower())
-    for text, _c, point in calibration.ocr(image, box):
-        if re.sub(r"[^a-z]", "", text.lower()) == want:
-            return point
-    return None
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    seen = {}
+    while time.monotonic() < deadline:
+        seen = buttons(wide=True)
+        if want in seen:
+            return seen[want], seen
+        time.sleep(POLL_GAP)
+    return None, seen
 
 
 def await_dialog(timeout=None):
@@ -85,17 +104,28 @@ def await_dialog(timeout=None):
     return False
 
 
+def _read_qty_field(image):
+    reg = calibration._REG
+    left = calibration._box(tuple(reg["convert_dialog_qty"]))
+    right = calibration._box(tuple(reg["convert_dialog_qty_max"]))
+    box = (left[0], min(left[1], right[1]), right[2], max(left[3], right[3]))
+    text = calibration.read_line(image, box, border=calibration.OCR_BORDER)
+    found = [int(n) for n in re.findall(r"\d+", text)]
+    if len(found) < 2:
+        return None, None
+    return found[0], found[-1]
+
+
 def dialog_details(image=None):
     image = image if image is not None else calibration.grab()
     reg = calibration._REG
     read = lambda key: calibration.read_line(
         image, calibration._box(tuple(reg[key])))
+    held, total = _read_qty_field(image)
     return {"item": read("convert_dialog_item"),
             "price": read("convert_dialog_price"),
-            "qty": calibration.read_money(
-                image, calibration._box(tuple(reg["convert_dialog_qty"]))),
-            "qty_max": calibration.read_money(
-                image, calibration._box(tuple(reg["convert_dialog_qty_max"])))}
+            "qty": held,
+            "qty_max": total}
 
 
 def _cancel(why):
@@ -183,13 +213,21 @@ def convert(core_name, quantity, verbose=True):
     point = dialog_button(CONFIRM_WORD) or point
     with calibration.step(f"click {CONFIRM_WORD}"):
         calibration.click(*point, settle=0.0)
+    with calibration.step(f"await {COMMIT_WORD}"):
+        commit, seen = await_button(COMMIT_WORD)
+    if commit is None:
+        raise Refused(
+            f"no {COMMIT_WORD} button appeared after {CONFIRM_WORD}; the "
+            f"buttons read {sorted(seen)}. Nothing is confirmed converted.")
+    with calibration.step(f"click {COMMIT_WORD}"):
+        calibration.click(*commit, settle=0.0)
     with calibration.step("park"):
         calibration.park()
     with calibration.step("confirm the dialog is gone"):
-        still = dialog_open()
-    if still:
+        left = buttons(wide=True)
+    if re.sub(r"[^a-z]", "", COMMIT_WORD.lower()) in left:
         raise Refused(
-            f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
+            f"the dialog stayed open after {COMMIT_WORD}. Whether the "
             f"conversion happened is unknown -- look before running again.")
     calibration.steps_table(f"convert {asked} into {core_name}")
     say(f"    converted {asked} {entry['costs']} into {core_name}")

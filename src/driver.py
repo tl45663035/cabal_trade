@@ -424,7 +424,8 @@ def resupply_one(model, slot, held, verbose=True):
         listed = model.list_slot(*landing, floor=floor,
                                  why=f"a {floor_pair} costs {unit_floor:,}"
                                  if unit_floor else "",
-                                 verbose=verbose, lands_in=lands_in)
+                                 verbose=verbose, lands_in=lands_in,
+                                 expect_qty=out["converted"])
     calibration.phases_table(
         f"resupply {core}: bought {bought}, converted {out['converted']}, "
         f"listed in row {lands_in}")

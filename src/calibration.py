@@ -793,12 +793,12 @@ def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
 
 
 
-def read_line(image: Image.Image, box, scale: int = None):
+def read_line(image: Image.Image, box, scale: int = None, border: int = 0):
     scale = OCR_SCALE if scale is None else scale
     if not has_ink(image, box):
         return ""
     buf = io.BytesIO()
-    prep_for_text(image, box, scale).save(buf, "PNG")
+    prep_for_text(image, box, scale, border).save(buf, "PNG")
     run = subprocess.run(
         [TESSERACT, "stdin", "stdout", "--psm", ROW_PSM, "tsv"],
         input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
