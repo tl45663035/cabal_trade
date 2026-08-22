@@ -252,12 +252,7 @@ def get_price(slot, verbose=True):
         stale = None if name_matches(slot, before) else before
         with calibration.step(f"get_price: click favourite slot {slot}"):
             shop.click(x, y, settle=0.0)
-        with calibration.step("get_price: confirm the sort"):
-            sort = confirm_sort_low_to_high(
-                slot, verbose=verbose and attempt == 1)
-        gone = sort == "gone"
-        if sort == "lagged":
-            continue
+        gone = False
         deadline = time.monotonic() + SEARCH_TIMEOUT
         next_check = time.monotonic() + SHOP_CHECK_GAP
         polls = 0
@@ -280,6 +275,13 @@ def get_price(slot, verbose=True):
                 continue
             row = parse_fields(fields)
             if row is not None:
+                with calibration.step("get_price: confirm the sort"):
+                    sort = confirm_sort_low_to_high(
+                        slot, verbose=verbose and attempt == 1)
+                if sort == "ok":
+                    break
+                row = None
+                gone = sort in ("gone", "lagged")
                 break
             time.sleep(POLL_GAP)
         calibration._STEPS.append(
