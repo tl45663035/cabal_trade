@@ -26,6 +26,7 @@ DEFAULTS = {
         "undercut_by": 1,
         "home_notches": 30,
         "for_minutes": 60,
+        "price_check_factor": 2.0,
     },
     "war": {
         "enabled": False,
@@ -158,7 +159,6 @@ DEFAULTS = {
         "bulk_min_conf": 55.0,
         "rescue_min_conf": 30.0,
         "min_plausible_price": 1000,
-        "price_check_factor": 2.0,
         "price_min_digits": 4,
         "min_client_side": 100,
         "fit_pitch_step": 0.02,
@@ -229,8 +229,7 @@ def resolution_key(size=None) -> str:
     return f"{w}x{h}"
 
 
-CONFIG_SECTIONS = ("run", "debug", "timing", "resupply", "war",
-                   "detect")
+CONFIG_SECTIONS = ("run", "debug", "timing", "resupply", "war")
 
 
 def _read(path) -> dict:

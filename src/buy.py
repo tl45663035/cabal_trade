@@ -148,11 +148,13 @@ def await_balance(differs_from=None, timeout=None):
     return seen
 
 
-def buy_row_one(slot, want, verbose=True):
+def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
+                ceiling=None):
     steps_reset()
     outcome = "REFUSED"
     try:
-        out = _buy_row_one(slot, want, verbose=verbose)
+        out = _buy_row_one(slot, want, verbose=verbose, held=held,
+                           floor_qty=floor_qty, ceiling=ceiling)
         outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
         return out
     finally:
@@ -160,7 +162,8 @@ def buy_row_one(slot, want, verbose=True):
             steps_table(f"buy from favourite slot {slot}: {outcome}")
 
 
-def _buy_row_one(slot, want, verbose=True):
+def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
+                 ceiling=None):
     say = print if verbose else (lambda *a: None)
     with step("get_price: search the favourite and read row 1"):
         offer = get_price.get_price(int(slot), verbose=False)

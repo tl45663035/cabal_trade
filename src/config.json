@@ -1,24 +1,4 @@
 {
-  "war": {
-    "enabled": true,
-    "start_hours": [
-      1,
-      4,
-      7,
-      10,
-      13,
-      16,
-      19,
-      22
-    ],
-    "war_minutes": 30,
-    "quiet_before_end": 60,
-    "quiet_seconds": 300,
-    "clock_uncertainty": 59,
-    "clock_resync": 1800.0,
-    "clock_confirm_pause": 1.0,
-    "clock_max_drift": 150.0
-  },
   "resupply": {
     "enabled": true,
     "enable_buying": {
@@ -26,7 +6,7 @@
       "Chaos Core": false,
       "Force Core (Ultimate)": true,
       "Force Core(High)": true,
-      "Upgrade Core (Ultimate)": false
+      "Upgrade Core (Ultimate)": true
     },
     "rows_threshold": 5,
     "buy_min": 10,
@@ -45,7 +25,8 @@
     "relist_to": 15,
     "undercut_by": 1,
     "home_notches": 30,
-    "for_minutes": 60
+    "for_minutes": 60,
+    "price_check_factor": 2.0
   },
   "debug": {
     "frames": true,
@@ -75,7 +56,24 @@
     "server_lag_budget": 600.0,
     "server_lag_poll": 5.0
   },
-  "detect": {
-    "price_check_factor": 2.0
+  "war": {
+    "enabled": true,
+    "start_hours": [
+      1,
+      4,
+      7,
+      10,
+      13,
+      16,
+      19,
+      22
+    ],
+    "war_minutes": 30,
+    "quiet_before_end": 60,
+    "quiet_seconds": 300,
+    "clock_uncertainty": 59,
+    "clock_resync": 1800.0,
+    "clock_confirm_pause": 1.0,
+    "clock_max_drift": 150.0
   }
 }

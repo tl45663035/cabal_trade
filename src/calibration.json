@@ -260,72 +260,6 @@
       0.4178
     ]
   },
-  "detect": {
-    "alz_bright": 110,
-    "alz_saturation": 45,
-    "alz_min_pixels": 150,
-    "alz_line_half": 14,
-    "alz_max_width_fraction": 0.95,
-    "alz_min_height": 8,
-    "alz_max_height": 30,
-    "grid_fit_min": 0.02,
-    "panel_open_change": 0.3,
-    "edge_candidates": 40,
-    "edge_min_gap": 15,
-    "rule_candidates": 60,
-    "rule_min_gap": 30,
-    "purchase_header_up": 66,
-    "purchase_header_down": 10,
-    "purchase_divider_sigma": 3.0,
-    "purchase_cell_inset": 2,
-    "dialog_button_min_x": 1200,
-    "dialog_button_half": [
-      70,
-      24
-    ],
-    "min_plausible_balance": 1000,
-    "row_border_candidates": 30,
-    "row_border_min_gap": 15,
-    "qty_half_width": 45,
-    "function_half_width": 46,
-    "price_right_gap": 46,
-    "ink_threshold": 160,
-    "ink_pad": 4,
-    "bulk_min_conf": 20.0,
-    "rescue_min_conf": 20.0,
-    "min_plausible_price": 1000,
-    "price_min_digits": 4,
-    "min_client_side": 100,
-    "fit_pitch_step": 0.02,
-    "fit_start_step": 0.5,
-    "fav_peak_cut": 0.6,
-    "fav_merge_gap": 40,
-    "fav_pitch_spread": 4,
-    "sort_pad_left": 40,
-    "sort_pad_right": 90,
-    "sort_pad_y": 16,
-    "scroll_point_inset": 600,
-    "panel_field_inset": 30,
-    "panel_field_half": 14,
-    "panel_label_gap": 22,
-    "panel_rereads": 5,
-    "min_name_overlap": 6,
-    "alz_min_digits": 4,
-    "slot_half": 24,
-    "slot_occupied_stdev": 8.0,
-    "panel_moved_slack": 30,
-    "clear_presses_qty": 3,
-    "clear_presses_price": 16,
-    "convert_peak_cut": 0.4,
-    "convert_merge_gap": 30,
-    "purchase_row_select_x": 500,
-    "load_attempts": 3,
-    "ink_contrast_min": 40,
-    "warm_min_bright": 110,
-    "warm_min_saturation": 45,
-    "alz_max_text_height": 0.5,
-    "suggestion_radio_dx": 1
-  },
   "text": {
     "empty_row": "premiumexclusiveslot",
     "sort_direction": "(low|high)\\s*to",
@@ -376,6 +310,7 @@
     "work_tab": 4,
     "shop_capacity": 30,
     "shop_visible": 10,
+    "max_stack": 250,
     "convert_grades": [
       "Low",
       "Medium",
@@ -390,8 +325,7 @@
     },
     "convert_tab": "Dungeon",
     "convert_inventory_tab": 4,
-    "clock_epoch": "2024-01-03",
-    "max_stack": 250
+    "clock_epoch": "2024-01-03"
   },
   "by_resolution": {
     "2560x1440": {
@@ -399,7 +333,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-08-22T00:21:40",
+      "measured_at": "2026-08-23T07:17:39",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -744,6 +678,18 @@
           1472,
           854
         ],
+        "button_register": [
+          178,
+          1014
+        ],
+        "button_cancel": [
+          1472,
+          854
+        ],
+        "button_confirmation": [
+          1291,
+          854
+        ],
         "purchase_tab": [
           130,
           100
@@ -803,14 +749,14 @@
         },
         "purchase_sort_region": [
           856,
-          178,
+          180,
           986,
-          210
+          212
         ],
-        "purchase_sort_text_seen": "-pic y Price:Low to",
+        "purchase_sort_text_seen": "v -pic y Price:High to",
         "purchase_sort_anchor": [
           896,
-          194
+          196
         ],
         "purchase_buy_x": 1124,
         "purchase_row_pitch": 76,
@@ -859,17 +805,17 @@
           1229
         ],
         "row_one_y": 230,
-        "row_pitch": 80,
+        "row_pitch": 79,
         "row_one_box": [
           256,
-          190,
+          191,
           1229,
-          270
+          269
         ],
         "button_x": 1126,
         "table_point": [
           526,
-          310
+          309
         ],
         "rows_per_notch": 1,
         "register_rows_seen": 9,
@@ -924,89 +870,77 @@
             204,
             802
           ]
-        },
-        "button_register": [
-          178,
-          1014
-        ],
-        "button_cancel": [
-          1472,
-          854
-        ],
-        "button_confirmation": [
-          1291,
-          854
-        ]
+        }
       },
       "convert": {
         "tab": "Dungeon",
         "tab_point": [
-          195,
+          196,
           205
         ],
         "cells": {
           "1x1": [
-            253,
-            1064
+            250,
+            1075
           ],
           "1x2": [
             316,
-            1064
+            1075
           ],
           "1x3": [
             384,
-            1064
+            1075
           ],
           "1x4": [
-            446,
-            1064
+            445,
+            1075
           ],
           "1x5": [
             511,
-            1064
+            1075
           ],
           "2x1": [
-            253,
-            1130
+            250,
+            1129
           ],
           "2x2": [
             316,
-            1130
+            1129
           ],
           "2x3": [
             384,
-            1130
+            1129
           ],
           "2x4": [
-            446,
-            1130
+            445,
+            1129
           ],
           "2x5": [
             511,
-            1130
+            1129
           ],
           "3x1": [
-            253,
-            1189
+            250,
+            1195
           ],
           "3x2": [
             316,
-            1189
+            1195
           ],
           "3x3": [
             384,
-            1189
+            1195
           ],
           "3x4": [
-            446,
-            1189
+            445,
+            1195
           ],
           "3x5": [
             511,
-            1189
+            1195
           ],
           "4x1": [
-            253,
+            250,
             1254
           ],
           "4x2": [
@@ -1018,7 +952,7 @@
             1254
           ],
           "4x4": [
-            446,
+            445,
             1254
           ],
           "4x5": [
@@ -1030,8 +964,8 @@
           "Force Core(Low)": {
             "cell": "2x1",
             "point": [
-              253,
-              1130
+              250,
+              1129
             ],
             "costs": "Force Core Set (Low)"
           },
@@ -1039,7 +973,7 @@
             "cell": "2x2",
             "point": [
               316,
-              1130
+              1129
             ],
             "costs": "Force Core Set (Medium)"
           },
@@ -1047,15 +981,15 @@
             "cell": "2x3",
             "point": [
               384,
-              1130
+              1129
             ],
             "costs": "Force Core Set (High)"
           },
           "Force Core(Highest)": {
             "cell": "2x4",
             "point": [
-              446,
-              1130
+              445,
+              1129
             ],
             "costs": "Force Core Set (Highest)"
           },
@@ -1063,14 +997,14 @@
             "cell": "2x5",
             "point": [
               511,
-              1130
+              1129
             ],
             "costs": "Force Core Set (Ultimate)"
           },
           "Upgrade Core(Low)": {
             "cell": "4x1",
             "point": [
-              253,
+              250,
               1254
             ],
             "costs": "Upgrade Core Set (Low)"
@@ -1094,7 +1028,7 @@
           "Upgrade Core(Highest)": {
             "cell": "4x4",
             "point": [
-              446,
+              445,
               1254
             ],
             "costs": "Upgrade Core Set (Highest)"
@@ -1109,16 +1043,16 @@
           }
         },
         "columns": [
-          253,
+          250,
           316,
           384,
-          446,
+          445,
           511
         ],
         "rows": [
-          1064,
-          1130,
-          1189,
+          1075,
+          1129,
+          1195,
           1254
         ]
       }
@@ -1137,18 +1071,84 @@
     "10": "Upgrade Core Set (Ultimate)"
   },
   "market": {
-    "measured_at": "2026-08-22T00:21:40",
+    "measured_at": "2026-08-23T07:17:39",
     "unit_price": {
-      "1": 239993,
-      "2": 210210,
-      "3": 680000,
-      "4": 703311,
-      "5": 449999,
-      "6": 416666,
-      "7": 240309,
-      "8": 265264,
-      "9": 445084,
-      "10": 444944
+      "1": 222222,
+      "2": 201086,
+      "3": 688000,
+      "4": 690000,
+      "5": 410000,
+      "6": 372092,
+      "7": 240000,
+      "8": 206800,
+      "9": 479450,
+      "10": 395522
     }
+  },
+  "detect": {
+    "alz_bright": 110,
+    "alz_saturation": 45,
+    "alz_min_pixels": 150,
+    "alz_line_half": 14,
+    "alz_max_width_fraction": 0.95,
+    "alz_min_height": 8,
+    "alz_max_height": 30,
+    "grid_fit_min": 0.02,
+    "panel_open_change": 0.3,
+    "edge_candidates": 40,
+    "edge_min_gap": 15,
+    "rule_candidates": 60,
+    "rule_min_gap": 30,
+    "purchase_header_up": 66,
+    "purchase_header_down": 10,
+    "purchase_divider_sigma": 3.0,
+    "purchase_cell_inset": 2,
+    "dialog_button_min_x": 1200,
+    "dialog_button_half": [
+      70,
+      24
+    ],
+    "min_plausible_balance": 1000,
+    "row_border_candidates": 30,
+    "row_border_min_gap": 15,
+    "qty_half_width": 45,
+    "function_half_width": 46,
+    "price_right_gap": 46,
+    "ink_threshold": 160,
+    "ink_pad": 4,
+    "bulk_min_conf": 20.0,
+    "rescue_min_conf": 20.0,
+    "min_plausible_price": 1000,
+    "price_min_digits": 4,
+    "min_client_side": 100,
+    "fit_pitch_step": 0.02,
+    "fit_start_step": 0.5,
+    "fav_peak_cut": 0.6,
+    "fav_merge_gap": 40,
+    "fav_pitch_spread": 4,
+    "sort_pad_left": 40,
+    "sort_pad_right": 90,
+    "sort_pad_y": 16,
+    "scroll_point_inset": 600,
+    "panel_field_inset": 30,
+    "panel_field_half": 14,
+    "panel_label_gap": 22,
+    "panel_rereads": 5,
+    "min_name_overlap": 6,
+    "alz_min_digits": 4,
+    "slot_half": 24,
+    "slot_occupied_stdev": 8.0,
+    "panel_moved_slack": 30,
+    "clear_presses_qty": 3,
+    "clear_presses_price": 16,
+    "convert_peak_cut": 0.4,
+    "convert_merge_gap": 30,
+    "purchase_row_select_x": 500,
+    "load_attempts": 3,
+    "ink_contrast_min": 40,
+    "warm_min_bright": 110,
+    "warm_min_saturation": 45,
+    "alz_max_text_height": 0.5,
+    "suggestion_radio_dx": 1
   }
 }
