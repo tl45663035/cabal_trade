@@ -2245,6 +2245,9 @@ def list_cores(core_name: str, slots, timeout: float = 8.0,
         except Aborted as exc:
             why = str(exc)
             say(f"  slot {slot} was refused: {exc}")
+            if read_register_panel(grab())["loaded"]:
+                say("  putting it back so the next candidate can be tried")
+                clear_shop_slot(verbose=verbose)
             continue
         qty = int(report.get("qty") or 0)
         if ok:
@@ -2283,6 +2286,8 @@ def list_cores(core_name: str, slots, timeout: float = 8.0,
                                    report=report)
             except Aborted as exc:
                 why = str(exc)
+                if read_register_panel(grab())["loaded"]:
+                    clear_shop_slot(verbose=verbose)
                 continue
             if ok:
                 qty = int(report.get("qty") or 0)
