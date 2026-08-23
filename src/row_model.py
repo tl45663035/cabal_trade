@@ -180,11 +180,6 @@ def _panel():
     return part
 
 
-def read_panel_price():
-    box = _panel()["price_field"]
-    return calibration.read_money(calibration.grab(), tuple(box)) or 0
-
-
 def suggested_price(verbose=False):
     box = tuple(_panel()["suggestion_boxes"][-1])
     radio = (box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
@@ -205,37 +200,21 @@ def read_panel_net():
     return calibration.read_money(calibration.grab(), tuple(box)) or 0
 
 
-def price_field_shows(read, want):
-    if read == want:
-        return True
-    grouped = f"{want:,}"
-    if "," not in grouped:
-        return False
-    return any(grouped.replace(",", d) == str(read) for d in "0123456789")
-
-
 def panel_quantity(want_price, verbose=False):
     if not _panel().get("net_sales_box"):
         raise Divergence(
             "the net sales box was never measured, so a price cannot be "
             "checked. Recalibrate before listing anything.")
     for attempt in range(1, PANEL_REREADS + 2):
-        price = read_panel_price()
         net = read_panel_net() or 0
-        checks = {
-            "price field": price_field_shows(price, want_price),
-            "net sales": net > 0,
-            "net / price": net % want_price == 0,
-        }
-        if all(checks.values()):
+        if net and net % want_price == 0:
             qty = net // want_price
             if verbose:
-                print(f"    panel agrees: {qty} x {want_price:,} = {net:,}")
+                print(f"    net sales {net:,} is {qty} x {want_price:,}")
             return qty
         if verbose:
-            bad = ", ".join(k for k, ok in checks.items() if not ok)
-            print(f"    read {attempt}: price {price:,}, net {net:,} "
-                  f"-- disagrees on {bad}")
+            print(f"    read {attempt}: net sales {net:,} is not a whole "
+                  f"number of {want_price:,}")
         time.sleep(PANEL_REREAD_GAP)
     return None
 

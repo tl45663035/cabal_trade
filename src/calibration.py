@@ -1318,15 +1318,6 @@ ACTION_BUTTON_WORDS = (_S["text"]["confirm_word"], _S["text"]["dismiss_word"],
 RECEIPT_WORD = _S["text"]["receipt_word"]
 
 
-def price_field_shows(read, want):
-    if read == want:
-        return True
-    grouped = f"{want:,}"
-    if "," not in grouped:
-        return False
-    return any(grouped.replace(",", d) == str(read) for d in "0123456789")
-
-
 def panel_quantity(panel, want_price, say=lambda *a: None):
     box = panel.get("net_sales_box")
     if not box:
@@ -1334,13 +1325,10 @@ def panel_quantity(panel, want_price, say=lambda *a: None):
             "the net sales box was never measured, so a price cannot be "
             "checked. Recalibrate before listing anything.")
     for attempt in range(1, PANEL_REREADS + 2):
-        image = grab()
-        price = read_money(image, tuple(panel["price_field"])) or 0
-        net = read_money(image, tuple(box)) or 0
-        if (price_field_shows(price, want_price) and net
-                and net % want_price == 0):
+        net = read_money(grab(), tuple(box)) or 0
+        if net and net % want_price == 0:
             return net // want_price
-        say(f"    read {attempt}: price {price:,}, net {net:,} -- wanted "
+        say(f"    read {attempt}: net sales {net:,} is not a whole number of "
             f"{want_price:,}")
         time.sleep(PANEL_REREAD_GAP)
     return None
