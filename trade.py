@@ -47,9 +47,7 @@ NO_MAX_QUANTITY_ITEMS: tuple[str, ...] = ()
 
 MAX_QTY_ENTRY = 9999
 
-QTY_CROSSCHECK_ABSOLUTE = 5
 
-QTY_CROSSCHECK_FRACTION = 0.10
 
 
 ACTION_COOLDOWN = 0.3
@@ -1619,6 +1617,8 @@ SERVER_CLOCK_EPOCH = _dt.datetime(2024, 1, 3)
 
 COST_FLOOR_ON_RELIST = True
 
+PRICE_CHECK_FACTOR = 2.0
+
 BUY_ENABLED = False
 
 BUY_ADDED_ROWS = 0
@@ -2587,6 +2587,10 @@ LIVE_KNOBS = {
     "RESTOCK_AT_OR_BELOW_ROWS":       (int, "restock a Core at/below this many rows"),
     "SHOP_MODEL_SHADOW":              (bool, "track the row model without acting"),
     "COST_FLOOR_ON_RELIST":           (bool, "never relist below what the stock cost"),
+    "PRICE_CHECK_FACTOR":             (float, "how far the panel's suggested "
+                                              "price may sit from the item's "
+                                              "market price before the load is "
+                                              "treated as a different item"),
 }
 
 
@@ -7912,56 +7916,32 @@ def register_item(
         say(f"Loaded: qty {panel['qty_text']!r} -> {panel['qty']}/{panel['qty_max']}, "
             f"suggested {panel['prices'] or 'none'}")
 
-        if (expect_item and expect_qty is not None
-                and panel["qty_max"] is None):
-            time.sleep(0.4)
-            again = read_register_panel(grab())
-            if again.get("loaded") and again.get("qty_max") is not None:
-                say(f"  the quantity field re-read as {again['qty_max']} "
-                    "(it was unreadable a moment ago).")
-                panel = again
-
-        if (expect_item and expect_qty is not None
-                and panel["qty_max"] is None):
-            say(f"WARNING: the panel's quantity field did not read, so the "
-                f"cross-check against the cancelled listing's {expect_qty} "
-                f"could NOT be performed. The listing will still be verified "
-                f"against the table afterwards.")
-            record("register.qty_unverified", item=expect_item,
-                   expect_qty=expect_qty, row=row, col=col,
-                   qty_text=panel.get("qty_text"))
-            if report is not None:
-                report["qty_unverified"] = True
-
-        if expect_item and expect_qty is not None and panel["qty_max"] is not None:
-            loaded = panel["qty_max"]
-            slack = max(QTY_CROSSCHECK_ABSOLUTE,
-                        int(expect_qty * QTY_CROSSCHECK_FRACTION))
-
-            if loaded >= expect_qty:
-                if loaded > expect_qty:
-                    say(f"NOTE: the panel offers {loaded} but the cancelled "
-                        f"listing held {expect_qty}. The extra are the same "
-                        "item held elsewhere in the inventory, which the shop "
-                        "slot gathers; continuing.")
-                    if report is not None:
-                        report["qty_extra"] = (expect_qty, loaded)
-            elif expect_qty - loaded <= slack:
-                say(f"NOTE: the panel holds {loaded} but the table said "
-                    f"{expect_qty} (short by {expect_qty - loaded}, within "
-                    f"{slack}). The panel field is the more reliable read, so "
-                    "continuing with it - the table's QTY column is narrow and "
-                    "misreads a digit occasionally.")
+        if expect_item:
+            slot = favourite_for(expect_item)
+            expected = 0
+            if slot is not None:
+                expected = (_COUNTERPART_PRICE.get(slot, 0)
+                            * listed_pack(expect_item))
+            rows = panel.get("price_rows") or []
+            suggested = (max(rows, key=lambda pr: pr[1])[0]
+                         if rows else 0)
+            if expected and suggested:
+                low = expected / PRICE_CHECK_FACTOR
+                high = expected * PRICE_CHECK_FACTOR
+                if not low <= suggested <= high:
+                    require(False,
+                            f"the panel prices what loaded at {suggested:,}, "
+                            f"and a {expect_item!r} goes for about "
+                            f"{expected:,} on the market. That is not the "
+                            f"same item, so this is the wrong slot")
+                say(f"  the panel prices it at {suggested:,}; a "
+                    f"{expect_item!r} goes for about {expected:,}")
                 if report is not None:
-                    report["qty_disagreement"] = (expect_qty, loaded)
-            else:
-                require(False,
-                        f"the shop slot offers only {loaded} but the cancelled "
-                        f"listing held {expect_qty} - short by "
-                        f"{expect_qty - loaded}, more than the {slack} "
-                        f"tolerated. The cancelled stack should be in the "
-                        f"inventory, so either it is not all there or this is "
-                        f"the wrong slot")
+                    report["panel_price"] = suggested
+            elif not suggested:
+                say(f"  the panel suggests no price for {expect_item!r}, so "
+                    "the load could not be checked against the market; "
+                    "continuing on the identity the row was cancelled under.")
 
         if maximise_qty is None:
             if force_qty:
@@ -7998,7 +7978,7 @@ def register_item(
 
         if expect_item:
             absolute_floor, floor_reason_text = listing_floor(
-                expect_item, known_cost=bool(cost_floor))
+                expect_item, known_cost=True)
 
             absolute_floor, floor_reason_text = effective_floor(
                 absolute_floor, floor_reason_text, cost_floor)

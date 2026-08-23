@@ -43,9 +43,9 @@ CLEAR_PRESSES_PRICE = _SHARED["detect"]["clear_presses_price"]
 KEY_GAP = _T["key_gap"]
 CLEAR_GAP = _T["clear_gap"]
 LOAD_ATTEMPTS = _SHARED["detect"]["load_attempts"]
-LETTER_DIGITS = _SHARED["text"]["letter_digits"]
 FIELD_SETTLE = _T["field_settle"]
 SUGGESTION_RADIO_DX = _SHARED["detect"]["suggestion_radio_dx"]
+PRICE_CHECK_FACTOR = _SHARED["detect"]["price_check_factor"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
 STALE_SWEEP = _T.get("stale_sweep", 1.0)
@@ -171,9 +171,6 @@ def show_work_tab(verbose=False, already=False):
 
 MIN_PLAUSIBLE_PRICE = _SHARED["detect"]["min_plausible_price"]
 
-_QTY = re.compile(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)")
-
-
 def _panel():
     part = _shop().get("panel")
     if not part:
@@ -181,38 +178,6 @@ def _panel():
             "the register panel has not been measured; run "
             "py src/calibration.py before listing anything.")
     return part
-
-
-def digits_only(text):
-    out = []
-    for ch in text or "":
-        if ch.isdigit():
-            out.append(ch)
-        elif ch in LETTER_DIGITS:
-            out.append(LETTER_DIGITS[ch])
-        else:
-            out.append(" ")
-    return "".join(out)
-
-
-def read_panel_qty():
-    box = _panel()["qty_box"]
-    text = calibration.read_line(calibration.grab(), tuple(box))
-    nums = [int(m) for m in re.findall(r"\d+", digits_only(text))]
-    if len(nums) < 2:
-        return (0, 0)
-    return (nums[0], nums[-1])
-
-
-def await_panel_qty(timeout=None):
-    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
-                                   else timeout)
-    while time.monotonic() < deadline:
-        held = read_panel_qty()
-        if held[1]:
-            return held
-        time.sleep(POLL_GAP)
-    return None
 
 
 def read_panel_price():
@@ -636,7 +601,7 @@ class RowModel:
         return result
 
     def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
-                  lands_in=None, expect_at_least=None):
+                  lands_in=None, expect_item=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -649,11 +614,11 @@ class RowModel:
         if verbose:
             print(f"  inventory slot ({row},{col}) at {point}")
         with calibration.step("read the panel before loading"):
-            before = read_panel_qty()
-        if before[1]:
+            standing = suggested_price(False)
+        if standing is not None:
             raise Divergence(
-                f"the shop slot already holds {before[0]} of {before[1]}; "
-                f"clear it before listing another item.")
+                f"the shop slot already holds something the panel prices at "
+                f"{standing:,}; clear it before listing another item.")
 
         deadline = time.monotonic() + DIALOG_TIMEOUT
         while time.monotonic() < deadline:
@@ -669,28 +634,39 @@ class RowModel:
                 f"tab {WORK_TAB} slot ({row},{col}) is still empty "
                 f"{DIALOG_TIMEOUT:g}s after the withdrawal. Nothing listed.")
 
-        held = None
+        suggested = None
         for attempt in range(1, LOAD_ATTEMPTS + 1):
             with calibration.step(f"ctrl-click ({row},{col}) attempt {attempt}"):
                 calibration.ctrl_click(*point)
-            with calibration.step("await the panel quantity"):
-                held = await_panel_qty()
-            if held is not None:
+            with calibration.step("read the suggested price"):
+                suggested = suggested_price(verbose)
+            if suggested is not None:
                 break
             calibration.snap(f"nothing_loaded_{row}x{col}_{attempt}")
             if verbose:
                 print(f"  ctrl-click {attempt}/{LOAD_ATTEMPTS} loaded nothing "
                       f"from ({row},{col})")
-        if held is None:
+        if suggested is None:
             raise Divergence(
                 f"nothing loaded into the shop slot from ({row},{col}) after "
                 f"{LOAD_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
-        if verbose:
-            print(f"  loaded {held[0]} of {held[1]}")
+        if expect_item:
+            expected = (calibration.market_unit(expect_item)
+                        * max(1, pack_size(expect_item)))
+            if expected:
+                if not (expected / PRICE_CHECK_FACTOR <= suggested
+                        <= expected * PRICE_CHECK_FACTOR):
+                    calibration.snap(f"panel_prices_{suggested}")
+                    raise Divergence(
+                        f"the panel prices what loaded from ({row},{col}) at "
+                        f"{suggested:,}, and a {expect_item} goes for about "
+                        f"{expected:,}. That is not the same item. Nothing "
+                        f"has been listed.")
+                if verbose:
+                    print(f"  the panel prices it at {suggested:,}, and a "
+                          f"{expect_item} goes for about {expected:,}")
 
-        with calibration.step("read the suggested price"):
-            want = (price if price is not None
-                    else calibration.undercut(suggested_price(verbose)))
+        want = price if price is not None else calibration.undercut(suggested)
         if want is None:
             raise Divergence(
                 "no price was given and the panel suggests none, so there is "
@@ -721,12 +697,6 @@ class RowModel:
                 f"after typing {MAX_STACK}. Nothing has been listed.")
         if verbose:
             print(f"  typed {MAX_STACK}; the net sales make it {qty}")
-        if expect_at_least is not None and qty < expect_at_least:
-            calibration.snap(f"panel_short_of_{expect_at_least}")
-            raise Divergence(
-                f"the panel holds {qty} from ({row},{col}) but "
-                f"{expect_at_least} were just converted into it. Nothing has "
-                f"been listed.")
         with calibration.step("click Register"):
             calibration.click(*panel["register_button"], settle=0.0)
         with calibration.step(f"find {CONFIRM_WORD}"):

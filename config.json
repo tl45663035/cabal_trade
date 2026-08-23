@@ -32,8 +32,8 @@
     "CHAOS_RECIPE": "which craft recipe chaos uses. 1 = [1500] Chaos Core Set (x1) under the 1000-1999 tier; 2 = [2500] Chaos Core Set (x3) under 2000-2999, which takes 3 Cores and yields 3 Sets per craft, so a third of the craft operations for the same stock. Two fixed clicks, no OCR: the tier, then the recipe under it. Both points assume the tree is in its resting state (all tiers collapsed), which is what the craft window opens to."
   },
   "CHAOS_ENABLED": true,
-  "CHAOS_ROWS": 5,
-  "CHAOS_RESTOCK_AT_OR_BELOW_ROWS": 4,
+  "CHAOS_ROWS": 4,
+  "CHAOS_RESTOCK_AT_OR_BELOW_ROWS": 3,
   "CHAOS_BUY_QUANTITY": 200,
   "CHAOS_MARGIN_FLOOR": 10000,
   "CHAOS_UNDERCUT": 1,
@@ -41,28 +41,29 @@
   "BUY_ENABLED": true,
   "RESTOCK_TARGET": 200,
   "BUY_MAXIMUM": 500,
-  "RESTOCK_AT_OR_BELOW_ROWS": 2,
-  "CORE_ROWS": 3,
+  "RESTOCK_AT_OR_BELOW_ROWS": 1,
+  "CORE_ROWS": 2,
   "CORE_ROWS_BY_ITEM": {
-    "Force Core(High)": 3,
-    "Force Core(Highest)": 3,
-    "Force Core (Ultimate)": 3,
-    "Upgrade Core (Ultimate)": 3
+    "Force Core(High)": 2,
+    "Force Core(Highest)": 2,
+    "Force Core (Ultimate)": 2,
+    "Upgrade Core (Ultimate)": 2
   },
   "PRICE_DIFF_FLOOR": 10000,
   "PRICE_DIFF_FLOOR_BY_ITEM": {
     "Force Core(High)": 5000,
     "Force Core(Highest)": 10000,
     "Force Core (Ultimate)": 10000,
-    "Upgrade Core (Ultimate)": 10000
+    "Upgrade Core (Ultimate)": 15000
   },
   "run": {
-    "relist_rows": "1-23",
+    "relist_rows": "1-22",
     "for_minutes": 1000,
     "every_minutes": 0,
     "premium": true,
     "debug_frames": false,
     "row_model": true
   },
-  "COST_FLOOR_ON_RELIST": true
+  "COST_FLOOR_ON_RELIST": true,
+  "PRICE_CHECK_FACTOR": 2.0
 }

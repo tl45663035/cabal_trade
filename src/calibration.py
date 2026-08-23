@@ -158,6 +158,7 @@ DEFAULTS = {
         "bulk_min_conf": 55.0,
         "rescue_min_conf": 30.0,
         "min_plausible_price": 1000,
+        "price_check_factor": 2.0,
         "price_min_digits": 4,
         "min_client_side": 100,
         "fit_pitch_step": 0.02,
@@ -228,7 +229,8 @@ def resolution_key(size=None) -> str:
     return f"{w}x{h}"
 
 
-CONFIG_SECTIONS = ("run", "debug", "timing", "resupply", "war")
+CONFIG_SECTIONS = ("run", "debug", "timing", "resupply", "war",
+                   "detect")
 
 
 def _read(path) -> dict:
@@ -395,7 +397,6 @@ CONVERT_GRADES = _S["game_facts"]["convert_grades"]
 CONVERT_ROW_COUNT = _S["game_facts"]["convert_rows"]
 CONVERT_SET_TO_CORE_ROWS = _S["game_facts"]["convert_set_to_core_rows"]
 CONVERT_TAB = _S["game_facts"]["convert_tab"]
-LETTER_DIGITS = _S["text"]["letter_digits"]
 _ALZ_WORD = _S["text"]["alz_word"]
 SERVER_LAG_TEXT = re.compile(_S["text"]["server_lag"],
                              re.IGNORECASE)
@@ -642,11 +643,6 @@ def type_number(value: int, clear: int) -> None:
         time.sleep(KEY_GAP)
 
 
-def digits_only(text):
-    return "".join(ch if ch.isdigit() else LETTER_DIGITS.get(ch, " ")
-                   for ch in text or "")
-
-
 def _tesseract(prepared, psm, whitelist=None):
     buf = io.BytesIO()
     prepared.save(buf, "PNG")
@@ -680,14 +676,6 @@ def read_money(image, box):
         if value is not None:
             return value
     return None
-
-
-def panel_qty(panel):
-    text = read_line(grab(), tuple(panel["qty_box"]))
-    nums = [int(re.sub(r"[^\d]", "", m)) for m in re.findall(r"\d[\d,]*", text)]
-    if len(nums) < 2:
-        return (0, 0)
-    return (nums[0], nums[-1])
 
 
 def undercut(price):
@@ -1331,35 +1319,32 @@ ACTION_BUTTON_WORDS = (_S["text"]["confirm_word"], _S["text"]["dismiss_word"],
 RECEIPT_WORD = _S["text"]["receipt_word"]
 
 
-def panel_agrees(panel, want_qty, want_price, say=lambda *a: None):
+def price_field_shows(read, want):
+    if read == want:
+        return True
+    grouped = f"{want:,}"
+    if "," not in grouped:
+        return False
+    return any(grouped.replace(",", d) == str(read) for d in "0123456789")
+
+
+def panel_quantity(panel, want_price, say=lambda *a: None):
     box = panel.get("net_sales_box")
     if not box:
         raise RuntimeError(
             "the net sales box was never measured, so a price cannot be "
             "checked. Recalibrate before listing anything.")
-    expect = want_qty * want_price
     for attempt in range(1, PANEL_REREADS + 2):
         image = grab()
         price = read_money(image, tuple(panel["price_field"])) or 0
         net = read_money(image, tuple(box)) or 0
-        checks = {
-            "price field": price == want_price,
-            "net sales": net == expect,
-            "net / quantity": net // want_qty == want_price
-            if want_qty and net % want_qty == 0 else False,
-            "net / price": net // want_price == want_qty
-            if want_price and net % want_price == 0 else False,
-        }
-        if all(checks.values()):
-            say(f"  panel agrees four ways: {want_qty} x {price:,} = {net:,}")
-            return True
-        bad = ", ".join(k for k, ok in checks.items() if not ok)
-        say(f"  read {attempt}: price {price:,}, net {net:,} "
-            f"(wanted {want_qty} x {want_price:,} = {expect:,})"
-            f" -- disagrees on {bad}")
+        if (price_field_shows(price, want_price) and net
+                and net % want_price == 0):
+            return net // want_price
+        say(f"    read {attempt}: price {price:,}, net {net:,} -- wanted "
+            f"{want_price:,}")
         time.sleep(PANEL_REREAD_GAP)
-    return False
-
+    return None
 
 def pair_slot(slot):
     slot = int(slot)
@@ -1389,6 +1374,14 @@ def favourite_slot_of(name):
         if best is None or score > best[0]:
             best = (score, int(slot))
     return best[1] if best else None
+
+
+def market_unit(name):
+    prices = _read(OUT).get("market", {}).get("unit_price", {})
+    slot = favourite_slot_of(name)
+    if slot is None:
+        return 0
+    return int(prices.get(str(slot)) or 0)
 
 
 def price_floor(name):
@@ -1838,42 +1831,44 @@ def calibrate_actions(shop, verbose=True):
             f"tab {WORK_TAB} slot {landing} is empty after the withdrawal.")
     say(f"  listing it back from tab {WORK_TAB} slot {landing} at {slot}")
     ctrl_click(*slot)
-    held = (0, 0)
+    suggested = None
     deadline = time.monotonic() + budget
     while time.monotonic() < deadline:
-        held = panel_qty(panel)
-        if held[1]:
+        suggested = panel_suggestion(panel)
+        if suggested is not None:
             break
         time.sleep(POLL_GAP)
-    if not held[1]:
+    if suggested is None:
         say(f"  nothing loaded on the first ctrl-click; trying once more")
         ctrl_click(*slot)
         deadline = time.monotonic() + budget
         while time.monotonic() < deadline:
-            held = panel_qty(panel)
-            if held[1]:
+            suggested = panel_suggestion(panel)
+            if suggested is not None:
                 break
             time.sleep(POLL_GAP)
-    if not held[1]:
+    if suggested is None:
         raise RuntimeError(
             f"nothing loaded from tab {WORK_TAB} slot {landing} after two "
             f"ctrl-clicks.")
-    price = undercut(panel_suggestion(panel))
+    price = undercut(suggested)
     if price is None:
         raise RuntimeError(
-            f"the panel suggests no price for the {held[1]} withdrawn, so "
-            f"there is nothing to list at. The item is in the bag.")
-    say(f"  {held[1]} held, panel suggests {price:,}")
+            f"the panel suggests no price for what was withdrawn, so there "
+            f"is nothing to list at. The item is in the bag.")
+    say(f"  panel suggests {suggested:,}; listing at {price:,}")
 
     click(*panel["price_point"])
     type_number(price, CLEAR_PRESSES_PRICE)
     click(*panel["qty_point"])
-    type_number(held[1], CLEAR_PRESSES_QTY)
+    type_number(MAX_STACK, CLEAR_PRESSES_QTY)
     park()
-    if not panel_agrees(panel, held[1], price, say):
+    qty = panel_quantity(panel, price, say)
+    if qty is None:
         raise RuntimeError(
-            f"the panel will not confirm {held[1]} at {price:,} after "
+            f"the panel will not price {price:,} against its net sales after "
             f"{PANEL_REREADS + 1} reads. Nothing listed.")
+    say(f"  typed {MAX_STACK}; the net sales make it {qty}")
 
     click(*panel["register_button"], settle=0.0)
     learned["button_register"] = list(panel["register_button"])

@@ -188,11 +188,12 @@ def relist_one(model, index, verbose=True):
         print(f"  row {index}: {row.name!r} is floored by a {pair}, which did "
               f"not price this run; left listed at {row.price:,}.")
         return None
-    held = row_model.read_panel_qty()
-    if held[1]:
+    standing = row_model.suggested_price(False)
+    if standing is not None:
         raise row_model.Divergence(
-            f"the shop slot already holds {held[0]} of {held[1]}; row "
-            f"{index} has NOT been cancelled. Clear the slot first.")
+            f"the shop slot already holds something the panel prices at "
+            f"{standing:,}; row {index} has NOT been cancelled. Clear the "
+            f"slot first.")
     lands_in = min([i for i in model.empty() if i < index] + [index])
     if verbose and lands_in != index:
         print(f"    rows {[i for i in model.empty() if i < index]} are empty, "
@@ -207,7 +208,7 @@ def relist_one(model, index, verbose=True):
         if pack > 1:
             why += f", and this listing carries {pack}"
     out = model.list_slot(*landing, floor=floor, why=why, verbose=verbose,
-                          lands_in=lands_in)
+                          lands_in=lands_in, expect_item=row.name)
     model._slots.pop(index, None)
     model._slots[lands_in] = row_model.Row(row.name, qty=out["qty"],
                                            price=out["price"])
@@ -476,7 +477,7 @@ def resupply_one(model, slot, held, first, last, verbose=True):
                                    f"{remaining[0]}"):
                 listed = model.list_slot(*remaining[0], floor=floor, why=why,
                                          verbose=verbose, lands_in=lands_in,
-                                         expect_at_least=out["converted"])
+                                         expect_item=core)
             model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
                                                    price=listed["price"])
             rows.append(lands_in)
