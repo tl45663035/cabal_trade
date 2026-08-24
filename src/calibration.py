@@ -671,10 +671,13 @@ def _tesseract(prepared, psm, whitelist=None):
 
 
 _GROUPED = re.compile(r"^\d{1,3}(,\d{3})+$")
+_WEDGED = re.compile(r"\d[A-Za-z]|[A-Za-z]\d")
 
 
 def _digits(text):
     cleaned = re.sub(_ALZ_WORD, "", text or "", flags=re.IGNORECASE)
+    if _WEDGED.search(cleaned):
+        return None
     grouped = re.sub(r"[^0-9,]", "", cleaned).strip(",")
     if "," in grouped and not _GROUPED.match(grouped):
         return None
@@ -721,8 +724,10 @@ def undercut(price):
 
 def panel_suggestion(panel):
     box = tuple(panel["suggestion_boxes"][-1])
-    click(box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
     value = read_money(grab(), box)
+    click(box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
+    if value is None:
+        value = read_money(grab(), box)
     if value and value >= MIN_PLAUSIBLE_PRICE:
         return value
     return None

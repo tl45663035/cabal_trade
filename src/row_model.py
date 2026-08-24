@@ -188,8 +188,10 @@ def _panel():
 def suggested_price(verbose=False):
     box = tuple(_panel()["suggestion_boxes"][-1])
     radio = (box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
-    calibration.click(*radio, settle=FIELD_SETTLE)
     value = calibration.read_money(calibration.grab(), box)
+    calibration.click(*radio, settle=FIELD_SETTLE)
+    if value is None:
+        value = calibration.read_money(calibration.grab(), box)
     if verbose:
         print(f"    the lowest listed price is {value:,}"
               if value else "    the lowest listed price would not read")
