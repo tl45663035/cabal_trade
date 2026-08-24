@@ -186,18 +186,25 @@ def craft_sets(verbose=True):
         raise Refused("no Chaos Cores are held; nothing to craft.")
     say(f"  {before} Chaos Core(s) held, {CORES_PER_SET} to a craft")
     with calibration.step(f"select inventory tab {calibration.WORK_TAB}"):
-        calibration.click(
-            *calibration.inventory_tab_point(calibration.WORK_TAB), settle=0.0)
-        time.sleep(TAB_SETTLE)
-    with calibration.step("Request All"):
-        request_all(verbose=verbose)
-    with calibration.step("wait for the queue to drain"):
-        used = await_drain(before, verbose=verbose)
-    with calibration.step(f"select inventory tab {calibration.WORK_TAB} "
-                          f"before completing"):
         show_work_tab()
-    with calibration.step("Complete All"):
-        complete_all(verbose=verbose)
+    used = 0
+    rounds = 0
+    while True:
+        rounds += 1
+        with calibration.step(f"round {rounds}: Request All"):
+            request_all(verbose=verbose)
+        with calibration.step(f"round {rounds}: wait for the queue"):
+            took = await_drain(before - used, verbose=verbose)
+        with calibration.step(f"round {rounds}: select inventory tab "
+                              f"{calibration.WORK_TAB} before completing"):
+            show_work_tab()
+        with calibration.step(f"round {rounds}: Complete All"):
+            complete_all(verbose=verbose)
+        used += took
+        left = material_held() or 0
+        say(f"  round {rounds}: {took} Core(s) went, {left} still held")
+        if took <= 0 or left < CORES_PER_SET:
+            break
     with calibration.step("compress the crafted Sets"):
         compress(verbose=verbose)
     made = used

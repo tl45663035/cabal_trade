@@ -637,11 +637,6 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
 
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
-    with calibration.phase("read the slots before crafting"):
-        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
-                          settle=0.0)
-        time.sleep(row_model.TAB_SETTLE)
-        before_slots = calibration.occupied_slots()
     with calibration.phase(f"craft {core} into {set_name}"):
         made = craft.craft_sets(verbose=verbose)
     with calibration.phase("close the craft window"):
@@ -657,33 +652,30 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                           settle=0.0)
         time.sleep(row_model.TAB_SETTLE)
 
-    arrived = sorted(calibration.occupied_slots() - before_slots)
-    if not arrived:
+    work = tuple(calibration.WORK_SLOT)
+    if work not in calibration.occupied_slots():
         raise NotReady(
-            f"no slot on tab {row_model.WORK_TAB} filled after the craft; "
-            f"the {set_name} cannot be found to list.")
-    print(f"  listing {made['made']} {set_name} from slot(s) {arrived[0]} to "
-          f"{arrived[-1]}")
+            f"tab {row_model.WORK_TAB} slot {work} is empty after the craft "
+            f"and the compress; the {set_name} cannot be found to list.")
+    print(f"  listing {made['made']} {set_name} from the compressed slot "
+          f"{work}")
 
     rows, listed_total = [], 0
-    remaining = list(arrived)
-    while remaining:
+    while work in calibration.occupied_slots():
         empty = [i for i in model.empty() if first <= i <= last]
         if not empty:
-            print(f"  rows {first}-{last} are full; {len(remaining)} slot(s) "
-                  f"of {set_name} stay on tab {row_model.WORK_TAB}.")
+            print(f"  rows {first}-{last} are full; what is left of the "
+                  f"{set_name} stays on tab {row_model.WORK_TAB}.")
             break
         lands_in = min(empty)
-        with calibration.phase(f"list {set_name} from {remaining[0]}"):
-            listed = model.list_slot(*remaining[0], floor=floor, why=why,
+        with calibration.phase(f"list {set_name} from {work}"):
+            listed = model.list_slot(*work, floor=floor, why=why,
                                      verbose=verbose, lands_in=lands_in,
                                      expect_item=set_name)
         model._slots[lands_in] = row_model.Row(set_name, qty=listed["qty"],
                                                price=listed["price"])
         rows.append(lands_in)
         listed_total += listed["qty"]
-        still = calibration.occupied_slots()
-        remaining = [w for w in remaining if w in still]
     calibration.phases_table(
         f"resupply {core}: bought {bought}, crafted {made['made']}, "
         f"listed {listed_total} in rows {rows}")
