@@ -1,42 +1,159 @@
-import sqlite3, re, datetime
+import collections
+import datetime
+import re
+import sqlite3
 
-SINCE = "2026-08-20T08:00:00"
-CHAOS_COST_PER_CORE = 670_000
+DB = 'file:C:/Users/Trung/Cabal/sales.db?mode=ro'
+PACK = re.compile(r"\bX\s*[\d,]+", re.I)
 
-PACK = re.compile(r"(?:\bX\s*|(?<=[A-Za-z])X)([\d,]+)", re.I)
-def pack(n):
-    m = PACK.findall(n or "")
-    return max(1, int(re.sub(r"[^\d]", "", m[-1]))) if m else 1
-def key(n):
-    return re.sub(r"[^a-z]", "", (n or "").split(" X ")[0].lower()).replace("set", "")
 
-c = sqlite3.connect('file:C:/Users/Trung/Cabal/sales.db?mode=ro', uri=True)
-cost = {}
-for i, q, s in c.execute("SELECT item, qty, spend FROM purchases WHERE at>='2026-08-19'"):
-    e = cost.setdefault(key(i), [0, 0]); e[0] += q or 0; e[1] += s or 0
+def key(name):
+    stripped = PACK.sub(" ", name or "")
+    return re.sub(r"[^a-z]", "", stripped.lower()).replace("set", "")
 
-agg = {"Chaos": [0, 0, 0], "Cores": [0, 0, 0]}
-for i, u, p in c.execute("SELECT item, qty, proceeds FROM sales WHERE at>=?", (SINCE,)):
-    chaos = "chaos" in (i or "").lower()
-    f = "Chaos" if chaos else "Cores"
-    n = (u or 0) * pack(i)
-    if chaos:
-        cu = CHAOS_COST_PER_CORE
-    else:
-        cq, cs = cost.get(key(i), [0, 0]); cu = cs / cq if cq else 0
-    agg[f][0] += n; agg[f][1] += p or 0; agg[f][2] += (p or 0) - cu * n
-c.close()
 
-ch, co = agg["Chaos"], agg["Cores"]
-tu, tt, tp = ch[0]+co[0], ch[1]+co[1], ch[2]+co[2]
-def m(p, t): return f"{100*p/t:.1f}%" if t else "--"
-now = datetime.datetime.now().strftime("%H:%M")
-print(f"PROFIT SINCE 08:00          (as of {now})")
-print(f"{'':<7}{'units':>8}{'takings':>18}{'profit':>16}{'margin':>9}")
-print(f"{'-'*7}{'-'*8}{'-'*18}{'-'*16}{'-'*9}")
-for lbl, v in (("Cores", co), ("Chaos", ch)):
-    print(f"{lbl:<7}{v[0]:>8,}{v[1]:>18,}{v[2]:>16,.0f}{m(v[2],v[1]):>9}")
-print(f"{'-'*7}{'-'*8}{'-'*18}{'-'*16}{'-'*9}")
-print(f"{'TOTAL':<7}{tu:>8,}{tt:>18,}{tp:>16,.0f}{m(tp,tt):>9}")
-if ch[0]:
-    print(f"chaos costed at {CHAOS_COST_PER_CORE:,}/core; sold at {ch[1]/ch[0]:,.0f}/core")
+def pack(name):
+    found = PACK.findall(name or "")
+    if not found:
+        return 1
+    return max(1, int(re.sub(r"[^\d]", "", found[-1])))
+
+
+def bucket(name):
+    return "Chaos" if "chaos" in (name or "").lower() else "Cores"
+
+
+def since_midnight():
+    return datetime.datetime.now().replace(hour=0, minute=0, second=0,
+                                           microsecond=0)
+
+
+def gather(cursor, start):
+    lots = collections.defaultdict(collections.deque)
+    for item, spend, qty in cursor.execute(
+            "SELECT item, spend, qty FROM purchases WHERE run>=? ORDER BY at",
+            (start,)):
+        if qty:
+            lots[key(item)].append([qty, (spend or 0) / qty])
+    return lots
+
+
+def match(cursor, start, lots):
+    per_item = {}
+    per_run = {}
+    for run, item, qty, price, proceeds in cursor.execute(
+            "SELECT run, item, qty, price, proceeds FROM sales "
+            "WHERE run>=? ORDER BY at", (start,)):
+        units = (qty or 0) * pack(item)
+        if not units:
+            continue
+        gross = proceeds if proceeds is not None else (price or 0) * (qty or 0)
+        if not gross:
+            continue
+        each = gross / units
+        k = key(item)
+        row = per_item.setdefault(
+            k, {"bucket": bucket(item), "units": 0, "revenue": 0.0,
+                "cost": 0.0, "unmatched": 0})
+        tally = per_run.setdefault(run, {"units": 0, "profit": 0.0})
+        left = units
+        while left and lots[k]:
+            lot = lots[k][0]
+            take = min(left, lot[0])
+            gain = take * (each - lot[1])
+            row["units"] += take
+            row["revenue"] += take * each
+            row["cost"] += take * lot[1]
+            tally["units"] += take
+            tally["profit"] += gain
+            lot[0] -= take
+            left -= take
+            if lot[0] <= 0:
+                lots[k].popleft()
+        row["unmatched"] += left
+    return per_item, per_run
+
+
+def line(char="-", width=87):
+    print(char * width)
+
+
+def main():
+    start = since_midnight()
+    stamp = start.strftime("%Y-%m-%dT%H:%M:%S")
+    conn = sqlite3.connect(DB, uri=True)
+    lots = gather(conn, stamp)
+    per_item, per_run = match(conn, stamp, lots)
+    conn.close()
+
+    now = datetime.datetime.now().strftime("%H:%M")
+    print(f"PROFIT SUMMARY -- runs launched since {start:%Y-%m-%d} 00:00 "
+          f"(as of {now})")
+    print("only units the script both bought and sold in those runs, "
+          "matched oldest purchase first")
+    print("")
+    print(f"{'item':<26}{'profit':>15}{'units':>8}{'margin':>8}"
+          f"{'revenue':>16}{'cost':>16}")
+    line()
+
+    groups = {"Cores": [0, 0.0, 0.0], "Chaos": [0, 0.0, 0.0]}
+    for k, row in sorted(per_item.items(), key=lambda kv: -kv[1]["revenue"]):
+        if not row["units"]:
+            continue
+        profit = row["revenue"] - row["cost"]
+        g = groups[row["bucket"]]
+        g[0] += row["units"]
+        g[1] += row["revenue"]
+        g[2] += row["cost"]
+        print(f"{k[:25]:<26}{profit:>15,.0f}{row['units']:>8,}"
+              f"{100 * profit / row['revenue']:>7.1f}%"
+              f"{row['revenue']:>16,.0f}{row['cost']:>16,.0f}")
+    line()
+    for label in ("Cores", "Chaos"):
+        units, revenue, cost = groups[label]
+        if not units:
+            continue
+        profit = revenue - cost
+        print(f"{label:<26}{profit:>15,.0f}{units:>8,}"
+              f"{100 * profit / revenue:>7.1f}%"
+              f"{revenue:>16,.0f}{cost:>16,.0f}")
+    line("=")
+    units = sum(g[0] for g in groups.values())
+    revenue = sum(g[1] for g in groups.values())
+    cost = sum(g[2] for g in groups.values())
+    profit = revenue - cost
+    margin = f"{100 * profit / revenue:>7.1f}%" if revenue else f"{'--':>8}"
+    print(f"{'TOTAL':<26}{profit:>15,.0f}{units:>8,}{margin}"
+          f"{revenue:>16,.0f}{cost:>16,.0f}")
+
+    if per_run:
+        print("")
+        print("by run:")
+        for run, tally in sorted(per_run.items()):
+            print(f"  {run}   {tally['units']:>7,} units"
+                  f"{tally['profit']:>16,.0f} Alz")
+
+    skipped = {k: r["unmatched"] for k, r in per_item.items()
+               if r["unmatched"]}
+    if skipped:
+        print("")
+        print("sold by those runs but not bought by them, so left out:")
+        for k, units in sorted(skipped.items(), key=lambda kv: -kv[1]):
+            print(f"  {k:<26}{units:>8,} units")
+
+    held = {k: (sum(l[0] for l in dq), sum(l[0] * l[1] for l in dq))
+            for k, dq in lots.items() if sum(l[0] for l in dq)}
+    if held:
+        print("")
+        print("bought by those runs and still unsold:")
+        for k, (units, value) in sorted(held.items(), key=lambda kv: -kv[1][1]):
+            print(f"  {k:<26}{units:>8,} units{value:>18,.0f} Alz")
+        print(f"  {'':<26}{'':>8} {'':>17}{sum(v for _, v in held.values()):>17,.0f} Alz tied up")
+
+    print("")
+    print("revenue is price x quantity from the ledger; if the game's sales "
+          "fee is not deducted there, margins are lower than shown")
+
+
+if __name__ == "__main__":
+    main()
