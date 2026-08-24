@@ -149,6 +149,22 @@ def complete_all(verbose=True):
     return point
 
 
+def compress(verbose=True):
+    say = print if verbose else (lambda *a: None)
+    point = calibration.inventory_slot_point(*calibration.WORK_SLOT)
+    say(f"  compressing tab {calibration.WORK_TAB} slot "
+        f"{calibration.WORK_SLOT} at {point}")
+    calibration.alt_click(*point)
+    time.sleep(TAB_SETTLE)
+    return point
+
+
+def show_work_tab():
+    calibration.click(*calibration.inventory_tab_point(calibration.WORK_TAB),
+                      settle=0.0)
+    time.sleep(TAB_SETTLE)
+
+
 def close_craft():
     from open_inventory import VK_ESCAPE, press
     if calibration.craft_window_open():
@@ -177,8 +193,13 @@ def craft_sets(verbose=True):
         request_all(verbose=verbose)
     with calibration.step("wait for the queue to drain"):
         used = await_drain(before, verbose=verbose)
+    with calibration.step(f"select inventory tab {calibration.WORK_TAB} "
+                          f"before completing"):
+        show_work_tab()
     with calibration.step("Complete All"):
         complete_all(verbose=verbose)
+    with calibration.step("compress the crafted Sets"):
+        compress(verbose=verbose)
     made = used
     say(f"  crafted {made} Set(s) from {used} Core(s)")
     calibration.steps_table(f"craft {made} Set(s)")

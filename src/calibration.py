@@ -227,6 +227,7 @@ DEFAULTS = {
         "agent_shop_tab": 8,
         "agent_shop_slot": [1, 7],
         "work_tab": 4,
+        "work_slot": "1,1",
         "shop_capacity": 30,
         "shop_visible": 10,
         "max_stack": 250,
@@ -1340,6 +1341,8 @@ def calibrate_register_table(shop, verbose=True):
 
 
 WORK_TAB = _S["game_facts"]["work_tab"]
+WORK_SLOT = tuple(int(n) for n in
+             _S["game_facts"]["work_slot"].split(","))
 
 
 def inventory_tab_point(tab):
