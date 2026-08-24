@@ -289,6 +289,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     print(f"{passes} pass(es), {done} relisted, {skipped} skipped "
           f"in {span/1000:.0f}s"
           + (f" ({span/done:.0f} ms a row)" if done else ""))
+    ledger.print_run_profit()
     return done
 
 
