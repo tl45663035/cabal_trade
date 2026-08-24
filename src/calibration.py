@@ -673,7 +673,7 @@ def _tesseract(prepared, psm, whitelist=None):
     return run.stdout.decode("utf-8", "replace")
 
 
-_GROUPED = re.compile(r"^\d{1,3}(,\d{3})+$")
+_GROUPED = re.compile(r"^\d+(,\d{3})+$")
 _WEDGED = re.compile(r"\d[A-Za-z]|[A-Za-z]\d")
 
 
