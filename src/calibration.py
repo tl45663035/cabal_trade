@@ -134,6 +134,7 @@ DEFAULTS = {
         "popup": [0.1953, 0.2389, 0.8203, 0.8232],
         "dialog_buttons": [0.4688, 0.5296, 0.6641, 0.7085],
         "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
+        "register_footer_band": [0.1000, 0.6600, 0.5100, 0.7300],
         "register_button_band": [0.41, 0.12, 0.48, 0.66],
         "purchase_button_band": [0.41, 0.15, 0.48, 0.66],
         "purchase_header_band": [0.02, 0.155, 0.48, 0.205],
@@ -222,6 +223,7 @@ DEFAULTS = {
         "craft_key_slot": [1, 8],
         "craft_tier_words": "2000|2999",
         "craft_recipe_words": "Chaos Core Set|x3",
+        "refresh_word": "Refresh",
         "craft_request_words": "Request|All",
         "craft_request_word": "Repeat",
         "craft_complete_word": "Complete",
@@ -350,6 +352,7 @@ PURCHASE_SORT_BAND_F = tuple(_REG["purchase_sort_band"])
 PURCHASE_TABLE_BAND_F = tuple(_REG["purchase_table_band"])
 DIALOG_BUTTONS_F = tuple(_REG["dialog_buttons"])
 REGISTER_TABLE_BAND_F = tuple(_REG["register_table_band"])
+REGISTER_FOOTER_BAND_F = tuple(_REG["register_footer_band"])
 REGISTER_BUTTON_BAND_F = _S["regions"]["register_button_band"]
 PURCHASE_BUTTON_BAND_F = _S["regions"]["purchase_button_band"]
 PURCHASE_HEADER_BAND_F = _S["regions"]["purchase_header_band"]
@@ -1454,7 +1457,18 @@ def calibrate_register_table(shop, verbose=True):
         top -= pitch
         say(f"  a row sits at y={top} with no button that read; counting it")
     ys = [top] + [y for y in ys if y > top]
+    footer = _box(REGISTER_FOOTER_BAND_F)
+    want = re.sub(r"[^a-z]", "", REFRESH_WORD.lower())
+    refresh = next((list(p) for t, _c, p in ocr(image, footer)
+                    if re.sub(r"[^a-z]", "", t.lower()) == want), None)
+    if refresh is None:
+        raise RuntimeError(
+            f"no {REFRESH_WORD} button in the Register footer {footer}; it "
+            f"read {[t for t, _c, _p in ocr(image, footer)]}. Nothing "
+            f"written.")
+
     out = {
+        "refresh_point": refresh,
         "table_x": [band[0], band[2]],
         "row_one_y": int(ys[0]),
         "row_pitch": int(pitch),
@@ -1469,6 +1483,7 @@ def calibrate_register_table(shop, verbose=True):
     say(f"  Register table: {len(marks)} row(s), pitch {pitch}px, "
         f"row 1 y={out['row_one_y']}")
     say(f"  table_x {out['table_x']}, scroll point {out['table_point']}")
+    say(f"  {REFRESH_WORD} at {refresh}")
     return out
 
 
@@ -1669,6 +1684,7 @@ def vendor_tab_point(name, image=None):
 
 CRAFT_TAB = _S["game_facts"]["craft_tab"]
 CRAFT_KEY_SLOT = tuple(_S["game_facts"]["craft_key_slot"])
+REFRESH_WORD = _S["game_facts"]["refresh_word"]
 CRAFT_TIER_WORDS = _S["game_facts"]["craft_tier_words"].split("|")
 CRAFT_RECIPE_WORDS = _S["game_facts"]["craft_recipe_words"].split("|")
 

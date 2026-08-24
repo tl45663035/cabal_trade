@@ -157,6 +157,19 @@ def find_button(word, timeout=None, verbose=False):
     return point
 
 
+def refresh_table(model=None, verbose=False):
+    point = _shop().get("refresh_point")
+    if not point:
+        return None
+    if verbose:
+        print(f"  {calibration.REFRESH_WORD} at {tuple(point)}")
+    calibration.click(*point, settle=0.0)
+    time.sleep(TAB_SETTLE)
+    if model is not None:
+        model._top = None
+    return tuple(point)
+
+
 def show_work_tab(verbose=False, already=False):
     import open_agent_shop_premium as shop
     import open_inventory as inv_panel

@@ -142,6 +142,8 @@ def cancel(model, index, verbose=True):
 
 
 def relist_one(model, index, verbose=True):
+    with calibration.step(f"{calibration.REFRESH_WORD} the table"):
+        row_model.refresh_table(model, verbose=False)
     text, row = row_at(model, index, verbose=False)
     button = row_model.row_button()
 
