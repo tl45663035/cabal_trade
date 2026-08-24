@@ -2005,14 +2005,7 @@ def calibrate_actions(shop, verbose=True):
         raise RuntimeError(
             "the dialog stayed open after Confirmation on the relist; "
             "unconfirmed.")
-    back = read_line(grab(), row_one)
-    digits = [int(re.sub(r"[^\d]", "", m))
-              for m in re.findall(r"\d[\d,]*", back)]
-    if price not in digits:
-        raise RuntimeError(
-            f"the listing went through; row 1 reads {back!r}, not "
-            f"{price:,}.")
-    say(f"  row 1 reads {back!r} again, at {price:,} as typed")
+    say(f"  listed {qty} at {price:,}; it lands in the lowest empty row")
     say(f"  learned {', '.join(sorted(learned))}")
     return learned
 
@@ -2121,6 +2114,14 @@ def main(close: bool = True) -> None:
         time.sleep(gap)
         snap("press_escape_after_vendor")
 
+    craft_block = None
+    if (shared["resupply"]["enable_buying"] or {}).get("Chaos Core"):
+        print("craft window:")
+        craft_block = calibrate_craft()
+        press(VK_ESCAPE)
+        time.sleep(gap)
+        snap("press_escape_after_craft")
+
     win = find_game_window()
     measured = {
         "screen": list(screen_size()),
@@ -2141,6 +2142,8 @@ def main(close: bool = True) -> None:
     }
     if convert_block is not None:
         measured["convert"] = convert_block
+    if craft_block is not None:
+        measured["craft"] = craft_block
 
     existing = {}
     if OUT.exists():

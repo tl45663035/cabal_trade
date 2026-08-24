@@ -3,7 +3,7 @@
     "enabled": true,
     "enable_buying": {
       "Force Core(Highest)": true,
-      "Chaos Core": false,
+      "Chaos Core": true,
       "Force Core (Ultimate)": true,
       "Force Core(High)": true,
       "Upgrade Core (Ultimate)": true
@@ -14,7 +14,7 @@
     },
     "buy_min": {
       "default": 200,
-      "Chaos Core": 500
+      "Chaos Core": 10
     },
     "buy_max": {
       "default": 500,
@@ -23,7 +23,7 @@
     "buy_retries": 3,
     "price_diff_threshold": {
       "Force Core(Highest)": 10000,
-      "Chaos Core": 1000000,
+      "Chaos Core": 5000,
       "Force Core (Ultimate)": 10000,
       "Force Core(High)": 10000,
       "Upgrade Core (Ultimate)": 20000
