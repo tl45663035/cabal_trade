@@ -3,6 +3,7 @@ import sys
 import time
 
 import calibration
+import ledger
 import get_alz
 import get_price
 import row_model
@@ -295,6 +296,7 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
             f"{want_total:,}. Balance {before_alz:,} -> {after_alz:,}.")
     say(f"    bought {asked} x {offer['name']} = {units} core(s) for "
         f"{want_total:,}")
+    ledger.bought(offer["name"], per_unit, spent, units)
     return {"slot": int(slot), "name": name, "packs": asked, "bought": units,
             "unit_price": per_unit, "price": offer["price"],
             "spent": spent, "balance": after_alz}

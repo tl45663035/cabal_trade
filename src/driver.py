@@ -4,6 +4,7 @@ import time
 
 import buy
 import calibration
+import ledger
 import convert
 import get_alz
 import get_price
@@ -641,6 +642,7 @@ def usage():
 def main():
     args = [a for a in sys.argv[1:] if a != "--frames"]
     calibration.log_to_file(args[0].lower() if args else "run")
+    print(f"  ledger {ledger.DB} run {ledger.start()}")
     calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
     if not args:
         do_relist()

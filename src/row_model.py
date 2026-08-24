@@ -3,6 +3,7 @@ import re
 import time
 
 import calibration
+import ledger
 import open_inventory as inv
 
 _SHARED = calibration.load_shared()
@@ -488,6 +489,9 @@ class RowModel:
         }
 
     def receive(self, index, verbose=True):
+        import get_alz
+        listed = self._slots.get(index)
+        before_alz = get_alz.read_balance()
         point = button_point()
         if verbose:
             print(f"  {RECEIPT_WORD} at {point}")
@@ -506,7 +510,25 @@ class RowModel:
             raise Divergence(
                 f"the Confirm Receipt dialog stayed open on row {index}. "
                 f"Whether the Alz was taken is unknown -- check by hand.")
+        self._book(index, listed, before_alz, verbose)
         return True
+
+    def _book(self, index, listed, before_alz, verbose=True):
+        import get_alz
+        if listed is None or before_alz is None:
+            return
+        after_alz = get_alz.read_balance()
+        if after_alz is None or after_alz <= before_alz:
+            return
+        proceeds = after_alz - before_alz
+        price = int(listed.price or 0)
+        sold = proceeds // price if price else 0
+        if not sold:
+            return
+        ledger.sold(listed.name, price, proceeds, sold)
+        if verbose:
+            print(f"  collected {proceeds:,} Alz for {sold} x "
+                  f"{listed.name!r} at {price:,}")
 
     def cancel(self, index, verbose=True, tab_ready=False):
         index = int(index)
