@@ -48,12 +48,9 @@ def open_vendor(verbose=True):
     if not calibration.await_vendor(verbose=verbose):
         raise Refused("the vendor Shop did not open on N.")
     tab = _convert_cal()
-    showing = calibration.vendor_tab_point(tab["tab"])
-    calibration.click(*(showing or tab["tab_point"]))
+    calibration.click(*tab["tab_point"], settle=0.0)
     time.sleep(TAB_SETTLE)
     calibration.park()
-    if not calibration.vendor_open():
-        raise Refused("the vendor Shop closed while selecting its tab.")
     return True
 
 
