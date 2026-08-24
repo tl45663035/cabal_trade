@@ -125,7 +125,8 @@ def _row_from(text):
     found = _ROW.match((text or "").strip())
     if found is None:
         return None
-    qty = int(found.group("qty").replace(",", ""))
+    seen = re.sub(r"[^0-9]", "", found.group("qty"))
+    qty = int(seen) if seen else 1
     price = int(found.group("price").replace(",", ""))
     if price < MIN_PLAUSIBLE_PRICE:
         return None

@@ -293,7 +293,7 @@
   "text": {
     "empty_row": "premiumexclusiveslot",
     "sort_direction": "(low|high)\\s*to",
-    "purchase_row": "^(?P<name>.*?)\\s+(?P<qty>\\d[\\d,]*)\\s+(?P<price>\\d[\\d,]*)\\s*\\D*$",
+    "purchase_row": "^(?P<name>.*?)\\s+(?P<qty>\\S*\\d\\S*)\\s+(?P<price>\\d[\\d,]*)\\s*\\D*$",
     "pack_marker": "\\bX\\s*(\\d+)\\s*$",
     "change_word": "Change",
     "dismiss_word": "Cancel",
