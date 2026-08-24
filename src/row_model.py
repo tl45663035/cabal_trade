@@ -608,7 +608,8 @@ class RowModel:
         return result
 
     def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
-                  lands_in=None, expect_item=None):
+                  lands_in=None, expect_item=None,
+                  expect_price=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -657,21 +658,22 @@ class RowModel:
             raise Divergence(
                 f"nothing loaded into the shop slot from ({row},{col}) after "
                 f"{LOAD_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
-        if expect_item:
-            expected = (calibration.market_unit(expect_item)
-                        * max(1, pack_size(expect_item)))
+        if expect_item or expect_price:
+            expected = expect_price or (calibration.market_unit(expect_item)
+                                        * max(1, pack_size(expect_item)))
+            named = expect_item or "what the board asks"
             if expected:
                 if not (expected / PRICE_CHECK_FACTOR <= suggested
                         <= expected * PRICE_CHECK_FACTOR):
                     calibration.snap(f"panel_prices_{suggested}")
                     raise Divergence(
                         f"the panel prices what loaded from ({row},{col}) at "
-                        f"{suggested:,}, and a {expect_item} goes for about "
+                        f"{suggested:,}, and a {named} goes for about "
                         f"{expected:,}. That is not the same item. Nothing "
                         f"has been listed.")
                 if verbose:
                     print(f"  the panel prices it at {suggested:,}, and a "
-                          f"{expect_item} goes for about {expected:,}")
+                          f"{named} goes for about {expected:,}")
 
         want = price if price is not None else calibration.undercut(suggested)
         if want is None:

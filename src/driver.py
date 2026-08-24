@@ -631,10 +631,6 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
               f"topped up; they stay on tab {row_model.WORK_TAB}.")
         return None
 
-    unit_floor, floor_pair = calibration.price_floor(set_name)
-    floor = 0 if unit_floor is None else unit_floor
-    why = f"a {floor_pair} costs {unit_floor:,}" if unit_floor else ""
-
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
     with calibration.phase(f"craft {core} into {set_name}"):
@@ -657,8 +653,16 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         raise NotReady(
             f"tab {row_model.WORK_TAB} slot {work} is empty after the craft "
             f"and the compress; the {set_name} cannot be found to list.")
+    unit_floor, floor_pair = calibration.price_floor(set_name)
+    held_sets = max(1, int(made["made"]))
+    floor = 0 if unit_floor is None else unit_floor * held_sets
+    why = (f"{held_sets} x a {floor_pair} at {unit_floor:,}"
+           if unit_floor else "")
     print(f"  listing {made['made']} {set_name} from the compressed slot "
           f"{work}")
+    if floor:
+        print(f"  the whole bundle cost {floor:,} to make, so nothing goes "
+              f"out under that")
 
     rows, listed_total = [], 0
     while work in calibration.occupied_slots():
@@ -671,7 +675,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         with calibration.phase(f"list {set_name} from {work}"):
             listed = model.list_slot(*work, floor=floor, why=why,
                                      verbose=verbose, lands_in=lands_in,
-                                     expect_item=set_name)
+                                     expect_price=set_row["total"])
         model._slots[lands_in] = row_model.Row(set_name, qty=listed["qty"],
                                                price=listed["price"])
         rows.append(lands_in)
