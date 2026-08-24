@@ -583,47 +583,53 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         return None
     print(f"  {len(free_rows)} row(s) free inside {first}-{last}")
 
+    target = -(-int(want_min) // batch) * batch
+    if target != want_min:
+        print(f"  buy_min {want_min} is not a whole number of batches of "
+              f"{batch}; buying {target}")
     bought = orders = 0
-    while bought < want_min:
-        print(f"  {bought}/{want_min} {core} held")
+
+    def order(want):
+        nonlocal orders
         orders += 1
-        got = None
         for attempt in range(1, int(run["buy_retries"]) + 1):
             try:
                 with calibration.phase(f"buy order {orders}"):
-                    got = buy.buy_row_one(slot, want_min - bought,
-                                          verbose=verbose, held=bought,
-                                          floor_qty=want_min,
-                                          ceiling=want_max)
-                break
+                    return buy.buy_row_one(slot, want, verbose=verbose,
+                                           held=bought, floor_qty=target,
+                                           ceiling=want_max)
             except buy.Refused as exc:
                 if not getattr(exc, "retryable", False):
                     print(f"  stopping: {exc}")
-                    break
+                    return None
                 print(f"  attempt {attempt}/{run['buy_retries']}: {exc}")
-                if attempt == int(run["buy_retries"]):
-                    print(f"  the board kept moving through "
-                          f"{run['buy_retries']} attempt(s); giving up on "
-                          f"{core} this cycle.")
-        if got is None:
-            break
-        if got["bought"] <= 0:
-            print(f"  the last order bought nothing; stopping.")
+        print(f"  the board kept moving through {run['buy_retries']} "
+              f"attempt(s); giving up on {core} this cycle.")
+        return None
+
+    while bought < target:
+        print(f"  {bought}/{target} {core} held")
+        got = order(target - bought)
+        if got is None or got["bought"] <= 0:
             break
         bought += got["bought"]
+
+    while bought % batch:
+        short = batch - (bought % batch)
+        print(f"  {bought} {core} is {short} short of a whole batch of "
+              f"{batch}; topping up")
+        got = order(short)
+        if got is None or got["bought"] <= 0:
+            break
+        bought += got["bought"]
+
     if bought <= 0:
         print(f"  nothing bought; not opening the craft window.")
         return None
-
-    whole = (bought // batch) * batch
-    spare = bought - whole
-    if whole <= 0:
-        print(f"  {bought} {core} is under the {batch} a craft takes; "
-              f"they stay on tab {row_model.WORK_TAB}.")
+    if bought % batch:
+        print(f"  {bought} {core} does not divide by {batch} and could not be "
+              f"topped up; they stay on tab {row_model.WORK_TAB}.")
         return None
-    if spare:
-        print(f"  {bought} bought; crafting {whole} and leaving {spare} that "
-              f"do not fill a batch of {batch}")
 
     unit_floor, floor_pair = calibration.price_floor(set_name)
     floor = 0 if unit_floor is None else unit_floor

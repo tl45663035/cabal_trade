@@ -72,21 +72,18 @@ def open_craft(verbose=True):
 
 def select_recipe(verbose=True):
     say = print if verbose else (lambda *a: None)
-    tier = _cal()["tier"]
+    block = _cal()
+    tier = block["tier"]
+    point = block.get("recipe")
+    if point is None:
+        raise Refused(
+            f"the craft window has no measured recipe; run "
+            f"py src/calibration.py before crafting.")
     say(f"  opening the {'-'.join(calibration.CRAFT_TIER_WORDS)} tier at "
         f"{tier}")
     calibration.click(*tier)
     time.sleep(TAB_SETTLE)
-    rows = {}
-    for text, _conf, point in _words("craft_recipes"):
-        if point[1] > tier[1] + 4:
-            rows.setdefault(point[1], []).append(point[0])
-    if not rows:
-        raise Refused(
-            f"the tier at {tier} opened no recipe rows beneath it.")
-    at_y = min(rows)
-    point = [min(rows[at_y]), at_y]
-    say(f"  choosing the recipe at {point}")
+    say(f"  choosing {' '.join(calibration.CRAFT_RECIPE_WORDS)} at {point}")
     calibration.click(*point)
     time.sleep(TAB_SETTLE)
     if not calibration.craft_window_open():
@@ -112,10 +109,13 @@ def await_material(verbose=True):
 
 def request_all(verbose=True):
     say = print if verbose else (lambda *a: None)
-    point = _pair(_words("craft_buttons"), "Request", "All")
+    point = _cal().get("request")
     if point is None:
-        raise Refused("no Request All button on the craft window.")
-    say(f"  Request All at {point}")
+        raise Refused(
+            f"the craft window has no measured "
+            f"{' '.join(calibration.CRAFT_REQUEST_WORDS)} button; run "
+            f"py src/calibration.py before crafting.")
+    say(f"  {' '.join(calibration.CRAFT_REQUEST_WORDS)} at {point}")
     calibration.click(*point, settle=0.0)
     return point
 

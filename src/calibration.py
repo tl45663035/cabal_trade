@@ -217,6 +217,8 @@ DEFAULTS = {
         "craft_tab": 8,
         "craft_key_slot": [1, 8],
         "craft_tier_words": "2000|2999",
+        "craft_recipe_words": "Chaos Core Set|x3",
+        "craft_request_words": "Request|All",
         "craft_request_word": "Repeat",
         "craft_complete_word": "Complete",
         "craft_material_word": "Material",
@@ -1533,6 +1535,8 @@ def vendor_tab_point(name, image=None):
 CRAFT_TAB = _S["game_facts"]["craft_tab"]
 CRAFT_KEY_SLOT = tuple(_S["game_facts"]["craft_key_slot"])
 CRAFT_TIER_WORDS = _S["game_facts"]["craft_tier_words"].split("|")
+CRAFT_RECIPE_WORDS = _S["game_facts"]["craft_recipe_words"].split("|")
+CRAFT_REQUEST_WORDS = _S["game_facts"]["craft_request_words"].split("|")
 CRAFT_REQUEST_WORD = _S["game_facts"]["craft_request_word"]
 CRAFT_COMPLETE_WORD = _S["game_facts"]["craft_complete_word"]
 CRAFT_MATERIAL_WORD = _S["game_facts"]["craft_material_word"]
@@ -1544,6 +1548,20 @@ def craft_window_open(image=None):
     box = _box(tuple(_REG["craft_buttons"]))
     seen = {re.sub(r"[^a-z]", "", t.lower()) for t, _c, _p in ocr(image, box)}
     return re.sub(r"[^a-z]", "", CRAFT_COMPLETE_WORD.lower()) in seen
+
+
+def _two_word_button(words, pair):
+    first = re.sub(r"[^a-z]", "", pair[0].lower())
+    second = re.sub(r"[^a-z]", "", pair[-1].lower())
+    for text, _conf, point in words:
+        if re.sub(r"[^a-z]", "", text.lower()) != first:
+            continue
+        after = [p for t, _c, p in words
+                 if abs(p[1] - point[1]) <= 6 and p[0] > point[0]
+                 and re.sub(r"[^a-z]", "", t.lower()) == second]
+        if after:
+            return [(point[0] + after[0][0]) // 2, point[1]]
+    return None
 
 
 def calibrate_craft(verbose=True):
@@ -1609,10 +1627,43 @@ def calibrate_craft(verbose=True):
     tail = right[0] if right else on_row[0][0]
     complete = [(on_row[0][0] + tail) // 2, at_y]
 
+    request = _two_word_button(buttons, CRAFT_REQUEST_WORDS)
+    if request is None:
+        raise RuntimeError(
+            f"no {' '.join(CRAFT_REQUEST_WORDS)} button in the craft button "
+            f"band; it read {[t for t, _c, _p in buttons]}. Nothing written.")
+
+    click(left, tier_y)
+    time.sleep(TAB_SETTLE)
+    recipes = ocr(grab(), _box(tuple(_REG["craft_recipes"])))
+    lines = {}
+    for text, _conf, point in recipes:
+        lines.setdefault(point[1], []).append((point[0], text))
+    recipe = None
+    for y in sorted(lines):
+        if y <= tier_y + 4:
+            continue
+        words = [t for _x, t in sorted(lines[y])]
+        flat = re.sub(r"[^a-z0-9]", "", " ".join(words).lower())
+        if all(re.sub(r"[^a-z0-9]", "", w.lower()) in flat
+               for w in CRAFT_RECIPE_WORDS):
+            xs = [x for x, _t in lines[y]]
+            recipe = [(min(xs) + max(xs)) // 2, y]
+            break
+    if recipe is None:
+        raise RuntimeError(
+            f"no recipe under the {'-'.join(CRAFT_TIER_WORDS)} tier reads "
+            f"{CRAFT_RECIPE_WORDS}; it read "
+            f"{[t for t, _c, _p in recipes]}. Nothing written.")
+
     out = {"tier": [left, tier_y],
+           "recipe": recipe,
+           "request": request,
            "complete": complete,
            "material_box": list(_box(tuple(_REG["craft_material"])))}
     say(f"  tier {'-'.join(CRAFT_TIER_WORDS)} at {out['tier']}")
+    say(f"  recipe {' '.join(CRAFT_RECIPE_WORDS)} at {recipe}")
+    say(f"  {' '.join(CRAFT_REQUEST_WORDS)} at {request}")
     say(f"  {CRAFT_COMPLETE_WORD} All at {complete}")
     say(f"  material counter {out['material_box']}")
     return out
