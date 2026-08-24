@@ -392,6 +392,7 @@ SORT_PAD_Y = _DET["sort_pad_y"]
 SCROLL_POINT_INSET = _DET["scroll_point_inset"]
 OCR_TIMEOUT = _OCR["timeout"]
 FAVOURITE_COUNT = _S["game_facts"]["favourite_count"]
+MAX_STACK = _S["game_facts"]["max_stack"]
 CONVERT_GRADES = _S["game_facts"]["convert_grades"]
 CONVERT_ROW_COUNT = _S["game_facts"]["convert_rows"]
 CONVERT_SET_TO_CORE_ROWS = _S["game_facts"]["convert_set_to_core_rows"]
@@ -653,8 +654,14 @@ def _tesseract(prepared, psm, whitelist=None):
     return run.stdout.decode("utf-8", "replace")
 
 
+_GROUPED = re.compile(r"^\d{1,3}(,\d{3})+$")
+
+
 def _digits(text):
     cleaned = re.sub(_ALZ_WORD, "", text or "", flags=re.IGNORECASE)
+    grouped = re.sub(r"[^0-9,]", "", cleaned).strip(",")
+    if "," in grouped and not _GROUPED.match(grouped):
+        return None
     cleaned = re.sub(r"[^0-9]", "", cleaned)
     return int(cleaned) if cleaned else None
 
