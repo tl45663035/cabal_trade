@@ -1460,13 +1460,20 @@ def calibrate_register_table(shop, verbose=True):
     ys = [top] + [y for y in ys if y > top]
     footer = _box(REGISTER_FOOTER_BAND_F)
     want = re.sub(r"[^a-z]", "", REFRESH_WORD.lower())
-    refresh = next((list(p) for t, _c, p in ocr(image, footer)
-                    if re.sub(r"[^a-z]", "", t.lower()) == want), None)
+    deadline = time.monotonic() + DIALOG_TIMEOUT
+    refresh, seen = None, []
+    while True:
+        seen = ocr(grab(), footer)
+        refresh = next((list(p) for t, _c, p in seen
+                        if re.sub(r"[^a-z]", "", t.lower()) == want), None)
+        if refresh is not None or time.monotonic() >= deadline:
+            break
+        time.sleep(POLL_GAP)
     if refresh is None:
         raise RuntimeError(
-            f"no {REFRESH_WORD} button in the Register footer {footer}; it "
-            f"read {[t for t, _c, _p in ocr(image, footer)]}. Nothing "
-            f"written.")
+            f"no {REFRESH_WORD} button in the Register footer {footer} within "
+            f"{DIALOG_TIMEOUT:g}s; it read "
+            f"{[t for t, _c, _p in seen][:12]}. Nothing written.")
 
     out = {
         "refresh_point": refresh,
