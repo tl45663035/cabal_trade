@@ -1644,7 +1644,7 @@ def calibrate_panel(verbose=True):
     rows.sort()
 
     left = box[0] + PANEL_FIELD_INSET
-    right = alz[0] - PANEL_LABEL_GAP
+    right = alz[0] + PANEL_LABEL_GAP
     out = {
         "panel_box": list(box),
         "price_field": [left, alz[1] - PANEL_FIELD_HALF,
