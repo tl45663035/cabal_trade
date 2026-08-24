@@ -37,7 +37,8 @@ def open_craft(verbose=True):
     if calibration.await_inventory(verbose=verbose) is None:
         raise Refused("the Inventory is not open, so the craft key cannot be "
                       "reached.")
-    calibration.click(*calibration.inventory_tab_point(calibration.CRAFT_TAB))
+    calibration.click(*calibration.inventory_tab_point(calibration.CRAFT_TAB),
+                      settle=0.0)
     time.sleep(TAB_SETTLE)
     point = calibration.inventory_slot_point(*calibration.CRAFT_KEY_SLOT)
     say(f"  right-clicking the craft key on tab {calibration.CRAFT_TAB} slot "
@@ -64,7 +65,7 @@ def select_recipe(verbose=True):
             f"py src/calibration.py before crafting.")
     say(f"  opening the {'-'.join(calibration.CRAFT_TIER_WORDS)} tier at "
         f"{tier}")
-    calibration.click(*tier)
+    calibration.click(*tier, settle=0.0)
     time.sleep(TAB_SETTLE)
     say(f"  choosing {' '.join(calibration.CRAFT_RECIPE_WORDS)} at {point}")
     calibration.click(*point)
@@ -137,7 +138,7 @@ def compress(slot, verbose=True):
     point = calibration.inventory_slot_point(*slot)
     say(f"  compressing tab {calibration.WORK_TAB} slot {tuple(slot)} at "
         f"{point}")
-    calibration.alt_click(*point)
+    calibration.alt_click(*point, settle=0.0)
     time.sleep(TAB_SETTLE)
     return point
 
@@ -168,10 +169,6 @@ def craft_sets(verbose=True):
     if not before:
         raise Refused(f"no {CORE_NAME} is held; nothing to craft.")
     say(f"  {before} {CORE_NAME}(s) held, {CORES_PER_SET} to a craft")
-    with calibration.step(f"select inventory tab {calibration.WORK_TAB}"):
-        show_work_tab()
-    with calibration.step("read the slots before any Set arrives"):
-        pre = calibration.occupied_slots()
     with calibration.step(f"{' '.join(calibration.CRAFT_REQUEST_WORDS)}"):
         request_all(verbose=verbose)
     with calibration.step("wait for the queue"):
@@ -179,6 +176,8 @@ def craft_sets(verbose=True):
     with calibration.step(f"select inventory tab {calibration.WORK_TAB} "
                           f"before completing"):
         show_work_tab()
+    with calibration.step("read the slots before any Set arrives"):
+        pre = calibration.occupied_slots()
     with calibration.step(f"{calibration.CRAFT_COMPLETE_WORD} All"):
         complete_all(verbose=verbose)
     left = material_held() or 0

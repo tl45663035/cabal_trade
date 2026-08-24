@@ -51,6 +51,10 @@ DEFAULTS = {
     "debug": {
         "frames": False,
         "keep_frames": 2000,
+        "video_fps": 2,
+        "video_seconds": 180,
+        "keep_videos": 5,
+        "video_scale": 0.5,
     },
     "timing": {
         "action_gap": 0.5,
@@ -544,7 +548,105 @@ def frames_on(enabled: "bool | None" = None) -> bool:
     if FRAMES_ON:
         FRAME_DIR.mkdir(parents=True, exist_ok=True)
         print(f"  debug frames -> {FRAME_DIR}")
+        recording_on()
+    else:
+        recording_off()
     return FRAMES_ON
+
+
+VIDEO_DIR = Path(__file__).resolve().parent / "debug_video"
+_TAPE = None
+
+
+class _Tape:
+    def __init__(self, knobs):
+        import threading
+        self.fps = max(1, int(knobs["video_fps"]))
+        self.seconds = max(1, int(knobs["video_seconds"]))
+        self.keep = max(1, int(knobs["keep_videos"]))
+        self.scale = float(knobs["video_scale"])
+        self.stop = threading.Event()
+        self.thread = threading.Thread(target=self._roll, daemon=True)
+        self.reel = 0
+
+    def start(self):
+        VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+        self.thread.start()
+        return self
+
+    def _prune(self):
+        reels = sorted(VIDEO_DIR.glob("*.mp4"), key=lambda f: f.stat().st_mtime)
+        for spent in reels[:max(0, len(reels) - self.keep)]:
+            try:
+                spent.unlink()
+            except OSError:
+                pass
+
+    def _open(self, size):
+        import cv2
+        self.reel += 1
+        out = VIDEO_DIR / f"{self.reel:04d}_{time.strftime('%H%M%S')}.mp4"
+        return cv2.VideoWriter(str(out), cv2.VideoWriter_fourcc(*"mp4v"),
+                               self.fps, size)
+
+    def _roll(self):
+        import cv2
+        import numpy
+        import mss
+        writer = None
+        started = 0.0
+        gap = 1.0 / self.fps
+        with mss.MSS() as sct:
+            where = sct.monitors[1]
+            while not self.stop.is_set():
+                due = time.monotonic() + gap
+                try:
+                    frame = numpy.asarray(sct.grab(where))[:, :, :3]
+                    if self.scale != 1.0:
+                        frame = cv2.resize(frame, None, fx=self.scale,
+                                           fy=self.scale,
+                                           interpolation=cv2.INTER_AREA)
+                    if writer is None or (time.monotonic() - started
+                                          >= self.seconds):
+                        if writer is not None:
+                            writer.release()
+                            self._prune()
+                        writer = self._open((frame.shape[1], frame.shape[0]))
+                        started = time.monotonic()
+                    writer.write(frame)
+                except Exception:
+                    pass
+                left = due - time.monotonic()
+                if left > 0:
+                    self.stop.wait(left)
+        if writer is not None:
+            writer.release()
+            self._prune()
+
+
+def recording_on():
+    global _TAPE
+    if _TAPE is not None:
+        return VIDEO_DIR
+    knobs = load_shared()["debug"]
+    try:
+        _TAPE = _Tape(knobs).start()
+    except Exception as exc:
+        print(f"  no screen recording: {type(exc).__name__}: {exc}")
+        _TAPE = None
+        return None
+    print(f"  recording -> {VIDEO_DIR} ({knobs['video_seconds']}s a reel, "
+          f"{knobs['keep_videos']} kept)")
+    return VIDEO_DIR
+
+
+def recording_off() -> None:
+    global _TAPE
+    if _TAPE is None:
+        return
+    _TAPE.stop.set()
+    _TAPE.thread.join(timeout=load_shared()["timing"]["dialog_timeout"])
+    _TAPE = None
 
 
 def prune_frames() -> None:

@@ -831,6 +831,11 @@ def main():
         traceback.print_exc()
     finally:
         try:
+            calibration.recording_off()
+        except BaseException as exc:
+            print(f"  the recording could not be closed: "
+                  f"{type(exc).__name__}: {exc}")
+        try:
             ledger.print_run_profit()
         except BaseException as exc:
             print(f"  the profit summary could not be built: "
