@@ -333,7 +333,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-08-24T10:15:08",
+      "measured_at": "2026-08-24T10:42:22",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -737,14 +737,14 @@
         },
         "purchase_sort_region": [
           856,
-          178,
+          180,
           986,
-          210
+          212
         ],
-        "purchase_sort_text_seen": "-pic y Price:Low to",
+        "purchase_sort_text_seen": "v -pic y Price:High to",
         "purchase_sort_anchor": [
           896,
-          194
+          196
         ],
         "purchase_buy_x": 1124,
         "purchase_row_pitch": 76,
@@ -793,17 +793,17 @@
           1229
         ],
         "row_one_y": 230,
-        "row_pitch": 79,
+        "row_pitch": 80,
         "row_one_box": [
           256,
-          191,
+          190,
           1229,
-          269
+          270
         ],
         "button_x": 1126,
         "table_point": [
           526,
-          309
+          310
         ],
         "rows_per_notch": 1,
         "register_rows_seen": 9,
@@ -875,89 +875,89 @@
       "convert": {
         "tab": "Dungeon",
         "tab_point": [
-          195,
+          196,
           205
         ],
         "cells": {
           "1x1": [
             252,
-            1076
+            1071
           ],
           "1x2": [
-            318,
-            1076
+            314,
+            1071
           ],
           "1x3": [
             384,
-            1076
+            1071
           ],
           "1x4": [
             446,
-            1076
+            1071
           ],
           "1x5": [
-            516,
-            1076
+            511,
+            1071
           ],
           "2x1": [
             252,
-            1129
+            1136
           ],
           "2x2": [
-            318,
-            1129
+            314,
+            1136
           ],
           "2x3": [
             384,
-            1129
+            1136
           ],
           "2x4": [
             446,
-            1129
+            1136
           ],
           "2x5": [
-            516,
-            1129
+            511,
+            1136
           ],
           "3x1": [
             252,
-            1180
+            1189
           ],
           "3x2": [
-            318,
-            1180
+            314,
+            1189
           ],
           "3x3": [
             384,
-            1180
+            1189
           ],
           "3x4": [
             446,
-            1180
+            1189
           ],
           "3x5": [
-            516,
-            1180
+            511,
+            1189
           ],
           "4x1": [
             252,
-            1254
+            1259
           ],
           "4x2": [
-            318,
-            1254
+            314,
+            1259
           ],
           "4x3": [
             384,
-            1254
+            1259
           ],
           "4x4": [
             446,
-            1254
+            1259
           ],
           "4x5": [
-            516,
-            1254
+            511,
+            1259
           ]
         },
         "set_to_core": {
@@ -965,15 +965,15 @@
             "cell": "2x1",
             "point": [
               252,
-              1129
+              1136
             ],
             "costs": "Force Core Set (Low)"
           },
           "Force Core(Medium)": {
             "cell": "2x2",
             "point": [
-              318,
-              1129
+              314,
+              1136
             ],
             "costs": "Force Core Set (Medium)"
           },
@@ -981,7 +981,7 @@
             "cell": "2x3",
             "point": [
               384,
-              1129
+              1136
             ],
             "costs": "Force Core Set (High)"
           },
@@ -989,15 +989,15 @@
             "cell": "2x4",
             "point": [
               446,
-              1129
+              1136
             ],
             "costs": "Force Core Set (Highest)"
           },
           "Force Core (Ultimate)": {
             "cell": "2x5",
             "point": [
-              516,
-              1129
+              511,
+              1136
             ],
             "costs": "Force Core Set (Ultimate)"
           },
@@ -1005,15 +1005,15 @@
             "cell": "4x1",
             "point": [
               252,
-              1254
+              1259
             ],
             "costs": "Upgrade Core Set (Low)"
           },
           "Upgrade Core(Medium)": {
             "cell": "4x2",
             "point": [
-              318,
-              1254
+              314,
+              1259
             ],
             "costs": "Upgrade Core Set (Medium)"
           },
@@ -1021,7 +1021,7 @@
             "cell": "4x3",
             "point": [
               384,
-              1254
+              1259
             ],
             "costs": "Upgrade Core Set (High)"
           },
@@ -1029,31 +1029,31 @@
             "cell": "4x4",
             "point": [
               446,
-              1254
+              1259
             ],
             "costs": "Upgrade Core Set (Highest)"
           },
           "Upgrade Core (Ultimate)": {
             "cell": "4x5",
             "point": [
-              516,
-              1254
+              511,
+              1259
             ],
             "costs": "Upgrade Core Set (Ultimate)"
           }
         },
         "columns": [
           252,
-          318,
+          314,
           384,
           446,
-          516
+          511
         ],
         "rows": [
-          1076,
-          1129,
-          1180,
-          1254
+          1071,
+          1136,
+          1189,
+          1259
         ]
       }
     }
@@ -1071,17 +1071,17 @@
     "10": "Upgrade Core Set (Ultimate)"
   },
   "market": {
-    "measured_at": "2026-08-24T10:15:08",
+    "measured_at": "2026-08-24T10:42:22",
     "unit_price": {
-      "1": 540000,
-      "2": 211109,
-      "3": 690112,
-      "4": 690000,
-      "5": 389994,
+      "1": 539982,
+      "2": 211108,
+      "3": 689000,
+      "4": 705000,
+      "5": 389979,
       "6": 369988,
-      "7": 259998,
+      "7": 247521,
       "8": 214324,
-      "9": 470000,
+      "9": 460000,
       "10": 444435
     }
   },

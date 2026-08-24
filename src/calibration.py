@@ -116,6 +116,11 @@ DEFAULTS = {
         "fav_band": [0.2422, 0.7100, 0.4648, 0.7465],
         "boundary_window": [0.0781, 0.1289],
         "slot_pitch": [0.0266, 0.0312],
+        "craft_window": [0.0039, 0.0051, 0.5078, 0.7283],
+        "craft_tiers": [0.0234, 0.1147, 0.2031, 0.2023],
+        "craft_recipes": [0.0234, 0.1147, 0.2031, 0.2900],
+        "craft_material": [0.2188, 0.4215, 0.3906, 0.4945],
+        "craft_buttons": [0.0234, 0.6771, 0.5078, 0.7210],
         "purchase_sort_band": [0.2500, 0.1200, 0.5000, 0.1700],
         "purchase_buy_band": [0.3000, 0.6800, 0.5100, 0.7300],
         "purchase_table_band": [0.1000, 0.1500, 0.4800, 0.6600],
@@ -206,6 +211,13 @@ DEFAULTS = {
     },
     "game_facts": {
         "favourite_count": 10,
+        "craft_tab": 8,
+        "craft_key_slot": [1, 8],
+        "craft_tier_words": "2000|2999",
+        "craft_request_word": "Repeat",
+        "craft_complete_word": "Complete",
+        "craft_material_word": "Material",
+        "craft_cores_per_set": 3,
         "grid_size": 8,
         "agent_shop_tab": 8,
         "agent_shop_slot": [1, 7],
@@ -1497,6 +1509,94 @@ def vendor_tab_point(name, image=None):
         if re.sub(r"[^a-z]", "", text.lower()) == want:
             return point
     return None
+
+
+CRAFT_TAB = _S["game_facts"]["craft_tab"]
+CRAFT_KEY_SLOT = tuple(_S["game_facts"]["craft_key_slot"])
+CRAFT_TIER_WORDS = _S["game_facts"]["craft_tier_words"].split("|")
+CRAFT_REQUEST_WORD = _S["game_facts"]["craft_request_word"]
+CRAFT_COMPLETE_WORD = _S["game_facts"]["craft_complete_word"]
+CRAFT_MATERIAL_WORD = _S["game_facts"]["craft_material_word"]
+CRAFT_CORES_PER_SET = _S["game_facts"]["craft_cores_per_set"]
+
+
+def craft_window_open(image=None):
+    image = image if image is not None else grab()
+    box = _box(tuple(_REG["craft_buttons"]))
+    seen = {re.sub(r"[^a-z]", "", t.lower()) for t, _c, _p in ocr(image, box)}
+    return re.sub(r"[^a-z]", "", CRAFT_COMPLETE_WORD.lower()) in seen
+
+
+def calibrate_craft(verbose=True):
+    say = print if verbose else (lambda *a: None)
+    if not craft_window_open():
+        if await_inventory(verbose=verbose) is None:
+            raise RuntimeError(
+                "no readable Alz balance, so the Inventory is not open and "
+                "the craft key cannot be reached. Nothing written.")
+        click(*inventory_tab_point(CRAFT_TAB))
+        time.sleep(TAB_SETTLE)
+        point = inventory_slot_point(*CRAFT_KEY_SLOT)
+        say(f"  right-clicking the craft key on tab {CRAFT_TAB} slot "
+            f"{CRAFT_KEY_SLOT} at {point}")
+        right_click(*point)
+        deadline = time.monotonic() + DIALOG_TIMEOUT
+        while time.monotonic() < deadline:
+            if craft_window_open():
+                break
+            time.sleep(POLL_GAP)
+    if not craft_window_open():
+        raise RuntimeError(
+            f"the craft window did not open from tab {CRAFT_TAB} slot "
+            f"{CRAFT_KEY_SLOT}. Nothing written.")
+
+    image = grab()
+    tiers = ocr(image, _box(tuple(_REG["craft_tiers"])))
+    rows = {}
+    for text, _conf, point in tiers:
+        digits = re.sub(r"[^0-9]", "", text)
+        if digits:
+            rows.setdefault(point[1], []).append(digits)
+    tier_y = None
+    for y, digits in sorted(rows.items()):
+        if all(any(w in d for d in digits) for w in CRAFT_TIER_WORDS):
+            tier_y = y
+            break
+    if tier_y is None:
+        raise RuntimeError(
+            f"no tier row reads {CRAFT_TIER_WORDS} in "
+            f"{_box(tuple(_REG['craft_tiers']))}; it read "
+            f"{[t for t, _c, _p in tiers]}. Nothing written.")
+    span = [p[0] for _t, _c, p in tiers if p[1] == tier_y]
+    left = (min(span) + max(span)) // 2
+
+    buttons = ocr(image, _box(tuple(_REG["craft_buttons"])))
+    def button(word):
+        want = re.sub(r"[^a-z]", "", word.lower())
+        for text, _conf, point in buttons:
+            if re.sub(r"[^a-z]", "", text.lower()) == want:
+                return list(point)
+        return None
+    want = re.sub(r"[^a-z]", "", CRAFT_COMPLETE_WORD.lower())
+    on_row = [p for t, _c, p in buttons
+              if re.sub(r"[^a-z]", "", t.lower()) == want]
+    if not on_row:
+        raise RuntimeError(
+            f"no {CRAFT_COMPLETE_WORD} button in the craft button band; it "
+            f"read {[t for t, _c, _p in buttons]}. Nothing written.")
+    at_y = on_row[0][1]
+    right = sorted(p[0] for _t, _c, p in buttons if abs(p[1] - at_y) <= 6
+                   and p[0] > on_row[0][0])
+    tail = right[0] if right else on_row[0][0]
+    complete = [(on_row[0][0] + tail) // 2, at_y]
+
+    out = {"tier": [left, tier_y],
+           "complete": complete,
+           "material_box": list(_box(tuple(_REG["craft_material"])))}
+    say(f"  tier {'-'.join(CRAFT_TIER_WORDS)} at {out['tier']}")
+    say(f"  {CRAFT_COMPLETE_WORD} All at {complete}")
+    say(f"  material counter {out['material_box']}")
+    return out
 
 
 def calibrate_convert(verbose=True):
