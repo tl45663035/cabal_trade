@@ -168,7 +168,7 @@ def craft_sets(verbose=True):
         before = await_material(verbose=verbose)
     if not before:
         raise Refused("no Chaos Cores are held; nothing to craft.")
-    say(f"  {before} Chaos Core(s) held, {CORES_PER_SET} to a Set")
+    say(f"  {before} Chaos Core(s) held, {CORES_PER_SET} to a craft")
     with calibration.step(f"select inventory tab {calibration.WORK_TAB}"):
         calibration.click(
             *calibration.inventory_tab_point(calibration.WORK_TAB), settle=0.0)
@@ -179,7 +179,7 @@ def craft_sets(verbose=True):
         used = await_drain(before, verbose=verbose)
     with calibration.step("Complete All"):
         complete_all(verbose=verbose)
-    made = used // CORES_PER_SET
+    made = used
     say(f"  crafted {made} Set(s) from {used} Core(s)")
     calibration.steps_table(f"craft {made} Set(s)")
     return {"held": before, "used": used, "made": made}

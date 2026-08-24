@@ -6,6 +6,7 @@ import buy
 import calibration
 import ledger
 import convert
+import craft
 import get_alz
 import get_price
 import row_model
@@ -326,7 +327,9 @@ def do_resupply(slot, verbose=True):
     model = seed(verbose=verbose)
     held = rows_by_core(model, first, last).get(int(slot), 0)
     started = time.perf_counter()
-    out = resupply_one(model, int(slot), held, first, last, verbose=verbose)
+    core = calibration.FAVOURITE_ITEMS[str(int(slot))]
+    route = resupply_chaos if craft_route(core) else resupply_one
+    out = route(model, int(slot), held, first, last, verbose=verbose)
     print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
     return out
 
@@ -530,6 +533,159 @@ def resupply_one(model, slot, held, first, last, verbose=True):
             "listed": listed_total, "rows": rows}
 
 
+def craft_route(core):
+    if convert.cell_for(core):
+        return False
+    if calibration.pair_slot(calibration.favourite_slot_of(core)) is None:
+        return False
+    return bool(calibration.load().get("craft"))
+
+
+def resupply_chaos(model, slot, held, first, last, verbose=True):
+    run = calibration.load_shared()["resupply"]
+    core = calibration.FAVOURITE_ITEMS[str(slot)]
+    pair = calibration.pair_slot(slot)
+    set_name = calibration.FAVOURITE_ITEMS[str(pair)]
+    batch = calibration.CRAFT_CORES_PER_SET
+    print("")
+    want_rows = calibration.rows_threshold(core)
+    want_min = calibration.buy_min(core)
+    want_max = calibration.buy_max(core)
+    print(f"-- {core}: {held} row(s), threshold {want_rows} --")
+
+    calibration.phases_reset()
+    with calibration.phase(f"price {core}"):
+        core_row = get_price.get_price(slot, verbose=False)
+    with calibration.phase(f"price {set_name}"):
+        set_row = get_price.get_price(pair, verbose=False)
+    if core_row is None or set_row is None:
+        print(f"  {core if core_row is None else set_name} would not price; "
+              f"not buying blind.")
+        return None
+    threshold = calibration.price_diff_threshold(core)
+    if threshold is None:
+        print(f"  {core} has no price_diff_threshold in config.json, so "
+              f"there is no gap it is worth buying at. Not buying.")
+        return None
+    diff = set_row["unit_price"] - core_row["unit_price"]
+    print(f"  {set_name} {set_row['unit_price']:,} - {core} "
+          f"{core_row['unit_price']:,} = {diff:,} "
+          f"(threshold {threshold:,})")
+    if diff <= threshold:
+        print(f"  the gap does not clear the threshold; not buying.")
+        return None
+
+    free_rows = [i for i in model.empty() if first <= i <= last]
+    if not free_rows:
+        print(f"  rows {first}-{last} are full, and a crafted {set_name} with "
+              f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
+              f"buying.")
+        return None
+    print(f"  {len(free_rows)} row(s) free inside {first}-{last}")
+
+    bought = orders = 0
+    while bought < want_min:
+        print(f"  {bought}/{want_min} {core} held")
+        orders += 1
+        got = None
+        for attempt in range(1, int(run["buy_retries"]) + 1):
+            try:
+                with calibration.phase(f"buy order {orders}"):
+                    got = buy.buy_row_one(slot, want_min - bought,
+                                          verbose=verbose, held=bought,
+                                          floor_qty=want_min,
+                                          ceiling=want_max)
+                break
+            except buy.Refused as exc:
+                if not getattr(exc, "retryable", False):
+                    print(f"  stopping: {exc}")
+                    break
+                print(f"  attempt {attempt}/{run['buy_retries']}: {exc}")
+                if attempt == int(run["buy_retries"]):
+                    print(f"  the board kept moving through "
+                          f"{run['buy_retries']} attempt(s); giving up on "
+                          f"{core} this cycle.")
+        if got is None:
+            break
+        if got["bought"] <= 0:
+            print(f"  the last order bought nothing; stopping.")
+            break
+        bought += got["bought"]
+    if bought <= 0:
+        print(f"  nothing bought; not opening the craft window.")
+        return None
+
+    whole = (bought // batch) * batch
+    spare = bought - whole
+    if whole <= 0:
+        print(f"  {bought} {core} is under the {batch} a craft takes; "
+              f"they stay on tab {row_model.WORK_TAB}.")
+        return None
+    if spare:
+        print(f"  {bought} bought; crafting {whole} and leaving {spare} that "
+              f"do not fill a batch of {batch}")
+
+    unit_floor, floor_pair = calibration.price_floor(set_name)
+    floor = 0 if unit_floor is None else unit_floor
+    why = f"a {floor_pair} costs {unit_floor:,}" if unit_floor else ""
+
+    with calibration.phase("close the Agent Shop"):
+        calibration.close_everything()
+    with calibration.phase("read the slots before crafting"):
+        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
+                          settle=0.0)
+        time.sleep(row_model.TAB_SETTLE)
+        before_slots = calibration.occupied_slots()
+    with calibration.phase(f"craft {core} into {set_name}"):
+        made = craft.craft_sets(verbose=verbose)
+    with calibration.phase("close the craft window"):
+        craft.close_craft()
+
+    with calibration.phase("reopen the Agent Shop"):
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady("the Agent Shop would not reopen after crafting.")
+    with calibration.phase("select the Register tab"):
+        register_tab(verbose=verbose)
+    with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
+                          settle=0.0)
+        time.sleep(row_model.TAB_SETTLE)
+
+    arrived = sorted(calibration.occupied_slots() - before_slots)
+    if not arrived:
+        raise NotReady(
+            f"no slot on tab {row_model.WORK_TAB} filled after the craft; "
+            f"the {set_name} cannot be found to list.")
+    print(f"  listing {made['made']} {set_name} from slot(s) {arrived[0]} to "
+          f"{arrived[-1]}")
+
+    rows, listed_total = [], 0
+    remaining = list(arrived)
+    while remaining:
+        empty = [i for i in model.empty() if first <= i <= last]
+        if not empty:
+            print(f"  rows {first}-{last} are full; {len(remaining)} slot(s) "
+                  f"of {set_name} stay on tab {row_model.WORK_TAB}.")
+            break
+        lands_in = min(empty)
+        with calibration.phase(f"list {set_name} from {remaining[0]}"):
+            listed = model.list_slot(*remaining[0], floor=floor, why=why,
+                                     verbose=verbose, lands_in=lands_in,
+                                     expect_item=set_name)
+        model._slots[lands_in] = row_model.Row(set_name, qty=listed["qty"],
+                                               price=listed["price"])
+        rows.append(lands_in)
+        listed_total += listed["qty"]
+        still = calibration.occupied_slots()
+        remaining = [w for w in remaining if w in still]
+    calibration.phases_table(
+        f"resupply {core}: bought {bought}, crafted {made['made']}, "
+        f"listed {listed_total} in rows {rows}")
+    return {"slot": slot, "core": core, "set": set_name, "diff": diff,
+            "bought": bought, "crafted": made["made"],
+            "listed": listed_total, "rows": rows}
+
+
 def rest_the_game(verbose=True):
     print("")
     print(f"  returning the game to its default state")
@@ -572,8 +728,8 @@ def resupply_pass(model, first, last, verbose=True):
         wants = calibration.rows_threshold(core)
         mark = ""
         if wants is not None and count < wants:
-            if not convert.cell_for(core):
-                mark = "not convertible"
+            if not convert.cell_for(core) and not craft_route(core):
+                mark = "neither convertible nor craftable"
             elif not buying_enabled(core):
                 mark = "buying off"
             else:
@@ -591,9 +747,13 @@ def resupply_pass(model, first, last, verbose=True):
         for slot in short:
             war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
             try:
-                out = resupply_one(model, slot, held[slot], first, last,
-                                   verbose=verbose)
-            except (convert.Refused, buy.Refused, NotReady) as exc:
+                core_here = calibration.FAVOURITE_ITEMS[str(slot)]
+                route = (resupply_chaos if craft_route(core_here)
+                         else resupply_one)
+                out = route(model, slot, held[slot], first, last,
+                            verbose=verbose)
+            except (convert.Refused, craft.Refused, buy.Refused,
+                    NotReady) as exc:
                 print(f"  resupply of "
                       f"{calibration.FAVOURITE_ITEMS[str(slot)]!r} stopped: "
                       f"{exc}")
@@ -686,6 +846,14 @@ def _dispatch(args):
         row_at(row_model.RowModel().seed({}), int(args[1]))
     elif what == "resupply" and len(args) > 1:
         do_resupply(int(args[1]))
+    elif what == "chaos":
+        crafted = [n for n in core_slots()
+                   if craft_route(calibration.FAVOURITE_ITEMS[str(n)])]
+        if not crafted:
+            print("  nothing in the favourites is crafted rather than "
+                  "converted; there is no chaos resupply to run.")
+            return
+        do_resupply(crafted[0])
     elif what == "scan":
         do_scan()
     elif what == "price" and len(args) > 1:
