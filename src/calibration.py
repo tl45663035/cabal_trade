@@ -700,6 +700,17 @@ def read_money(image, box):
     return None
 
 
+def balance_box():
+    band = _box(ALZ_SEARCH_F)
+    measured = tuple(load()["inventory"]["alz_box"])
+    return (min(band[0], measured[0]), min(band[1], measured[1]),
+            max(band[2], measured[2]), max(band[3], measured[3]))
+
+
+def read_balance_from(image):
+    return read_money(image, balance_box())
+
+
 def undercut(price):
     by = int(load_shared()["run"]["undercut_by"])
     if by <= 0 or price is None:

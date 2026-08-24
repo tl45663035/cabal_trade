@@ -9,10 +9,7 @@ ALZ_BOX = tuple(calibration.load()["inventory"]["alz_box"])
 
 def read_balance(image=None):
     image = image if image is not None else calibration.grab()
-    band = calibration._box(tuple(calibration._REG["alz_search"]))
-    box = (min(band[0], ALZ_BOX[0]), min(band[1], ALZ_BOX[1]),
-           max(band[2], ALZ_BOX[2]), max(band[3], ALZ_BOX[3]))
-    return calibration.read_money(image, box)
+    return calibration.read_balance_from(image)
 
 
 def get_alz(verbose: bool = True):

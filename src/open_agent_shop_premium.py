@@ -13,7 +13,6 @@ AGENT_SHOP_SLOT = tuple(_FACTS["agent_shop_slot"])
 ACTION_GAP = CAL["timing"]["action_gap"]
 
 
-CALIBRATED_ALZ = tuple(CAL["inventory"]["alz_box"])
 MIN_PLAUSIBLE_BALANCE = CAL["detect"]["min_plausible_balance"]
 
 
@@ -27,7 +26,7 @@ def grab():
 
 def panel_open(image=None, verbose: bool = True) -> bool:
     image = image if image is not None else grab()
-    value = calibration.read_digits(image, CALIBRATED_ALZ)
+    value = calibration.read_balance_from(image)
     if value is None:
         return False
     if value < MIN_PLAUSIBLE_BALANCE:
