@@ -289,7 +289,6 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     print(f"{passes} pass(es), {done} relisted, {skipped} skipped "
           f"in {span/1000:.0f}s"
           + (f" ({span/done:.0f} ms a row)" if done else ""))
-    ledger.print_run_profit()
     return done
 
 
@@ -641,10 +640,32 @@ def usage():
 
 
 def main():
+    import traceback
     args = [a for a in sys.argv[1:] if a != "--frames"]
     calibration.log_to_file(args[0].lower() if args else "run")
     print(f"  ledger {ledger.DB} run {ledger.start()}")
     calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
+    outcome, note = "FINISHED", ""
+    try:
+        _dispatch(args)
+    except KeyboardInterrupt:
+        outcome, note = "STOPPED", "interrupted from the keyboard"
+    except BaseException as exc:
+        outcome = "CRASHED"
+        note = f"{type(exc).__name__}: {exc}"
+        traceback.print_exc()
+    finally:
+        try:
+            ledger.print_run_profit()
+        except BaseException as exc:
+            print(f"  the profit summary could not be built: "
+                  f"{type(exc).__name__}: {exc}")
+        calibration.end_banner(outcome, note)
+    if outcome == "CRASHED":
+        sys.exit(1)
+
+
+def _dispatch(args):
     if not args:
         do_relist()
         return

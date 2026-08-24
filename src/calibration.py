@@ -2251,6 +2251,61 @@ class _Tee:
         return self.stream.fileno()
 
 
+_BIG_GLYPHS = {
+    "A": (" ### ", "#   #", "#   #", "#####", "#   #", "#   #", "#   #"),
+    "C": (" ####", "#    ", "#    ", "#    ", "#    ", "#    ", " ####"),
+    "D": ("#### ", "#   #", "#   #", "#   #", "#   #", "#   #", "#### "),
+    "E": ("#####", "#    ", "#    ", "#### ", "#    ", "#    ", "#####"),
+    "F": ("#####", "#    ", "#    ", "#### ", "#    ", "#    ", "#    "),
+    "H": ("#   #", "#   #", "#   #", "#####", "#   #", "#   #", "#   #"),
+    "I": ("#####", "  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "#####"),
+    "N": ("#   #", "##  #", "# # #", "# # #", "#  ##", "#   #", "#   #"),
+    "O": (" ### ", "#   #", "#   #", "#   #", "#   #", "#   #", " ### "),
+    "P": ("#### ", "#   #", "#   #", "#### ", "#    ", "#    ", "#    "),
+    "R": ("#### ", "#   #", "#   #", "#### ", "# #  ", "#  # ", "#   #"),
+    "S": (" ####", "#    ", "#    ", " ### ", "    #", "    #", "#### "),
+    "T": ("#####", "  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "  #  "),
+}
+
+_BANNER_COLOUR = {"FINISHED": "32", "STOPPED": "33", "CRASHED": "31"}
+
+
+def _big_text(word, scale=2):
+    rows = []
+    for r in range(7):
+        line = "  ".join("".join(ch * scale for ch in _BIG_GLYPHS[letter][r])
+                         for letter in word if letter in _BIG_GLYPHS)
+        rows.extend([line] * scale)
+    return rows
+
+
+def end_banner(word, note=""):
+    import sys
+    rows = _big_text(word)
+    rule = "#" * max(len(r) for r in rows)
+    body = ["", rule, ""] + rows + ["", rule]
+    if note:
+        body.append(f"  {word.lower()}: {note}")
+    body.append("")
+    plain = chr(10).join(body) + chr(10)
+    stream = sys.stdout
+    tee = stream if isinstance(stream, _Tee) else None
+    console = tee.stream if tee is not None else stream
+    shown = plain
+    try:
+        if hasattr(console, "isatty") and console.isatty():
+            esc = chr(27)
+            colour = _BANNER_COLOUR.get(word, "0")
+            shown = f"{esc}[1;{colour}m{plain}{esc}[0m"
+    except Exception:
+        shown = plain
+    if tee is not None:
+        console.write(shown)
+        tee.handle.write(plain)
+    else:
+        console.write(shown)
+
+
 def log_to_file(what="run"):
     import sys
     if isinstance(sys.stdout, _Tee):
