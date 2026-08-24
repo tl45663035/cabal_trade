@@ -301,6 +301,19 @@ def row_at(model, index, verbose=True):
     return text, row
 
 
+def do_resupply(slot, verbose=True):
+    run = calibration.load_shared()["run"]
+    first, last = int(run["relist_from"]), int(run["relist_to"])
+    initialise(verbose=verbose)
+    register_tab(verbose=verbose)
+    model = seed(verbose=verbose)
+    held = rows_by_core(model, first, last).get(int(slot), 0)
+    started = time.perf_counter()
+    out = resupply_one(model, int(slot), held, first, last, verbose=verbose)
+    print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
+    return out
+
+
 def do_cancel(index, verbose=True):
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
@@ -484,6 +497,7 @@ def resupply_one(model, slot, held, first, last, verbose=True):
             listed_total += listed["qty"]
             still = calibration.occupied_slots()
             remaining = [w for w in remaining if w in still]
+        left_to_convert = max(0, bought - listed_total)
     if left_to_convert > 0:
         print(f"  {left_to_convert} of {bought} {set_name} are still "
               f"unconverted after {rounds} round(s); they are on tab "
@@ -582,6 +596,10 @@ def usage():
     print("                                   in config.json, resupplying any")
     print("                                   core that runs short if")
     print("                                   resupply.enabled is on")
+    print("  py src/driver.py resupply N      price favourite slot N against")
+    print("                                   its Set and, if the gap clears,")
+    print("                                   buy, convert and list it; skips")
+    print("                                   the row count and enable_buying")
     print("  py src/driver.py scan            read the balance, walk rows 1-21")
     print("                                   and print the model, no changes")
     print("  py src/driver.py cancel N        cancel row N (collects it first")
@@ -618,6 +636,8 @@ def main():
         initialise()
         register_tab()
         row_at(row_model.RowModel().seed({}), int(args[1]))
+    elif what == "resupply" and len(args) > 1:
+        do_resupply(int(args[1]))
     elif what == "scan":
         do_scan()
     elif what == "price" and len(args) > 1:
