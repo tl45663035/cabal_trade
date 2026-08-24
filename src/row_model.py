@@ -39,6 +39,7 @@ DIALOG_BUTTON_MIN_X = _SHARED["detect"]["dialog_button_min_x"]
 BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
+REFRESH_SETTLE = _T["refresh_settle"]
 CLEAR_PRESSES_QTY = _SHARED["detect"]["clear_presses_qty"]
 CLEAR_PRESSES_PRICE = _SHARED["detect"]["clear_presses_price"]
 KEY_GAP = _T["key_gap"]
@@ -164,9 +165,7 @@ def refresh_table(model=None, verbose=False):
     if verbose:
         print(f"  {calibration.REFRESH_WORD} at {tuple(point)}")
     calibration.click(*point, settle=0.0)
-    time.sleep(TAB_SETTLE)
-    if model is not None:
-        model._top = None
+    time.sleep(REFRESH_SETTLE)
     return tuple(point)
 
 

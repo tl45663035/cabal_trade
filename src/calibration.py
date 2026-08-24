@@ -67,6 +67,7 @@ DEFAULTS = {
         "wheel_gap": 0.12,
         "park_settle": 0.25,
         "tab_settle": 0.6,
+        "refresh_settle": 0.05,
         "poll_gap": 0.0,
         "panel_reread_gap": 1.0,
         "craft_settle_per_block": 5.0,
