@@ -1956,14 +1956,6 @@ def calibrate_actions(shop, verbose=True):
     lowered = before.lower()
     listed = re.search(r"\d[\d,]{2,}", before) is not None
     if listed and RECEIPT_WORD.lower() in lowered:
-        again = read_line(grab(), row_one)
-        if RECEIPT_WORD.lower() not in (again or "").lower():
-            say(f"  row 1 read {before!r} and then {again!r}; the second says "
-                f"nothing has sold, so nothing is collected")
-            before = again
-            lowered = (again or "").lower()
-            listed = re.search(r"\d[\d,]{2,}", before or "") is not None
-    if listed and RECEIPT_WORD.lower() in lowered:
         receipt = (shop["button_x"], shop["row_one_y"])
         say(f"  row 1 has SOLD: {before!r}")
         say(f"  {RECEIPT_WORD} at {receipt}")
