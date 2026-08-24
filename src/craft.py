@@ -14,6 +14,8 @@ SETTLE_PER_BLOCK = _SHARED["timing"]["craft_settle_per_block"]
 SETTLE_BLOCK = _SHARED["timing"]["craft_settle_block"]
 SETTLE_MAX = _SHARED["timing"]["craft_settle_max"]
 CORES_PER_SET = calibration.CRAFT_CORES_PER_SET
+CORE_NAME = calibration.FAVOURITE_ITEMS[
+    str(calibration._craft_slots()[0])]
 
 
 class Refused(Exception):
@@ -25,25 +27,6 @@ def _cal():
     if not block:
         raise Refused("the craft window has not been measured.")
     return block
-
-
-def _words(region):
-    return calibration.ocr(calibration.grab(),
-                           calibration._box(tuple(calibration._REG[region])))
-
-
-def _pair(words, first, second):
-    want = re.sub(r"[^a-z]", "", first.lower())
-    tail = re.sub(r"[^a-z]", "", second.lower())
-    for text, _conf, point in words:
-        if re.sub(r"[^a-z]", "", text.lower()) != want:
-            continue
-        after = [p for t, _c, p in words
-                 if abs(p[1] - point[1]) <= 6 and p[0] > point[0]
-                 and re.sub(r"[^a-z]", "", t.lower()) == tail]
-        if after:
-            return [(point[0] + after[0][0]) // 2, point[1]]
-    return None
 
 
 def open_craft(verbose=True):
@@ -183,33 +166,25 @@ def craft_sets(verbose=True):
     with calibration.step("read the material counter"):
         before = await_material(verbose=verbose)
     if not before:
-        raise Refused("no Chaos Cores are held; nothing to craft.")
-    say(f"  {before} Chaos Core(s) held, {CORES_PER_SET} to a craft")
+        raise Refused(f"no {CORE_NAME} is held; nothing to craft.")
+    say(f"  {before} {CORE_NAME}(s) held, {CORES_PER_SET} to a craft")
     with calibration.step(f"select inventory tab {calibration.WORK_TAB}"):
         show_work_tab()
     with calibration.step("read the slots before any Set arrives"):
         pre = calibration.occupied_slots()
-    used = 0
-    rounds = 0
-    while True:
-        rounds += 1
-        with calibration.step(f"round {rounds}: Request All"):
-            request_all(verbose=verbose)
-        with calibration.step(f"round {rounds}: wait for the queue"):
-            took = await_drain(before - used, verbose=verbose)
-        with calibration.step(f"round {rounds}: select inventory tab "
-                              f"{calibration.WORK_TAB} before completing"):
-            show_work_tab()
-        with calibration.step(f"round {rounds}: Complete All"):
-            complete_all(verbose=verbose)
-        used += took
-        left = material_held() or 0
-        say(f"  round {rounds}: {took} Core(s) went, {left} still held")
-        if took <= 0 or left:
-            if left:
-                say(f"  {' '.join(calibration.CRAFT_REQUEST_WORDS)} left "
-                    f"{left} behind, so it will not take them")
-            break
+    with calibration.step(f"{' '.join(calibration.CRAFT_REQUEST_WORDS)}"):
+        request_all(verbose=verbose)
+    with calibration.step("wait for the queue"):
+        used = await_drain(before, verbose=verbose)
+    with calibration.step(f"select inventory tab {calibration.WORK_TAB} "
+                          f"before completing"):
+        show_work_tab()
+    with calibration.step(f"{calibration.CRAFT_COMPLETE_WORD} All"):
+        complete_all(verbose=verbose)
+    left = material_held() or 0
+    if left:
+        say(f"  {left} {CORE_NAME}(s) were left behind; "
+            f"{' '.join(calibration.CRAFT_REQUEST_WORDS)} would not take them")
     arrived = sorted(calibration.occupied_slots() - pre)
     if arrived:
         landed = arrived[0]
@@ -220,8 +195,6 @@ def craft_sets(verbose=True):
             f"{landed}")
     with calibration.step("compress the crafted Sets"):
         compress(landed, verbose=verbose)
-    made = used
-    say(f"  crafted {made} Set(s) from {used} Core(s)")
-    calibration.steps_table(f"craft {made} Set(s)")
-    return {"held": before, "used": used, "made": made,
-            "slot": tuple(landed)}
+    say(f"  {used} {CORE_NAME}(s) went into the queue")
+    calibration.steps_table(f"craft from {used} {CORE_NAME}(s)")
+    return {"held": before, "used": used, "slot": tuple(landed)}

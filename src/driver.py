@@ -657,7 +657,8 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
             f"compressed, is empty; there is nothing to list.")
     unit_cost = -(-paid // bought) if bought else core_row["unit_price"]
     why = f"the {unit_cost:,} a {core} cost, a Set at a time"
-    print(f"  listing the {set_name} compressed into {work}")
+    print(f"  listing the {set_name} compressed into {work} from "
+          f"{made['used']} {core}(s)")
     print(f"  the board's cheapest is {set_row['unit_price']:,} a Set, and the "
           f"panel scales that to whatever the bundle holds")
     print(f"  it cost {unit_cost:,} a Core, so no Set goes out under that")
@@ -680,10 +681,10 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         rows.append(lands_in)
         listed_total += listed["qty"]
     calibration.phases_table(
-        f"resupply {core}: bought {bought}, crafted {made['made']}, "
+        f"resupply {core}: bought {bought}, {made['used']} into the craft, "
         f"listed {listed_total} in rows {rows}")
     return {"slot": slot, "core": core, "set": set_name, "diff": diff,
-            "bought": bought, "crafted": made["made"],
+            "bought": bought, "crafted": made["used"],
             "listed": listed_total, "rows": rows}
 
 

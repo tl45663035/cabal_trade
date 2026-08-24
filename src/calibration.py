@@ -1540,6 +1540,19 @@ CRAFT_TAB = _S["game_facts"]["craft_tab"]
 CRAFT_KEY_SLOT = tuple(_S["game_facts"]["craft_key_slot"])
 CRAFT_TIER_WORDS = _S["game_facts"]["craft_tier_words"].split("|")
 CRAFT_RECIPE_WORDS = _S["game_facts"]["craft_recipe_words"].split("|")
+
+
+def _craft_slots():
+    fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
+    want = fold(CRAFT_RECIPE_WORDS[0])
+    for slot, name in FAVOURITE_ITEMS.items():
+        if fold(name) != want:
+            continue
+        made = int(slot)
+        for other in FAVOURITE_ITEMS:
+            if pair_slot(int(other)) == made:
+                return int(other), made
+    return None, None
 CRAFT_REQUEST_WORDS = _S["game_facts"]["craft_request_words"].split("|")
 CRAFT_REQUEST_WORD = _S["game_facts"]["craft_request_word"]
 CRAFT_COMPLETE_WORD = _S["game_facts"]["craft_complete_word"]
