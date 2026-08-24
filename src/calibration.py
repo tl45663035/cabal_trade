@@ -786,6 +786,7 @@ def _tesseract(prepared, psm, whitelist=None):
 
 _GROUPED = re.compile(r"^\d+(,\d{3})+$")
 _WEDGED = re.compile(r"\d[A-Za-z]|[A-Za-z]\d")
+_SEPARATOR = re.compile(r"(?<=\d)[.,\s]+(?=\d)")
 
 
 def _digits(text):
@@ -795,7 +796,7 @@ def _digits(text):
         cleaned = cleaned[:label.start()]
     if _WEDGED.search(cleaned):
         return None
-    cleaned = cleaned.replace(".", ",")
+    cleaned = _SEPARATOR.sub(",", cleaned)
     grouped = re.sub(r"[^0-9,]", "", cleaned).strip(",")
     if "," in grouped and not _GROUPED.match(grouped):
         return None
