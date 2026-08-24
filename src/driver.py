@@ -207,8 +207,23 @@ def relist_one(model, index, verbose=True):
         why = f"a {pair} costs {unit_floor:,}"
         if pack > 1:
             why += f", and this listing carries {pack}"
-    out = model.list_slot(*landing, floor=floor, why=why, verbose=verbose,
-                          lands_in=lands_in, expect_item=row.name)
+    try:
+        out = model.list_slot(*landing, floor=floor, why=why, verbose=verbose,
+                              lands_in=lands_in, expect_item=row.name)
+    except row_model.SlotNeverFilled:
+        seen = row_model.read_row_one()
+        if row_model.row_function(seen) != row_model.RECEIPT_WORD:
+            raise
+        print(f"  row {index} sold while it was being cancelled, so nothing "
+              f"came back to tab {row_model.WORK_TAB}; collecting it instead")
+        model.receive(index, verbose=False)
+        seen = row_model.read_row_one()
+        if row_model.row_one_is_empty(seen):
+            model._slots.pop(index, None)
+            print(f"    collected; row {index} is empty")
+        else:
+            print(f"    collected; row {index} still reads {seen!r}")
+        return None
     model._slots.pop(index, None)
     model._slots[lands_in] = row_model.Row(row.name, qty=out["qty"],
                                            price=out["price"])
@@ -362,7 +377,10 @@ def resupply_one(model, slot, held, first, last, verbose=True):
     pair = calibration.pair_slot(slot)
     set_name = calibration.FAVOURITE_ITEMS[str(pair)]
     print("")
-    print(f"-- {core}: {held} row(s), threshold {run['rows_threshold']} --")
+    want_rows = calibration.rows_threshold(core)
+    want_min = calibration.buy_min(core)
+    want_max = calibration.buy_max(core)
+    print(f"-- {core}: {held} row(s), threshold {want_rows} --")
 
     calibration.phases_reset()
     with calibration.phase(f"price {core}"):
@@ -386,7 +404,7 @@ def resupply_one(model, slot, held, first, last, verbose=True):
         print(f"  the gap does not clear the threshold; not buying.")
         return None
 
-    rounds_needed = max(1, -(-int(run["buy_max"]) // row_model.MAX_STACK))
+    rounds_needed = max(1, -(-int(want_max) // row_model.MAX_STACK))
     free_rows = [i for i in model.empty() if first <= i <= last]
     if len(free_rows) < rounds_needed:
         print(f"  rows {first}-{last} have {len(free_rows)} free and a "
@@ -408,17 +426,17 @@ def resupply_one(model, slot, held, first, last, verbose=True):
           f"from {landing}, so the {set_name} and the {core} land there")
 
     bought = orders = 0
-    while bought < run["buy_min"]:
-        print(f"  {bought}/{run['buy_min']} {set_name} held")
+    while bought < want_min:
+        print(f"  {bought}/{want_min} {set_name} held")
         orders += 1
         got = None
         for attempt in range(1, int(run["buy_retries"]) + 1):
             try:
                 with calibration.phase(f"buy order {orders}"):
-                    got = buy.buy_row_one(pair, run["buy_min"] - bought,
+                    got = buy.buy_row_one(pair, want_min - bought,
                                           verbose=verbose, held=bought,
-                                          floor_qty=run["buy_min"],
-                                          ceiling=run["buy_max"])
+                                          floor_qty=want_min,
+                                          ceiling=want_max)
                 break
             except buy.Refused as exc:
                 if not getattr(exc, "retryable", False):
@@ -438,8 +456,8 @@ def resupply_one(model, slot, held, first, last, verbose=True):
     if bought <= 0:
         print(f"  nothing bought; not opening the vendor.")
         return None
-    if bought < run["buy_min"]:
-        print(f"  bought {bought} of the {run['buy_min']} wanted.")
+    if bought < want_min:
+        print(f"  bought {bought} of the {want_min} wanted.")
 
     unit_floor, floor_pair = calibration.price_floor(core)
     floor = 0 if unit_floor is None else unit_floor
@@ -545,21 +563,26 @@ def resupply_pass(model, first, last, verbose=True):
     print("")
     print(f"  counting only rows {first}-{last}; rows outside it are not "
           f"repriced and do not count")
-    print(f"  {'core':<30}{'rows':>6}   short of {run['rows_threshold']}")
+    print(f"  {'core':<30}{'rows':>6}{'wants':>7}   short?")
+    short = []
     for slot, count in sorted(held.items()):
         core = calibration.FAVOURITE_ITEMS[str(slot)]
+        wants = calibration.rows_threshold(core)
         mark = ""
-        if count < run["rows_threshold"]:
-            mark = "YES" if convert.cell_for(core) else "not convertible"
-        print(f"  {core:<30}{count:>6}   {mark}")
-    short = [slot for slot, count in sorted(held.items())
-             if count < run["rows_threshold"]
-             and convert.cell_for(calibration.FAVOURITE_ITEMS[str(slot)])
-             and buying_enabled(calibration.FAVOURITE_ITEMS[str(slot)])]
+        if wants is not None and count < wants:
+            if not convert.cell_for(core):
+                mark = "not convertible"
+            elif not buying_enabled(core):
+                mark = "buying off"
+            else:
+                mark = "YES"
+                short.append(slot)
+        print(f"  {core:<30}{count:>6}{('-' if wants is None else wants):>7}"
+              f"   {mark}")
     if not short:
         print("")
-        print(f"  nothing inside rows {first}-{last} is both short of "
-              f"{run['rows_threshold']} row(s) and convertible.")
+        print(f"  nothing inside rows {first}-{last} is short of its row "
+              f"threshold and convertible.")
         return []
     done = []
     try:

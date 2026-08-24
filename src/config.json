@@ -8,9 +8,18 @@
       "Force Core(High)": true,
       "Upgrade Core (Ultimate)": true
     },
-    "rows_threshold": 5,
-    "buy_min": 10,
-    "buy_max": 500,
+    "rows_threshold": {
+      "default": 5,
+      "Chaos Core": 4
+    },
+    "buy_min": {
+      "default": 10,
+      "Chaos Core": 200
+    },
+    "buy_max": {
+      "default": 500,
+      "Chaos Core": 500
+    },
     "buy_retries": 3,
     "price_diff_threshold": {
       "Force Core(Highest)": 10000,
@@ -26,7 +35,7 @@
     "undercut_by": 1,
     "home_notches": 30,
     "for_minutes": 60,
-    "price_check_factor": 2.0
+    "price_check_factor": 1.3
   },
   "debug": {
     "frames": true,

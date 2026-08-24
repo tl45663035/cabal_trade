@@ -42,9 +42,9 @@ DEFAULTS = {
     "resupply": {
         "enabled": False,
         "enable_buying": {},
-        "rows_threshold": 3,
-        "buy_min": 250,
-        "buy_max": 500,
+        "rows_threshold": {"default": 3},
+        "buy_min": {"default": 250},
+        "buy_max": {"default": 500},
         "buy_retries": 3,
         "price_diff_threshold": {},
     },
@@ -1560,13 +1560,33 @@ def calibrate_convert(verbose=True):
             "columns": [int(v) for v in xs], "rows": [int(v) for v in ys]}
 
 
-def price_diff_threshold(core_name):
-    table = load_shared()["resupply"]["price_diff_threshold"] or {}
+def _per_item(key, core_name):
+    run = load_shared()["resupply"]
+    table = run.get(key)
+    if not isinstance(table, dict):
+        return None if table is None else int(table)
     want = re.sub(r"[^a-z0-9]", "", (core_name or "").lower())
     for name, value in table.items():
         if re.sub(r"[^a-z0-9]", "", name.lower()) == want:
             return int(value)
-    return None
+    fallback = table.get("default")
+    return int(fallback) if fallback is not None else None
+
+
+def price_diff_threshold(core_name):
+    return _per_item("price_diff_threshold", core_name)
+
+
+def rows_threshold(core_name):
+    return _per_item("rows_threshold", core_name)
+
+
+def buy_min(core_name):
+    return _per_item("buy_min", core_name)
+
+
+def buy_max(core_name):
+    return _per_item("buy_max", core_name)
 
 
 def calibrate_prices(verbose=True):

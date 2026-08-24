@@ -58,6 +58,10 @@ class Divergence(Exception):
     pass
 
 
+class SlotNeverFilled(Divergence):
+    pass
+
+
 def _key(text):
     return _NOT_ALNUM.sub("", (text or "").lower())
 
@@ -609,7 +613,7 @@ class RowModel:
             time.sleep(POLL_GAP)
         else:
             calibration.snap(f"slot_{row}x{col}_never_filled")
-            raise Divergence(
+            raise SlotNeverFilled(
                 f"tab {WORK_TAB} slot ({row},{col}) is still empty "
                 f"{DIALOG_TIMEOUT:g}s after the withdrawal. Nothing listed.")
 
