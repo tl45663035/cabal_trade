@@ -212,16 +212,19 @@ def panel_quantity(want_price, verbose=False):
         raise Divergence(
             "the net sales box was never measured, so a price cannot be "
             "checked. Recalibrate before listing anything.")
+    box = tuple(_panel()["net_sales_box"])
     for attempt in range(1, PANEL_REREADS + 2):
-        net = read_panel_net() or 0
-        if net and net % want_price == 0:
-            qty = net // want_price
-            if verbose:
-                print(f"    net sales {net:,} is {qty} x {want_price:,}")
-            return qty
+        seen = calibration.read_money_all(calibration.grab(), box)
+        for net in seen:
+            if net and net % want_price == 0:
+                qty = net // want_price
+                if verbose:
+                    print(f"    net sales {net:,} is {qty} x {want_price:,}")
+                return qty
         if verbose:
-            print(f"    read {attempt}: net sales {net:,} is not a whole "
-                  f"number of {want_price:,}")
+            print(f"    read {attempt}: the net sales read "
+                  f"{', '.join(f'{v:,}' for v in seen) or 'nothing'}, and no "
+                  f"reading is a whole number of {want_price:,}")
         time.sleep(PANEL_REREAD_GAP)
     return None
 

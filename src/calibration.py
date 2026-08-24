@@ -812,6 +812,25 @@ def read_money(image, box):
     return None
 
 
+def read_money_all(image, box):
+    box = tuple(box)
+    if not has_ink(image, box):
+        return []
+    seen = []
+    value = _digits(read_line(image, box))
+    if value is not None:
+        seen.append(value)
+    for prepared in (prep_for_text(image, box, OCR_SCALE, OCR_BORDER),
+                     warm_text(image, box, OCR_SCALE, OCR_BORDER),
+                     isolate_digits(image, box)):
+        if prepared is None:
+            continue
+        value = _digits(_tesseract(prepared, ROW_PSM, DIGIT_WHITELIST))
+        if value is not None and value not in seen:
+            seen.append(value)
+    return seen
+
+
 def balance_box():
     band = _box(ALZ_SEARCH_F)
     measured = tuple(load()["inventory"]["alz_box"])

@@ -264,6 +264,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     deadline = time.monotonic() + minutes * 60
     print(f"relisting rows {first}-{last} for {minutes:g} minute(s)")
     passes = done = skipped = 0
+    stopped = None
     started = time.perf_counter()
     while True:
         war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
@@ -275,6 +276,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
             made, missed = relist_pass(model, first, last, verbose=verbose)
         except row_model.Divergence as exc:
             print(f"  STOPPED: {exc}")
+            stopped = exc
             break
         done += made
         skipped += missed
@@ -291,6 +293,8 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     print(f"{passes} pass(es), {done} relisted, {skipped} skipped "
           f"in {span/1000:.0f}s"
           + (f" ({span/done:.0f} ms a row)" if done else ""))
+    if stopped is not None:
+        raise stopped
     return done
 
 
@@ -847,6 +851,8 @@ def main():
         _dispatch(args)
     except KeyboardInterrupt:
         outcome, note = "STOPPED", "interrupted from the keyboard"
+    except row_model.Divergence as exc:
+        outcome, note = "STOPPED", f"{exc}"
     except BaseException as exc:
         outcome = "CRASHED"
         note = f"{type(exc).__name__}: {exc}"
