@@ -14,6 +14,7 @@ SETTLE_PER_BLOCK = _SHARED["timing"]["craft_settle_per_block"]
 SETTLE_BLOCK = _SHARED["timing"]["craft_settle_block"]
 SETTLE_MAX = _SHARED["timing"]["craft_settle_max"]
 CORES_PER_SET = calibration.CRAFT_CORES_PER_SET
+HELD_OF_NEEDED = calibration.HELD_OF_NEEDED
 CORE_NAME = calibration.FAVOURITE_ITEMS[
     str(calibration._craft_slots()[0])]
 
@@ -77,7 +78,9 @@ def select_recipe(verbose=True):
 
 def material_held():
     box = tuple(_cal()["material_box"])
-    return calibration.read_money(calibration.grab(), box)
+    line = calibration.read_line(calibration.grab(), box)
+    held = (line or "").split(HELD_OF_NEEDED)[0]
+    return calibration._digits(held)
 
 
 def await_material(verbose=True):

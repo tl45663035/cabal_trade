@@ -229,6 +229,7 @@ DEFAULTS = {
         "craft_recipe_words": "Chaos Core Set|x3",
         "refresh_word": "Refresh",
         "set_word": "set",
+        "held_of_needed": "/",
         "craft_request_words": "Request|All",
         "craft_request_word": "Repeat",
         "craft_complete_word": "Complete",
@@ -1697,6 +1698,7 @@ def vendor_tab_point(name, image=None):
 CRAFT_TAB = _S["game_facts"]["craft_tab"]
 CRAFT_KEY_SLOT = tuple(_S["game_facts"]["craft_key_slot"])
 REFRESH_WORD = _S["game_facts"]["refresh_word"]
+HELD_OF_NEEDED = _S["game_facts"]["held_of_needed"]
 CRAFT_TIER_WORDS = _S["game_facts"]["craft_tier_words"].split("|")
 CRAFT_RECIPE_WORDS = _S["game_facts"]["craft_recipe_words"].split("|")
 
