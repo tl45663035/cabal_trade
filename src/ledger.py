@@ -63,6 +63,17 @@ def sold(item, price, proceeds, qty, note=None):
 
 
 _PACK = re.compile(r"\bX\s*[\d,]+", re.I)
+_PACK_COUNT = re.compile(r"\bX\s*([\d,]+)", re.I)
+
+
+def _pack(name):
+    found = _PACK_COUNT.search(name or "")
+    if not found:
+        return 1
+    try:
+        return max(1, int(found.group(1).replace(",", "")))
+    except ValueError:
+        return 1
 
 
 def _key(name):
@@ -85,7 +96,7 @@ def run_profit(run=None):
     for item, proceeds, qty in db.execute(
             "SELECT item, proceeds, qty FROM sales WHERE run=? ORDER BY at",
             (run,)):
-        left = qty or 0
+        left = (qty or 0) * _pack(item)
         if not left or not proceeds:
             continue
         each = proceeds / left

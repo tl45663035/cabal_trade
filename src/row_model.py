@@ -527,10 +527,16 @@ class RowModel:
         sold = proceeds // price if price else 0
         if not sold:
             return
-        ledger.sold(listed.name, price, proceeds, sold)
+        each = calibration.market_unit(listed.name)
+        held = round(price / each) if each else 1
+        if held < 1 or not (each and abs(price - each * held)
+                            <= each * (PRICE_CHECK_FACTOR - 1)):
+            held = 1
+        ledger.sold(listed.name, price // held, proceeds, sold * held)
         if verbose:
             print(f"  collected {proceeds:,} Alz for {sold} x "
-                  f"{listed.name!r} at {price:,}")
+                  f"{listed.name!r} at {price:,}"
+                  + (f", {held} to a listing" if held > 1 else ""))
 
     def cancel(self, index, verbose=True, tab_ready=False):
         index = int(index)
