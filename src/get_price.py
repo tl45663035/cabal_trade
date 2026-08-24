@@ -195,7 +195,7 @@ def read_row_one(image=None):
     return calibration.read_line(image, purchase_row_one_box())
 
 
-SET_WORD = "set"
+SET_WORD = calibration.load_shared()["game_facts"]["set_word"]
 
 
 def name_matches(slot, text):

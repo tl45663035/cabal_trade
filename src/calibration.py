@@ -69,6 +69,7 @@ DEFAULTS = {
         "tab_settle": 0.6,
         "refresh_settle": 0.05,
         "poll_gap": 0.0,
+        "stale_sweep": 1.0,
         "panel_reread_gap": 1.0,
         "craft_settle_per_block": 5.0,
         "craft_settle_block": 50,
@@ -187,6 +188,8 @@ DEFAULTS = {
         "panel_field_inset": 30,
         "panel_field_half": 14,
         "panel_label_gap": 22,
+        "word_row_slack": 6,
+        "tier_row_slack": 4,
         "panel_rereads": 5,
         "min_name_overlap": 6,
         "alz_min_digits": 4,
@@ -225,6 +228,7 @@ DEFAULTS = {
         "craft_tier_words": "2000|2999",
         "craft_recipe_words": "Chaos Core Set|x3",
         "refresh_word": "Refresh",
+        "set_word": "set",
         "craft_request_words": "Request|All",
         "craft_request_word": "Repeat",
         "craft_complete_word": "Complete",
@@ -377,7 +381,7 @@ MIN_NAME_OVERLAP = _S["detect"]["min_name_overlap"]
 ALZ_MIN_DIGITS = _S["detect"]["alz_min_digits"]
 SLOT_HALF = _S["detect"]["slot_half"]
 SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
-POLL_GAP = _S["timing"].get("poll_gap", 0.0)
+POLL_GAP = _S["timing"]["poll_gap"]
 
 ALZ_BRIGHT = _DET["alz_bright"]
 ALZ_SATURATION = _DET["alz_saturation"]
@@ -1722,7 +1726,8 @@ def craft_window_open(image=None):
     return re.sub(r"[^a-z]", "", CRAFT_COMPLETE_WORD.lower()) in seen
 
 
-WORD_ROW_SLACK = 6
+WORD_ROW_SLACK = _DET["word_row_slack"]
+TIER_ROW_SLACK = _DET["tier_row_slack"]
 
 
 def _two_word_button(words, pair):
@@ -1797,7 +1802,8 @@ def calibrate_craft(verbose=True):
             f"no {CRAFT_COMPLETE_WORD} button in the craft button band; it "
             f"read {[t for t, _c, _p in buttons]}. Nothing written.")
     at_y = on_row[0][1]
-    right = sorted(p[0] for _t, _c, p in buttons if abs(p[1] - at_y) <= 6
+    right = sorted(p[0] for _t, _c, p in buttons
+                   if abs(p[1] - at_y) <= WORD_ROW_SLACK
                    and p[0] > on_row[0][0])
     tail = right[0] if right else on_row[0][0]
     complete = [(on_row[0][0] + tail) // 2, at_y]
@@ -1807,7 +1813,7 @@ def calibrate_craft(verbose=True):
     recipes = ocr(grab(), _box(tuple(_REG["craft_recipes"])))
     lines = []
     for text, _conf, point in sorted(recipes, key=lambda w: w[2][1]):
-        if point[1] <= tier_y + 4:
+        if point[1] <= tier_y + TIER_ROW_SLACK:
             continue
         for line in lines:
             if abs(line["y"] - point[1]) <= WORD_ROW_SLACK:

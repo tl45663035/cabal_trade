@@ -50,8 +50,8 @@ SUGGESTION_RADIO_DX = _SHARED["detect"]["suggestion_radio_dx"]
 PRICE_CHECK_FACTOR = _SHARED["run"]["price_check_factor"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
-STALE_SWEEP = _T.get("stale_sweep", 1.0)
-POLL_GAP = _T.get("poll_gap", 0.0)
+STALE_SWEEP = _T["stale_sweep"]
+POLL_GAP = _T["poll_gap"]
 
 _NOT_ALNUM = re.compile(r"[^a-z0-9]")
 
