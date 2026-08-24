@@ -51,7 +51,7 @@ DEFAULTS = {
     "debug": {
         "frames": False,
         "keep_frames": 2000,
-        "video_fps": 2,
+        "video_fps": 15,
         "video_seconds": 180,
         "keep_videos": 5,
         "video_scale": 0.5,
@@ -1267,23 +1267,30 @@ def calibrate_purchase(shop, verbose=True):
     time.sleep(TAB_SETTLE)
     park()
     time.sleep(PARK_SETTLE)
-    image = grab()
-
     out = {}
 
     sort_band = _box(PURCHASE_SORT_BAND_F)
-    sort_words = ocr(image, sort_band)
+    deadline = time.monotonic() + DIALOG_TIMEOUT
+    image, sort_words, seen, anchor = None, [], "", None
+    while True:
+        image = grab()
+        sort_words = ocr(image, sort_band)
+        seen = " ".join(t for t, _, _ in sort_words)
+        anchor = next((p for t, _c, p in sort_words
+                       if "price" in re.sub(r"[^a-z]", "", t.lower())), None)
+        if anchor is not None or time.monotonic() >= deadline:
+            break
+        say(f"  the sort band reads {seen!r}; the Purchase tab is still "
+            f"arriving")
+        time.sleep(POLL_GAP)
     if not sort_words:
         raise RuntimeError(
             f"nothing read in the sort band {sort_band}. The Purchase tab may "
             f"not have opened, or the band is wrong for this screen.")
-    seen = " ".join(t for t, _, _ in sort_words)
-    anchor = next((p for t, _c, p in sort_words
-                   if "price" in re.sub(r"[^a-z]", "", t.lower())), None)
     if anchor is None:
         raise RuntimeError(
-            f"no word naming the sort was read in {sort_band}; it read "
-            f"{seen!r}. Nothing written.")
+            f"no word naming the sort was read in {sort_band} within "
+            f"{DIALOG_TIMEOUT:g}s; it read {seen!r}. Nothing written.")
     out["purchase_sort_region"] = [anchor[0] - SORT_PAD_LEFT,
                                    anchor[1] - SORT_PAD_Y,
                                    anchor[0] + SORT_PAD_RIGHT,
