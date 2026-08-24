@@ -681,6 +681,7 @@ def _digits(text):
     cleaned = re.sub(_ALZ_WORD, "", text or "", flags=re.IGNORECASE)
     if _WEDGED.search(cleaned):
         return None
+    cleaned = cleaned.replace(".", ",")
     grouped = re.sub(r"[^0-9,]", "", cleaned).strip(",")
     if "," in grouped and not _GROUPED.match(grouped):
         return None

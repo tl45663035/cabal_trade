@@ -195,12 +195,18 @@ def read_row_one(image=None):
     return calibration.read_line(image, purchase_row_one_box())
 
 
+SET_WORD = "set"
+
+
 def name_matches(slot, text):
     want = expected_item(slot)
     if not want:
         return True
     fold = lambda v: "".join(ch for ch in (v or "").lower() if ch.isalnum())
-    return fold(want) in fold(text)
+    wanted, seen = fold(want), fold(text)
+    if SET_WORD in seen and SET_WORD not in wanted:
+        return False
+    return wanted in seen
 
 
 def reopen_shop(slot, verbose=True):
