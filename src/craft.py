@@ -205,7 +205,10 @@ def craft_sets(verbose=True):
         used += took
         left = material_held() or 0
         say(f"  round {rounds}: {took} Core(s) went, {left} still held")
-        if took <= 0 or left < CORES_PER_SET:
+        if took <= 0 or left:
+            if left:
+                say(f"  {' '.join(calibration.CRAFT_REQUEST_WORDS)} left "
+                    f"{left} behind, so it will not take them")
             break
     arrived = sorted(calibration.occupied_slots() - pre)
     if arrived:
