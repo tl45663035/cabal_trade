@@ -287,13 +287,25 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
             f"the Alz balance would not read after {CONFIRM_WORD}. Whether "
             f"{want_total:,} was spent is unknown -- check by hand.")
     spent = before_alz - after_alz
+    for attempt in range(1, REREADS + 1):
+        if spent == want_total:
+            break
+        say(f"    balance read {attempt}: {after_alz:,} makes the spend "
+            f"{spent:,}, and the dialog priced it at {want_total:,}; "
+            f"reading again")
+        time.sleep(REREAD_GAP)
+        again = get_alz.read_balance()
+        if again is None:
+            continue
+        after_alz, spent = again, before_alz - again
     per_unit = spent // units if units else 0
     say(f"    balance after  {after_alz:,}; spent {spent:,} "
         f"({per_unit:,} a core)")
     if spent != want_total:
         raise Refused(
             f"{spent:,} left the account for an order the dialog priced at "
-            f"{want_total:,}. Balance {before_alz:,} -> {after_alz:,}.")
+            f"{want_total:,} after {REREADS} reads. Balance {before_alz:,} -> "
+            f"{after_alz:,}. The pack was bought; the Sets are in the bag.")
     say(f"    bought {asked} x {offer['name']} = {units} core(s) for "
         f"{want_total:,}")
     ledger.bought(offer["name"], per_unit, spent, units)
