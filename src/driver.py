@@ -650,11 +650,11 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                           settle=0.0)
         time.sleep(row_model.TAB_SETTLE)
 
-    work = tuple(calibration.WORK_SLOT)
+    work = tuple(made["slot"])
     if work not in calibration.occupied_slots():
         raise NotReady(
-            f"tab {row_model.WORK_TAB} slot {work} is empty after the craft "
-            f"and the compress; the {set_name} cannot be found to list.")
+            f"tab {row_model.WORK_TAB} slot {work}, where the {set_name} was "
+            f"compressed, is empty; there is nothing to list.")
     held_sets = max(1, int(made["made"]))
     unit_cost = -(-paid // bought) if bought else core_row["unit_price"]
     floor = unit_cost * held_sets

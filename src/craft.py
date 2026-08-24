@@ -149,11 +149,11 @@ def complete_all(verbose=True):
     return point
 
 
-def compress(verbose=True):
+def compress(slot, verbose=True):
     say = print if verbose else (lambda *a: None)
-    point = calibration.inventory_slot_point(*calibration.WORK_SLOT)
-    say(f"  compressing tab {calibration.WORK_TAB} slot "
-        f"{calibration.WORK_SLOT} at {point}")
+    point = calibration.inventory_slot_point(*slot)
+    say(f"  compressing tab {calibration.WORK_TAB} slot {tuple(slot)} at "
+        f"{point}")
     calibration.alt_click(*point)
     time.sleep(TAB_SETTLE)
     return point
@@ -187,6 +187,8 @@ def craft_sets(verbose=True):
     say(f"  {before} Chaos Core(s) held, {CORES_PER_SET} to a craft")
     with calibration.step(f"select inventory tab {calibration.WORK_TAB}"):
         show_work_tab()
+    with calibration.step("read the slots before any Set arrives"):
+        pre = calibration.occupied_slots()
     used = 0
     rounds = 0
     while True:
@@ -205,9 +207,18 @@ def craft_sets(verbose=True):
         say(f"  round {rounds}: {took} Core(s) went, {left} still held")
         if took <= 0 or left < CORES_PER_SET:
             break
+    arrived = sorted(calibration.occupied_slots() - pre)
+    if arrived:
+        landed = arrived[0]
+        say(f"  the Sets arrived in {[tuple(a) for a in arrived]}")
+    else:
+        landed = tuple(calibration.WORK_SLOT)
+        say(f"  no new slot filled, so the Sets can only have stacked into "
+            f"{landed}")
     with calibration.step("compress the crafted Sets"):
-        compress(verbose=verbose)
+        compress(landed, verbose=verbose)
     made = used
     say(f"  crafted {made} Set(s) from {used} Core(s)")
     calibration.steps_table(f"craft {made} Set(s)")
-    return {"held": before, "used": used, "made": made}
+    return {"held": before, "used": used, "made": made,
+            "slot": tuple(landed)}
