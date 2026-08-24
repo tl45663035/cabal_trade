@@ -365,12 +365,24 @@ def buying_enabled(core_name):
     return False
 
 
+def counts_toward():
+    where = {}
+    for slot in core_slots():
+        where[slot] = slot
+        if craft_route(calibration.FAVOURITE_ITEMS[str(slot)]):
+            pair = calibration.pair_slot(slot)
+            if pair is not None:
+                where[pair] = slot
+    return where
+
+
 def rows_by_core(model, first, last):
     held = {slot: 0 for slot in core_slots()}
+    where = counts_toward()
     for index, row in (model._slots or {}).items():
         if row is None or not first <= index <= last:
             continue
-        slot = calibration.favourite_slot_of(row.name)
+        slot = where.get(calibration.favourite_slot_of(row.name))
         if slot in held:
             held[slot] += 1
     return held
