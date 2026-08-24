@@ -1550,6 +1550,9 @@ def craft_window_open(image=None):
     return re.sub(r"[^a-z]", "", CRAFT_COMPLETE_WORD.lower()) in seen
 
 
+WORD_ROW_SLACK = 6
+
+
 def _two_word_button(words, pair):
     first = re.sub(r"[^a-z]", "", pair[0].lower())
     second = re.sub(r"[^a-z]", "", pair[-1].lower())
@@ -1557,7 +1560,7 @@ def _two_word_button(words, pair):
         if re.sub(r"[^a-z]", "", text.lower()) != first:
             continue
         after = [p for t, _c, p in words
-                 if abs(p[1] - point[1]) <= 6 and p[0] > point[0]
+                 if abs(p[1] - point[1]) <= WORD_ROW_SLACK and p[0] > point[0]
                  and re.sub(r"[^a-z]", "", t.lower()) == second]
         if after:
             return [(point[0] + after[0][0]) // 2, point[1]]
@@ -1627,34 +1630,43 @@ def calibrate_craft(verbose=True):
     tail = right[0] if right else on_row[0][0]
     complete = [(on_row[0][0] + tail) // 2, at_y]
 
-    request = _two_word_button(buttons, CRAFT_REQUEST_WORDS)
-    if request is None:
-        raise RuntimeError(
-            f"no {' '.join(CRAFT_REQUEST_WORDS)} button in the craft button "
-            f"band; it read {[t for t, _c, _p in buttons]}. Nothing written.")
-
     click(left, tier_y)
     time.sleep(TAB_SETTLE)
     recipes = ocr(grab(), _box(tuple(_REG["craft_recipes"])))
-    lines = {}
-    for text, _conf, point in recipes:
-        lines.setdefault(point[1], []).append((point[0], text))
-    recipe = None
-    for y in sorted(lines):
-        if y <= tier_y + 4:
+    lines = []
+    for text, _conf, point in sorted(recipes, key=lambda w: w[2][1]):
+        if point[1] <= tier_y + 4:
             continue
-        words = [t for _x, t in sorted(lines[y])]
-        flat = re.sub(r"[^a-z0-9]", "", " ".join(words).lower())
+        for line in lines:
+            if abs(line["y"] - point[1]) <= WORD_ROW_SLACK:
+                line["words"].append((point[0], text))
+                break
+        else:
+            lines.append({"y": point[1], "words": [(point[0], text)]})
+    recipe = None
+    for line in lines:
+        flat = re.sub(r"[^a-z0-9]", "",
+                      " ".join(t for _x, t in sorted(line["words"])).lower())
         if all(re.sub(r"[^a-z0-9]", "", w.lower()) in flat
                for w in CRAFT_RECIPE_WORDS):
-            xs = [x for x, _t in lines[y]]
-            recipe = [(min(xs) + max(xs)) // 2, y]
+            xs = [x for x, _t in line["words"]]
+            recipe = [(min(xs) + max(xs)) // 2, line["y"]]
             break
     if recipe is None:
         raise RuntimeError(
             f"no recipe under the {'-'.join(CRAFT_TIER_WORDS)} tier reads "
             f"{CRAFT_RECIPE_WORDS}; it read "
             f"{[t for t, _c, _p in recipes]}. Nothing written.")
+
+    click(*recipe)
+    time.sleep(TAB_SETTLE)
+    chosen = ocr(grab(), _box(tuple(_REG["craft_buttons"])))
+    request = _two_word_button(chosen, CRAFT_REQUEST_WORDS)
+    if request is None:
+        raise RuntimeError(
+            f"no {' '.join(CRAFT_REQUEST_WORDS)} button after choosing "
+            f"{' '.join(CRAFT_RECIPE_WORDS)}; the band read "
+            f"{[t for t, _c, _p in chosen]}. Nothing written.")
 
     out = {"tier": [left, tier_y],
            "recipe": recipe,
