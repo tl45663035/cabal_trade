@@ -659,11 +659,12 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     unit_cost = -(-paid // bought) if bought else core_row["unit_price"]
     floor = unit_cost * held_sets
     why = f"{held_sets} x the {unit_cost:,} a {core} cost"
-    per_set = calibration.undercut(set_row["unit_price"])
-    want_price = per_set * held_sets
+    at_market = set_row["unit_price"] * held_sets
+    want_price = calibration.undercut(at_market)
     print(f"  listing {held_sets} {set_name} from the compressed slot {work}")
-    print(f"  the board's cheapest is {set_row['unit_price']:,} a Set, so the "
-          f"bundle goes out at {per_set:,} x {held_sets} = {want_price:,}")
+    print(f"  the board's cheapest is {set_row['unit_price']:,} a Set, so a "
+          f"bundle of {held_sets} is worth {at_market:,}; listing at "
+          f"{want_price:,}")
     print(f"  it cost {unit_cost:,} a Set to make, so the bundle floor is "
           f"{floor:,}")
 
