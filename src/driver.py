@@ -442,7 +442,7 @@ def resupply_one(model, slot, held, first, last, verbose=True):
     print(f"  tab {calibration.CONVERT_INVENTORY_TAB} is showing and free "
           f"from {landing}, so the {set_name} and the {core} land there")
 
-    bought = orders = 0
+    bought = orders = paid = 0
     while bought < want_min:
         print(f"  {bought}/{want_min} {set_name} held")
         orders += 1
@@ -472,6 +472,7 @@ def resupply_one(model, slot, held, first, last, verbose=True):
             print(f"  the last order bought nothing; stopping.")
             break
         bought += got["bought"]
+        paid += got["spent"]
     if bought <= 0:
         print(f"  nothing bought; not opening the vendor.")
         return None
@@ -479,8 +480,12 @@ def resupply_one(model, slot, held, first, last, verbose=True):
         print(f"  bought {bought} of the {want_min} wanted.")
 
     unit_floor, floor_pair = calibration.price_floor(core)
-    floor = 0 if unit_floor is None else unit_floor
-    why = f"a {floor_pair} costs {unit_floor:,}" if unit_floor else ""
+    if bought and paid:
+        floor = -(-paid // bought)
+        why = f"a {set_name} cost {floor:,} this pass"
+    else:
+        floor = 0 if unit_floor is None else unit_floor
+        why = f"a {floor_pair} costs {unit_floor:,}" if unit_floor else ""
     rows, listed_total, converted_total = [], 0, 0
     left_to_convert = bought
     max_rounds = max(1, -(-bought // row_model.MAX_STACK)) + 1
@@ -609,7 +614,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     if target != want_min:
         print(f"  buy_min {want_min} is not a whole number of batches of "
               f"{batch}; buying {target}")
-    bought = orders = 0
+    bought = orders = paid = 0
 
     def order(want):
         nonlocal orders
@@ -637,6 +642,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         if got is None or got["bought"] <= 0:
             break
         bought += got["bought"]
+        paid += got["spent"]
 
     while bought % batch:
         short = batch - (bought % batch)
@@ -646,6 +652,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         if got is None or got["bought"] <= 0:
             break
         bought += got["bought"]
+        paid += got["spent"]
 
     if bought <= 0:
         print(f"  nothing bought; not opening the craft window.")
@@ -678,8 +685,12 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
             f"tab {row_model.WORK_TAB} slot {work}, where the {set_name} was "
             f"compressed, is empty; there is nothing to list.")
     unit_floor, floor_pair = calibration.price_floor(set_name)
-    unit_cost = unit_floor or core_row["unit_price"]
-    why = f"a {floor_pair} costs {unit_cost:,}, a Set at a time"
+    if bought and paid:
+        unit_cost = -(-paid // bought)
+        why = f"a {core} cost {unit_cost:,} this pass, a Set at a time"
+    else:
+        unit_cost = unit_floor or core_row["unit_price"]
+        why = f"a {floor_pair} costs {unit_cost:,}, a Set at a time"
     print(f"  listing the {set_name} compressed into {work} from "
           f"{made['used']} {core}(s)")
     print(f"  the board's cheapest is {set_row['unit_price']:,} a Set, and the "
