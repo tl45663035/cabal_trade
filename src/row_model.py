@@ -609,7 +609,7 @@ class RowModel:
 
     def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
                   lands_in=None, expect_item=None,
-                  expect_price=None):
+                  expect_price=None, unit_market=None, floor_each=0):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -658,6 +658,28 @@ class RowModel:
             raise Divergence(
                 f"nothing loaded into the shop slot from ({row},{col}) after "
                 f"{LOAD_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
+        if unit_market:
+            count = round(suggested / unit_market)
+            if count < 1:
+                raise Divergence(
+                    f"the panel prices what loaded from ({row},{col}) at "
+                    f"{suggested:,}, under the {unit_market:,} a single one "
+                    f"goes for. Nothing has been listed.")
+            whole = unit_market * count
+            if not (whole / PRICE_CHECK_FACTOR <= suggested
+                    <= whole * PRICE_CHECK_FACTOR):
+                calibration.snap(f"panel_prices_{suggested}")
+                raise Divergence(
+                    f"the panel prices what loaded from ({row},{col}) at "
+                    f"{suggested:,}, which is not a whole number of "
+                    f"{unit_market:,} -- {count} would be {whole:,}. Nothing "
+                    f"has been listed.")
+            if floor_each:
+                floor = floor_each * count
+            if verbose:
+                print(f"  the panel prices the bundle at {suggested:,}, "
+                      f"{count} x {unit_market:,}"
+                      + (f"; the floor is {floor:,}" if floor else ""))
         if expect_item or expect_price:
             expected = expect_price or (calibration.market_unit(expect_item)
                                         * max(1, pack_size(expect_item)))

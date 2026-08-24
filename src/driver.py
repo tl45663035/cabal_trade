@@ -655,18 +655,12 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         raise NotReady(
             f"tab {row_model.WORK_TAB} slot {work}, where the {set_name} was "
             f"compressed, is empty; there is nothing to list.")
-    held_sets = max(1, int(made["made"]))
     unit_cost = -(-paid // bought) if bought else core_row["unit_price"]
-    floor = unit_cost * held_sets
-    why = f"{held_sets} x the {unit_cost:,} a {core} cost"
-    at_market = set_row["unit_price"] * held_sets
-    want_price = calibration.undercut(at_market)
-    print(f"  listing {held_sets} {set_name} from the compressed slot {work}")
-    print(f"  the board's cheapest is {set_row['unit_price']:,} a Set, so a "
-          f"bundle of {held_sets} is worth {at_market:,}; listing at "
-          f"{want_price:,}")
-    print(f"  it cost {unit_cost:,} a Set to make, so the bundle floor is "
-          f"{floor:,}")
+    why = f"the {unit_cost:,} a {core} cost, a Set at a time"
+    print(f"  listing the {set_name} compressed into {work}")
+    print(f"  the board's cheapest is {set_row['unit_price']:,} a Set, and the "
+          f"panel scales that to whatever the bundle holds")
+    print(f"  it cost {unit_cost:,} a Core, so no Set goes out under that")
 
     rows, listed_total = [], 0
     while work in calibration.occupied_slots():
@@ -677,10 +671,10 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
             break
         lands_in = min(empty)
         with calibration.phase(f"list {set_name} from {work}"):
-            listed = model.list_slot(*work, price=want_price, floor=floor,
-                                     why=why, verbose=verbose,
+            listed = model.list_slot(*work, why=why, verbose=verbose,
                                      lands_in=lands_in,
-                                     expect_price=set_row["total"])
+                                     unit_market=set_row["unit_price"],
+                                     floor_each=unit_cost)
         model._slots[lands_in] = row_model.Row(set_name, qty=listed["qty"],
                                                price=listed["price"])
         rows.append(lands_in)
