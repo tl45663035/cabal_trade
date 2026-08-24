@@ -189,7 +189,7 @@ DEFAULTS = {
         "min_name_overlap": 6,
         "alz_min_digits": 4,
         "slot_half": 24,
-        "slot_occupied_stdev": 8.0,
+        "slot_occupied_stdev": 30.0,
         "panel_moved_slack": 30,
     },
     "text": {

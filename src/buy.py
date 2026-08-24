@@ -150,12 +150,13 @@ def await_balance(differs_from=None, timeout=None):
 
 
 def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
-                ceiling=None):
+                ceiling=None, sells_at=0, gap=None):
     steps_reset()
     outcome = "REFUSED"
     try:
         out = _buy_row_one(slot, want, verbose=verbose, held=held,
-                           floor_qty=floor_qty, ceiling=ceiling)
+                           floor_qty=floor_qty, ceiling=ceiling,
+                           sells_at=sells_at, gap=gap)
         outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
         return out
     finally:
@@ -164,7 +165,7 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
 
 def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
-                 ceiling=None):
+                 ceiling=None, sells_at=0, gap=None):
     say = print if verbose else (lambda *a: None)
     with step("get_price: search the favourite and read row 1"):
         offer = get_price.get_price(int(slot), verbose=False)
@@ -174,6 +175,14 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     name = calibration.FAVOURITE_ITEMS[str(int(slot))]
     say(f"  row 1 offers {offer['name']!r} x{offer['qty']} at "
         f"{offer['price']:,} ({offer['unit_price']:,}/unit)")
+    if sells_at and gap is not None:
+        now = sells_at - offer["unit_price"]
+        if now <= gap:
+            raise Refused(
+                f"row 1 asks {offer['unit_price']:,} and the core sells at "
+                f"{sells_at:,}, a gap of {now:,} against the {gap:,} wanted. "
+                f"Nothing bought.")
+        say(f"    row 1 leaves {now:,} a core against the {gap:,} wanted")
 
     with step(f"click the row at {row_point()}"):
         calibration.click(*row_point(), settle=FIELD_SETTLE)
@@ -202,11 +211,10 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     want_packs = max(1, -(-int(want) // pack))
     asked = min(want_packs, int(detail["qty_max"]))
     if ceiling is not None and held + pack * asked > ceiling:
-        if held < floor_qty:
-            say(f"    {held} held, under the {floor_qty} minimum: taking row "
-                f"1's bundle of {pack} even though {held + pack * asked} "
-                f"passes the {ceiling} ceiling -- a bundle cannot be split "
-                f"and buying is row 1 only")
+        if held <= 0:
+            say(f"    nothing held yet: taking row 1's bundle of {pack} even "
+                f"though {held + pack * asked} passes the {ceiling} ceiling "
+                f"-- a bundle cannot be split and buying is row 1 only")
         else:
             fits = max(0, ceiling - held) // pack
             if fits < 1:

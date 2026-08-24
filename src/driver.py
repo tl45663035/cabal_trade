@@ -453,7 +453,9 @@ def resupply_one(model, slot, held, first, last, verbose=True):
                     got = buy.buy_row_one(pair, want_min - bought,
                                           verbose=verbose, held=bought,
                                           floor_qty=want_min,
-                                          ceiling=want_max)
+                                          ceiling=want_max,
+                                          sells_at=core_row["unit_price"],
+                                          gap=threshold)
                 break
             except buy.Refused as exc:
                 if not getattr(exc, "retryable", False):
@@ -513,6 +515,14 @@ def resupply_one(model, slot, held, first, last, verbose=True):
               f"{out['slots'][0]} to {out['slots'][-1]}")
         remaining = list(out["slots"])
         while remaining:
+            here = calibration.occupied_slots()
+            gone = [w for w in remaining if w not in here]
+            if gone:
+                print(f"  {len(gone)} slot(s) emptied while listing; the "
+                      f"{core} in them went out with an earlier row")
+                remaining = [w for w in remaining if w in here]
+                if not remaining:
+                    break
             empty = [i for i in model.empty() if first <= i <= last]
             if not empty:
                 print(f"  rows {first}-{last} are full; {len(remaining)} "
@@ -609,7 +619,9 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                 with calibration.phase(f"buy order {orders}"):
                     return buy.buy_row_one(slot, want, verbose=verbose,
                                            held=bought, floor_qty=target,
-                                           ceiling=want_max)
+                                           ceiling=want_max,
+                                           sells_at=set_row["unit_price"],
+                                           gap=threshold)
             except buy.Refused as exc:
                 if not getattr(exc, "retryable", False):
                     print(f"  stopping: {exc}")
