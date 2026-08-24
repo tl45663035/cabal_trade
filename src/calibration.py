@@ -780,7 +780,10 @@ _WEDGED = re.compile(r"\d[A-Za-z]|[A-Za-z]\d")
 
 
 def _digits(text):
-    cleaned = re.sub(_ALZ_WORD, "", text or "", flags=re.IGNORECASE)
+    cleaned = text or ""
+    label = re.search(_ALZ_WORD, cleaned, flags=re.IGNORECASE)
+    if label:
+        cleaned = cleaned[:label.start()]
     if _WEDGED.search(cleaned):
         return None
     cleaned = cleaned.replace(".", ",")
