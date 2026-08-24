@@ -230,7 +230,6 @@ DEFAULTS = {
         "refresh_word": "Refresh",
         "set_word": "set",
         "held_of_needed": "/",
-        "alz_label": "alz",
         "craft_request_words": "Request|All",
         "craft_request_word": "Repeat",
         "craft_complete_word": "Complete",
@@ -1701,7 +1700,6 @@ CRAFT_TAB = _S["game_facts"]["craft_tab"]
 CRAFT_KEY_SLOT = tuple(_S["game_facts"]["craft_key_slot"])
 REFRESH_WORD = _S["game_facts"]["refresh_word"]
 HELD_OF_NEEDED = _S["game_facts"]["held_of_needed"]
-ALZ_LABEL = _S["game_facts"]["alz_label"]
 CRAFT_TIER_WORDS = _S["game_facts"]["craft_tier_words"].split("|")
 CRAFT_RECIPE_WORDS = _S["game_facts"]["craft_recipe_words"].split("|")
 
@@ -2033,7 +2031,7 @@ def calibrate_panel(verbose=True):
 
     def ends_at_label(y):
         here = [p[0] for t, _c, p in words
-                if t.strip().lower() == ALZ_LABEL
+                if re.fullmatch(_ALZ_WORD, t.strip(), re.IGNORECASE)
                 and abs(p[1] - y) <= PANEL_FIELD_HALF]
         return max(here) + PANEL_LABEL_GAP if here else right
 
