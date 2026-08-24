@@ -230,6 +230,7 @@ DEFAULTS = {
         "refresh_word": "Refresh",
         "set_word": "set",
         "held_of_needed": "/",
+        "alz_label": "alz",
         "craft_request_words": "Request|All",
         "craft_request_word": "Repeat",
         "craft_complete_word": "Complete",
@@ -1700,6 +1701,7 @@ CRAFT_TAB = _S["game_facts"]["craft_tab"]
 CRAFT_KEY_SLOT = tuple(_S["game_facts"]["craft_key_slot"])
 REFRESH_WORD = _S["game_facts"]["refresh_word"]
 HELD_OF_NEEDED = _S["game_facts"]["held_of_needed"]
+ALZ_LABEL = _S["game_facts"]["alz_label"]
 CRAFT_TIER_WORDS = _S["game_facts"]["craft_tier_words"].split("|")
 CRAFT_RECIPE_WORDS = _S["game_facts"]["craft_recipe_words"].split("|")
 
@@ -2028,6 +2030,13 @@ def calibrate_panel(verbose=True):
 
     left = box[0] + PANEL_FIELD_INSET
     right = alz[0] + PANEL_LABEL_GAP
+
+    def ends_at_label(y):
+        here = [p[0] for t, _c, p in words
+                if t.strip().lower() == ALZ_LABEL
+                and abs(p[1] - y) <= PANEL_FIELD_HALF]
+        return max(here) + PANEL_LABEL_GAP if here else right
+
     out = {
         "panel_box": list(box),
         "price_field": [left, alz[1] - PANEL_FIELD_HALF,
@@ -2037,12 +2046,14 @@ def calibrate_panel(verbose=True):
         "qty_box": [left, qty[1] - PANEL_FIELD_HALF,
                     right, qty[1] + PANEL_FIELD_HALF],
         "suggestion_boxes": [[left, y - PANEL_FIELD_HALF,
-                              right, y + PANEL_FIELD_HALF] for y in rows],
+                              ends_at_label(y), y + PANEL_FIELD_HALF]
+                             for y in rows],
         "register_button": [button[0], button[1]],
     }
     if net_row is not None:
         out["net_sales_box"] = [left, net_row - PANEL_FIELD_HALF,
-                                right, net_row + PANEL_FIELD_HALF]
+                                ends_at_label(net_row),
+                                net_row + PANEL_FIELD_HALF]
     say(f"  price field {out['price_field']} (click {out['price_point']})")
     say(f"  quantity box {out['qty_box']} (click {out['qty_point']})")
     say(f"  {len(rows)} suggested price row(s) at y {rows}")
