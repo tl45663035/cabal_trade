@@ -587,7 +587,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     if target != want_min:
         print(f"  buy_min {want_min} is not a whole number of batches of "
               f"{batch}; buying {target}")
-    bought = orders = 0
+    bought = orders = paid = 0
 
     def order(want):
         nonlocal orders
@@ -613,6 +613,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         if got is None or got["bought"] <= 0:
             break
         bought += got["bought"]
+        paid += got["spent"]
 
     while bought % batch:
         short = batch - (bought % batch)
@@ -622,6 +623,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         if got is None or got["bought"] <= 0:
             break
         bought += got["bought"]
+        paid += got["spent"]
 
     if bought <= 0:
         print(f"  nothing bought; not opening the craft window.")
@@ -653,16 +655,17 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         raise NotReady(
             f"tab {row_model.WORK_TAB} slot {work} is empty after the craft "
             f"and the compress; the {set_name} cannot be found to list.")
-    unit_floor, floor_pair = calibration.price_floor(set_name)
     held_sets = max(1, int(made["made"]))
-    floor = 0 if unit_floor is None else unit_floor * held_sets
-    why = (f"{held_sets} x a {floor_pair} at {unit_floor:,}"
-           if unit_floor else "")
-    print(f"  listing {made['made']} {set_name} from the compressed slot "
-          f"{work}")
-    if floor:
-        print(f"  the whole bundle cost {floor:,} to make, so nothing goes "
-              f"out under that")
+    unit_cost = -(-paid // bought) if bought else core_row["unit_price"]
+    floor = unit_cost * held_sets
+    why = f"{held_sets} x the {unit_cost:,} a {core} cost"
+    per_set = calibration.undercut(set_row["unit_price"])
+    want_price = per_set * held_sets
+    print(f"  listing {held_sets} {set_name} from the compressed slot {work}")
+    print(f"  the board's cheapest is {set_row['unit_price']:,} a Set, so the "
+          f"bundle goes out at {per_set:,} x {held_sets} = {want_price:,}")
+    print(f"  it cost {unit_cost:,} a Set to make, so the bundle floor is "
+          f"{floor:,}")
 
     rows, listed_total = [], 0
     while work in calibration.occupied_slots():
@@ -673,8 +676,9 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
             break
         lands_in = min(empty)
         with calibration.phase(f"list {set_name} from {work}"):
-            listed = model.list_slot(*work, floor=floor, why=why,
-                                     verbose=verbose, lands_in=lands_in,
+            listed = model.list_slot(*work, price=want_price, floor=floor,
+                                     why=why, verbose=verbose,
+                                     lands_in=lands_in,
                                      expect_price=set_row["total"])
         model._slots[lands_in] = row_model.Row(set_name, qty=listed["qty"],
                                                price=listed["price"])
