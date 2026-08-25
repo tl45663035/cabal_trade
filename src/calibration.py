@@ -29,7 +29,7 @@ DEFAULTS = {
         "home_notches": 30,
         "for_minutes": 60,
         "price_check_factor": 2.0,
-        "stop_key_presses": 3,
+        "stop_key_presses": 4,
         "stop_key_window": 1.5,
     },
     "war": {
