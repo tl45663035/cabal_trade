@@ -6,6 +6,7 @@ import traceback
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "src"))
 import calibration as C
+import open_inventory as inv
 
 OUT = os.path.join(HERE, "probe_out")
 os.makedirs(OUT, exist_ok=True)
@@ -94,6 +95,43 @@ for name, area in (("right half", (w // 2, 0, w, h)),
             % ((hit[0] - x) / cw, (hit[1] - y) / ch,
                (hit[2] - x) / cw, (hit[3] - y) / ch))
         break
+
+rule("bringing the game forward and opening the Inventory")
+try:
+    say("focus_game    :", inv.focus_game())
+except Exception as exc:
+    say("focus_game    : FAILED", type(exc).__name__, exc)
+
+import time
+for attempt in (1, 2):
+    image = C.grab()
+    if C.inventory_open(image) is not None:
+        say(f"the Inventory is open (seen on look {attempt})")
+        break
+    say(f"look {attempt}: no balance readable, pressing I")
+    try:
+        inv.press(inv.VK_I)
+    except Exception as exc:
+        say("  pressing I FAILED", type(exc).__name__, exc)
+        break
+    time.sleep(C.load_shared()["timing"]["dialog_timeout"] / 8)
+image = C.grab()
+image.save(os.path.join(OUT, "screen_with_inventory.png"))
+say("saved screen_with_inventory.png")
+
+band = C._box(C.ALZ_SEARCH_F)
+say("balance in band now:", C.find_alz(image, band))
+w2, h2 = image.size
+hit = C.find_alz(image, (0, 0, w2, h2))
+say("balance anywhere   :", hit)
+if hit:
+    wide = (hit[0] - 4, hit[1] - 6, hit[2] + 60, hit[3] + 6)
+    say("  reads            :", repr(C.read_line(image, wide)))
+    keep(image, wide, "balance_found")
+    x, y, cw, ch = C._client_rect()
+    say("  as fractions     : [%.4f, %.4f, %.4f, %.4f]"
+        % ((hit[0] - x) / cw, (hit[1] - y) / ch,
+           (hit[2] - x) / cw, (hit[3] - y) / ch))
 
 rule("the panels the code looks for")
 for probe in ("inventory_open", "_trade_window_open", "vendor_open",
