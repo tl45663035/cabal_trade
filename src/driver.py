@@ -361,7 +361,7 @@ def do_resupply(slot, verbose=True):
     return out
 
 
-def do_craft(verbose=True):
+def do_craft_chaos(verbose=True):
     run = calibration.load_shared()["run"]
     first, last = int(run["relist_from"]), int(run["relist_to"])
     core_slot, made_slot = calibration._craft_slots()
@@ -375,7 +375,7 @@ def do_craft(verbose=True):
     register_tab(verbose=verbose)
     model = seed(verbose=verbose)
     print("")
-    print(f"-- crafting whatever {core} is held into {set_name} --")
+    print(f"-- recovery: craft whatever {core} is held into {set_name} --")
 
     calibration.phases_reset()
     with calibration.phase(f"price {core}"):
@@ -386,7 +386,6 @@ def do_craft(verbose=True):
         print(f"  {core if core_row is None else set_name} would not price, "
               f"so there is no market to list against.")
         return None
-
     free = [i for i in model.empty() if first <= i <= last]
     if not free:
         print(f"  rows {first}-{last} are full, and a crafted {set_name} with "
@@ -396,15 +395,160 @@ def do_craft(verbose=True):
     print(f"  {len(free)} row(s) free inside {first}-{last}")
 
     started = time.perf_counter()
-    made, rows, listed_total = craft_and_list(
-        model, core, set_name, core_row, set_row, first, last,
-        verbose=verbose)
+    with calibration.phase("close the Agent Shop"):
+        calibration.close_everything()
+    with calibration.phase(f"craft {core} into {set_name}"):
+        made = craft.craft_sets(verbose=verbose)
+    with calibration.phase("close the craft window"):
+        craft.close_craft()
+    with calibration.phase("reopen the Agent Shop"):
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady("the Agent Shop would not reopen after crafting.")
+    with calibration.phase("select the Register tab"):
+        register_tab(verbose=verbose)
+    with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
+                          settle=0.0)
+        time.sleep(row_model.TAB_SETTLE)
+
+    work = tuple(made["slot"])
+    if work not in calibration.occupied_slots():
+        raise NotReady(
+            f"tab {row_model.WORK_TAB} slot {work}, where the {set_name} was "
+            f"compressed, is empty; there is nothing to list.")
+    unit_cost, floor_pair = calibration.price_floor(set_name)
+    unit_cost = unit_cost or core_row["unit_price"]
+    why = f"a {floor_pair} costs {unit_cost:,}, a Set at a time"
+    print(f"  listing the {set_name} compressed into {work} from "
+          f"{made['used']} {core}(s)")
+    print(f"  it costs {unit_cost:,} a Core today, so no Set goes out under "
+          f"that")
+
+    rows, listed_total = [], 0
+    while work in calibration.occupied_slots():
+        empty = [i for i in model.empty() if first <= i <= last]
+        if not empty:
+            print(f"  rows {first}-{last} are full; what is left of the "
+                  f"{set_name} stays on tab {row_model.WORK_TAB}.")
+            break
+        lands_in = min(empty)
+        with calibration.phase(f"list {set_name} from {work}"):
+            listed = model.list_slot(*work, why=why, verbose=verbose,
+                                     lands_in=lands_in,
+                                     unit_market=set_row["unit_price"],
+                                     floor_each=unit_cost)
+        model._slots[lands_in] = row_model.Row(set_name, qty=listed["qty"],
+                                               price=listed["price"])
+        rows.append(lands_in)
+        listed_total += listed["qty"]
     calibration.phases_table(
         f"craft {core}: {made['used']} into the craft, listed "
         f"{listed_total} in rows {rows}")
     print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
     return {"core": core, "set": set_name, "crafted": made["used"],
             "listed": listed_total, "rows": rows}
+
+
+def do_convert(slot, verbose=True):
+    run = calibration.load_shared()["run"]
+    first, last = int(run["relist_from"]), int(run["relist_to"])
+    slot = int(slot)
+    core = calibration.FAVOURITE_ITEMS.get(str(slot))
+    pair = calibration.pair_slot(slot)
+    if core is None or pair is None:
+        print(f"  favourite slot {slot} is not a core with a Set beside it; "
+              f"there is nothing to convert.")
+        return None
+    if not convert.cell_for(core):
+        print(f"  {core} is not on the vendor grid; it is crafted rather "
+              f"than converted. Use craft chaos.")
+        return None
+    set_name = calibration.FAVOURITE_ITEMS[str(pair)]
+    initialise(verbose=verbose)
+    register_tab(verbose=verbose)
+    model = seed(verbose=verbose)
+    print("")
+    print(f"-- recovery: convert whatever {set_name} is held into {core} --")
+
+    free = [i for i in model.empty() if first <= i <= last]
+    if not free:
+        print(f"  rows {first}-{last} are full, and a converted {core} with "
+              f"nowhere to list stays on tab "
+              f"{calibration.CONVERT_INVENTORY_TAB}; not converting.")
+        return None
+    print(f"  {len(free)} row(s) free inside {first}-{last}")
+
+    floor, floor_pair = calibration.price_floor(core)
+    floor = floor or 0
+    why = f"a {floor_pair} costs {floor:,}" if floor else ""
+    calibration.phases_reset()
+    started = time.perf_counter()
+    rows, listed_total, slots_filled, rounds = [], 0, 0, 0
+    while True:
+        rounds += 1
+        print("")
+        print(f"  -- round {rounds}: convert up to {row_model.MAX_STACK}, "
+              f"then list --")
+        with calibration.phase(f"round {rounds}: close the Agent Shop"):
+            calibration.close_everything()
+        with calibration.phase(f"round {rounds}: open the vendor"):
+            convert.open_vendor(verbose=verbose)
+        try:
+            with calibration.phase(f"round {rounds}: convert into {core}"):
+                out = convert.convert(core, verbose=verbose)
+        except convert.Refused as exc:
+            print(f"  nothing more to convert: {exc}")
+            if not back_to_the_shop(verbose=verbose):
+                raise NotReady("the Agent Shop would not reopen after the "
+                               "vendor.")
+            register_tab(verbose=verbose)
+            break
+        slots_filled += len(out["slots"])
+        with calibration.phase(f"round {rounds}: reopen the Agent Shop"):
+            if not back_to_the_shop(verbose=verbose):
+                raise NotReady("the Agent Shop would not reopen after the "
+                               "vendor.")
+        with calibration.phase(f"round {rounds}: select the Register tab"):
+            register_tab(verbose=verbose)
+        with calibration.phase(f"round {rounds}: select inventory tab "
+                               f"{calibration.CONVERT_INVENTORY_TAB}"):
+            calibration.click(*calibration.inventory_tab_point(
+                calibration.CONVERT_INVENTORY_TAB), settle=0.0)
+            time.sleep(row_model.TAB_SETTLE)
+
+        print(f"  listing {core} from {len(out['slots'])} slot(s), "
+              f"{out['slots'][0]} to {out['slots'][-1]}")
+        remaining, full = list(out["slots"]), False
+        while remaining:
+            here = calibration.occupied_slots()
+            remaining = [w for w in remaining if w in here]
+            if not remaining:
+                break
+            empty = [i for i in model.empty() if first <= i <= last]
+            if not empty:
+                print(f"  rows {first}-{last} are full; {len(remaining)} "
+                      f"slot(s) of {core} stay on tab "
+                      f"{calibration.CONVERT_INVENTORY_TAB}.")
+                full = True
+                break
+            lands_in = min(empty)
+            with calibration.phase(f"round {rounds}: list {core} from "
+                                   f"{remaining[0]}"):
+                listed = model.list_slot(*remaining[0], floor=floor, why=why,
+                                         verbose=verbose, lands_in=lands_in,
+                                         expect_item=core)
+            model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
+                                                   price=listed["price"])
+            rows.append(lands_in)
+            listed_total += listed["qty"]
+        if full:
+            break
+    calibration.phases_table(
+        f"convert {core}: {slots_filled} slot(s) filled, listed "
+        f"{listed_total} in rows {rows}")
+    print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
+    return {"slot": slot, "core": core, "set": set_name,
+            "slots": slots_filled, "listed": listed_total, "rows": rows}
 
 
 def do_cancel(index, verbose=True):
@@ -743,19 +887,6 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
               f"crafting {bought - spare} and leaving {spare} on tab "
               f"{row_model.WORK_TAB}.")
 
-    made, rows, listed_total = craft_and_list(
-        model, core, set_name, core_row, set_row, first, last,
-        bought=bought, paid=paid, verbose=verbose)
-    calibration.phases_table(
-        f"resupply {core}: bought {bought}, {made['used']} into the craft, "
-        f"listed {listed_total} in rows {rows}")
-    return {"slot": slot, "core": core, "set": set_name, "diff": diff,
-            "bought": bought, "crafted": made["used"],
-            "listed": listed_total, "rows": rows}
-
-
-def craft_and_list(model, core, set_name, core_row, set_row, first, last,
-                   bought=0, paid=0, verbose=True):
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
     with calibration.phase(f"craft {core} into {set_name}"):
@@ -808,7 +939,12 @@ def craft_and_list(model, core, set_name, core_row, set_row, first, last,
                                                price=listed["price"])
         rows.append(lands_in)
         listed_total += listed["qty"]
-    return made, rows, listed_total
+    calibration.phases_table(
+        f"resupply {core}: bought {bought}, {made['used']} into the craft, "
+        f"listed {listed_total} in rows {rows}")
+    return {"slot": slot, "core": core, "set": set_name, "diff": diff,
+            "bought": bought, "crafted": made["used"],
+            "listed": listed_total, "rows": rows}
 
 
 def rest_the_game(verbose=True):
@@ -915,9 +1051,15 @@ def usage():
     print("                                   its Set and, if the gap clears,")
     print("                                   buy, convert and list it; skips")
     print("                                   the row count and enable_buying")
-    print("  py src/driver.py craft           craft whatever Chaos Core is")
-    print("                                   already held into Sets and list")
-    print("                                   them; prices to list, never buys")
+    print("  RECOVERY -- after a run stopped part way through a resupply")
+    print("  py src/driver.py craft chaos     craft the Chaos Core already")
+    print("                                   in the bag into Sets and list")
+    print("                                   them")
+    print("  py src/driver.py convert N       convert the Set already in ")
+    print("                                   the bag into favourite N's ")
+    print("                                   core and list it")
+    print("  neither buys; both price only to know what to list at")
+    print("")
     print("  py src/driver.py scan            read the balance, walk rows 1-21")
     print("                                   and print the model, no changes")
     print("  py src/driver.py cancel N        cancel row N (collects it first")
@@ -1005,8 +1147,10 @@ def _dispatch(args):
         row_at(row_model.RowModel().seed({}), int(args[1]))
     elif what == "resupply" and len(args) > 1:
         do_resupply(int(args[1]))
-    elif what == "craft":
-        do_craft()
+    elif what == "craft" and len(args) > 1 and args[1].lower() == "chaos":
+        do_craft_chaos()
+    elif what == "convert" and len(args) > 1:
+        do_convert(int(args[1]))
     elif what == "chaos":
         crafted = [n for n in core_slots()
                    if craft_route(calibration.FAVOURITE_ITEMS[str(n)])]
