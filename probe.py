@@ -97,41 +97,92 @@ for name, area in (("right half", (w // 2, 0, w, h)),
         break
 
 rule("bringing the game forward and opening the Inventory")
+import time
+
 try:
     say("focus_game    :", inv.focus_game())
 except Exception as exc:
     say("focus_game    : FAILED", type(exc).__name__, exc)
+time.sleep(C.load_shared()["timing"]["focus_settle"])
 
-import time
-for attempt in (1, 2):
-    image = C.grab()
-    if C.inventory_open(image) is not None:
-        say(f"the Inventory is open (seen on look {attempt})")
-        break
-    say(f"look {attempt}: no balance readable, pressing I")
+before = C.grab()
+before.save(os.path.join(OUT, "screen_before_I.png"))
+say("saved screen_before_I.png")
+
+def moved(a, b):
+    return sum(1 for one, two in zip(a.convert("L").get_flattened_data(),
+                                     b.convert("L").get_flattened_data())
+               if abs(one - two) > 12)
+
+
+say("")
+say("pressing I until the screen moves. It stops as soon as something")
+say("changes, so the panel is never toggled shut by a second press.")
+image = before
+opened = False
+for attempt in (1, 2, 3):
+    was = image
     try:
         inv.press(inv.VK_I)
+        say(f"  press {attempt}: the keystroke was sent")
     except Exception as exc:
-        say("  pressing I FAILED", type(exc).__name__, exc)
+        say(f"  press {attempt}: FAILED {type(exc).__name__}: {exc}")
         break
-    time.sleep(C.load_shared()["timing"]["dialog_timeout"] / 8)
-image = C.grab()
-image.save(os.path.join(OUT, "screen_with_inventory.png"))
-say("saved screen_with_inventory.png")
+    time.sleep(C.load_shared()["timing"]["tab_settle"])
+    image = C.grab()
+    image.save(os.path.join(OUT, f"screen_after_I_{attempt}.png"))
+    shift = moved(was, image)
+    say(f"     {shift:,} pixels changed")
+    if shift > 1000:
+        say(f"     the screen moved, so the keystroke reached the game")
+        opened = True
+        break
+    say(f"     nothing moved; the game did not take it")
+    try:
+        say(f"     foreground is the game: "
+            f"{inv._user32.GetForegroundWindow() == inv.find_game_window()}")
+    except Exception as exc:
+        say(f"     (could not check the foreground: {exc})")
+    inv.focus_game()
+    time.sleep(C.load_shared()["timing"]["focus_settle"])
 
+image.save(os.path.join(OUT, "screen_after_I.png"))
+say("saved screen_after_I.png")
+if not opened:
+    say("  the game never responded to I.")
+say("")
+say("LOOK AT screen_after_I.png BEFORE READING ON. Everything below assumes a")
+say("character standing in the world with the Inventory panel open. A login")
+say("screen, a character select, or a loading screen explains every failure")
+say("after this point and none of them are worth investigating.")
+
+say("")
 band = C._box(C.ALZ_SEARCH_F)
-say("balance in band now:", C.find_alz(image, band))
+say("balance in the configured band:", C.find_alz(image, band))
 w2, h2 = image.size
 hit = C.find_alz(image, (0, 0, w2, h2))
-say("balance anywhere   :", hit)
+say("balance anywhere on screen    :", hit)
 if hit:
     wide = (hit[0] - 4, hit[1] - 6, hit[2] + 60, hit[3] + 6)
-    say("  reads            :", repr(C.read_line(image, wide)))
+    say("  reads                       :", repr(C.read_line(image, wide)))
     keep(image, wide, "balance_found")
     x, y, cw, ch = C._client_rect()
-    say("  as fractions     : [%.4f, %.4f, %.4f, %.4f]"
+    say("  put this in regions.alz_search: [%.4f, %.4f, %.4f, %.4f]"
         % ((hit[0] - x) / cw, (hit[1] - y) / ch,
            (hit[2] - x) / cw, (hit[3] - y) / ch))
+else:
+    say("  nothing gold and digit-shaped anywhere. Counting how close it got:")
+    px = image.convert("RGB").load()
+    gold = 0
+    for yy in range(0, h2, 2):
+        for xx in range(w2 // 2, w2, 2):
+            r, g, b = px[xx, yy]
+            hi, lo = max(r, g, b), min(r, g, b)
+            if hi > C.ALZ_BRIGHT and hi - lo > C.ALZ_SATURATION:
+                gold += 1
+    say(f"    gold-ish pixels in the right half (sampled 1 in 4): {gold:,}")
+    say(f"    ALZ_MIN_PIXELS is {C.ALZ_MIN_PIXELS}, ALZ_MIN_HEIGHT "
+        f"{C.ALZ_MIN_HEIGHT}, ALZ_MAX_HEIGHT {C.ALZ_MAX_HEIGHT}")
 
 rule("the panels the code looks for")
 for probe in ("inventory_open", "_trade_window_open", "vendor_open",
