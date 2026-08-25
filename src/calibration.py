@@ -2582,22 +2582,19 @@ def main(close: bool = True) -> None:
 
     print("inventory:")
 
-    waiting = dialog_words()
-    if waiting:
-        snap("dialog_left_open")
-        raise RuntimeError(
-            f"a dialog is already open over the game and it swallows the I "
-            f"key, so the Inventory cannot be opened. It reads {waiting}. "
-            f"Dismiss it and run again; nothing was measured.")
-
     if await_inventory(verbose=True) is None:
         print("  the configured band holds no balance; sweeping the screen "
               "for one")
         if locate_alz() is None or await_inventory(verbose=True) is None:
+            snap("inventory_would_not_open")
+            waiting = dialog_words()
+            blocked = (f" A dialog is open over the game and it swallows the "
+                       f"I key; it reads {waiting}. Dismiss it and run "
+                       f"again." if waiting else "")
             raise RuntimeError(
-                "no readable Alz balance after pressing I twice and sweeping "
-                "the screen; the Inventory panel is not open. Nothing "
-                "measured.")
+                f"no readable Alz balance after pressing I twice and "
+                f"sweeping the screen; the Inventory panel is not open."
+                f"{blocked} Nothing measured.")
 
     snap("inventory_as_measured")
     inventory = calibrate_inventory()
