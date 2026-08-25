@@ -1164,6 +1164,17 @@ def find_alz(image: Image.Image, search=None):
     return box
 
 
+def dialog_words(image=None):
+    try:
+        seen = ocr(image if image is not None else grab(),
+                   _box(DIALOG_BUTTONS_F))
+    except Exception:
+        return []
+    words = {w.lower() for w in ACTION_BUTTON_WORDS}
+    return sorted({text.strip() for text, _conf, _point in seen
+                   if text.strip().lower() in words})
+
+
 def _alz_candidates(image):
     x, y, w, h = _client_rect()
     seen = []
@@ -2563,6 +2574,14 @@ def main(close: bool = True) -> None:
             f"the foreground. Nothing measured.")
 
     print("inventory:")
+
+    waiting = dialog_words()
+    if waiting:
+        snap("dialog_left_open")
+        raise RuntimeError(
+            f"a dialog is already open over the game and it swallows the I "
+            f"key, so the Inventory cannot be opened. It reads {waiting}. "
+            f"Dismiss it and run again; nothing was measured.")
 
     if await_inventory(verbose=True) is None:
         print("  the configured band holds no balance; sweeping the screen "
