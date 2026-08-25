@@ -643,7 +643,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
               f"{batch}; buying {target}")
     bought = orders = paid = 0
 
-    def order(want):
+    def order(want, on_margin=True):
         nonlocal orders
         orders += 1
         for attempt in range(1, int(run["buy_retries"]) + 1):
@@ -653,7 +653,8 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                                            held=bought, floor_qty=target,
                                            ceiling=want_max,
                                            sells_at=set_row["unit_price"],
-                                           gap=threshold)
+                                           gap=threshold if on_margin
+                                           else None)
             except buy.Refused as exc:
                 if not getattr(exc, "retryable", False):
                     print(f"  stopping: {exc}")
@@ -674,8 +675,9 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     while bought % batch:
         short = batch - (bought % batch)
         print(f"  {bought} {core} is {short} short of a whole batch of "
-              f"{batch}; topping up")
-        got = order(short)
+              f"{batch}; topping up whatever the margin says, because a "
+              f"remainder crafts into nothing")
+        got = order(short, on_margin=False)
         if got is None or got["bought"] <= 0:
             break
         bought += got["bought"]
