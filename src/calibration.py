@@ -2029,7 +2029,8 @@ def calibrate_prices(verbose=True):
 def calibrate_panel(verbose=True):
     say = print if verbose else (lambda *a: None)
     box = _box(REGISTER_PANEL_F)
-    words = ocr(grab(), box)
+    spans = ocr_spans(grab(), box)
+    words = [(text, conf, point) for text, conf, point, _right in spans]
 
     def below(word, after_y=0):
         hits = [p for t, _c, p in words
@@ -2088,7 +2089,6 @@ def calibrate_panel(verbose=True):
 
     left = box[0] + PANEL_FIELD_INSET
     right = alz[0] + PANEL_LABEL_GAP
-    spans = ocr_spans(image, box)
 
     def ends_at_label(y):
         here = [edge for t, _c, point, edge in spans
