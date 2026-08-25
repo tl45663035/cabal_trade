@@ -542,7 +542,7 @@ def resupply_one(model, slot, held, first, last, verbose=True):
                 calibration.CONVERT_INVENTORY_TAB), settle=0.0)
             time.sleep(row_model.TAB_SETTLE)
 
-        print(f"  listing {out['converted']} {core} from slot(s) "
+        print(f"  listing {core} from {len(out['slots'])} slot(s), "
               f"{out['slots'][0]} to {out['slots'][-1]}")
         remaining = list(out["slots"])
         while remaining:
