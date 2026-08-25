@@ -197,12 +197,30 @@ def _panel():
     return part
 
 
+def _in_band(spans, box):
+    here = sorted((span for span in spans if box[1] <= span[2][1] <= box[3]),
+                  key=lambda span: span[2][0])
+    return calibration._digits(" ".join(text for text, _c, _p, _r in here))
+
+
 def _asking(image, panel):
     rows = panel["suggestion_boxes"]
-    return (calibration.read_money(image, tuple(rows[-1])),
-            calibration.read_money(image, tuple(panel["price_field"])),
-            calibration.read_money(image, tuple(rows[0])) if len(rows) > 1
-            else None)
+    wanted = [tuple(rows[-1]), tuple(panel["price_field"]),
+              tuple(rows[0]) if len(rows) > 1 else None]
+    live = [box for box in wanted if box]
+    band = (min(b[0] for b in live), min(b[1] for b in live),
+            max(b[2] for b in live), max(b[3] for b in live))
+    spans = calibration.ocr_spans(image, band)
+    out = []
+    for box in wanted:
+        if box is None:
+            out.append(None)
+            continue
+        value = _in_band(spans, box)
+        if value is None or value < MIN_PLAUSIBLE_PRICE:
+            value = calibration.read_money(image, box)
+        out.append(value)
+    return tuple(out)
 
 
 def _near(a, b):
