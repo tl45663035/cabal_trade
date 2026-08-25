@@ -808,21 +808,26 @@ def resupply_pass(model, first, last, verbose=True):
     done = []
     try:
         for slot in short:
-            war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
-            try:
-                core_here = calibration.FAVOURITE_ITEMS[str(slot)]
-                route = (resupply_chaos if craft_route(core_here)
-                         else resupply_one)
-                out = route(model, slot, held[slot], first, last,
-                            verbose=verbose)
-            except (convert.Refused, craft.Refused, buy.Refused,
-                    NotReady) as exc:
-                print(f"  resupply of "
-                      f"{calibration.FAVOURITE_ITEMS[str(slot)]!r} stopped: "
-                      f"{exc}")
-                out = None
-            if out:
+            core_here = calibration.FAVOURITE_ITEMS[str(slot)]
+            wants = calibration.rows_threshold(core_here)
+            have = held[slot]
+            route = (resupply_chaos if craft_route(core_here)
+                     else resupply_one)
+            while have < wants:
+                war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+                try:
+                    out = route(model, slot, have, first, last,
+                                verbose=verbose)
+                except (convert.Refused, craft.Refused, buy.Refused,
+                        NotReady) as exc:
+                    print(f"  resupply of {core_here!r} stopped: {exc}")
+                    out = None
+                if not out or not out.get("rows"):
+                    break
                 done.append(out)
+                have += len(out["rows"])
+                print(f"  {core_here}: {have} of {wants} row(s) after that "
+                      f"one")
     finally:
         if not back_to_the_shop(verbose=verbose):
             raise NotReady("the Agent Shop is not open after resupplying.")
