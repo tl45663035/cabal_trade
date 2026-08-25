@@ -32,19 +32,31 @@ class NotReady(Exception):
 
 
 _MEASURED = False
+MEASURE = True
 
 
 def initialise(verbose=True):
     global _MEASURED
     if not inv.focus_game():
         raise NotReady("could not bring the game to the foreground.")
-    if not _MEASURED:
+    if _MEASURED:
+        if verbose:
+            print("  already measured this start; not walking the actions "
+                  "again")
+    elif MEASURE:
         if verbose:
             print("  measuring this screen before touching anything")
         calibration.main(close=False)
         _MEASURED = True
-    elif verbose:
-        print("  already measured this start; not walking the actions again")
+    else:
+        if verbose:
+            print("  --measured: using what calibration.json already holds "
+                  "and not re-measuring; nothing is cancelled or relisted to "
+                  "find the buttons")
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady("the Agent Shop would not open, and --measured "
+                           "does not measure a way in.")
+        _MEASURED = True
     cal = calibration.load(force=True)
     if verbose:
         print(f"  calibrated for {cal['resolution']}, measured "
@@ -1186,6 +1198,11 @@ def usage():
     print("  py src/driver.py row N           read row N without touching it")
     print("  py src/driver.py price N         market price for favourite slot N")
     print("  py src/driver.py alz             read the balance")
+    print("")
+    print("  --frames    save a screenshot at every click")
+    print("  --measured  trust calibration.json and skip the measuring pass,")
+    print("              which is the only way in when the walk itself cannot")
+    print("              run -- a cancel needs a free inventory slot")
 
 
 def _elapsed(seconds):
@@ -1200,7 +1217,9 @@ def main():
     import traceback
     began = datetime.datetime.now()
     started = time.monotonic()
-    args = [a for a in sys.argv[1:] if a != "--frames"]
+    global MEASURE
+    MEASURE = "--measured" not in sys.argv[1:]
+    args = [a for a in sys.argv[1:] if a not in ("--frames", "--measured")]
     calibration.log_to_file(args[0].lower() if args else "run")
     calibration.timing_to_file(args[0].lower() if args else "run")
     print(f"  ledger {ledger.DB} run {ledger.start()}")
