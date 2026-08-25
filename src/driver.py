@@ -684,10 +684,15 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     if bought <= 0:
         print(f"  nothing bought; not opening the craft window.")
         return None
-    if bought % batch:
-        print(f"  {bought} {core} does not divide by {batch} and could not be "
-              f"topped up; they stay on tab {row_model.WORK_TAB}.")
+    spare = bought % batch
+    if bought < batch:
+        print(f"  {bought} {core} is under a whole batch of {batch}; there is "
+              f"nothing to craft and they stay on tab {row_model.WORK_TAB}.")
         return None
+    if spare:
+        print(f"  {bought} {core} is {spare} over whole batches of {batch}; "
+              f"crafting {bought - spare} and leaving {spare} on tab "
+              f"{row_model.WORK_TAB}.")
 
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
