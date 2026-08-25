@@ -124,6 +124,13 @@ def dialog_details(image=None):
                                               _reg("buy_dialog_qty_max"))}
 
 
+def dialog_shows(image, want_qty, want_total):
+    image = image if image is not None else calibration.grab()
+    qty = calibration.read_money_all(image, _reg("buy_dialog_qty"))
+    price = calibration.read_money_all(image, _reg("buy_dialog_price"))
+    return want_qty in qty and want_total in price, qty, price
+
+
 def _cancel(why, retryable=False):
     point = dialog_button(CANCEL_WORD)
     if point is not None:
@@ -243,22 +250,25 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 f"{per_pack:,}. The gap that chose this order was measured "
                 f"off the row. Cancelled without buying.", retryable=True)
     want_total = per_pack * asked
-    agreed, again = False, None
+    agreed, seen_qty, seen_price = False, [], []
     for attempt in range(1, REREADS + 2):
         with step(f"re-read the dialog ({attempt})"):
-            again = dialog_details()
-        if again["qty"] == asked and again["price"] == want_total:
-            agreed = True
+            agreed, seen_qty, seen_price = dialog_shows(None, asked,
+                                                        want_total)
+        if agreed:
             break
         if verbose:
-            say(f"    read {attempt}: qty {again['qty']}, price "
-                f"{again['price']} -- wanted {asked} at {want_total:,}")
+            say(f"    read {attempt}: the quantity reads "
+                f"{seen_qty or 'nothing'} and the price reads "
+                f"{seen_price or 'nothing'} -- wanted {asked} at "
+                f"{want_total:,}")
         time.sleep(REREAD_GAP)
     if not agreed:
         _cancel(f"the dialog will not confirm {asked} pack(s) at "
-                f"{want_total:,} after {REREADS + 1} reads; it reads "
-                f"{again['qty']} at {again['price']}. Cancelled without "
-                f"buying.", retryable=True)
+                f"{want_total:,} after {REREADS + 1} reads; the quantity "
+                f"reads {seen_qty or 'nothing'} and the price reads "
+                f"{seen_price or 'nothing'}. Cancelled without buying.",
+                retryable=True)
     if verbose:
         say(f"    dialog confirms {asked} pack(s) at {want_total:,}")
 
