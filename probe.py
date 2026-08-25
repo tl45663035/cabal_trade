@@ -184,6 +184,78 @@ else:
     say(f"    ALZ_MIN_PIXELS is {C.ALZ_MIN_PIXELS}, ALZ_MIN_HEIGHT "
         f"{C.ALZ_MIN_HEIGHT}, ALZ_MAX_HEIGHT {C.ALZ_MAX_HEIGHT}")
 
+rule("hunting the balance without find_alz's rules")
+say("find_alz keeps every gold pixel near the busiest row and gives up if")
+say("what it keeps spans most of the width, which the game world does. This")
+say("looks for small runs of gold that could be a number instead.")
+say("")
+
+px = image.convert("RGB").load()
+w3, h3 = image.size
+rows = {}
+for yy in range(h3):
+    run = []
+    for xx in range(w3):
+        r, g, b = px[xx, yy]
+        hi, lo = max(r, g, b), min(r, g, b)
+        if hi > C.ALZ_BRIGHT and hi - lo > C.ALZ_SATURATION:
+            run.append(xx)
+    if run:
+        rows[yy] = run
+
+blobs = []
+for yy, run in rows.items():
+    start = prev = run[0]
+    for xx in run[1:] + [None]:
+        if xx is not None and xx - prev <= 6:
+            prev = xx
+            continue
+        if 30 <= prev - start <= 420:
+            blobs.append((yy, start, prev))
+        if xx is None:
+            break
+        start = prev = xx
+
+merged = []
+for yy, x0, x1 in sorted(blobs):
+    for got in merged:
+        if abs(got[0] - yy) <= 16 and not (x1 < got[1] - 20 or x0 > got[2] + 20):
+            got[0] = yy
+            got[1] = min(got[1], x0)
+            got[2] = max(got[2], x1)
+            got[3] = min(got[3], yy)
+            got[4] = max(got[4], yy)
+            break
+    else:
+        merged.append([yy, x0, x1, yy, yy])
+
+say(f"{len(merged)} run(s) of gold that could be a number; reading each:")
+money = []
+for _y, x0, x1, top, bot in merged:
+    if not (C.ALZ_MIN_HEIGHT <= bot - top + 1 <= C.ALZ_MAX_HEIGHT):
+        continue
+    box = (x0 - 4, top - 5, x1 + 46, bot + 5)
+    text = C.read_line(image, box)
+    value = C._digits(text or "")
+    if value and value > 999:
+        money.append((value, box, text))
+
+money.sort(key=lambda m: -m[0])
+for value, box, text in money[:12]:
+    x, y, cw, ch = C._client_rect()
+    say(f"  {value:>14,}  at {box}  {text!r}")
+    say(f"      fractions [%.4f, %.4f, %.4f, %.4f]"
+        % ((box[0] - x) / cw, (box[1] - y) / ch,
+           (box[2] - x) / cw, (box[3] - y) / ch))
+if money:
+    best = money[0]
+    keep(image, best[1], "balance_candidate")
+    say("")
+    say("The largest is most likely the balance. Its crop is saved as")
+    say("balance_candidate.png -- check it before trusting it.")
+else:
+    say("  nothing that reads as a number over 999.")
+
 rule("the panels the code looks for")
 for probe in ("inventory_open", "_trade_window_open", "vendor_open",
               "craft_window_open", "purchase_tab_showing"):
