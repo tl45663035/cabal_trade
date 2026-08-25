@@ -7,6 +7,7 @@ import io
 import json
 import re
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -529,22 +530,61 @@ def phases_reset():
     _PHASES.clear()
 
 
-def phases_table(title):
+TIMING = None
+
+
+def timing_to_file(what="run"):
+    global TIMING
+    if TIMING is not None:
+        return Path(TIMING.name)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    path = LOG_DIR / f"{stamp}_{what}_timing.log"
+    TIMING = open(path, "a", encoding="utf-8", buffering=1)
+    TIMING.write(stamp + "  " + " ".join(sys.argv) + chr(10))
+    print(f"  timing to {path}")
+    return path
+
+
+def timing_note(text=""):
+    if TIMING is None:
+        print(text)
+        return
+    TIMING.write(text + chr(10))
+
+
+def timing_closed():
+    global TIMING
+    if TIMING is not None:
+        TIMING.close()
+        TIMING = None
+
+
+def phases_table(title, wall=None):
     total = sum(ms for _l, ms in _PHASES)
+    against = wall if wall else total
     rolled = {}
     for label, ms in _PHASES:
         seen = rolled.setdefault(label, [0, 0.0])
         seen[0] += 1
         seen[1] += ms
-    print("")
-    print(f"  {title}")
-    print(f"  {'#':>3}  {'ms':>10}  {'share':>6}  {'n':>4}  {'each':>8}  phase")
+    timing_note("")
+    timing_note(f"  {title}")
+    timing_note(f"  {'#':>3}  {'ms':>10}  {'share':>6}  {'n':>4}  "
+                f"{'each':>8}  phase")
     for i, (label, (times, ms)) in enumerate(
             sorted(rolled.items(), key=lambda kv: -kv[1][1]), start=1):
-        print(f"  {i:>3}  {ms:>10,.1f}  "
-              f"{(ms / total * 100) if total else 0:>5.1f}%  {times:>4}  "
-              f"{ms / times:>8,.1f}  {label}")
-    print(f"       {total:>10,.1f}  100.0%")
+        timing_note(f"  {i:>3}  {ms:>10,.1f}  "
+                    f"{(ms / against * 100) if against else 0:>5.1f}%  "
+                    f"{times:>4}  {ms / times:>8,.1f}  {label}")
+    if wall:
+        loose = wall - total
+        timing_note(f"  {'':>3}  {loose:>10,.1f}  "
+                    f"{(loose / wall * 100) if wall else 0:>5.1f}%  "
+                    f"{'':>4}  {'':>8}  outside every phase")
+        timing_note(f"       {wall:>10,.1f}  100.0%  WALL")
+    else:
+        timing_note(f"       {total:>10,.1f}  100.0%")
     return total
 
 
@@ -554,13 +594,13 @@ def steps_reset():
 
 def steps_table(title):
     total = sum(ms for _l, ms in _STEPS)
-    print("")
-    print(f"  {title}")
-    print(f"  {'#':>3}  {'ms':>9}  {'share':>6}  step")
+    timing_note("")
+    timing_note(f"  {title}")
+    timing_note(f"  {'#':>3}  {'ms':>9}  {'share':>6}  step")
     for i, (label, ms) in enumerate(_STEPS, start=1):
-        print(f"  {i:>3}  {ms:>9.1f}  {(ms / total * 100) if total else 0:>5.1f}%"
-              f"  {label}")
-    print(f"       {total:>9.1f}  100.0%  TOTAL")
+        timing_note(f"  {i:>3}  {ms:>9.1f}  "
+                    f"{(ms / total * 100) if total else 0:>5.1f}%  {label}")
+    timing_note(f"       {total:>9.1f}  100.0%  TOTAL")
     return total
 
 

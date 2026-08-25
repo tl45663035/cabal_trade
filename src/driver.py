@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import re
 import sys
@@ -284,9 +285,35 @@ def relist_one(model, index, verbose=True):
 PASS_ALLOWANCE = _SHARED["war"]["quiet_before_end"]
 
 
+@contextlib.contextmanager
+def _span(store, label):
+    started = time.perf_counter()
+    try:
+        yield
+    finally:
+        store[label] = (time.perf_counter() - started) * 1000
+
+
+def _pass_timing(number, spent, wall):
+    named = sum(spent.values())
+    calibration.timing_note("")
+    calibration.timing_note(f"  pass {number}: where the wall clock went")
+    calibration.timing_note(f"  {'ms':>10}  {'share':>6}  part")
+    for label, ms in sorted(spent.items(), key=lambda kv: -kv[1]):
+        calibration.timing_note(f"  {ms:>10,.1f}  {ms / wall * 100:>5.1f}%  "
+                                f"{label}")
+    loose = wall - named
+    calibration.timing_note(f"  {loose:>10,.1f}  {loose / wall * 100:>5.1f}%  "
+                            f"everything else")
+    calibration.timing_note(f"  {wall:>10,.1f}  100.0%  WALL "
+                            f"({wall / 1000:.1f}s)")
+
+
 def relist_pass(model, first, last, verbose=True):
-    model.home(verbose=False)
     calibration.phases_reset()
+    started = time.perf_counter()
+    with calibration.phase("scroll the table home"):
+        model.home(verbose=False)
     done = skipped = empty = 0
     for index in range(first, last + 1):
         out = relist_one(model, index, verbose=verbose)
@@ -296,11 +323,11 @@ def relist_pass(model, first, last, verbose=True):
             skipped += 1
         else:
             empty += 1
-    if done or skipped:
-        calibration.phases_table(
-            f"relisting rows {first}-{last}: {done} relisted, {empty} empty, "
-            f"{skipped} skipped")
-    return done, skipped, empty
+    span = (time.perf_counter() - started) * 1000
+    calibration.phases_table(
+        f"relisting rows {first}-{last}: {done} relisted, {empty} empty, "
+        f"{skipped} skipped", wall=span)
+    return done, skipped, empty, span
 
 
 def do_relist(first=None, last=None, minutes=None, verbose=True):
@@ -320,14 +347,19 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     stopped = None
     started = time.perf_counter()
     while True:
-        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        spent = {}
+        pass_started = time.perf_counter()
+        with _span(spent, "sit out the war window"):
+            war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
         passes += 1
         print("")
         print(f"-- pass {passes} --")
         try:
-            resupply_pass(model, first, last, verbose=verbose)
-            made, missed, bare = relist_pass(model, first, last,
-                                             verbose=verbose)
+            with _span(spent, "resupply"):
+                resupply_pass(model, first, last, verbose=verbose)
+            made, missed, bare, relisting = relist_pass(model, first, last,
+                                                        verbose=verbose)
+            spent["relisting"] = relisting
         except row_model.Divergence as exc:
             print(f"  STOPPED: {exc}")
             stopped = exc
@@ -335,8 +367,12 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         done += made
         skipped += missed
         empty += bare
-        rest_the_game(verbose=verbose)
-        model.home(verbose=False)
+        with _span(spent, "return the game to its default state"):
+            rest_the_game(verbose=verbose)
+        with _span(spent, "scroll the table home"):
+            model.home(verbose=False)
+        _pass_timing(passes, spent,
+                     (time.perf_counter() - pass_started) * 1000)
         left = deadline - time.monotonic()
         if left <= 0:
             print(f"  {minutes:g} minute(s) are up after pass {passes}")
@@ -1121,6 +1157,7 @@ def main():
     started = time.monotonic()
     args = [a for a in sys.argv[1:] if a != "--frames"]
     calibration.log_to_file(args[0].lower() if args else "run")
+    calibration.timing_to_file(args[0].lower() if args else "run")
     print(f"  ledger {ledger.DB} run {ledger.start()}")
     calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
     calibration.watch_for_stop()
@@ -1150,6 +1187,11 @@ def main():
             ledger.print_run_profit()
         except BaseException as exc:
             print(f"  the profit summary could not be built: "
+                  f"{type(exc).__name__}: {exc}")
+        try:
+            calibration.timing_closed()
+        except BaseException as exc:
+            print(f"  the timing log could not be closed: "
                   f"{type(exc).__name__}: {exc}")
         print(f"  started {began:%H:%M:%S}, ended "
               f"{datetime.datetime.now():%H:%M:%S}, ran for "
