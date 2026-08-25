@@ -361,6 +361,52 @@ def do_resupply(slot, verbose=True):
     return out
 
 
+def do_craft(verbose=True):
+    run = calibration.load_shared()["run"]
+    first, last = int(run["relist_from"]), int(run["relist_to"])
+    core_slot, made_slot = calibration._craft_slots()
+    if core_slot is None:
+        print("  no favourite pair matches the measured recipe; there is "
+              "nothing this craft window makes.")
+        return None
+    core = calibration.FAVOURITE_ITEMS[str(core_slot)]
+    set_name = calibration.FAVOURITE_ITEMS[str(made_slot)]
+    initialise(verbose=verbose)
+    register_tab(verbose=verbose)
+    model = seed(verbose=verbose)
+    print("")
+    print(f"-- crafting whatever {core} is held into {set_name} --")
+
+    calibration.phases_reset()
+    with calibration.phase(f"price {core}"):
+        core_row = get_price.get_price(core_slot, verbose=False)
+    with calibration.phase(f"price {set_name}"):
+        set_row = get_price.get_price(made_slot, verbose=False)
+    if core_row is None or set_row is None:
+        print(f"  {core if core_row is None else set_name} would not price, "
+              f"so there is no market to list against.")
+        return None
+
+    free = [i for i in model.empty() if first <= i <= last]
+    if not free:
+        print(f"  rows {first}-{last} are full, and a crafted {set_name} with "
+              f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
+              f"crafting.")
+        return None
+    print(f"  {len(free)} row(s) free inside {first}-{last}")
+
+    started = time.perf_counter()
+    made, rows, listed_total = craft_and_list(
+        model, core, set_name, core_row, set_row, first, last,
+        verbose=verbose)
+    calibration.phases_table(
+        f"craft {core}: {made['used']} into the craft, listed "
+        f"{listed_total} in rows {rows}")
+    print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
+    return {"core": core, "set": set_name, "crafted": made["used"],
+            "listed": listed_total, "rows": rows}
+
+
 def do_cancel(index, verbose=True):
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
@@ -697,6 +743,19 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
               f"crafting {bought - spare} and leaving {spare} on tab "
               f"{row_model.WORK_TAB}.")
 
+    made, rows, listed_total = craft_and_list(
+        model, core, set_name, core_row, set_row, first, last,
+        bought=bought, paid=paid, verbose=verbose)
+    calibration.phases_table(
+        f"resupply {core}: bought {bought}, {made['used']} into the craft, "
+        f"listed {listed_total} in rows {rows}")
+    return {"slot": slot, "core": core, "set": set_name, "diff": diff,
+            "bought": bought, "crafted": made["used"],
+            "listed": listed_total, "rows": rows}
+
+
+def craft_and_list(model, core, set_name, core_row, set_row, first, last,
+                   bought=0, paid=0, verbose=True):
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
     with calibration.phase(f"craft {core} into {set_name}"):
@@ -749,12 +808,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                                                price=listed["price"])
         rows.append(lands_in)
         listed_total += listed["qty"]
-    calibration.phases_table(
-        f"resupply {core}: bought {bought}, {made['used']} into the craft, "
-        f"listed {listed_total} in rows {rows}")
-    return {"slot": slot, "core": core, "set": set_name, "diff": diff,
-            "bought": bought, "crafted": made["used"],
-            "listed": listed_total, "rows": rows}
+    return made, rows, listed_total
 
 
 def rest_the_game(verbose=True):
@@ -861,6 +915,9 @@ def usage():
     print("                                   its Set and, if the gap clears,")
     print("                                   buy, convert and list it; skips")
     print("                                   the row count and enable_buying")
+    print("  py src/driver.py craft           craft whatever Chaos Core is")
+    print("                                   already held into Sets and list")
+    print("                                   them; prices to list, never buys")
     print("  py src/driver.py scan            read the balance, walk rows 1-21")
     print("                                   and print the model, no changes")
     print("  py src/driver.py cancel N        cancel row N (collects it first")
@@ -948,6 +1005,8 @@ def _dispatch(args):
         row_at(row_model.RowModel().seed({}), int(args[1]))
     elif what == "resupply" and len(args) > 1:
         do_resupply(int(args[1]))
+    elif what == "craft":
+        do_craft()
     elif what == "chaos":
         crafted = [n for n in core_slots()
                    if craft_route(calibration.FAVOURITE_ITEMS[str(n)])]
