@@ -199,7 +199,7 @@ def relist_one(model, index, verbose=True):
               f"not price this run; left listed at {row.price:,}.")
         return False
     with calibration.phase("check the shop slot is empty"):
-        standing = row_model.suggested_price(False)
+        standing = row_model.panel_standing()
     if standing is not None:
         raise row_model.Divergence(
             f"the shop slot already holds something the panel prices at "

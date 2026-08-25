@@ -263,6 +263,14 @@ def _agreed(asked, filled, average, listed_at, verbose):
     return value
 
 
+def panel_standing():
+    asked, filled, _average = _asking(calibration.grab(), _panel())
+    for value in (filled, asked):
+        if value and value >= MIN_PLAUSIBLE_PRICE:
+            return value
+    return None
+
+
 def suggested_price(verbose=False, listed_at=None):
     panel = _panel()
     box = tuple(panel["suggestion_boxes"][-1])
@@ -709,7 +717,7 @@ class RowModel:
         if verbose:
             print(f"  inventory slot ({row},{col}) at {point}")
         with calibration.step("read the panel before loading"):
-            standing = suggested_price(False)
+            standing = panel_standing()
         if standing is not None:
             raise Divergence(
                 f"the shop slot already holds something the panel prices at "
