@@ -102,21 +102,24 @@ def seed(verbose=True):
     model = row_model.RowModel().seed({})
     model.home(verbose=verbose)
     found = {}
+    seen_empty = set()
     for index in range(1, row_model.MAX_TOP + 1):
         model.scroll_to(index, verbose=False)
         text = row_model.read_row_one()
         if row_model.row_one_is_empty(text):
+            seen_empty.add(index)
             continue
         row = _row_from(text)
         if row is None:
             if verbose:
-                print(f"    {index:2}  UNREAD {text!r}")
+                print(f"    {index:2}  UNREAD {text!r} -- read again every "
+                      f"pass, because nothing here is known")
             continue
         found[index] = row
         if verbose:
             print(f"    {index:2}  {row.name[:34]:34} x{row.qty:<4} "
                   f"{row.price:>14,}")
-    model.seed(found, top=row_model.MAX_TOP)
+    model.seed(found, top=row_model.MAX_TOP, seen_empty=seen_empty)
     model.home(verbose=verbose)
     if verbose:
         print(f"  seeded {len(found)} of rows 1-{row_model.MAX_TOP}")
@@ -154,6 +157,11 @@ def cancel(model, index, verbose=True):
 
 
 def relist_one(model, index, verbose=True):
+    if model.known_empty(index):
+        if verbose:
+            print(f"  row {index} was left empty and nothing has been listed "
+                  f"into it; not reading it")
+        return None
     with calibration.phase(f"{calibration.REFRESH_WORD} the table"):
         row_model.refresh_table(model, verbose=False)
     with calibration.phase("scroll to the row and read it"):
@@ -171,7 +179,7 @@ def relist_one(model, index, verbose=True):
             text, row = row_at(model, index, verbose=False)
             button = row_model.row_button()
         if complete or button == row_model.REGISTER_WORD or row is None:
-            model.forget_floor(index)
+            model.note_empty(index)
             if verbose:
                 print(f"    collected; row {index} is empty, nothing to "
                       f"relist")
@@ -180,8 +188,7 @@ def relist_one(model, index, verbose=True):
             print(f"    collected; {row.qty} left to relist")
 
     if row_model.row_one_is_empty(text):
-        model._slots.pop(index, None)
-        model.forget_floor(index)
+        model.note_empty(index)
         if verbose:
             print(f"  row {index} is empty; nothing to relist")
         return None
@@ -261,15 +268,15 @@ def relist_one(model, index, verbose=True):
         model.receive(index, verbose=False)
         seen = row_model.read_row_one()
         if row_model.row_one_is_empty(seen):
-            model._slots.pop(index, None)
-            model.forget_floor(index)
+            model.note_empty(index)
             print(f"    collected; row {index} is empty")
         else:
             print(f"    collected; row {index} still reads {seen!r}")
         return None
-    model._slots.pop(index, None)
+    model.note_empty(index)
     model._slots[lands_in] = row_model.Row(row.name, qty=out["qty"],
                                            price=out["price"])
+    model._seen_empty.discard(lands_in)
     model.carry_floor(index, lands_in, breaking, out["floored"], parked)
     if verbose:
         note = ""
