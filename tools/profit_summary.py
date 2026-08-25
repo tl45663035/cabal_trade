@@ -1,9 +1,12 @@
 import collections
+import pathlib
 import datetime
 import re
 import sqlite3
 
-DB = 'file:C:/Users/Trung/Cabal/sales.db?mode=ro'
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+LEDGERS = (("trade.py", ROOT / "sales.db", True),
+           ("src", ROOT / "src" / "sales.db", False))
 PACK = re.compile(r"\bX\s*[\d,]+", re.I)
 
 
@@ -38,13 +41,13 @@ def gather(cursor, start):
     return lots
 
 
-def match(cursor, start, lots):
+def match(cursor, start, lots, listed_in_packs):
     per_item = {}
     per_run = {}
     for run, item, qty, price, proceeds in cursor.execute(
             "SELECT run, item, qty, price, proceeds FROM sales "
             "WHERE run>=? ORDER BY at", (start,)):
-        units = (qty or 0) * pack(item)
+        units = (qty or 0) * (pack(item) if listed_in_packs else 1)
         if not units:
             continue
         gross = proceeds if proceeds is not None else (price or 0) * (qty or 0)
@@ -81,17 +84,37 @@ def line(char="-", width=87):
 def main():
     start = since_midnight()
     stamp = start.strftime("%Y-%m-%dT%H:%M:%S")
-    conn = sqlite3.connect(DB, uri=True)
-    lots = gather(conn, stamp)
-    per_item, per_run = match(conn, stamp, lots)
-    conn.close()
-
     now = datetime.datetime.now().strftime("%H:%M")
     print(f"PROFIT SUMMARY -- runs launched since {start:%Y-%m-%d} 00:00 "
           f"(as of {now})")
     print("only units the script both bought and sold in those runs, "
           "matched oldest purchase first")
-    print("")
+    every = []
+    for label, path, listed_in_packs in LEDGERS:
+        if not path.exists():
+            print("")
+            print(f"{label}: no ledger at {path}")
+            continue
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        lots = gather(conn, stamp)
+        per_item, per_run = match(conn, stamp, lots, listed_in_packs)
+        conn.close()
+        print("")
+        print(f"{label} -- {path}")
+        every.append(report(per_item, per_run, lots))
+    if len(every) > 1:
+        print("")
+        line("=")
+        units = sum(g[0] for g in every)
+        revenue = sum(g[1] for g in every)
+        cost = sum(g[2] for g in every)
+        profit = revenue - cost
+        margin = f"{100 * profit / revenue:>7.1f}%" if revenue else f"{'--':>8}"
+        print(f"{'BOTH LEDGERS':<26}{profit:>15,.0f}{units:>8,}{margin}"
+              f"{revenue:>16,.0f}{cost:>16,.0f}")
+
+
+def report(per_item, per_run, lots):
     print(f"{'item':<26}{'profit':>15}{'units':>8}{'margin':>8}"
           f"{'revenue':>16}{'cost':>16}")
     line()
@@ -125,6 +148,7 @@ def main():
     margin = f"{100 * profit / revenue:>7.1f}%" if revenue else f"{'--':>8}"
     print(f"{'TOTAL':<26}{profit:>15,.0f}{units:>8,}{margin}"
           f"{revenue:>16,.0f}{cost:>16,.0f}")
+    totals = (units, revenue, cost)
 
     if per_run:
         print("")
@@ -150,9 +174,7 @@ def main():
             print(f"  {k:<26}{units:>8,} units{value:>18,.0f} Alz")
         print(f"  {'':<26}{'':>8} {'':>17}{sum(v for _, v in held.values()):>17,.0f} Alz tied up")
 
-    print("")
-    print("revenue is price x quantity from the ledger; if the game's sales "
-          "fee is not deducted there, margins are lower than shown")
+    return totals
 
 
 if __name__ == "__main__":

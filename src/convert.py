@@ -178,8 +178,8 @@ def convert(core_name, verbose=True):
             f"Nothing converted.")
     calibration.steps_table(f"convert into {core_name}")
     where = sorted(arrived)
-    say(f"    converted {len(where)} {entry['costs']} into {core_name}, "
+    say(f"    {core_name} arrived in {len(where)} slot(s), "
         f"landing in {where[0]} to {where[-1]}")
     return {"core": core_name, "costs": entry["costs"],
-            "converted": len(where), "slots": where,
+            "slots": where,
             "cell": entry["cell"]}

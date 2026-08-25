@@ -176,7 +176,7 @@ def relist_one(model, index, verbose=True):
         print(f"    parsed  {'nothing' if row is None else str(row.qty) + ' at ' + format(row.price, ',')}")
         print(f"    button  {button!r}, box reads "
               f"{row_model.row_button_text()!r}")
-        return None
+        return False
 
     landing = calibration.first_free_slot(row_model.WORK_TAB, verbose=False)
     if landing is None:
@@ -192,7 +192,7 @@ def relist_one(model, index, verbose=True):
     if unit_floor is None:
         print(f"  row {index}: {row.name!r} is floored by a {pair}, which did "
               f"not price this run; left listed at {row.price:,}.")
-        return None
+        return False
     standing = row_model.suggested_price(False)
     if standing is not None:
         raise row_model.Divergence(
@@ -243,13 +243,16 @@ PASS_ALLOWANCE = _SHARED["war"]["quiet_before_end"]
 
 def relist_pass(model, first, last, verbose=True):
     model.home(verbose=False)
-    done = skipped = 0
+    done = skipped = empty = 0
     for index in range(first, last + 1):
-        if relist_one(model, index, verbose=verbose):
+        out = relist_one(model, index, verbose=verbose)
+        if out:
             done += 1
-        else:
+        elif out is False:
             skipped += 1
-    return done, skipped
+        else:
+            empty += 1
+    return done, skipped, empty
 
 
 def do_relist(first=None, last=None, minutes=None, verbose=True):
@@ -265,7 +268,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
 
     deadline = time.monotonic() + minutes * 60
     print(f"relisting rows {first}-{last} for {minutes:g} minute(s)")
-    passes = done = skipped = 0
+    passes = done = skipped = empty = 0
     stopped = None
     started = time.perf_counter()
     while True:
@@ -275,25 +278,27 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         print(f"-- pass {passes} --")
         try:
             resupply_pass(model, first, last, verbose=verbose)
-            made, missed = relist_pass(model, first, last, verbose=verbose)
+            made, missed, bare = relist_pass(model, first, last,
+                                             verbose=verbose)
         except row_model.Divergence as exc:
             print(f"  STOPPED: {exc}")
             stopped = exc
             break
         done += made
         skipped += missed
+        empty += bare
         rest_the_game(verbose=verbose)
         model.home(verbose=False)
         left = deadline - time.monotonic()
         if left <= 0:
             print(f"  {minutes:g} minute(s) are up after pass {passes}")
             break
-        print(f"  pass {passes}: {made} relisted, {missed} skipped; "
-              f"{left/60:.1f} minute(s) left")
+        print(f"  pass {passes}: {made} relisted, {bare} empty, "
+              f"{missed} skipped; {left/60:.1f} minute(s) left")
     span = (time.perf_counter() - started) * 1000
     print("")
-    print(f"{passes} pass(es), {done} relisted, {skipped} skipped "
-          f"in {span/1000:.0f}s"
+    print(f"{passes} pass(es), {done} relisted, {empty} empty, "
+          f"{skipped} skipped in {span/1000:.0f}s"
           + (f" ({span/done:.0f} ms a row)" if done else ""))
     if stopped is not None:
         raise stopped
@@ -492,7 +497,7 @@ def resupply_one(model, slot, held, first, last, verbose=True):
     else:
         floor = 0 if unit_floor is None else unit_floor
         why = f"a {floor_pair} costs {unit_floor:,}" if unit_floor else ""
-    rows, listed_total, converted_total = [], 0, 0
+    rows, listed_total, slots_filled = [], 0, 0
     left_to_convert = bought
     max_rounds = max(1, -(-bought // row_model.MAX_STACK)) + 1
     rounds = 0
@@ -507,8 +512,8 @@ def resupply_one(model, slot, held, first, last, verbose=True):
             convert.open_vendor(verbose=verbose)
         with calibration.phase(f"round {rounds}: convert into {core}"):
             out = convert.convert(core, verbose=verbose)
-        converted_total += out["converted"]
-        left_to_convert -= out["converted"]
+        slots_filled += len(out["slots"])
+        left_to_convert -= len(out["slots"])
 
         with calibration.phase(f"round {rounds}: reopen the Agent Shop"):
             if not back_to_the_shop(verbose=verbose):
@@ -559,10 +564,11 @@ def resupply_one(model, slot, held, first, last, verbose=True):
               f"unconverted after {rounds} round(s); they are on tab "
               f"{calibration.CONVERT_INVENTORY_TAB}.")
     calibration.phases_table(
-        f"resupply {core}: bought {bought}, converted {converted_total}, "
+        f"resupply {core}: bought {bought}, {slots_filled} slot(s) "
+        f"filled, "
         f"listed {listed_total} in rows {rows}")
     return {"slot": slot, "core": core, "set": set_name, "diff": diff,
-            "bought": bought, "converted": converted_total,
+            "bought": bought, "slots": slots_filled,
             "listed": listed_total, "rows": rows}
 
 

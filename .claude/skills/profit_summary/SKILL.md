@@ -11,7 +11,11 @@ Run the tool and report what it prints:
 py tools/profit_summary.py
 ```
 
-It reads `sales.db` read-only, so it is safe while a run is in progress.
+It reads both ledgers read-only, so it is safe while a run is in
+progress: `sales.db` at the repo root, written by `trade.py`, and
+`src/sales.db`, written by `src/`. Each gets its own table and there is
+a combined total at the end. Paths are derived from where the tool sits,
+so it works on any machine.
 
 ## What it counts
 
@@ -28,12 +32,15 @@ priced against what that stock actually cost rather than a rolling average.
 These are not consistent between the two tables. Get them wrong and the numbers
 are nonsense rather than slightly off.
 
-| | `qty` means | worked example |
+| ledger | `purchases` qty | `sales` qty |
 |---|---|---|
-| `purchases` | cores, already expanded | `Force Core Set (High) X 435`, qty **435** |
-| `sales` | whatever was listed | `Chaos Core Set X 261`, qty **1** |
+| root `sales.db` | cores, already expanded | whatever was listed -- `Chaos Core Set X 261`, qty **1** |
+| `src/sales.db` | cores | units, already expanded |
 
-So sales need `qty x pack-from-the-name`; purchases must not be scaled. The
+So a sale in the root ledger needs `qty x pack-from-the-name` and a sale in
+`src/sales.db` must not be scaled -- `src` books a chaos bundle in Sets. The
+tool carries a flag per ledger for this; getting it backwards double-counts and
+turned a chaos line into minus 195% once. Purchases are never scaled. The
 pack suffix on a purchase name is unreliable — `Force Core Set (Ultimate) X 1`
 was logged with qty 64.
 
