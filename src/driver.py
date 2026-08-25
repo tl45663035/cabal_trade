@@ -136,6 +136,10 @@ def _parsed_row(text):
     if found is None:
         return None
     seen = re.sub(r"[^0-9]", "", found.group("qty"))
+    if not seen:
+        print(f"    the quantity column read {found.group('qty')!r}, which "
+              f"holds no digits; relisting anyway, the panel counts what is "
+              f"there")
     qty = int(seen) if seen else 1
     price = int(re.sub(r"[^0-9]", "", found.group("price")))
     if price < MIN_PLAUSIBLE_PRICE:

@@ -216,7 +216,7 @@ DEFAULTS = {
     "text": {
         "empty_row": "premiumexclusiveslot",
         "sort_direction": r"price\s*:?\s*(low|high)",
-        "purchase_row": '^(?P<name>.*?)\\s+(?P<qty>\\S*\\d\\S*)\\s+(?P<price>\\d[\\d,]*)\\s*\\D*$',
+        "purchase_row": '^(?P<name>.*?)\\s+(?P<qty>\\S+)\\s+(?P<price>\\d[\\d,]*)\\s*\\D*$',
         "pack_marker": r"\bX\s*(\d+)\s*$",
         "row_grouping": r"(?<=\d)[.\s](?=\d{3}(?!\d)(?!,))",
         "change_word": "Change",
