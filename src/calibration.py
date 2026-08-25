@@ -760,12 +760,10 @@ def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
     time.sleep(settle)
 
 
-def ctrl_click(x: int, y: int, settle: float = None) -> None:
+def ctrl_click(x: int, y: int) -> None:
     from open_inventory import _user32, _Input, _event
-    shared = load_shared()
-    keys, timing = shared["input"], shared["timing"]
+    keys = load_shared()["input"]
     vk = keys["VK_CONTROL"]
-    gap = timing["action_gap"] if settle is None else settle
 
     _user32.SetCursorPos(int(x), int(y))
     time.sleep(HOVER_SETTLE)
@@ -784,7 +782,6 @@ def ctrl_click(x: int, y: int, settle: float = None) -> None:
     finally:
         _user32.SendInput(1, ctypes.byref(_event(vk, up=True)),
                           ctypes.sizeof(_Input))
-    time.sleep(gap)
     snap(f"ctrlclick_{x}_{y}")
 
 
