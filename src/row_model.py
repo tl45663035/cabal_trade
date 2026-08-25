@@ -35,7 +35,6 @@ CONFIRM_WORD = _TEXT["confirm_word"]
 RECEIPT_WORD = _TEXT["receipt_word"]
 REGISTER_WORD = _TEXT["register_word"]
 STATUS_COMPLETE = _TEXT["status_complete"]
-DIALOG_BUTTON_MIN_X = _SHARED["detect"]["dialog_button_min_x"]
 BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
@@ -130,7 +129,7 @@ def search_button(word, timeout=None):
     want = _key(word)
     while time.monotonic() < deadline:
         for text, _conf, point in popup_words():
-            if _key(text) == want and point[0] >= DIALOG_BUTTON_MIN_X:
+            if _key(text) == want:
                 return point
         time.sleep(POLL_GAP)
     return None
@@ -375,8 +374,8 @@ def dialog_buttons(image=None):
                 seen.append(word)
             continue
         want = _key(word)
-        if any(_key(t) == want and p[0] >= DIALOG_BUTTON_MIN_X
-               for t, _c, p in calibration.ocr(
+        if any(_key(t) == want
+               for t, _c, _p in calibration.ocr(
                    image, calibration._box(calibration.DIALOG_BUTTONS_F))):
             seen.append(word)
     return seen

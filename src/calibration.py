@@ -173,7 +173,6 @@ DEFAULTS = {
         "purchase_header_down": 10,
         "purchase_divider_sigma": 3.0,
         "purchase_cell_inset": 2,
-        "dialog_button_min_x": 1200,
         "dialog_button_half": [70, 24],
         "min_plausible_balance": 1000,
         "row_border_candidates": 30,
@@ -2382,7 +2381,6 @@ def calibrate_actions(shop, verbose=True):
     timing = load_shared()["timing"]
     budget = timing["dialog_timeout"]
     dialog = _box(DIALOG_BUTTONS_F)
-    min_x = load_shared()["detect"]["dialog_button_min_x"]
     learned = {}
 
     def buttons_now():
@@ -2390,7 +2388,7 @@ def calibrate_actions(shop, verbose=True):
         for text, _conf, point in ocr(grab(), dialog):
             key = text.strip().lower()
             for word in ACTION_BUTTON_WORDS:
-                if key == word.lower() and point[0] >= min_x:
+                if key == word.lower():
                     found[word] = (int(point[0]), int(point[1]))
         return found
 
