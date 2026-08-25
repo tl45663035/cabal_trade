@@ -11,11 +11,11 @@ Run the tool and report what it prints:
 py tools/profit_summary.py
 ```
 
-It reads both ledgers read-only, so it is safe while a run is in
-progress: `sales.db` at the repo root, written by `trade.py`, and
-`src/sales.db`, written by `src/`. Each gets its own table and there is
-a combined total at the end. Paths are derived from where the tool sits,
-so it works on any machine.
+It reads both ledgers read-only, so it is safe while a run is in progress:
+`sales.db` at the repo root, written by `trade.py`, and `src/sales.db`, written
+by `src/`. They are pooled into **one** summary -- the same stock in the same
+game, so a Core one script bought and the other sold matches. Paths are derived
+from where the tool sits, so it works on any machine.
 
 ## What it counts
 

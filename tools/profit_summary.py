@@ -31,22 +31,40 @@ def since_midnight():
                                            microsecond=0)
 
 
-def gather(cursor, start):
+def rows(start):
+    buys, sells = [], []
+    for label, path, listed_in_packs in LEDGERS:
+        if not path.exists():
+            print(f"  no ledger at {path}")
+            continue
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        for at, item, spend, qty in conn.execute(
+                "SELECT at, item, spend, qty FROM purchases WHERE run>=? ",
+                (start,)):
+            if qty:
+                buys.append((at, item, spend, qty))
+        for at, run, item, qty, price, proceeds in conn.execute(
+                "SELECT at, run, item, qty, price, proceeds FROM sales "
+                "WHERE run>=?", (start,)):
+            sells.append((at, run, item, qty, price, proceeds,
+                          listed_in_packs))
+        conn.close()
+    buys.sort(key=lambda r: r[0])
+    sells.sort(key=lambda r: r[0])
+    return buys, sells
+
+
+def gather(buys):
     lots = collections.defaultdict(collections.deque)
-    for item, spend, qty in cursor.execute(
-            "SELECT item, spend, qty FROM purchases WHERE run>=? ORDER BY at",
-            (start,)):
-        if qty:
-            lots[key(item)].append([qty, (spend or 0) / qty])
+    for _at, item, spend, qty in buys:
+        lots[key(item)].append([qty, (spend or 0) / qty])
     return lots
 
 
-def match(cursor, start, lots, listed_in_packs):
+def match(sells, lots):
     per_item = {}
     per_run = {}
-    for run, item, qty, price, proceeds in cursor.execute(
-            "SELECT run, item, qty, price, proceeds FROM sales "
-            "WHERE run>=? ORDER BY at", (start,)):
+    for _at, run, item, qty, price, proceeds, listed_in_packs in sells:
         units = (qty or 0) * (pack(item) if listed_in_packs else 1)
         if not units:
             continue
@@ -63,12 +81,11 @@ def match(cursor, start, lots, listed_in_packs):
         while left and lots[k]:
             lot = lots[k][0]
             take = min(left, lot[0])
-            gain = take * (each - lot[1])
             row["units"] += take
             row["revenue"] += take * each
             row["cost"] += take * lot[1]
             tally["units"] += take
-            tally["profit"] += gain
+            tally["profit"] += take * (each - lot[1])
             lot[0] -= take
             left -= take
             if lot[0] <= 0:
@@ -87,31 +104,13 @@ def main():
     now = datetime.datetime.now().strftime("%H:%M")
     print(f"PROFIT SUMMARY -- runs launched since {start:%Y-%m-%d} 00:00 "
           f"(as of {now})")
-    print("only units the script both bought and sold in those runs, "
-          "matched oldest purchase first")
-    every = []
-    for label, path, listed_in_packs in LEDGERS:
-        if not path.exists():
-            print("")
-            print(f"{label}: no ledger at {path}")
-            continue
-        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-        lots = gather(conn, stamp)
-        per_item, per_run = match(conn, stamp, lots, listed_in_packs)
-        conn.close()
-        print("")
-        print(f"{label} -- {path}")
-        every.append(report(per_item, per_run, lots))
-    if len(every) > 1:
-        print("")
-        line("=")
-        units = sum(g[0] for g in every)
-        revenue = sum(g[1] for g in every)
-        cost = sum(g[2] for g in every)
-        profit = revenue - cost
-        margin = f"{100 * profit / revenue:>7.1f}%" if revenue else f"{'--':>8}"
-        print(f"{'BOTH LEDGERS':<26}{profit:>15,.0f}{units:>8,}{margin}"
-              f"{revenue:>16,.0f}{cost:>16,.0f}")
+    print("every run of both scripts, counted together; only units bought and "
+          "sold within them, matched oldest purchase first")
+    print("")
+    buys, sells = rows(stamp)
+    lots = gather(buys)
+    per_item, per_run = match(sells, lots)
+    report(per_item, per_run, lots)
 
 
 def report(per_item, per_run, lots):
@@ -148,7 +147,6 @@ def report(per_item, per_run, lots):
     margin = f"{100 * profit / revenue:>7.1f}%" if revenue else f"{'--':>8}"
     print(f"{'TOTAL':<26}{profit:>15,.0f}{units:>8,}{margin}"
           f"{revenue:>16,.0f}{cost:>16,.0f}")
-    totals = (units, revenue, cost)
 
     if per_run:
         print("")
@@ -174,7 +172,9 @@ def report(per_item, per_run, lots):
             print(f"  {k:<26}{units:>8,} units{value:>18,.0f} Alz")
         print(f"  {'':<26}{'':>8} {'':>17}{sum(v for _, v in held.values()):>17,.0f} Alz tied up")
 
-    return totals
+    print("")
+    print("revenue is price x quantity from the ledger; if the game's sales "
+          "fee is not deducted there, margins are lower than shown")
 
 
 if __name__ == "__main__":
