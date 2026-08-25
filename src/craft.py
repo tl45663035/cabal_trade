@@ -9,6 +9,7 @@ ACTION_GAP = _SHARED["timing"]["action_gap"]
 POLL_GAP = _SHARED["timing"]["poll_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
+LOAD_ATTEMPTS = _SHARED["detect"]["load_attempts"]
 PANEL_REREAD_GAP = _SHARED["timing"]["panel_reread_gap"]
 SETTLE_PER_BLOCK = _SHARED["timing"]["craft_settle_per_block"]
 SETTLE_BLOCK = _SHARED["timing"]["craft_settle_block"]
@@ -38,21 +39,26 @@ def open_craft(verbose=True):
     if calibration.await_inventory(verbose=verbose) is None:
         raise Refused("the Inventory is not open, so the craft key cannot be "
                       "reached.")
-    calibration.click(*calibration.inventory_tab_point(calibration.CRAFT_TAB),
-                      settle=0.0)
-    time.sleep(TAB_SETTLE)
     point = calibration.inventory_slot_point(*calibration.CRAFT_KEY_SLOT)
-    say(f"  right-clicking the craft key on tab {calibration.CRAFT_TAB} slot "
-        f"{calibration.CRAFT_KEY_SLOT} at {point}")
-    calibration.right_click(*point)
-    deadline = time.monotonic() + DIALOG_TIMEOUT
-    while time.monotonic() < deadline:
-        if calibration.craft_window_open():
-            return True
-        time.sleep(POLL_GAP)
+    for attempt in range(1, LOAD_ATTEMPTS + 1):
+        calibration.click(
+            *calibration.inventory_tab_point(calibration.CRAFT_TAB),
+            settle=0.0)
+        time.sleep(TAB_SETTLE)
+        say(f"  right-clicking the craft key on tab {calibration.CRAFT_TAB} "
+            f"slot {calibration.CRAFT_KEY_SLOT} at {point} "
+            f"(attempt {attempt}/{LOAD_ATTEMPTS})")
+        calibration.right_click(*point)
+        deadline = time.monotonic() + DIALOG_TIMEOUT
+        while time.monotonic() < deadline:
+            if calibration.craft_window_open():
+                return True
+            time.sleep(POLL_GAP)
+        calibration.snap(f"no_craft_window_{attempt}")
     raise Refused(
         f"the craft window did not open from tab {calibration.CRAFT_TAB} slot "
-        f"{calibration.CRAFT_KEY_SLOT}.")
+        f"{calibration.CRAFT_KEY_SLOT} in {LOAD_ATTEMPTS} attempt(s); the "
+        f"panel was on another tab when the key was right-clicked.")
 
 
 def select_recipe(verbose=True):
