@@ -881,6 +881,7 @@ def main():
     calibration.log_to_file(args[0].lower() if args else "run")
     print(f"  ledger {ledger.DB} run {ledger.start()}")
     calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
+    calibration.watch_for_stop()
     outcome, note = "FINISHED", ""
     try:
         _dispatch(args)

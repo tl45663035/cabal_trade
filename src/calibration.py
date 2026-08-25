@@ -29,6 +29,8 @@ DEFAULTS = {
         "home_notches": 30,
         "for_minutes": 60,
         "price_check_factor": 2.0,
+        "stop_key_presses": 3,
+        "stop_key_window": 1.5,
     },
     "war": {
         "enabled": False,
@@ -72,6 +74,7 @@ DEFAULTS = {
         "tab_settle": 0.6,
         "refresh_settle": 0.05,
         "poll_gap": 0.0,
+        "stop_key_poll": 0.03,
         "stale_sweep": 1.0,
         "panel_reread_gap": 1.0,
         "craft_settle_per_block": 5.0,
@@ -807,6 +810,53 @@ def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
     time.sleep(settle)
 
 
+_OWN_CTRL = 0
+
+
+@contextlib.contextmanager
+def _own_ctrl():
+    global _OWN_CTRL
+    _OWN_CTRL += 1
+    try:
+        yield
+    finally:
+        _OWN_CTRL -= 1
+
+
+def watch_for_stop(verbose=True):
+    import _thread
+    import threading
+    from open_inventory import _user32
+    shared = load_shared()
+    vk = shared["input"]["VK_CONTROL"]
+    presses = int(shared["run"]["stop_key_presses"])
+    window = float(shared["run"]["stop_key_window"])
+    gap = float(shared["timing"]["stop_key_poll"])
+
+    def watch():
+        seen, held = [], False
+        while True:
+            time.sleep(gap)
+            if _OWN_CTRL:
+                seen, held = [], False
+                continue
+            down = bool(_user32.GetAsyncKeyState(vk) & 0x8000)
+            if down and not held:
+                at = time.monotonic()
+                seen = [t for t in seen if at - t <= window] + [at]
+                if len(seen) >= presses:
+                    print(f"{chr(10)}  Ctrl {presses} times: stopping the "
+                          f"run the way Ctrl+C would.")
+                    _thread.interrupt_main()
+                    return
+            held = down
+
+    threading.Thread(target=watch, daemon=True).start()
+    if verbose:
+        print(f"  press Ctrl {presses} times within {window:g}s to stop, "
+              f"from the game or anywhere else")
+
+
 def ctrl_click(x: int, y: int) -> None:
     from open_inventory import _user32, _Input, _event
     keys = load_shared()["input"]
@@ -814,21 +864,22 @@ def ctrl_click(x: int, y: int) -> None:
 
     _user32.SetCursorPos(int(x), int(y))
     time.sleep(HOVER_SETTLE)
-    _user32.SendInput(1, ctypes.byref(_event(vk, up=False)),
-                      ctypes.sizeof(_Input))
-    try:
-        time.sleep(MODIFIER_SETTLE)
-        _user32.SendInput(1, ctypes.byref(_mouse_event(
-            keys["MOUSEEVENTF_LEFTDOWN"])), ctypes.sizeof(_Input))
-        try:
-            time.sleep(CLICK_HOLD)
-        finally:
-            _user32.SendInput(1, ctypes.byref(_mouse_event(
-                keys["MOUSEEVENTF_LEFTUP"])), ctypes.sizeof(_Input))
-        time.sleep(MODIFIER_SETTLE)
-    finally:
-        _user32.SendInput(1, ctypes.byref(_event(vk, up=True)),
+    with _own_ctrl():
+        _user32.SendInput(1, ctypes.byref(_event(vk, up=False)),
                           ctypes.sizeof(_Input))
+        try:
+            time.sleep(MODIFIER_SETTLE)
+            _user32.SendInput(1, ctypes.byref(_mouse_event(
+                keys["MOUSEEVENTF_LEFTDOWN"])), ctypes.sizeof(_Input))
+            try:
+                time.sleep(CLICK_HOLD)
+            finally:
+                _user32.SendInput(1, ctypes.byref(_mouse_event(
+                    keys["MOUSEEVENTF_LEFTUP"])), ctypes.sizeof(_Input))
+            time.sleep(MODIFIER_SETTLE)
+        finally:
+            _user32.SendInput(1, ctypes.byref(_event(vk, up=True)),
+                              ctypes.sizeof(_Input))
     snap(f"ctrlclick_{x}_{y}")
 
 
