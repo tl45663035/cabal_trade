@@ -11,6 +11,9 @@ AGENT_SHOP_TAB = _FACTS["agent_shop_tab"]
 AGENT_SHOP_SLOT = tuple(_FACTS["agent_shop_slot"])
 
 ACTION_GAP = CAL["timing"]["action_gap"]
+DIALOG_TIMEOUT = CAL["timing"]["dialog_timeout"]
+POLL_GAP = CAL["timing"]["poll_gap"]
+LOAD_ATTEMPTS = CAL["detect"]["load_attempts"]
 
 
 MIN_PLAUSIBLE_BALANCE = CAL["detect"]["min_plausible_balance"]
@@ -106,26 +109,39 @@ def open_agent_shop(verbose: bool = True) -> None:
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
 
-    ensure_inventory_open(verbose=verbose)
-
-    tab = tab_point(AGENT_SHOP_TAB)
-    if verbose:
-        print(f"  tab {AGENT_SHOP_TAB} at {tab}")
-    click(*tab)
-
-    if not panel_open():
-        calibration.snap("inventory_gone_after_tab")
-        raise RuntimeError(
-            f"the Inventory panel is not open after pressing I and clicking "
-            f"tab {AGENT_SHOP_TAB}. The game is showing something else -- a "
-            f"loading screen, a transfer, or another window has the focus. "
-            f"Not right-clicking into the world.")
-
     row, col = AGENT_SHOP_SLOT
-    point = slot_point(row, col)
-    if verbose:
-        print(f"  right-clicking slot ({row},{col}) at {point}")
-    right_click(*point)
+    for attempt in range(1, LOAD_ATTEMPTS + 1):
+        ensure_inventory_open(verbose=verbose)
+
+        tab = tab_point(AGENT_SHOP_TAB)
+        if verbose:
+            print(f"  tab {AGENT_SHOP_TAB} at {tab}")
+        click(*tab)
+
+        if not panel_open():
+            calibration.snap("inventory_gone_after_tab")
+            raise RuntimeError(
+                f"the Inventory panel is not open after pressing I and "
+                f"clicking tab {AGENT_SHOP_TAB}. The game is showing "
+                f"something else -- a loading screen, a transfer, or another "
+                f"window has the focus. Not right-clicking into the world.")
+
+        point = slot_point(row, col)
+        if verbose:
+            print(f"  right-clicking slot ({row},{col}) at {point} "
+                  f"(attempt {attempt}/{LOAD_ATTEMPTS})")
+        right_click(*point)
+
+        deadline = time.monotonic() + DIALOG_TIMEOUT
+        while time.monotonic() < deadline:
+            if calibration._trade_window_open():
+                return
+            time.sleep(POLL_GAP)
+        calibration.snap(f"no_trade_window_{attempt}")
+        if verbose:
+            print(f"  no Trade window after attempt {attempt}; the panel was "
+                  f"on another tab when the key was right-clicked. Selecting "
+                  f"tab {AGENT_SHOP_TAB} again.")
 
 
 if __name__ == "__main__":
