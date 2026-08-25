@@ -209,28 +209,32 @@ def _near(a, b):
     return a and b and (a / PRICE_CHECK_FACTOR <= b <= a * PRICE_CHECK_FACTOR)
 
 
-def _agreed(asked, filled, average, verbose):
+def _agreed(asked, filled, average, listed_at, verbose):
     say = print if verbose else (lambda *a: None)
     seen = [(v, w, exact) for v, w, exact in
             ((asked, "the row", True), (filled, "the price field", True),
-             (average, "the week's average", False))
+             (average, "the week's average", False),
+             (listed_at, "what it was listed at", False))
             if v and v >= MIN_PLAUSIBLE_PRICE]
     if not seen:
         return None
-    best = None
-    for pick in seen:
-        with_it = [o for o in seen if _near(pick[0], o[0])]
-        exact = [o for o in with_it if o[2]]
-        if not exact:
-            continue
-        rank = (len(with_it), len(exact))
-        if best is None or rank > best[0]:
-            best = (rank, exact[0], with_it)
-    if best is None:
-        say(f"    only the week's average read, and it is not a price to "
-            f"list at")
+    camps = {frozenset(j for j, other in enumerate(seen)
+                       if _near(pick[0], other[0]))
+             for pick in seen}
+    agreeing = max(len(camp) for camp in camps)
+    biggest = [camp for camp in camps if len(camp) == agreeing]
+    if len(biggest) > 1:
+        say(f"    the witnesses split {' and '.join(
+            ', '.join(f'{seen[j][1]} says {seen[j][0]:,}' for j in sorted(camp))
+            for camp in biggest)}; taking none of them")
         return None
-    (agreeing, _), (value, where, _), with_it = best
+    with_it = [seen[j] for j in sorted(biggest[0])]
+    carries = [o for o in with_it if o[2]]
+    if not carries:
+        say(f"    {agreeing} of {len(seen)} witnesses put it near "
+            f"{with_it[0][0]:,}, and none of them carries the asking price")
+        return None
+    value, where, _ = carries[0]
     odd = [o for o in seen if o not in with_it]
     if odd:
         say(f"    {', '.join(f'{o[1]} says {o[0]:,}' for o in odd)}, against "
@@ -241,14 +245,15 @@ def _agreed(asked, filled, average, verbose):
     return value
 
 
-def suggested_price(verbose=False):
+def suggested_price(verbose=False, listed_at=None):
     panel = _panel()
     box = tuple(panel["suggestion_boxes"][-1])
     radio = (box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
-    value = _agreed(*_asking(calibration.grab(), panel), verbose)
+    value = _agreed(*_asking(calibration.grab(), panel), listed_at, verbose)
     calibration.click(*radio, settle=FIELD_SETTLE)
     if value is None:
-        value = _agreed(*_asking(calibration.grab(), panel), verbose)
+        value = _agreed(*_asking(calibration.grab(), panel), listed_at,
+                        verbose)
     if value is None and verbose:
         print(f"    the lowest listed price would not read")
     return value
@@ -672,7 +677,8 @@ class RowModel:
 
     def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
                   lands_in=None, expect_item=None,
-                  expect_price=None, unit_market=None, floor_each=0):
+                  expect_price=None, unit_market=None, floor_each=0,
+                  listed_at=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -710,7 +716,7 @@ class RowModel:
             with calibration.step(f"ctrl-click ({row},{col}) attempt {attempt}"):
                 calibration.ctrl_click(*point)
             with calibration.step("read the suggested price"):
-                suggested = suggested_price(verbose)
+                suggested = suggested_price(verbose, listed_at)
             if suggested is not None:
                 break
             calibration.snap(f"nothing_loaded_{row}x{col}_{attempt}")

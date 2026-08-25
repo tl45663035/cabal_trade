@@ -214,7 +214,8 @@ def relist_one(model, index, verbose=True):
             why += f", and this listing carries {pack}"
     try:
         out = model.list_slot(*landing, floor=floor, why=why, verbose=verbose,
-                              lands_in=lands_in, expect_item=row.name)
+                              lands_in=lands_in, expect_item=row.name,
+                              listed_at=row.price)
     except row_model.SlotNeverFilled:
         seen = row_model.read_row_one()
         if row_model.row_function(seen) != row_model.RECEIPT_WORD:
