@@ -204,6 +204,7 @@ DEFAULTS = {
         "panel_field_inset": 30,
         "panel_field_half": 14,
         "panel_label_gap": 22,
+        "panel_label_pad": 12,
         "word_row_slack": 6,
         "tier_row_slack": 4,
         "panel_rereads": 5,
@@ -410,6 +411,7 @@ REGISTER_PANEL_F = _S["regions"]["register_panel"]
 PANEL_FIELD_INSET = _S["detect"]["panel_field_inset"]
 PANEL_FIELD_HALF = _S["detect"]["panel_field_half"]
 PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
+PANEL_LABEL_PAD = _S["detect"]["panel_label_pad"]
 CLEAR_PRESSES_QTY = _S["detect"]["clear_presses_qty"]
 CLEAR_PRESSES_PRICE = _S["detect"]["clear_presses_price"]
 KEY_GAP = _S["timing"]["key_gap"]
@@ -2411,7 +2413,7 @@ def calibrate_panel(verbose=True):
         here = [edge for t, _c, point, edge in spans
                 if re.search(_ALZ_WORD, t, re.IGNORECASE)
                 and abs(point[1] - y) <= PANEL_FIELD_HALF]
-        return max(here) if here else right
+        return min(box[2], max(here) + PANEL_LABEL_PAD) if here else right
 
     out = {
         "panel_box": list(box),
