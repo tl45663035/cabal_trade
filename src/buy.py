@@ -143,6 +143,7 @@ def dialog_holds(image, per_pack, most):
 
 
 def _cancel(why, retryable=False):
+    calibration.snap("buy_cancelled")
     point = dialog_button(CANCEL_WORD)
     if point is not None:
         calibration.click(*point)
@@ -188,6 +189,7 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     with step("get_price: search the favourite and read row 1"):
         offer = get_price.get_price(int(slot), verbose=False)
     if offer is None:
+        calibration.snap(f"buy_slot_{slot}_would_not_price")
         raise Refused(f"favourite slot {slot} would not price, so there is "
                       f"nothing to buy from.")
     name = calibration.FAVOURITE_ITEMS[str(int(slot))]
@@ -196,6 +198,7 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     if sells_at and gap is not None:
         now = sells_at - offer["unit_price"]
         if now <= gap:
+            calibration.snap("buy_gap_too_thin")
             raise Refused(
                 f"row 1 asks {offer['unit_price']:,} and the core sells at "
                 f"{sells_at:,}, a gap of {now:,} against the {gap:,} wanted. "
@@ -209,6 +212,7 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     with step("await the Purchase dialog"):
         appeared = await_dialog()
     if not appeared:
+        calibration.snap("buy_no_dialog_after_buy")
         raise Refused(
             f"no {DIALOG_MARKER} dialog appeared after clicking Buy on row 1. "
             f"Nothing was confirmed.", retryable=True)
@@ -309,6 +313,7 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     with step("confirm the dialog is gone"):
         still = dialog_open()
     if still:
+        calibration.snap("buy_dialog_stayed_open")
         raise Refused(
             f"the dialog stayed open after {CONFIRM_WORD}. Whether anything "
             f"was bought is unknown -- look before running again.")
@@ -316,6 +321,7 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         after_alz = await_balance(differs_from=before_alz)
     units = asked * max(1, row_model.pack_size(offer["name"]))
     if after_alz is None:
+        calibration.snap("buy_balance_unread_after_confirm")
         raise Refused(
             f"the Alz balance would not read after {CONFIRM_WORD}. Whether "
             f"{want_total:,} was spent is unknown -- check by hand.")
@@ -335,6 +341,7 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     say(f"    balance after  {after_alz:,}; spent {spent:,} "
         f"({per_unit:,} a core)")
     if spent != want_total:
+        calibration.snap("buy_spend_disagrees")
         raise Refused(
             f"{spent:,} left the account for an order the dialog priced at "
             f"{want_total:,} after {REREADS} reads. Balance {before_alz:,} -> "

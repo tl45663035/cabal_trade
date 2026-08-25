@@ -331,25 +331,28 @@ def _pass_timing(number, spent, wall):
                             f"({wall / 1000:.1f}s)")
 
 
-def relist_pass(model, first, last, verbose=True):
+def relist_pass(model, first, last, verbose=True, tally=None):
     calibration.phases_reset()
     started = time.perf_counter()
+    tally = {} if tally is None else tally
+    tally.update(done=0, skipped=0, empty=0)
     with calibration.phase("scroll the table home"):
         model.home(verbose=False)
-    done = skipped = empty = 0
-    for index in range(first, last + 1):
-        out = relist_one(model, index, verbose=verbose)
-        if out:
-            done += 1
-        elif out is False:
-            skipped += 1
-        else:
-            empty += 1
-    span = (time.perf_counter() - started) * 1000
-    calibration.phases_table(
-        f"relisting rows {first}-{last}: {done} relisted, {empty} empty, "
-        f"{skipped} skipped", wall=span)
-    return done, skipped, empty, span
+    try:
+        for index in range(first, last + 1):
+            out = relist_one(model, index, verbose=verbose)
+            if out:
+                tally["done"] += 1
+            elif out is False:
+                tally["skipped"] += 1
+            else:
+                tally["empty"] += 1
+    finally:
+        span = (time.perf_counter() - started) * 1000
+        calibration.phases_table(
+            f"relisting rows {first}-{last}: {tally['done']} relisted, "
+            f"{tally['empty']} empty, {tally['skipped']} skipped", wall=span)
+    return tally["done"], tally["skipped"], tally["empty"], span
 
 
 def do_relist(first=None, last=None, minutes=None, verbose=True):
@@ -376,14 +379,22 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         passes += 1
         print("")
         print(f"-- pass {passes} --")
+        counted = {"done": 0, "skipped": 0, "empty": 0}
         try:
             with _span(spent, "resupply"):
                 resupply_pass(model, first, last, verbose=verbose)
             made, missed, bare, relisting = relist_pass(model, first, last,
-                                                        verbose=verbose)
+                                                        verbose=verbose,
+                                                        tally=counted)
             spent["relisting"] = relisting
         except row_model.Divergence as exc:
             print(f"  STOPPED: {exc}")
+            print(f"  pass {passes} got as far as {counted['done']} relisted, "
+                  f"{counted['empty']} empty, {counted['skipped']} skipped; "
+                  f"counting them")
+            done += counted["done"]
+            skipped += counted["skipped"]
+            empty += counted["empty"]
             stopped = exc
             break
         done += made
