@@ -491,6 +491,7 @@ PARK_SETTLE = _S["timing"]["park_settle"]
 TAB_SETTLE = _S["timing"]["tab_settle"]
 DIALOG_TIMEOUT = _S["timing"]["dialog_timeout"]
 SEARCH_TIMEOUT = _S["timing"]["search_timeout"]
+SEARCH_RETRIES = _S["timing"]["search_retries"]
 ALZ_SEARCH = None
 _NOT_DIGIT = re.compile("[^0-9]")
 
@@ -1608,23 +1609,30 @@ def calibrate_purchase(shop, verbose=True):
         raise RuntimeError("no favourite slots measured; cannot populate the "
                            "offers table to find the Buy column.")
     fx, fy = favs[0]
-    say(f"  running favourite 1 at ({fx}, {fy}) to fill the table")
-    click(fx, fy)
-    park()
-    deadline = time.monotonic() + SEARCH_TIMEOUT
     table_band = _box(PURCHASE_TABLE_BAND_F)
     button_band = _box(PURCHASE_BUTTON_BAND_F)
-    image, seen = None, []
-    while time.monotonic() < deadline:
-        image = grab()
-        seen = ocr(image, button_band)
-        if [1 for t, _, _ in seen if t.strip().lower() == "buy"]:
+    image, seen, offers = None, [], False
+    for attempt in range(1, SEARCH_RETRIES + 1):
+        say(f"  running favourite 1 at ({fx}, {fy}) to fill the table "
+            f"(attempt {attempt}/{SEARCH_RETRIES})")
+        click(fx, fy)
+        park()
+        deadline = time.monotonic() + SEARCH_TIMEOUT
+        while time.monotonic() < deadline:
+            image = grab()
+            seen = ocr(image, button_band)
+            if [1 for t, _, _ in seen if t.strip().lower() == "buy"]:
+                offers = True
+                break
+            time.sleep(POLL_GAP)
+        if offers:
             break
-        time.sleep(POLL_GAP)
-    else:
+        snap(f"favourite_1_no_offers_{attempt}")
+    if not offers:
         raise RuntimeError(
-            f"favourite 1 returned no offers within {SEARCH_TIMEOUT}s, so the "
-            f"table has no rows to measure.")
+            f"favourite 1 returned no offers within {SEARCH_TIMEOUT}s across "
+            f"{SEARCH_RETRIES} attempt(s), so the table has no rows to "
+            f"measure. {button_band} read {[t for t, _c, _p in seen]}.")
     say(f"  offers arrived after "
         f"{SEARCH_TIMEOUT - (deadline - time.monotonic()):.1f}s")
 
