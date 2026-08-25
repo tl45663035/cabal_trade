@@ -105,6 +105,9 @@ def seed(verbose=True):
     seen_empty = set()
     for index in range(1, row_model.MAX_TOP + 1):
         model.scroll_to(index, verbose=False)
+        if row_model.row_button() == row_model.REGISTER_WORD:
+            seen_empty.add(index)
+            continue
         text = row_model.read_row_one()
         if row_model.row_one_is_empty(text):
             seen_empty.add(index)
@@ -165,8 +168,20 @@ def relist_one(model, index, verbose=True):
     with calibration.phase(f"{calibration.REFRESH_WORD} the table"):
         row_model.refresh_table(model, verbose=False)
     with calibration.phase("scroll to the row and read it"):
-        text, row = row_at(model, index, verbose=False)
+        model.scroll_to(index, verbose=False)
         button = row_model.row_button()
+        if button == row_model.REGISTER_WORD:
+            text, row = "", None
+        else:
+            text = row_model.read_row_one()
+            row = _row_from(text)
+
+    if button == row_model.REGISTER_WORD:
+        model.note_empty(index)
+        if verbose:
+            print(f"  row {index} offers {row_model.REGISTER_WORD}; it is "
+                  f"empty")
+        return None
 
     if button == row_model.RECEIPT_WORD:
         complete = row_model.row_complete(text)
