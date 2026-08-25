@@ -4,7 +4,7 @@ import calibration
 import open_agent_shop_premium as shop
 import open_inventory as inv
 
-ALZ_BOX = tuple(calibration.load()["inventory"]["alz_box"])
+
 
 
 def read_balance(image=None):

@@ -4,7 +4,7 @@ import calibration
 from open_inventory import (VK_I, _Input, _InputUnion, _MouseInput,
                             focus_game, press)
 
-CAL = calibration.load()
+CAL = calibration.load_shared()
 
 _FACTS = CAL["game_facts"]
 AGENT_SHOP_TAB = _FACTS["agent_shop_tab"]
@@ -40,22 +40,22 @@ def panel_open(image=None, verbose: bool = True) -> bool:
 def slot_point(row: int, col: int) -> "tuple[int, int]":
     key = f"{row}x{col}"
     try:
-        return tuple(CAL["inventory"]["slots"][key])
+        return tuple(calibration.load()["inventory"]["slots"][key])
     except KeyError:
         raise ValueError(f"slot {key} is not in calibration.json") from None
 
 
 def tab_point(tab: int) -> "tuple[int, int]":
     try:
-        return tuple(CAL["inventory"]["tabs"][str(tab)])
+        return tuple(calibration.load()["inventory"]["tabs"][str(tab)])
     except KeyError:
         raise ValueError(
             f"tab {tab} is not in calibration.json, which has "
-            f"{sorted(CAL['inventory']['tabs'])}") from None
+            f"{sorted(calibration.load()['inventory']['tabs'])}") from None
 
 
 def favourite_point(slot: int) -> "tuple[int, int]":
-    favs = CAL["shop"]["favourites"]
+    favs = calibration.load()["shop"]["favourites"]
     if not 1 <= slot <= len(favs):
         raise ValueError(f"favourite {slot} is outside 1..{len(favs)}")
     return tuple(favs[slot - 1])
