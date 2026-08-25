@@ -5,11 +5,18 @@ description: Report trading profit for every run launched since midnight, counti
 
 # Profit summary
 
-Run the tool and report what it prints:
+Run the tool and **paste its whole output back, verbatim, in a code block**,
+before saying anything about it:
 
 ```
 py tools/profit_summary.py
 ```
+
+The full table is the answer. Summarising it in prose drops things the user
+came for -- most of all the `by run` block and the **Alz an hour** line under
+it, which is the headline number and has been asked for twice after being
+buried in a sentence. Paste first, then comment on it if there is anything
+worth adding.
 
 It reads both ledgers read-only, so it is safe while a run is in progress:
 `sales.db` at the repo root, written by `trade.py`, and `src/sales.db`, written
