@@ -132,11 +132,14 @@ def _shows(image, box, want):
     return want in every, every
 
 
-def dialog_shows(image, want_qty, want_total):
+def dialog_holds(image, per_pack, most):
     image = image if image is not None else calibration.grab()
-    right_qty, qty = _shows(image, _reg("buy_dialog_qty"), want_qty)
-    right_price, price = _shows(image, _reg("buy_dialog_price"), want_total)
-    return right_qty and right_price, qty, price
+    quantities = calibration.read_money_all(image, _reg("buy_dialog_qty"))
+    totals = calibration.read_money_all(image, _reg("buy_dialog_price"))
+    for qty in sorted((q for q in quantities if q), reverse=True):
+        if 1 <= qty <= most and per_pack * qty in totals:
+            return qty, per_pack * qty, quantities, totals
+    return None, None, quantities, totals
 
 
 def _cancel(why, retryable=False):
@@ -252,31 +255,35 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         say(f"    the quantity field already reads {asked}; not retyping it")
 
     per_pack = detail["price"] // max(1, detail["qty"] or 1)
-    if per_pack != offer["price"]:
-        _cancel(f"the table row priced {offer['name']!r} at "
-                f"{offer['price']:,} but the dialog prices one pack at "
-                f"{per_pack:,}. The gap that chose this order was measured "
-                f"off the row. Cancelled without buying.", retryable=True)
-    want_total = per_pack * asked
-    agreed, seen_qty, seen_price = False, [], []
+    if per_pack != offer["price"] and verbose:
+        say(f"    the row priced {offer['name']!r} at {offer['price']:,} and "
+            f"the dialog prices one pack at {per_pack:,}; the dialog is what "
+            f"gets paid")
+    holds = want_total = None
+    seen_qty, seen_price = [], []
     for attempt in range(1, REREADS + 2):
         with step(f"re-read the dialog ({attempt})"):
-            agreed, seen_qty, seen_price = dialog_shows(None, asked,
-                                                        want_total)
-        if agreed:
+            holds, want_total, seen_qty, seen_price = dialog_holds(
+                None, per_pack, asked)
+        if holds:
             break
         if verbose:
             say(f"    read {attempt}: the quantity reads "
                 f"{seen_qty or 'nothing'} and the price reads "
-                f"{seen_price or 'nothing'} -- wanted {asked} at "
-                f"{want_total:,}")
+                f"{seen_price or 'nothing'} -- neither pair agrees at "
+                f"{per_pack:,} a pack")
         time.sleep(REREAD_GAP)
-    if not agreed:
-        _cancel(f"the dialog will not confirm {asked} pack(s) at "
-                f"{want_total:,} after {REREADS + 1} reads; the quantity "
-                f"reads {seen_qty or 'nothing'} and the price reads "
-                f"{seen_price or 'nothing'}. Cancelled without buying.",
+    if not holds:
+        _cancel(f"the dialog would not say how many packs it holds after "
+                f"{REREADS + 1} reads; the quantity reads "
+                f"{seen_qty or 'nothing'} and the price reads "
+                f"{seen_price or 'nothing'}, and no pair of them agrees at "
+                f"{per_pack:,} a pack. Cancelled without buying.",
                 retryable=True)
+    if holds != asked and verbose:
+        say(f"    the dialog holds {holds} pack(s), not the {asked} typed; "
+            f"taking what is there")
+    asked = holds
     if verbose:
         say(f"    dialog confirms {asked} pack(s) at {want_total:,}")
 
