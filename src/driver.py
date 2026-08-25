@@ -142,19 +142,22 @@ def cancel(model, index, verbose=True):
 
 
 def relist_one(model, index, verbose=True):
-    with calibration.step(f"{calibration.REFRESH_WORD} the table"):
+    with calibration.phase(f"{calibration.REFRESH_WORD} the table"):
         row_model.refresh_table(model, verbose=False)
-    text, row = row_at(model, index, verbose=False)
-    button = row_model.row_button()
+    with calibration.phase("scroll to the row and read it"):
+        text, row = row_at(model, index, verbose=False)
+        button = row_model.row_button()
 
     if button == row_model.RECEIPT_WORD:
         complete = row_model.row_complete(text)
         if verbose:
             print(f"  row {index} has SOLD "
                   f"({'fully' if complete else 'partly'}); collecting")
-        model.receive(index, verbose=False)
-        text, row = row_at(model, index, verbose=False)
-        button = row_model.row_button()
+        with calibration.phase("collect what sold"):
+            model.receive(index, verbose=False)
+        with calibration.phase("read the row again after collecting"):
+            text, row = row_at(model, index, verbose=False)
+            button = row_model.row_button()
         if complete or button == row_model.REGISTER_WORD or row is None:
             if verbose:
                 print(f"    collected; row {index} is empty, nothing to "
@@ -178,7 +181,9 @@ def relist_one(model, index, verbose=True):
               f"{row_model.row_button_text()!r}")
         return False
 
-    landing = calibration.first_free_slot(row_model.WORK_TAB, verbose=False)
+    with calibration.phase(f"find a free slot on tab {row_model.WORK_TAB}"):
+        landing = calibration.first_free_slot(row_model.WORK_TAB,
+                                              verbose=False)
     if landing is None:
         raise NotReady(
             f"inventory tab {row_model.WORK_TAB} is full, so row {index} "
@@ -193,7 +198,8 @@ def relist_one(model, index, verbose=True):
         print(f"  row {index}: {row.name!r} is floored by a {pair}, which did "
               f"not price this run; left listed at {row.price:,}.")
         return False
-    standing = row_model.suggested_price(False)
+    with calibration.phase("check the shop slot is empty"):
+        standing = row_model.suggested_price(False)
     if standing is not None:
         raise row_model.Divergence(
             f"the shop slot already holds something the panel prices at "
@@ -203,8 +209,10 @@ def relist_one(model, index, verbose=True):
     if verbose and lands_in != index:
         print(f"    rows {[i for i in model.empty() if i < index]} are empty, "
               f"so it will come back in row {lands_in}")
-    model.cancel(index, verbose=False, tab_ready=True)
-    calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
+    with calibration.phase("cancel the row and take it back"):
+        model.cancel(index, verbose=False, tab_ready=True)
+    with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
     pack = row.pack
     floor = unit_floor * pack
     why = ""
@@ -213,9 +221,10 @@ def relist_one(model, index, verbose=True):
         if pack > 1:
             why += f", and this listing carries {pack}"
     try:
-        out = model.list_slot(*landing, floor=floor, why=why, verbose=verbose,
-                              lands_in=lands_in, expect_item=row.name,
-                              listed_at=row.price)
+        with calibration.phase("list it back"):
+            out = model.list_slot(*landing, floor=floor, why=why,
+                                  verbose=verbose, lands_in=lands_in,
+                                  expect_item=row.name, listed_at=row.price)
     except row_model.SlotNeverFilled:
         seen = row_model.read_row_one()
         if row_model.row_function(seen) != row_model.RECEIPT_WORD:
@@ -244,6 +253,7 @@ PASS_ALLOWANCE = _SHARED["war"]["quiet_before_end"]
 
 def relist_pass(model, first, last, verbose=True):
     model.home(verbose=False)
+    calibration.phases_reset()
     done = skipped = empty = 0
     for index in range(first, last + 1):
         out = relist_one(model, index, verbose=verbose)
@@ -253,6 +263,10 @@ def relist_pass(model, first, last, verbose=True):
             skipped += 1
         else:
             empty += 1
+    if done or skipped:
+        calibration.phases_table(
+            f"relisting rows {first}-{last}: {done} relisted, {empty} empty, "
+            f"{skipped} skipped")
     return done, skipped, empty
 
 
@@ -867,6 +881,11 @@ def main():
         note = f"{type(exc).__name__}: {exc}"
         traceback.print_exc()
     finally:
+        try:
+            calibration.frames_written()
+        except BaseException as exc:
+            print(f"  the frames could not be flushed: "
+                  f"{type(exc).__name__}: {exc}")
         try:
             calibration.recording_off()
         except BaseException as exc:

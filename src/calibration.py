@@ -51,6 +51,7 @@ DEFAULTS = {
     "debug": {
         "frames": False,
         "keep_frames": 2000,
+        "frames_queued": 64,
         "video_fps": 15,
         "video_seconds": 180,
         "keep_videos": 5,
@@ -478,13 +479,20 @@ def phases_reset():
 
 def phases_table(title):
     total = sum(ms for _l, ms in _PHASES)
+    rolled = {}
+    for label, ms in _PHASES:
+        seen = rolled.setdefault(label, [0, 0.0])
+        seen[0] += 1
+        seen[1] += ms
     print("")
     print(f"  {title}")
-    print(f"  {'#':>3}  {'ms':>9}  {'share':>6}  phase")
-    for i, (label, ms) in enumerate(_PHASES, start=1):
-        print(f"  {i:>3}  {ms:>9.1f}  {(ms / total * 100) if total else 0:>5.1f}%"
-              f"  {label}")
-    print(f"       {total:>9.1f}  100.0%  TOTAL")
+    print(f"  {'#':>3}  {'ms':>10}  {'share':>6}  {'n':>4}  {'each':>8}  phase")
+    for i, (label, (times, ms)) in enumerate(
+            sorted(rolled.items(), key=lambda kv: -kv[1][1]), start=1):
+        print(f"  {i:>3}  {ms:>10,.1f}  "
+              f"{(ms / total * 100) if total else 0:>5.1f}%  {times:>4}  "
+              f"{ms / times:>8,.1f}  {label}")
+    print(f"       {total:>10,.1f}  100.0%")
     return total
 
 
@@ -670,8 +678,49 @@ def prune_frames() -> None:
             pass
 
 
+_FRAME_QUEUE = None
+_FRAME_SCRIBE = None
+_FRAMES_DROPPED = 0
+
+
+def _scribe():
+    while True:
+        job = _FRAME_QUEUE.get()
+        try:
+            if job is None:
+                return
+            out, image = job
+            image.save(out)
+        except Exception as exc:
+            print(f"  could not write {job[0].name}: {exc}")
+        finally:
+            _FRAME_QUEUE.task_done()
+
+
+def _frames_waiting():
+    global _FRAME_QUEUE, _FRAME_SCRIBE
+    if _FRAME_SCRIBE is not None and _FRAME_SCRIBE.is_alive():
+        return _FRAME_QUEUE
+    import queue
+    import threading
+    _FRAME_QUEUE = queue.Queue(
+        maxsize=int(load_shared()["debug"]["frames_queued"]))
+    _FRAME_SCRIBE = threading.Thread(target=_scribe, daemon=True)
+    _FRAME_SCRIBE.start()
+    return _FRAME_QUEUE
+
+
+def frames_written() -> None:
+    if _FRAME_QUEUE is None:
+        return
+    _FRAME_QUEUE.join()
+    if _FRAMES_DROPPED:
+        print(f"  {_FRAMES_DROPPED} frame(s) went unwritten; the writer could "
+              f"not keep up")
+
+
 def snap(label: str) -> "Path | None":
-    global _FRAME_N
+    global _FRAME_N, _FRAMES_DROPPED
     if not FRAMES_ON:
         return None
     _FRAME_N += 1
@@ -680,9 +729,14 @@ def snap(label: str) -> "Path | None":
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", label).strip("_") or "frame"
     out = FRAME_DIR / f"{_FRAME_N:05d}_{safe}.png"
     try:
-        grab().save(out)
+        waiting = _frames_waiting()
     except Exception as exc:
-        print(f"  could not write {out.name}: {exc}")
+        print(f"  no frame writer: {type(exc).__name__}: {exc}")
+        return None
+    try:
+        waiting.put_nowait((out, grab()))
+    except Exception:
+        _FRAMES_DROPPED += 1
         return None
     return out
 
