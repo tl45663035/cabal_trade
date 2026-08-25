@@ -270,6 +270,13 @@ def panel_standing():
     return None
 
 
+def _server_came_back(verbose=False):
+    try:
+        return bool(calibration.wait_out_server_lag(verbose=verbose))
+    except RuntimeError as exc:
+        raise Divergence(f"{exc} Nothing has been listed.")
+
+
 def suggested_price(verbose=False, listed_at=None):
     panel = _panel()
     box = tuple(panel["suggestion_boxes"][-1])
@@ -754,21 +761,30 @@ class RowModel:
                 f"{standing:,}; clear it before listing another item.")
 
         deadline = time.monotonic() + DIALOG_TIMEOUT
-        while time.monotonic() < deadline:
-            with calibration.step(f"wait for slot ({row},{col}) to fill"):
-                filled = not calibration.slot_is_empty(calibration.grab(),
-                                                       int(row), int(col))
+        filled, lagged = False, 0
+        while not filled:
+            while time.monotonic() < deadline:
+                with calibration.step(f"wait for slot ({row},{col}) to fill"):
+                    filled = not calibration.slot_is_empty(calibration.grab(),
+                                                           int(row), int(col))
+                if filled:
+                    break
+                time.sleep(POLL_GAP)
             if filled:
                 break
-            time.sleep(POLL_GAP)
-        else:
             calibration.snap(f"slot_{row}x{col}_never_filled")
+            if lagged < LOAD_ATTEMPTS and _server_came_back(verbose):
+                lagged += 1
+                deadline = time.monotonic() + DIALOG_TIMEOUT
+                continue
             raise SlotNeverFilled(
                 f"tab {WORK_TAB} slot ({row},{col}) is still empty "
                 f"{DIALOG_TIMEOUT:g}s after the withdrawal. Nothing listed.")
 
         suggested = None
-        for attempt in range(1, LOAD_ATTEMPTS + 1):
+        attempt = lagged = 0
+        while attempt < LOAD_ATTEMPTS:
+            attempt += 1
             with calibration.step(f"ctrl-click ({row},{col}) attempt {attempt}"):
                 calibration.ctrl_click(*point)
             with calibration.step("read the suggested price"):
@@ -776,6 +792,13 @@ class RowModel:
             if suggested is not None:
                 break
             calibration.snap(f"nothing_loaded_{row}x{col}_{attempt}")
+            if lagged < LOAD_ATTEMPTS and _server_came_back(verbose):
+                lagged += 1
+                attempt -= 1
+                if verbose:
+                    print(f"  the server was not answering, so that ctrl-click "
+                          f"does not count against the {LOAD_ATTEMPTS} tries")
+                continue
             if verbose:
                 print(f"  ctrl-click {attempt}/{LOAD_ATTEMPTS} loaded nothing "
                       f"from ({row},{col})")
