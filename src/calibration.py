@@ -30,6 +30,7 @@ DEFAULTS = {
         "for_minutes": 60,
         "price_check_factor": 2.0,
         "stop_key_presses": 4,
+        "floor_break_after": 5,
         "stop_key_window": 1.5,
     },
     "war": {

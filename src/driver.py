@@ -221,6 +221,13 @@ def relist_one(model, index, verbose=True):
         why = f"a {pair} costs {unit_floor:,}"
         if pack > 1:
             why += f", and this listing carries {pack}"
+    break_after = int(calibration.load_shared()["run"]["floor_break_after"])
+    parked = model._floored.get(index, 0)
+    breaking = break_after > 0 and parked >= break_after
+    if breaking:
+        print(f"    row {index} has sat on its {floor:,} floor for {parked} "
+              f"relist(s); letting it go at the market this once")
+        floor, why = 0, ""
     try:
         with calibration.phase("list it back"):
             out = model.list_slot(*landing, floor=floor, why=why,
@@ -243,9 +250,14 @@ def relist_one(model, index, verbose=True):
     model._slots.pop(index, None)
     model._slots[lands_in] = row_model.Row(row.name, qty=out["qty"],
                                            price=out["price"])
+    model._floored.pop(index, None)
+    if out["floored"]:
+        model._floored[lands_in] = parked + 1
     if verbose:
         print(f"    relisted {out['qty']} at {out['price']:,} in row "
-              f"{lands_in}")
+              f"{lands_in}"
+              + (f", {parked + 1} relist(s) on the floor now"
+                 if out["floored"] else ""))
     return out
 
 

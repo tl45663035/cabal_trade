@@ -511,6 +511,7 @@ class RowModel:
     def __init__(self, enforce=False):
         self._slots = {}
         self._work = {}
+        self._floored = {}
         self._top = None
         self.ready = False
         self.enforce = enforce
@@ -803,7 +804,8 @@ class RowModel:
             raise Divergence(
                 "no price was given and the panel suggests none, so there is "
                 "nothing to list at. Nothing has been listed.")
-        if floor and want < floor:
+        floored = bool(floor) and want < floor
+        if floored:
             if verbose:
                 print(f"    market {want:,} is under the {floor:,} floor"
                       + (f" ({why})" if why else "") + f"; listing at the floor")
@@ -853,7 +855,7 @@ class RowModel:
                   + (f"; it lands in row {int(lands_in)}"
                      if lands_in is not None else ""))
         return {"slot": (int(row), int(col)), "qty": qty,
-                "price": want, "row": lands_in}
+                "price": want, "row": lands_in, "floored": floored}
 
     def collect(self, index, remaining=0):
         index = int(index)
