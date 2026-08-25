@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageChops, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageOps
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "calibration.json"
@@ -162,6 +162,7 @@ DEFAULTS = {
         "panel_scale_low": 0.6,
         "panel_scale_high": 1.2,
         "panel_scale_step": 0.002,
+        "panel_rule_contrast": 20,
         "grid_fit_min": 0.02,
         "panel_open_change": 0.30,
         "edge_candidates": 40,
@@ -319,25 +320,23 @@ def _measured() -> dict:
     return (_CACHE.get("by_resolution") or {}).get(resolution_key()) or {}
 
 
-def remember_band(name, box) -> None:
+def remember(section, values) -> None:
     global _CACHE, _MERGED
-    x, y, w, h = _client_rect()
-    frac = [(box[0] - x) / w, (box[1] - y) / h,
-            (box[2] - x) / w, (box[3] - y) / h]
     data = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
     per = data.setdefault("by_resolution", {}).setdefault(resolution_key(), {})
-    per.setdefault("regions", {})[name] = frac
+    per.setdefault(section, {}).update(values)
     OUT.write_text(json.dumps(data, indent=2), encoding="utf-8")
     _CACHE = _MERGED = None
+
+
+def remember_band(name, box) -> None:
+    x, y, w, h = _client_rect()
+    remember("regions", {name: [(box[0] - x) / w, (box[1] - y) / h,
+                                (box[2] - x) / w, (box[3] - y) / h]})
 
 
 def remember_shop(key, value) -> None:
-    global _CACHE, _MERGED
-    data = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
-    per = data.setdefault("by_resolution", {}).setdefault(resolution_key(), {})
-    per.setdefault("shop", {})[key] = value
-    OUT.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    _CACHE = _MERGED = None
+    remember("shop", {key: value})
 
 
 def load(force: bool = False) -> dict:
@@ -438,6 +437,7 @@ ALZ_BAND_LEFT = _DET["alz_band_left"]
 PANEL_SCALE_LOW = _DET["panel_scale_low"]
 PANEL_SCALE_HIGH = _DET["panel_scale_high"]
 PANEL_SCALE_STEP = _DET["panel_scale_step"]
+PANEL_RULE_CONTRAST = _DET["panel_rule_contrast"]
 MIN_PLAUSIBLE_BALANCE = _DET["min_plausible_balance"]
 EDGE_CANDIDATES = _DET["edge_candidates"]
 EDGE_MIN_GAP = _DET["edge_min_gap"]
@@ -766,7 +766,7 @@ def frames_written() -> None:
               f"not keep up")
 
 
-def snap(label: str) -> "Path | None":
+def snap(label: str, image=None) -> "Path | None":
     global _FRAME_N, _FRAMES_DROPPED
     if not FRAMES_ON:
         return None
@@ -781,7 +781,7 @@ def snap(label: str) -> "Path | None":
         print(f"  no frame writer: {type(exc).__name__}: {exc}")
         return None
     try:
-        waiting.put_nowait((out, grab()))
+        waiting.put_nowait((out, grab() if image is None else image))
     except Exception:
         _FRAMES_DROPPED += 1
         return None
@@ -1277,45 +1277,66 @@ def await_inventory(timeout=None, verbose=False):
     return None
 
 
-def _panel_scale(image, anchor, verbose=True):
+def _comb(profile, shared, base, offset, fixed=None):
+    spread = profile / (profile.mean() or 1)
+    best = None
+    pitch = fixed or shared * PANEL_SCALE_LOW
+    while pitch <= (fixed or shared * PANEL_SCALE_HIGH):
+        span = round(pitch * GRID)
+        room = len(spread) - span
+        if room > 0:
+            score = np.zeros(room)
+            for k in range(GRID + 1):
+                at = round(k * pitch)
+                score += spread[at:at + room]
+            expect = base + offset * pitch / shared
+            lo = max(0, round(expect - pitch / 2))
+            hi = min(room, round(expect + pitch / 2) + 1)
+            if hi > lo:
+                first = lo + int(score[lo:hi].argmax())
+                if best is None or score[first] > best[0]:
+                    best = (float(score[first]), pitch, first)
+        if fixed:
+            break
+        pitch += shared * PANEL_SCALE_STEP
+    return best
+
+
+def _panel_grid(image, anchor, verbose=True):
     say = print if verbose else (lambda *a: None)
     layout = load_shared()["panel_layout"]
     s1x, s1y = layout["slot_one"]
     spx, spy = layout["slot_pitch"]
-    grey = np.asarray(image.convert("L"), dtype=float)
-    height, width = grey.shape
-    dx = np.abs(np.diff(grey, axis=1))
-    dy = np.abs(np.diff(grey, axis=0))
-    best = None
-    scale = PANEL_SCALE_LOW
-    while scale <= PANEL_SCALE_HIGH:
-        xs = [anchor[0] + (s1x - spx / 2 + k * spx) * scale
-              for k in range(GRID + 1)]
-        ys = [anchor[1] + (s1y - spy / 2 + k * spy) * scale
-              for k in range(GRID + 1)]
-        x0, x1 = round(xs[0]), round(xs[-1])
-        y0, y1 = round(ys[0]), round(ys[-1])
-        if x0 < 0 or y0 < 0 or x1 >= width - 1 or y1 >= height - 1:
-            scale += PANEL_SCALE_STEP
-            continue
-        down = dx[y0:y1, x0:x1 + 1].sum(axis=0)
-        across = dy[y0:y1 + 1, x0:x1].sum(axis=1)
-        if not down.mean() or not across.mean():
-            scale += PANEL_SCALE_STEP
-            continue
-        score = (sum(down[round(x) - x0] for x in xs) / down.mean()
-                 + sum(across[round(y) - y0] for y in ys) / across.mean())
-        if best is None or score > best[0]:
-            best = (score, scale)
-        scale += PANEL_SCALE_STEP
-    if best is None:
+    cx, cy, cw, ch = _client_rect()
+    ends = (PANEL_SCALE_LOW, PANEL_SCALE_HIGH)
+    near_x, far_x = s1x - spx / 2, s1x - spx / 2 + GRID * spx
+    near_y, far_y = s1y - spy / 2, s1y - spy / 2 + GRID * spy
+    x0 = max(cx, round(anchor[0] + min(near_x * s for s in ends)))
+    x1 = min(cx + cw, round(anchor[0] + max(far_x * s for s in ends)))
+    y0 = max(cy, round(anchor[1] + min(near_y * s for s in ends)))
+    y1 = min(cy + ch, round(anchor[1] + max(far_y * s for s in ends)))
+    grey = np.asarray(image.convert("L"), dtype=float)[y0:y1, x0:x1]
+    if grey.shape[0] <= GRID or grey.shape[1] <= GRID:
         raise RuntimeError(
-            f"no panel grid fits anywhere between {PANEL_SCALE_LOW} and "
-            f"{PANEL_SCALE_HIGH} of the shared layout from anchor {anchor}. "
-            f"Nothing measured.")
-    say(f"  panel grid fits at {best[1]:.3f} of the shared layout "
-        f"(score {best[0]:.1f})")
-    return best[1]
+            f"the panel window {(x0, y0, x1, y1)} from anchor {anchor} has "
+            f"nothing in it to fit a grid to. Nothing measured.")
+    down = _comb((np.abs(np.diff(grey, axis=1)) > PANEL_RULE_CONTRAST
+                  ).sum(axis=0).astype(float), spx, anchor[0] - x0, near_x)
+    across = None if down is None else _comb(
+        (np.abs(np.diff(grey, axis=0)) > PANEL_RULE_CONTRAST
+         ).sum(axis=1).astype(float), spy, anchor[1] - y0, near_y,
+        spy * down[1] / spx)
+    if down is None or across is None:
+        raise RuntimeError(
+            f"no {GRID}x{GRID} grid of rules fits in {(x0, y0, x1, y1)} from "
+            f"anchor {anchor}. Nothing measured.")
+    pitch = (down[1], across[1])
+    one = (x0 + down[2] + pitch[0] / 2, y0 + across[2] + pitch[1] / 2)
+    say(f"  grid fitted in {(x0, y0, x1, y1)}: pitch "
+        f"{pitch[0]:.1f}x{pitch[1]:.1f} against a shared {spx}x{spy}, "
+        f"slot (1,1) at {one[0]:.0f},{one[1]:.0f}, "
+        f"scores {down[0]:.0f} and {across[0]:.0f}")
+    return one, pitch, pitch[0] / spx
 
 
 def calibrate_inventory(verbose=True):
@@ -1330,21 +1351,30 @@ def calibrate_inventory(verbose=True):
     say(f"  Alz box {alz}   anchor {anchor}")
 
     layout = load_shared()["panel_layout"]
-    scale = _panel_scale(image, anchor, verbose)
-    s1x, s1y = (v * scale for v in layout["slot_one"])
-    spx, spy = (v * scale for v in layout["slot_pitch"])
-    t1x, t1y = (v * scale for v in layout["tab_one"])
+    one, (spx, spy), scale = _panel_grid(image, anchor, verbose)
+    t1x = one[0] + (layout["tab_one"][0] - layout["slot_one"][0]) * scale
+    t1y = one[1] + (layout["tab_one"][1] - layout["slot_one"][1]) * scale
     tp = layout["tab_pitch"] * scale
 
-    tabs = {str(k + 1): [round(anchor[0] + t1x + tp * k),
-                         round(anchor[1] + t1y)] for k in range(GRID)}
+    tabs = {str(k + 1): [round(t1x + tp * k), round(t1y)]
+            for k in range(GRID)}
     slots = {}
     for row in range(1, GRID + 1):
         for col in range(1, GRID + 1):
-            slots[f"{row}x{col}"] = [
-                round(anchor[0] + s1x + spx * (col - 1)),
-                round(anchor[1] + s1y + spy * (row - 1)),
-            ]
+            slots[f"{row}x{col}"] = [round(one[0] + spx * (col - 1)),
+                                     round(one[1] + spy * (row - 1))]
+    if FRAMES_ON:
+        marked = image.copy()
+        pen = ImageDraw.Draw(marked)
+        half = round(SLOT_HALF * scale)
+        for point in slots.values():
+            pen.rectangle((point[0] - half, point[1] - half,
+                           point[0] + half, point[1] + half), outline="red")
+        for point in tabs.values():
+            pen.ellipse((point[0] - half, point[1] - half,
+                         point[0] + half, point[1] + half), outline="lime")
+        pen.rectangle(alz, outline="yellow")
+        snap("inventory_grid_as_fitted", marked)
     say(f"  tab I {tabs['1']}  tab VIII {tabs[str(GRID)]}")
     say(f"  slot (1,1) {slots['1x1']}  (1,7) {slots['1x7']}  "
         f"(8,8) {slots[f'{GRID}x{GRID}']}")
@@ -1367,7 +1397,7 @@ def calibrate_inventory(verbose=True):
         "slots": slots,
         "slot_pitch": [spx, spy],
         "panel_scale": scale,
-        "placed_from": "panel_layout offsets, fitted for scale only",
+        "placed_from": "grid fitted to the panel, tabs from panel_layout",
     }
 
 
@@ -2547,6 +2577,7 @@ def main(close: bool = True) -> None:
 
     snap("inventory_as_measured")
     inventory = calibrate_inventory()
+    remember("inventory", inventory)
     snap("inventory_after_measure")
 
     print("opening the Agent Shop:")
@@ -2592,6 +2623,7 @@ def main(close: bool = True) -> None:
 
     print("register table:")
     shop.update(calibrate_register_table(shop))
+    remember("shop", shop)
 
     print("market prices:")
     prices = calibrate_prices()
