@@ -2403,6 +2403,11 @@ def calibrate_actions(shop, verbose=True):
                     found[word] = (int(point[0]), int(point[1]))
         return found
 
+    def band_reads():
+        return sorted({text.strip() for text, _conf, _point in ocr(grab(),
+                                                                   dialog)
+                       if text.strip()})
+
     def await_button(word):
         deadline = time.monotonic() + budget
         while time.monotonic() < deadline:
@@ -2412,6 +2417,12 @@ def calibrate_actions(shop, verbose=True):
             if word in here:
                 return here[word]
         return None
+
+    def missing(word, after):
+        snap(f"no_{word.lower()}_after_{after.lower()}")
+        return (f"no {word} button appeared in {dialog} within "
+                f"{budget}s after {after} on row 1; that band reads "
+                f"{band_reads()}. Nothing has been withdrawn.")
 
     if buttons_now():
         raise RuntimeError(
@@ -2430,9 +2441,7 @@ def calibrate_actions(shop, verbose=True):
         park(settle=False)
         accept = await_button(RECEIPT_WORD)
         if accept is None:
-            raise RuntimeError(
-                f"no Confirm Receipt dialog appeared after {RECEIPT_WORD} on "
-                f"row 1. Nothing has been collected.")
+            raise RuntimeError(missing(RECEIPT_WORD, RECEIPT_WORD))
         say(f"  Confirm Receipt at {accept}")
         click(*accept)
         park(settle=False)
@@ -2459,18 +2468,16 @@ def calibrate_actions(shop, verbose=True):
 
     cancel = await_button(_S["text"]["dismiss_word"])
     if cancel is None:
-        raise RuntimeError(
-            "no Cancel button appeared after Change on row 1. Nothing has "
-            "been withdrawn.")
+        raise RuntimeError(missing(_S["text"]["dismiss_word"],
+                                   _S["text"]["change_word"]))
     say(f"  Cancel at {cancel}")
     click(*cancel)
     park(settle=False)
 
     confirm = await_button(_S["text"]["confirm_word"])
     if confirm is None:
-        raise RuntimeError(
-            "no Confirmation button appeared after Cancel on row 1; nothing "
-            "committed.")
+        raise RuntimeError(missing(_S["text"]["confirm_word"],
+                                   _S["text"]["dismiss_word"]))
     say(f"  Confirmation at {confirm}")
     click(*confirm)
     park()
