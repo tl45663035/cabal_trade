@@ -1536,13 +1536,12 @@ def calibrate_register_table(shop, verbose=True):
             break
         time.sleep(POLL_GAP)
     if refresh is None:
-        raise RuntimeError(
-            f"no {REFRESH_WORD} button in the Register footer {footer} within "
-            f"{DIALOG_TIMEOUT:g}s; it read "
-            f"{[t for t, _c, _p in seen][:12]}. Nothing written.")
+        say(f"  no {REFRESH_WORD} button read in {footer} within "
+            f"{DIALOG_TIMEOUT:g}s; it read {[t for t, _c, _p in seen]}. "
+            f"Keeping whatever was measured before; a row that cannot be "
+            f"refreshed is read as it stands.")
 
     out = {
-        "refresh_point": refresh,
         "table_x": [band[0], band[2]],
         "row_one_y": int(ys[0]),
         "row_pitch": int(pitch),
@@ -1556,8 +1555,11 @@ def calibrate_register_table(shop, verbose=True):
     say(f"  button column {buttons}")
     say(f"  Register table: {len(marks)} row(s), pitch {pitch}px, "
         f"row 1 y={out['row_one_y']}")
+    if refresh is not None:
+        out["refresh_point"] = refresh
     say(f"  table_x {out['table_x']}, scroll point {out['table_point']}")
-    say(f"  {REFRESH_WORD} at {refresh}")
+    if refresh is not None:
+        say(f"  {REFRESH_WORD} at {refresh}")
     return out
 
 
