@@ -1,3 +1,4 @@
+import datetime
 import re
 import sys
 import time
@@ -875,8 +876,18 @@ def usage():
     print("  py src/driver.py alz             read the balance")
 
 
+def _elapsed(seconds):
+    hours, rest = divmod(int(seconds), 3600)
+    minutes, secs = divmod(rest, 60)
+    if hours:
+        return f"{hours}h {minutes}m {secs}s"
+    return f"{minutes}m {secs}s" if minutes else f"{secs}s"
+
+
 def main():
     import traceback
+    began = datetime.datetime.now()
+    started = time.monotonic()
     args = [a for a in sys.argv[1:] if a != "--frames"]
     calibration.log_to_file(args[0].lower() if args else "run")
     print(f"  ledger {ledger.DB} run {ledger.start()}")
@@ -909,6 +920,9 @@ def main():
         except BaseException as exc:
             print(f"  the profit summary could not be built: "
                   f"{type(exc).__name__}: {exc}")
+        print(f"  started {began:%H:%M:%S}, ended "
+              f"{datetime.datetime.now():%H:%M:%S}, ran for "
+              f"{_elapsed(time.monotonic() - started)}")
         calibration.end_banner(outcome, note)
     if outcome == "CRASHED":
         sys.exit(1)
