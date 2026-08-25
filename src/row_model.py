@@ -197,19 +197,61 @@ def _panel():
     return part
 
 
+def _asking(image, panel):
+    rows = panel["suggestion_boxes"]
+    return (calibration.read_money(image, tuple(rows[-1])),
+            calibration.read_money(image, tuple(panel["price_field"])),
+            calibration.read_money(image, tuple(rows[0])) if len(rows) > 1
+            else None)
+
+
+def _near(a, b):
+    return a and b and (a / PRICE_CHECK_FACTOR <= b <= a * PRICE_CHECK_FACTOR)
+
+
+def _agreed(asked, filled, average, verbose):
+    say = print if verbose else (lambda *a: None)
+    seen = [(v, w, exact) for v, w, exact in
+            ((asked, "the row", True), (filled, "the price field", True),
+             (average, "the week's average", False))
+            if v and v >= MIN_PLAUSIBLE_PRICE]
+    if not seen:
+        return None
+    best = None
+    for pick in seen:
+        with_it = [o for o in seen if _near(pick[0], o[0])]
+        exact = [o for o in with_it if o[2]]
+        if not exact:
+            continue
+        rank = (len(with_it), len(exact))
+        if best is None or rank > best[0]:
+            best = (rank, exact[0], with_it)
+    if best is None:
+        say(f"    only the week's average read, and it is not a price to "
+            f"list at")
+        return None
+    (agreeing, _), (value, where, _), with_it = best
+    odd = [o for o in seen if o not in with_it]
+    if odd:
+        say(f"    {', '.join(f'{o[1]} says {o[0]:,}' for o in odd)}, against "
+            f"{value:,} from {agreeing} of the three; taking {value:,}")
+    else:
+        say(f"    the lowest listed price is {value:,}, from {where}"
+            + (f" and {agreeing - 1} more" if agreeing > 1 else ""))
+    return value
+
+
 def suggested_price(verbose=False):
-    box = tuple(_panel()["suggestion_boxes"][-1])
+    panel = _panel()
+    box = tuple(panel["suggestion_boxes"][-1])
     radio = (box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
-    value = calibration.read_money(calibration.grab(), box)
+    value = _agreed(*_asking(calibration.grab(), panel), verbose)
     calibration.click(*radio, settle=FIELD_SETTLE)
     if value is None:
-        value = calibration.read_money(calibration.grab(), box)
-    if verbose:
-        print(f"    the lowest listed price is {value:,}"
-              if value else "    the lowest listed price would not read")
-    if value and value >= MIN_PLAUSIBLE_PRICE:
-        return value
-    return None
+        value = _agreed(*_asking(calibration.grab(), panel), verbose)
+    if value is None and verbose:
+        print(f"    the lowest listed price would not read")
+    return value
 
 
 def read_panel_net():
