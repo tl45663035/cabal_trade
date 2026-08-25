@@ -20,6 +20,7 @@ _T = _SHARED["timing"]
 ACTION_GAP = _T["action_gap"]
 TAB_SETTLE = _T["tab_settle"]
 _ROW = re.compile(_SHARED["text"]["purchase_row"])
+_GROUPING = re.compile(_SHARED["text"]["row_grouping"])
 MIN_PLAUSIBLE_PRICE = _SHARED["detect"]["min_plausible_price"]
 CAPACITY = _SHARED["game_facts"]["shop_capacity"]
 VISIBLE = _SHARED["game_facts"]["shop_visible"]
@@ -123,19 +124,28 @@ def seed(verbose=True):
     return model
 
 
-def _row_from(text):
-    found = _ROW.match((text or "").strip())
+def _parsed_row(text):
+    found = _ROW.match(text)
     if found is None:
         return None
     seen = re.sub(r"[^0-9]", "", found.group("qty"))
     qty = int(seen) if seen else 1
-    price = int(found.group("price").replace(",", ""))
+    price = int(re.sub(r"[^0-9]", "", found.group("price")))
     if price < MIN_PLAUSIBLE_PRICE:
         return None
     return row_model.Row(
         found.group("name").strip(" |-)("),
         qty=qty if qty >= 1 else 1,
         price=price)
+
+
+def _row_from(text):
+    cleaned = (text or "").strip()
+    row = _parsed_row(cleaned)
+    if row is not None:
+        return row
+    regrouped = _GROUPING.sub(",", cleaned)
+    return _parsed_row(regrouped) if regrouped != cleaned else None
 
 
 def cancel(model, index, verbose=True):
