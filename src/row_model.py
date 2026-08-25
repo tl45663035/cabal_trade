@@ -401,8 +401,15 @@ def trim_borders(text):
 
 
 def read_row_one():
-    return trim_borders(
-        calibration.read_line(calibration.grab(), row_one_box()))
+    text = ""
+    for attempt in range(PANEL_REREADS + 1):
+        text = trim_borders(
+            calibration.read_line(calibration.grab(), row_one_box()))
+        if text.strip():
+            return text
+        if attempt < PANEL_REREADS:
+            time.sleep(PANEL_REREAD_GAP)
+    return text
 
 
 def row_one_is_empty(text=None):
