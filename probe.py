@@ -289,6 +289,7 @@ say("")
 
 steps = (
     ("find the game window", lambda: C.find_game_window()),
+    ("sweep the screen for the balance", lambda: C.locate_alz(verbose=True)),
     ("inventory panel open", lambda: C.inventory_open()),
     ("await the inventory", lambda: C.await_inventory(verbose=True)),
     ("measure the inventory", lambda: C.calibrate_inventory(verbose=True)),

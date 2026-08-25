@@ -1,3 +1,4 @@
+import collections
 import contextlib
 import csv
 import ctypes
@@ -152,6 +153,14 @@ DEFAULTS = {
         "alz_max_width_fraction": 0.95,
         "alz_min_height": 8,
         "alz_max_height": 30,
+        "alz_sweep_height": 44,
+        "alz_sweep_step": 18,
+        "alz_label_back": 260,
+        "alz_band_pad": 8,
+        "alz_band_left": 60,
+        "panel_scale_low": 0.6,
+        "panel_scale_high": 1.2,
+        "panel_scale_step": 0.002,
         "grid_fit_min": 0.02,
         "panel_open_change": 0.30,
         "edge_candidates": 40,
@@ -297,6 +306,30 @@ def load_shared() -> dict:
     return out
 
 
+def _measured() -> dict:
+    global _CACHE
+    if _CACHE is None:
+        if not OUT.exists():
+            return {}
+        try:
+            _CACHE = json.loads(OUT.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+    return (_CACHE.get("by_resolution") or {}).get(resolution_key()) or {}
+
+
+def remember_band(name, box) -> None:
+    global _CACHE
+    x, y, w, h = _client_rect()
+    frac = [(box[0] - x) / w, (box[1] - y) / h,
+            (box[2] - x) / w, (box[3] - y) / h]
+    data = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
+    per = data.setdefault("by_resolution", {}).setdefault(resolution_key(), {})
+    per.setdefault("regions", {})[name] = frac
+    OUT.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    _CACHE = None
+
+
 def remember_shop(key, value) -> None:
     global _CACHE
     data = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
@@ -392,6 +425,15 @@ ALZ_LINE_HALF = _DET["alz_line_half"]
 ALZ_MAX_WIDTH_FRACTION = _DET["alz_max_width_fraction"]
 ALZ_MIN_HEIGHT = _DET["alz_min_height"]
 ALZ_MAX_HEIGHT = _DET["alz_max_height"]
+ALZ_SWEEP_HEIGHT = _DET["alz_sweep_height"]
+ALZ_SWEEP_STEP = _DET["alz_sweep_step"]
+ALZ_LABEL_BACK = _DET["alz_label_back"]
+ALZ_BAND_PAD = _DET["alz_band_pad"]
+ALZ_BAND_LEFT = _DET["alz_band_left"]
+PANEL_SCALE_LOW = _DET["panel_scale_low"]
+PANEL_SCALE_HIGH = _DET["panel_scale_high"]
+PANEL_SCALE_STEP = _DET["panel_scale_step"]
+MIN_PLAUSIBLE_BALANCE = _DET["min_plausible_balance"]
 EDGE_CANDIDATES = _DET["edge_candidates"]
 EDGE_MIN_GAP = _DET["edge_min_gap"]
 PURCHASE_HEADER_UP = _DET["purchase_header_up"]
@@ -892,8 +934,13 @@ def read_money_all(image, box):
     return seen
 
 
+def alz_band():
+    frac = (_measured().get("regions") or {}).get("alz_search")
+    return _box(tuple(frac)) if frac else _box(ALZ_SEARCH_F)
+
+
 def balance_box():
-    band = _box(ALZ_SEARCH_F)
+    band = alz_band()
     measured = tuple(load()["inventory"]["alz_box"])
     return (min(band[0], measured[0]), min(band[1], measured[1]),
             max(band[2], measured[2]), max(band[3], measured[3]))
@@ -1078,7 +1125,7 @@ def read_digits(image: Image.Image, box, scale: int = None):
 
 
 def find_alz(image: Image.Image, search=None):
-    search = search or _box(ALZ_SEARCH_F)
+    search = search or alz_band()
     crop = image.crop(search)
     px = crop.load()
     xs, ys = [], []
@@ -1110,6 +1157,85 @@ def find_alz(image: Image.Image, search=None):
         return None
     if not ALZ_MIN_HEIGHT <= height <= ALZ_MAX_HEIGHT:
         return None
+    return box
+
+
+def _alz_candidates(image):
+    x, y, w, h = _client_rect()
+    seen = []
+    for top in range(y, y + h - ALZ_MIN_HEIGHT, ALZ_SWEEP_STEP):
+        band = (x, top, x + w, min(y + h, top + ALZ_SWEEP_HEIGHT))
+        for text, _conf, point, right in ocr_spans(image, band):
+            if not re.search(_ALZ_WORD, text, flags=re.IGNORECASE):
+                continue
+            look = (max(band[0], right - ALZ_LABEL_BACK),
+                    max(band[1], point[1] - ALZ_LINE_HALF),
+                    right, min(band[3], point[1] + ALZ_LINE_HALF))
+            gold = find_alz(image, look)
+            if gold is None:
+                continue
+            box = (gold[0] - ALZ_BAND_LEFT, gold[1] - ALZ_BAND_PAD,
+                   right + ALZ_BAND_PAD, gold[3] + ALZ_BAND_PAD)
+            value = read_money(image, box)
+            if value is None or value < MIN_PLAUSIBLE_BALANCE:
+                continue
+            seen.append(((gold[1] + gold[3]) // 2, box, value))
+    lines = []
+    for row, box, value in sorted(seen):
+        if lines and row - lines[-1][0][0] <= ALZ_LINE_HALF:
+            lines[-1].append((row, box, value))
+        else:
+            lines.append([(row, box, value)])
+    out = []
+    for line in lines:
+        tally = collections.Counter(value for _row, _box, value in line)
+        winner = tally.most_common(1)[0][0]
+        out.append((next(b for _row, b, v in line if v == winner), winner))
+    return out
+
+
+def locate_alz(verbose=True):
+    from open_inventory import VK_I, press
+    say = print if verbose else (lambda *a: None)
+    found = _alz_candidates(grab())
+    if not found:
+        say("  nothing on screen reads as a balance; pressing I and looking "
+            "again")
+        press(VK_I)
+        time.sleep(ACTION_GAP)
+        park()
+        snap("alz_locate_after_I")
+        found = _alz_candidates(grab())
+    say(f"  {len(found)} place(s) on screen read as a balance:")
+    for box, value in found:
+        say(f"    {box}  {value:,}")
+    if not found:
+        return None
+    kept = found
+    if len(found) > 1:
+        say("  closing the Inventory to see which one goes away")
+        press(VK_I)
+        time.sleep(ACTION_GAP)
+        park()
+        shut = grab()
+        snap("alz_locate_panel_shut")
+        press(VK_I)
+        time.sleep(ACTION_GAP)
+        park()
+        kept = []
+        for box, value in found:
+            if read_money(shut, box) == value:
+                say(f"    {box} still reads {value:,} with the panel shut, "
+                    f"so it is not the balance")
+                continue
+            kept.append((box, value))
+    if len(kept) != 1:
+        say(f"  {len(kept)} left after that, so nothing was measured")
+        return None
+    box, value = kept[0]
+    remember_band("alz_search", box)
+    say(f"  balance band {box} reading {value:,}, remembered for "
+        f"{resolution_key()}")
     return box
 
 
@@ -1146,6 +1272,47 @@ def await_inventory(timeout=None, verbose=False):
     return None
 
 
+def _panel_scale(image, anchor, verbose=True):
+    say = print if verbose else (lambda *a: None)
+    layout = load_shared()["panel_layout"]
+    s1x, s1y = layout["slot_one"]
+    spx, spy = layout["slot_pitch"]
+    grey = np.asarray(image.convert("L"), dtype=float)
+    height, width = grey.shape
+    dx = np.abs(np.diff(grey, axis=1))
+    dy = np.abs(np.diff(grey, axis=0))
+    best = None
+    scale = PANEL_SCALE_LOW
+    while scale <= PANEL_SCALE_HIGH:
+        xs = [anchor[0] + (s1x - spx / 2 + k * spx) * scale
+              for k in range(GRID + 1)]
+        ys = [anchor[1] + (s1y - spy / 2 + k * spy) * scale
+              for k in range(GRID + 1)]
+        x0, x1 = round(xs[0]), round(xs[-1])
+        y0, y1 = round(ys[0]), round(ys[-1])
+        if x0 < 0 or y0 < 0 or x1 >= width - 1 or y1 >= height - 1:
+            scale += PANEL_SCALE_STEP
+            continue
+        down = dx[y0:y1, x0:x1 + 1].sum(axis=0)
+        across = dy[y0:y1 + 1, x0:x1].sum(axis=1)
+        if not down.mean() or not across.mean():
+            scale += PANEL_SCALE_STEP
+            continue
+        score = (sum(down[round(x) - x0] for x in xs) / down.mean()
+                 + sum(across[round(y) - y0] for y in ys) / across.mean())
+        if best is None or score > best[0]:
+            best = (score, scale)
+        scale += PANEL_SCALE_STEP
+    if best is None:
+        raise RuntimeError(
+            f"no panel grid fits anywhere between {PANEL_SCALE_LOW} and "
+            f"{PANEL_SCALE_HIGH} of the shared layout from anchor {anchor}. "
+            f"Nothing measured.")
+    say(f"  panel grid fits at {best[1]:.3f} of the shared layout "
+        f"(score {best[0]:.1f})")
+    return best[1]
+
+
 def calibrate_inventory(verbose=True):
     say = print if verbose else (lambda *a: None)
     image = grab()
@@ -1158,10 +1325,11 @@ def calibrate_inventory(verbose=True):
     say(f"  Alz box {alz}   anchor {anchor}")
 
     layout = load_shared()["panel_layout"]
-    s1x, s1y = layout["slot_one"]
-    spx, spy = layout["slot_pitch"]
-    t1x, t1y = layout["tab_one"]
-    tp = layout["tab_pitch"]
+    scale = _panel_scale(image, anchor, verbose)
+    s1x, s1y = (v * scale for v in layout["slot_one"])
+    spx, spy = (v * scale for v in layout["slot_pitch"])
+    t1x, t1y = (v * scale for v in layout["tab_one"])
+    tp = layout["tab_pitch"] * scale
 
     tabs = {str(k + 1): [round(anchor[0] + t1x + tp * k),
                          round(anchor[1] + t1y)] for k in range(GRID)}
@@ -1193,7 +1361,8 @@ def calibrate_inventory(verbose=True):
         "tab_pitch": tp,
         "slots": slots,
         "slot_pitch": [spx, spy],
-        "placed_from": "panel_layout offsets, not fitted",
+        "panel_scale": scale,
+        "placed_from": "panel_layout offsets, fitted for scale only",
     }
 
 
@@ -2123,9 +2292,13 @@ def calibrate_panel(verbose=True):
     return out
 
 
+def slot_half():
+    return round(SLOT_HALF * (load()["inventory"].get("panel_scale") or 1))
+
+
 def slot_is_empty(image, row, col):
     point = inventory_slot_point(row, col)
-    half = SLOT_HALF
+    half = slot_half()
     crop = image.crop((point[0] - half, point[1] - half,
                        point[0] + half, point[1] + half)).convert("L")
     data = list(crop.getdata())
@@ -2359,9 +2532,13 @@ def main(close: bool = True) -> None:
     print("inventory:")
 
     if await_inventory(verbose=True) is None:
-        raise RuntimeError(
-            "no readable Alz balance after pressing I twice; the Inventory "
-            "panel is not open. Nothing measured.")
+        print("  the configured band holds no balance; sweeping the screen "
+              "for one")
+        if locate_alz() is None or await_inventory(verbose=True) is None:
+            raise RuntimeError(
+                "no readable Alz balance after pressing I twice and sweeping "
+                "the screen; the Inventory panel is not open. Nothing "
+                "measured.")
 
     snap("inventory_as_measured")
     inventory = calibrate_inventory()
@@ -2463,7 +2640,7 @@ def main(close: bool = True) -> None:
             "client_rect": win[2] if win else None,
         },
         "alz_detect": {
-            "search": list(_box(ALZ_SEARCH_F)),
+            "search": list(alz_band()),
             "bright": ALZ_BRIGHT,
             "saturation": ALZ_SATURATION,
             "min_pixels": ALZ_MIN_PIXELS,
@@ -2472,6 +2649,9 @@ def main(close: bool = True) -> None:
         "inventory": inventory,
         "shop": shop,
     }
+    bands = _measured().get("regions") or {}
+    if bands:
+        measured["regions"] = bands
     if convert_block is not None:
         measured["convert"] = convert_block
     if craft_block is not None:
