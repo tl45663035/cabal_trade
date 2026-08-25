@@ -414,8 +414,7 @@ def read_row_one():
 
 def row_one_is_empty(text=None):
     text = read_row_one() if text is None else text
-    key = _key(text)
-    return (not key) or EMPTY_MARKER in key
+    return EMPTY_MARKER in _key(text)
 
 
 def _wheel_event(direction):
