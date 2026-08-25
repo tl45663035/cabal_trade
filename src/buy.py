@@ -124,11 +124,19 @@ def dialog_details(image=None):
                                               _reg("buy_dialog_qty_max"))}
 
 
+def _shows(image, box, want):
+    first = calibration.read_money(image, box)
+    if first == want:
+        return True, [first]
+    every = calibration.read_money_all(image, box)
+    return want in every, every
+
+
 def dialog_shows(image, want_qty, want_total):
     image = image if image is not None else calibration.grab()
-    qty = calibration.read_money_all(image, _reg("buy_dialog_qty"))
-    price = calibration.read_money_all(image, _reg("buy_dialog_price"))
-    return want_qty in qty and want_total in price, qty, price
+    right_qty, qty = _shows(image, _reg("buy_dialog_qty"), want_qty)
+    right_price, price = _shows(image, _reg("buy_dialog_price"), want_total)
+    return right_qty and right_price, qty, price
 
 
 def _cancel(why, retryable=False):
