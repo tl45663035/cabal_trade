@@ -931,7 +931,8 @@ def has_ink(image: Image.Image, box) -> bool:
     return hi - lo >= INK_CONTRAST_MIN
 
 
-def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
+def ocr_spans(image: Image.Image, box, scale: int = None,
+              min_conf: float = None):
     scale = OCR_SCALE if scale is None else scale
     min_conf = OCR_MIN_CONF if min_conf is None else min_conf
     if not has_ink(image, box):
@@ -951,10 +952,18 @@ def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
         text = (row.get("text") or "").strip()
         if not text or conf < min_conf:
             continue
-        x = box[0] + int(row["left"]) / scale + int(row["width"]) / scale / 2
+        left = box[0] + int(row["left"]) / scale
+        right = left + int(row["width"]) / scale
         y = box[1] + int(row["top"]) / scale + int(row["height"]) / scale / 2
-        found.append((text, round(conf), (round(x), round(y))))
+        found.append((text, round(conf),
+                      (round((left + right) / 2), round(y)), round(right)))
     return found
+
+
+def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
+    return [(text, conf, point)
+            for text, conf, point, _right in ocr_spans(image, box, scale,
+                                                       min_conf)]
 
 
 
@@ -2028,12 +2037,13 @@ def calibrate_panel(verbose=True):
 
     left = box[0] + PANEL_FIELD_INSET
     right = alz[0] + PANEL_LABEL_GAP
+    spans = ocr_spans(image, box)
 
     def ends_at_label(y):
-        here = [p[0] for t, _c, p in words
-                if re.fullmatch(_ALZ_WORD, t.strip(), re.IGNORECASE)
-                and abs(p[1] - y) <= PANEL_FIELD_HALF]
-        return max(here) + PANEL_LABEL_GAP if here else right
+        here = [edge for t, _c, point, edge in spans
+                if re.search(_ALZ_WORD, t, re.IGNORECASE)
+                and abs(point[1] - y) <= PANEL_FIELD_HALF]
+        return max(here) if here else right
 
     out = {
         "panel_box": list(box),
