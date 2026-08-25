@@ -426,11 +426,17 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     return done
 
 
-def do_list(row, col, price=None, verbose=True):
+def do_list(row, col, price=None, verbose=True, tab=None):
+    tab = row_model.WORK_TAB if tab is None else int(tab)
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
     model = row_model.RowModel().seed({})
     started = time.perf_counter()
+    if verbose:
+        print(f"  selecting inventory tab {tab} before reading slot "
+              f"({row},{col})")
+    calibration.click(*calibration.inventory_tab_point(tab), settle=0.0)
+    time.sleep(row_model.TAB_SETTLE)
     out = model.list_slot(row, col, price=price, verbose=verbose)
     print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
     return out
@@ -1173,8 +1179,10 @@ def usage():
     print("                                   looping for MIN minutes;")
     print("                                   the run block in config.json")
     print("                                   if no range is given")
-    print("  py src/driver.py list R C [PRICE] list inventory slot (R,C); the")
-    print("                                   panel's own suggestion if no PRICE")
+    print("  py src/driver.py list R C [PRICE] [TAB]  list inventory slot")
+    print("                                   (R,C) on TAB, work tab if none;")
+    print("                                   the panel's own suggestion if no")
+    print("                                   PRICE")
     print("  py src/driver.py row N           read row N without touching it")
     print("  py src/driver.py price N         market price for favourite slot N")
     print("  py src/driver.py alz             read the balance")
@@ -1251,7 +1259,8 @@ def _dispatch(args):
                   args[3] if len(args) > 3 else None)
     elif what == "list" and len(args) > 2:
         do_list(int(args[1]), int(args[2]),
-                int(args[3]) if len(args) > 3 else None)
+                int(args[3]) if len(args) > 3 else None,
+                tab=int(args[4]) if len(args) > 4 else None)
     elif what == "row" and len(args) > 1:
         initialise()
         register_tab()
