@@ -512,10 +512,22 @@ class RowModel:
         self._slots = {}
         self._work = {}
         self._floored = {}
+        self._broken = set()
         self._top = None
         self.ready = False
         self.enforce = enforce
         self.divergences = 0
+
+    def forget_floor(self, index):
+        self._floored.pop(int(index), None)
+        self._broken.discard(int(index))
+
+    def carry_floor(self, index, lands_in, broken, floored, parked):
+        self.forget_floor(index)
+        if broken:
+            self._broken.add(int(lands_in))
+        elif floored:
+            self._floored[int(lands_in)] = parked + 1
 
     def seed(self, rows, top=None):
         self._slots = {}

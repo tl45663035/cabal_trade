@@ -160,6 +160,7 @@ def relist_one(model, index, verbose=True):
             text, row = row_at(model, index, verbose=False)
             button = row_model.row_button()
         if complete or button == row_model.REGISTER_WORD or row is None:
+            model.forget_floor(index)
             if verbose:
                 print(f"    collected; row {index} is empty, nothing to "
                       f"relist")
@@ -169,6 +170,7 @@ def relist_one(model, index, verbose=True):
 
     if row_model.row_one_is_empty(text):
         model._slots.pop(index, None)
+        model.forget_floor(index)
         if verbose:
             print(f"  row {index} is empty; nothing to relist")
         return None
@@ -223,10 +225,16 @@ def relist_one(model, index, verbose=True):
             why += f", and this listing carries {pack}"
     break_after = int(calibration.load_shared()["run"]["floor_break_after"])
     parked = model._floored.get(index, 0)
-    breaking = break_after > 0 and parked >= break_after
+    broken = index in model._broken
+    breaking = broken or (break_after > 0 and parked >= break_after)
     if breaking:
-        print(f"    row {index} has sat on its {floor:,} floor for {parked} "
-              f"relist(s); letting it go at the market this once")
+        if broken:
+            print(f"    row {index} broke its floor earlier and has not sold; "
+                  f"staying at the market")
+        else:
+            print(f"    row {index} has sat on its {floor:,} floor for "
+                  f"{parked} relist(s); letting it go at the market until it "
+                  f"sells")
         floor, why = 0, ""
     try:
         with calibration.phase("list it back"):
@@ -243,6 +251,7 @@ def relist_one(model, index, verbose=True):
         seen = row_model.read_row_one()
         if row_model.row_one_is_empty(seen):
             model._slots.pop(index, None)
+            model.forget_floor(index)
             print(f"    collected; row {index} is empty")
         else:
             print(f"    collected; row {index} still reads {seen!r}")
@@ -250,14 +259,15 @@ def relist_one(model, index, verbose=True):
     model._slots.pop(index, None)
     model._slots[lands_in] = row_model.Row(row.name, qty=out["qty"],
                                            price=out["price"])
-    model._floored.pop(index, None)
-    if out["floored"]:
-        model._floored[lands_in] = parked + 1
+    model.carry_floor(index, lands_in, breaking, out["floored"], parked)
     if verbose:
+        note = ""
+        if breaking:
+            note = ", under the floor until it sells"
+        elif out["floored"]:
+            note = f", {parked + 1} relist(s) on the floor now"
         print(f"    relisted {out['qty']} at {out['price']:,} in row "
-              f"{lands_in}"
-              + (f", {parked + 1} relist(s) on the floor now"
-                 if out["floored"] else ""))
+              f"{lands_in}{note}")
     return out
 
 
