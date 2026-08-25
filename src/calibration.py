@@ -19,6 +19,7 @@ CONFIG = HERE / "config.json"
 LOG_DIR = HERE / "logs"
 
 _CACHE = None
+_MERGED = None
 
 DEFAULTS = {
     "run": {
@@ -319,7 +320,7 @@ def _measured() -> dict:
 
 
 def remember_band(name, box) -> None:
-    global _CACHE
+    global _CACHE, _MERGED
     x, y, w, h = _client_rect()
     frac = [(box[0] - x) / w, (box[1] - y) / h,
             (box[2] - x) / w, (box[3] - y) / h]
@@ -327,26 +328,29 @@ def remember_band(name, box) -> None:
     per = data.setdefault("by_resolution", {}).setdefault(resolution_key(), {})
     per.setdefault("regions", {})[name] = frac
     OUT.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    _CACHE = None
+    _CACHE = _MERGED = None
 
 
 def remember_shop(key, value) -> None:
-    global _CACHE
+    global _CACHE, _MERGED
     data = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
     per = data.setdefault("by_resolution", {}).setdefault(resolution_key(), {})
     per.setdefault("shop", {})[key] = value
     OUT.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    _CACHE = None
+    _CACHE = _MERGED = None
 
 
 def load(force: bool = False) -> dict:
-    global _CACHE
+    global _CACHE, _MERGED
     if _CACHE is None or force:
         if not OUT.exists():
             raise RuntimeError(
                 f"{OUT.name} is missing.")
         _CACHE = json.loads(OUT.read_text(encoding="utf-8"))
+        _MERGED = None
 
+    if _MERGED is not None:
+        return _MERGED
     data = _CACHE
     key = resolution_key()
     per = (data.get("by_resolution") or {}).get(key)
@@ -362,6 +366,7 @@ def load(force: bool = False) -> dict:
         section.update(data.get(shared) or {})
         merged[shared] = section
     merged["resolution"] = key
+    _MERGED = merged
     return merged
 
 _S = load_shared()
