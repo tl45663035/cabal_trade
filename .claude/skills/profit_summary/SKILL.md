@@ -65,7 +65,13 @@ every sale. That inflated the day by about a third and made Chaos look like a
 
 ## Reading the result
 
-- `by run` splits matched profit across the runs in the window.
+- `by run` splits matched profit across the runs in the window, with the hours
+  each ran and what it earned an hour, and a rate for the day underneath.
+- **The hours are launch to last trade**, taken from the ledger: the `run`
+  column is the launch time and `MAX(at)` is the last thing that run bought or
+  sold. A run still going is short by whatever it has not traded in yet, and a
+  run that spent its last minutes calibrating or relisting without a sale is
+  short by that too. It is time the script was *trading*, not time it was up.
 - A line whose margin is far below the others is usually stock bought near its
   own selling price, not a reporting fault — check it against the floors in the
   run log.

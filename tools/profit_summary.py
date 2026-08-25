@@ -54,6 +54,34 @@ def rows(start):
     return buys, sells
 
 
+def spans(start):
+    last = {}
+    for _label, path, _listed_in_packs in LEDGERS:
+        if not path.exists():
+            continue
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        for table in ("purchases", "sales"):
+            for run, latest in conn.execute(
+                    f"SELECT run, MAX(at) FROM {table} WHERE run>=? "
+                    f"GROUP BY run", (start,)):
+                if run and latest and latest > last.get(run, ""):
+                    last[run] = latest
+        conn.close()
+    out = {}
+    for run, latest in last.items():
+        try:
+            began = datetime.datetime.strptime(run, "%Y-%m-%dT%H:%M:%S")
+            ended = datetime.datetime.strptime(latest, "%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            continue
+        out[run] = max(0.0, (ended - began).total_seconds() / 3600)
+    return out
+
+
+def an_hour(profit, hours):
+    return profit / hours if hours else 0.0
+
+
 def gather(buys):
     lots = collections.defaultdict(collections.deque)
     for _at, item, spend, qty in buys:
@@ -110,10 +138,10 @@ def main():
     buys, sells = rows(stamp)
     lots = gather(buys)
     per_item, per_run = match(sells, lots)
-    report(per_item, per_run, lots)
+    report(per_item, per_run, lots, spans(stamp))
 
 
-def report(per_item, per_run, lots):
+def report(per_item, per_run, lots, hours=None):
     print(f"{'item':<26}{'profit':>15}{'units':>8}{'margin':>8}"
           f"{'revenue':>16}{'cost':>16}")
     line()
@@ -148,12 +176,23 @@ def report(per_item, per_run, lots):
     print(f"{'TOTAL':<26}{profit:>15,.0f}{units:>8,}{margin}"
           f"{revenue:>16,.0f}{cost:>16,.0f}")
 
+    hours = hours or {}
     if per_run:
         print("")
         print("by run:")
         for run, tally in sorted(per_run.items()):
+            ran = hours.get(run, 0.0)
+            rate = (f"{an_hour(tally['profit'], ran):>16,.0f} an hour"
+                    if ran else f"{'not long enough to rate':>24}")
             print(f"  {run}   {tally['units']:>7,} units"
-                  f"{tally['profit']:>16,.0f} Alz")
+                  f"{tally['profit']:>16,.0f} Alz{ran:>7.2f}h{rate}")
+        ran = sum(hours.get(run, 0.0) for run in per_run)
+        earned = sum(t["profit"] for t in per_run.values())
+        line("-", 96)
+        print(f"  {len(per_run)} run(s) trading for {ran:.2f} hour(s)"
+              f"{'':>13}{an_hour(earned, ran):>16,.0f} Alz an hour")
+        print(f"  hours are each run's launch to its last trade, so a run "
+              f"still going is short by whatever it has not traded in yet")
 
     skipped = {k: r["unmatched"] for k, r in per_item.items()
                if r["unmatched"]}
