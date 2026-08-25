@@ -181,6 +181,11 @@ def relist_one(model, index, verbose=True):
               f"{row_model.row_button_text()!r}")
         return False
 
+    if calibration.favourite_slot_of(row.name) is None:
+        print(f"  row {index}: {row.name!r} is not one of the favourites; "
+              f"leaving it alone.")
+        return None
+
     with calibration.phase(f"find a free slot on tab {row_model.WORK_TAB}"):
         landing = calibration.first_free_slot(row_model.WORK_TAB,
                                               verbose=False)
