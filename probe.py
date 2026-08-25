@@ -110,9 +110,9 @@ before.save(os.path.join(OUT, "screen_before_I.png"))
 say("saved screen_before_I.png")
 
 def moved(a, b):
-    return sum(1 for one, two in zip(a.convert("L").get_flattened_data(),
-                                     b.convert("L").get_flattened_data())
-               if abs(one - two) > 12)
+    from PIL import ImageChops
+    spread = ImageChops.difference(a.convert("L"), b.convert("L"))
+    return sum(spread.histogram()[13:])
 
 
 say("")
