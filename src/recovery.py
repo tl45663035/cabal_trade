@@ -266,9 +266,7 @@ def recover(verbose=True):
         if notice is None:
             break
         shut = _find_near(OK_WORD, notice, timeout=ACTION_GAP * 4,
-                          verbose=False)
-        if shut is None:
-            break
+                          verbose=False) or _point(DIALOG_BUTTON_F)
         calibration.snap("recovery_notice")
         if verbose:
             print(f"  a notice at {list(notice)}; {OK_WORD} at {list(shut)}")
@@ -283,9 +281,10 @@ def recover(verbose=True):
         shut = _find_near(OK_WORD, gone, timeout=ACTION_GAP * 20,
                           verbose=verbose)
         if shut is None:
-            raise Refused(
-                "the disconnect notice is up but its OK button would not "
-                "read; nothing clicked.")
+            shut = _point(DIALOG_BUTTON_F)
+            if verbose:
+                print(f"  {OK_WORD} would not read; clicking the dialog's "
+                      f"button seat at {list(shut)}")
         calibration.click(*shut)
     elif _find(LOGIN_WORD) is None:
         calibration.snap("recovery_nothing_to_recover")
