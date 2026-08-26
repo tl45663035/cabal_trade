@@ -142,6 +142,8 @@ DEFAULTS = {
         "purchase_table_band": [0.1000, 0.1500, 0.4800, 0.6600],
         "popup": [0.1953, 0.2389, 0.8203, 0.8232],
         "dialog_buttons": [0.4688, 0.5296, 0.6641, 0.7085],
+        "gift_icon": [0.1480, 0.9620],
+        "gift_window": [0.1719, 0.1585, 0.8320, 0.8451],
         "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
         "register_footer_band": [0.1000, 0.6600, 0.5100, 0.7300],
         "register_button_band": [0.41, 0.12, 0.48, 0.66],
@@ -211,6 +213,7 @@ DEFAULTS = {
         "alz_min_digits": 4,
         "slot_half": 24,
         "slot_occupied_stdev": 30.0,
+        "gift_column_spread": 12,
         "panel_moved_slack": 30,
     },
     "text": {
@@ -223,6 +226,7 @@ DEFAULTS = {
         "dismiss_word": "Cancel",
         "confirm_word": "Confirmation",
         "receipt_word": "Receive",
+        "close_word": "Close",
         "register_word": "Register",
         "status_complete": "Complete",
     },
@@ -256,6 +260,7 @@ DEFAULTS = {
         "agent_shop_tab": 8,
         "agent_shop_slot": [1, 7],
         "work_tab": 4,
+        "gift_boxes": 4,
         "work_slot": "1,1",
         "shop_capacity": 30,
         "shop_visible": 10,
@@ -1484,6 +1489,60 @@ def purchase_tab_showing(image=None) -> bool:
     return any(t.strip().lower() == "category" for t, _c, _p in words)
 
 
+def _gift_reads(word, image=None):
+    image = image if image is not None else grab()
+    want = word.strip().lower()
+    return [point for text, _conf, point in ocr(image, _box(GIFT_WINDOW_F))
+            if text.strip().lower() == want]
+
+
+def gift_column(points):
+    best = []
+    for point in points:
+        together = [p for p in points
+                    if abs(p[0] - point[0]) <= GIFT_COLUMN_SPREAD]
+        if len(together) > len(best):
+            best = together
+    return sorted(best, key=lambda p: p[1])
+
+
+def calibrate_gifts(verbose=True):
+    say = print if verbose else (lambda *a: None)
+    icon = _point(GIFT_ICON_F)
+    say(f"  the gift box at {list(icon)}")
+    click(*icon)
+    time.sleep(_S["timing"]["action_gap"])
+
+    listed, shut = [], []
+    deadline = time.monotonic() + DIALOG_TIMEOUT
+    while time.monotonic() < deadline:
+        image = grab()
+        listed = gift_column(_gift_reads(RECEIPT_WORD, image))
+        shut = _gift_reads(CLOSE_WORD, image)
+        if len(listed) >= GIFT_BOXES and shut:
+            break
+        time.sleep(POLL_GAP)
+
+    if len(listed) < GIFT_BOXES or not shut:
+        snap("gift_window_short")
+        say(f"  the gift box shows {len(listed)} {RECEIPT_WORD} button(s) in "
+            f"one column and {len(shut)} {CLOSE_WORD}, not {GIFT_BOXES} and "
+            f"one; leaving the gift points unmeasured")
+        if shut:
+            click(*shut[0])
+            park()
+        return None
+
+    taking = listed[:GIFT_BOXES]
+    say(f"  {RECEIPT_WORD} at {[list(p) for p in taking]}")
+    say(f"  {CLOSE_WORD} at {list(shut[0])}")
+    click(*shut[0])
+    park()
+    return {"icon": list(icon),
+            "receive": [list(p) for p in taking],
+            "close": list(shut[0])}
+
+
 def calibrate_shop(verbose=True):
     say = print if verbose else (lambda *a: None)
     image = grab()
@@ -1863,6 +1922,11 @@ ACTION_BUTTON_WORDS = (_S["text"]["confirm_word"], _S["text"]["dismiss_word"],
                        _S["text"]["receipt_word"], _S["text"]["register_word"])
 
 RECEIPT_WORD = _S["text"]["receipt_word"]
+CLOSE_WORD = _S["text"]["close_word"]
+GIFT_BOXES = int(_S["game_facts"]["gift_boxes"])
+GIFT_COLUMN_SPREAD = int(_S["detect"]["gift_column_spread"])
+GIFT_ICON_F = tuple(_S["regions"]["gift_icon"])
+GIFT_WINDOW_F = tuple(_S["regions"]["gift_window"])
 
 
 def panel_quantity(panel, want_price, say=lambda *a: None):
@@ -2668,6 +2732,11 @@ def main(close: bool = True) -> None:
     remember("inventory", inventory)
     snap("inventory_after_measure")
 
+    print("gift box:")
+    gift_block = calibrate_gifts()
+    if gift_block is not None:
+        remember("gifts", gift_block)
+
     print("opening the Agent Shop:")
     tab = inventory["tabs"][str(facts["agent_shop_tab"])]
     row, col = facts["agent_shop_slot"]
@@ -2781,6 +2850,8 @@ def main(close: bool = True) -> None:
         measured["convert"] = convert_block
     if craft_block is not None:
         measured["craft"] = craft_block
+    if gift_block is not None:
+        measured["gifts"] = gift_block
 
     existing = {}
     if OUT.exists():

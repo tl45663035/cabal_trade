@@ -150,6 +150,8 @@ def find_button(word, timeout=None, verbose=False):
             print(f"  {word} never appeared at the calibrated {known} in "
                   f"{budget:.0f}s; one sweep in case the calibration is stale")
         point = search_button(word, timeout=STALE_SWEEP)
+    if point is None:
+        calibration.snap(f"no_{_key(word)}_button_at_{known}")
     if point is not None and point != known:
         calibration.remember_shop(_button_key(word), list(point))
         if verbose:

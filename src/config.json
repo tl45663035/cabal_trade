@@ -4,7 +4,7 @@
     "enable_buying": {
       "Force Core(Highest)": true,
       "Chaos Core": true,
-      "Force Core (Ultimate)": true,
+      "Force Core (Ultimate)": false,
       "Force Core(High)": true,
       "Upgrade Core (Ultimate)": true
     },
@@ -70,7 +70,8 @@
     "craft_settle_per_block": 5.0,
     "craft_settle_block": 50,
     "craft_settle_max": 300.0,
-    "stop_key_poll": 0.03
+    "stop_key_poll": 0.03,
+    "gift_gap": 0.5
   },
   "war": {
     "enabled": true,

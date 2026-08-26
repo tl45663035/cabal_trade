@@ -1069,6 +1069,15 @@ def resupply_pass(model, first, last, verbose=True):
     return done
 
 
+def do_collect_gifts(verbose=True):
+    import collect_gifts
+    started = time.perf_counter()
+    taken = collect_gifts.collect_gifts(verbose=verbose)
+    print(f"  collected {taken} gift(s) in "
+          f"{(time.perf_counter() - started) * 1000:.0f} ms")
+    return taken
+
+
 def do_scan(verbose=True):
     initialise(verbose=verbose)
     print(f"  balance {balance() or 'unreadable'}")
@@ -1109,6 +1118,8 @@ def usage():
     print("  py src/driver.py row N           read row N without touching it")
     print("  py src/driver.py price N         market price for favourite slot N")
     print("  py src/driver.py alz             read the balance")
+    print("  py src/driver.py gifts           open the gift box, take the")
+    print("                                   gifts on offer and close it")
 
 
 def _elapsed(seconds):
@@ -1195,6 +1206,8 @@ def _dispatch(args):
                   "converted; there is no chaos resupply to run.")
             return
         do_resupply(crafted[0])
+    elif what == "gifts":
+        do_collect_gifts()
     elif what == "scan":
         do_scan()
     elif what == "price" and len(args) > 1:
