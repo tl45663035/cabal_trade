@@ -78,3 +78,9 @@ src/debug_frames/
 src/logs/
 src/debug_video/
 .claude/settings.local.json
+
+# Account credentials for src/recovery.py: the game password and the sub
+# password, in plain text. Never in git. recovery.py also reads them from
+# CABAL_PASSWORD / CABAL_SUB_PASSWORD / CABAL_CHARACTER / CABAL_CHANNEL if
+# you would rather they never touched disk.
+src/account.json
