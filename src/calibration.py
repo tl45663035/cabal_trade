@@ -1540,11 +1540,15 @@ def calibrate_shop(verbose=True):
     words = ocr(image, top_strip)
     named = {t.lower(): (c, p) for t, c, p in words}
 
-    reg = next((p for t, c, p in words if t.lower() == "register"), None)
-    if reg is None:
+    said = [p for t, _c, p in words if t.lower() == "register"]
+    if not said:
         raise RuntimeError(
             "the Register tab was not found, so the Trade window is not open "
             "on a tab this can measure. Nothing written.")
+    reg = min(said, key=lambda p: p[1])
+    if len(said) > 1:
+        say(f"  the word Register reads at {said}; the tab is the highest of "
+            f"them, the rest name the panel below it")
     say(f"  Register {reg}")
 
     band = np.asarray(image.crop(_box(TAB_BAND_F)).convert("L"), dtype=float)
