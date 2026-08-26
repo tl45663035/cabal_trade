@@ -197,16 +197,6 @@ def relist_one(model, index, verbose=True):
         return None
 
     if row is None or button != row_model.CHANGE_WORD:
-        if _after_the_lag(f"Row {index} has not been touched.",
-                          verbose=verbose):
-            with calibration.phase("read the row again after the lag"):
-                text, row = row_at(model, index, verbose=False)
-                button = row_model.row_button()
-            if verbose:
-                print(f"  row {index} read again once the server answered: "
-                      f"{text!r}")
-
-    if row is None or button != row_model.CHANGE_WORD:
         calibration.snap(f"row_{index}_button_disagrees")
         print(f"  row {index}: SKIPPED and it should not have been. The row "
               f"reads {text!r}")
@@ -218,14 +208,6 @@ def relist_one(model, index, verbose=True):
     with calibration.phase(f"find a free slot on tab {row_model.WORK_TAB}"):
         landing = calibration.first_free_slot(row_model.WORK_TAB,
                                               verbose=False)
-        if landing is None and _after_the_lag(
-                f"Row {index} has not been cancelled.", verbose=verbose):
-            landing = calibration.first_free_slot(row_model.WORK_TAB,
-                                                  verbose=False)
-            if verbose:
-                print(f"  tab {row_model.WORK_TAB} read again once the "
-                      f"server answered: "
-                      f"{'slot ' + str(landing) if landing else 'still full'}")
     if landing is None:
         raise NotReady(
             f"inventory tab {row_model.WORK_TAB} is full, so row {index} "
