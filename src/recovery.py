@@ -17,12 +17,18 @@ KEYEVENTF_KEYUP = 0x0002
 INPUT_KEYBOARD = 1
 
 DISCONNECT_WORDS = ("disconnect", "disconnected", "log-out", "logged")
+FAILED_WORDS = ("failed to connect", "try later")
 LOGIN_WORD = "login"
 OK_WORD = "ok"
+CONFIRM_WORD = "confirmation"
 
 SCREEN_TIMEOUT = 25.0
 WORLD_TIMEOUT = 120.0
 SUB_PASSWORD_WAIT = 12.0
+AFTER_TYPING_WAIT = 10.0
+FAILED_RETRY_WAIT = 5.0
+LOGIN_TRIES = 6
+DIALOG_BUTTON_F = (0.5004, 0.5457)
 NOTICE_TRIES = 3
 CLEAR_KEYS = 32
 PASSWORD_ABOVE_LOGIN = 86
@@ -62,6 +68,11 @@ def account():
         raise Refused("the sub password must be digits; the keypad has "
                       "nothing else on it.")
     return out
+
+
+def _point(frac):
+    x, y, w, h = calibration._client_rect()
+    return (round(x + frac[0] * w), round(y + frac[1] * h))
 
 
 def _screen():
@@ -175,6 +186,15 @@ def disconnected(image=None):
     return None
 
 
+def failed_to_connect(image=None):
+    words = _words(image)
+    for phrase in FAILED_WORDS:
+        point = _find(phrase, words=words, whole=False)
+        if point is not None:
+            return point
+    return None
+
+
 def keypad_if_asked(timeout=SUB_PASSWORD_WAIT, verbose=True):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -253,25 +273,59 @@ def recover(verbose=True):
     elif verbose:
         print("  no disconnect notice; the login screen is already up")
 
-    sign_in = _needed(LOGIN_WORD, verbose=verbose)
-    calibration.snap("recovery_login_screen")
+    for attempt in range(1, LOGIN_TRIES + 1):
+        sign_in = _needed(LOGIN_WORD, verbose=verbose)
+        calibration.snap("recovery_login_screen")
 
-    name = (sign_in[0], sign_in[1] - USERNAME_ABOVE_LOGIN)
-    if verbose:
-        print(f"  the username field at {list(name)}")
-    calibration.click(*name)
-    _clear_field()
-    _type(who["username"])
+        name = (sign_in[0], sign_in[1] - USERNAME_ABOVE_LOGIN)
+        if verbose:
+            print(f"  the username field at {list(name)}")
+        calibration.click(*name)
+        _clear_field()
+        _type(who["username"])
 
-    field = (sign_in[0], sign_in[1] - PASSWORD_ABOVE_LOGIN)
-    if verbose:
-        print(f"  the password field at {list(field)}")
-    calibration.click(*field)
-    _clear_field()
-    _type(who["password"])
-    calibration.snap("recovery_credentials_typed")
-    time.sleep(ACTION_GAP)
-    calibration.click(*_needed(LOGIN_WORD, verbose=False))
+        field = (sign_in[0], sign_in[1] - PASSWORD_ABOVE_LOGIN)
+        if verbose:
+            print(f"  the password field at {list(field)}")
+        calibration.click(*field)
+        _clear_field()
+        _type(who["password"])
+        calibration.snap("recovery_credentials_typed")
+        if verbose:
+            print(f"  typed; waiting {AFTER_TYPING_WAIT:g}s before Login")
+        time.sleep(AFTER_TYPING_WAIT)
+        calibration.click(*_needed(LOGIN_WORD, verbose=False))
+
+        failed = None
+        deadline = time.monotonic() + SCREEN_TIMEOUT
+        while time.monotonic() < deadline:
+            failed = failed_to_connect()
+            if failed is not None:
+                break
+            if _find(who["channel"], whole=False) is not None:
+                break
+            time.sleep(POLL_GAP)
+        if failed is None:
+            break
+
+        calibration.snap(f"recovery_login_failed_{attempt}")
+        if verbose:
+            print(f"  the server refused the login (attempt {attempt}/"
+                  f"{LOGIN_TRIES}); clicking {CONFIRM_WORD} and waiting "
+                  f"{FAILED_RETRY_WAIT:g}s")
+        ok = _find_near(CONFIRM_WORD, failed, timeout=ACTION_GAP * 4,
+                        verbose=False)
+        if ok is None:
+            ok = _point(DIALOG_BUTTON_F)
+            if verbose:
+                print(f"  {CONFIRM_WORD} would not read; clicking the "
+                      f"dialog's button seat at {list(ok)}")
+        calibration.click(*ok)
+        time.sleep(FAILED_RETRY_WAIT)
+    else:
+        raise Refused(
+            f"the server refused the login {LOGIN_TRIES} times; it is not "
+            f"taking connections. Nothing more to try now.")
 
     channel = _needed(who["channel"], whole=False, verbose=verbose)
     if verbose:
