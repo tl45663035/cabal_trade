@@ -216,6 +216,7 @@ DEFAULTS = {
         "slot_occupied_stdev": 30.0,
         "gift_column_spread": 12,
         "server_lag_pixels": 2000,
+        "server_lag_sure": 4000,
         "server_lag_red": 210,
         "server_lag_green": [120, 200],
         "server_lag_blue": 80,
@@ -498,6 +499,7 @@ SERVER_LAG_TEXT = re.compile(_S["text"]["server_lag"],
                              re.IGNORECASE)
 SERVER_LAG_IDLE = _S["timing"]["server_lag_idle"]
 SERVER_LAG_PIXELS = _S["detect"]["server_lag_pixels"]
+SERVER_LAG_SURE = _S["detect"]["server_lag_sure"]
 SERVER_LAG_RED = _S["detect"]["server_lag_red"]
 SERVER_LAG_GREEN = tuple(_S["detect"]["server_lag_green"])
 SERVER_LAG_BLUE = _S["detect"]["server_lag_blue"]
@@ -2047,8 +2049,11 @@ def server_busy(image=None) -> bool:
     image = image if image is not None else grab()
     box = _box(SERVER_LAG_BAND_F)
     try:
-        if lag_ink(image, box) < SERVER_LAG_PIXELS:
+        ink = lag_ink(image, box)
+        if ink < SERVER_LAG_PIXELS:
             return False
+        if ink >= SERVER_LAG_SURE:
+            return True
         seen = read_line(image, box)
     except Exception:
         return False
