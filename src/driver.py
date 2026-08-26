@@ -339,6 +339,8 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         done += made
         skipped += missed
         empty += bare
+        with calibration.phase("collect the gift box"):
+            gifts_at_the_end(verbose=verbose)
         rest_the_game(verbose=verbose)
         model.home(verbose=False)
         left = deadline - time.monotonic()
@@ -981,6 +983,18 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     return {"slot": slot, "core": core, "set": set_name, "diff": diff,
             "bought": bought, "crafted": made["used"],
             "listed": listed_total, "rows": rows}
+
+
+def gifts_at_the_end(verbose=True):
+    import collect_gifts
+    try:
+        taken = collect_gifts.collect_gifts(verbose=verbose)
+    except (collect_gifts.Refused, RuntimeError) as exc:
+        print(f"  the gift box was left alone: {exc}")
+        return 0
+    if verbose:
+        print(f"  took {taken} gift(s)")
+    return taken
 
 
 def rest_the_game(verbose=True):
