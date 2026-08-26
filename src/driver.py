@@ -175,6 +175,28 @@ def cancel(model, index, verbose=True):
     return model.cancel(index, verbose=verbose)
 
 
+def _work_tab_showing(held, landing, index, verbose=True):
+    tries = int(calibration.load_shared()["detect"]["load_attempts"])
+    for attempt in range(1, tries + 1):
+        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
+        time.sleep(row_model.TAB_SETTLE)
+        calibration.park()
+        here = calibration.occupied_slots()
+        if here - {landing} == held:
+            return
+        calibration.snap(f"wrong_tab_after_row_{index}_{attempt}")
+        if verbose:
+            print(f"    the inventory is not showing tab "
+                  f"{row_model.WORK_TAB}: {len(here)} slot(s) are filled "
+                  f"where tab {row_model.WORK_TAB} had {len(held)}; "
+                  f"selecting it again ({attempt}/{tries})")
+    raise row_model.Divergence(
+        f"the inventory would not stay on tab {row_model.WORK_TAB} after "
+        f"{tries} tries, so row {index} came back to a tab that is not the "
+        f"one being read. Row {index} is cancelled and the stock is in the "
+        f"bag. Nothing has been listed.")
+
+
 def relist_one(model, index, verbose=True):
     if model.known_empty(index):
         if verbose:
@@ -236,6 +258,7 @@ def relist_one(model, index, verbose=True):
     with calibration.phase(f"find a free slot on tab {row_model.WORK_TAB}"):
         landing = calibration.first_free_slot(row_model.WORK_TAB,
                                               verbose=False)
+        held = calibration.occupied_slots()
     if landing is None:
         raise NotReady(
             f"inventory tab {row_model.WORK_TAB} is full, so row {index} "
@@ -264,7 +287,7 @@ def relist_one(model, index, verbose=True):
     with calibration.phase("cancel the row and take it back"):
         model.cancel(index, verbose=False, tab_ready=True)
     with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
-        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
+        _work_tab_showing(held, landing, index, verbose=verbose)
     pack = row.pack
     floor = unit_floor * pack
     why = ""
