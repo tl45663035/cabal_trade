@@ -18,9 +18,11 @@ INPUT_KEYBOARD = 1
 
 DISCONNECT_WORDS = ("disconnect", "disconnected", "log-out", "logged")
 FAILED_WORDS = ("failed to connect", "try later")
+DUAL_WORDS = ("dual login", "already in use", "like to reconnect")
 LOGIN_WORD = "login"
 OK_WORD = "ok"
 CONFIRM_WORD = "confirmation"
+YES_WORD = "yes"
 
 SCREEN_TIMEOUT = 25.0
 WORLD_TIMEOUT = 120.0
@@ -29,6 +31,8 @@ AFTER_TYPING_WAIT = 10.0
 FAILED_RETRY_WAIT = 5.0
 LOGIN_TRIES = 6
 DIALOG_BUTTON_F = (0.5004, 0.5457)
+DUAL_YES_F = (0.4766, 0.5457)
+RECONNECT_TRIES = 4
 NOTICE_TRIES = 3
 CLEAR_KEYS = 32
 PASSWORD_ABOVE_LOGIN = 86
@@ -195,6 +199,23 @@ def failed_to_connect(image=None):
     return None
 
 
+def dual_login(image=None):
+    words = _words(image)
+    for phrase in DUAL_WORDS:
+        point = _find(phrase, words=words, whole=False)
+        if point is not None:
+            return point
+    return None
+
+
+def in_the_world(timeout=None):
+    span = ACTION_GAP if timeout is None else timeout
+    try:
+        return calibration.await_inventory(timeout=span) is not None
+    except Exception:
+        return False
+
+
 def keypad_if_asked(timeout=SUB_PASSWORD_WAIT, verbose=True):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -296,32 +317,70 @@ def recover(verbose=True):
         time.sleep(AFTER_TYPING_WAIT)
         calibration.click(*_needed(LOGIN_WORD, verbose=False))
 
-        failed = None
+        outcome, where, reconnects = None, None, 0
         deadline = time.monotonic() + SCREEN_TIMEOUT
         while time.monotonic() < deadline:
-            failed = failed_to_connect()
-            if failed is not None:
+            where = failed_to_connect()
+            if where is not None:
+                outcome = "failed"
                 break
+            where = dual_login()
+            if where is not None:
+                if reconnects >= RECONNECT_TRIES:
+                    outcome = "dual"
+                    break
+                reconnects += 1
+                calibration.snap(f"recovery_dual_login_{attempt}_{reconnects}")
+                yes = _find_near(YES_WORD, where, timeout=ACTION_GAP * 4,
+                                 verbose=False) or _point(DUAL_YES_F)
+                if verbose:
+                    print(f"  the ID is still connected; clicking {YES_WORD} "
+                          f"to reconnect ({reconnects}/{RECONNECT_TRIES}) at "
+                          f"{list(yes)}")
+                calibration.click(*yes)
+                time.sleep(FAILED_RETRY_WAIT)
+                deadline = time.monotonic() + SCREEN_TIMEOUT
+                continue
             if _find(who["channel"], whole=False) is not None:
+                outcome = "channel"
+                break
+            if in_the_world():
+                outcome = "world"
                 break
             time.sleep(POLL_GAP)
-        if failed is None:
+
+        if outcome in ("channel", "world"):
+            if outcome == "world":
+                calibration.snap("recovery_back_in_world")
+                if verbose:
+                    print(f"  reconnected straight into the world as "
+                          f"{who['character']}")
+                return True
             break
 
-        calibration.snap(f"recovery_login_failed_{attempt}")
-        if verbose:
-            print(f"  the server refused the login (attempt {attempt}/"
-                  f"{LOGIN_TRIES}); clicking {CONFIRM_WORD} and waiting "
-                  f"{FAILED_RETRY_WAIT:g}s")
-        ok = _find_near(CONFIRM_WORD, failed, timeout=ACTION_GAP * 4,
-                        verbose=False)
-        if ok is None:
-            ok = _point(DIALOG_BUTTON_F)
+        if outcome == "dual":
+            raise Refused(
+                f"the ID stayed connected through {RECONNECT_TRIES} reconnect "
+                f"attempts; the server has not released the old session yet.")
+
+        if outcome == "failed":
+            calibration.snap(f"recovery_login_failed_{attempt}")
             if verbose:
-                print(f"  {CONFIRM_WORD} would not read; clicking the "
-                      f"dialog's button seat at {list(ok)}")
-        calibration.click(*ok)
-        time.sleep(FAILED_RETRY_WAIT)
+                print(f"  the server refused the login (attempt {attempt}/"
+                      f"{LOGIN_TRIES}); clicking {CONFIRM_WORD} and waiting "
+                      f"{FAILED_RETRY_WAIT:g}s")
+            ok = _find_near(CONFIRM_WORD, where, timeout=ACTION_GAP * 4,
+                            verbose=False)
+            if ok is None:
+                ok = _point(DIALOG_BUTTON_F)
+                if verbose:
+                    print(f"  {CONFIRM_WORD} would not read; clicking the "
+                          f"dialog's button seat at {list(ok)}")
+            calibration.click(*ok)
+            time.sleep(FAILED_RETRY_WAIT)
+            continue
+
+        break
     else:
         raise Refused(
             f"the server refused the login {LOGIN_TRIES} times; it is not "
