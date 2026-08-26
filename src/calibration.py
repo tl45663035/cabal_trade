@@ -101,6 +101,7 @@ DEFAULTS = {
         "VK_I": 0x49,
         "VK_MENU": 0x12,
         "VK_ESCAPE": 0x1B,
+        "VK_END": 0x23,
         "INPUT_STRUCT_SIZE": 40,
         "SW_RESTORE": 9,
         "DWORD_MASK": 0xFFFFFFFF,
