@@ -112,6 +112,23 @@ def _wait_for(want, timeout=SCREEN_TIMEOUT, whole=True, verbose=True):
     return None
 
 
+def _find_near(want, anchor, timeout=SCREEN_TIMEOUT, verbose=True):
+    _x, _y, _w, height = calibration._client_rect()
+    reach = round(height * 0.16)
+    box = (anchor[0] - reach, anchor[1] - 10,
+           anchor[0] + reach, anchor[1] + reach)
+    want = want.strip().lower()
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        for text, _conf, point in calibration.ocr(calibration.grab(), box):
+            if text.strip().lower() == want:
+                if verbose:
+                    print(f"  {want!r} at {list(point)}")
+                return point
+        time.sleep(POLL_GAP)
+    return None
+
+
 def _needed(want, timeout=SCREEN_TIMEOUT, whole=True, verbose=True):
     point = _wait_for(want, timeout=timeout, whole=whole, verbose=verbose)
     if point is None:
@@ -204,8 +221,11 @@ def recover(verbose=True):
 
     for _ in range(NOTICE_TRIES):
         notice = disconnected()
-        shut = _find(OK_WORD)
-        if notice is None or shut is None:
+        if notice is None:
+            break
+        shut = _find_near(OK_WORD, notice, timeout=ACTION_GAP * 4,
+                          verbose=False)
+        if shut is None:
             break
         calibration.snap("recovery_notice")
         if verbose:
@@ -218,8 +238,13 @@ def recover(verbose=True):
         calibration.snap("recovery_disconnected")
         if verbose:
             print(f"  the disconnect notice at {list(gone)}")
-        calibration.click(*_needed(OK_WORD, timeout=ACTION_GAP * 20,
-                                   verbose=verbose))
+        shut = _find_near(OK_WORD, gone, timeout=ACTION_GAP * 20,
+                          verbose=verbose)
+        if shut is None:
+            raise Refused(
+                "the disconnect notice is up but its OK button would not "
+                "read; nothing clicked.")
+        calibration.click(*shut)
     elif _find(LOGIN_WORD) is None:
         calibration.snap("recovery_nothing_to_recover")
         raise Refused(
