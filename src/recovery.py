@@ -23,6 +23,7 @@ LOGIN_WORD = "login"
 OK_WORD = "ok"
 CONFIRM_WORD = "confirmation"
 YES_WORD = "yes"
+ENTER_WORD = "enter server"
 
 SCREEN_TIMEOUT = 25.0
 WORLD_TIMEOUT = 120.0
@@ -32,6 +33,7 @@ FAILED_RETRY_WAIT = 5.0
 LOGIN_TRIES = 6
 DIALOG_BUTTON_F = (0.5004, 0.5457)
 DUAL_YES_F = (0.4766, 0.5457)
+SELECT_PANEL_F = (0.78, 0.30, 0.99, 0.75)
 RECONNECT_TRIES = 4
 RECONNECT_SETTLE = 60.0
 NOTICE_TRIES = 3
@@ -114,6 +116,18 @@ def _find(want, words=None, whole=True):
         else:
             return point
     return None
+
+
+def _find_in(want, region_frac, whole=False):
+    box = _box_frac(region_frac)
+    words = calibration.ocr(calibration.grab(), box)
+    return _find(want, words=words, whole=whole)
+
+
+def _box_frac(frac):
+    x, y, w, h = calibration._client_rect()
+    return (round(x + frac[0] * w), round(y + frac[1] * h),
+            round(x + frac[2] * w), round(y + frac[3] * h))
 
 
 def _wait_for(want, timeout=SCREEN_TIMEOUT, whole=True, verbose=True):
@@ -341,7 +355,7 @@ def recover(verbose=True):
                 time.sleep(FAILED_RETRY_WAIT)
                 deadline = time.monotonic() + RECONNECT_SETTLE
                 continue
-            if _find(who["channel"], whole=False) is not None:
+            if _find_in(who["channel"], SELECT_PANEL_F) is not None:
                 outcome = "channel"
                 break
             if in_the_world():
@@ -386,14 +400,40 @@ def recover(verbose=True):
             f"the server refused the login {LOGIN_TRIES} times; it is not "
             f"taking connections. Nothing more to try now.")
 
-    channel = _needed(who["channel"], whole=False, verbose=verbose)
+    channel = None
+    deadline = time.monotonic() + RECONNECT_SETTLE
+    while time.monotonic() < deadline and channel is None:
+        channel = _find_in(who["channel"], SELECT_PANEL_F)
+        if channel is None:
+            time.sleep(POLL_GAP)
+    if channel is None:
+        calibration.snap("recovery_no_channel_panel")
+        raise Refused(
+            f"no {who['channel']!r} in the server list within "
+            f"{RECONNECT_SETTLE:g}s. Nothing entered.")
+    calibration.snap("recovery_server_select")
     if verbose:
-        print(f"  double-clicking {who['channel']!r} to enter")
+        print(f"  {who['channel']!r} at {list(channel)}; entering")
     _double_click(*channel)
+    time.sleep(ACTION_GAP)
+    enter = _find_in(ENTER_WORD, (0.80, 0.90, 0.99, 0.98), whole=False)
+    if enter is not None:
+        calibration.click(*enter)
 
-    who_at = _needed(who["character"], whole=False, verbose=verbose)
+    who_at = None
+    deadline = time.monotonic() + SCREEN_TIMEOUT
+    while time.monotonic() < deadline and who_at is None:
+        who_at = _find_in(who["character"], SELECT_PANEL_F)
+        if who_at is None:
+            time.sleep(POLL_GAP)
+    if who_at is None:
+        calibration.snap("recovery_no_character")
+        raise Refused(
+            f"no {who['character']!r} in the character list within "
+            f"{SCREEN_TIMEOUT:g}s. Nothing entered.")
+    calibration.snap("recovery_character_select")
     if verbose:
-        print(f"  double-clicking {who['character']!r} to enter")
+        print(f"  {who['character']!r} at {list(who_at)}; entering")
     _double_click(*who_at)
 
     pad = keypad_if_asked(verbose=verbose)
