@@ -215,6 +215,10 @@ DEFAULTS = {
         "slot_half": 24,
         "slot_occupied_stdev": 30.0,
         "gift_column_spread": 12,
+        "server_lag_pixels": 2000,
+        "server_lag_red": 210,
+        "server_lag_green": [120, 200],
+        "server_lag_blue": 80,
         "panel_moved_slack": 30,
     },
     "text": {
@@ -493,6 +497,10 @@ _ALZ_WORD = _S["text"]["alz_word"]
 SERVER_LAG_TEXT = re.compile(_S["text"]["server_lag"],
                              re.IGNORECASE)
 SERVER_LAG_IDLE = _S["timing"]["server_lag_idle"]
+SERVER_LAG_PIXELS = _S["detect"]["server_lag_pixels"]
+SERVER_LAG_RED = _S["detect"]["server_lag_red"]
+SERVER_LAG_GREEN = tuple(_S["detect"]["server_lag_green"])
+SERVER_LAG_BLUE = _S["detect"]["server_lag_blue"]
 SERVER_LAG_BUDGET = _S["timing"]["server_lag_budget"]
 VENDOR_TAB_WORDS = {w.strip().lower() for w in
                     _S["text"]["vendor_tab_words"].split("|")}
@@ -868,6 +876,7 @@ def watch_for_stop(verbose=True):
 
 
 def ctrl_click(x: int, y: int) -> None:
+    hold_if_busy()
     from open_inventory import _user32, _Input, _event
     keys = load_shared()["input"]
     vk = keys["VK_CONTROL"]
@@ -922,6 +931,7 @@ def alt_click(x: int, y: int, settle: float = None) -> None:
 
 
 def type_number(value: int, clear: int) -> None:
+    hold_if_busy()
     from open_inventory import press
     keys = load_shared()["input"]
     for _ in range(clear):
@@ -1036,6 +1046,7 @@ def panel_suggestion(panel):
 
 
 def click(x: int, y: int, settle: float = None) -> None:
+    hold_if_busy()
     shared = load_shared()
     _button(shared["input"]["MOUSEEVENTF_LEFTDOWN"],
             shared["input"]["MOUSEEVENTF_LEFTUP"], x, y,
@@ -1044,6 +1055,7 @@ def click(x: int, y: int, settle: float = None) -> None:
 
 
 def right_click(x: int, y: int, settle: float = None) -> None:
+    hold_if_busy()
     shared = load_shared()
     _button(shared["input"]["MOUSEEVENTF_RIGHTDOWN"],
             shared["input"]["MOUSEEVENTF_RIGHTUP"], x, y,
@@ -2022,13 +2034,39 @@ def _peaks(profile, cut_at, merge_gap, keep=None):
     return merged
 
 
+def lag_ink(image, box) -> int:
+    patch = np.asarray(image.crop(box).convert("RGB"), dtype=int)
+    red, green, blue = patch[..., 0], patch[..., 1], patch[..., 2]
+    return int(((red > SERVER_LAG_RED)
+                & (green > SERVER_LAG_GREEN[0])
+                & (green < SERVER_LAG_GREEN[1])
+                & (blue < SERVER_LAG_BLUE)).sum())
+
+
 def server_busy(image=None) -> bool:
+    image = image if image is not None else grab()
+    box = _box(SERVER_LAG_BAND_F)
     try:
-        seen = read_line(image if image is not None else grab(),
-                         _box(SERVER_LAG_BAND_F))
+        if lag_ink(image, box) < SERVER_LAG_PIXELS:
+            return False
+        seen = read_line(image, box)
     except Exception:
         return False
     return SERVER_LAG_TEXT.search(seen) is not None
+
+
+_HOLDING = False
+
+
+def hold_if_busy() -> None:
+    global _HOLDING
+    if _HOLDING:
+        return
+    _HOLDING = True
+    try:
+        wait_out_server_lag(verbose=True)
+    finally:
+        _HOLDING = False
 
 
 def wait_out_server_lag(verbose=True):
