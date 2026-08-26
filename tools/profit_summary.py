@@ -3,6 +3,7 @@ import pathlib
 import datetime
 import re
 import sqlite3
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LEDGERS = (("trade.py", ROOT / "sales.db", True),
@@ -26,9 +27,19 @@ def bucket(name):
     return "Chaos" if "chaos" in (name or "").lower() else "Cores"
 
 
-def since_midnight():
-    return datetime.datetime.now().replace(hour=0, minute=0, second=0,
-                                           microsecond=0)
+def since_midnight(days=1):
+    midnight = datetime.datetime.now().replace(hour=0, minute=0, second=0,
+                                               microsecond=0)
+    return midnight - datetime.timedelta(days=max(1, int(days)) - 1)
+
+
+def days_asked():
+    for i, arg in enumerate(sys.argv[1:]):
+        if arg == "--days" and i + 2 <= len(sys.argv) - 1:
+            return int(sys.argv[i + 2])
+        if arg.startswith("--days="):
+            return int(arg.split("=", 1)[1])
+    return 1
 
 
 def rows(start):
@@ -127,11 +138,13 @@ def line(char="-", width=87):
 
 
 def main():
-    start = since_midnight()
+    days = days_asked()
+    start = since_midnight(days)
     stamp = start.strftime("%Y-%m-%dT%H:%M:%S")
     now = datetime.datetime.now().strftime("%H:%M")
-    print(f"PROFIT SUMMARY -- runs launched since {start:%Y-%m-%d} 00:00 "
-          f"(as of {now})")
+    span = (f"the {days} days since {start:%Y-%m-%d} 00:00" if days > 1
+            else f"runs launched since {start:%Y-%m-%d} 00:00")
+    print(f"PROFIT SUMMARY -- {span} (as of {now})")
     print("every run of both scripts, counted together; only units bought and "
           "sold within them, matched oldest purchase first")
     print("")
@@ -177,6 +190,20 @@ def report(per_item, per_run, lots, hours=None):
           f"{revenue:>16,.0f}{cost:>16,.0f}")
 
     hours = hours or {}
+    if per_run and len({r[:10] for r in per_run}) > 1:
+        print("")
+        print("by day:")
+        daily = {}
+        for run, tally in per_run.items():
+            day = daily.setdefault(run[:10], [0, 0.0, 0.0, 0])
+            day[0] += tally["units"]
+            day[1] += tally["profit"]
+            day[2] += hours.get(run, 0.0)
+            day[3] += 1
+        for day, (units, profit, ran, count) in sorted(daily.items()):
+            print(f"  {day}   {count:>3} run(s){units:>9,} units"
+                  f"{profit:>16,.0f} Alz{ran:>7.2f}h"
+                  f"{an_hour(profit, ran):>16,.0f} an hour")
     if per_run:
         print("")
         print("by run:")
