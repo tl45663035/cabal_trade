@@ -33,6 +33,7 @@ LOGIN_TRIES = 6
 DIALOG_BUTTON_F = (0.5004, 0.5457)
 DUAL_YES_F = (0.4766, 0.5457)
 RECONNECT_TRIES = 4
+RECONNECT_SETTLE = 60.0
 NOTICE_TRIES = 3
 CLEAR_KEYS = 32
 PASSWORD_ABOVE_LOGIN = 86
@@ -339,7 +340,7 @@ def recover(verbose=True):
                           f"{list(yes)}")
                 calibration.click(*yes)
                 time.sleep(FAILED_RETRY_WAIT)
-                deadline = time.monotonic() + SCREEN_TIMEOUT
+                deadline = time.monotonic() + RECONNECT_SETTLE
                 continue
             if _find(who["channel"], whole=False) is not None:
                 outcome = "channel"
