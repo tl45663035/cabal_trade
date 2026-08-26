@@ -339,8 +339,6 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         done += made
         skipped += missed
         empty += bare
-        with calibration.phase("collect the gift box"):
-            gifts_at_the_end(verbose=verbose)
         rest_the_game(verbose=verbose)
         model.home(verbose=False)
         left = deadline - time.monotonic()
@@ -1001,6 +999,8 @@ def rest_the_game(verbose=True):
     print("")
     print(f"  returning the game to its default state")
     calibration.close_everything(verbose=verbose)
+    with calibration.phase("collect the gift box"):
+        gifts_at_the_end(verbose=verbose)
     if not back_to_the_shop(verbose=verbose):
         raise NotReady("the Agent Shop would not reopen after resting.")
     register_tab(verbose=verbose)
