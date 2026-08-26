@@ -613,8 +613,7 @@ class RowModel:
         point = button_point()
         if verbose:
             print(f"  {RECEIPT_WORD} at {point}")
-        calibration.click(*point)
-        calibration.park()
+        calibration.click(*point, settle=0.0)
         accept = find_button(RECEIPT_WORD)
         if accept is None:
             raise Divergence(
