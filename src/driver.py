@@ -313,7 +313,23 @@ def relist_one(model, index, verbose=True):
 PASS_ALLOWANCE = _SHARED["war"]["quiet_before_end"]
 
 
+def shop_ready(why, verbose=True):
+    if calibration._trade_window_open():
+        return True
+    calibration.snap(f"shop_shut_before_{why}")
+    print(f"  the Agent Shop is not open before {why}; every row would read "
+          f"the world behind it. Reopening.")
+    _after_the_lag(f"Nothing has been read for {why}.", verbose=verbose)
+    if not back_to_the_shop(verbose=verbose):
+        raise NotReady(
+            f"the Agent Shop would not reopen before {why}, so there is "
+            f"nothing to read. Nothing touched.")
+    register_tab(verbose=verbose)
+    return calibration._trade_window_open()
+
+
 def relist_pass(model, first, last, verbose=True):
+    shop_ready(f"rows {first}-{last}", verbose=verbose)
     model.home(verbose=False)
     calibration.phases_reset()
     done = skipped = empty = 0
@@ -354,6 +370,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         print("")
         print(f"-- pass {passes} --")
         try:
+            shop_ready(f"pass {passes}", verbose=verbose)
             resupply_pass(model, first, last, verbose=verbose)
             made, missed, bare = relist_pass(model, first, last,
                                              verbose=verbose)
