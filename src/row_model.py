@@ -421,7 +421,8 @@ def read_row_one():
 
 def row_one_is_empty(text=None):
     text = read_row_one() if text is None else text
-    return EMPTY_MARKER in _key(text)
+    key = _key(text)
+    return (not key) or EMPTY_MARKER in key
 
 
 def _wheel_event(direction):
@@ -519,7 +520,6 @@ class RowModel:
         self._work = {}
         self._floored = {}
         self._broken = set()
-        self._seen_empty = set()
         self._top = None
         self.ready = False
         self.enforce = enforce
@@ -536,7 +536,7 @@ class RowModel:
         elif floored:
             self._floored[int(lands_in)] = parked + 1
 
-    def seed(self, rows, top=None, seen_empty=None):
+    def seed(self, rows, top=None):
         self._slots = {}
         for index, row in (rows or {}).items():
             index = int(index)
@@ -544,20 +544,9 @@ class RowModel:
                 raise ValueError(f"row {index} is outside 1..{CAPACITY}")
             if row is not None:
                 self._slots[index] = row
-        self._seen_empty = {int(i) for i in (seen_empty or ())}
         self._top = None if top is None else int(top)
         self.ready = True
         return self
-
-    def note_empty(self, index):
-        index = int(index)
-        self._slots.pop(index, None)
-        self._seen_empty.add(index)
-        self.forget_floor(index)
-
-    def known_empty(self, index):
-        index = int(index)
-        return index not in self._slots and index in self._seen_empty
 
     def seed_work_tab(self, slots):
         self._work = {tuple(k): v for k, v in (slots or {}).items()}

@@ -1,4 +1,3 @@
-import contextlib
 import datetime
 import re
 import sys
@@ -32,31 +31,19 @@ class NotReady(Exception):
 
 
 _MEASURED = False
-MEASURE = True
 
 
 def initialise(verbose=True):
     global _MEASURED
     if not inv.focus_game():
         raise NotReady("could not bring the game to the foreground.")
-    if _MEASURED:
-        if verbose:
-            print("  already measured this start; not walking the actions "
-                  "again")
-    elif MEASURE:
+    if not _MEASURED:
         if verbose:
             print("  measuring this screen before touching anything")
         calibration.main(close=False)
         _MEASURED = True
-    else:
-        if verbose:
-            print("  --measured: using what calibration.json already holds "
-                  "and not re-measuring; nothing is cancelled or relisted to "
-                  "find the buttons")
-        if not back_to_the_shop(verbose=verbose):
-            raise NotReady("the Agent Shop would not open, and --measured "
-                           "does not measure a way in.")
-        _MEASURED = True
+    elif verbose:
+        print("  already measured this start; not walking the actions again")
     cal = calibration.load(force=True)
     if verbose:
         print(f"  calibrated for {cal['resolution']}, measured "
@@ -114,27 +101,21 @@ def seed(verbose=True):
     model = row_model.RowModel().seed({})
     model.home(verbose=verbose)
     found = {}
-    seen_empty = set()
     for index in range(1, row_model.MAX_TOP + 1):
         model.scroll_to(index, verbose=False)
-        if row_model.row_button() == row_model.REGISTER_WORD:
-            seen_empty.add(index)
-            continue
         text = row_model.read_row_one()
         if row_model.row_one_is_empty(text):
-            seen_empty.add(index)
             continue
         row = _row_from(text)
         if row is None:
             if verbose:
-                print(f"    {index:2}  UNREAD {text!r} -- read again every "
-                      f"pass, because nothing here is known")
+                print(f"    {index:2}  UNREAD {text!r}")
             continue
         found[index] = row
         if verbose:
             print(f"    {index:2}  {row.name[:34]:34} x{row.qty:<4} "
                   f"{row.price:>14,}")
-    model.seed(found, top=row_model.MAX_TOP, seen_empty=seen_empty)
+    model.seed(found, top=row_model.MAX_TOP)
     model.home(verbose=verbose)
     if verbose:
         print(f"  seeded {len(found)} of rows 1-{row_model.MAX_TOP}")
@@ -175,48 +156,12 @@ def cancel(model, index, verbose=True):
     return model.cancel(index, verbose=verbose)
 
 
-def _work_tab_showing(index, verbose=True):
-    tries = int(calibration.load_shared()["detect"]["load_attempts"])
-    for attempt in range(1, tries + 1):
-        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
-        time.sleep(row_model.TAB_SETTLE)
-        calibration.park()
-        showing = calibration.showing_tab()
-        if showing is None or showing == row_model.WORK_TAB:
-            return
-        calibration.snap(f"tab_{showing}_after_row_{index}_{attempt}")
-        if verbose:
-            print(f"    the inventory is showing tab {showing}, not tab "
-                  f"{row_model.WORK_TAB}; selecting it again "
-                  f"({attempt}/{tries})")
-    print(f"    tab {row_model.WORK_TAB} would not come back after {tries} "
-          f"tries; going on, because the panel still has to price what "
-          f"loads as the item row {index} holds before it is listed")
-
-
 def relist_one(model, index, verbose=True):
-    if model.known_empty(index):
-        if verbose:
-            print(f"  row {index} was left empty and nothing has been listed "
-                  f"into it; not reading it")
-        return None
     with calibration.phase(f"{calibration.REFRESH_WORD} the table"):
         row_model.refresh_table(model, verbose=False)
     with calibration.phase("scroll to the row and read it"):
-        model.scroll_to(index, verbose=False)
+        text, row = row_at(model, index, verbose=False)
         button = row_model.row_button()
-        if button == row_model.REGISTER_WORD:
-            text, row = "", None
-        else:
-            text = row_model.read_row_one()
-            row = _row_from(text)
-
-    if button == row_model.REGISTER_WORD:
-        model.note_empty(index)
-        if verbose:
-            print(f"  row {index} offers {row_model.REGISTER_WORD}; it is "
-                  f"empty")
-        return None
 
     if button == row_model.RECEIPT_WORD:
         complete = row_model.row_complete(text)
@@ -229,7 +174,7 @@ def relist_one(model, index, verbose=True):
             text, row = row_at(model, index, verbose=False)
             button = row_model.row_button()
         if complete or button == row_model.REGISTER_WORD or row is None:
-            model.note_empty(index)
+            model.forget_floor(index)
             if verbose:
                 print(f"    collected; row {index} is empty, nothing to "
                       f"relist")
@@ -238,7 +183,8 @@ def relist_one(model, index, verbose=True):
             print(f"    collected; {row.qty} left to relist")
 
     if row_model.row_one_is_empty(text):
-        model.note_empty(index)
+        model._slots.pop(index, None)
+        model.forget_floor(index)
         if verbose:
             print(f"  row {index} is empty; nothing to relist")
         return None
@@ -283,7 +229,7 @@ def relist_one(model, index, verbose=True):
     with calibration.phase("cancel the row and take it back"):
         model.cancel(index, verbose=False, tab_ready=True)
     with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
-        _work_tab_showing(index, verbose=verbose)
+        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
     pack = row.pack
     floor = unit_floor * pack
     why = ""
@@ -318,15 +264,15 @@ def relist_one(model, index, verbose=True):
         model.receive(index, verbose=False)
         seen = row_model.read_row_one()
         if row_model.row_one_is_empty(seen):
-            model.note_empty(index)
+            model._slots.pop(index, None)
+            model.forget_floor(index)
             print(f"    collected; row {index} is empty")
         else:
             print(f"    collected; row {index} still reads {seen!r}")
         return None
-    model.note_empty(index)
+    model._slots.pop(index, None)
     model._slots[lands_in] = row_model.Row(row.name, qty=out["qty"],
                                            price=out["price"])
-    model._seen_empty.discard(lands_in)
     model.carry_floor(index, lands_in, breaking, out["floored"], parked)
     if verbose:
         note = ""
@@ -342,52 +288,23 @@ def relist_one(model, index, verbose=True):
 PASS_ALLOWANCE = _SHARED["war"]["quiet_before_end"]
 
 
-@contextlib.contextmanager
-def _span(store, label):
-    started = time.perf_counter()
-    try:
-        yield
-    finally:
-        store[label] = (time.perf_counter() - started) * 1000
-
-
-def _pass_timing(number, spent, wall):
-    named = sum(spent.values())
-    calibration.timing_note("")
-    calibration.timing_note(f"  pass {number}: where the wall clock went")
-    calibration.timing_note(f"  {'ms':>10}  {'share':>6}  part")
-    for label, ms in sorted(spent.items(), key=lambda kv: -kv[1]):
-        calibration.timing_note(f"  {ms:>10,.1f}  {ms / wall * 100:>5.1f}%  "
-                                f"{label}")
-    loose = wall - named
-    calibration.timing_note(f"  {loose:>10,.1f}  {loose / wall * 100:>5.1f}%  "
-                            f"everything else")
-    calibration.timing_note(f"  {wall:>10,.1f}  100.0%  WALL "
-                            f"({wall / 1000:.1f}s)")
-
-
-def relist_pass(model, first, last, verbose=True, tally=None):
+def relist_pass(model, first, last, verbose=True):
+    model.home(verbose=False)
     calibration.phases_reset()
-    started = time.perf_counter()
-    tally = {} if tally is None else tally
-    tally.update(done=0, skipped=0, empty=0)
-    with calibration.phase("scroll the table home"):
-        model.home(verbose=False)
-    try:
-        for index in range(first, last + 1):
-            out = relist_one(model, index, verbose=verbose)
-            if out:
-                tally["done"] += 1
-            elif out is False:
-                tally["skipped"] += 1
-            else:
-                tally["empty"] += 1
-    finally:
-        span = (time.perf_counter() - started) * 1000
+    done = skipped = empty = 0
+    for index in range(first, last + 1):
+        out = relist_one(model, index, verbose=verbose)
+        if out:
+            done += 1
+        elif out is False:
+            skipped += 1
+        else:
+            empty += 1
+    if done or skipped:
         calibration.phases_table(
-            f"relisting rows {first}-{last}: {tally['done']} relisted, "
-            f"{tally['empty']} empty, {tally['skipped']} skipped", wall=span)
-    return tally["done"], tally["skipped"], tally["empty"], span
+            f"relisting rows {first}-{last}: {done} relisted, {empty} empty, "
+            f"{skipped} skipped")
+    return done, skipped, empty
 
 
 def do_relist(first=None, last=None, minutes=None, verbose=True):
@@ -407,40 +324,23 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     stopped = None
     started = time.perf_counter()
     while True:
-        spent = {}
-        pass_started = time.perf_counter()
-        with _span(spent, "sit out the war window"):
-            war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
         passes += 1
         print("")
         print(f"-- pass {passes} --")
-        counted = {"done": 0, "skipped": 0, "empty": 0}
         try:
-            with _span(spent, "resupply"):
-                resupply_pass(model, first, last, verbose=verbose)
-            made, missed, bare, relisting = relist_pass(model, first, last,
-                                                        verbose=verbose,
-                                                        tally=counted)
-            spent["relisting"] = relisting
+            resupply_pass(model, first, last, verbose=verbose)
+            made, missed, bare = relist_pass(model, first, last,
+                                             verbose=verbose)
         except row_model.Divergence as exc:
             print(f"  STOPPED: {exc}")
-            print(f"  pass {passes} got as far as {counted['done']} relisted, "
-                  f"{counted['empty']} empty, {counted['skipped']} skipped; "
-                  f"counting them")
-            done += counted["done"]
-            skipped += counted["skipped"]
-            empty += counted["empty"]
             stopped = exc
             break
         done += made
         skipped += missed
         empty += bare
-        with _span(spent, "return the game to its default state"):
-            rest_the_game(verbose=verbose)
-        with _span(spent, "scroll the table home"):
-            model.home(verbose=False)
-        _pass_timing(passes, spent,
-                     (time.perf_counter() - pass_started) * 1000)
+        rest_the_game(verbose=verbose)
+        model.home(verbose=False)
         left = deadline - time.monotonic()
         if left <= 0:
             print(f"  {minutes:g} minute(s) are up after pass {passes}")
@@ -457,17 +357,11 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     return done
 
 
-def do_list(row, col, price=None, verbose=True, tab=None):
-    tab = row_model.WORK_TAB if tab is None else int(tab)
+def do_list(row, col, price=None, verbose=True):
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
     model = row_model.RowModel().seed({})
     started = time.perf_counter()
-    if verbose:
-        print(f"  selecting inventory tab {tab} before reading slot "
-              f"({row},{col})")
-    calibration.click(*calibration.inventory_tab_point(tab), settle=0.0)
-    time.sleep(row_model.TAB_SETTLE)
     out = model.list_slot(row, col, price=price, verbose=verbose)
     print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
     return out
@@ -1210,18 +1104,11 @@ def usage():
     print("                                   looping for MIN minutes;")
     print("                                   the run block in config.json")
     print("                                   if no range is given")
-    print("  py src/driver.py list R C [PRICE] [TAB]  list inventory slot")
-    print("                                   (R,C) on TAB, work tab if none;")
-    print("                                   the panel's own suggestion if no")
-    print("                                   PRICE")
+    print("  py src/driver.py list R C [PRICE] list inventory slot (R,C); the")
+    print("                                   panel's own suggestion if no PRICE")
     print("  py src/driver.py row N           read row N without touching it")
     print("  py src/driver.py price N         market price for favourite slot N")
     print("  py src/driver.py alz             read the balance")
-    print("")
-    print("  --frames    save a screenshot at every click")
-    print("  --measured  trust calibration.json and skip the measuring pass,")
-    print("              which is the only way in when the walk itself cannot")
-    print("              run -- a cancel needs a free inventory slot")
 
 
 def _elapsed(seconds):
@@ -1236,11 +1123,8 @@ def main():
     import traceback
     began = datetime.datetime.now()
     started = time.monotonic()
-    global MEASURE
-    MEASURE = "--measured" not in sys.argv[1:]
-    args = [a for a in sys.argv[1:] if a not in ("--frames", "--measured")]
+    args = [a for a in sys.argv[1:] if a != "--frames"]
     calibration.log_to_file(args[0].lower() if args else "run")
-    calibration.timing_to_file(args[0].lower() if args else "run")
     print(f"  ledger {ledger.DB} run {ledger.start()}")
     calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
     calibration.watch_for_stop()
@@ -1271,11 +1155,6 @@ def main():
         except BaseException as exc:
             print(f"  the profit summary could not be built: "
                   f"{type(exc).__name__}: {exc}")
-        try:
-            calibration.timing_closed()
-        except BaseException as exc:
-            print(f"  the timing log could not be closed: "
-                  f"{type(exc).__name__}: {exc}")
         print(f"  started {began:%H:%M:%S}, ended "
               f"{datetime.datetime.now():%H:%M:%S}, ran for "
               f"{_elapsed(time.monotonic() - started)}")
@@ -1297,8 +1176,7 @@ def _dispatch(args):
                   args[3] if len(args) > 3 else None)
     elif what == "list" and len(args) > 2:
         do_list(int(args[1]), int(args[2]),
-                int(args[3]) if len(args) > 3 else None,
-                tab=int(args[4]) if len(args) > 4 else None)
+                int(args[3]) if len(args) > 3 else None)
     elif what == "row" and len(args) > 1:
         initialise()
         register_tab()

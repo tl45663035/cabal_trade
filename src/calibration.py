@@ -7,7 +7,6 @@ import io
 import json
 import re
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -212,10 +211,6 @@ DEFAULTS = {
         "alz_min_digits": 4,
         "slot_half": 24,
         "slot_occupied_stdev": 30.0,
-        "tab_lit_wide": 0.26,
-        "tab_lit_high": 0.30,
-        "tab_lit_low": 0.15,
-        "tab_lit_margin": 1.15,
         "panel_moved_slack": 30,
     },
     "text": {
@@ -431,10 +426,6 @@ MIN_NAME_OVERLAP = _S["detect"]["min_name_overlap"]
 ALZ_MIN_DIGITS = _S["detect"]["alz_min_digits"]
 SLOT_HALF = _S["detect"]["slot_half"]
 SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
-TAB_LIT_WIDE = _S["detect"]["tab_lit_wide"]
-TAB_LIT_HIGH = _S["detect"]["tab_lit_high"]
-TAB_LIT_LOW = _S["detect"]["tab_lit_low"]
-TAB_LIT_MARGIN = _S["detect"]["tab_lit_margin"]
 POLL_GAP = _S["timing"]["poll_gap"]
 
 ALZ_BRIGHT = _DET["alz_bright"]
@@ -540,61 +531,22 @@ def phases_reset():
     _PHASES.clear()
 
 
-TIMING = None
-
-
-def timing_to_file(what="run"):
-    global TIMING
-    if TIMING is not None:
-        return Path(TIMING.name)
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    path = LOG_DIR / f"{stamp}_{what}_timing.log"
-    TIMING = open(path, "a", encoding="utf-8", buffering=1)
-    TIMING.write(stamp + "  " + " ".join(sys.argv) + chr(10))
-    print(f"  timing to {path}")
-    return path
-
-
-def timing_note(text=""):
-    if TIMING is None:
-        print(text)
-        return
-    TIMING.write(text + chr(10))
-
-
-def timing_closed():
-    global TIMING
-    if TIMING is not None:
-        TIMING.close()
-        TIMING = None
-
-
-def phases_table(title, wall=None):
+def phases_table(title):
     total = sum(ms for _l, ms in _PHASES)
-    against = wall if wall else total
     rolled = {}
     for label, ms in _PHASES:
         seen = rolled.setdefault(label, [0, 0.0])
         seen[0] += 1
         seen[1] += ms
-    timing_note("")
-    timing_note(f"  {title}")
-    timing_note(f"  {'#':>3}  {'ms':>10}  {'share':>6}  {'n':>4}  "
-                f"{'each':>8}  phase")
+    print("")
+    print(f"  {title}")
+    print(f"  {'#':>3}  {'ms':>10}  {'share':>6}  {'n':>4}  {'each':>8}  phase")
     for i, (label, (times, ms)) in enumerate(
             sorted(rolled.items(), key=lambda kv: -kv[1][1]), start=1):
-        timing_note(f"  {i:>3}  {ms:>10,.1f}  "
-                    f"{(ms / against * 100) if against else 0:>5.1f}%  "
-                    f"{times:>4}  {ms / times:>8,.1f}  {label}")
-    if wall:
-        loose = wall - total
-        timing_note(f"  {'':>3}  {loose:>10,.1f}  "
-                    f"{(loose / wall * 100) if wall else 0:>5.1f}%  "
-                    f"{'':>4}  {'':>8}  outside every phase")
-        timing_note(f"       {wall:>10,.1f}  100.0%  WALL")
-    else:
-        timing_note(f"       {total:>10,.1f}  100.0%")
+        print(f"  {i:>3}  {ms:>10,.1f}  "
+              f"{(ms / total * 100) if total else 0:>5.1f}%  {times:>4}  "
+              f"{ms / times:>8,.1f}  {label}")
+    print(f"       {total:>10,.1f}  100.0%")
     return total
 
 
@@ -604,13 +556,13 @@ def steps_reset():
 
 def steps_table(title):
     total = sum(ms for _l, ms in _STEPS)
-    timing_note("")
-    timing_note(f"  {title}")
-    timing_note(f"  {'#':>3}  {'ms':>9}  {'share':>6}  step")
+    print("")
+    print(f"  {title}")
+    print(f"  {'#':>3}  {'ms':>9}  {'share':>6}  step")
     for i, (label, ms) in enumerate(_STEPS, start=1):
-        timing_note(f"  {i:>3}  {ms:>9.1f}  "
-                    f"{(ms / total * 100) if total else 0:>5.1f}%  {label}")
-    timing_note(f"       {total:>9.1f}  100.0%  TOTAL")
+        print(f"  {i:>3}  {ms:>9.1f}  {(ms / total * 100) if total else 0:>5.1f}%"
+              f"  {label}")
+    print(f"       {total:>9.1f}  100.0%  TOTAL")
     return total
 
 
@@ -1540,15 +1492,11 @@ def calibrate_shop(verbose=True):
     words = ocr(image, top_strip)
     named = {t.lower(): (c, p) for t, c, p in words}
 
-    said = [p for t, _c, p in words if t.lower() == "register"]
-    if not said:
+    reg = next((p for t, c, p in words if t.lower() == "register"), None)
+    if reg is None:
         raise RuntimeError(
             "the Register tab was not found, so the Trade window is not open "
             "on a tab this can measure. Nothing written.")
-    reg = min(said, key=lambda p: p[1])
-    if len(said) > 1:
-        say(f"  the word Register reads at {said}; the tab is the highest of "
-            f"them, the rest name the panel below it")
     say(f"  Register {reg}")
 
     band = np.asarray(image.crop(_box(TAB_BAND_F)).convert("L"), dtype=float)
@@ -1905,35 +1853,6 @@ def inventory_tab_point(tab):
             f"inventory tab {key} is not in calibration.json, which has "
             f"{sorted(tabs)}")
     return tuple(tabs[key])
-
-
-def _tab_pitch(points):
-    xs = sorted(x for x, _y in points.values())
-    gaps = [b - a for a, b in zip(xs, xs[1:])]
-    return sorted(gaps)[len(gaps) // 2] if gaps else 0
-
-
-def showing_tab(image=None):
-    points = {int(k): tuple(v)
-              for k, v in load()["inventory"]["tabs"].items()}
-    pitch = _tab_pitch(points)
-    if pitch <= 0:
-        return None
-    image = image if image is not None else grab()
-    dx = max(2, round(pitch * TAB_LIT_WIDE))
-    top = max(1, round(pitch * TAB_LIT_HIGH))
-    low = max(1, round(pitch * TAB_LIT_LOW))
-    lit = {}
-    for tab, (x, y) in points.items():
-        crop = image.crop((x - dx, y - top, x + dx, y - low)).convert("L")
-        data = list(crop.getdata())
-        lit[tab] = sum(data) / len(data) if data else 0.0
-    order = sorted(lit, key=lit.get, reverse=True)
-    if len(order) < 2 or lit[order[1]] <= 0:
-        return None
-    if lit[order[0]] < lit[order[1]] * TAB_LIT_MARGIN:
-        return None
-    return order[0]
 
 
 ACTION_BUTTON_WORDS = (_S["text"]["confirm_word"], _S["text"]["dismiss_word"],

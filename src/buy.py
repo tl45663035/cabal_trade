@@ -132,18 +132,14 @@ def _shows(image, box, want):
     return want in every, every
 
 
-def dialog_holds(image, per_pack, most):
+def dialog_shows(image, want_qty, want_total):
     image = image if image is not None else calibration.grab()
-    quantities = calibration.read_money_all(image, _reg("buy_dialog_qty"))
-    totals = calibration.read_money_all(image, _reg("buy_dialog_price"))
-    for qty in sorted((q for q in quantities if q), reverse=True):
-        if 1 <= qty <= most and per_pack * qty in totals:
-            return qty, per_pack * qty, quantities, totals
-    return None, None, quantities, totals
+    right_qty, qty = _shows(image, _reg("buy_dialog_qty"), want_qty)
+    right_price, price = _shows(image, _reg("buy_dialog_price"), want_total)
+    return right_qty and right_price, qty, price
 
 
 def _cancel(why, retryable=False):
-    calibration.snap("buy_cancelled")
     point = dialog_button(CANCEL_WORD)
     if point is not None:
         calibration.click(*point)
@@ -189,7 +185,6 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     with step("get_price: search the favourite and read row 1"):
         offer = get_price.get_price(int(slot), verbose=False)
     if offer is None:
-        calibration.snap(f"buy_slot_{slot}_would_not_price")
         raise Refused(f"favourite slot {slot} would not price, so there is "
                       f"nothing to buy from.")
     name = calibration.FAVOURITE_ITEMS[str(int(slot))]
@@ -198,7 +193,6 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     if sells_at and gap is not None:
         now = sells_at - offer["unit_price"]
         if now <= gap:
-            calibration.snap("buy_gap_too_thin")
             raise Refused(
                 f"row 1 asks {offer['unit_price']:,} and the core sells at "
                 f"{sells_at:,}, a gap of {now:,} against the {gap:,} wanted. "
@@ -212,7 +206,6 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     with step("await the Purchase dialog"):
         appeared = await_dialog()
     if not appeared:
-        calibration.snap("buy_no_dialog_after_buy")
         raise Refused(
             f"no {DIALOG_MARKER} dialog appeared after clicking Buy on row 1. "
             f"Nothing was confirmed.", retryable=True)
@@ -259,35 +252,31 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         say(f"    the quantity field already reads {asked}; not retyping it")
 
     per_pack = detail["price"] // max(1, detail["qty"] or 1)
-    if per_pack != offer["price"] and verbose:
-        say(f"    the row priced {offer['name']!r} at {offer['price']:,} and "
-            f"the dialog prices one pack at {per_pack:,}; the dialog is what "
-            f"gets paid")
-    holds = want_total = None
-    seen_qty, seen_price = [], []
+    if per_pack != offer["price"]:
+        _cancel(f"the table row priced {offer['name']!r} at "
+                f"{offer['price']:,} but the dialog prices one pack at "
+                f"{per_pack:,}. The gap that chose this order was measured "
+                f"off the row. Cancelled without buying.", retryable=True)
+    want_total = per_pack * asked
+    agreed, seen_qty, seen_price = False, [], []
     for attempt in range(1, REREADS + 2):
         with step(f"re-read the dialog ({attempt})"):
-            holds, want_total, seen_qty, seen_price = dialog_holds(
-                None, per_pack, asked)
-        if holds:
+            agreed, seen_qty, seen_price = dialog_shows(None, asked,
+                                                        want_total)
+        if agreed:
             break
         if verbose:
             say(f"    read {attempt}: the quantity reads "
                 f"{seen_qty or 'nothing'} and the price reads "
-                f"{seen_price or 'nothing'} -- neither pair agrees at "
-                f"{per_pack:,} a pack")
+                f"{seen_price or 'nothing'} -- wanted {asked} at "
+                f"{want_total:,}")
         time.sleep(REREAD_GAP)
-    if not holds:
-        _cancel(f"the dialog would not say how many packs it holds after "
-                f"{REREADS + 1} reads; the quantity reads "
-                f"{seen_qty or 'nothing'} and the price reads "
-                f"{seen_price or 'nothing'}, and no pair of them agrees at "
-                f"{per_pack:,} a pack. Cancelled without buying.",
+    if not agreed:
+        _cancel(f"the dialog will not confirm {asked} pack(s) at "
+                f"{want_total:,} after {REREADS + 1} reads; the quantity "
+                f"reads {seen_qty or 'nothing'} and the price reads "
+                f"{seen_price or 'nothing'}. Cancelled without buying.",
                 retryable=True)
-    if holds != asked and verbose:
-        say(f"    the dialog holds {holds} pack(s), not the {asked} typed; "
-            f"taking what is there")
-    asked = holds
     if verbose:
         say(f"    dialog confirms {asked} pack(s) at {want_total:,}")
 
@@ -313,7 +302,6 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     with step("confirm the dialog is gone"):
         still = dialog_open()
     if still:
-        calibration.snap("buy_dialog_stayed_open")
         raise Refused(
             f"the dialog stayed open after {CONFIRM_WORD}. Whether anything "
             f"was bought is unknown -- look before running again.")
@@ -321,7 +309,6 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         after_alz = await_balance(differs_from=before_alz)
     units = asked * max(1, row_model.pack_size(offer["name"]))
     if after_alz is None:
-        calibration.snap("buy_balance_unread_after_confirm")
         raise Refused(
             f"the Alz balance would not read after {CONFIRM_WORD}. Whether "
             f"{want_total:,} was spent is unknown -- check by hand.")
@@ -341,7 +328,6 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     say(f"    balance after  {after_alz:,}; spent {spent:,} "
         f"({per_unit:,} a core)")
     if spent != want_total:
-        calibration.snap("buy_spend_disagrees")
         raise Refused(
             f"{spent:,} left the account for an order the dialog priced at "
             f"{want_total:,} after {REREADS} reads. Balance {before_alz:,} -> "
