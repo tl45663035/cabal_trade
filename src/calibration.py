@@ -246,8 +246,8 @@ DEFAULTS = {
         "2": "Force Core Set (Highest)",
         "3": "Chaos Core",
         "4": "Chaos Core Set",
-        "5": "Force Core (Ultimate)",
-        "6": "Force Core Set (Ultimate)",
+        "5": "Divine Stone",
+        "6": "Divine Stone Set",
         "7": "Force Core(High)",
         "8": "Force Core Set (High)",
         "9": "Upgrade Core (Ultimate)",
@@ -259,6 +259,10 @@ DEFAULTS = {
         "craft_key_slot": [1, 8],
         "craft_tier_words": "2000|2999",
         "craft_recipe_words": "Chaos Core Set|x3",
+        "craft_recipes": {
+            "Chaos Core": "Chaos Core Set|x3",
+            "Divine Stone": "Divine Stone Set|x3"
+        },
         "refresh_word": "Refresh",
         "set_word": "set",
         "held_of_needed": "/",
@@ -2184,6 +2188,21 @@ REFRESH_WORD = _S["game_facts"]["refresh_word"]
 HELD_OF_NEEDED = _S["game_facts"]["held_of_needed"]
 CRAFT_TIER_WORDS = _S["game_facts"]["craft_tier_words"].split("|")
 CRAFT_RECIPE_WORDS = _S["game_facts"]["craft_recipe_words"].split("|")
+CRAFT_RECIPES = {core: words.split("|") for core, words
+                 in _S["game_facts"]["craft_recipes"].items()}
+
+
+def recipe_words(core):
+    return CRAFT_RECIPES.get(core) or CRAFT_RECIPE_WORDS
+
+
+def craft_cores():
+    out = []
+    for core in CRAFT_RECIPES:
+        slot = favourite_slot_of(core)
+        if slot is not None and pair_slot(slot) is not None:
+            out.append(core)
+    return out
 
 
 def _craft_slots():
@@ -2306,38 +2325,46 @@ def calibrate_craft(verbose=True):
                 break
         else:
             lines.append({"y": point[1], "words": [(point[0], text)]})
-    recipe = None
-    for line in lines:
-        flat = re.sub(r"[^a-z0-9]", "",
-                      " ".join(t for _x, t in sorted(line["words"])).lower())
-        if all(re.sub(r"[^a-z0-9]", "", w.lower()) in flat
-               for w in CRAFT_RECIPE_WORDS):
-            xs = [x for x, _t in line["words"]]
-            recipe = [(min(xs) + max(xs)) // 2, line["y"]]
-            break
-    if recipe is None:
-        raise RuntimeError(
-            f"no recipe under the {'-'.join(CRAFT_TIER_WORDS)} tier reads "
-            f"{CRAFT_RECIPE_WORDS}; it read "
-            f"{[t for t, _c, _p in recipes]}. Nothing written.")
+    def locate(words):
+        for line in lines:
+            flat = re.sub(r"[^a-z0-9]", "",
+                          " ".join(t for _x, t in sorted(line["words"])).lower())
+            if all(re.sub(r"[^a-z0-9]", "", w.lower()) in flat for w in words):
+                xs = [x for x, _t in line["words"]]
+                return [(min(xs) + max(xs)) // 2, line["y"]]
+        return None
 
-    click(*recipe)
+    cores = craft_cores() or [None]
+    found = {}
+    for core in cores:
+        words = recipe_words(core) if core else CRAFT_RECIPE_WORDS
+        point = locate(words)
+        if point is None:
+            raise RuntimeError(
+                f"no recipe under the {'-'.join(CRAFT_TIER_WORDS)} tier reads "
+                f"{words}; it read {[t for t, _c, _p in recipes]}. "
+                f"Nothing written.")
+        found[core or "_default"] = point
+        say(f"  recipe {' '.join(words)} at {point}")
+
+    first = next(iter(found.values()))
+    click(*first)
     time.sleep(TAB_SETTLE)
     chosen = ocr(grab(), _box(tuple(_REG["craft_buttons"])))
     request = _two_word_button(chosen, CRAFT_REQUEST_WORDS)
     if request is None:
         raise RuntimeError(
-            f"no {' '.join(CRAFT_REQUEST_WORDS)} button after choosing "
-            f"{' '.join(CRAFT_RECIPE_WORDS)}; the band read "
-            f"{[t for t, _c, _p in chosen]}. Nothing written.")
+            f"no {' '.join(CRAFT_REQUEST_WORDS)} button after choosing a "
+            f"recipe; the band read {[t for t, _c, _p in chosen]}. "
+            f"Nothing written.")
 
     out = {"tier": [left, tier_y],
-           "recipe": recipe,
+           "recipe": first,
+           "recipes": found,
            "request": request,
            "complete": complete,
            "material_box": list(_box(tuple(_REG["craft_material"])))}
     say(f"  tier {'-'.join(CRAFT_TIER_WORDS)} at {out['tier']}")
-    say(f"  recipe {' '.join(CRAFT_RECIPE_WORDS)} at {recipe}")
     say(f"  {' '.join(CRAFT_REQUEST_WORDS)} at {request}")
     say(f"  {CRAFT_COMPLETE_WORD} All at {complete}")
     say(f"  material counter {out['material_box']}")
@@ -2893,7 +2920,8 @@ def main(close: bool = True) -> None:
         snap("press_escape_after_vendor")
 
     craft_block = None
-    if (shared["resupply"]["enable_buying"] or {}).get("Chaos Core"):
+    _enabled = shared["resupply"]["enable_buying"] or {}
+    if any(_enabled.get(core) for core in craft_cores()):
         print("craft window:")
         craft_block = calibrate_craft()
         press(VK_ESCAPE)

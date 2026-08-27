@@ -16,8 +16,11 @@ SETTLE_BLOCK = _SHARED["timing"]["craft_settle_block"]
 SETTLE_MAX = _SHARED["timing"]["craft_settle_max"]
 CORES_PER_SET = calibration.CRAFT_CORES_PER_SET
 HELD_OF_NEEDED = calibration.HELD_OF_NEEDED
-CORE_NAME = calibration.FAVOURITE_ITEMS[
-    str(calibration._craft_slots()[0])]
+def _core_name(core=None):
+    if core:
+        return core
+    slot = calibration._craft_slots()[0]
+    return calibration.FAVOURITE_ITEMS[str(slot)] if slot else "the core"
 
 
 class Refused(Exception):
@@ -61,20 +64,22 @@ def open_craft(verbose=True):
         f"panel was on another tab when the key was right-clicked.")
 
 
-def select_recipe(verbose=True):
+def select_recipe(core=None, verbose=True):
     say = print if verbose else (lambda *a: None)
     block = _cal()
     tier = block["tier"]
-    point = block.get("recipe")
+    recipes = block.get("recipes") or {}
+    point = recipes.get(core) or block.get("recipe")
     if point is None:
         raise Refused(
-            f"the craft window has no measured recipe; run "
-            f"py src/calibration.py before crafting.")
+            f"the craft window has no measured recipe for {_core_name(core)}; "
+            f"run py src/calibration.py before crafting.")
+    words = calibration.recipe_words(core) if core else calibration.CRAFT_RECIPE_WORDS
     say(f"  opening the {'-'.join(calibration.CRAFT_TIER_WORDS)} tier at "
         f"{tier}")
     calibration.click(*tier, settle=0.0)
     time.sleep(TAB_SETTLE)
-    say(f"  choosing {' '.join(calibration.CRAFT_RECIPE_WORDS)} at {point}")
+    say(f"  choosing {' '.join(words)} at {point}")
     calibration.click(*point)
     time.sleep(TAB_SETTLE)
     if not calibration.craft_window_open():
@@ -166,13 +171,14 @@ def close_craft():
     return not calibration.craft_window_open()
 
 
-def craft_sets(verbose=True):
+def craft_sets(core=None, verbose=True):
     say = print if verbose else (lambda *a: None)
+    CORE_NAME = _core_name(core)
     calibration.steps_reset()
     with calibration.step("open the craft window"):
         open_craft(verbose=verbose)
     with calibration.step("select the recipe"):
-        select_recipe(verbose=verbose)
+        select_recipe(core, verbose=verbose)
     with calibration.step("read the material counter"):
         before = await_material(verbose=verbose)
     if not before:
