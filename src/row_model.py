@@ -646,6 +646,8 @@ class RowModel:
         held = round(price / each) if each else 1
         if held < 1 or not (each and abs(price - each * held)
                             <= each * (PRICE_CHECK_FACTOR - 1)):
+            held = pack_size(listed.name)
+        if held < 1:
             held = 1
         ledger.sold(listed.name, price // held, proceeds, sold * held)
         if verbose:

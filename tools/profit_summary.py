@@ -26,6 +26,34 @@ def bucket(name):
     return "Chaos" if "chaos" in (name or "").lower() else "Cores"
 
 
+UNIT_PRICE_CEILING = 2_000_000
+
+
+def _reference_prices(sells):
+    seen = collections.defaultdict(list)
+    for _at, _run, item, qty, _price, proceeds, listed in sells:
+        units = (qty or 0) * (pack(item) if listed else 1)
+        if not units or not proceeds:
+            continue
+        per = proceeds / units
+        if per < UNIT_PRICE_CEILING:
+            seen[key(item)].append(per)
+    return {k: sorted(v)[len(v) // 2] for k, v in seen.items() if v}
+
+
+def _true_units(item, qty, proceeds, listed, reference):
+    units = (qty or 0) * (pack(item) if listed else 1)
+    if not units or not proceeds:
+        return units
+    if proceeds / units < UNIT_PRICE_CEILING:
+        return units
+    ref = reference.get(key(item))
+    if not ref:
+        return units
+    fixed = round(proceeds / ref)
+    return fixed if fixed > units else units
+
+
 def since_midnight():
     return datetime.datetime.now().replace(hour=0, minute=0, second=0,
                                            microsecond=0)
@@ -92,8 +120,9 @@ def gather(buys):
 def match(sells, lots):
     per_item = {}
     per_run = {}
+    reference = _reference_prices(sells)
     for _at, run, item, qty, price, proceeds, listed_in_packs in sells:
-        units = (qty or 0) * (pack(item) if listed_in_packs else 1)
+        units = _true_units(item, qty, proceeds, listed_in_packs, reference)
         if not units:
             continue
         gross = proceeds if proceeds is not None else (price or 0) * (qty or 0)
