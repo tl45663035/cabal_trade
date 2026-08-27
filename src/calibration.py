@@ -2407,6 +2407,7 @@ def calibrate_convert(verbose=True):
     park()
 
     image = grab()
+    snap("convert_grid", image)
     band = _box(CONVERT_GRID_BAND_F)
     grid = np.asarray(image.crop(band).convert("L"), dtype=float)
     cols = _peaks(grid.mean(axis=0), CONVERT_PEAK_CUT, CONVERT_MERGE_GAP,
@@ -2417,6 +2418,17 @@ def calibrate_convert(verbose=True):
     ys = [band[1] + i for i in rows]
     say(f"  grid band {band}: {len(xs)} column(s) at {xs}, "
         f"{len(ys)} row(s) at {ys}")
+    if len(xs) == len(CONVERT_GRADES) - 1 and len(xs) >= 3:
+        d = [b - a for a, b in zip(xs, xs[1:])]
+        pitch = sorted(d)[len(d) // 2]
+        wide = [i for i, g in enumerate(d) if g > pitch * 3 // 2]
+        if len(wide) == 1 and abs(d[wide[0]] - 2 * pitch) <= pitch // 2:
+            i = wide[0]
+            fill = (xs[i] + xs[i + 1]) // 2
+            xs.insert(i + 1, fill)
+            say(f"  a single interior column was missed: the {d[i]}px gap is "
+                f"twice the {pitch}px pitch, so a column belongs at {fill}; "
+                f"recovered {xs}")
     if len(xs) != len(CONVERT_GRADES):
         raise RuntimeError(
             f"expected {len(CONVERT_GRADES)} conversion columns, one a grade, "
@@ -2440,7 +2452,6 @@ def calibrate_convert(verbose=True):
                            "costs": f"{family} Core Set ({grade})"}
             say(f"    {core:<28} <- {pairs[core]['costs']:<30} "
                 f"r{r}c{col} at {tuple(cells[f'{r}x{col}'])}")
-    snap("convert_grid")
     return {"tab": CONVERT_TAB, "tab_point": list(tab),
             "cells": cells, "set_to_core": pairs,
             "columns": [int(v) for v in xs], "rows": [int(v) for v in ys]}
