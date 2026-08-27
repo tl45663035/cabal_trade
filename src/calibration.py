@@ -1826,21 +1826,16 @@ def calibrate_purchase(shop, verbose=True):
     top, bot = out["purchase_row_one"][1], out["purchase_row_one"][3]
     hdr = (table_band[0], top - PURCHASE_HEADER_UP, table_band[2],
            top - PURCHASE_HEADER_DOWN)
-    raw = [t.strip().lower() for t, _, _ in ocr(image, hdr)]
     words = sorted(((p[0], t.strip().lower()) for t, _, p in ocr(image, hdr)
                     if t.strip().lower() in ("name", "qty", "price",
                                              "function")))
     have = [n for _, n in words]
-    missing = [w for w in ("name", "qty", "price") if w not in have]
+    missing = [w for w in ("name", "qty", "price", "function") if w not in have]
     if missing:
         raise RuntimeError(
-            f"the offers header is missing {missing}; read {raw}. "
+            f"the offers header is missing {missing}; read {have}. "
             f"Cannot place the per-column boxes.")
     centre = {n: x for x, n in words}
-    if "function" not in centre:
-        say(f"  the header did not read Function (band read {raw}); using the "
-            f"Buy button at x={out['purchase_buy_x']} for the right edge.")
-        centre["function"] = out["purchase_buy_x"]
 
     band = np.asarray(image.crop((table_band[0], top, table_band[2], bot))
                       .convert("L"), dtype=float)
