@@ -190,6 +190,7 @@ DEFAULTS = {
         "button_present_bright": 55,
         "button_present_contrast": 30,
         "button_present_surround": [22, 34],
+        "receipt_drop_ratio": 0.14,
         "min_plausible_balance": 1000,
         "row_border_candidates": 30,
         "row_border_min_gap": 15,
@@ -2978,6 +2979,14 @@ def main(close: bool = True) -> None:
     _enabled = shared["resupply"]["enable_buying"] or {}
     if any(_enabled.get(core) for core in craft_cores()):
         print("craft window:")
+        if not vendor_visited:
+            press(VK_ESCAPE)
+            time.sleep(gap)
+            snap("press_escape_before_craft")
+            if _trade_window_open():
+                raise RuntimeError(
+                    "the Agent Shop would not close, and the craft window "
+                    "will not open on top of it. Nothing written.")
         craft_block = calibrate_craft()
         press(VK_ESCAPE)
         time.sleep(gap)
