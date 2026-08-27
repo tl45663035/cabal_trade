@@ -1968,6 +1968,16 @@ def inventory_tab_point(tab):
     return tuple(tabs[key])
 
 
+def button_word_matches(seen, word):
+    seen = re.sub(r"[^a-z0-9]", "", (seen or "").lower())
+    word = re.sub(r"[^a-z0-9]", "", (word or "").lower())
+    if not seen or not word:
+        return False
+    if seen == word:
+        return True
+    return len(seen) >= 4 and word.startswith(seen) and len(word) - len(seen) <= 2
+
+
 ACTION_BUTTON_WORDS = (_S["text"]["confirm_word"], _S["text"]["dismiss_word"],
                        _S["text"]["receipt_word"], _S["text"]["register_word"])
 
@@ -2630,9 +2640,8 @@ def calibrate_actions(shop, verbose=True):
     def buttons_now():
         found = {}
         for text, _conf, point in ocr(grab(), dialog):
-            key = text.strip().lower()
             for word in ACTION_BUTTON_WORDS:
-                if key == word.lower():
+                if button_word_matches(text, word):
                     found[word] = (int(point[0]), int(point[1]))
         return found
 
