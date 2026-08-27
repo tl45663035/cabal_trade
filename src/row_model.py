@@ -805,19 +805,37 @@ class RowModel:
                     f"the panel prices what loaded from ({row},{col}) at "
                     f"{suggested:,}, under the {unit_market:,} a single one "
                     f"goes for. Nothing has been listed.")
+            whole = unit_market * count
+            if not (whole / PRICE_CHECK_FACTOR <= suggested
+                    <= whole * PRICE_CHECK_FACTOR):
+                calibration.snap(f"panel_prices_{suggested}")
+                raise Divergence(
+                    f"the panel prices what loaded from ({row},{col}) at "
+                    f"{suggested:,}, which is not a whole number of "
+                    f"{unit_market:,} -- {count} would be {whole:,}. Nothing "
+                    f"has been listed.")
             if floor_each:
                 floor = floor_each * count
             if verbose:
                 print(f"  the panel prices the bundle at {suggested:,}, "
                       f"{count} x {unit_market:,}"
                       + (f"; the floor is {floor:,}" if floor else ""))
-        if (expect_item or expect_price) and verbose:
+        if expect_item or expect_price:
             expected = expect_price or (calibration.market_unit(expect_item)
                                         * max(1, pack_size(expect_item)))
             named = expect_item or "what the board asks"
             if expected:
-                print(f"  the panel prices it at {suggested:,}, and a "
-                      f"{named} goes for about {expected:,}")
+                if not (expected / PRICE_CHECK_FACTOR <= suggested
+                        <= expected * PRICE_CHECK_FACTOR):
+                    calibration.snap(f"panel_prices_{suggested}")
+                    raise Divergence(
+                        f"the panel prices what loaded from ({row},{col}) at "
+                        f"{suggested:,}, and a {named} goes for about "
+                        f"{expected:,}. That is not the same item. Nothing "
+                        f"has been listed.")
+                if verbose:
+                    print(f"  the panel prices it at {suggested:,}, and a "
+                          f"{named} goes for about {expected:,}")
 
         want = price if price is not None else calibration.undercut(suggested)
         if want is None:
