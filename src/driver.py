@@ -586,7 +586,6 @@ def do_convert(slot, verbose=True):
               f"{out['slots'][0]} to {out['slots'][-1]}")
         remaining, full = list(out["slots"]), False
         while remaining:
-            calibration.park()
             here = calibration.occupied_slots()
             remaining = [w for w in remaining if w in here]
             if not remaining:
@@ -599,17 +598,11 @@ def do_convert(slot, verbose=True):
                 full = True
                 break
             lands_in = min(empty)
-            try:
-                with calibration.phase(f"round {rounds}: list {core} from "
-                                       f"{remaining[0]}"):
-                    listed = model.list_slot(*remaining[0], floor=floor,
-                                             why=why, verbose=verbose,
-                                             lands_in=lands_in, expect_item=core)
-            except row_model.SlotEmpty:
-                print(f"  {remaining[0]} was already emptied by the 250 "
-                      f"listing; nothing more to take from it")
-                remaining = remaining[1:]
-                continue
+            with calibration.phase(f"round {rounds}: list {core} from "
+                                   f"{remaining[0]}"):
+                listed = model.list_slot(*remaining[0], floor=floor, why=why,
+                                         verbose=verbose, lands_in=lands_in,
+                                         expect_item=core)
             model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
                                                    price=listed["price"])
             rows.append(lands_in)
@@ -826,22 +819,15 @@ def resupply_one(model, slot, held, first, last, verbose=True):
                 left_to_convert = 0
                 break
             lands_in = min(empty)
-            try:
-                with calibration.phase(f"round {rounds}: list {core} from "
-                                       f"{remaining[0]}"):
-                    listed = model.list_slot(*remaining[0], floor=floor,
-                                             why=why, verbose=verbose,
-                                             lands_in=lands_in, expect_item=core)
-            except row_model.SlotEmpty:
-                print(f"  {remaining[0]} was already emptied by the 250 "
-                      f"listing; nothing more to take from it")
-                remaining = remaining[1:]
-                continue
+            with calibration.phase(f"round {rounds}: list {core} from "
+                                   f"{remaining[0]}"):
+                listed = model.list_slot(*remaining[0], floor=floor, why=why,
+                                         verbose=verbose, lands_in=lands_in,
+                                         expect_item=core)
             model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
                                                    price=listed["price"])
             rows.append(lands_in)
             listed_total += listed["qty"]
-            calibration.park()
             still = calibration.occupied_slots()
             remaining = [w for w in remaining if w in still]
         left_to_convert = max(0, bought - listed_total)

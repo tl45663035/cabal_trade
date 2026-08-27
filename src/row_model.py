@@ -63,10 +63,6 @@ class SlotNeverFilled(Divergence):
     pass
 
 
-class SlotEmpty(Divergence):
-    pass
-
-
 def _key(text):
     return _NOT_ALNUM.sub("", (text or "").lower())
 
@@ -799,10 +795,9 @@ class RowModel:
                 print(f"  ctrl-click {attempt}/{LOAD_ATTEMPTS} loaded nothing "
                       f"from ({row},{col})")
         if suggested is None:
-            raise SlotEmpty(
+            raise Divergence(
                 f"nothing loaded into the shop slot from ({row},{col}) after "
-                f"{LOAD_ATTEMPTS} ctrl-click(s); the slot is empty, its stock "
-                f"went out with an earlier row.")
+                f"{LOAD_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
         if unit_market:
             count = round(suggested / unit_market)
             if count < 1:
