@@ -1,4 +1,5 @@
 import datetime
+import random
 import re
 import sys
 import time
@@ -894,8 +895,15 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         return None
     print(f"  {len(free_rows)} row(s) free inside {first}-{last}")
 
-    target = -(-int(want_min) // batch) * batch
-    if target != want_min:
+    jitter = int(run.get("buy_random_range", 0))
+    rolled = int(want_min)
+    if jitter > 0:
+        rolled = max(batch, int(want_min) + random.randint(-jitter, jitter))
+    target = -(-rolled // batch) * batch
+    if jitter > 0:
+        print(f"  buy_min {want_min} rolled to {rolled} (+/-{jitter}); buying "
+              f"{target} in whole batches of {batch}")
+    elif target != want_min:
         print(f"  buy_min {want_min} is not a whole number of batches of "
               f"{batch}; buying {target}")
     bought = orders = paid = 0
