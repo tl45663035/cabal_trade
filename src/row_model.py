@@ -197,10 +197,7 @@ def refresh_table(model=None, verbose=False):
 
 def show_work_tab(verbose=False, already=False):
     import open_agent_shop_premium as shop
-    import open_inventory as inv_panel
-    if already:
-        return shop.tab_point(WORK_TAB)
-    if calibration.await_inventory(verbose=verbose) is None:
+    if not already and calibration.await_inventory(verbose=verbose) is None:
         raise Divergence(
             "no readable Alz balance; the Inventory panel is not open. "
             "Nothing cancelled.")

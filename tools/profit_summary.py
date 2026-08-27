@@ -5,8 +5,8 @@ import re
 import sqlite3
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-LEDGERS = (("trade.py", ROOT / "sales.db", True),
-           ("src", ROOT / "src" / "sales.db", False))
+LEDGERS = (("src", ROOT / "src" / "sales.db", False),
+           ("src_stable", ROOT / "src_stable" / "sales.db", False))
 PACK = re.compile(r"\bX\s*[\d,]+", re.I)
 
 
@@ -61,22 +61,31 @@ def since_midnight():
 
 def rows(start):
     buys, sells = [], []
+    claimed = set()
     for label, path, listed_in_packs in LEDGERS:
         if not path.exists():
             print(f"  no ledger at {path}")
             continue
         conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-        for at, item, spend, qty in conn.execute(
-                "SELECT at, item, spend, qty FROM purchases WHERE run>=? ",
+        here = set()
+        for at, run, item, spend, qty in conn.execute(
+                "SELECT at, run, item, spend, qty FROM purchases WHERE run>=?",
                 (start,)):
+            if run in claimed:
+                continue
+            here.add(run)
             if qty:
                 buys.append((at, item, spend, qty))
         for at, run, item, qty, price, proceeds in conn.execute(
                 "SELECT at, run, item, qty, price, proceeds FROM sales "
                 "WHERE run>=?", (start,)):
+            if run in claimed:
+                continue
+            here.add(run)
             sells.append((at, run, item, qty, price, proceeds,
                           listed_in_packs))
         conn.close()
+        claimed |= here
     buys.sort(key=lambda r: r[0])
     sells.sort(key=lambda r: r[0])
     return buys, sells
