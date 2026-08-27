@@ -2742,8 +2742,12 @@ def calibrate_actions(shop, verbose=True):
     click(*tab)
     slot = inventory_slot_point(*landing)
     if slot_is_empty(grab(), *landing):
-        raise RuntimeError(
-            f"tab {WORK_TAB} slot {landing} is empty after the withdrawal.")
+        recheck = read_line(grab(), row_one)
+        say(f"  nothing landed in tab {WORK_TAB} slot {landing}; row 1 now "
+            f"reads {recheck!r}. A sale on row 1 during the cancel left the "
+            f"listing in place rather than withdrawing it. Keeping the "
+            f"buttons measured so far and letting the relist pass take it.")
+        return learned
     say(f"  listing it back from tab {WORK_TAB} slot {landing} at {slot}")
     ctrl_click(*slot)
     suggested = None
