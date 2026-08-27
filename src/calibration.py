@@ -90,6 +90,7 @@ DEFAULTS = {
         "INPUT_MOUSE": 0,
         "INPUT_KEYBOARD": 1,
         "KEYEVENTF_KEYUP": 0x0002,
+        "KEYEVENTF_UNICODE": 0x0004,
         "KEYEVENTF_SCANCODE": 0x0008,
         "MAPVK_VK_TO_VSC": 0,
         "MOUSEEVENTF_LEFTDOWN": 0x0002,
@@ -127,6 +128,10 @@ DEFAULTS = {
     },
     "regions": {
         "park": [0.5078, 0.8800],
+        "recovery_dialog_button": [0.5004, 0.5457],
+        "recovery_dual_yes": [0.4766, 0.5457],
+        "recovery_select_panel": [0.7800, 0.3000, 0.9900, 0.7500],
+        "recovery_enter_button": [0.8000, 0.9000, 0.9900, 0.9800],
         "alz_search": [0.8750, 0.6245, 0.9805, 0.6567],
         "top_strip": [0.0000, 0.0197, 0.5078, 0.1585],
         "tab_band": [0.0000, 0.0270, 0.2734, 0.0709],
@@ -272,6 +277,32 @@ DEFAULTS = {
         "shop_visible": 10,
         "max_stack": 250,
     },
+    "recovery": {
+        "screen_timeout": 25.0,
+        "world_timeout": 120.0,
+        "sub_password_wait": 12.0,
+        "after_typing_wait": 10.0,
+        "failed_retry_wait": 5.0,
+        "reconnect_settle": 60.0,
+        "login_tries": 6,
+        "reconnect_tries": 4,
+        "notice_tries": 3,
+        "clear_keys": 32,
+        "double_gap": 0.08,
+        "phrase_gap_x": 260,
+        "phrase_gap_y": 16,
+        "password_above_login": 86,
+        "username_above_login": 127,
+        "panel_reach": 0.16,
+        "disconnect_words": ["disconnect", "disconnected", "log-out", "logged"],
+        "failed_words": ["failed to connect", "try later"],
+        "dual_words": ["dual login", "already in use", "like to reconnect"],
+        "login_word": "login",
+        "ok_word": "ok",
+        "confirm_word": "confirmation",
+        "yes_word": "yes",
+        "enter_word": "enter server",
+    },
 }
 
 
@@ -287,7 +318,7 @@ def resolution_key(size=None) -> str:
     return f"{w}x{h}"
 
 
-CONFIG_SECTIONS = ("run", "debug", "timing", "resupply", "war")
+CONFIG_SECTIONS = ("run", "debug", "timing", "resupply", "war", "recovery")
 
 
 def _read(path) -> dict:

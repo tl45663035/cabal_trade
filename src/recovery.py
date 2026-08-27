@@ -7,42 +7,48 @@ from pathlib import Path
 import calibration
 
 _SHARED = calibration.load_shared()
-ACTION_GAP = _SHARED["timing"]["action_gap"]
-POLL_GAP = _SHARED["timing"]["poll_gap"]
-KEY_GAP = _SHARED["timing"]["key_gap"]
+_T = _SHARED["timing"]
+_IN = _SHARED["input"]
+_R = _SHARED["recovery"]
+_REG = _SHARED["regions"]
+ACTION_GAP = _T["action_gap"]
+POLL_GAP = _T["poll_gap"]
+KEY_GAP = _T["key_gap"]
 
 ACCOUNT = Path(__file__).resolve().parent / "account.json"
-KEYEVENTF_UNICODE = 0x0004
-KEYEVENTF_KEYUP = 0x0002
-INPUT_KEYBOARD = 1
+KEYEVENTF_UNICODE = _IN["KEYEVENTF_UNICODE"]
+KEYEVENTF_KEYUP = _IN["KEYEVENTF_KEYUP"]
+INPUT_KEYBOARD = _IN["INPUT_KEYBOARD"]
 
-DISCONNECT_WORDS = ("disconnect", "disconnected", "log-out", "logged")
-FAILED_WORDS = ("failed to connect", "try later")
-DUAL_WORDS = ("dual login", "already in use", "like to reconnect")
-LOGIN_WORD = "login"
-OK_WORD = "ok"
-CONFIRM_WORD = "confirmation"
-YES_WORD = "yes"
-ENTER_WORD = "enter server"
+DISCONNECT_WORDS = tuple(_R["disconnect_words"])
+FAILED_WORDS = tuple(_R["failed_words"])
+DUAL_WORDS = tuple(_R["dual_words"])
+LOGIN_WORD = _R["login_word"]
+OK_WORD = _R["ok_word"]
+CONFIRM_WORD = _R["confirm_word"]
+YES_WORD = _R["yes_word"]
+ENTER_WORD = _R["enter_word"]
 
-SCREEN_TIMEOUT = 25.0
-WORLD_TIMEOUT = 120.0
-SUB_PASSWORD_WAIT = 12.0
-AFTER_TYPING_WAIT = 10.0
-FAILED_RETRY_WAIT = 5.0
-LOGIN_TRIES = 6
-DIALOG_BUTTON_F = (0.5004, 0.5457)
-DUAL_YES_F = (0.4766, 0.5457)
-SELECT_PANEL_F = (0.78, 0.30, 0.99, 0.75)
-RECONNECT_TRIES = 4
-RECONNECT_SETTLE = 60.0
-NOTICE_TRIES = 3
-CLEAR_KEYS = 32
-PASSWORD_ABOVE_LOGIN = 86
-USERNAME_ABOVE_LOGIN = 127
-PHRASE_GAP_X = 260
-PHRASE_GAP_Y = 16
-DOUBLE_GAP = 0.08
+SCREEN_TIMEOUT = _R["screen_timeout"]
+WORLD_TIMEOUT = _R["world_timeout"]
+SUB_PASSWORD_WAIT = _R["sub_password_wait"]
+AFTER_TYPING_WAIT = _R["after_typing_wait"]
+FAILED_RETRY_WAIT = _R["failed_retry_wait"]
+LOGIN_TRIES = _R["login_tries"]
+DIALOG_BUTTON_F = tuple(_REG["recovery_dialog_button"])
+DUAL_YES_F = tuple(_REG["recovery_dual_yes"])
+SELECT_PANEL_F = tuple(_REG["recovery_select_panel"])
+ENTER_BUTTON_F = tuple(_REG["recovery_enter_button"])
+RECONNECT_TRIES = _R["reconnect_tries"]
+RECONNECT_SETTLE = _R["reconnect_settle"]
+NOTICE_TRIES = _R["notice_tries"]
+CLEAR_KEYS = _R["clear_keys"]
+PASSWORD_ABOVE_LOGIN = _R["password_above_login"]
+USERNAME_ABOVE_LOGIN = _R["username_above_login"]
+PHRASE_GAP_X = _R["phrase_gap_x"]
+PHRASE_GAP_Y = _R["phrase_gap_y"]
+PANEL_REACH = _R["panel_reach"]
+DOUBLE_GAP = _R["double_gap"]
 
 
 class Refused(Exception):
@@ -144,7 +150,7 @@ def _wait_for(want, timeout=SCREEN_TIMEOUT, whole=True, verbose=True):
 
 def _find_near(want, anchor, timeout=SCREEN_TIMEOUT, verbose=True):
     _x, _y, _w, height = calibration._client_rect()
-    reach = round(height * 0.16)
+    reach = round(height * PANEL_REACH)
     box = (anchor[0] - reach, anchor[1] - 10,
            anchor[0] + reach, anchor[1] + reach)
     want = want.strip().lower()
@@ -416,7 +422,7 @@ def recover(verbose=True):
         print(f"  {who['channel']!r} at {list(channel)}; entering")
     _double_click(*channel)
     time.sleep(ACTION_GAP)
-    enter = _find_in(ENTER_WORD, (0.80, 0.90, 0.99, 0.98), whole=False)
+    enter = _find_in(ENTER_WORD, ENTER_BUTTON_F, whole=False)
     if enter is not None:
         calibration.click(*enter)
 
