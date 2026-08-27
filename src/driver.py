@@ -1,6 +1,8 @@
 import datetime
+import os
 import random
 import re
+import subprocess
 import sys
 import time
 
@@ -1182,12 +1184,33 @@ def _elapsed(seconds):
     return f"{minutes}m {secs}s" if minutes else f"{secs}s"
 
 
+def _git_id():
+    here = os.path.dirname(os.path.abspath(__file__))
+
+    def git(*a):
+        try:
+            done = subprocess.run(("git", "-C", here) + a,
+                                  capture_output=True, text=True, timeout=5)
+        except Exception:
+            return None
+        return done.stdout.strip() if done.returncode == 0 else None
+
+    commit = git("rev-parse", "--short", "HEAD")
+    if not commit:
+        return "no-git"
+    status = git("status", "--porcelain", "--", here) or ""
+    edited = any(line[3:].strip().endswith(".py")
+                 for line in status.splitlines() if line)
+    return commit + ("+edits" if edited else "")
+
+
 def main():
     import traceback
     began = datetime.datetime.now()
     started = time.monotonic()
     args = [a for a in sys.argv[1:] if a != "--frames"]
     calibration.log_to_file(args[0].lower() if args else "run")
+    print(f"  code {_git_id()}")
     print(f"  ledger {ledger.DB} run {ledger.start()}")
     calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
     calibration.watch_for_stop()

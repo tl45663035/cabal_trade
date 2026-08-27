@@ -238,15 +238,10 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
     per_pack = detail["price"] // max(1, detail["qty"] or 1)
     if per_pack != offer["price"]:
-        if per_pack > offer["price"]:
-            _cancel(f"the dialog prices one pack at {per_pack:,}, above the "
-                    f"row's {offer['price']:,} the margin was measured on; "
-                    f"the price moved up. Cancelled without buying.",
-                    retryable=True)
         if verbose:
             say(f"    the dialog price read {per_pack:,} against the row's "
-                f"{offer['price']:,}; the row is what the game charges and "
-                f"the margin was measured on, so trusting it")
+                f"{offer['price']:,}; the row is the shelf price the game "
+                f"charges, so trusting it -- the spend confirms it after")
         per_pack = offer["price"]
     want_total = per_pack * asked
     if verbose:
