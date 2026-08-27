@@ -168,6 +168,12 @@ def find_button(word, timeout=None, verbose=False):
             print(f"  {word} never appeared at the calibrated {known} in "
                   f"{budget:.0f}s; one sweep in case the calibration is stale")
         point = search_button(word, timeout=STALE_SWEEP)
+    if point is None and known is not None and \
+            calibration.button_box_present(known):
+        if verbose:
+            print(f"  {word} would not read, but a button box sits at the "
+                  f"calibrated {known}; trusting it")
+        point = known
     from_cancel = False
     if point is None and _key(word) == _key(RECEIPT_WORD):
         point = _left_of_cancel(verbose=verbose)

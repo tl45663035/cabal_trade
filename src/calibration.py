@@ -186,6 +186,10 @@ DEFAULTS = {
         "purchase_divider_sigma": 3.0,
         "purchase_cell_inset": 2,
         "dialog_button_half": [70, 24],
+        "button_present_half": [30, 10],
+        "button_present_bright": 55,
+        "button_present_contrast": 30,
+        "button_present_surround": [22, 34],
         "min_plausible_balance": 1000,
         "row_border_candidates": 30,
         "row_border_min_gap": 15,
@@ -465,6 +469,10 @@ HOVER_SETTLE = _S["timing"]["hover_settle"]
 MODIFIER_SETTLE = _S["timing"]["modifier_settle"]
 CLICK_HOLD = _S["timing"]["click_hold"]
 PANEL_REREADS = _S["detect"]["panel_rereads"]
+BUTTON_PRESENT_HALF = tuple(_DET["button_present_half"])
+BUTTON_PRESENT_BRIGHT = _DET["button_present_bright"]
+BUTTON_PRESENT_CONTRAST = _DET["button_present_contrast"]
+BUTTON_PRESENT_SURROUND = tuple(_DET["button_present_surround"])
 PANEL_REREAD_GAP = _S["timing"]["panel_reread_gap"]
 MIN_PLAUSIBLE_PRICE = _S["detect"]["min_plausible_price"]
 FAVOURITE_ITEMS = _S["favourite_items"]
@@ -2092,6 +2100,25 @@ def lag_ink(image, box) -> int:
                 & (green > SERVER_LAG_GREEN[0])
                 & (green < SERVER_LAG_GREEN[1])
                 & (blue < SERVER_LAG_BLUE)).sum())
+
+
+def button_box_present(point, image=None) -> bool:
+    image = image if image is not None else grab()
+    cx, cy = int(point[0]), int(point[1])
+    ix, iy = BUTTON_PRESENT_HALF
+    near, far = BUTTON_PRESENT_SURROUND
+
+    def mean_bright(box):
+        patch = np.asarray(image.crop(box).convert("RGB"), dtype=float)
+        return float((patch[..., 0] + patch[..., 1] + patch[..., 2]).mean()
+                     / 3.0)
+
+    interior = mean_bright((cx - ix, cy - iy, cx + ix, cy + iy))
+    above = mean_bright((cx - ix, cy - far, cx + ix, cy - near))
+    below = mean_bright((cx - ix, cy + near, cx + ix, cy + far))
+    surround = (above + below) / 2.0
+    return bool(interior > BUTTON_PRESENT_BRIGHT
+                and interior - surround > BUTTON_PRESENT_CONTRAST)
 
 
 def server_busy(image=None) -> bool:
