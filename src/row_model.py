@@ -135,6 +135,25 @@ def search_button(word, timeout=None):
     return None
 
 
+def _left_of_cancel(verbose=False):
+    seats = _shop()
+    cancel = seats.get(_button_key(DISMISS_WORD))
+    left = seats.get(_button_key(CONFIRM_WORD))
+    if not cancel or not left:
+        return None
+    gap = cancel[0] - left[0]
+    if gap <= 0:
+        return None
+    live = search_button(DISMISS_WORD, timeout=STALE_SWEEP)
+    anchor = live if live is not None else tuple(cancel)
+    seat = (int(anchor[0] - gap), int(anchor[1]))
+    if verbose:
+        where = "on screen" if live is not None else "from calibration"
+        print(f"  {DISMISS_WORD} is at {list(anchor)} ({where}); the seat "
+              f"{gap} left of it is {list(seat)}")
+    return seat
+
+
 def find_button(word, timeout=None, verbose=False):
     known = remembered(word)
     budget = DIALOG_TIMEOUT if timeout is None else timeout
@@ -150,6 +169,11 @@ def find_button(word, timeout=None, verbose=False):
             print(f"  {word} never appeared at the calibrated {known} in "
                   f"{budget:.0f}s; one sweep in case the calibration is stale")
         point = search_button(word, timeout=STALE_SWEEP)
+    if point is None and _key(word) == _key(RECEIPT_WORD):
+        point = _left_of_cancel(verbose=verbose)
+        if point is not None and verbose:
+            print(f"  {word} would not read; using the seat left of the "
+                  f"calibrated {DISMISS_WORD}")
     if point is None:
         calibration.snap(f"no_{_key(word)}_button_at_{known}")
     if point is not None and point != known:
