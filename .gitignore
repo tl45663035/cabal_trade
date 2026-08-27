@@ -84,3 +84,6 @@ src/debug_video/
 # CABAL_PASSWORD / CABAL_SUB_PASSWORD / CABAL_CHARACTER / CABAL_CHANNEL if
 # you would rather they never touched disk.
 src/account.json
+
+# Credentials in any copy of the source tree, never committed.
+account.json
