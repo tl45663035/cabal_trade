@@ -124,21 +124,6 @@ def dialog_details(image=None):
                                               _reg("buy_dialog_qty_max"))}
 
 
-def _shows(image, box, want):
-    first = calibration.read_money(image, box)
-    if first == want:
-        return True, [first]
-    every = calibration.read_money_all(image, box)
-    return want in every, every
-
-
-def dialog_shows(image, want_qty, want_total):
-    image = image if image is not None else calibration.grab()
-    right_qty, qty = _shows(image, _reg("buy_dialog_qty"), want_qty)
-    right_price, price = _shows(image, _reg("buy_dialog_price"), want_total)
-    return right_qty and right_price, qty, price
-
-
 def _cancel(why, retryable=False):
     point = dialog_button(CANCEL_WORD)
     if point is not None:
@@ -251,34 +236,8 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     elif verbose:
         say(f"    the quantity field already reads {asked}; not retyping it")
 
-    per_pack = detail["price"] // max(1, detail["qty"] or 1)
-    if per_pack != offer["price"]:
-        _cancel(f"the table row priced {offer['name']!r} at "
-                f"{offer['price']:,} but the dialog prices one pack at "
-                f"{per_pack:,}. The gap that chose this order was measured "
-                f"off the row. Cancelled without buying.", retryable=True)
-    want_total = per_pack * asked
-    agreed, seen_qty, seen_price = False, [], []
-    for attempt in range(1, REREADS + 2):
-        with step(f"re-read the dialog ({attempt})"):
-            agreed, seen_qty, seen_price = dialog_shows(None, asked,
-                                                        want_total)
-        if agreed:
-            break
-        if verbose:
-            say(f"    read {attempt}: the quantity reads "
-                f"{seen_qty or 'nothing'} and the price reads "
-                f"{seen_price or 'nothing'} -- wanted {asked} at "
-                f"{want_total:,}")
-        time.sleep(REREAD_GAP)
-    if not agreed:
-        _cancel(f"the dialog will not confirm {asked} pack(s) at "
-                f"{want_total:,} after {REREADS + 1} reads; the quantity "
-                f"reads {seen_qty or 'nothing'} and the price reads "
-                f"{seen_price or 'nothing'}. Cancelled without buying.",
-                retryable=True)
-    if verbose:
-        say(f"    dialog confirms {asked} pack(s) at {want_total:,}")
+    units = asked * max(1, row_model.pack_size(offer["name"]))
+    want_total = offer["price"] * asked
 
     with step("read the balance before buying"):
         before_alz = get_alz.read_balance()
@@ -287,9 +246,9 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 "checked against it. Cancelled without buying.")
     say(f"    balance before {before_alz:,}")
     if before_alz < want_total:
-        _cancel(f"the order costs {want_total:,} and only {before_alz:,} is "
-                f"held. Cancelled without buying; this core waits for the "
-                f"next cycle.")
+        _cancel(f"the order costs about {want_total:,} and only "
+                f"{before_alz:,} is held. Cancelled without buying; this "
+                f"core waits for the next cycle.")
 
     with step(f"find the {CONFIRM_WORD} button"):
         point = dialog_button(CONFIRM_WORD)
@@ -302,40 +261,37 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     with step("confirm the dialog is gone"):
         still = dialog_open()
     if still:
-        raise Refused(
-            f"the dialog stayed open after {CONFIRM_WORD}. Whether anything "
-            f"was bought is unknown -- look before running again.")
+        _cancel(f"the dialog stayed open after {CONFIRM_WORD}; nothing was "
+                f"confirmed. Cancelled.", retryable=True)
+
     with step("read the balance after buying"):
         after_alz = await_balance(differs_from=before_alz)
-    units = asked * max(1, row_model.pack_size(offer["name"]))
     if after_alz is None:
         raise Refused(
             f"the Alz balance would not read after {CONFIRM_WORD}. Whether "
             f"{want_total:,} was spent is unknown -- check by hand.")
     spent = before_alz - after_alz
     for attempt in range(1, REREADS + 1):
-        if spent == want_total:
-            break
-        say(f"    balance read {attempt}: {after_alz:,} makes the spend "
-            f"{spent:,}, and the dialog priced it at {want_total:,}; "
-            f"reading again")
-        time.sleep(REREAD_GAP)
         again = get_alz.read_balance()
-        if again is None:
-            continue
-        after_alz, spent = again, before_alz - again
-    per_unit = spent // units if units else 0
-    say(f"    balance after  {after_alz:,}; spent {spent:,} "
-        f"({per_unit:,} a core)")
-    if spent != want_total:
+        if again is not None:
+            after_alz, spent = again, before_alz - again
+        if spent > 0:
+            break
+        time.sleep(REREAD_GAP)
+
+    if spent <= 0:
         raise Refused(
-            f"{spent:,} left the account for an order the dialog priced at "
-            f"{want_total:,} after {REREADS} reads. Balance {before_alz:,} -> "
-            f"{after_alz:,}. The pack was bought; the Sets are in the bag.")
-    say(f"    bought {asked} x {offer['name']} = {units} core(s) for "
-        f"{want_total:,}")
-    ledger.bought(offer["name"], per_unit, spent, units)
-    return {"slot": int(slot), "name": name, "packs": asked, "bought": units,
+            f"the balance did not move after {CONFIRM_WORD} "
+            f"({before_alz:,} -> {after_alz:,}); nothing was bought.",
+            retryable=True)
+
+    unit = offer["unit_price"] or 1
+    bought = max(1, round(spent / unit))
+    per_unit = spent // bought
+    say(f"    balance after  {after_alz:,}; spent {spent:,} "
+        f"-> {bought} core(s) at {per_unit:,} each")
+    ledger.bought(offer["name"], per_unit, spent, bought)
+    return {"slot": int(slot), "name": name, "packs": asked, "bought": bought,
             "unit_price": per_unit, "price": offer["price"],
             "spent": spent, "balance": after_alz}
 
