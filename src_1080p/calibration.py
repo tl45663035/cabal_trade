@@ -119,6 +119,9 @@ DEFAULTS = {
     "ocr": {
         "scale": 3,
         "min_conf": 45.0,
+        "paddle_det_model": "PP-OCRv5_mobile_det",
+        "paddle_max_side": 1600,
+        "paddle_grow": 2,
     },
     "regions": {
         "park": [0.5078, 0.8800],
@@ -420,6 +423,9 @@ _DET = _S["detect"]
 
 OCR_SCALE = _OCR["scale"]
 OCR_MIN_CONF = _OCR["min_conf"]
+PADDLE_DET_MODEL = _OCR["paddle_det_model"]
+PADDLE_MAX_SIDE = _OCR["paddle_max_side"]
+PADDLE_GROW = _OCR["paddle_grow"]
 
 PARK_F = tuple(_REG["park"])
 ALZ_SEARCH_F = tuple(_REG["alz_search"])
@@ -984,10 +990,10 @@ def _paddle_rec():
     return _PADDLE_REC
 
 
-def _paddle_line(image, box, scale):
+def _paddle_read(image, box, scale):
     rec = _paddle_rec()
     if rec is None:
-        return None
+        return None, 0.0
     crop = image.crop(tuple(box)).convert("RGB")
     if scale and scale != 1:
         crop = crop.resize((crop.width * scale, crop.height * scale),
@@ -995,8 +1001,14 @@ def _paddle_line(image, box, scale):
     try:
         out = rec.predict(np.asarray(crop))
     except Exception:
-        return None
-    return " ".join((r.get("rec_text") or "") for r in out).strip() or None
+        return None, 0.0
+    text = " ".join((r.get("rec_text") or "") for r in out).strip()
+    scores = [r.get("rec_score") or 0.0 for r in out]
+    return (text or None), (max(scores) * 100 if scores else 0.0)
+
+
+def _paddle_line(image, box, scale):
+    return _paddle_read(image, box, scale)[0]
 
 
 _GROUPED = re.compile(r"^\d+(,\d{3})+$")
@@ -1082,7 +1094,6 @@ def click(x: int, y: int, settle: float = None) -> None:
             shared["timing"]["action_gap"] if settle is None else settle)
     snap(f"click_{x}_{y}")
 
-
 def right_click(x: int, y: int, settle: float = None) -> None:
     hold_if_busy()
     shared = load_shared()
@@ -1090,9 +1101,6 @@ def right_click(x: int, y: int, settle: float = None) -> None:
             shared["input"]["MOUSEEVENTF_RIGHTUP"], x, y,
             shared["timing"]["action_gap"] if settle is None else settle)
     snap(f"rightclick_{x}_{y}")
-
-
-
 
 
 def has_ink(image: Image.Image, box) -> bool:
@@ -1110,20 +1118,21 @@ def _paddle_full():
         _PADDLE_FULL_TRIED = True
         try:
             from paddleocr import PaddleOCR
-            _PADDLE_FULL = PaddleOCR(use_doc_orientation_classify=False,
-                                     use_doc_unwarping=False,
-                                     use_textline_orientation=False,
-                                     lang="en", enable_mkldnn=False)
+            _PADDLE_FULL = PaddleOCR(
+                text_detection_model_name=PADDLE_DET_MODEL,
+                use_doc_orientation_classify=False,
+                use_doc_unwarping=False,
+                use_textline_orientation=False,
+                lang="en", enable_mkldnn=False)
         except Exception as exc:
-            print(f"  PaddleOCR pipeline not available "
-                  f"({type(exc).__name__}: {exc})")
+            print(f"  PaddleOCR is required but not available "
+                  f"({type(exc).__name__}); run: py setup_paddle.py")
             _PADDLE_FULL = None
     return _PADDLE_FULL
 
 
 def ocr_spans(image: Image.Image, box, scale: int = None,
               min_conf: float = None):
-    scale = OCR_SCALE if scale is None else scale
     min_conf = OCR_MIN_CONF if min_conf is None else min_conf
     box = tuple(box)
     if not has_ink(image, box):
@@ -1132,8 +1141,10 @@ def ocr_spans(image: Image.Image, box, scale: int = None,
     if engine is None:
         return []
     crop = image.crop(box).convert("RGB")
-    if scale and scale != 1:
-        crop = crop.resize((crop.width * scale, crop.height * scale),
+    grow = max(1.0, min(PADDLE_GROW,
+                        PADDLE_MAX_SIDE / max(crop.width, crop.height)))
+    if grow > 1.0:
+        crop = crop.resize((int(crop.width * grow), int(crop.height * grow)),
                            Image.LANCZOS)
     try:
         results = engine.predict(np.asarray(crop))
@@ -1157,9 +1168,8 @@ def ocr_spans(image: Image.Image, box, scale: int = None,
                 x2, y2 = pts[:, 0].max(), pts[:, 1].max()
             else:
                 x1, y1, x2, y2 = pts
-            left = box[0] + x1 / scale
-            right = box[0] + x2 / scale
-            cy = box[1] + (y1 + y2) / 2 / scale
+            left, right = box[0] + x1 / grow, box[0] + x2 / grow
+            cy = box[1] + (y1 + y2) / 2 / grow
             found.append((text, conf,
                           (round((left + right) / 2), round(cy)),
                           round(right)))

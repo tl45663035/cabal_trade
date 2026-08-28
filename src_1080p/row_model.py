@@ -120,7 +120,7 @@ def button_here(word, point, image=None):
     dx, dy = BUTTON_HALF
     box = (point[0] - dx, point[1] - dy, point[0] + dx, point[1] + dy)
     return any(calibration.button_word_matches(t, word)
-               for t, _c, _p in calibration.ocr(image, box))
+               for t in calibration.read_line(image, box).split())
 
 
 def search_button(word, timeout=None):
