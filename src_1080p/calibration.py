@@ -145,6 +145,10 @@ DEFAULTS = {
         "craft_buttons": [0.0234, 0.6771, 0.5078, 0.7210],
         "purchase_sort_band": [0.2500, 0.1200, 0.5000, 0.1700],
         "purchase_buy_band": [0.3000, 0.6800, 0.5100, 0.7300],
+        "purchase_search_bar": [0.2057, 0.0942],
+        "purchase_search_button": [0.4333, 0.1239],
+        "voucher_suggestions": [0.0104, 0.1060, 0.4062, 0.1952],
+        "voucher_gold": [0.0714, 0.1695],
         "purchase_table_band": [0.1000, 0.1500, 0.4800, 0.6600],
         "popup": [0.1953, 0.2389, 0.8203, 0.8232],
         "dialog_buttons": [0.4688, 0.5296, 0.6641, 0.7085],
@@ -238,6 +242,8 @@ DEFAULTS = {
         "dismiss_word": "Cancel",
         "confirm_word": "Confirmation",
         "receipt_word": "Receive",
+        "voucher_search": "voucher",
+        "voucher_word": "Gold",
         "close_word": "Close",
         "register_word": "Register",
         "status_complete": "Complete",
@@ -256,6 +262,7 @@ DEFAULTS = {
     },
     "game_facts": {
         "favourite_count": 10,
+        "vendor_tabs": "Normal|Dungeon|Repurchase",
         "craft_tab": 8,
         "craft_key_slot": [1, 8],
         "craft_tier_words": "2000|2999",
@@ -492,6 +499,8 @@ PANEL_SCALE_HIGH = _DET["panel_scale_high"]
 PANEL_SCALE_STEP = _DET["panel_scale_step"]
 PANEL_RULE_CONTRAST = _DET["panel_rule_contrast"]
 MIN_PLAUSIBLE_BALANCE = _DET["min_plausible_balance"]
+VOUCHER_WORD = _S["text"]["voucher_word"]
+VOUCHER_FLOOR_PARTS = 1000
 EDGE_CANDIDATES = _DET["edge_candidates"]
 EDGE_MIN_GAP = _DET["edge_min_gap"]
 PURCHASE_HEADER_UP = _DET["purchase_header_up"]
@@ -517,6 +526,7 @@ FAV_PEAK_CUT = _DET["fav_peak_cut"]
 FAV_MERGE_GAP = _DET["fav_merge_gap"]
 CONVERT_PEAK_CUT = _DET["convert_peak_cut"]
 CONVERT_MERGE_GAP = _DET["convert_merge_gap"]
+CONVERT_GRID_SLACK = _DET["convert_grid_slack"]
 FAV_PITCH_SPREAD = _DET["fav_pitch_spread"]
 SORT_PAD_LEFT = _DET["sort_pad_left"]
 SORT_PAD_RIGHT = _DET["sort_pad_right"]
@@ -530,6 +540,7 @@ CONVERT_GRADES = _S["game_facts"]["convert_grades"]
 CONVERT_ROW_COUNT = _S["game_facts"]["convert_rows"]
 CONVERT_SET_TO_CORE_ROWS = _S["game_facts"]["convert_set_to_core_rows"]
 CONVERT_TAB = _S["game_facts"]["convert_tab"]
+VENDOR_TABS = _S["game_facts"]["vendor_tabs"].split("|")
 _ALZ_WORD = _S["text"]["alz_word"]
 SERVER_LAG_TEXT = re.compile(_S["text"]["server_lag"],
                              re.IGNORECASE)
@@ -2073,6 +2084,12 @@ def market_unit(name):
 
 
 def price_floor(name):
+    item, ratio = voucher_floor_ratio(name)
+    if ratio:
+        voucher = voucher_unit()
+        if voucher < MIN_PLAUSIBLE_PRICE:
+            return None, f"{VOUCHER_WORD} voucher"
+        return (voucher * ratio) // VOUCHER_FLOOR_PARTS,                f"{ratio}/{VOUCHER_FLOOR_PARTS} of a {VOUCHER_WORD} voucher"
     prices = _read(OUT).get("market", {}).get("unit_price", {})
     slot = favourite_slot_of(name)
     if slot is None:
@@ -2215,11 +2232,29 @@ def await_vendor(timeout=None, verbose=False):
 
 def vendor_tab_point(name, image=None):
     image = image if image is not None else grab()
-    want = re.sub(r"[^a-z]", "", name.lower())
+    fold = lambda t: re.sub(r"[^a-z]", "", (t or "").lower())
+    want = fold(name)
+    seen = {}
     for text, _c, point in ocr(image, _box(VENDOR_TAB_BAND_F)):
-        if re.sub(r"[^a-z]", "", text.lower()) == want:
-            return point
-    return None
+        word = fold(text)
+        if word:
+            seen.setdefault(word, point)
+    if want in seen:
+        return seen[want]
+    order = [fold(t) for t in VENDOR_TABS]
+    if want not in order:
+        return None
+    here = [(order.index(w), p) for w, p in seen.items() if w in order]
+    if len(here) < 2:
+        return None
+    here.sort()
+    (a, left), (b, right) = here[0], here[-1]
+    if b == a:
+        return None
+    step = (right[0] - left[0]) / (b - a)
+    at = order.index(want)
+    return (round(left[0] + step * (at - a)),
+            round((left[1] + right[1]) / 2))
 
 
 CRAFT_TAB = _S["game_facts"]["craft_tab"]
@@ -2412,6 +2447,21 @@ def calibrate_craft(verbose=True):
     return out
 
 
+def _even_grid(seen, want, lo, hi, slack):
+    if len(seen) == want or len(seen) < 2:
+        return seen
+    first, last = seen[0], seen[-1]
+    pitch = (last - first) / (want - 1)
+    if pitch <= 0:
+        return seen
+    grid = [round(first + step * pitch) for step in range(want)]
+    if grid[0] < lo or grid[-1] > hi:
+        return seen
+    if any(min(abs(at - on) for on in grid) > slack for at in seen):
+        return seen
+    return grid
+
+
 def calibrate_convert(verbose=True):
     say = print if verbose else (lambda *a: None)
     if _trade_window_open():
@@ -2460,6 +2510,14 @@ def calibrate_convert(verbose=True):
         raise RuntimeError(
             f"expected {want} conversion columns, one a grade, "
             f"and found {len(xs)} at {xs}. Nothing written.")
+    if len(ys) != CONVERT_ROW_COUNT:
+        fitted = _even_grid(ys, CONVERT_ROW_COUNT, band[1], band[3],
+                            CONVERT_GRID_SLACK)
+        if fitted is not ys:
+            say(f"  only {len(ys)} row(s) lit up at {ys}; the grid is "
+                f"{CONVERT_ROW_COUNT} even rows and those sit on it, so "
+                f"using {fitted}")
+            ys = fitted
     if len(ys) != CONVERT_ROW_COUNT:
         raise RuntimeError(
             f"expected {CONVERT_ROW_COUNT} conversion rows and found "
@@ -2530,6 +2588,43 @@ def calibrate_prices(verbose=True):
         else:
             say(f"  {FAVOURITE_ITEMS[slot]:<28}{'unread':>12}")
     return seen
+
+
+def calibrate_voucher(verbose=True):
+    import get_price
+    say = print if verbose else (lambda *a: None)
+    row = get_price.get_voucher_price(verbose=False)
+    if not row or not row.get("unit_price"):
+        say(f"  the {VOUCHER_WORD} voucher would not price; standing on "
+            f"{voucher_default():,} for the rest of the run")
+        return voucher_default() or None
+    say(f"  a {VOUCHER_WORD} voucher costs {row['unit_price']:,}")
+    return int(row["unit_price"])
+
+
+def voucher_default():
+    return int(load_shared()["run"].get("voucher_default") or 0)
+
+
+def voucher_unit():
+    seen = int((_read(OUT).get("voucher") or {}).get("unit_price") or 0)
+    return seen if seen >= MIN_PLAUSIBLE_PRICE else voucher_default()
+
+
+def voucher_floor_ratio(name):
+    table = load_shared()["run"].get("voucher_floor") or {}
+    want = re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    for item, rule in table.items():
+        if isinstance(rule, dict):
+            ratio, words = int(rule.get("ratio") or 0), rule.get("any") or [item]
+        else:
+            ratio, words = int(rule), [item]
+        for word in words:
+            parts = word if isinstance(word, (list, tuple)) else [word]
+            folded = [re.sub(r"[^a-z0-9]", "", str(p).lower()) for p in parts]
+            if folded and all(p and p in want for p in folded):
+                return item, ratio
+    return None, 0
 
 
 def calibrate_panel(verbose=True):
@@ -2947,6 +3042,9 @@ def main(close: bool = True) -> None:
     print("market prices:")
     prices = calibrate_prices()
 
+    print("voucher:")
+    voucher = calibrate_voucher()
+
     print("register panel:")
     click(*shop["register_tab"])
     park()
@@ -3046,6 +3144,9 @@ def main(close: bool = True) -> None:
     if prices:
         out["market"] = {"measured_at": measured["measured_at"],
                          "unit_price": prices}
+    if voucher:
+        out["voucher"] = {"measured_at": measured["measured_at"],
+                          "unit_price": int(voucher)}
     OUT.write_text(json.dumps(out, indent=2), encoding="utf-8")
     print(f"\nwrote {OUT}  [{resolution_key()}]")
     print(f"  resolutions in the file: {sorted(out['by_resolution'])}")

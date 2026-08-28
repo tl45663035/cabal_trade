@@ -48,7 +48,39 @@
     "price_check_factor": 5.0,
     "stop_key_presses": 4,
     "stop_key_window": 1.5,
-    "floor_break_after": 5
+    "floor_break_after": 5,
+    "voucher_default": 380000000,
+    "voucher_floor": {
+      "Yekaterina VIP Membership": {
+        "ratio": 300,
+        "any": [
+          "Yekaterina",
+          "Membership",
+          ["Yekaterina", "VIP"],
+          ["VIP", "Membership"],
+          ["Yekaterina", "Membership"]
+        ]
+      },
+      "Force Gem Package": {
+        "ratio": 500,
+        "any": [
+          "Force Gem",
+          "Gem Package",
+          ["Force", "Gem"],
+          ["Gem", "Package"],
+          ["Force", "Package"]
+        ]
+      },
+      "Epic Booster": {
+        "ratio": 125,
+        "any": [
+          "Epic Booster",
+          ["Epic", "Booster"],
+          ["Epic", "Highest"],
+          ["Booster", "Highest"]
+        ]
+      }
+    }
   },
   "debug": {
     "frames": true,

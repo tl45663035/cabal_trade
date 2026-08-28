@@ -222,6 +222,29 @@ def relist_one(model, index, verbose=True):
               f"-> tab {row_model.WORK_TAB} slot {landing}")
     model._slots[index] = row
     unit_floor, pair = calibration.price_floor(row.name)
+    if not unit_floor:
+        stacked = row_model.read_row_one_stacked()
+        again = _row_from(stacked)
+        if again is not None and again.name != row.name:
+            floor_again, pair_again = calibration.price_floor(again.name)
+            if floor_again:
+                print(f"    one line read {row.name!r} and found no floor; "
+                      f"read as stacked lines it is {again.name!r}, so the "
+                      f"floor and the name are taken from that")
+                unit_floor, pair = floor_again, pair_again
+                row = row_model.Row(again.name, qty=row.qty, price=row.price)
+                model._slots[index] = row
+    if verbose:
+        if not unit_floor:
+            print(f"    no floor for {row.name!r}"
+                  + (f"; {pair} did not price" if pair else ""))
+        else:
+            by_item = calibration.voucher_floor_ratio(row.name)[1] > 0
+            whole = unit_floor if by_item else unit_floor * row.pack
+            carries = "" if by_item else f" ({unit_floor:,} x {row.pack})"
+            print(f"    floor {whole:,}{carries} from {pair}; listed at "
+                  f"{row.price:,}, "
+                  f"{'UNDER the floor' if row.price < whole else 'above it'}")
     if unit_floor is None:
         print(f"  row {index}: {row.name!r} is floored by a {pair}, which did "
               f"not price this run; left listed at {row.price:,}.")
@@ -242,11 +265,13 @@ def relist_one(model, index, verbose=True):
     with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
         time.sleep(max(0.0, WITHDRAW_SETTLE - calibration.PARK_SETTLE))
         calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
-    pack = row.pack
+    whole = calibration.voucher_floor_ratio(row.name)[1] > 0
+    pack = 1 if whole else row.pack
     floor = unit_floor * pack
     why = ""
     if unit_floor:
-        why = f"a {pair} costs {unit_floor:,}"
+        why = (f"it is worth {pair}" if whole
+               else f"a {pair} costs {unit_floor:,}")
         if pack > 1:
             why += f", and this listing carries {pack}"
     break_after = int(calibration.load_shared()["run"]["floor_break_after"])
@@ -1212,6 +1237,9 @@ def usage():
     print("  py src/driver.py row N           read row N without touching it")
     print("  py src/driver.py price N         market price for favourite slot N")
     print("  py src/driver.py alz             read the balance")
+    print("  py src/driver.py voucher         search the Agent Shop for the")
+    print("                                   CABAL Gift Voucher (Gold) and")
+    print("                                   read what one costs")
     print("  py src/driver.py gifts           open the gift box, take the")
     print("                                   gifts on offer and close it")
 
@@ -1332,6 +1360,15 @@ def _dispatch(args):
     elif what == "alz":
         initialise()
         print(f"  balance {balance() or 'unreadable'}")
+    elif what == "voucher":
+        if not inv.focus_game():
+            raise NotReady("could not bring the game to the foreground.")
+        calibration.load(force=True)
+        out = get_price.get_voucher_price()
+        if out is None:
+            print("  the voucher would not price.")
+        else:
+            print(f"  1 {out['name']} = {out['unit_price']:,} Alz")
     else:
         usage()
         sys.exit(2)

@@ -19,6 +19,9 @@ _DET = _SHARED["detect"]
 BULK_MIN_CONF = _DET["bulk_min_conf"]
 RESCUE_MIN_CONF = _DET["rescue_min_conf"]
 MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
+FIELD_SETTLE = _SHARED["timing"]["field_settle"]
+VOUCHER_SEARCH = _SHARED["text"]["voucher_search"]
+VOUCHER_WORD = _SHARED["text"]["voucher_word"]
 PRICE_MIN_DIGITS = _DET["price_min_digits"]
 SHOP_CHECK_GAP = _SHARED["timing"]["shop_check_gap"]
 
@@ -322,6 +325,77 @@ def get_price(slot, verbose=True, search=True):
         print(f"  {row['name']}  qty {row['qty']}  pack {row['pack']}  "
               f"units {units}  total {row['total']:,}  "
               f"= {row['unit_price']:,}/unit")
+    return row
+
+
+def get_voucher_price(verbose=True):
+    import recovery
+    from open_inventory import press
+    inv.focus_game()
+    if not calibration._trade_window_open():
+        if verbose:
+            print("  the Trade window is shut; opening the Agent Shop.")
+        shop.open_agent_shop(verbose=verbose)
+        time.sleep(TAB_SETTLE)
+    if not calibration.purchase_tab_showing():
+        shop.click(*_need("purchase_tab"))
+        time.sleep(TAB_SETTLE)
+
+    bar = calibration._point(tuple(calibration._REG["purchase_search_bar"]))
+    if verbose:
+        print(f"  the text search at {bar}")
+    calibration.click(*bar, settle=FIELD_SETTLE)
+    press(_SHARED["input"]["VK_ESCAPE"])
+    time.sleep(ACTION_GAP)
+    recovery._type(VOUCHER_SEARCH)
+    time.sleep(ACTION_GAP)
+
+    band = calibration._box(tuple(calibration._REG["voucher_suggestions"]))
+    seat = None
+    for text, _conf, point in calibration.ocr(calibration.grab(), band):
+        if VOUCHER_WORD.lower() in text.strip().lower():
+            seat = point
+            break
+    if seat is None:
+        seat = calibration._point(tuple(calibration._REG["voucher_gold"]))
+        if verbose:
+            print(f"  no {VOUCHER_WORD!r} read in the suggestions {band}; "
+                  f"taking the calibrated seat {seat}")
+    elif verbose:
+        print(f"  {VOUCHER_WORD} sits at {seat} in the suggestions")
+    calibration.click(*seat, settle=ACTION_GAP)
+
+    button = calibration._point(
+        tuple(calibration._REG["purchase_search_button"]))
+    if verbose:
+        print(f"  Search at {button}")
+    calibration.click(*button, settle=ACTION_GAP)
+
+    row, text = None, ""
+    deadline = time.monotonic() + SEARCH_TIMEOUT
+    while time.monotonic() < deadline:
+        image = calibration.grab()
+        text = read_row_one(image)
+        if VOUCHER_WORD.lower() in text.lower():
+            row = parse_fields(read_fields(image))
+            if row is not None:
+                break
+        time.sleep(POLL_GAP)
+
+    calibration.click(*bar, settle=FIELD_SETTLE)
+    press(_SHARED["input"]["VK_ESCAPE"])
+    calibration.park()
+
+    if row is None:
+        if verbose:
+            print(f"  no {VOUCHER_WORD} row answered within "
+                  f"{SEARCH_TIMEOUT:g}s; row 1 reads {text!r}")
+        return None
+    row["unit_price"] = row["price"]
+    row["raw"] = text
+    if verbose:
+        print(f"  {row['name']}  qty {row['qty']}  "
+              f"{row['unit_price']:,} a voucher")
     return row
 
 

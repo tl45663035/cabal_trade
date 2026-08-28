@@ -239,9 +239,9 @@
     ],
     "vendor_tab_band": [
       0.0,
-      0.095,
-      0.3,
-      0.14
+      0.116,
+      0.224,
+      0.1556
     ],
     "convert_grid_band": [
       0.085,
@@ -1220,7 +1220,7 @@
         1920,
         1080
       ],
-      "measured_at": "2026-08-28T00:18:02",
+      "measured_at": "2026-08-28T13:59:04",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -1554,25 +1554,9 @@
         "placed_from": "grid fitted to the panel, tabs from panel_layout"
       },
       "shop": {
-        "button_cancel": [
-          1101,
-          634
-        ],
-        "button_register": [
-          131,
-          754
-        ],
-        "button_confirmation": [
-          968,
-          634
-        ],
         "buy_button_cancel": [
           1101,
           634
-        ],
-        "refresh_point": [
-          846,
-          748
         ],
         "buy_button_buy": [
           968,
@@ -1635,7 +1619,7 @@
         ],
         "favourite_pitch": 42,
         "evidence": {
-          "register_conf": 97,
+          "register_conf": 96,
           "favourite_raw_pitch": 45.11,
           "favourite_pitch_spread": 28,
           "purchase_is_derived": true
@@ -1652,7 +1636,7 @@
           150
         ],
         "purchase_buy_x": 828,
-        "purchase_row_pitch": 54,
+        "purchase_row_pitch": 55,
         "purchase_row_one_y": 258,
         "purchase_row_one": [
           192,
@@ -1697,21 +1681,25 @@
           192,
           922
         ],
-        "row_one_y": 176,
+        "row_one_y": 175,
         "row_pitch": 58,
         "row_one_box": [
           192,
-          147,
+          146,
           922,
-          205
+          204
         ],
-        "button_x": 830,
+        "button_x": 831,
         "table_point": [
-          230,
-          234
+          231,
+          233
         ],
         "rows_per_notch": 1,
         "register_rows_seen": 9,
+        "refresh_point": [
+          833,
+          752
+        ],
         "panel": {
           "panel_box": [
             7,
@@ -1763,7 +1751,19 @@
             188,
             602
           ]
-        }
+        },
+        "button_register": [
+          131,
+          754
+        ],
+        "button_cancel": [
+          1101,
+          634
+        ],
+        "button_confirmation": [
+          968,
+          634
+        ]
       },
       "regions": {
         "alz_search": [
@@ -1782,23 +1782,23 @@
         "cells": {
           "1x1": [
             187,
-            791
+            792
           ],
           "1x2": [
             235,
-            791
+            792
           ],
           "1x3": [
-            283,
-            791
+            284,
+            792
           ],
           "1x4": [
             328,
-            791
+            792
           ],
           "1x5": [
             377,
-            791
+            792
           ],
           "2x1": [
             187,
@@ -1809,7 +1809,7 @@
             839
           ],
           "2x3": [
-            283,
+            284,
             839
           ],
           "2x4": [
@@ -1829,7 +1829,7 @@
             883
           ],
           "3x3": [
-            283,
+            284,
             883
           ],
           "3x4": [
@@ -1849,7 +1849,7 @@
             931
           ],
           "4x3": [
-            283,
+            284,
             931
           ],
           "4x4": [
@@ -1881,7 +1881,7 @@
           "Force Core(High)": {
             "cell": "2x3",
             "point": [
-              283,
+              284,
               839
             ],
             "costs": "Force Core Set (High)"
@@ -1921,7 +1921,7 @@
           "Upgrade Core(High)": {
             "cell": "4x3",
             "point": [
-              283,
+              284,
               931
             ],
             "costs": "Upgrade Core Set (High)"
@@ -1946,12 +1946,12 @@
         "columns": [
           187,
           235,
-          283,
+          284,
           328,
           377
         ],
         "rows": [
-          791,
+          792,
           839,
           883,
           931
@@ -1977,12 +1977,12 @@
           ]
         },
         "request": [
-          568,
+          263,
           730
         ],
         "complete": [
-          865,
-          724
+          872,
+          729
         ],
         "material_box": [
           420,
@@ -2034,18 +2034,18 @@
     "10": "Upgrade Core Set (Ultimate)"
   },
   "market": {
-    "measured_at": "2026-08-28T00:18:02",
+    "measured_at": "2026-08-28T13:59:04",
     "unit_price": {
-      "1": 236490,
-      "2": 181566,
-      "3": 730000,
-      "4": 740000,
-      "5": 699999,
-      "6": 679622,
-      "7": 219988,
-      "8": 215151,
-      "9": 499703,
-      "10": 399999
+      "1": 228506,
+      "2": 200190,
+      "3": 740000,
+      "4": 787976,
+      "5": 699989,
+      "6": 677996,
+      "7": 200000,
+      "8": 214192,
+      "9": 412453,
+      "10": 415789
     }
   },
   "detect": {
@@ -2079,6 +2079,7 @@
       70,
       24
     ],
+    "receipt_drop_ratio": 0.14,
     "min_plausible_balance": 1000,
     "row_border_candidates": 30,
     "row_border_min_gap": 15,
@@ -2132,6 +2133,11 @@
     "warm_min_bright": 110,
     "warm_min_saturation": 45,
     "alz_max_text_height": 0.5,
-    "suggestion_radio_dx": 1
+    "suggestion_radio_dx": 1,
+    "convert_grid_slack": 6
+  },
+  "voucher": {
+    "measured_at": "test",
+    "unit_price": 0
   }
 }

@@ -37,6 +37,9 @@ REGISTER_WORD = _TEXT["register_word"]
 STATUS_COMPLETE = _TEXT["status_complete"]
 BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 RECEIPT_DROP_RATIO = _SHARED["detect"]["receipt_drop_ratio"]
+WORD_ROW_SLACK = _SHARED["detect"]["word_row_slack"]
+_PRICE_LIKE = re.compile(r"\d[\d,]{%d,}"
+                         % _SHARED["detect"]["price_min_digits"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
 REFRESH_SETTLE = _T["refresh_settle"]
@@ -430,13 +433,39 @@ def trim_borders(text):
 def read_row_one():
     text = ""
     for attempt in range(PANEL_REREADS + 1):
-        text = trim_borders(
-            calibration.read_line(calibration.grab(), row_one_box()))
+        image = calibration.grab()
+        box = row_one_box()
+        text = trim_borders(calibration.read_line(image, box))
+        if text.strip():
+            return text
+        text = trim_borders(_row_words(image, box))
         if text.strip():
             return text
         if attempt < PANEL_REREADS:
             time.sleep(PANEL_REREAD_GAP)
     return text
+
+
+def _row_words(image, box):
+    lines = {}
+    for text, _conf, (x, y) in calibration.ocr(image, box):
+        seat = next((k for k in lines if abs(k - y) <= WORD_ROW_SLACK), y)
+        lines.setdefault(seat, []).append((x, text))
+    if not lines:
+        return ""
+    seats = sorted(lines)
+    keep = [seats[0]]
+    for seat in seats[1:]:
+        if _PRICE_LIKE.search(" ".join(w for _x, w in lines[seat])):
+            keep.append(seat)
+    out = []
+    for seat in keep:
+        out.extend(word for _x, word in sorted(lines[seat]))
+    return " ".join(out)
+
+
+def read_row_one_stacked():
+    return trim_borders(_row_words(calibration.grab(), row_one_box()))
 
 
 def row_one_is_empty(text=None):
@@ -703,10 +732,16 @@ class RowModel:
             raise Divergence(
                 f"row {index} is empty on screen; nothing to cancel.")
         if not expected.key or expected.key not in _key(seen):
-            raise Divergence(
-                f"row {index} should hold {expected.name!r} but position 1 "
-                f"reads {seen!r}. Not cancelling a row that is not the one "
-                f"the model names.")
+            stacked = read_row_one_stacked()
+            if not expected.key or expected.key not in _key(stacked):
+                raise Divergence(
+                    f"row {index} should hold {expected.name!r} but position "
+                    f"1 reads {seen!r} on one line, and {stacked!r} read as "
+                    f"stacked lines. Not cancelling a row that is not the one "
+                    f"the model names.")
+            if verbose:
+                print(f"  position 1 read {seen!r} on one line; read as "
+                      f"stacked lines it is {expected.name!r}")
         if verbose:
             print(f"  row {index} at position 1: {seen!r}")
 
