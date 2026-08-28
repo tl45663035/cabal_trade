@@ -911,32 +911,37 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         print(f"  buy_min {want_min} is not a whole number of batches of "
               f"{batch}; buying {target}")
     leave = int(calibration.buy_leave_behind(core))
-    on_screen = int(calibration.load()["shop"].get("purchase_rows_seen") or 1)
+    steps_max = int(run["buy_scroll_limit"])
     if leave:
-        print(f"  {leave} stays behind on each row, so an order takes what is "
-              f"spare and the next one steps down a row, through the "
-              f"{on_screen} rows on screen")
-    bought = orders = paid = 0
-    at_row = 1
+        print(f"  {leave} stays behind on every row bought, and the offers "
+              f"wheel down a row at a time until one has the margin and more "
+              f"than {leave} on it, up to {steps_max} step(s)")
+    bought = orders = paid = steps = 0
+    searched = False
     THIN = object()
 
     def order(want, on_margin=True):
-        nonlocal orders
+        nonlocal orders, searched
         orders += 1
         for attempt in range(1, int(run["buy_retries"]) + 1):
             try:
                 with calibration.phase(f"buy order {orders}"):
-                    return buy.buy_row_one(slot, want, verbose=verbose,
-                                           held=bought, floor_qty=target,
-                                           ceiling=want_max,
-                                           sells_at=set_row["unit_price"],
-                                           gap=threshold if on_margin
-                                           else None,
-                                           leave_behind=leave, at_row=at_row)
+                    out = buy.buy_row_one(slot, want, verbose=verbose,
+                                          held=bought, floor_qty=target,
+                                          ceiling=want_max,
+                                          sells_at=set_row["unit_price"],
+                                          gap=threshold if on_margin
+                                          else None,
+                                          leave_behind=leave,
+                                          search=not (leave and searched))
+                searched = True
+                return out
             except buy.TooThin as exc:
+                searched = True
                 print(f"  {exc}")
                 return THIN
             except buy.Refused as exc:
+                searched = False
                 if not getattr(exc, "retryable", False):
                     print(f"  stopping: {exc}")
                     return None
@@ -945,38 +950,45 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
               f"attempt(s); giving up on {core} this cycle.")
         return None
 
-    while bought < target and at_row <= on_screen:
-        print(f"  {bought}/{target} {core} held, buying from row {at_row}")
-        got = order(target - bought)
-        if got is THIN:
-            at_row += 1
-            continue
-        if got is None or got["bought"] <= 0:
-            break
-        bought += got["bought"]
-        paid += got["spent"]
-        if leave:
-            at_row += 1
+    def step_down():
+        nonlocal steps
+        if steps >= steps_max:
+            print(f"  {steps_max} step(s) down and nothing worth buying; "
+                  f"leaving {core} at {bought} of {target}")
+            return False
+        steps += 1
+        with calibration.phase(f"step down to the next offer ({steps})"):
+            buy.scroll_down(1, verbose=verbose)
+        return True
 
-    while bought % batch and at_row <= on_screen:
+    def take(want, on_margin=True):
+        nonlocal bought, paid
+        while True:
+            got = order(want, on_margin=on_margin)
+            if got is THIN:
+                if not step_down():
+                    return False
+                continue
+            if got is None or got["bought"] <= 0:
+                return False
+            bought += got["bought"]
+            paid += got["spent"]
+            if leave and not step_down():
+                return False
+            return True
+
+    while bought < target:
+        print(f"  {bought}/{target} {core} held")
+        if not take(target - bought):
+            break
+
+    while bought % batch:
         short = batch - (bought % batch)
         print(f"  {bought} {core} is {short} short of a whole batch of "
               f"{batch}; topping up whatever the margin says, because a "
               f"remainder crafts into nothing")
-        got = order(short, on_margin=False)
-        if got is THIN:
-            at_row += 1
-            continue
-        if got is None or got["bought"] <= 0:
+        if not take(short, on_margin=False):
             break
-        bought += got["bought"]
-        paid += got["spent"]
-        if leave:
-            at_row += 1
-
-    if leave and at_row > on_screen and bought < target:
-        print(f"  every one of the {on_screen} rows on screen is down to its "
-              f"last {leave}; stopping at {bought} of {target}")
 
     if bought <= 0:
         print(f"  nothing bought; not opening the craft window.")

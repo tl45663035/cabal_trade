@@ -1,3 +1,4 @@
+import ctypes
 import re
 import sys
 import time
@@ -54,6 +55,24 @@ def row_point(index=BUY_ROW):
     cal = _shop_cal()
     y = cal["purchase_row_one_y"] + (index - 1) * cal["purchase_row_pitch"]
     return ROW_SELECT_X, y
+
+
+def scroll_down(notches=1, verbose=False):
+    x, y = row_point(BUY_ROW + 1)
+    row_model.inv._user32.SetCursorPos(int(x), int(y))
+    event = row_model._wheel_event(-1)
+    for _ in range(max(1, int(notches))):
+        sent = row_model.inv._user32.SendInput(
+            1, ctypes.byref(event), ctypes.sizeof(row_model.inv._Input))
+        if sent != 1:
+            raise Refused(
+                f"SendInput sent {sent} of 1 wheel event over the offers "
+                f"table at ({x}, {y}).")
+        time.sleep(row_model.WHEEL_GAP)
+    calibration.park()
+    if verbose:
+        print(f"  wheeled {notches} notch(es) down the offers, from row "
+              f"{BUY_ROW + 1} at ({x}, {y})")
 
 
 def buy_point(index=BUY_ROW):
@@ -155,14 +174,14 @@ def await_balance(differs_from=None, timeout=None):
 
 def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 ceiling=None, sells_at=0, gap=None, leave_behind=0,
-                at_row=BUY_ROW):
+                search=True):
     steps_reset()
     outcome = "REFUSED"
     try:
         out = _buy_row_one(slot, want, verbose=verbose, held=held,
                            floor_qty=floor_qty, ceiling=ceiling,
                            sells_at=sells_at, gap=gap,
-                           leave_behind=leave_behind, at_row=at_row)
+                           leave_behind=leave_behind, search=search)
         outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
         return out
     finally:
@@ -172,41 +191,39 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
 def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                  ceiling=None, sells_at=0, gap=None, leave_behind=0,
-                 at_row=BUY_ROW):
+                 search=True):
     say = print if verbose else (lambda *a: None)
-    with step(f"get_price: search the favourite and read row {at_row}"):
-        offer = get_price.get_price(int(slot), verbose=False, at_row=at_row)
+    with step("get_price: search the favourite and read row 1"):
+        offer = get_price.get_price(int(slot), verbose=False,
+                                    search=search)
     if offer is None:
         raise Refused(f"favourite slot {slot} would not price, so there is "
                       f"nothing to buy from.")
     name = calibration.FAVOURITE_ITEMS[str(int(slot))]
-    say(f"  row {at_row} offers {offer['name']!r} x{offer['qty']} at "
+    say(f"  row 1 offers {offer['name']!r} x{offer['qty']} at "
         f"{offer['price']:,} ({offer['unit_price']:,}/unit)")
     if leave_behind and int(offer["qty"]) - leave_behind < 1:
         raise TooThin(
-            f"row {at_row} holds {offer['qty']} and {leave_behind} stays "
-            f"behind, so there is nothing spare to take here.")
+            f"row 1 holds {offer['qty']} and {leave_behind} stays behind, so "
+            f"there is nothing spare to take here.")
     if sells_at and gap is not None:
         now = sells_at - offer["unit_price"]
         if now <= gap:
             raise Refused(
-                f"row {at_row} asks {offer['unit_price']:,} and the core "
-                f"sells at "
+                f"row 1 asks {offer['unit_price']:,} and the core sells at "
                 f"{sells_at:,}, a gap of {now:,} against the {gap:,} wanted. "
                 f"Nothing bought.")
-        say(f"    row {at_row} leaves {now:,} a core against the {gap:,} "
-            f"wanted")
+        say(f"    row 1 leaves {now:,} a core against the {gap:,} wanted")
 
-    with step(f"click the row at {row_point(at_row)}"):
-        calibration.click(*row_point(at_row), settle=FIELD_SETTLE)
-    with step(f"click Buy at {buy_point(at_row)}"):
-        calibration.click(*buy_point(at_row), settle=0.0)
+    with step(f"click the row at {row_point()}"):
+        calibration.click(*row_point(), settle=FIELD_SETTLE)
+    with step(f"click Buy at {buy_point()}"):
+        calibration.click(*buy_point(), settle=0.0)
     with step("await the Purchase dialog"):
         appeared = await_dialog()
     if not appeared:
         raise Refused(
-            f"no {DIALOG_MARKER} dialog appeared after clicking Buy on row "
-            f"{at_row}. "
+            f"no {DIALOG_MARKER} dialog appeared after clicking Buy on row 1. "
             f"Nothing was confirmed.", retryable=True)
 
     with step("read the dialog (item, price, qty, qty_max)"):
@@ -228,10 +245,10 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         spare = on_offer - leave_behind
         if spare < 1:
             _cancel(f"the dialog offers {on_offer} and {leave_behind} stays "
-                    f"behind, so there is nothing spare on row {at_row}. "
-                    f"Cancelled without buying.", kind=TooThin)
+                    f"behind, so there is nothing spare on row 1. Cancelled "
+                    f"without buying.", kind=TooThin)
         say(f"    {on_offer} on offer, {leave_behind} stays behind, so at "
-            f"most {spare} comes off row {at_row}")
+            f"most {spare} comes off row 1")
         on_offer = spare
     asked = min(want_packs, on_offer)
     if ceiling is not None and held + pack * asked > ceiling:

@@ -58,23 +58,15 @@ def sort_box():
     return tuple(_need("purchase_sort_region"))
 
 
-def row_drop(row):
-    return (int(row) - 1) * int(_need("purchase_row_pitch"))
+def purchase_row_one_box():
+    return tuple(_need("purchase_row_content"))
 
 
-def purchase_row_one_box(row=1):
-    box = tuple(_need("purchase_row_content"))
-    drop = row_drop(row)
-    return (box[0], box[1] + drop, box[2], box[3] + drop) if drop else box
-
-
-def column_box(field, row=1):
+def column_box(field):
     cols = _need("purchase_columns")
     if field not in cols:
         raise NotReady(f"shop.purchase_columns has no {field!r} box.")
-    box = tuple(cols[field])
-    drop = row_drop(row)
-    return (box[0], box[1] + drop, box[2], box[3] + drop) if drop else box
+    return tuple(cols[field])
 
 
 def read_field(field, image=None):
@@ -91,9 +83,9 @@ def column_edges():
     return (cols["qty"][0], cols["price"][0], cols["function"][0])
 
 
-def read_fields(image=None, row=1):
+def read_fields(image=None):
     image = image if image is not None else calibration.grab()
-    band = purchase_row_one_box(row)
+    band = purchase_row_one_box()
     qty_lo, price_lo, function_lo = column_edges()
     tokens = calibration.ocr(image, band, min_conf=BULK_MIN_CONF)
 
@@ -229,7 +221,7 @@ def reopen_shop(slot, verbose=True):
     time.sleep(TAB_SETTLE)
 
 
-def get_price(slot, verbose=True, at_row=1):
+def get_price(slot, verbose=True, search=True):
     with calibration.step("get_price: focus the game"):
         inv.focus_game()
     with calibration.step("get_price: _trade_window_open (OCR 1300x190)"):
@@ -254,7 +246,16 @@ def get_price(slot, verbose=True, at_row=1):
         print(f"  expecting {want!r} at row 1")
 
     text, row = "", None
-    for attempt in range(1, RETRIES + 1):
+    if not search:
+        with calibration.step("get_price: read row 1 where it stands"):
+            text = read_row_one()
+            row = parse_fields(read_fields())
+        if row is not None and not name_matches(slot, row["name"]):
+            if verbose:
+                print(f"  row 1 reads {row['name']!r}, which is not what "
+                      f"slot {slot} sells; not pricing it")
+            row = None
+    for attempt in range(1, (RETRIES + 1) if search else 0):
         if not calibration.purchase_tab_showing():
             reopen_shop(slot, verbose=verbose)
         with calibration.step("get_price: read row 1 before the search"):
@@ -312,14 +313,6 @@ def get_price(slot, verbose=True, at_row=1):
         if verbose:
             print(f"  row 1 did not parse; name read {text!r}")
         return None
-    if int(at_row) != 1:
-        text = calibration.read_line(calibration.grab(),
-                                     purchase_row_one_box(at_row))
-        row = parse_fields(read_fields(row=at_row))
-        if row is None:
-            if verbose:
-                print(f"  row {at_row} did not parse; band read {text!r}")
-            return None
     units = row["qty"] * row["pack"]
     row["slot"] = int(slot)
     row["units"] = units
