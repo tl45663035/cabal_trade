@@ -1,0 +1,138 @@
+{
+  "resupply": {
+    "enabled": true,
+    "enable_buying": {
+      "Force Core(Highest)": true,
+      "Chaos Core": true,
+      "Divine Stone": true,
+      "Force Core(High)": true,
+      "Upgrade Core (Ultimate)": true
+    },
+    "rows_threshold": {
+      "default": 2,
+      "Chaos Core": 4,
+      "Divine Stone": 4
+    },
+    "buy_min": {
+      "default": 200,
+      "Chaos Core": 200,
+      "Divine Stone": 200
+    },
+    "buy_max": {
+      "default": 750,
+      "Chaos Core": 500,
+      "Divine Stone": 500
+    },
+    "buy_random_range": 50,
+    "buy_retries": 3,
+    "price_diff_threshold": {
+      "Force Core(Highest)": 10000,
+      "Chaos Core": 10000,
+      "Force Core(High)": 5000,
+      "Upgrade Core (Ultimate)": 15000,
+      "Divine Stone": 10000
+    }
+  },
+  "run": {
+    "relist_from": 1,
+    "relist_to": 21,
+    "undercut_by": 1,
+    "home_notches": 30,
+    "for_minutes": 1000,
+    "price_check_factor": 5.0,
+    "stop_key_presses": 4,
+    "stop_key_window": 1.5,
+    "floor_break_after": 5
+  },
+  "debug": {
+    "frames": true,
+    "keep_frames": 2000
+  },
+  "timing": {
+    "action_gap": 0.5,
+    "key_hold": 0.02,
+    "key_gap": 0.05,
+    "focus_settle": 0.35,
+    "wheel_gap": 0.12,
+    "park_settle": 0.25,
+    "tab_settle": 0.6,
+    "poll_gap": 0.0,
+    "search_timeout": 8.0,
+    "search_retries": 10,
+    "dialog_timeout": 8.0,
+    "retry_gap": 1.0,
+    "hover_settle": 0.15,
+    "modifier_settle": 0.25,
+    "click_hold": 0.12,
+    "panel_reread_gap": 1.0,
+    "shop_check_gap": 1.0,
+    "field_settle": 0.05,
+    "clear_gap": 0.02,
+    "server_lag_idle": 10.0,
+    "server_lag_budget": 600.0,
+    "server_lag_poll": 5.0,
+    "craft_settle_per_block": 5.0,
+    "craft_settle_block": 50,
+    "craft_settle_max": 300.0,
+    "stop_key_poll": 0.03,
+    "gift_gap": 0.5
+  },
+  "war": {
+    "enabled": true,
+    "start_hours": [
+      1,
+      4,
+      7,
+      10,
+      13,
+      16,
+      19,
+      22
+    ],
+    "war_minutes": 30,
+    "quiet_before_end": 60,
+    "quiet_seconds": 300,
+    "clock_uncertainty": 59,
+    "clock_resync": 1800.0,
+    "clock_confirm_pause": 1.0,
+    "clock_max_drift": 150.0
+  },
+  "recovery": {
+    "screen_timeout": 25.0,
+    "world_timeout": 120.0,
+    "sub_password_wait": 12.0,
+    "after_typing_wait": 10.0,
+    "failed_retry_wait": 5.0,
+    "reconnect_settle": 60.0,
+    "login_tries": 6,
+    "reconnect_tries": 4,
+    "notice_tries": 3,
+    "clear_keys": 32,
+    "double_gap": 0.08,
+    "phrase_gap_x": 260,
+    "phrase_gap_y": 16,
+    "password_above_login": 86,
+    "username_above_login": 127,
+    "panel_reach": 0.16,
+    "disconnect_words": [
+      "disconnect",
+      "disconnected",
+      "log-out",
+      "logged"
+    ],
+    "failed_words": [
+      "failed to connect",
+      "try later"
+    ],
+    "dual_words": [
+      "dual login",
+      "already in use",
+      "like to reconnect"
+    ],
+    "login_word": "login",
+    "ok_word": "ok",
+    "confirm_word": "confirmation",
+    "yes_word": "yes",
+    "enter_word": "enter server"
+  }
+}
