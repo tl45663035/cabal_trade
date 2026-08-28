@@ -1059,8 +1059,27 @@ def balance_box():
             max(band[2], measured[2]), max(band[3], measured[3]))
 
 
+_LOOKALIKE = str.maketrans({"C": "0", "c": "0", "O": "0", "o": "0",
+                            "D": "0", "Q": "0", "U": "0",
+                            "I": "1", "l": "1", "|": "1", "i": "1",
+                            "S": "5", "s": "5", "B": "8", "G": "6",
+                            "Z": "2", "z": "2", "T": "7", "A": "4"})
+
+
 def read_balance_from(image):
-    return read_money(image, balance_box())
+    box = balance_box()
+    seen = read_line(image, box)
+    label = re.search(_ALZ_WORD, seen, flags=re.IGNORECASE)
+    trimmed = seen[:label.start()] if label else seen
+    for token in reversed(trimmed.split()):
+        for candidate in (token, token.translate(_LOOKALIKE)):
+            value = _digits(candidate)
+            if value is not None and value >= MIN_PLAUSIBLE_BALANCE:
+                if candidate != token or len(trimmed.split()) > 1:
+                    print(f"  the balance band reads {seen.strip()!r}; the "
+                          f"figure against the label is {value:,}")
+                return value
+    return read_money(image, box)
 
 
 def undercut(price):
@@ -1662,30 +1681,34 @@ def calibrate_shop(verbose=True):
         else:
             merged.append(i)
     peaks = merged
-    favourites = [[FAV[0] + i, FAV[1] + (FAV[3] - FAV[1]) // 2] for i in peaks]
-    gaps = np.diff([p[0] for p in favourites]) if len(favourites) > 1 else []
-    f_pitch = float(np.mean(gaps)) if len(gaps) else 0.0
-    say(f"  favourites: {len(favourites)} found, pitch {f_pitch:.2f}px, "
-        f"first {favourites[0] if favourites else None} "
-        f"last {favourites[-1] if favourites else None}")
-    if len(favourites) != FAVOURITE_COUNT:
+    y = FAV[1] + (FAV[3] - FAV[1]) // 2
+    found = [FAV[0] + i for i in peaks]
+    gaps = list(np.diff(found)) if len(found) > 1 else []
+    f_pitch = float(np.mean(gaps)) if gaps else 0.0
+    say(f"  favourites: {len(found)} found, pitch {f_pitch:.2f}px, "
+        f"first {[found[0], y] if found else None} "
+        f"last {[found[-1], y] if found else None}")
+    if not gaps or not (FAVOURITE_COUNT - 1 <= len(found) <= FAVOURITE_COUNT + 2):
         raise RuntimeError(
-            f"expected {FAVOURITE_COUNT} favourite slots, found {len(favourites)} at "
-            f"{[p[0] for p in favourites]}. Not writing a calibration that "
-            f"does not describe the row.")
-    if len(gaps) and (max(gaps) - min(gaps)) > FAV_PITCH_SPREAD:
-        raise RuntimeError(
-            f"the favourite slots are not evenly spaced: gaps {list(gaps)}. "
-            f"Something other than a slot was picked up.")
+            f"expected about {FAVOURITE_COUNT} favourite slots, found "
+            f"{len(found)} at {found}. Not writing a calibration that does "
+            f"not describe the row.")
+    pitch = int(round(float(np.median(gaps))))
+    if pitch <= 0:
+        raise RuntimeError(f"the favourite row has no usable pitch: {gaps}.")
+    favourites = [[found[0] + k * pitch, y] for k in range(FAVOURITE_COUNT)]
+    say(f"  favourite row set on an even {pitch}px grid from {found[0]}: "
+        f"{[p[0] for p in favourites]}")
 
     return {
         "purchase_tab": purchase,
         "register_tab": list(reg),
         "tab_boundary_x": boundary,
         "favourites": favourites,
-        "favourite_pitch": round(f_pitch, 2),
+        "favourite_pitch": pitch,
         "evidence": {
             "register_conf": named.get("register", (None,))[0],
+            "favourite_raw_pitch": round(f_pitch, 2),
             "favourite_pitch_spread": (int(max(gaps) - min(gaps))
                                       if len(gaps) else 0),
             "purchase_is_derived": True,
@@ -2413,9 +2436,21 @@ def calibrate_convert(verbose=True):
     ys = [band[1] + i for i in rows]
     say(f"  grid band {band}: {len(xs)} column(s) at {xs}, "
         f"{len(ys)} row(s) at {ys}")
-    if len(xs) != len(CONVERT_GRADES):
+    want = len(CONVERT_GRADES)
+    if len(xs) != want and len(xs) >= 2:
+        spans = sorted(b - a for a, b in zip(xs, xs[1:]))
+        pitch = spans[len(spans) // 2]
+        grid = [xs[0] + k * pitch for k in range(want)] if pitch > 0 else []
+        while grid and grid[-1] > band[2] and grid[0] - pitch >= band[0]:
+            grid = [x - pitch for x in grid]
+        if grid and grid[0] >= band[0] and grid[-1] <= band[2]:
+            say(f"  only {len(xs)} column(s) lit up at {xs}; the row is "
+                f"{want} even columns {pitch}px apart and they fit the band "
+                f"from {grid[0]}, so using {grid}")
+            xs = grid
+    if len(xs) != want:
         raise RuntimeError(
-            f"expected {len(CONVERT_GRADES)} conversion columns, one a grade, "
+            f"expected {want} conversion columns, one a grade, "
             f"and found {len(xs)} at {xs}. Nothing written.")
     if len(ys) != CONVERT_ROW_COUNT:
         raise RuntimeError(
