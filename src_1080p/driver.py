@@ -192,7 +192,7 @@ def relist_one(model, index, verbose=True):
         if verbose:
             print(f"    collected; {row.qty} left to relist")
 
-    if row_model.row_one_is_empty(text):
+    if row_model.row_one_is_empty(text) or button == row_model.REGISTER_WORD:
         model._slots.pop(index, None)
         model.forget_floor(index)
         if verbose:
