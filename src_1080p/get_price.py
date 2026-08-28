@@ -221,7 +221,7 @@ def reopen_shop(slot, verbose=True):
     time.sleep(TAB_SETTLE)
 
 
-def get_price(slot, verbose=True):
+def get_price(slot, verbose=True, search=True):
     with calibration.step("get_price: focus the game"):
         inv.focus_game()
     with calibration.step("get_price: _trade_window_open (OCR 1300x190)"):
@@ -246,7 +246,16 @@ def get_price(slot, verbose=True):
         print(f"  expecting {want!r} at row 1")
 
     text, row = "", None
-    for attempt in range(1, RETRIES + 1):
+    if not search:
+        with calibration.step("get_price: read row 1 where it stands"):
+            text = read_row_one()
+            row = parse_fields(read_fields())
+        if row is not None and not name_matches(slot, row["name"]):
+            if verbose:
+                print(f"  row 1 reads {row['name']!r}, which is not what "
+                      f"slot {slot} sells; not pricing it")
+            row = None
+    for attempt in range(1, (RETRIES + 1) if search else 0):
         if not calibration.purchase_tab_showing():
             reopen_shop(slot, verbose=verbose)
         with calibration.step("get_price: read row 1 before the search"):

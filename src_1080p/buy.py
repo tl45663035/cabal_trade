@@ -1,3 +1,4 @@
+import ctypes
 import re
 import sys
 import time
@@ -38,6 +39,10 @@ class Refused(Exception):
         self.retryable = retryable
 
 
+class TooThin(Refused):
+    pass
+
+
 def _reg(name):
     return calibration._box(tuple(calibration._REG[name]))
 
@@ -50,6 +55,24 @@ def row_point(index=BUY_ROW):
     cal = _shop_cal()
     y = cal["purchase_row_one_y"] + (index - 1) * cal["purchase_row_pitch"]
     return ROW_SELECT_X, y
+
+
+def scroll_down(notches=1, verbose=False):
+    x, y = row_point(BUY_ROW + 1)
+    row_model.inv._user32.SetCursorPos(int(x), int(y))
+    event = row_model._wheel_event(-1)
+    for _ in range(max(1, int(notches))):
+        sent = row_model.inv._user32.SendInput(
+            1, ctypes.byref(event), ctypes.sizeof(row_model.inv._Input))
+        if sent != 1:
+            raise Refused(
+                f"SendInput sent {sent} of 1 wheel event over the offers "
+                f"table at ({x}, {y}).")
+        time.sleep(row_model.WHEEL_GAP)
+    calibration.park()
+    if verbose:
+        print(f"  wheeled {notches} notch(es) down the offers, from row "
+              f"{BUY_ROW + 1} at ({x}, {y})")
 
 
 def buy_point(index=BUY_ROW):
@@ -124,7 +147,7 @@ def dialog_details(image=None):
                                               _reg("buy_dialog_qty_max"))}
 
 
-def _cancel(why, retryable=False):
+def _cancel(why, retryable=False, kind=Refused):
     point = dialog_button(CANCEL_WORD)
     if point is not None:
         calibration.click(*point)
@@ -134,7 +157,7 @@ def _cancel(why, retryable=False):
         press(_SHARED["input"]["VK_ESCAPE"])
         time.sleep(ACTION_GAP)
     calibration.park()
-    raise Refused(why, retryable=retryable)
+    raise kind(why, retryable=retryable)
 
 
 def await_balance(differs_from=None, timeout=None):
@@ -150,13 +173,15 @@ def await_balance(differs_from=None, timeout=None):
 
 
 def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
-                ceiling=None, sells_at=0, gap=None):
+                ceiling=None, sells_at=0, gap=None, leave_behind=0,
+                search=True):
     steps_reset()
     outcome = "REFUSED"
     try:
         out = _buy_row_one(slot, want, verbose=verbose, held=held,
                            floor_qty=floor_qty, ceiling=ceiling,
-                           sells_at=sells_at, gap=gap)
+                           sells_at=sells_at, gap=gap,
+                           leave_behind=leave_behind, search=search)
         outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
         return out
     finally:
@@ -165,16 +190,22 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
 
 def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
-                 ceiling=None, sells_at=0, gap=None):
+                 ceiling=None, sells_at=0, gap=None, leave_behind=0,
+                 search=True):
     say = print if verbose else (lambda *a: None)
     with step("get_price: search the favourite and read row 1"):
-        offer = get_price.get_price(int(slot), verbose=False)
+        offer = get_price.get_price(int(slot), verbose=False,
+                                    search=search)
     if offer is None:
         raise Refused(f"favourite slot {slot} would not price, so there is "
                       f"nothing to buy from.")
     name = calibration.FAVOURITE_ITEMS[str(int(slot))]
     say(f"  row 1 offers {offer['name']!r} x{offer['qty']} at "
         f"{offer['price']:,} ({offer['unit_price']:,}/unit)")
+    if leave_behind and int(offer["qty"]) - leave_behind < 1:
+        raise TooThin(
+            f"row 1 holds {offer['qty']} and {leave_behind} stays behind, so "
+            f"there is nothing spare to take here.")
     if sells_at and gap is not None:
         now = sells_at - offer["unit_price"]
         if now <= gap:
@@ -209,7 +240,17 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
     pack = max(1, row_model.pack_size(offer["name"]))
     want_packs = max(1, -(-int(want) // pack))
-    asked = min(want_packs, int(detail["qty_max"]))
+    on_offer = int(detail["qty_max"])
+    if leave_behind:
+        spare = on_offer - leave_behind
+        if spare < 1:
+            _cancel(f"the dialog offers {on_offer} and {leave_behind} stays "
+                    f"behind, so there is nothing spare on row 1. Cancelled "
+                    f"without buying.", kind=TooThin)
+        say(f"    {on_offer} on offer, {leave_behind} stays behind, so at "
+            f"most {spare} comes off row 1")
+        on_offer = spare
+    asked = min(want_packs, on_offer)
     if ceiling is not None and held + pack * asked > ceiling:
         if held <= 0:
             say(f"    nothing held yet: taking row 1's bundle of {pack} even "

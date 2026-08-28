@@ -2514,6 +2514,10 @@ def buy_max(core_name):
     return _per_item("buy_max", core_name)
 
 
+def buy_leave_behind(core_name):
+    return _per_item("buy_leave_behind", core_name) or 0
+
+
 def calibrate_prices(verbose=True):
     import get_price
     say = print if verbose else (lambda *a: None)
