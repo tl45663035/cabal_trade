@@ -322,6 +322,11 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
             f"{want_total:,} was spent is unknown -- check by hand.")
     pack = max(1, row_model.pack_size(offer["name"]))
     spent = before_alz - after_alz
+    if spent == 0:
+        raise Refused(
+            f"the balance never moved from {before_alz:,}, so nothing was "
+            f"bought: row 1 went while the order was being placed. Trying "
+            f"the board again.", retryable=True)
     for attempt in range(1, REREADS + 1):
         if spent > 0 and per_pack and spent % per_pack == 0:
             break
@@ -333,7 +338,11 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         if again is None:
             continue
         after_alz, spent = again, before_alz - again
-    if spent <= 0 or not per_pack or spent % per_pack != 0:
+    if spent < 0:
+        raise Refused(
+            f"the balance rose from {before_alz:,} to {after_alz:,} across "
+            f"the order, which a purchase cannot do. Check by hand.")
+    if not per_pack or spent % per_pack != 0:
         raise Refused(
             f"the spend {spent:,} is not a whole multiple of the {per_pack:,} "
             f"pack price after {REREADS} reads. Balance {before_alz:,} -> "
