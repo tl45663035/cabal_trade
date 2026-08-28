@@ -38,6 +38,10 @@ class Refused(Exception):
         self.retryable = retryable
 
 
+class TooThin(Refused):
+    pass
+
+
 def _reg(name):
     return calibration._box(tuple(calibration._REG[name]))
 
@@ -124,7 +128,7 @@ def dialog_details(image=None):
                                               _reg("buy_dialog_qty_max"))}
 
 
-def _cancel(why, retryable=False):
+def _cancel(why, retryable=False, kind=Refused):
     point = dialog_button(CANCEL_WORD)
     if point is not None:
         calibration.click(*point)
@@ -134,7 +138,7 @@ def _cancel(why, retryable=False):
         press(_SHARED["input"]["VK_ESCAPE"])
         time.sleep(ACTION_GAP)
     calibration.park()
-    raise Refused(why, retryable=retryable)
+    raise kind(why, retryable=retryable)
 
 
 def await_balance(differs_from=None, timeout=None):
@@ -150,13 +154,15 @@ def await_balance(differs_from=None, timeout=None):
 
 
 def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
-                ceiling=None, sells_at=0, gap=None):
+                ceiling=None, sells_at=0, gap=None, leave_behind=0,
+                at_row=BUY_ROW):
     steps_reset()
     outcome = "REFUSED"
     try:
         out = _buy_row_one(slot, want, verbose=verbose, held=held,
                            floor_qty=floor_qty, ceiling=ceiling,
-                           sells_at=sells_at, gap=gap)
+                           sells_at=sells_at, gap=gap,
+                           leave_behind=leave_behind, at_row=at_row)
         outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
         return out
     finally:
@@ -165,34 +171,42 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
 
 def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
-                 ceiling=None, sells_at=0, gap=None):
+                 ceiling=None, sells_at=0, gap=None, leave_behind=0,
+                 at_row=BUY_ROW):
     say = print if verbose else (lambda *a: None)
-    with step("get_price: search the favourite and read row 1"):
-        offer = get_price.get_price(int(slot), verbose=False)
+    with step(f"get_price: search the favourite and read row {at_row}"):
+        offer = get_price.get_price(int(slot), verbose=False, at_row=at_row)
     if offer is None:
         raise Refused(f"favourite slot {slot} would not price, so there is "
                       f"nothing to buy from.")
     name = calibration.FAVOURITE_ITEMS[str(int(slot))]
-    say(f"  row 1 offers {offer['name']!r} x{offer['qty']} at "
+    say(f"  row {at_row} offers {offer['name']!r} x{offer['qty']} at "
         f"{offer['price']:,} ({offer['unit_price']:,}/unit)")
+    if leave_behind and int(offer["qty"]) - leave_behind < 1:
+        raise TooThin(
+            f"row {at_row} holds {offer['qty']} and {leave_behind} stays "
+            f"behind, so there is nothing spare to take here.")
     if sells_at and gap is not None:
         now = sells_at - offer["unit_price"]
         if now <= gap:
             raise Refused(
-                f"row 1 asks {offer['unit_price']:,} and the core sells at "
+                f"row {at_row} asks {offer['unit_price']:,} and the core "
+                f"sells at "
                 f"{sells_at:,}, a gap of {now:,} against the {gap:,} wanted. "
                 f"Nothing bought.")
-        say(f"    row 1 leaves {now:,} a core against the {gap:,} wanted")
+        say(f"    row {at_row} leaves {now:,} a core against the {gap:,} "
+            f"wanted")
 
-    with step(f"click the row at {row_point()}"):
-        calibration.click(*row_point(), settle=FIELD_SETTLE)
-    with step(f"click Buy at {buy_point()}"):
-        calibration.click(*buy_point(), settle=0.0)
+    with step(f"click the row at {row_point(at_row)}"):
+        calibration.click(*row_point(at_row), settle=FIELD_SETTLE)
+    with step(f"click Buy at {buy_point(at_row)}"):
+        calibration.click(*buy_point(at_row), settle=0.0)
     with step("await the Purchase dialog"):
         appeared = await_dialog()
     if not appeared:
         raise Refused(
-            f"no {DIALOG_MARKER} dialog appeared after clicking Buy on row 1. "
+            f"no {DIALOG_MARKER} dialog appeared after clicking Buy on row "
+            f"{at_row}. "
             f"Nothing was confirmed.", retryable=True)
 
     with step("read the dialog (item, price, qty, qty_max)"):
@@ -209,7 +223,17 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
     pack = max(1, row_model.pack_size(offer["name"]))
     want_packs = max(1, -(-int(want) // pack))
-    asked = min(want_packs, int(detail["qty_max"]))
+    on_offer = int(detail["qty_max"])
+    if leave_behind:
+        spare = on_offer - leave_behind
+        if spare < 1:
+            _cancel(f"the dialog offers {on_offer} and {leave_behind} stays "
+                    f"behind, so there is nothing spare on row {at_row}. "
+                    f"Cancelled without buying.", kind=TooThin)
+        say(f"    {on_offer} on offer, {leave_behind} stays behind, so at "
+            f"most {spare} comes off row {at_row}")
+        on_offer = spare
+    asked = min(want_packs, on_offer)
     if ceiling is not None and held + pack * asked > ceiling:
         if held <= 0:
             say(f"    nothing held yet: taking row 1's bundle of {pack} even "
