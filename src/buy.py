@@ -323,10 +323,17 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     pack = max(1, row_model.pack_size(offer["name"]))
     spent = before_alz - after_alz
     if spent == 0:
-        raise Refused(
-            f"the balance never moved from {before_alz:,}, so nothing was "
-            f"bought: row 1 went while the order was being placed. Trying "
-            f"the board again.", retryable=True)
+        with step("read the balance once more before calling it unbought"):
+            again = get_alz.read_balance()
+        if again is not None and before_alz - again > 0:
+            after_alz, spent = again, before_alz - again
+            say(f"    the balance had not caught up; it now reads "
+                f"{after_alz:,}, so {spent:,} did leave the account")
+        else:
+            raise Refused(
+                f"the balance never moved from {before_alz:,}, on two reads, "
+                f"so nothing was bought: row 1 went while the order was being "
+                f"placed. Trying the board again.", retryable=True)
     for attempt in range(1, REREADS + 1):
         if spent > 0 and per_pack and spent % per_pack == 0:
             break
