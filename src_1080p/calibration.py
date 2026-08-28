@@ -2283,7 +2283,8 @@ def _two_word_button(words, pair):
                  if abs(p[1] - point[1]) <= WORD_ROW_SLACK and p[0] > point[0]
                  and re.sub(r"[^a-z]", "", t.lower()) == second]
         if after:
-            return [(point[0] + after[0][0]) // 2, point[1]]
+            nearest = min(after, key=lambda p: p[0])
+            return [(point[0] + nearest[0]) // 2, point[1]]
     return None
 
 
