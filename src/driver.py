@@ -915,7 +915,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     if leave:
         print(f"  {leave} stays behind on every row bought, and the offers "
               f"wheel down a row at a time until one has the margin and more "
-              f"than {leave} on it, up to {steps_max} step(s)")
+              f"than {leave} on it, up to {steps_max} step(s) an order")
     bought = orders = paid = steps = 0
     searched = False
     THIN = object()
@@ -953,8 +953,8 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     def step_down():
         nonlocal steps
         if steps >= steps_max:
-            print(f"  {steps_max} step(s) down and nothing worth buying; "
-                  f"leaving {core} at {bought} of {target}")
+            print(f"  {steps_max} step(s) down this order and nothing worth "
+                  f"buying; leaving {core} at {bought} of {target}")
             return False
         steps += 1
         with calibration.phase(f"step down to the next offer ({steps})"):
@@ -962,7 +962,8 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         return True
 
     def take(want, on_margin=True):
-        nonlocal bought, paid
+        nonlocal bought, paid, steps
+        steps = 0
         while True:
             got = order(want, on_margin=on_margin)
             if got is THIN:
