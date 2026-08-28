@@ -117,11 +117,14 @@ DEFAULTS = {
         "tab_pitch": 69.6,
     },
     "ocr": {
+        "tesseract": r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         "scale": 3,
         "min_conf": 45.0,
-        "paddle_det_model": "PP-OCRv5_mobile_det",
-        "paddle_max_side": 1600,
-        "paddle_grow": 2,
+        "psm": "11",
+        "row_psm": "7",
+        "digit_psm": "13",
+        "digit_whitelist": "0123456789,",
+        "timeout": 60,
     },
     "regions": {
         "park": [0.5078, 0.8800],
@@ -421,11 +424,14 @@ _OCR = _S["ocr"]
 _REG = _S["regions"]
 _DET = _S["detect"]
 
+TESSERACT = _OCR["tesseract"]
 OCR_SCALE = _OCR["scale"]
 OCR_MIN_CONF = _OCR["min_conf"]
-PADDLE_DET_MODEL = _OCR["paddle_det_model"]
-PADDLE_MAX_SIDE = _OCR["paddle_max_side"]
-PADDLE_GROW = _OCR["paddle_grow"]
+OCR_PSM = _OCR["psm"]
+OCR_BORDER = _OCR["border"]
+ROW_PSM = _OCR["row_psm"]
+DIGIT_PSM = _OCR["digit_psm"]
+DIGIT_WHITELIST = _OCR["digit_whitelist"]
 
 PARK_F = tuple(_REG["park"])
 ALZ_SEARCH_F = tuple(_REG["alz_search"])
@@ -515,6 +521,7 @@ SORT_PAD_LEFT = _DET["sort_pad_left"]
 SORT_PAD_RIGHT = _DET["sort_pad_right"]
 SORT_PAD_Y = _DET["sort_pad_y"]
 SCROLL_POINT_INSET = _DET["scroll_point_inset"]
+OCR_TIMEOUT = _OCR["timeout"]
 FAVOURITE_COUNT = _S["game_facts"]["favourite_count"]
 MAX_STACK = _S["game_facts"]["max_stack"]
 SUGGESTION_RADIO_DX = _S["detect"]["suggestion_radio_dx"]
@@ -544,6 +551,7 @@ DIALOG_TIMEOUT = _S["timing"]["dialog_timeout"]
 SEARCH_TIMEOUT = _S["timing"]["search_timeout"]
 SEARCH_RETRIES = _S["timing"]["search_retries"]
 ALZ_SEARCH = None
+_NOT_DIGIT = re.compile("[^0-9]")
 
 
 _STEPS = []
@@ -971,44 +979,15 @@ def type_number(value: int, clear: int) -> None:
         time.sleep(KEY_GAP)
 
 
-_PADDLE_REC = None
-_PADDLE_TRIED = False
-
-
-def _paddle_rec():
-    global _PADDLE_REC, _PADDLE_TRIED
-    if _PADDLE_REC is None and not _PADDLE_TRIED:
-        _PADDLE_TRIED = True
-        try:
-            from paddleocr import TextRecognition
-            _PADDLE_REC = TextRecognition()
-            print("  text recognition: PaddleOCR")
-        except Exception as exc:
-            print(f"  PaddleOCR is required but not available "
-                  f"({type(exc).__name__}); run: py setup_paddle.py")
-            _PADDLE_REC = None
-    return _PADDLE_REC
-
-
-def _paddle_read(image, box, scale):
-    rec = _paddle_rec()
-    if rec is None:
-        return None, 0.0
-    crop = image.crop(tuple(box)).convert("RGB")
-    if scale and scale != 1:
-        crop = crop.resize((crop.width * scale, crop.height * scale),
-                           Image.LANCZOS)
-    try:
-        out = rec.predict(np.asarray(crop))
-    except Exception:
-        return None, 0.0
-    text = " ".join((r.get("rec_text") or "") for r in out).strip()
-    scores = [r.get("rec_score") or 0.0 for r in out]
-    return (text or None), (max(scores) * 100 if scores else 0.0)
-
-
-def _paddle_line(image, box, scale):
-    return _paddle_read(image, box, scale)[0]
+def _tesseract(prepared, psm, whitelist=None):
+    buf = io.BytesIO()
+    prepared.save(buf, "PNG")
+    args = [TESSERACT, "stdin", "stdout", "--psm", str(psm)]
+    if whitelist:
+        args += ["-c", "tessedit_char_whitelist=" + whitelist]
+    run = subprocess.run(args, input=buf.getvalue(), capture_output=True,
+                         timeout=OCR_TIMEOUT)
+    return run.stdout.decode("utf-8", "replace")
 
 
 _GROUPED = re.compile(r"^\d+(,\d{3})+$")
@@ -1021,7 +1000,6 @@ def _digits(text):
     label = re.search(_ALZ_WORD, cleaned, flags=re.IGNORECASE)
     if label:
         cleaned = cleaned[:label.start()]
-    cleaned = re.sub(r"^\D+|\D+$", "", cleaned.strip())
     if _WEDGED.search(cleaned):
         return None
     cleaned = _SEPARATOR.sub(",", cleaned)
@@ -1036,7 +1014,18 @@ def read_money(image, box):
     box = tuple(box)
     if not has_ink(image, box):
         return None
-    return _digits(read_line(image, box))
+    value = _digits(read_line(image, box))
+    if value is not None:
+        return value
+    for prepared in (prep_for_text(image, box, OCR_SCALE, OCR_BORDER),
+                     warm_text(image, box, OCR_SCALE, OCR_BORDER),
+                     isolate_digits(image, box)):
+        if prepared is None:
+            continue
+        value = _digits(_tesseract(prepared, ROW_PSM, DIGIT_WHITELIST))
+        if value is not None:
+            return value
+    return None
 
 
 def read_money_all(image, box):
@@ -1044,8 +1033,15 @@ def read_money_all(image, box):
     if not has_ink(image, box):
         return []
     seen = []
-    for text, _conf, _point, _right in ocr_spans(image, box):
-        value = _digits(text)
+    value = _digits(read_line(image, box))
+    if value is not None:
+        seen.append(value)
+    for prepared in (prep_for_text(image, box, OCR_SCALE, OCR_BORDER),
+                     warm_text(image, box, OCR_SCALE, OCR_BORDER),
+                     isolate_digits(image, box)):
+        if prepared is None:
+            continue
+        value = _digits(_tesseract(prepared, ROW_PSM, DIGIT_WHITELIST))
         if value is not None and value not in seen:
             seen.append(value)
     return seen
@@ -1094,6 +1090,7 @@ def click(x: int, y: int, settle: float = None) -> None:
             shared["timing"]["action_gap"] if settle is None else settle)
     snap(f"click_{x}_{y}")
 
+
 def right_click(x: int, y: int, settle: float = None) -> None:
     hold_if_busy()
     shared = load_shared()
@@ -1103,76 +1100,76 @@ def right_click(x: int, y: int, settle: float = None) -> None:
     snap(f"rightclick_{x}_{y}")
 
 
+def prep_for_text(image: Image.Image, box, scale: int, border=0):
+    crop = image.crop(box).convert("L")
+    crop = crop.resize((crop.width * scale, crop.height * scale),
+                       Image.LANCZOS)
+    out = ImageOps.autocontrast(ImageOps.invert(crop))
+    return ImageOps.expand(out, border=border, fill=255) if border else out
+
+
+def warm_text(image: Image.Image, box, scale: int, border=0):
+    r, g, b = image.crop(box).convert("RGB").split()
+    warm = ImageChops.subtract(r, ImageChops.lighter(g, b))
+    warm = warm.resize((warm.width * scale, warm.height * scale),
+                       Image.LANCZOS)
+    out = ImageOps.autocontrast(ImageOps.invert(warm))
+    return ImageOps.expand(out, border=border, fill=255) if border else out
+
+
+def isolate_digits(image: Image.Image, box, scale: int = None):
+    scale = OCR_SCALE if scale is None else scale
+    crop = image.crop(box).convert("RGB")
+    crop = crop.resize((crop.width * scale, crop.height * scale),
+                       Image.LANCZOS)
+    px = crop.load()
+    mask = Image.new("L", crop.size, 255)
+    m = mask.load()
+    for y in range(crop.height):
+        for x in range(crop.width):
+            red, green, blue = px[x, y]
+            hi, lo = max(red, green, blue), min(red, green, blue)
+            if hi > WARM_MIN_BRIGHT and hi - lo > WARM_MIN_SATURATION:
+                m[x, y] = 0
+    bbox = ImageOps.invert(mask).getbbox()
+    if not bbox:
+        return None
+    if (bbox[3] - bbox[1]) > crop.height * ALZ_MAX_TEXT_HEIGHT:
+        return None
+    return ImageOps.expand(mask.crop(bbox), border=OCR_BORDER, fill=255)
+
+
 def has_ink(image: Image.Image, box) -> bool:
     lo, hi = image.crop(box).convert("L").getextrema()
     return hi - lo >= INK_CONTRAST_MIN
 
 
-_PADDLE_FULL = None
-_PADDLE_FULL_TRIED = False
-
-
-def _paddle_full():
-    global _PADDLE_FULL, _PADDLE_FULL_TRIED
-    if _PADDLE_FULL is None and not _PADDLE_FULL_TRIED:
-        _PADDLE_FULL_TRIED = True
-        try:
-            from paddleocr import PaddleOCR
-            _PADDLE_FULL = PaddleOCR(
-                text_detection_model_name=PADDLE_DET_MODEL,
-                use_doc_orientation_classify=False,
-                use_doc_unwarping=False,
-                use_textline_orientation=False,
-                lang="en", enable_mkldnn=False)
-        except Exception as exc:
-            print(f"  PaddleOCR is required but not available "
-                  f"({type(exc).__name__}); run: py setup_paddle.py")
-            _PADDLE_FULL = None
-    return _PADDLE_FULL
-
-
 def ocr_spans(image: Image.Image, box, scale: int = None,
               min_conf: float = None):
+    scale = OCR_SCALE if scale is None else scale
     min_conf = OCR_MIN_CONF if min_conf is None else min_conf
-    box = tuple(box)
     if not has_ink(image, box):
         return []
-    engine = _paddle_full()
-    if engine is None:
-        return []
-    crop = image.crop(box).convert("RGB")
-    grow = max(1.0, min(PADDLE_GROW,
-                        PADDLE_MAX_SIDE / max(crop.width, crop.height)))
-    if grow > 1.0:
-        crop = crop.resize((int(crop.width * grow), int(crop.height * grow)),
-                           Image.LANCZOS)
-    try:
-        results = engine.predict(np.asarray(crop))
-    except Exception:
-        return []
+    buf = io.BytesIO()
+    prep_for_text(image, box, scale).save(buf, "PNG")
+    run = subprocess.run(
+        [TESSERACT, "stdin", "stdout", "--psm", OCR_PSM, "tsv"],
+        input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
     found = []
-    for res in results:
-        texts = res.get("rec_texts") or []
-        scores = res.get("rec_scores") or []
-        boxes = res.get("rec_boxes")
-        if boxes is None or len(boxes) == 0:
-            boxes = res.get("rec_polys") or []
-        for i, text in enumerate(texts):
-            text = (text or "").strip()
-            conf = round((scores[i] if i < len(scores) else 0.0) * 100)
-            if not text or conf < min_conf or i >= len(boxes):
-                continue
-            pts = np.asarray(boxes[i], dtype=float)
-            if pts.ndim == 2:
-                x1, y1 = pts[:, 0].min(), pts[:, 1].min()
-                x2, y2 = pts[:, 0].max(), pts[:, 1].max()
-            else:
-                x1, y1, x2, y2 = pts
-            left, right = box[0] + x1 / grow, box[0] + x2 / grow
-            cy = box[1] + (y1 + y2) / 2 / grow
-            found.append((text, conf,
-                          (round((left + right) / 2), round(cy)),
-                          round(right)))
+    for row in csv.DictReader(
+            io.StringIO(run.stdout.decode("utf-8", "replace")), delimiter="\t"):
+        try:
+            conf = float(row["conf"])
+        except (TypeError, ValueError):
+            continue
+        text = (row.get("text") or "").strip()
+        if not text or conf < min_conf:
+            continue
+        left = box[0] + int(row["left"]) / scale
+        right = left + int(row["width"]) / scale
+        y = box[1] + int(row["top"]) / scale + int(row["height"]) / scale / 2
+        found.append((text, round(conf),
+                      (round((left + right) / 2), round(y)), round(right)))
     return found
 
 
@@ -1188,7 +1185,18 @@ def read_line(image: Image.Image, box, scale: int = None, border: int = 0):
     scale = OCR_SCALE if scale is None else scale
     if not has_ink(image, box):
         return ""
-    return _paddle_line(image, box, scale) or ""
+    buf = io.BytesIO()
+    prep_for_text(image, box, scale, border).save(buf, "PNG")
+    run = subprocess.run(
+        [TESSERACT, "stdin", "stdout", "--psm", ROW_PSM, "tsv"],
+        input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
+    words = []
+    for row in csv.DictReader(
+            io.StringIO(run.stdout.decode("utf-8", "replace")), delimiter="	"):
+        text = (row.get("text") or "").strip()
+        if text:
+            words.append((int(row["left"]), text))
+    return " ".join(t for _, t in sorted(words))
 
 
 def ink_box(image: Image.Image, box):
@@ -1207,14 +1215,28 @@ def read_number(image: Image.Image, box):
     tight = ink_box(image, box)
     if tight is None:
         return None
-    return _digits(read_line(image, tight))
+    buf = io.BytesIO()
+    prep_for_text(image, tight, OCR_SCALE, OCR_BORDER).save(buf, "PNG")
+    run = subprocess.run(
+        [TESSERACT, "stdin", "stdout", "--psm", ROW_PSM,
+         "-c", "tessedit_char_whitelist=" + DIGIT_WHITELIST],
+        input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
+    digits = _NOT_DIGIT.sub("", run.stdout.decode("utf-8", "replace"))
+    return int(digits) if digits else None
 
 
 def read_digits(image: Image.Image, box, scale: int = None):
     scale = OCR_SCALE if scale is None else scale
     if not has_ink(image, box):
         return None
-    return _digits(read_line(image, box, scale))
+    buf = io.BytesIO()
+    prep_for_text(image, box, scale).save(buf, "PNG")
+    run = subprocess.run(
+        [TESSERACT, "stdin", "stdout", "--psm", DIGIT_PSM,
+         "-c", "tessedit_char_whitelist=" + DIGIT_WHITELIST],
+        input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
+    digits = _NOT_DIGIT.sub("", run.stdout.decode("utf-8", "replace"))
+    return int(digits) if digits else None
 
 
 def find_alz(image: Image.Image, search=None):
