@@ -22,6 +22,7 @@ _SHARED = calibration.load_shared()
 _T = _SHARED["timing"]
 ACTION_GAP = _T["action_gap"]
 TAB_SETTLE = _T["tab_settle"]
+WITHDRAW_SETTLE = _T["withdraw_settle"]
 _ROW = re.compile(_SHARED["text"]["purchase_row"])
 _GROUPING = re.compile(_SHARED["text"]["row_grouping"])
 MIN_PLAUSIBLE_PRICE = _SHARED["detect"]["min_plausible_price"]
@@ -239,6 +240,7 @@ def relist_one(model, index, verbose=True):
     with calibration.phase("cancel the row and take it back"):
         model.cancel(index, verbose=False, tab_ready=True)
     with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
+        time.sleep(max(0.0, WITHDRAW_SETTLE - calibration.PARK_SETTLE))
         calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
     pack = row.pack
     floor = unit_floor * pack
