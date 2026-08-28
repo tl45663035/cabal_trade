@@ -913,9 +913,9 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     leave = int(calibration.buy_leave_behind(core))
     steps_max = int(run["buy_scroll_limit"])
     if leave:
-        print(f"  {leave} stays behind on every row bought, and the offers "
-              f"wheel down a row at a time until one has the margin and more "
-              f"than {leave} on it, up to {steps_max} step(s) an order")
+        print(f"  {leave} stays behind on every row bought; each order "
+              f"prices the favourite afresh, then wheels down past the rows "
+              f"already down to their last {leave}, up to {steps_max} step(s)")
     bought = orders = paid = steps = 0
     searched = False
     THIN = object()
@@ -933,7 +933,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                                           gap=threshold if on_margin
                                           else None,
                                           leave_behind=leave,
-                                          search=not (leave and searched))
+                                          search=not searched)
                 searched = True
                 return out
             except buy.TooThin as exc:
@@ -962,8 +962,9 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         return True
 
     def take(want, on_margin=True):
-        nonlocal bought, paid, steps
+        nonlocal bought, paid, steps, searched
         steps = 0
+        searched = False
         while True:
             got = order(want, on_margin=on_margin)
             if got is THIN:
@@ -974,8 +975,6 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                 return False
             bought += got["bought"]
             paid += got["spent"]
-            if leave and not step_down():
-                return False
             return True
 
     while bought < target:
