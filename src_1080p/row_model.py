@@ -36,6 +36,7 @@ RECEIPT_WORD = _TEXT["receipt_word"]
 REGISTER_WORD = _TEXT["register_word"]
 STATUS_COMPLETE = _TEXT["status_complete"]
 BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
+RECEIPT_DROP_RATIO = _SHARED["detect"]["receipt_drop_ratio"]
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
 REFRESH_SETTLE = _T["refresh_settle"]
@@ -134,26 +135,28 @@ def search_button(word, timeout=None):
     return None
 
 
-def _left_of_cancel(verbose=False):
+def _receipt_seat(verbose=False):
     seats = _shop()
+    conf = seats.get(_button_key(CONFIRM_WORD))
     cancel = seats.get(_button_key(DISMISS_WORD))
-    left = seats.get(_button_key(CONFIRM_WORD))
-    if not cancel or not left:
+    if not conf or not cancel:
         return None
-    gap = cancel[0] - left[0]
+    gap = abs(int(cancel[0]) - int(conf[0]))
     if gap <= 0:
         return None
-    live = search_button(DISMISS_WORD, timeout=STALE_SWEEP)
-    anchor = live if live is not None else tuple(cancel)
-    seat = (int(anchor[0] - gap), int(anchor[1]))
+    drop = round(RECEIPT_DROP_RATIO * gap)
+    seat = (int(conf[0]), int(conf[1]) + drop)
     if verbose:
-        where = "on screen" if live is not None else "from calibration"
-        print(f"  {DISMISS_WORD} is at {list(anchor)} ({where}); the seat "
-              f"{gap} left of it is {list(seat)}")
+        print(f"  {RECEIPT_WORD} sits {drop} below the {CONFIRM_WORD} column "
+              f"{list(conf)}, so it is at {list(seat)}")
     return seat
 
 
 def find_button(word, timeout=None, verbose=False):
+    if _key(word) == _key(RECEIPT_WORD):
+        seat = _receipt_seat(verbose=verbose)
+        if seat is not None:
+            return seat
     known = remembered(word)
     budget = DIALOG_TIMEOUT if timeout is None else timeout
     if known is None:
@@ -169,12 +172,6 @@ def find_button(word, timeout=None, verbose=False):
                   f"{budget:.0f}s; one sweep in case the calibration is stale")
         point = search_button(word, timeout=STALE_SWEEP)
     from_cancel = False
-    if point is None and _key(word) == _key(RECEIPT_WORD):
-        point = _left_of_cancel(verbose=verbose)
-        from_cancel = point is not None
-        if from_cancel and verbose:
-            print(f"  {word} would not read; using the seat left of "
-                  f"{DISMISS_WORD} this time, not remembering it")
     if point is None:
         calibration.snap(f"no_{_key(word)}_button_at_{known}")
     if point is not None and point != known and not from_cancel:

@@ -186,6 +186,7 @@ DEFAULTS = {
         "purchase_divider_sigma": 3.0,
         "purchase_cell_inset": 2,
         "dialog_button_half": [70, 24],
+        "receipt_drop_ratio": 0.14,
         "min_plausible_balance": 1000,
         "row_border_candidates": 30,
         "row_border_min_gap": 15,
