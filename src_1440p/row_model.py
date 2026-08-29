@@ -49,7 +49,6 @@ SUGGESTION_RADIO_DX = _SHARED["detect"]["suggestion_radio_dx"]
 PRICE_CHECK_FACTOR = _SHARED["run"]["price_check_factor"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
-NET_SALES_NUDGE = _SHARED["detect"]["net_sales_nudge"]
 STALE_SWEEP = _T["stale_sweep"]
 POLL_GAP = _T["poll_gap"]
 
@@ -329,20 +328,14 @@ def panel_quantity(want_price, verbose=False):
             "the net sales box was never measured, so a price cannot be "
             "checked. Recalibrate before listing anything.")
     box = tuple(_panel()["net_sales_box"])
-    lower = (box[0], box[1] + NET_SALES_NUDGE,
-             box[2], box[3] + NET_SALES_NUDGE)
     for attempt in range(1, PANEL_REREADS + 2):
-        image = calibration.grab()
-        seen = []
-        for where, band in (("", box), (" from a little lower", lower)):
-            seen = calibration.read_money_all(image, band)
-            for net in seen:
-                if net and net % want_price == 0:
-                    qty = net // want_price
-                    if verbose:
-                        print(f"    net sales {net:,} is {qty} x "
-                              f"{want_price:,}{where}")
-                    return qty
+        seen = calibration.read_money_all(calibration.grab(), box)
+        for net in seen:
+            if net and net % want_price == 0:
+                qty = net // want_price
+                if verbose:
+                    print(f"    net sales {net:,} is {qty} x {want_price:,}")
+                return qty
         if verbose:
             print(f"    read {attempt}: the net sales read "
                   f"{', '.join(f'{v:,}' for v in seen) or 'nothing'}, and no "
