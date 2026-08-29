@@ -277,7 +277,11 @@ def relist_one(model, index, verbose=True):
     break_after = int(calibration.load_shared()["run"]["floor_break_after"])
     parked = model._floored.get(index, 0)
     broken = index in model._broken
-    breaking = break_after > 0 and (broken or parked >= break_after)
+    breaking = (break_after > 0 and not whole
+                and (broken or parked >= break_after))
+    if whole and floor and parked >= break_after > 0:
+        print(f"    row {index} has sat on its {floor:,} floor for {parked} "
+              f"relist(s) and holds it; {pair} does not go to the market")
     if breaking:
         if broken:
             print(f"    row {index} broke its floor earlier and has not sold; "
