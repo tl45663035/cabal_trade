@@ -1241,7 +1241,7 @@
         1920,
         1080
       ],
-      "measured_at": "2026-08-28T16:49:49",
+      "measured_at": "2026-08-28T19:39:56",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -1265,8 +1265,8 @@
       },
       "inventory": {
         "alz_box": [
-          1682,
-          684,
+          1771,
+          688,
           1860,
           700
         ],
@@ -1587,10 +1587,6 @@
           968,
           655
         ],
-        "refresh_point": [
-          846,
-          748
-        ],
         "purchase_tab": [
           96,
           80
@@ -1644,24 +1640,24 @@
         ],
         "favourite_pitch": 42,
         "evidence": {
-          "register_conf": 97,
+          "register_conf": 96,
           "favourite_raw_pitch": 45.11,
           "favourite_pitch_spread": 28,
           "purchase_is_derived": true
         },
         "purchase_sort_region": [
           622,
-          134,
+          135,
           752,
-          166
+          167
         ],
-        "purchase_sort_text_seen": "IC y Price:Low to \u00bbEal",
+        "purchase_sort_text_seen": "IC \\V/ \\V/ \u00bbEal y Price:High to",
         "purchase_sort_anchor": [
           662,
-          150
+          151
         ],
         "purchase_buy_x": 828,
-        "purchase_row_pitch": 54,
+        "purchase_row_pitch": 55,
         "purchase_row_one_y": 258,
         "purchase_row_one": [
           192,
@@ -1721,6 +1717,10 @@
         ],
         "rows_per_notch": 1,
         "register_rows_seen": 9,
+        "refresh_point": [
+          846,
+          748
+        ],
         "panel": {
           "panel_box": [
             7,
@@ -1779,7 +1779,7 @@
         ],
         "button_cancel": [
           1101,
-          635
+          634
         ],
         "button_confirmation": [
           968,
@@ -1788,7 +1788,7 @@
       },
       "regions": {
         "alz_search": [
-          0.8447916666666667,
+          0.8916666666666667,
           0.647175421209118,
           0.9890625,
           0.6788899900891973
@@ -1802,31 +1802,31 @@
         ],
         "cells": {
           "1x1": [
-            187,
-            791
+            186,
+            792
           ],
           "1x2": [
-            235,
-            791
+            234,
+            792
           ],
           "1x3": [
             283,
-            791
+            792
           ],
           "1x4": [
             328,
-            791
+            792
           ],
           "1x5": [
             377,
-            791
+            792
           ],
           "2x1": [
-            187,
+            186,
             839
           ],
           "2x2": [
-            235,
+            234,
             839
           ],
           "2x3": [
@@ -1842,51 +1842,51 @@
             839
           ],
           "3x1": [
-            187,
-            903
+            186,
+            890
           ],
           "3x2": [
-            235,
-            903
+            234,
+            890
           ],
           "3x3": [
             283,
-            903
+            890
           ],
           "3x4": [
             328,
-            903
+            890
           ],
           "3x5": [
             377,
-            903
+            890
           ],
           "4x1": [
-            187,
-            934
+            186,
+            931
           ],
           "4x2": [
-            235,
-            934
+            234,
+            931
           ],
           "4x3": [
             283,
-            934
+            931
           ],
           "4x4": [
             328,
-            934
+            931
           ],
           "4x5": [
             377,
-            934
+            931
           ]
         },
         "set_to_core": {
           "Force Core(Low)": {
             "cell": "2x1",
             "point": [
-              187,
+              186,
               839
             ],
             "costs": "Force Core Set (Low)"
@@ -1894,7 +1894,7 @@
           "Force Core(Medium)": {
             "cell": "2x2",
             "point": [
-              235,
+              234,
               839
             ],
             "costs": "Force Core Set (Medium)"
@@ -1926,16 +1926,16 @@
           "Upgrade Core(Low)": {
             "cell": "4x1",
             "point": [
-              187,
-              934
+              186,
+              931
             ],
             "costs": "Upgrade Core Set (Low)"
           },
           "Upgrade Core(Medium)": {
             "cell": "4x2",
             "point": [
-              235,
-              934
+              234,
+              931
             ],
             "costs": "Upgrade Core Set (Medium)"
           },
@@ -1943,7 +1943,7 @@
             "cell": "4x3",
             "point": [
               283,
-              934
+              931
             ],
             "costs": "Upgrade Core Set (High)"
           },
@@ -1951,7 +1951,7 @@
             "cell": "4x4",
             "point": [
               328,
-              934
+              931
             ],
             "costs": "Upgrade Core Set (Highest)"
           },
@@ -1959,23 +1959,23 @@
             "cell": "4x5",
             "point": [
               377,
-              934
+              931
             ],
             "costs": "Upgrade Core Set (Ultimate)"
           }
         },
         "columns": [
-          187,
-          235,
+          186,
+          234,
           283,
           328,
           377
         ],
         "rows": [
-          791,
+          792,
           839,
-          903,
-          934
+          890,
+          931
         ]
       },
       "craft": {
@@ -2055,18 +2055,18 @@
     "10": "Upgrade Core Set (Ultimate)"
   },
   "market": {
-    "measured_at": "2026-08-28T16:49:49",
+    "measured_at": "2026-08-28T19:39:56",
     "unit_price": {
-      "1": 227956,
-      "2": 198105,
-      "3": 730000,
-      "4": 739978,
+      "1": 227858,
+      "2": 197000,
+      "3": 679999,
+      "4": 739910,
       "5": 699999,
-      "6": 677994,
-      "7": 199976,
-      "8": 214195,
-      "9": 425415,
-      "10": 425424
+      "6": 677995,
+      "7": 199990,
+      "8": 209615,
+      "9": 459965,
+      "10": 460000
     }
   },
   "detect": {
@@ -2164,7 +2164,7 @@
     ]
   },
   "voucher": {
-    "measured_at": "2026-08-28T16:49:49",
-    "unit_price": 374000000
+    "measured_at": "2026-08-28T19:39:56",
+    "unit_price": 373959999
   }
 }
