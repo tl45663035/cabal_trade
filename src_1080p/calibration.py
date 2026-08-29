@@ -2302,7 +2302,8 @@ def craft_window_open(image=None):
     image = image if image is not None else grab()
     box = _box(tuple(_REG["craft_buttons"]))
     seen = {re.sub(r"[^a-z]", "", t.lower()) for t, _c, _p in ocr(image, box)}
-    return re.sub(r"[^a-z]", "", CRAFT_COMPLETE_WORD.lower()) in seen
+    want = re.sub(r"[^a-z]", "", CRAFT_COMPLETE_WORD.lower())
+    return any(want in word for word in seen)
 
 
 WORD_ROW_SLACK = _DET["word_row_slack"]
