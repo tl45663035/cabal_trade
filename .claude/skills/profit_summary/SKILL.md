@@ -11,11 +11,14 @@ Run the tool and report what it prints:
 py tools/profit_summary.py
 ```
 
-It reads both ledgers read-only, so it is safe while a run is in progress:
-`sales.db` at the repo root, written by `trade.py`, and `src/sales.db`, written
-by `src/`. They are pooled into **one** summary -- the same stock in the same
-game, so a Core one script bought and the other sold matches. Paths are derived
+It reads the ledger read-only, so it is safe while a run is in progress.
+It counts **`src_1080p/sales.db` only** -- that is the tree being run, and the
+one asked for. It used to pool `src` with `src_stable`, which stopped making
+sense when the trees were split and `src_stable` was deleted. Paths are derived
 from where the tool sits, so it works on any machine.
+
+The root `sales.db` and `src_1440p/sales.db` are left out. If a run on another
+tree needs counting, add it to `LEDGERS` with the right pack convention below.
 
 ## What it counts
 
