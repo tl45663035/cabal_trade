@@ -1241,7 +1241,7 @@
         1920,
         1080
       ],
-      "measured_at": "2026-08-28T20:35:52",
+      "measured_at": "2026-08-28T21:12:01",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -1265,7 +1265,7 @@
       },
       "inventory": {
         "alz_box": [
-          1772,
+          1782,
           688,
           1860,
           700
@@ -1587,6 +1587,18 @@
           968,
           655
         ],
+        "button_register": [
+          131,
+          754
+        ],
+        "button_cancel": [
+          1101,
+          634
+        ],
+        "button_confirmation": [
+          968,
+          634
+        ],
         "purchase_tab": [
           96,
           80
@@ -1599,48 +1611,48 @@
         "favourites": [
           [
             480,
-            757
+            755
           ],
           [
             522,
-            757
+            755
           ],
           [
             564,
-            757
+            755
           ],
           [
             606,
-            757
+            755
           ],
           [
             648,
-            757
+            755
           ],
           [
             690,
-            757
+            755
           ],
           [
             732,
-            757
+            755
           ],
           [
             774,
-            757
+            755
           ],
           [
             816,
-            757
+            755
           ],
           [
             858,
-            757
+            755
           ]
         ],
         "favourite_pitch": 42,
         "evidence": {
-          "register_conf": 97,
+          "register_conf": 96,
           "favourite_raw_pitch": 42.0,
           "favourite_pitch_spread": 0,
           "purchase_is_derived": true
@@ -1657,7 +1669,7 @@
           150
         ],
         "purchase_buy_x": 828,
-        "purchase_row_pitch": 54,
+        "purchase_row_pitch": 55,
         "purchase_row_one_y": 258,
         "purchase_row_one": [
           192,
@@ -1772,19 +1784,7 @@
             188,
             602
           ]
-        },
-        "button_register": [
-          131,
-          754
-        ],
-        "button_cancel": [
-          1101,
-          634
-        ],
-        "button_confirmation": [
-          968,
-          634
-        ]
+        }
       },
       "regions": {
         "alz_search": [
@@ -1802,27 +1802,27 @@
         ],
         "cells": {
           "1x1": [
-            187,
-            791
+            184,
+            792
           ],
           "1x2": [
             235,
-            791
+            792
           ],
           "1x3": [
-            283,
-            791
+            281,
+            792
           ],
           "1x4": [
             328,
-            791
+            792
           ],
           "1x5": [
-            381,
-            791
+            377,
+            792
           ],
           "2x1": [
-            187,
+            184,
             839
           ],
           "2x2": [
@@ -1830,7 +1830,7 @@
             839
           ],
           "2x3": [
-            283,
+            281,
             839
           ],
           "2x4": [
@@ -1838,11 +1838,11 @@
             839
           ],
           "2x5": [
-            381,
+            377,
             839
           ],
           "3x1": [
-            187,
+            184,
             883
           ],
           "3x2": [
@@ -1850,7 +1850,7 @@
             883
           ],
           "3x3": [
-            283,
+            281,
             883
           ],
           "3x4": [
@@ -1858,35 +1858,35 @@
             883
           ],
           "3x5": [
-            381,
+            377,
             883
           ],
           "4x1": [
-            187,
-            931
+            184,
+            930
           ],
           "4x2": [
             235,
-            931
+            930
           ],
           "4x3": [
-            283,
-            931
+            281,
+            930
           ],
           "4x4": [
             328,
-            931
+            930
           ],
           "4x5": [
-            381,
-            931
+            377,
+            930
           ]
         },
         "set_to_core": {
           "Force Core(Low)": {
             "cell": "2x1",
             "point": [
-              187,
+              184,
               839
             ],
             "costs": "Force Core Set (Low)"
@@ -1902,7 +1902,7 @@
           "Force Core(High)": {
             "cell": "2x3",
             "point": [
-              283,
+              281,
               839
             ],
             "costs": "Force Core Set (High)"
@@ -1918,7 +1918,7 @@
           "Force Core (Ultimate)": {
             "cell": "2x5",
             "point": [
-              381,
+              377,
               839
             ],
             "costs": "Force Core Set (Ultimate)"
@@ -1926,8 +1926,8 @@
           "Upgrade Core(Low)": {
             "cell": "4x1",
             "point": [
-              187,
-              931
+              184,
+              930
             ],
             "costs": "Upgrade Core Set (Low)"
           },
@@ -1935,15 +1935,15 @@
             "cell": "4x2",
             "point": [
               235,
-              931
+              930
             ],
             "costs": "Upgrade Core Set (Medium)"
           },
           "Upgrade Core(High)": {
             "cell": "4x3",
             "point": [
-              283,
-              931
+              281,
+              930
             ],
             "costs": "Upgrade Core Set (High)"
           },
@@ -1951,31 +1951,31 @@
             "cell": "4x4",
             "point": [
               328,
-              931
+              930
             ],
             "costs": "Upgrade Core Set (Highest)"
           },
           "Upgrade Core (Ultimate)": {
             "cell": "4x5",
             "point": [
-              381,
-              931
+              377,
+              930
             ],
             "costs": "Upgrade Core Set (Ultimate)"
           }
         },
         "columns": [
-          187,
+          184,
           235,
-          283,
+          281,
           328,
-          381
+          377
         ],
         "rows": [
-          791,
+          792,
           839,
           883,
-          931
+          930
         ]
       },
       "craft": {
@@ -2055,18 +2055,18 @@
     "10": "Upgrade Core Set (Ultimate)"
   },
   "market": {
-    "measured_at": "2026-08-28T20:35:52",
+    "measured_at": "2026-08-28T21:12:01",
     "unit_price": {
-      "1": 227835,
-      "2": 197000,
-      "3": 679999,
-      "4": 719993,
+      "1": 227821,
+      "2": 198100,
+      "3": 679000,
+      "4": 719973,
       "5": 699999,
-      "6": 640000,
+      "6": 677995,
       "7": 199990,
-      "8": 214195,
-      "9": 459964,
-      "10": 440000
+      "8": 214190,
+      "9": 459944,
+      "10": 434782
     }
   },
   "detect": {
@@ -2164,7 +2164,7 @@
     ]
   },
   "voucher": {
-    "measured_at": "2026-08-28T20:35:52",
-    "unit_price": 371111111
+    "measured_at": "2026-08-28T21:12:01",
+    "unit_price": 373000000
   }
 }
