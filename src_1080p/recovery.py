@@ -39,6 +39,11 @@ DIALOG_BUTTON_F = tuple(_REG["recovery_dialog_button"])
 DUAL_YES_F = tuple(_REG["recovery_dual_yes"])
 SELECT_PANEL_F = tuple(_REG["recovery_select_panel"])
 ENTER_BUTTON_F = tuple(_REG["recovery_enter_button"])
+LOGIN_PANEL_F = tuple(_REG["recovery_login_panel"])
+KEYPAD_F = tuple(_REG["recovery_keypad"])
+KEYPAD_COLUMNS = 6
+KEYPAD_ROWS = 2
+KEYPAD_OK_F = tuple(_REG["recovery_keypad_ok"])
 RECONNECT_TRIES = _R["reconnect_tries"]
 RECONNECT_SETTLE = _R["reconnect_settle"]
 NOTICE_TRIES = _R["notice_tries"]
@@ -136,10 +141,12 @@ def _box_frac(frac):
             round(x + frac[2] * w), round(y + frac[3] * h))
 
 
-def _wait_for(want, timeout=SCREEN_TIMEOUT, whole=True, verbose=True):
+def _wait_for(want, timeout=SCREEN_TIMEOUT, whole=True, verbose=True,
+              region=None):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        point = _find(want, whole=whole)
+        point = (_find_in(want, region, whole=whole) if region
+                 else _find(want, whole=whole))
         if point is not None:
             if verbose:
                 print(f"  {want!r} at {list(point)}")
@@ -165,8 +172,10 @@ def _find_near(want, anchor, timeout=SCREEN_TIMEOUT, verbose=True):
     return None
 
 
-def _needed(want, timeout=SCREEN_TIMEOUT, whole=True, verbose=True):
-    point = _wait_for(want, timeout=timeout, whole=whole, verbose=verbose)
+def _needed(want, timeout=SCREEN_TIMEOUT, whole=True, verbose=True,
+            region=None):
+    point = _wait_for(want, timeout=timeout, whole=whole, verbose=verbose,
+                      region=region)
     if point is None:
         calibration.snap(f"recovery_no_{want.replace(' ', '_')}")
         raise Refused(
@@ -237,38 +246,56 @@ def in_the_world(timeout=None):
         return False
 
 
+def _keypad_cells(image=None):
+    image = image if image is not None else calibration.grab()
+    box = _box_frac(KEYPAD_F)
+    wide = (box[2] - box[0]) / KEYPAD_COLUMNS
+    tall = (box[3] - box[1]) / KEYPAD_ROWS
+    seen = {}
+    for row in range(KEYPAD_ROWS):
+        for column in range(KEYPAD_COLUMNS):
+            middle = (round(box[0] + (column + 0.5) * wide),
+                      round(box[1] + (row + 0.5) * tall))
+            cell = (round(middle[0] - wide / 2), round(middle[1] - tall / 2),
+                    round(middle[0] + wide / 2), round(middle[1] + tall / 2))
+            digit = calibration.read_line(image, cell).strip()
+            if len(digit) == 1 and digit.isdigit():
+                seen.setdefault(digit, []).append(middle)
+    return seen
+
+
 def keypad_if_asked(timeout=SUB_PASSWORD_WAIT, verbose=True):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        words = _words()
-        digits = {t.strip() for t, _c, _p in words
-                  if len(t.strip()) == 1 and t.strip().isdigit()}
-        if len(digits) >= 10:
-            return keypad(verbose=verbose)
+        seen = _keypad_cells()
+        if len(seen) >= 10 and all(len(p) == 1 for p in seen.values()):
+            return keypad(verbose=verbose, seen=seen)
         if calibration.await_inventory(timeout=ACTION_GAP) is not None:
             return None
         time.sleep(POLL_GAP)
     return None
 
 
-def keypad(verbose=True):
-    words = _words()
-    seen = {}
-    for text, _conf, point in words:
-        digit = text.strip()
-        if len(digit) == 1 and digit.isdigit():
-            seen.setdefault(digit, []).append(point)
-    doubled = sorted(d for d, points in seen.items() if len(points) > 1)
-    missing = sorted(str(d) for d in range(10) if str(d) not in seen)
-    if missing or doubled:
-        calibration.snap("recovery_keypad_unclear")
-        raise Refused(
-            f"the sub password keypad does not read as ten single digits: "
-            f"{'missing ' + ','.join(missing) if missing else ''}"
-            f"{' and ' if missing and doubled else ''}"
-            f"{'seen twice ' + ','.join(doubled) if doubled else ''}. "
-            f"Nothing was clicked.")
-    out = {digit: points[0] for digit, points in seen.items()}
+def keypad(verbose=True, seen=None):
+    deadline = time.monotonic() + SCREEN_TIMEOUT
+    while True:
+        read = _keypad_cells() if seen is None else seen
+        doubled = sorted(d for d, points in read.items() if len(points) > 1)
+        missing = sorted(str(d) for d in range(10) if str(d) not in read)
+        if not missing and not doubled:
+            break
+        seen = None
+        if time.monotonic() >= deadline:
+            calibration.snap("recovery_keypad_unclear")
+            raise Refused(
+                f"the sub password keypad does not read as ten single "
+                f"digits: "
+                f"{'missing ' + ','.join(missing) if missing else ''}"
+                f"{' and ' if missing and doubled else ''}"
+                f"{'seen twice ' + ','.join(doubled) if doubled else ''}. "
+                f"Nothing was clicked.")
+        time.sleep(POLL_GAP)
+    out = {digit: points[0] for digit, points in read.items()}
     if verbose:
         print(f"  keypad reads {' '.join(d + '@' + str(list(p)) for d, p in sorted(out.items()))}")
     return out
@@ -306,7 +333,7 @@ def recover(verbose=True):
                 print(f"  {OK_WORD} would not read; clicking the dialog's "
                       f"button seat at {list(shut)}")
         calibration.click(*shut)
-    elif _find(LOGIN_WORD) is None:
+    elif _find_in(LOGIN_WORD, LOGIN_PANEL_F, whole=True) is None:
         calibration.snap("recovery_nothing_to_recover")
         raise Refused(
             "no disconnect notice and no login screen, so there is nothing "
@@ -315,7 +342,8 @@ def recover(verbose=True):
         print("  no disconnect notice; the login screen is already up")
 
     for attempt in range(1, LOGIN_TRIES + 1):
-        sign_in = _needed(LOGIN_WORD, verbose=verbose)
+        sign_in = _needed(LOGIN_WORD, verbose=verbose,
+                          region=LOGIN_PANEL_F)
         calibration.snap("recovery_login_screen")
 
         name = (sign_in[0], sign_in[1] - USERNAME_ABOVE_LOGIN)
@@ -335,7 +363,8 @@ def recover(verbose=True):
         if verbose:
             print(f"  typed; waiting {AFTER_TYPING_WAIT:g}s before Login")
         time.sleep(AFTER_TYPING_WAIT)
-        calibration.click(*_needed(LOGIN_WORD, verbose=False))
+        calibration.click(*_needed(LOGIN_WORD, verbose=False,
+                                   region=LOGIN_PANEL_F))
 
         outcome, where, reconnects = None, None, 0
         deadline = time.monotonic() + SCREEN_TIMEOUT
@@ -453,7 +482,8 @@ def recover(verbose=True):
             if verbose:
                 print(f"  sub password digit at {list(pad[digit])}")
             calibration.click(*pad[digit])
-        calibration.click(*_needed(OK_WORD, verbose=verbose))
+        calibration.click(*_needed(OK_WORD, verbose=verbose,
+                                   region=KEYPAD_OK_F))
 
     deadline = time.monotonic() + WORLD_TIMEOUT
     while time.monotonic() < deadline:
