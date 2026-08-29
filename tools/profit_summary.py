@@ -5,8 +5,7 @@ import re
 import sqlite3
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-LEDGERS = (("src", ROOT / "src" / "sales.db", False),
-           ("src_stable", ROOT / "src_stable" / "sales.db", False))
+LEDGERS = (("src_1080p", ROOT / "src_1080p" / "sales.db", False),)
 PACK = re.compile(r"\bX\s*[\d,]+", re.I)
 
 
