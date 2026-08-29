@@ -2269,7 +2269,8 @@ def craft_window_open(image=None):
     image = image if image is not None else grab()
     box = _box(tuple(_REG["craft_buttons"]))
     seen = {re.sub(r"[^a-z]", "", t.lower()) for t, _c, _p in ocr(image, box)}
-    return re.sub(r"[^a-z]", "", CRAFT_COMPLETE_WORD.lower()) in seen
+    want = re.sub(r"[^a-z]", "", CRAFT_COMPLETE_WORD.lower())
+    return any(want in word for word in seen)
 
 
 WORD_ROW_SLACK = _DET["word_row_slack"]
@@ -2333,27 +2334,6 @@ def calibrate_craft(verbose=True):
     span = [p[0] for _t, _c, p in tiers if p[1] == tier_y]
     left = (min(span) + max(span)) // 2
 
-    buttons = ocr(image, _box(tuple(_REG["craft_buttons"])))
-    def button(word):
-        want = re.sub(r"[^a-z]", "", word.lower())
-        for text, _conf, point in buttons:
-            if re.sub(r"[^a-z]", "", text.lower()) == want:
-                return list(point)
-        return None
-    want = re.sub(r"[^a-z]", "", CRAFT_COMPLETE_WORD.lower())
-    on_row = [p for t, _c, p in buttons
-              if re.sub(r"[^a-z]", "", t.lower()) == want]
-    if not on_row:
-        raise RuntimeError(
-            f"no {CRAFT_COMPLETE_WORD} button in the craft button band; it "
-            f"read {[t for t, _c, _p in buttons]}. Nothing written.")
-    at_y = on_row[0][1]
-    right = sorted(p[0] for _t, _c, p in buttons
-                   if abs(p[1] - at_y) <= WORD_ROW_SLACK
-                   and p[0] > on_row[0][0])
-    tail = right[0] if right else on_row[0][0]
-    complete = [(on_row[0][0] + tail) // 2, at_y]
-
     click(left, tier_y)
     time.sleep(TAB_SETTLE)
     recipes = ocr(grab(), _box(tuple(_REG["craft_recipes"])))
@@ -2392,13 +2372,40 @@ def calibrate_craft(verbose=True):
     first = next(iter(found.values()))
     click(*first)
     time.sleep(TAB_SETTLE)
-    chosen = ocr(grab(), _box(tuple(_REG["craft_buttons"])))
-    request = _two_word_button(chosen, CRAFT_REQUEST_WORDS)
+    band = _box(tuple(_REG["craft_buttons"]))
+    def joined(words, word):
+        want = re.sub(r"[^a-z]", "", word.lower())
+        for text, _conf, point in words:
+            flat = re.sub(r"[^a-z]", "", text.lower())
+            if flat == want:
+                after = sorted(p[0] for _t, _c, p in words
+                               if abs(p[1] - point[1]) <= WORD_ROW_SLACK
+                               and p[0] > point[0])
+                tail = after[0] if after else point[0]
+                return [(point[0] + tail) // 2, point[1]]
+            if want in flat:
+                return list(point)
+        return None
+    chosen = ocr(grab(), band)
+    deadline = time.monotonic() + DIALOG_TIMEOUT
+    while time.monotonic() < deadline:
+        if (_two_word_button(chosen, CRAFT_REQUEST_WORDS)
+                or joined(chosen, CRAFT_REQUEST_WORDS[0])) and                 joined(chosen, CRAFT_COMPLETE_WORD):
+            break
+        time.sleep(POLL_GAP)
+        chosen = ocr(grab(), band)
+    request = (_two_word_button(chosen, CRAFT_REQUEST_WORDS)
+               or joined(chosen, CRAFT_REQUEST_WORDS[0]))
     if request is None:
         raise RuntimeError(
             f"no {' '.join(CRAFT_REQUEST_WORDS)} button after choosing a "
             f"recipe; the band read {[t for t, _c, _p in chosen]}. "
             f"Nothing written.")
+    complete = joined(chosen, CRAFT_COMPLETE_WORD)
+    if complete is None:
+        raise RuntimeError(
+            f"no {CRAFT_COMPLETE_WORD} button after choosing a recipe; the "
+            f"band read {[t for t, _c, _p in chosen]}. Nothing written.")
 
     out = {"tier": [left, tier_y],
            "recipe": first,
