@@ -24,6 +24,7 @@ VOUCHER_SEARCH = _SHARED["text"]["voucher_search"]
 VOUCHER_WORD = _SHARED["text"]["voucher_word"]
 PRICE_MIN_DIGITS = _DET["price_min_digits"]
 SHOP_CHECK_GAP = _SHARED["timing"]["shop_check_gap"]
+SEARCH_SETTLE = _SHARED["timing"]["search_settle"]
 
 _NUMBER = re.compile(r"\d[\d,]*")
 _NOT_DIGIT = re.compile(r"[^0-9]")
@@ -79,6 +80,11 @@ def read_field(field, image=None):
 
 def row_name(image=None):
     return (read_fields(image).get("name") or "").strip()
+
+
+def row_mark(fields):
+    return ((fields.get("name") or "").strip(),
+            fields.get("qty"), fields.get("price"))
 
 
 def column_edges():
@@ -262,7 +268,8 @@ def get_price(slot, verbose=True, search=True):
         if not calibration.purchase_tab_showing():
             reopen_shop(slot, verbose=verbose)
         with calibration.step("get_price: read row 1 before the search"):
-            before = row_name()
+            was = row_mark(read_fields())
+        before = was[0]
         stale = None if name_matches(slot, before) else before
         with calibration.step(f"get_price: click favourite slot {slot}"):
             shop.click(x, y, settle=0.0)
@@ -271,6 +278,8 @@ def get_price(slot, verbose=True, search=True):
         next_check = time.monotonic() + SHOP_CHECK_GAP
         polls = 0
         poll_started = time.monotonic()
+        settled = time.monotonic() + SEARCH_SETTLE
+        told = False
         while not gone and time.monotonic() < deadline:
             polls += 1
             image = calibration.grab()
@@ -286,6 +295,15 @@ def get_price(slot, verbose=True, search=True):
                         gone = True
                         break
                     next_check = time.monotonic() + SHOP_CHECK_GAP
+                continue
+            if row_mark(fields) == was and time.monotonic() < settled:
+                if verbose and not told:
+                    told = True
+                    print(f"    row 1 still reads what it did before the "
+                          f"search ({was[0]!r} x{was[1]} at {was[2]}); "
+                          f"giving the table up to {SEARCH_SETTLE:g}s to come "
+                          f"back before trusting it")
+                time.sleep(POLL_GAP)
                 continue
             row = parse_fields(fields)
             if row is not None:
