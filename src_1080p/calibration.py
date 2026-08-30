@@ -527,6 +527,7 @@ FAV_MERGE_GAP = _DET["fav_merge_gap"]
 CONVERT_PEAK_CUT = _DET["convert_peak_cut"]
 CONVERT_MERGE_GAP = _DET["convert_merge_gap"]
 CONVERT_GRID_SLACK = _DET["convert_grid_slack"]
+CONVERT_GRID_SETTLE = _S["timing"]["convert_grid_settle"]
 FAV_PITCH_SPREAD = _DET["fav_pitch_spread"]
 SORT_PAD_LEFT = _DET["sort_pad_left"]
 SORT_PAD_RIGHT = _DET["sort_pad_right"]
@@ -2490,13 +2491,28 @@ def calibrate_convert(verbose=True):
     time.sleep(TAB_SETTLE)
     park()
 
-    image = grab()
     band = _box(CONVERT_GRID_BAND_F)
-    grid = np.asarray(image.crop(band).convert("L"), dtype=float)
-    cols = _peaks(grid.mean(axis=0), CONVERT_PEAK_CUT, CONVERT_MERGE_GAP,
-                  keep=len(CONVERT_GRADES))
-    rows = _peaks(grid.mean(axis=1), CONVERT_PEAK_CUT, CONVERT_MERGE_GAP,
-                  keep=CONVERT_ROW_COUNT)
+
+    def _read_grid():
+        shot = grab()
+        cell = np.asarray(shot.crop(band).convert("L"), dtype=float)
+        return (shot,
+                _peaks(cell.mean(axis=0), CONVERT_PEAK_CUT,
+                       CONVERT_MERGE_GAP, keep=len(CONVERT_GRADES)),
+                _peaks(cell.mean(axis=1), CONVERT_PEAK_CUT,
+                       CONVERT_MERGE_GAP, keep=CONVERT_ROW_COUNT))
+
+    image, cols, rows = _read_grid()
+    deadline = time.monotonic() + CONVERT_GRID_SETTLE
+    looks = 1
+    while (len(rows) != CONVERT_ROW_COUNT
+           or len(cols) != len(CONVERT_GRADES)) and             time.monotonic() < deadline:
+        time.sleep(POLL_GAP or 0.1)
+        image, cols, rows = _read_grid()
+        looks += 1
+    if looks > 1:
+        say(f"  the grid took {looks} look(s) to draw all "
+            f"{CONVERT_ROW_COUNT} rows")
     xs = [band[0] + i for i in cols]
     ys = [band[1] + i for i in rows]
     say(f"  grid band {band}: {len(xs)} column(s) at {xs}, "

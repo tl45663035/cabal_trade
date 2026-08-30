@@ -425,6 +425,22 @@ def dialog_buttons(image=None):
     return seen
 
 
+UNDERPRICE_F = tuple(calibration._REG["underprice_warning"])
+UNDERPRICE_TEXT = re.compile(calibration._S["text"]["underprice_warning"],
+                             re.IGNORECASE)
+
+
+class Underpriced(Divergence):
+    pass
+
+
+def second_confirmation(image=None):
+    image = image if image is not None else calibration.grab()
+    seen = " ".join(t for t, _c, _p in
+                    calibration.ocr(image, calibration._box(UNDERPRICE_F)))
+    return UNDERPRICE_TEXT.search(seen) is not None
+
+
 def dialog_gone(timeout=None):
     deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
                                    else timeout)
@@ -921,6 +937,17 @@ class RowModel:
         with calibration.step("confirm the dialog is gone"):
             gone = dialog_gone()
         if not gone:
+            if second_confirmation():
+                calibration.snap("second_confirmation")
+                shut = find_button(DISMISS_WORD)
+                if shut is not None:
+                    with calibration.step(f"click {DISMISS_WORD}"):
+                        calibration.click(*shut, settle=0.0)
+                    calibration.park()
+                raise Underpriced(
+                    f"the game asked again because {want:,} is far under the "
+                    f"average it holds for this item. {DISMISS_WORD} pressed "
+                    f"and nothing listed; the floor goes back on.")
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
                 f"listing committed is unknown -- check the shop by hand.")

@@ -296,6 +296,24 @@ def relist_one(model, index, verbose=True):
             out = model.list_slot(*landing, floor=floor, why=why,
                                   verbose=verbose, lands_in=lands_in,
                                   expect_item=row.name, listed_at=row.price)
+    except row_model.Underpriced as exc:
+        print(f"  {exc}")
+        model.forget_floor(index)
+        back, back_pair = calibration.price_floor(row.name)
+        if not back:
+            print(f"    {row.name} has no floor to go back to; leaving it on "
+                  f"tab {row_model.WORK_TAB}")
+            return None
+        back = back * (1 if calibration.voucher_floor_ratio(row.name)[1] > 0
+                       else row.pack)
+        print(f"    listing it at the {back:,} floor instead "
+              f"(a {back_pair} costs {back:,})")
+        with calibration.phase("list it back at the floor"):
+            out = model.list_slot(*landing, floor=back,
+                                  why=f"a {back_pair} costs {back:,}",
+                                  verbose=verbose, lands_in=lands_in,
+                                  expect_item=row.name, listed_at=row.price)
+        breaking = False
     except row_model.SlotNeverFilled:
         seen = row_model.read_row_one()
         if row_model.row_function(seen) != row_model.RECEIPT_WORD:

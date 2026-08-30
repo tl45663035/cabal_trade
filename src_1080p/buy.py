@@ -350,10 +350,20 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
             f"the balance rose from {before_alz:,} to {after_alz:,} across "
             f"the order, which a purchase cannot do. Check by hand.")
     if not per_pack or spent % per_pack != 0:
-        raise Refused(
-            f"the spend {spent:,} is not a whole multiple of the {per_pack:,} "
-            f"pack price after {REREADS} reads. Balance {before_alz:,} -> "
-            f"{after_alz:,}. Something was bought; check by hand.")
+        shelf = detail["price"] // max(1, detail["qty"] or 1)
+        shelf_pack = max(1, row_model.pack_size(detail["item"]))
+        if shelf and spent % shelf == 0:
+            say(f"    the spend {spent:,} is no whole multiple of the row's "
+                f"{per_pack:,}, but it is {spent // shelf} x the dialog's "
+                f"{shelf:,}; the board moved under the read, so the dialog "
+                f"is what was bought")
+            per_pack, pack = shelf, shelf_pack
+        else:
+            raise Refused(
+                f"the spend {spent:,} is not a whole multiple of the "
+                f"{per_pack:,} pack price after {REREADS} reads, nor of the "
+                f"dialog's {shelf:,}. Balance {before_alz:,} -> "
+                f"{after_alz:,}. Something was bought; check by hand.")
     packs = spent // per_pack
     units = packs * pack
     per_unit = spent // units if units else 0

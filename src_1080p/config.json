@@ -14,12 +14,12 @@
       "Divine Stone": 4
     },
     "buy_min": {
-      "default": 200,
+      "default": 400,
       "Chaos Core": 150,
       "Divine Stone": 150
     },
     "buy_max": {
-      "default": 750,
+      "default": 999,
       "Chaos Core": 500,
       "Divine Stone": 500
     },
@@ -142,7 +142,8 @@
     "craft_settle_max": 300.0,
     "stop_key_poll": 0.03,
     "gift_gap": 0.5,
-    "search_settle": 1.5
+    "search_settle": 1.5,
+    "convert_grid_settle": 2.0
   },
   "war": {
     "enabled": true,
