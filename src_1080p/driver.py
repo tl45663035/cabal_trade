@@ -1035,7 +1035,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
     with calibration.phase(f"craft {core} into {set_name}"):
-        made = craft.craft_sets(core, verbose=verbose)
+        made = craft.craft_sets(core, verbose=verbose, held=bought - spare)
     with calibration.phase("close the craft window"):
         craft.close_craft()
 

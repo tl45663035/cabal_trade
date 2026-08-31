@@ -8,14 +8,12 @@ TAB_SETTLE = _SHARED["timing"]["tab_settle"]
 ACTION_GAP = _SHARED["timing"]["action_gap"]
 POLL_GAP = _SHARED["timing"]["poll_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
-PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 LOAD_ATTEMPTS = _SHARED["detect"]["load_attempts"]
-PANEL_REREAD_GAP = _SHARED["timing"]["panel_reread_gap"]
 SETTLE_PER_BLOCK = _SHARED["timing"]["craft_settle_per_block"]
 SETTLE_BLOCK = _SHARED["timing"]["craft_settle_block"]
 SETTLE_MAX = _SHARED["timing"]["craft_settle_max"]
 CORES_PER_SET = calibration.CRAFT_CORES_PER_SET
-HELD_OF_NEEDED = calibration.HELD_OF_NEEDED
+UNKNOWN_HELD = 300
 def _core_name(core=None):
     if core:
         return core
@@ -87,24 +85,6 @@ def select_recipe(core=None, verbose=True):
     return point
 
 
-def material_held():
-    box = tuple(_cal()["material_box"])
-    line = calibration.read_line(calibration.grab(), box)
-    held = (line or "").split(HELD_OF_NEEDED)[0]
-    return calibration._digits(held)
-
-
-def await_material(verbose=True):
-    say = print if verbose else (lambda *a: None)
-    for attempt in range(1, PANEL_REREADS + 2):
-        held = material_held()
-        if held:
-            return held
-        say(f"    read {attempt}: the material counter is empty")
-        time.sleep(PANEL_REREAD_GAP)
-    return None
-
-
 def request_all(verbose=True):
     say = print if verbose else (lambda *a: None)
     point = _cal().get("request")
@@ -125,17 +105,17 @@ def settle_seconds(made):
 
 def await_drain(before, verbose=True):
     say = print if verbose else (lambda *a: None)
-    wait = settle_seconds(before)
-    say(f"  waiting {wait:.0f}s for {before} core(s) "
-        f"({SETTLE_PER_BLOCK:.0f}s per {SETTLE_BLOCK}, rounded up)")
+    if before:
+        wait = settle_seconds(before)
+        say(f"  waiting {wait:.0f}s for {before} core(s) "
+            f"({SETTLE_PER_BLOCK:.0f}s per {SETTLE_BLOCK}, rounded up)")
+    else:
+        wait = settle_seconds(UNKNOWN_HELD)
+        say(f"  the caller did not say how many; waiting {wait:.0f}s, what "
+            f"{UNKNOWN_HELD} core(s) would need "
+            f"({SETTLE_PER_BLOCK:.0f}s per {SETTLE_BLOCK}, rounded up)")
     time.sleep(wait)
-    after = material_held()
-    if after is None:
-        say(f"  the material counter did not read back; taking the queue as "
-            f"having used all {before}")
-        return before
-    say(f"  the queue consumed {before - after} of {before}")
-    return max(0, before - after)
+    return before
 
 
 def complete_all(verbose=True):
@@ -171,7 +151,7 @@ def close_craft():
     return not calibration.craft_window_open()
 
 
-def craft_sets(core=None, verbose=True):
+def craft_sets(core=None, verbose=True, held=None):
     say = print if verbose else (lambda *a: None)
     CORE_NAME = _core_name(core)
     calibration.steps_reset()
@@ -179,11 +159,12 @@ def craft_sets(core=None, verbose=True):
         open_craft(verbose=verbose)
     with calibration.step("select the recipe"):
         select_recipe(core, verbose=verbose)
-    with calibration.step("read the material counter"):
-        before = await_material(verbose=verbose)
-    if not before:
-        raise Refused(f"no {CORE_NAME} is held; nothing to craft.")
-    say(f"  {before} {CORE_NAME}(s) held, {CORES_PER_SET} to a craft")
+    before = int(held) if held else None
+    if before:
+        say(f"  {before} {CORE_NAME}(s) bought this pass, "
+            f"{CORES_PER_SET} to a craft")
+    else:
+        say(f"  the caller did not say how many {CORE_NAME}(s) are held")
     with calibration.step(f"{' '.join(calibration.CRAFT_REQUEST_WORDS)}"):
         request_all(verbose=verbose)
     with calibration.step("wait for the queue"):
@@ -195,10 +176,6 @@ def craft_sets(core=None, verbose=True):
         pre = calibration.occupied_slots()
     with calibration.step(f"{calibration.CRAFT_COMPLETE_WORD} All"):
         complete_all(verbose=verbose)
-    left = material_held() or 0
-    if left:
-        say(f"  {left} {CORE_NAME}(s) were left behind; "
-            f"{' '.join(calibration.CRAFT_REQUEST_WORDS)} would not take them")
     arrived = sorted(calibration.occupied_slots() - pre)
     if arrived:
         landed = arrived[0]
@@ -209,6 +186,7 @@ def craft_sets(core=None, verbose=True):
             f"{landed}")
     with calibration.step("compress the crafted Sets"):
         compress(landed, verbose=verbose)
-    say(f"  {used} {CORE_NAME}(s) went into the queue")
+    say(f"  {used if used is not None else 'an unknown number of'} "
+        f"{CORE_NAME}(s) went into the queue")
     calibration.steps_table(f"craft from {used} {CORE_NAME}(s)")
     return {"held": before, "used": used, "slot": tuple(landed)}
