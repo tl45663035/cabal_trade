@@ -189,6 +189,22 @@ def _double_click(x, y):
     calibration.click(x, y)
 
 
+def _enter_the_world(verbose=True):
+    """Press Enter once the character is picked.
+
+    The double-click only highlights the row; the world is entered from
+    the Start button, and Enter is the keyboard for it. Without this the
+    run sat on the character screen until world_timeout while
+    await_inventory pressed I at it."""
+    from open_inventory import press
+    keys = calibration.load_shared()["input"]
+    if verbose:
+        print("  Enter to start")
+    press(keys["VK_RETURN"])
+    calibration.snap("recovery_pressed_enter")
+    time.sleep(ACTION_GAP)
+
+
 def _clear_field():
     from open_inventory import press
     keys = calibration.load_shared()["input"]
@@ -469,7 +485,8 @@ def recover(verbose=True):
     calibration.snap("recovery_character_select")
     if verbose:
         print(f"  {who['character']!r} at {list(who_at)}; entering")
-    _double_click(*who_at)
+    calibration.click(*who_at)
+    _enter_the_world(verbose=verbose)
 
     pad = keypad_if_asked(verbose=verbose)
     if pad is None:
