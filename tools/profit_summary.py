@@ -58,26 +58,29 @@ def since_midnight():
                                            microsecond=0)
 
 
-def rows(start):
+def rows(start, end=None, quiet=False):
     buys, sells = [], []
     claimed = set()
+    where = "run>=?" if end is None else "run>=? AND run<?"
+    args = (start,) if end is None else (start, end)
     for label, path, listed_in_packs in LEDGERS:
         if not path.exists():
-            print(f"  no ledger at {path}")
+            if not quiet:
+                print(f"  no ledger at {path}")
             continue
         conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
         here = set()
         for at, run, item, spend, qty in conn.execute(
-                "SELECT at, run, item, spend, qty FROM purchases WHERE run>=?",
-                (start,)):
+                f"SELECT at, run, item, spend, qty FROM purchases "
+                f"WHERE {where}", args):
             if run in claimed:
                 continue
             here.add(run)
             if qty:
                 buys.append((at, item, spend, qty))
         for at, run, item, qty, price, proceeds in conn.execute(
-                "SELECT at, run, item, qty, price, proceeds FROM sales "
-                "WHERE run>=?", (start,)):
+                f"SELECT at, run, item, qty, price, proceeds FROM sales "
+                f"WHERE {where}", args):
             if run in claimed:
                 continue
             here.add(run)
@@ -90,16 +93,18 @@ def rows(start):
     return buys, sells
 
 
-def spans(start):
+def spans(start, end=None):
     last = {}
+    where = "run>=?" if end is None else "run>=? AND run<?"
+    args = (start,) if end is None else (start, end)
     for _label, path, _listed_in_packs in LEDGERS:
         if not path.exists():
             continue
         conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
         for table in ("purchases", "sales"):
             for run, latest in conn.execute(
-                    f"SELECT run, MAX(at) FROM {table} WHERE run>=? "
-                    f"GROUP BY run", (start,)):
+                    f"SELECT run, MAX(at) FROM {table} WHERE {where} "
+                    f"GROUP BY run", args):
                 if run and latest and latest > last.get(run, ""):
                     last[run] = latest
         conn.close()
@@ -163,7 +168,65 @@ def line(char="-", width=87):
     print(char * width)
 
 
+DAYS_BACK = 7
+
+
+def day_bounds(day):
+    start = datetime.datetime.combine(day, datetime.time.min)
+    return (start.strftime("%Y-%m-%dT%H:%M:%S"),
+            (start + datetime.timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S"))
+
+
+def day_totals(start, end):
+    """Units, revenue and cost for one midnight-to-midnight window.
+
+    Each day is matched on its own: a run launched inside it is priced
+    against purchases made by the runs of that same day, never against
+    stock the day before paid for. That is the rule the day's own summary
+    below already uses, applied one day at a time."""
+    buys, sells = rows(start, end, quiet=True)
+    per_item, _per_run = match(sells, gather(buys))
+    return (sum(r["units"] for r in per_item.values()),
+            sum(r["revenue"] for r in per_item.values()),
+            sum(r["cost"] for r in per_item.values()))
+
+
+def by_day(count=DAYS_BACK):
+    today = datetime.date.today()
+    first = today - datetime.timedelta(days=count - 1)
+    print(f"LAST {count} DAYS -- {first:%Y-%m-%d} to {today:%Y-%m-%d}, each "
+          f"day midnight to midnight")
+    print("a run counts on the day it was LAUNCHED, and each day is matched "
+          "on its own stock")
+    print("")
+    print(f"{'day':<26}{'profit':>15}{'units':>8}{'margin':>8}"
+          f"{'revenue':>16}{'cost':>16}")
+    line()
+    total = [0, 0.0, 0.0]
+    for back in range(count - 1, -1, -1):
+        day = today - datetime.timedelta(days=back)
+        units, revenue, cost = day_totals(*day_bounds(day))
+        total[0] += units
+        total[1] += revenue
+        total[2] += cost
+        profit = revenue - cost
+        margin = (f"{100 * profit / revenue:>7.1f}%" if revenue
+                  else f"{'--':>8}")
+        label = f"{day:%a %Y-%m-%d}" + (" (so far)" if not back else "")
+        print(f"{label:<26}{profit:>15,.0f}{units:>8,}{margin}"
+              f"{revenue:>16,.0f}{cost:>16,.0f}")
+    line("=")
+    units, revenue, cost = total
+    profit = revenue - cost
+    margin = f"{100 * profit / revenue:>7.1f}%" if revenue else f"{'--':>8}"
+    print(f"{f'{count} DAYS':<26}{profit:>15,.0f}{units:>8,}{margin}"
+          f"{revenue:>16,.0f}{cost:>16,.0f}")
+
+
 def main():
+    by_day()
+    print("")
+    print("")
     start = since_midnight()
     stamp = start.strftime("%Y-%m-%dT%H:%M:%S")
     now = datetime.datetime.now().strftime("%H:%M")
