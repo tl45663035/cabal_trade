@@ -675,6 +675,28 @@ FRAMES_ON = False
 _FRAME_N = 0
 
 
+def clear_frames() -> int:
+    """Empty the frame directory so this run numbers from 00001 upwards.
+
+    Frames used to be pruned by age at the first snap, which left a mix of
+    this run and the last one -- and every run numbers from 00001, so the
+    numbers collided and the highest number was not the newest frame.
+    Starting empty makes the highest number the latest, always."""
+    if not FRAME_DIR.exists():
+        return 0
+    gone = 0
+    for old in FRAME_DIR.glob("*.png"):
+        try:
+            old.unlink()
+            gone += 1
+        except OSError:
+            pass
+    return gone
+
+
+PRUNE_EVERY = 50
+
+
 def frames_on(enabled: "bool | None" = None) -> bool:
     global FRAMES_ON
     if enabled is None:
@@ -683,6 +705,11 @@ def frames_on(enabled: "bool | None" = None) -> bool:
     if FRAMES_ON:
         FRAME_DIR.mkdir(parents=True, exist_ok=True)
         print(f"  debug frames -> {FRAME_DIR}")
+        if _FRAME_N == 0:
+            gone = clear_frames()
+            if gone:
+                print(f"  cleared {gone} frame(s) from earlier runs; this one "
+                      f"numbers from 00001")
         recording_on()
     else:
         recording_off()
@@ -842,7 +869,7 @@ def snap(label: str, image=None) -> "Path | None":
     if not FRAMES_ON:
         return None
     _FRAME_N += 1
-    if _FRAME_N == 1:
+    if _FRAME_N % PRUNE_EVERY == 0:
         prune_frames()
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", label).strip("_") or "frame"
     out = FRAME_DIR / f"{_FRAME_N:05d}_{safe}.png"
