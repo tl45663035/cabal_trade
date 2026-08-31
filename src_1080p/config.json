@@ -9,9 +9,9 @@
       "Upgrade Core (Ultimate)": true
     },
     "rows_threshold": {
-      "default": 2,
+      "default": 3,
       "Chaos Core": 4,
-      "Divine Stone": 4
+      "Divine Stone": 2
     },
     "buy_min": {
       "default": 400,
@@ -134,7 +134,7 @@
     "shop_check_gap": 1.0,
     "field_settle": 0.05,
     "clear_gap": 0.02,
-    "server_lag_idle": 10.0,
+    "server_lag_idle": 60.0,
     "server_lag_budget": 600.0,
     "server_lag_poll": 5.0,
     "craft_settle_per_block": 5.0,
