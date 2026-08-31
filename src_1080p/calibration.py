@@ -355,6 +355,63 @@ def write_config_if_absent() -> None:
         indent=2), encoding="utf-8")
 
 
+SWAP_SLOTS = ("5", "6")
+SWAP_PAIRS = {
+    "Divine Stone": ("Divine Stone", "Divine Stone Set"),
+    "Force Core (Ultimate)": ("Force Core (Ultimate)",
+                              "Force Core Set (Ultimate)"),
+}
+
+
+def _resolve_swap(shared):
+    """Put whichever of the swappable pair is switched on into slots 5-6.
+
+    The two share one pair of favourite slots in the game, so only one can
+    be favourited at a time. Which one is a config question, not a
+    measured one: enable_buying decides, and the names follow. Neither on
+    is fine -- the slots keep whatever was measured and nothing buys
+    there. Both on is a contradiction the screen cannot express, so it
+    stops here rather than shopping the wrong item's board."""
+    table = (shared.get("resupply") or {}).get("enable_buying") or {}
+    fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
+    on = [core for core in SWAP_PAIRS
+          if any(fold(name) == fold(core) and value
+                 for name, value in table.items())]
+    if len(on) > 1:
+        raise SystemExit(
+            f"config.json enables {' and '.join(repr(c) for c in on)} at "
+            f"once. They share favourite slots {'-'.join(SWAP_SLOTS)}, so "
+            f"only one can be favourited in the game. Turn one off in "
+            f"resupply.enable_buying.")
+    if not on:
+        return shared
+    core, made = SWAP_PAIRS[on[0]]
+    shared["favourite_items"][SWAP_SLOTS[0]] = core
+    shared["favourite_items"][SWAP_SLOTS[1]] = made
+    return shared
+
+
+def swapped_for(slot, text):
+    """The other half of the swappable pair, if that is what slot 5 reads.
+
+    Slots 5-6 hold Divine Stone or Force Core (Ultimate), never both, and
+    which one is a config answer. If the board reads the one config did
+    NOT pick, the game's favourite and config.json disagree -- a settled
+    fact, not a slow market, so there is no point retrying it."""
+    if str(slot) not in SWAP_SLOTS:
+        return None
+    fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
+    here = fold(FAVOURITE_ITEMS.get(str(slot)))
+    seen = fold(text)
+    if not seen or here in seen:
+        return None
+    for core, (name, made) in SWAP_PAIRS.items():
+        wanted = fold(name if str(slot) == SWAP_SLOTS[0] else made)
+        if wanted != here and wanted in seen:
+            return name if str(slot) == SWAP_SLOTS[0] else made
+    return None
+
+
 def load_shared() -> dict:
     measured = _read(OUT)
     knobs = _read(CONFIG)
@@ -365,7 +422,7 @@ def load_shared() -> dict:
         if section in CONFIG_SECTIONS:
             merged.update(knobs.get(section) or {})
         out[section] = merged
-    return out
+    return _resolve_swap(out)
 
 
 def _measured() -> dict:
@@ -2627,6 +2684,30 @@ def buy_leave_behind(core_name):
     return _per_item("buy_leave_behind", core_name) or 0
 
 
+def _swap_or_die(slot, get_price):
+    """Stop if a swappable slot holds the item config did not pick.
+
+    Checked here and nowhere else: calibrate_prices already walks every
+    favourite once at startup, and the answer cannot change while the run
+    is up -- a favourite is not re-arranged mid-run. Putting it in the buy
+    path would re-read the same settled fact on every price check, which
+    is latency for nothing. It costs one extra read, and only when a
+    swappable slot failed to price at all."""
+    if str(slot) not in SWAP_SLOTS:
+        return
+    text = (get_price.read_fields(grab()).get("name") or "").strip()
+    instead = swapped_for(slot, text)
+    if not instead:
+        return
+    want = FAVOURITE_ITEMS[str(slot)]
+    snap(f"slot_{slot}_swapped_for_{instead}")
+    raise SystemExit(
+        f"favourite slot {slot} holds {instead!r} but config.json asks for "
+        f"{want!r}. They share the slot, so one of the two is wrong: either "
+        f"favourite {want!r} in the game, or turn {instead!r} on and {want!r} "
+        f"off in resupply.enable_buying.")
+
+
 def calibrate_prices(verbose=True):
     import get_price
     say = print if verbose else (lambda *a: None)
@@ -2638,6 +2719,7 @@ def calibrate_prices(verbose=True):
             say(f"  {FAVOURITE_ITEMS[slot]:<28}{seen[str(slot)]:>12,}")
         else:
             say(f"  {FAVOURITE_ITEMS[slot]:<28}{'unread':>12}")
+            _swap_or_die(slot, get_price)
     return seen
 
 
