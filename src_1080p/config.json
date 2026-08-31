@@ -9,12 +9,12 @@
       "Upgrade Core (Ultimate)": true
     },
     "rows_threshold": {
-      "default": 3,
-      "Chaos Core": 4,
-      "Divine Stone": 2
+      "default": 2,
+      "Chaos Core": 3,
+      "Divine Stone": 1
     },
     "buy_min": {
-      "default": 400,
+      "default": 200,
       "Chaos Core": 150,
       "Divine Stone": 150
     },
@@ -34,7 +34,7 @@
     "price_diff_threshold": {
       "Force Core(Highest)": 10000,
       "Chaos Core": 10000,
-      "Force Core(High)": 5000,
+      "Force Core(High)": 10000,
       "Upgrade Core (Ultimate)": 15000,
       "Divine Stone": 10000
     }
@@ -111,7 +111,7 @@
   },
   "debug": {
     "frames": true,
-    "keep_frames": 2000
+    "keep_frames": 500
   },
   "timing": {
     "action_gap": 0.5,
