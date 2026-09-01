@@ -129,7 +129,7 @@ DEFAULTS = {
     },
     "regions": {
         "park": [0.5078, 0.8800],
-        "recovery_dialog_button": [0.5004, 0.5457],
+        "recovery_dialog_button": [0.5005, 0.5808],
         "recovery_dual_yes": [0.4766, 0.5457],
         "recovery_select_panel": [0.7800, 0.3000, 0.9900, 0.7500],
         "recovery_enter_button": [0.8000, 0.9000, 0.9900, 0.9800],
