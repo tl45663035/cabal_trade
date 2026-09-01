@@ -38,6 +38,12 @@ def start(stamp=None):
     with sqlite3.connect(DB) as db:
         for statement in _SCHEMA:
             db.execute(statement)
+        # expect: the unit price the core was selling at when it was bought,
+        # so a run can be closed with its unsold stock valued at the margin
+        # it was bought on. Older ledgers lack the column.
+        columns = {row[1] for row in db.execute("PRAGMA table_info(purchases)")}
+        if "expect" not in columns:
+            db.execute("ALTER TABLE purchases ADD COLUMN expect INTEGER")
     return _RUN
 
 
@@ -52,9 +58,10 @@ def _write(table, columns, values):
                    (at, _RUN) + values)
 
 
-def bought(item, price, spend, qty, note=None):
-    _write("purchases", ("item", "price", "spend", "qty", "note"),
-           (item, int(price or 0), int(spend or 0), int(qty or 0), note))
+def bought(item, price, spend, qty, note=None, expect=None):
+    _write("purchases", ("item", "price", "spend", "qty", "note", "expect"),
+           (item, int(price or 0), int(spend or 0), int(qty or 0), note,
+            int(expect) if expect else None))
 
 
 def sold(item, price, proceeds, qty, note=None):
@@ -71,19 +78,26 @@ def _key(name):
 
 
 def run_profit(run=None):
+    """This run's book: every sale matched, oldest lot first, against what
+    this run bought; every lot still held valued at the unit price the core
+    was selling at when it was bought. Stock this run did not buy is not
+    its business, even if it sold it."""
     run = run or _RUN
     if run is None or not DB.exists():
-        return []
+        return [], {}
     db = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+    columns = {row[1] for row in db.execute("PRAGMA table_info(purchases)")}
+    expect_col = "expect" if "expect" in columns else "NULL"
     lots = collections.defaultdict(collections.deque)
-    for item, spend, qty in db.execute(
-            "SELECT item, spend, qty FROM purchases WHERE run=? ORDER BY at",
-            (run,)):
+    for item, spend, qty, expect in db.execute(
+            f"SELECT item, spend, qty, {expect_col} FROM purchases "
+            f"WHERE run=? ORDER BY at, id", (run,)):
         if qty:
-            lots[_key(item)].append([qty, (spend or 0) / qty])
+            cost = (spend or 0) / qty
+            lots[_key(item)].append([qty, cost, expect or cost])
     rows = {}
     for item, proceeds, qty in db.execute(
-            "SELECT item, proceeds, qty FROM sales WHERE run=? ORDER BY at",
+            "SELECT item, proceeds, qty FROM sales WHERE run=? ORDER BY at, id",
             (run,)):
         left = qty or 0
         if not left or not proceeds:
@@ -104,21 +118,26 @@ def run_profit(run=None):
                 lots[key].popleft()
         row["unmatched"] += left
     db.close()
-    held = {k: (sum(l[0] for l in q), sum(l[0] * l[1] for l in q))
-            for k, q in lots.items() if sum(l[0] for l in q)}
+    held = {}
+    for key, dq in lots.items():
+        units = sum(l[0] for l in dq)
+        if units:
+            held[key] = (units, sum(l[0] * l[1] for l in dq),
+                         sum(l[0] * l[2] for l in dq))
     return sorted(rows.values(), key=lambda r: -r["revenue"]), held
 
 
 def print_run_profit(run=None):
-    rows, held = run_profit(run) or ([], {})
+    rows, held = run_profit(run)
     print("")
-    print(f"PROFIT THIS RUN -- only cores this run both bought and sold")
+    print("PROFIT THIS RUN -- what this run bought: sold lots at what they "
+          "made, unsold lots at the price they were bought against")
+    units = revenue = cost = 0
     if not rows:
         print("  nothing this run bought has sold yet.")
     else:
         print(f"  {'item':<26}{'profit':>14}{'units':>8}{'margin':>8}"
               f"{'revenue':>15}{'cost':>15}")
-        units = revenue = cost = 0
         for row in rows:
             if not row["units"]:
                 continue
@@ -129,12 +148,21 @@ def print_run_profit(run=None):
             print(f"  {row['name'][:25]:<26}{gain:>14,.0f}{row['units']:>8,}"
                   f"{100 * gain / row['revenue']:>7.1f}%"
                   f"{row['revenue']:>15,.0f}{row['cost']:>15,.0f}")
-        gain = revenue - cost
         print(f"  {'-' * 84}")
-        print(f"  {'TOTAL':<26}{gain:>14,.0f}{units:>8,}"
+        gain = revenue - cost
+        print(f"  {'SOLD':<26}{gain:>14,.0f}{units:>8,}"
               f"{(100 * gain / revenue if revenue else 0):>7.1f}%"
               f"{revenue:>15,.0f}{cost:>15,.0f}")
+    realised = revenue - cost
+    assumed = 0.0
     if held:
-        print("  bought this run and still unsold:")
-        for key, (units, value) in sorted(held.items(), key=lambda kv: -kv[1][1]):
-            print(f"    {key:<28}{units:>8,} core(s){value:>16,.0f} Alz")
+        print("  bought this run and still unsold, taken as sold at the price "
+              "each lot was bought against:")
+        for key, (n, paid, expected) in sorted(
+                held.items(), key=lambda kv: -kv[1][1]):
+            print(f"    {key:<28}{n:>8,} core(s){paid:>16,.0f} Alz paid"
+                  f"{expected - paid:>+14,.0f}")
+            assumed += expected - paid
+    print(f"  {'-' * 84}")
+    print(f"  {'RUN CLOSED':<26}{realised + assumed:>14,.0f}"
+          f"   ({realised:,.0f} realised, {assumed:+,.0f} assumed)")

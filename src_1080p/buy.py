@@ -372,7 +372,7 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     if packs != asked:
         say(f"    note: asked for {asked} pack(s) but the spend shows "
             f"{packs}; booking what the balance proves")
-    ledger.bought(offer["name"], per_unit, spent, units)
+    ledger.bought(offer["name"], per_unit, spent, units, expect=sells_at)
     return {"slot": int(slot), "name": name, "packs": packs, "bought": units,
             "unit_price": per_unit, "price": offer["price"],
             "spent": spent, "balance": after_alz}
