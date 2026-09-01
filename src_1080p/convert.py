@@ -118,8 +118,6 @@ def convert(core_name, verbose=True):
         raise Refused(
             f"{core_name!r} is not a Set-to-Core conversion this grid offers. "
             f"It offers {sorted(_convert_cal()['set_to_core'])}.")
-    if not calibration.vendor_open():
-        raise Refused("the vendor Shop is not open. Nothing clicked.")
 
     calibration.steps_reset()
     x, y = entry["point"]
