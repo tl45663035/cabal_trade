@@ -795,7 +795,7 @@ class _Tape:
         return self
 
     def _prune(self):
-        reels = sorted(VIDEO_DIR.glob("*.mp4"), key=lambda f: f.stat().st_mtime)
+        reels = sorted(VIDEO_DIR.glob("*.mp4"), key=lambda f: f.name)
         for spent in reels[:max(0, len(reels) - self.keep)]:
             try:
                 spent.unlink()
@@ -844,11 +844,25 @@ class _Tape:
             self._prune()
 
 
+def clear_videos() -> int:
+    if not VIDEO_DIR.exists():
+        return 0
+    gone = 0
+    for old in VIDEO_DIR.glob("*.mp4"):
+        try:
+            old.unlink()
+            gone += 1
+        except OSError:
+            pass
+    return gone
+
+
 def recording_on():
     global _TAPE
     if _TAPE is not None:
         return VIDEO_DIR
     knobs = load_shared()["debug"]
+    gone = clear_videos()
     try:
         _TAPE = _Tape(knobs).start()
     except Exception as exc:
@@ -857,6 +871,9 @@ def recording_on():
         return None
     print(f"  recording -> {VIDEO_DIR} ({knobs['video_seconds']}s a reel, "
           f"{knobs['keep_videos']} kept)")
+    if gone:
+        print(f"  cleared {gone} reel(s) from earlier runs; this one numbers "
+              f"from 0001")
     return VIDEO_DIR
 
 
