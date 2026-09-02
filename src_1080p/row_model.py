@@ -425,6 +425,14 @@ def dialog_buttons(image=None):
     return seen
 
 
+def underprice_warning(image=None):
+    return calibration.underprice_warning(image)
+
+
+def underprice_warning_gone(timeout=None):
+    return calibration.underprice_warning_gone(timeout)
+
+
 def dialog_gone(timeout=None):
     deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
                                    else timeout)
@@ -914,6 +922,33 @@ class RowModel:
             raise Divergence(
                 f"no {CONFIRM_WORD} appeared after Register. Nothing "
                 f"committed.")
+        # Under 75% of the game's average the first dialog is not Confirm
+        # Registration but the underprice question. It is accepted: its
+        # Confirmation is pressed, and the real dialog that replaces it is
+        # found and pressed like any other. Nothing has committed until the
+        # second one closes.
+        with calibration.step("look for the underprice question"):
+            warned = underprice_warning()
+        if warned:
+            calibration.snap("underprice_warning")
+            if verbose:
+                print(f"    the game asks again because {want:,} is at least "
+                      f"25% under its average for this item; accepting")
+            with calibration.step(f"click {CONFIRM_WORD} on the question"):
+                calibration.click(*confirm, settle=0.0)
+            with calibration.step("wait for the question to go"):
+                if not underprice_warning_gone():
+                    calibration.snap("underprice_warning_stays")
+                    raise Divergence(
+                        f"the underprice question stayed open after "
+                        f"{CONFIRM_WORD}. Nothing committed.")
+            with calibration.step(f"find {CONFIRM_WORD} on the real dialog"):
+                confirm = find_button(CONFIRM_WORD)
+            if confirm is None:
+                calibration.snap("no_confirm_after_warning")
+                raise Divergence(
+                    f"no {CONFIRM_WORD} appeared after the underprice "
+                    f"question was accepted. Nothing committed.")
         with calibration.step(f"click {CONFIRM_WORD}"):
             calibration.click(*confirm, settle=0.0)
         with calibration.step("park"):

@@ -1313,6 +1313,36 @@ def ocr(image: Image.Image, box, scale: int = None, min_conf: float = None):
                                                        min_conf)]
 
 
+UNDERPRICE_F = tuple(_REG["underprice_warning"])
+UNDERPRICE_LINE_F = tuple(_REG["underprice_question_line"])
+UNDERPRICE_TEXT = re.compile(_S["text"]["underprice_warning"], re.IGNORECASE)
+
+
+def underprice_warning(image=None):
+    # The game's extra question before Confirm Registration when the price
+    # is under 75% of the average it holds: "Register Item -- The price is
+    # at least 25% lower than the average. Would you like to register ...?"
+    # Its Confirmation and Cancel sit exactly where the real dialog's do.
+    #
+    # The question is rare and the OCR costs 300-500ms a listing, so a
+    # pixel test goes first: the band its second line sits in is flat
+    # panel on Confirm Registration and text on the question. Only ink
+    # there earns the OCR, which still has the final word.
+    image = image if image is not None else grab()
+    if not has_ink(image, _box(UNDERPRICE_LINE_F)):
+        return False
+    seen = " ".join(t for t, _c, _p in ocr(image, _box(UNDERPRICE_F)))
+    return UNDERPRICE_TEXT.search(seen) is not None
+
+
+def underprice_warning_gone(timeout=None):
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    while time.monotonic() < deadline:
+        if not underprice_warning():
+            return True
+        time.sleep(POLL_GAP)
+    return False
 
 
 def read_line(image: Image.Image, box, scale: int = None, border: int = 0):
@@ -3119,6 +3149,26 @@ def calibrate_actions(shop, verbose=True):
         raise RuntimeError(
             "no Confirmation appeared after Register. Nothing committed; the "
             "item is in the bag.")
+    # Under 75% of the game's average the first dialog is not Confirm
+    # Registration but the underprice question, with its buttons in the
+    # same place. It is accepted, and the real dialog that replaces it is
+    # found and pressed like any other.
+    if underprice_warning():
+        snap("underprice_warning")
+        say(f"  the game asks again because {price:,} is at least 25% under "
+            f"its average for this item; accepting")
+        click(*confirm, settle=0.0)
+        if not underprice_warning_gone(budget):
+            snap("underprice_warning_stays")
+            raise RuntimeError(
+                "the underprice question stayed open after Confirmation. "
+                "Nothing committed; the item is in the bag.")
+        confirm = await_button(_S["text"]["confirm_word"])
+        if confirm is None:
+            snap("no_confirm_after_warning")
+            raise RuntimeError(
+                "no Confirmation appeared after the underprice question was "
+                "accepted. Nothing committed; the item is in the bag.")
     click(*confirm, settle=0.0)
     park()
     deadline = time.monotonic() + budget
