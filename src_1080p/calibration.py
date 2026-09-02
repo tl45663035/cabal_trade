@@ -2255,6 +2255,10 @@ def server_busy(image=None) -> bool:
     return SERVER_LAG_TEXT.search(seen) is not None
 
 
+class ServerStalled(Exception):
+    pass
+
+
 _HOLDING = False
 
 
@@ -2264,12 +2268,37 @@ def hold_if_busy() -> None:
         return
     _HOLDING = True
     try:
-        wait_out_server_lag(verbose=True)
+        waited = wait_out_server_lag(verbose=True)
     finally:
         _HOLDING = False
+    if waited:
+        raise ServerStalled(
+            f"the server stalled for {waited:.0f}s; nothing was clicked and "
+            f"the shop is shut. The pass starts again.")
 
 
-def wait_out_server_lag(verbose=True):
+_ON_RECOVERED = None
+_RECOVERING = False
+
+
+def on_recovered(fn):
+    global _ON_RECOVERED
+    _ON_RECOVERED = fn
+    return fn
+
+
+def _recovered():
+    global _RECOVERING
+    if _ON_RECOVERED is None or _RECOVERING:
+        return
+    _RECOVERING = True
+    try:
+        _ON_RECOVERED()
+    finally:
+        _RECOVERING = False
+
+
+def wait_out_server_lag(verbose=True, reset=True):
     if not server_busy():
         return 0.0
     snap("server_busy")
@@ -2285,6 +2314,8 @@ def wait_out_server_lag(verbose=True):
             snap("server_answered")
             if verbose:
                 print(f"  the server is answering again after {waited:.0f}s")
+            if reset:
+                _recovered()
             return waited
         if verbose:
             print(f"  still not answering; idling another "

@@ -374,6 +374,20 @@ def relist_one(model, index, verbose=True):
 PASS_ALLOWANCE = _SHARED["war"]["quiet_before_end"]
 
 
+def recover_after_lag(verbose=True):
+    print("  the server stalled; closing the shop rather than trusting what "
+          "is on screen")
+    try:
+        calibration.close_everything(verbose=verbose)
+    except Exception as exc:
+        print(f"  the shop would not close after the stall ({exc})")
+        return False
+    return True
+
+
+calibration.on_recovered(recover_after_lag)
+
+
 def shop_ready(why, verbose=True):
     if calibration._trade_window_open():
         return True
@@ -435,6 +449,12 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
             resupply_pass(model, first, last, verbose=verbose)
             made, missed, bare = relist_pass(model, first, last,
                                              verbose=verbose)
+        except calibration.ServerStalled as exc:
+            print(f"  {exc}")
+            if time.monotonic() >= deadline:
+                print(f"  {minutes:g} minute(s) are up after pass {passes}")
+                break
+            continue
         except row_model.Divergence as exc:
             print(f"  STOPPED: {exc}")
             stopped = exc
