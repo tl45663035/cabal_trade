@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import random
 import re
@@ -6,8 +7,13 @@ import subprocess
 import sys
 import time
 
-import buy
 import calibration
+
+if __name__ == "__main__":
+    calibration.log_to_file(next((a.lower() for a in sys.argv[1:]
+                                  if a != "--frames"), "run"))
+
+import buy
 import ledger
 import convert
 import craft
@@ -79,11 +85,6 @@ def require_shop(verbose=True):
 
 
 def board_report(model, passes):
-    # The board as the model holds it, in the row format seed() prints so
-    # tools/networth.py reads the newest table. Once a pass, with the balance,
-    # so the log carries a board minutes old instead of the one from launch.
-    # It is a report and nothing else: whatever goes wrong in it is printed
-    # and swallowed, so it can never be what ends the run.
     try:
         _board_report(model, passes)
     except Exception as exc:
@@ -92,9 +93,6 @@ def board_report(model, passes):
 
 
 def _board_report(model, passes):
-    # The table is built whole before a line of it is printed. networth.py
-    # drops the previous table the moment it sees the header, so a header
-    # followed by half a table would read as a half-empty board.
     lines = ["", f"  board after pass {passes}:"]
     by_item = {}
     for index in model.occupied():
@@ -205,6 +203,14 @@ def cancel(model, index, verbose=True):
     return model.cancel(index, verbose=verbose)
 
 
+def task(kind, **fields):
+    print("TASK " + json.dumps({"kind": kind, **fields}), flush=True)
+
+
+def task_done(kind, **fields):
+    print("DONE " + json.dumps({"kind": kind, **fields}), flush=True)
+
+
 def _after_the_lag(nothing_done, verbose=True):
     try:
         return bool(calibration.wait_out_server_lag(verbose=verbose))
@@ -305,6 +311,8 @@ def relist_one(model, index, verbose=True):
     if verbose and lands_in != index:
         print(f"    rows {[i for i in model.empty() if i < index]} are empty, "
               f"so it will come back in row {lands_in}")
+    task("relist", row=index, item=row.name, qty=row.qty, price=row.price,
+         tab=row_model.WORK_TAB, slot=list(landing), lands_in=lands_in)
     with calibration.phase("cancel the row and take it back"):
         model.cancel(index, verbose=False, tab_ready=True)
     with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
@@ -355,7 +363,10 @@ def relist_one(model, index, verbose=True):
             print(f"    collected; row {index} is empty")
         else:
             print(f"    collected; row {index} still reads {seen!r}")
+        task_done("relist", row=index, sold=True)
         return None
+    task_done("relist", row=index, lands_in=lands_in, qty=out["qty"],
+              price=out["price"])
     model._slots.pop(index, None)
     model._slots[lands_in] = row_model.Row(row.name, qty=out["qty"],
                                            price=out["price"])
@@ -481,18 +492,46 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     return done
 
 
-def do_list(row, col, price=None, verbose=True, tab=None):
+def list_floor(item, verbose=True):
+    unit_floor, pair = calibration.price_floor(item)
+    if unit_floor is None:
+        raise NotReady(f"{item!r} is floored by a {pair}, which has not "
+                       f"priced; not listing it")
+    if not unit_floor:
+        if verbose:
+            print(f"    no floor for {item!r}"
+                  + (f"; {pair} did not price" if pair else ""))
+        return 0, "", None
+    whole = calibration.voucher_floor_ratio(item)[1] > 0
+    why = f"it is worth {pair}" if whole else f"a {pair} costs {unit_floor:,}"
+    unit_market = None if whole else (calibration.market_unit(item) or None)
+    if verbose:
+        print(f"    floor {unit_floor:,} a unit from {pair}"
+              + ("" if whole or unit_market else
+                 f"; {item!r} has no market price, so a bundle's count "
+                 f"cannot be told and the floor stands per listing"))
+    return unit_floor, why, unit_market
+
+
+def do_list(row, col, price=None, verbose=True, tab=None, item=None):
     tab = row_model.WORK_TAB if tab is None else int(tab)
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
     model = row_model.RowModel().seed({})
     started = time.perf_counter()
+    floor, why, unit_market = (list_floor(item, verbose=verbose)
+                               if item and price is None else (0, "", None))
     if verbose:
         print(f"  selecting inventory tab {tab} before reading slot "
               f"({row},{col})")
     calibration.click(*calibration.inventory_tab_point(tab), settle=0.0)
     time.sleep(row_model.TAB_SETTLE)
-    out = model.list_slot(row, col, price=price, verbose=verbose)
+    out = model.list_slot(row, col, price=price, floor=floor, why=why,
+                          unit_market=unit_market,
+                          floor_each=floor if unit_market else 0,
+                          verbose=verbose)
+    task_done("list", tab=tab, slot=[int(row), int(col)], qty=out["qty"],
+              price=out["price"])
     print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
     return out
 
@@ -824,6 +863,8 @@ def resupply_one(model, slot, held, first, last, verbose=True):
             f"inventory tab {calibration.CONVERT_INVENTORY_TAB} is full.")
     print(f"  tab {calibration.CONVERT_INVENTORY_TAB} is showing and free "
           f"from {landing}, so the {set_name} and the {core} land there")
+    task("resupply", core=core, set=set_name, slot=slot,
+         tab=calibration.CONVERT_INVENTORY_TAB, landing=list(landing))
 
     bought = orders = paid = 0
     while bought < want_min:
@@ -935,6 +976,9 @@ def resupply_one(model, slot, held, first, last, verbose=True):
         print(f"  {left_to_convert} of {bought} {set_name} are still "
               f"unconverted after {rounds} round(s); they are on tab "
               f"{calibration.CONVERT_INVENTORY_TAB}.")
+    else:
+        task_done("resupply", core=core, bought=bought, listed=listed_total,
+                  rows=rows)
     calibration.phases_table(
         f"resupply {core}: bought {bought}, {slots_filled} slot(s) "
         f"filled, "
@@ -1011,6 +1055,8 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         print(f"  {leave} stays behind on every row bought; each order "
               f"prices the favourite afresh, then wheels down past the rows "
               f"already down to their last {leave}, up to {steps_max} step(s)")
+    task("resupply", core=core, set=set_name, slot=slot,
+         tab=row_model.WORK_TAB)
     bought = orders = paid = steps = 0
     searched = False
     THIN = object()
@@ -1133,12 +1179,13 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
           f"panel scales that to whatever the bundle holds")
     print(f"  it cost {unit_cost:,} a Core, so no Set goes out under that")
 
-    rows, listed_total = [], 0
+    rows, listed_total, full = [], 0, False
     while work in calibration.occupied_slots():
         empty = [i for i in model.empty() if first <= i <= last]
         if not empty:
             print(f"  rows {first}-{last} are full; what is left of the "
                   f"{set_name} stays on tab {row_model.WORK_TAB}.")
+            full = True
             break
         lands_in = min(empty)
         with calibration.phase(f"list {set_name} from {work}"):
@@ -1150,6 +1197,9 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                                                price=listed["price"])
         rows.append(lands_in)
         listed_total += listed["qty"]
+    if not full:
+        task_done("resupply", core=core, bought=bought, listed=listed_total,
+                  rows=rows)
     calibration.phases_table(
         f"resupply {core}: bought {bought}, {made['used']} into the craft, "
         f"listed {listed_total} in rows {rows}")
@@ -1302,8 +1352,10 @@ def usage():
     print("                                   looping for MIN minutes;")
     print("                                   the run block in config.json")
     print("                                   if no range is given")
-    print("  py src/driver.py list R C [PRICE] list inventory slot (R,C); the")
-    print("                                   panel's own suggestion if no PRICE")
+    print("  py src/driver.py list R C [PRICE [TAB]]  list inventory slot (R,C)")
+    print("                                   of TAB (default the work tab); the")
+    print("                                   panel's own suggestion if PRICE is")
+    print("                                   0 or absent")
     print("  py src/driver.py row N           read row N without touching it")
     print("  py src/driver.py price N         market price for favourite slot N")
     print("  py src/driver.py alz             read the balance")
@@ -1400,8 +1452,9 @@ def _dispatch(args):
                   args[3] if len(args) > 3 else None)
     elif what == "list" and len(args) > 2:
         do_list(int(args[1]), int(args[2]),
-                int(args[3]) if len(args) > 3 else None,
-                tab=int(args[4]) if len(args) > 4 else None)
+                int(args[3]) if len(args) > 3 and int(args[3]) else None,
+                tab=int(args[4]) if len(args) > 4 else None,
+                item=" ".join(args[5:]) if len(args) > 5 else None)
     elif what == "row" and len(args) > 1:
         initialise()
         register_tab()

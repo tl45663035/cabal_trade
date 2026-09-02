@@ -5,8 +5,6 @@ import open_agent_shop_premium as shop
 import open_inventory as inv
 
 
-
-
 def read_balance(image=None):
     image = image if image is not None else calibration.grab()
     return calibration.read_balance_from(image)

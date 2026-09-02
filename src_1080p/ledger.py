@@ -38,9 +38,7 @@ def start(stamp=None):
     with sqlite3.connect(DB) as db:
         for statement in _SCHEMA:
             db.execute(statement)
-        # expect: the unit price the core was selling at when it was bought,
-        # so a run can be closed with its unsold stock valued at the margin
-        # it was bought on. Older ledgers lack the column.
+
         columns = {row[1] for row in db.execute("PRAGMA table_info(purchases)")}
         if "expect" not in columns:
             db.execute("ALTER TABLE purchases ADD COLUMN expect INTEGER")
@@ -78,10 +76,6 @@ def _key(name):
 
 
 def run_profit(run=None):
-    """This run's book: every sale matched, oldest lot first, against what
-    this run bought; every lot still held valued at the unit price the core
-    was selling at when it was bought. Stock this run did not buy is not
-    its business, even if it sold it."""
     run = run or _RUN
     if run is None or not DB.exists():
         return [], {}

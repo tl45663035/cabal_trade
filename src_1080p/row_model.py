@@ -922,11 +922,7 @@ class RowModel:
             raise Divergence(
                 f"no {CONFIRM_WORD} appeared after Register. Nothing "
                 f"committed.")
-        # Under 75% of the game's average the first dialog is not Confirm
-        # Registration but the underprice question. It is accepted: its
-        # Confirmation is pressed, and the real dialog that replaces it is
-        # found and pressed like any other. Nothing has committed until the
-        # second one closes.
+
         with calibration.step("look for the underprice question"):
             warned = underprice_warning()
         if warned:

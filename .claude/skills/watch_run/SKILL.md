@@ -24,22 +24,38 @@ Monitor(
 If no `driver.py` process is running, say so and stop -- do not arm a watch
 on a dead pid, it will fire once and exit.
 
-## Push a notification when it fires
+## On every event: push, and say nothing
 
-Every event line ends with **`run ALIVE`** or **`run DEAD`**. Put that in the
-notification, because the same words mean different things either side of it:
-a stall on a live run is a pause, a stall on a dead one is how it died.
+The only response to a monitor event is a PushNotification. No summary, no
+explanation, no "recovered, run alive" line in the terminal, no follow-up.
+The user is not reading the terminal -- that is the whole point of the
+watch -- and a wall of analysis after each event is noise they have to
+scroll past later.
 
-Keep it to one line, lead with what they would act on:
+One line, three fields:
 
 ```
-cabal_trade DEAD 20:10 -- STOPPED: no Cancel button after Change on row 9. Nothing cancelled.
-cabal_trade ALIVE -- server stalled 60s at 15:21, recovered, row relisted
-cabal_trade DEAD -- disconnected; py src_1080p/recovery.py is the way back
+<reason>,<time>,<alive|dead>
 ```
 
-Do not push for the war-window line -- that one is the watcher telling you it
-checked and nothing is wrong.
+```
+server lag,00:18:48,alive
+server answered,00:19:50,alive
+stopped: no Cancel button on row 1,09:05:42,dead
+crashed: inventory tab 4 is full,05:33:57,dead
+disconnected,03:20:11,dead
+war window,04:31:39,alive
+```
+
+The reason is the shortest phrase naming which watched condition fired. The
+state is the word the watcher put at the end of its line. Say the state
+again when a stall resolves.
+
+Every event pushes. Server lag, its recovery, war windows, stop conditions,
+disconnects, death -- all of them, no filtering, no judgement about which
+are worth an interruption.
+
+Analysis happens only when asked for it.
 
 ## What it watches
 

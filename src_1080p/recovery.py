@@ -41,9 +41,10 @@ SELECT_PANEL_F = tuple(_REG["recovery_select_panel"])
 ENTER_BUTTON_F = tuple(_REG["recovery_enter_button"])
 LOGIN_PANEL_F = tuple(_REG["recovery_login_panel"])
 KEYPAD_F = tuple(_REG["recovery_keypad"])
-KEYPAD_COLUMNS = 6
-KEYPAD_ROWS = 2
+KEYPAD_COLUMNS = _R["keypad_columns"]
+KEYPAD_ROWS = _R["keypad_rows"]
 KEYPAD_OK_F = tuple(_REG["recovery_keypad_ok"])
+POPUP_F = tuple(_REG["popup"])
 RECONNECT_TRIES = _R["reconnect_tries"]
 RECONNECT_SETTLE = _R["reconnect_settle"]
 NOTICE_TRIES = _R["notice_tries"]
@@ -53,6 +54,11 @@ USERNAME_ABOVE_LOGIN = _R["username_above_login"]
 PHRASE_GAP_X = _R["phrase_gap_x"]
 PHRASE_GAP_Y = _R["phrase_gap_y"]
 PANEL_REACH = _R["panel_reach"]
+NEAR_ABOVE = _R["near_above"]
+NOTICE_OK_WAIT = _R["notice_ok_wait"]
+DISCONNECT_OK_WAIT = _R["disconnect_ok_wait"]
+DUAL_YES_WAIT = _R["dual_yes_wait"]
+FAILED_CONFIRM_WAIT = _R["failed_confirm_wait"]
 DOUBLE_GAP = _R["double_gap"]
 
 
@@ -158,7 +164,7 @@ def _wait_for(want, timeout=SCREEN_TIMEOUT, whole=True, verbose=True,
 def _find_near(want, anchor, timeout=SCREEN_TIMEOUT, verbose=True):
     _x, _y, _w, height = calibration._client_rect()
     reach = round(height * PANEL_REACH)
-    box = (anchor[0] - reach, anchor[1] - 10,
+    box = (anchor[0] - reach, anchor[1] - NEAR_ABOVE,
            anchor[0] + reach, anchor[1] + reach)
     want = want.strip().lower()
     deadline = time.monotonic() + timeout
@@ -190,12 +196,6 @@ def _double_click(x, y):
 
 
 def _enter_the_world(verbose=True):
-    """Press Enter once the character is picked.
-
-    The double-click only highlights the row; the world is entered from
-    the Start button, and Enter is the keyboard for it. Without this the
-    run sat on the character screen until world_timeout while
-    await_inventory pressed I at it."""
     from open_inventory import press
     keys = calibration.load_shared()["input"]
     if verbose:
@@ -227,39 +227,43 @@ def _type(text):
         time.sleep(KEY_GAP)
 
 
-def disconnected(image=None):
-    words = _words(image)
-    for word in DISCONNECT_WORDS:
-        point = _find(word, words=words, whole=False)
-        if point is not None:
-            return point
-    return None
+def _within(words, box):
+    return [(text, conf, point) for text, conf, point in words
+            if box[0] <= point[0] <= box[2] and box[1] <= point[1] <= box[3]]
 
 
-def failed_to_connect(image=None):
-    words = _words(image)
-    for phrase in FAILED_WORDS:
+def _notice(phrases, image=None, words=None):
+    words = _within(_words(image) if words is None else words,
+                    _box_frac(POPUP_F))
+    for phrase in phrases:
         point = _find(phrase, words=words, whole=False)
         if point is not None:
             return point
     return None
 
 
-def dual_login(image=None):
-    words = _words(image)
-    for phrase in DUAL_WORDS:
-        point = _find(phrase, words=words, whole=False)
-        if point is not None:
-            return point
-    return None
+def disconnected(image=None, words=None):
+    return _notice(DISCONNECT_WORDS, image, words)
 
 
-def in_the_world(timeout=None):
-    span = ACTION_GAP if timeout is None else timeout
+def failed_to_connect(image=None, words=None):
+    return _notice(FAILED_WORDS, image, words)
+
+
+def dual_login(image=None, words=None):
+    return _notice(DUAL_WORDS, image, words)
+
+
+def in_the_world():
     try:
-        return calibration.await_inventory(timeout=span) is not None
-    except Exception:
+        return calibration.inventory_open() is not None
+    except Exception as exc:
+        print(f"  no world check: {type(exc).__name__}: {exc}")
         return False
+
+
+def _login_screen_gone():
+    return _find_in(LOGIN_WORD, LOGIN_PANEL_F, whole=True) is None
 
 
 def _keypad_cells(image=None):
@@ -286,7 +290,10 @@ def keypad_if_asked(timeout=SUB_PASSWORD_WAIT, verbose=True):
         seen = _keypad_cells()
         if len(seen) >= 10 and all(len(p) == 1 for p in seen.values()):
             return keypad(verbose=verbose, seen=seen)
-        if calibration.await_inventory(timeout=ACTION_GAP) is not None:
+        if in_the_world():
+            return None
+        if not seen and calibration.await_inventory(
+                timeout=ACTION_GAP) is not None:
             return None
         time.sleep(POLL_GAP)
     return None
@@ -328,7 +335,7 @@ def recover(verbose=True):
         notice = disconnected()
         if notice is None:
             break
-        shut = _find_near(OK_WORD, notice, timeout=ACTION_GAP * 4,
+        shut = _find_near(OK_WORD, notice, timeout=NOTICE_OK_WAIT,
                           verbose=False) or _point(DIALOG_BUTTON_F)
         calibration.snap("recovery_notice")
         if verbose:
@@ -341,7 +348,7 @@ def recover(verbose=True):
         calibration.snap("recovery_disconnected")
         if verbose:
             print(f"  the disconnect notice at {list(gone)}")
-        shut = _find_near(OK_WORD, gone, timeout=ACTION_GAP * 20,
+        shut = _find_near(OK_WORD, gone, timeout=DISCONNECT_OK_WAIT,
                           verbose=verbose)
         if shut is None:
             shut = _point(DIALOG_BUTTON_F)
@@ -350,6 +357,13 @@ def recover(verbose=True):
                       f"button seat at {list(shut)}")
         calibration.click(*shut)
     elif _find_in(LOGIN_WORD, LOGIN_PANEL_F, whole=True) is None:
+        if in_the_world():
+            calibration.snap("recovery_already_in_world")
+            if verbose:
+                print("  no disconnect notice and no login screen; the Alz "
+                      "balance reads, so the character is already in the "
+                      "world")
+            return True
         calibration.snap("recovery_nothing_to_recover")
         raise Refused(
             "no disconnect notice and no login screen, so there is nothing "
@@ -367,6 +381,7 @@ def recover(verbose=True):
             print(f"  the username field at {list(name)}")
         calibration.click(*name)
         _clear_field()
+        calibration.snap("recovery_username_cleared")
         _type(who["username"])
 
         field = (sign_in[0], sign_in[1] - PASSWORD_ABOVE_LOGIN)
@@ -375,7 +390,6 @@ def recover(verbose=True):
         calibration.click(*field)
         _clear_field()
         _type(who["password"])
-        calibration.snap("recovery_credentials_typed")
         if verbose:
             print(f"  typed; waiting {AFTER_TYPING_WAIT:g}s before Login")
         time.sleep(AFTER_TYPING_WAIT)
@@ -396,7 +410,7 @@ def recover(verbose=True):
                     break
                 reconnects += 1
                 calibration.snap(f"recovery_dual_login_{attempt}_{reconnects}")
-                yes = _find_near(YES_WORD, where, timeout=ACTION_GAP * 4,
+                yes = _find_near(YES_WORD, where, timeout=DUAL_YES_WAIT,
                                  verbose=False) or _point(DUAL_YES_F)
                 if verbose:
                     print(f"  the ID is still connected; clicking {YES_WORD} "
@@ -410,6 +424,10 @@ def recover(verbose=True):
                 outcome = "channel"
                 break
             if in_the_world():
+                outcome = "world"
+                break
+            if _login_screen_gone() and calibration.await_inventory(
+                    timeout=ACTION_GAP) is not None:
                 outcome = "world"
                 break
             time.sleep(POLL_GAP)
@@ -434,7 +452,7 @@ def recover(verbose=True):
                 print(f"  the server refused the login (attempt {attempt}/"
                       f"{LOGIN_TRIES}); clicking {CONFIRM_WORD} and waiting "
                       f"{FAILED_RETRY_WAIT:g}s")
-            ok = _find_near(CONFIRM_WORD, where, timeout=ACTION_GAP * 4,
+            ok = _find_near(CONFIRM_WORD, where, timeout=FAILED_CONFIRM_WAIT,
                             verbose=False)
             if ok is None:
                 ok = _point(DIALOG_BUTTON_F)
@@ -496,9 +514,9 @@ def recover(verbose=True):
     else:
         calibration.snap("recovery_sub_password")
         for digit in str(who["sub_password"]):
-            if verbose:
-                print(f"  sub password digit at {list(pad[digit])}")
             calibration.click(*pad[digit])
+        if verbose:
+            print("  the sub password clicked in")
         calibration.click(*_needed(OK_WORD, verbose=verbose,
                                    region=KEYPAD_OK_F))
 

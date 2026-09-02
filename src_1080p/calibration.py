@@ -106,6 +106,7 @@ DEFAULTS = {
         "VK_RETURN": 0x0D,
         "INPUT_STRUCT_SIZE": 40,
         "SW_RESTORE": 9,
+        "SW_MINIMIZE": 6,
         "DWORD_MASK": 0xFFFFFFFF,
     },
     "game": {
@@ -307,6 +308,13 @@ DEFAULTS = {
         "password_above_login": 86,
         "username_above_login": 127,
         "panel_reach": 0.16,
+        "near_above": 10,
+        "keypad_columns": 6,
+        "keypad_rows": 2,
+        "notice_ok_wait": 2.0,
+        "disconnect_ok_wait": 10.0,
+        "dual_yes_wait": 2.0,
+        "failed_confirm_wait": 2.0,
         "disconnect_words": ["disconnect", "disconnected", "log-out", "logged"],
         "failed_words": ["failed to connect", "try later"],
         "dual_words": ["dual login", "already in use", "like to reconnect"],
@@ -364,14 +372,6 @@ SWAP_PAIRS = {
 
 
 def _resolve_swap(shared):
-    """Put whichever of the swappable pair is switched on into slots 5-6.
-
-    The two share one pair of favourite slots in the game, so only one can
-    be favourited at a time. Which one is a config question, not a
-    measured one: enable_buying decides, and the names follow. Neither on
-    is fine -- the slots keep whatever was measured and nothing buys
-    there. Both on is a contradiction the screen cannot express, so it
-    stops here rather than shopping the wrong item's board."""
     table = (shared.get("resupply") or {}).get("enable_buying") or {}
     fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
     on = [core for core in SWAP_PAIRS
@@ -392,12 +392,6 @@ def _resolve_swap(shared):
 
 
 def swapped_for(slot, text):
-    """The other half of the swappable pair, if that is what slot 5 reads.
-
-    Slots 5-6 hold Divine Stone or Force Core (Ultimate), never both, and
-    which one is a config answer. If the board reads the one config did
-    NOT pick, the game's favourite and config.json disagree -- a settled
-    fact, not a slow market, so there is no point retrying it."""
     if str(slot) not in SWAP_SLOTS:
         return None
     fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
@@ -714,7 +708,6 @@ def _point(frac, rect=None):
     return (round(x + frac[0] * w), round(y + frac[1] * h))
 
 
-
 def grab() -> Image.Image:
     import mss
     with mss.MSS() as sct:
@@ -734,12 +727,6 @@ _FRAME_N = 0
 
 
 def clear_frames() -> int:
-    """Empty the frame directory so this run numbers from 00001 upwards.
-
-    Frames used to be pruned by age at the first snap, which left a mix of
-    this run and the last one -- and every run numbers from 00001, so the
-    numbers collided and the highest number was not the newest frame.
-    Starting empty makes the highest number the latest, always."""
     if not FRAME_DIR.exists():
         return 0
     gone = 0
@@ -1319,15 +1306,6 @@ UNDERPRICE_TEXT = re.compile(_S["text"]["underprice_warning"], re.IGNORECASE)
 
 
 def underprice_warning(image=None):
-    # The game's extra question before Confirm Registration when the price
-    # is under 75% of the average it holds: "Register Item -- The price is
-    # at least 25% lower than the average. Would you like to register ...?"
-    # Its Confirmation and Cancel sit exactly where the real dialog's do.
-    #
-    # The question is rare and the OCR costs 300-500ms a listing, so a
-    # pixel test goes first: the band its second line sits in is flat
-    # panel on Confirm Registration and text on the question. Only ink
-    # there earns the OCR, which still has the final word.
     image = image if image is not None else grab()
     if not has_ink(image, _box(UNDERPRICE_LINE_F)):
         return False
@@ -1686,9 +1664,10 @@ def calibrate_inventory(verbose=True):
     }
 
 
-def _trade_window_open() -> bool:
+def _trade_window_open(image=None) -> bool:
     try:
-        words = ocr(grab(), _box(TRADE_TABS_BAND_F))
+        words = ocr(image if image is not None else grab(),
+                    _box(TRADE_TABS_BAND_F))
     except Exception:
         return False
     return any(t.lower() in ("register", "purchase") for t, _c, _p in words)
@@ -1892,8 +1871,6 @@ def find_game_window(title: str = "PlayCabal"):
     pt = (ctypes.c_long * 2)(0, 0)
     user32.ClientToScreen(hwnd, ctypes.byref(pt))
     return hwnd, name, [pt[0], pt[1], r.right, r.bottom]
-
-
 
 
 def calibrate_purchase(shop, verbose=True):
@@ -2763,14 +2740,6 @@ def buy_leave_behind(core_name):
 
 
 def _swap_or_die(slot, get_price):
-    """Stop if a swappable slot holds the item config did not pick.
-
-    Checked here and nowhere else: calibrate_prices already walks every
-    favourite once at startup, and the answer cannot change while the run
-    is up -- a favourite is not re-arranged mid-run. Putting it in the buy
-    path would re-read the same settled fact on every price check, which
-    is latency for nothing. It costs one extra read, and only when a
-    swappable slot failed to price at all."""
     if str(slot) not in SWAP_SLOTS:
         return
     text = (get_price.read_fields(grab()).get("name") or "").strip()
@@ -3149,10 +3118,7 @@ def calibrate_actions(shop, verbose=True):
         raise RuntimeError(
             "no Confirmation appeared after Register. Nothing committed; the "
             "item is in the bag.")
-    # Under 75% of the game's average the first dialog is not Confirm
-    # Registration but the underprice question, with its buttons in the
-    # same place. It is accepted, and the real dialog that replaces it is
-    # found and pressed like any other.
+
     if underprice_warning():
         snap("underprice_warning")
         say(f"  the game asks again because {price:,} is at least 25% under "
