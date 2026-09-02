@@ -1278,7 +1278,8 @@ def ocr_spans(image: Image.Image, box, scale: int = None,
         input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
     found = []
     for row in csv.DictReader(
-            io.StringIO(run.stdout.decode("utf-8", "replace")), delimiter="\t"):
+            io.StringIO(run.stdout.decode("utf-8", "replace")), delimiter="\t",
+            quoting=csv.QUOTE_NONE):
         try:
             conf = float(row["conf"])
         except (TypeError, ValueError):
@@ -1334,7 +1335,8 @@ def read_line(image: Image.Image, box, scale: int = None, border: int = 0):
         input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
     words = []
     for row in csv.DictReader(
-            io.StringIO(run.stdout.decode("utf-8", "replace")), delimiter="	"):
+            io.StringIO(run.stdout.decode("utf-8", "replace")), delimiter="\t",
+            quoting=csv.QUOTE_NONE):
         text = (row.get("text") or "").strip()
         if text:
             words.append((int(row["left"]), text))
