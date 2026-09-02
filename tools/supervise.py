@@ -33,7 +33,7 @@ if "--plan" not in sys.argv:
 import convert
 import recovery
 import row_model
-from open_inventory import VK_ESCAPE, press
+from open_inventory import VK_ESCAPE, focus_game, press
 
 LOGS = SRC / "logs"
 EVENTS = LOGS / "supervise.log"
@@ -568,6 +568,9 @@ def verify():
 
 
 def get_in(plan=False):
+    if not plan and not focus_game():
+        raise Stop("could not bring the game to the foreground; "
+                   "nothing read, nothing sent")
     state = read_state()
     print(f"  screen: {state['summary']}")
     if not plan:
