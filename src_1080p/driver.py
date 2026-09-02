@@ -78,6 +78,51 @@ def require_shop(verbose=True):
     return True
 
 
+def board_report(model, passes):
+    # The board as the model holds it, in the row format seed() prints so
+    # tools/networth.py reads the newest table. Once a pass, with the balance,
+    # so the log carries a board minutes old instead of the one from launch.
+    # It is a report and nothing else: whatever goes wrong in it is printed
+    # and swallowed, so it can never be what ends the run.
+    try:
+        _board_report(model, passes)
+    except Exception as exc:
+        print(f"    the board report failed ({type(exc).__name__}: {exc}); "
+              f"the pass carries on")
+
+
+def _board_report(model, passes):
+    # The table is built whole before a line of it is printed. networth.py
+    # drops the previous table the moment it sees the header, so a header
+    # followed by half a table would read as a half-empty board.
+    lines = ["", f"  board after pass {passes}:"]
+    by_item = {}
+    for index in model.occupied():
+        row = model.get(index)
+        lines.append(f"    {index:2}  {row.name[:34]:34} x{row.qty:<4} "
+                     f"{row.price:>14,}")
+        item = row_model._PACK.sub("", row.name).strip()
+        rows, units, listed = by_item.get(item, (0, 0, 0))
+        by_item[item] = (rows + 1, units + row.units, listed + row.sell_total)
+    if by_item:
+        lines.append(f"    {'item':34} rows   units          listed")
+        for item, (rows, units, listed) in sorted(by_item.items()):
+            lines.append(f"    {item[:34]:34} {rows:4} {units:7,} "
+                         f"{listed:>15,}")
+        lines.append(f"    {'board':34} {model.used():4} "
+                     f"{sum(u for _, u, _ in by_item.values()):7,} "
+                     f"{sum(l for _, _, l in by_item.values()):>15,}")
+    else:
+        lines.append(f"    the board is empty")
+    for line in lines:
+        print(line)
+    alz = get_alz.read_balance()
+    if alz is None:
+        print(f"    balance now: could not be read")
+    else:
+        print(f"    balance now {alz:,}")
+
+
 def register_tab(verbose=True):
     require_shop(verbose=verbose)
     calibration.click(*calibration.load()["shop"]["register_tab"])
@@ -399,6 +444,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         empty += bare
         rest_the_game(verbose=verbose)
         model.home(verbose=False)
+        board_report(model, passes)
         left = deadline - time.monotonic()
         if left <= 0:
             print(f"  {minutes:g} minute(s) are up after pass {passes}")

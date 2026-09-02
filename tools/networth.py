@@ -17,7 +17,11 @@ MARKET_HEAD = re.compile(r"^market prices:\s*$")
 MARKET_ROW = re.compile(r"^\s{2}(\S.*?)\s{2,}([\d,]+)\s*$")
 BOARD_ROW = re.compile(r"^\s{4,}(\d+)\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+)\s*$")
 BOARD_UNREAD = re.compile(r"^\s{4,}(\d+)\s+UNREAD\s+(.*)$")
-BALANCE = re.compile(r"balance (?:after|before)\s+([\d,]+)")
+# board_report() heads its table with "board after pass N:", so a board whose
+# row 1 is empty does not pile onto the one before it. seed() has no header
+# of its own; its table is caught by the row-1 rule below.
+BOARD_HEAD = re.compile(r"^\s+board after pass \d+:")
+BALANCE = re.compile(r"balance (?:after|before|now)\s+([\d,]+)")
 
 
 def newest_log():
@@ -42,6 +46,10 @@ def read(log):
                 market[key(found.group(1))] = number(found.group(2))
                 continue
             in_market = False
+
+        if BOARD_HEAD.match(line):
+            board, unread = [], []
+            continue
 
         found = BOARD_ROW.match(line)
         if found:

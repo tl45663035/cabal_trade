@@ -19,9 +19,16 @@ game, no clicking, no ledger.
 - **Market prices** -- the `market prices:` block the run prints at startup,
   one line per favourite. The last block in the log wins, so a run that
   re-measures gets its newer prices.
-- **The board** -- the row table the run prints when it seeds, `1 Chaos Core
-  Set X 84 x1 60,285,875`. The last table in the log wins.
-- **Alz** -- the most recent `balance after N` line.
+- **The board** -- the row table the run prints, `1 Chaos Core Set X 84 x1
+  60,285,875`. `seed()` prints one at launch; `board_report()` prints one
+  at the end of **every pass** under `board after pass N:`, from the row
+  model, with a per-item rows/units/listed summary. The last table in the
+  log wins, so on current code the board is at most one pass old. A log
+  with no `board after pass` block is from a run on older code: its only
+  table is the launch one, a run up for hours has a board that old, and
+  the total is not worth reporting as net worth; say so.
+- **Alz** -- the most recent `balance now N` (end of each pass) or
+  `balance after|before N` (around a buy) line, whichever is later.
 
 ## Set and Core are different items here
 

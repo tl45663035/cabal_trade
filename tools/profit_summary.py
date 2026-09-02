@@ -35,6 +35,15 @@ def key(name):
     return re.sub(r"[^a-z]", "", stripped.lower()).replace("set", "")
 
 
+def pack(name):
+    # Units in a bundle from the `X N` in its name. Not used for the ledger
+    # here (sales are already in units); networth.py values the board with it.
+    found = PACK.findall(name or "")
+    if not found:
+        return 1
+    return max(1, int(re.sub(r"[^\d]", "", found[-1])))
+
+
 def bucket(name):
     return "Chaos" if "chaos" in (name or "").lower() else "Cores"
 
