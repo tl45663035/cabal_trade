@@ -357,7 +357,11 @@ def tab_slots(tab):
     return slots
 
 
-MARK = re.compile(r"^(TASK|DONE) (\{.*\})$", re.M)
+MARK = re.compile(r"^(TASK|DONE) (\{.*\})$|"
+                  r"^  (nothing bought); not opening the craft window\.$|"
+                  r"^\s+resupply of '(.+?)' (stopped)|"
+                  r"^  the server stalled for \d+s; (nothing was clicked) and "
+                  r"the shop is shut\.", re.M)
 
 
 def task_key(info):
@@ -367,6 +371,17 @@ def task_key(info):
 def marked(text):
     open_tasks = []
     for m in MARK.finditer(text):
+        if m.group(3) or m.group(5):
+            key = ("resupply", m.group(4)) if m.group(5) else None
+            for i in range(len(open_tasks) - 1, -1, -1):
+                if open_tasks[i][0][0] == "resupply" and \
+                        key in (None, open_tasks[i][0]):
+                    del open_tasks[i]
+                    break
+            continue
+        if m.group(6):
+            open_tasks = [t for t in open_tasks if t[0][0] != "relist"]
+            continue
         try:
             info = json.loads(m.group(2))
         except ValueError:
@@ -396,7 +411,7 @@ def marked(text):
 
 
 def interrupted(text):
-    if MARK.search(text):
+    if any(m.group(1) for m in MARK.finditer(text)):
         return marked(text)
     tasks = []
     starts = list(RELIST.finditer(text))
@@ -598,8 +613,8 @@ def keep_evidence(log):
     print(f"  kept {' and '.join(kept)} from the dead run in {into}")
 
 
-def recover(reason, text, plan=False, log=None):
-    if "interrupted from the keyboard" in reason:
+def recover(reason, text, plan=False, log=None, watched=True):
+    if watched and "interrupted from the keyboard" in reason:
         raise Stop("cancelled with Ctrl x4")
     if log is not None and not plan:
         keep_evidence(log)
@@ -692,9 +707,17 @@ def main():
             pid, log = pids[0], newest_log()
             event(f"attached (pid {pid})", "alive")
         else:
-            print("no run alive; launching one")
-            get_in()
-            calibration.close_everything(True)
+            log = newest_log()
+            if log is None:
+                print("no run alive and no run log; launching one")
+                get_in()
+                calibration.close_everything(True)
+            else:
+                text = read(log)
+                reason = death_reason(text)
+                event(f"no run alive; {log.name} ended: {reason[:80]}",
+                      "dead")
+                recover(reason, text, log=log, watched=False)
             pid, log = launch()
             if args.once:
                 return 0
