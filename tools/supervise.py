@@ -46,9 +46,7 @@ LAG = re.compile(r"not answering|answering again|does not count|"
                  r"starting the pass again|going to the default state|"
                  r"the server stalled")
 WORK_TAB = row_model.WORK_TAB
-KEY_TAB = calibration.load_shared()["game_facts"]["agent_shop_tab"]
-BAG_TABS = sorted(int(t) for t in calibration.load()["inventory"]["tabs"])
-OTHER_TABS = [t for t in BAG_TABS if t not in (WORK_TAB, KEY_TAB)]
+
 
 RELIST = re.compile(r"^  row (\d+): '(.*?)' x(\d+) at ([\d,]+) -> tab (\d+) "
                     r"slot \((\d+), (\d+)\)$", re.M)
@@ -289,21 +287,6 @@ def squash(name):
     return re.sub(r"[^a-z0-9]", "", (name or "").lower())
 
 
-def favourite_of(name):
-    want = squash(name)
-    items = [(int(slot), item, squash(item))
-             for slot, item in calibration.FAVOURITE_ITEMS.items()]
-    exact = [i for i in items if i[2] == want]
-    longer = sorted((i for i in items if i[2].startswith(want)),
-                    key=lambda i: len(i[2]))
-    shorter = sorted((i for i in items if want.startswith(i[2])),
-                     key=lambda i: -len(i[2]))
-    for found in (exact, longer, shorter):
-        if found:
-            return found[0][0], found[0][1]
-    return None
-
-
 def tooltip_at(row, col):
     import ctypes
     x, y = calibration.inventory_slot_point(row, col)
@@ -325,25 +308,12 @@ def item_in(image):
     return best
 
 
-def item_at(row, col):
-    return item_in(tooltip_at(row, col))
-
-
 def reading_at(tab, row, col):
     image = tooltip_at(row, col)
     found = item_in(image)
     print(f"  tab {tab} slot ({row},{col}) reads "
           f"{found[1] if found else 'no favourite'}")
     return image, found
-
-
-def expect_at(tab, row, col, want, seen=None):
-    image, found = reading_at(tab, row, col) if seen is None else seen
-    if found is None or found[0] != want[0]:
-        snap(f"tab{tab}_{row}x{col}_not_{squash(want[1])}", image)
-        raise Stop(f"tab {tab} slot ({row},{col}) reads "
-                   f"{found[1] if found else 'no favourite'}, not "
-                   f"{want[1]}; not listing it")
 
 
 def tab_slots(tab):
@@ -358,10 +328,7 @@ def tab_slots(tab):
 
 
 MARK = re.compile(r"^(TASK|DONE) (\{.*\})$|"
-                  r"^  (nothing bought); not opening the craft window\.$|"
-                  r"^\s+resupply of '(.+?)' (stopped)|"
-                  r"^  the server stalled for \d+s; (nothing was clicked) and "
-                  r"the shop is shut\.", re.M)
+                  r"^  (nothing bought); not opening the craft window\.$", re.M)
 
 
 def task_key(info):
@@ -371,16 +338,11 @@ def task_key(info):
 def marked(text):
     open_tasks = []
     for m in MARK.finditer(text):
-        if m.group(3) or m.group(5):
-            key = ("resupply", m.group(4)) if m.group(5) else None
+        if m.group(3):
             for i in range(len(open_tasks) - 1, -1, -1):
-                if open_tasks[i][0][0] == "resupply" and \
-                        key in (None, open_tasks[i][0]):
+                if open_tasks[i][0][0] == "resupply":
                     del open_tasks[i]
                     break
-            continue
-        if m.group(6):
-            open_tasks = [t for t in open_tasks if t[0][0] != "relist"]
             continue
         try:
             info = json.loads(m.group(2))
@@ -388,6 +350,7 @@ def marked(text):
             continue
         key = (info["kind"], task_key(info))
         if m.group(1) == "TASK":
+            open_tasks = [t for t in open_tasks if t[0] != key]
             open_tasks.append((key, info))
             continue
         for i in range(len(open_tasks) - 1, -1, -1):
@@ -453,98 +416,71 @@ def describe(kind, info):
     return f"resupply of {info['core']}: bought stock may be on tab {WORK_TAB}"
 
 
-def find_in_bag(item):
-    want = favourite_of(item)
-    hovered = 0
-    for tab in OTHER_TABS:
-        slots = tab_slots(tab)
-        for n, (row, col) in enumerate(slots):
-            if hovered >= K["hover_cap"]:
-                event(f"gave up on {item}: {hovered} slot(s) hovered, "
-                      f"{len(slots) - n} left on tab {tab} and tabs "
-                      f"{[t for t in OTHER_TABS if t > tab]} unread", "dead")
-                return None
-            hovered += 1
-            found = item_at(row, col)
-            print(f"  tab {tab} slot ({row},{col}) reads "
-                  f"{found[1] if found else 'no favourite'}")
-            if found and want and found[0] == want[0]:
-                return tab, row, col
-    return None
-
-
-def finish_relist(info, budget):
-    tab, (row, col) = info["tab"], info["slot"]
-    slots = tab_slots(tab)
-    if (row, col) in slots:
-        where = (tab, row, col)
-    else:
-        print(f"  tab {tab} slot ({row},{col}) is empty; looking on tabs "
-              f"{OTHER_TABS} for {info['item']!r}")
-        where = find_in_bag(info["item"])
-    if where is None:
-        print(f"  {info['item']!r} is not in the bag; the row kept it or it "
-              f"sold. The next run reads the board.")
-        return budget
-    tab, row, col = where
-    want = favourite_of(info["item"])
-    if want is None:
-        raise Stop(f"{info['item']!r} is not a favourite, so tab {tab} slot "
-                   f"({row},{col}) cannot be checked before listing it")
-    before = tab_slots(tab)
-    while (row, col) in before:
-        expect_at(tab, row, col, want)
-        budget = spend(budget, f"list {row} {col} 0 {tab} {want[1]}")
-        run_driver("list", str(row), str(col), "0", str(tab), want[1])
-        after = tab_slots(tab)
-        if after == before:
-            raise Stop(f"list {row} {col} on tab {tab} changed nothing; "
-                       f"{info['item']!r} is still there")
-        event(f"finished: listed {info['item']} from tab {tab} ({row},{col}); "
-              f"{len(after)} slot(s) left", "dead")
-        before = after
-    return budget
-
-
-def finish_resupply(info, budget):
-    core = info["core"]
-    fav = favourite_of(core)
-    if fav is None:
-        raise Stop(f"{core!r} is not a favourite; cannot finish its resupply")
-    slot, name = fav
-    if not tab_slots(WORK_TAB):
-        print(f"  tab {WORK_TAB} is clear; nothing of {name} to finish")
-        return budget
+def action_for(row, col, slot, name):
     if convert.cell_for(name):
-        budget = spend(budget, f"convert {slot}")
-        out = run_driver("convert", str(slot))
-        if "not converting" in out or "stay on tab" in out:
-            raise Stop(f"rows are full; {name} stays on tab {WORK_TAB}")
-        event(f"finished: convert {slot} ({name})", "dead")
-        made = fav
-    else:
-        budget = spend(budget, "craft chaos")
-        out = run_driver("craft", "chaos")
-        if "not crafting" in out or "stays on tab" in out:
-            raise Stop(f"rows are full; {name} stays on tab {WORK_TAB}")
-        event(f"finished: craft chaos ({name})", "dead")
-        pair = calibration.pair_slot(slot)
-        if pair is None:
-            raise Stop(f"{name} has no Set beside it in the favourites; "
-                       f"cannot tell what the craft made")
-        made = (pair, calibration.FAVOURITE_ITEMS[str(pair)])
-    for row, col in tab_slots(WORK_TAB):
-        seen = reading_at(WORK_TAB, row, col)
-        if made != fav and seen[1] is not None and seen[1][0] == slot:
-            event(f"left {name} on tab {WORK_TAB} ({row},{col}); under a "
-                  f"whole batch, as the run leaves it", "dead")
-            continue
-        expect_at(WORK_TAB, row, col, made, seen)
-        budget = spend(budget, f"list {row} {col} 0 {WORK_TAB} {made[1]}")
-        run_driver("list", str(row), str(col), "0", str(WORK_TAB), made[1])
-        event(f"finished: listed {made[1]} from tab {WORK_TAB} "
-              f"({row},{col})", "dead")
-    return budget
+        return ("list", str(row), str(col), "0", str(WORK_TAB), name)
+    pair = calibration.pair_slot(slot)
+    if pair is not None and             convert.cell_for(calibration.FAVOURITE_ITEMS[str(pair)]):
+        return ("convert", str(pair))
+    if slot == calibration._craft_slots()[0]:
+        return ("craft", "chaos")
+    return ("list", str(row), str(col), "0", str(WORK_TAB), name)
+
+
+def first_row(tab):
+    held = tab_slots(tab)
+    below = [s for s in held if s[0] != 1]
+    if below:
+        print(f"  tab {tab} holds {len(below)} slot(s) below row 1, from "
+              f"{below[0]}; the run never puts anything there, so they are "
+              f"not touched")
+    return [s for s in held if s[0] == 1]
+
+
+def clear_work_tab(budget):
+    hovered, left_behind = 0, set()
+    while True:
+        left = first_row(WORK_TAB)
+        if not left:
+            print(f"  verified: row 1 of tab {WORK_TAB} is clear")
+            return budget
+        todo = [s for s in left if s not in left_behind]
+        if not todo:
+            print(f"  tab {WORK_TAB} holds only what the run leaves behind: "
+                  f"{len(left)} slot(s)")
+            return budget
+        found = None
+        for row, col in todo:
+            if hovered >= K["hover_cap"]:
+                event(f"gave up on tab {WORK_TAB}: {hovered} slot(s) hovered, "
+                      f"{len(left)} still held; the run lands beside it",
+                      "dead")
+                return budget
+            hovered += 1
+            _image, item = reading_at(WORK_TAB, row, col)
+            if item is not None:
+                found = (row, col, item)
+                break
+        if found is None:
+            event(f"stranded stock on tab {WORK_TAB}: {len(left)} slot(s) the "
+                  f"tooltip does not name, from {left[0]}; the run lands "
+                  f"beside it", "dead")
+            return budget
+        row, col, (slot, name) = found
+        args = action_for(row, col, slot, name)
+        what = " ".join(args)
+        budget = spend(budget, what)
+        run_driver(*args)
+        after = first_row(WORK_TAB)
+        if after == left:
+            if args[0] == "craft":
+                event(f"left {name} on tab {WORK_TAB} ({row},{col}); under a "
+                      f"whole batch, as the run leaves it", "dead")
+                left_behind.add((row, col))
+                continue
+            raise Stop(f"{what} changed nothing on tab {WORK_TAB}; {name} is "
+                       f"still there")
+        event(f"finished: {what} ({name}); {len(after)} slot(s) left", "dead")
 
 
 def spend(budget, what):
@@ -552,19 +488,6 @@ def spend(budget, what):
         raise Stop(f"{K['task_cap']} driver commands already; not running "
                    f"{what}")
     return budget - 1
-
-
-def verify():
-    left = tab_slots(WORK_TAB)
-    if len(left) >= calibration.GRID * calibration.GRID:
-        raise Stop(f"tab {WORK_TAB} is full; a run would have nowhere to "
-                   f"withdraw a row to")
-    if left:
-        event(f"stranded stock on tab {WORK_TAB}: {len(left)} slot(s) the "
-              f"log does not name, from {left[0]}; the run lands beside it",
-              "dead")
-        return
-    print(f"  verified: tab {WORK_TAB} is clear")
 
 
 def get_in(plan=False):
@@ -628,16 +551,16 @@ def recover(reason, text, plan=False, log=None, watched=True):
     for kind, info in tasks:
         print(f"  interrupted: {describe(kind, info)}")
     if plan:
-        print(f"  then: check tab {WORK_TAB} is clear, close_everything, "
-              f"relaunch")
+        print(f"  then: list, convert or craft whatever row 1 of tab "
+              f"{WORK_TAB} holds, close_everything, relaunch")
         return
-    budget = K["task_cap"]
+    clear_work_tab(K["task_cap"])
     for kind, info in tasks:
         if kind == "relist":
-            budget = finish_relist(info, budget)
-        else:
-            budget = finish_resupply(info, budget)
-    verify()
+            print(f"  relist row {info['row']}: {info['item']!r} is handled above "
+                  f"if it came back to tab {WORK_TAB}; otherwise the row kept it, "
+                  f"it sold, or it was listed by hand. The next run reads the "
+                  f"board.")
     calibration.close_everything(True)
     snap("reset")
 
