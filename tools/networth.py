@@ -22,6 +22,9 @@ BOARD_UNREAD = re.compile(r"^\s{4,}(\d+)\s+UNREAD\s+(.*)$")
 # of its own; its table is caught by the row-1 rule below.
 BOARD_HEAD = re.compile(r"^\s+board after pass \d+:")
 BALANCE = re.compile(r"balance (?:after|before|now)\s+([\d,]+)")
+RESUPPLY = re.compile(r'^TASK \{"kind": "resupply", "core": "([^"]+)"')
+BOUGHT = re.compile(r"balance after\s+[\d,]+; spent ([\d,]+) bought \d+ pack\(s\) "
+                    r"= ([\d,]+) core\(s\)")
 
 
 def newest_log():
@@ -35,6 +38,7 @@ def number(text):
 
 def read(log):
     market, board, unread, balance = {}, [], [], None
+    bought, core = [], None
     in_market = False
     for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
         if MARKET_HEAD.match(line):
@@ -48,14 +52,14 @@ def read(log):
             in_market = False
 
         if BOARD_HEAD.match(line):
-            board, unread = [], []
+            board, unread, bought = [], [], []
             continue
 
         found = BOARD_ROW.match(line)
         if found:
             index = int(found.group(1))
             if index == 1 and board:
-                board, unread = [], []
+                board, unread, bought = [], [], []
             board.append((index, found.group(2).strip(),
                           number(found.group(3)), number(found.group(4))))
             continue
@@ -65,13 +69,22 @@ def read(log):
             unread.append((int(found.group(1)), found.group(2).strip()))
             continue
 
+        found = RESUPPLY.match(line)
+        if found:
+            core = found.group(1)
+            continue
+
         found = BALANCE.search(line)
         if found:
             balance = number(found.group(1))
-    return market, board, unread, balance
+            found = BOUGHT.search(line)
+            if found:
+                bought.append((core, number(found.group(2)),
+                               number(found.group(1))))
+    return market, board, unread, balance, bought
 
 
-def report(log, market, board, unread, balance):
+def report(log, market, board, unread, balance, bought):
     print(f"NET WORTH -- from {log.name}")
     print("stock is valued at the market price that run last read, not at "
           "what it is listed for")
@@ -102,6 +115,18 @@ def report(log, market, board, unread, balance):
             print(f"{index:>4}  {name[:27]:<28}{units:>8,}{'--':>12}"
                   f"{worth:>18,}")
 
+    if bought:
+        print("")
+        print("bought since that board was printed, so already paid for but "
+              "not on it yet, in the bag or being listed:")
+        for name, units, spent in bought:
+            at = market.get(key(name))
+            worth = units * at if at is not None else spent
+            total += worth
+            print(f"{'':>4}  {(name or '?')[:27]:<28}{units:>8,}"
+                  f"{(f'{at:,}' if at is not None else '--'):>12}"
+                  f"{worth:>18,}")
+
     print("-" * len(head))
     print(f"{'':>4}  {'stock':<28}{'':>8}{'':>12}{total:>18,}")
     if balance is None:
@@ -128,12 +153,12 @@ def networth():
     if log is None:
         print("  no run log to read")
         return False
-    market, board, unread, balance = read(log)
+    market, board, unread, balance, bought = read(log)
     if not board:
         print(f"  {log.name} has no row table yet; the run prints one once it "
               f"has seeded the board")
         return False
-    report(log, market, board, unread, balance)
+    report(log, market, board, unread, balance, bought)
     return True
 
 

@@ -29,6 +29,16 @@ game, no clicking, no ledger.
   the total is not worth reporting as net worth; say so.
 - **Alz** -- the most recent `balance now N` (end of each pass) or
   `balance after|before N` (around a buy) line, whichever is later.
+- **Bought since that board** -- every `balance after ...; spent S bought
+  P pack(s) = N core(s)` line after the last board table, named by the
+  `TASK {"kind": "resupply", "core": ...}` line before it. A resupply runs at
+  the start of a pass, so between the board and the next one the Alz line
+  has already dropped by the spend while the cores sit in the bag or are
+  being converted and listed, on no board yet. Without this block a call
+  made mid-pass read low by exactly what was just bought (162M on
+  2026-09-03 02:45). They are valued at the core's market price; if the
+  run never read one, at what was spent. The block is empty when the last
+  balance line is the board's own `balance now`.
 
 ## Set and Core are different items here
 
@@ -47,6 +57,10 @@ qty 1 is 84 Sets, so units are `qty x pack`.
 - It is a **snapshot from when those lines were written**, not live. The board
   moves constantly; the market block is from startup unless the run
   re-measured. A long run's prices can be hours stale.
+- What it still cannot see: a row that sold but whose Alz the run has not
+  collected yet (the game holds it until the row's turn in the pass). Until
+  then it is on neither the board nor the balance, so the total dips by
+  that row and comes back when it is collected.
 - Value is `units x market`, so it assumes every unit clears at the price the
   run last read. Real proceeds are lower: the board undercuts to sell, and
   whether the game's sales fee is deducted is unconfirmed.
