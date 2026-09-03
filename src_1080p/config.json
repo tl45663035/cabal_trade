@@ -9,10 +9,15 @@
       "Force Core(High)": true,
       "Upgrade Core (Ultimate)": true
     },
-    "rows_threshold": {
-      "default": 2,
-      "Chaos Core": 3,
-      "Divine Stone": 1
+    "rows_by_margin": {
+      "step": 5000,
+      "default": [0, 1, 2, 3, 3, 4],
+      "Force Core (Ultimate)": [0, 1, 2, 3, 3, 4],
+      "Upgrade Core (Ultimate)": [0, 1, 2, 3, 3, 4],
+      "Force Core(High)": [0, 2, 3, 4, 5],
+      "Force Core(Highest)": [0, 2, 3, 4, 5],
+      "Chaos Core": [2, 3, 4, 5, 6, 7],
+      "Divine Stone": [2, 3, 4, 5, 6, 7]
     },
     "buy_min": {
       "default": 200,
@@ -31,15 +36,7 @@
       "Chaos Core": 1,
       "Divine Stone": 1
     },
-    "buy_retries": 3,
-    "price_diff_threshold": {
-      "Force Core(Highest)": 10000,
-      "Chaos Core": 10000,
-      "Force Core(High)": 10000,
-      "Upgrade Core (Ultimate)": 15000,
-      "Divine Stone": 10000,
-      "Force Core (Ultimate)": 15000
-    }
+    "buy_retries": 3
   },
   "run": {
     "relist_from": 1,
@@ -149,16 +146,7 @@
   },
   "war": {
     "enabled": true,
-    "start_hours": [
-      1,
-      4,
-      7,
-      10,
-      13,
-      16,
-      19,
-      22
-    ],
+    "start_hours": [1, 4, 7, 10, 13, 16, 19, 22],
     "war_minutes": 30,
     "quiet_before_end": 60,
     "quiet_seconds": 300,

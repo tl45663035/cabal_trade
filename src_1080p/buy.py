@@ -208,7 +208,7 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
             f"there is nothing spare to take here.")
     if sells_at and gap is not None:
         now = sells_at - offer["unit_price"]
-        if now <= gap:
+        if now < gap:
             raise Refused(
                 f"row 1 asks {offer['unit_price']:,} and the core sells at "
                 f"{sells_at:,}, a gap of {now:,} against the {gap:,} wanted. "

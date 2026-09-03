@@ -53,7 +53,7 @@ RELIST = re.compile(r"^  row (\d+): '(.*?)' x(\d+) at ([\d,]+) -> tab (\d+) "
 RELISTED = re.compile(r"^    relisted \d+ at [\d,]+ in row (\d+)", re.M)
 SOLD_WHILE = re.compile(r"^  row (\d+) sold while it was being cancelled",
                         re.M)
-RESUPPLY = re.compile(r"^-- (.+?): \d+ row\(s\), threshold \d+ --$", re.M)
+RESUPPLY = re.compile(r"^-- (.+?): \d+ row\(s\)(?:, threshold \d+)? --$", re.M)
 BUYING = re.compile(r"^  \d+/\d+ .+ held$", re.M)
 RESUPPLY_DONE = re.compile(r"^  resupply (.+?): bought |"
                            r"^\s+resupply of '(.+?)' stopped", re.M)

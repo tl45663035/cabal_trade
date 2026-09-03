@@ -810,37 +810,53 @@ def rows_by_core(model, first, last):
     return held
 
 
-def resupply_one(model, slot, held, first, last, verbose=True):
-    run = calibration.load_shared()["resupply"]
+def price_gap(slot, say=True):
     core = calibration.FAVOURITE_ITEMS[str(slot)]
     pair = calibration.pair_slot(slot)
     set_name = calibration.FAVOURITE_ITEMS[str(pair)]
-    print("")
-    want_rows = calibration.rows_threshold(core)
-    want_min = calibration.buy_min(core)
-    want_max = calibration.buy_max(core)
-    print(f"-- {core}: {held} row(s), threshold {want_rows} --")
-
     calibration.phases_reset()
     with calibration.phase(f"price {core}"):
         core_row = get_price.get_price(slot, verbose=False)
     with calibration.phase(f"price {set_name}"):
         set_row = get_price.get_price(pair, verbose=False)
     if core_row is None or set_row is None:
-        print(f"  {core if core_row is None else set_name} would not price; "
-              f"not buying blind.")
+        if say:
+            print(f"  {core if core_row is None else set_name} would not "
+                  f"price; not buying blind.")
+        return core_row, set_row, None
+    if craft_route(core):
+        high, low = (set_name, set_row), (core, core_row)
+    else:
+        high, low = (core, core_row), (set_name, set_row)
+    diff = high[1]["unit_price"] - low[1]["unit_price"]
+    if say:
+        print(f"  {high[0]} {high[1]['unit_price']:,} - {low[0]} "
+              f"{low[1]['unit_price']:,} = {diff:,}")
+    return core_row, set_row, diff
+
+
+def margin_says_buy(core, held, diff):
+    wants = calibration.rows_by_margin(core, diff)
+    print(f"  a margin of {diff:,} is worth {wants} row(s) of {core}; "
+          f"{held} held" + ("" if held < wants else "; not buying."))
+    if held >= wants:
         return None
-    threshold = calibration.price_diff_threshold(core)
+    return calibration.margin_for_rows(core, held + 1)
+
+
+def resupply_one(model, slot, held, first, last, verbose=True):
+    run = calibration.load_shared()["resupply"]
+    core = calibration.FAVOURITE_ITEMS[str(slot)]
+    pair = calibration.pair_slot(slot)
+    set_name = calibration.FAVOURITE_ITEMS[str(pair)]
+    print("")
+    want_min = calibration.buy_min(core)
+    want_max = calibration.buy_max(core)
+    print(f"-- {core}: {held} row(s) --")
+
+    core_row, set_row, diff = price_gap(slot)
+    threshold = None if diff is None else margin_says_buy(core, held, diff)
     if threshold is None:
-        print(f"  {core} has no price_diff_threshold in config.json, so "
-              f"there is no gap it is worth buying at. Not buying.")
-        return None
-    diff = core_row["unit_price"] - set_row["unit_price"]
-    print(f"  {core} {core_row['unit_price']:,} - {set_name} "
-          f"{set_row['unit_price']:,} = {diff:,} "
-          f"(threshold {threshold:,})")
-    if diff <= threshold:
-        print(f"  the gap does not clear the threshold; not buying.")
         return None
 
     rounds_needed = max(1, -(-int(want_max) // row_model.MAX_STACK))
@@ -1003,31 +1019,13 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     set_name = calibration.FAVOURITE_ITEMS[str(pair)]
     batch = calibration.CRAFT_CORES_PER_SET
     print("")
-    want_rows = calibration.rows_threshold(core)
     want_min = calibration.buy_min(core)
     want_max = calibration.buy_max(core)
-    print(f"-- {core}: {held} row(s), threshold {want_rows} --")
+    print(f"-- {core}: {held} row(s) --")
 
-    calibration.phases_reset()
-    with calibration.phase(f"price {core}"):
-        core_row = get_price.get_price(slot, verbose=False)
-    with calibration.phase(f"price {set_name}"):
-        set_row = get_price.get_price(pair, verbose=False)
-    if core_row is None or set_row is None:
-        print(f"  {core if core_row is None else set_name} would not price; "
-              f"not buying blind.")
-        return None
-    threshold = calibration.price_diff_threshold(core)
+    core_row, set_row, diff = price_gap(slot)
+    threshold = None if diff is None else margin_says_buy(core, held, diff)
     if threshold is None:
-        print(f"  {core} has no price_diff_threshold in config.json, so "
-              f"there is no gap it is worth buying at. Not buying.")
-        return None
-    diff = set_row["unit_price"] - core_row["unit_price"]
-    print(f"  {set_name} {set_row['unit_price']:,} - {core} "
-          f"{core_row['unit_price']:,} = {diff:,} "
-          f"(threshold {threshold:,})")
-    if diff <= threshold:
-        print(f"  the gap does not clear the threshold; not buying.")
         return None
 
     free_rows = [i for i in model.empty() if first <= i <= last]
@@ -1257,32 +1255,37 @@ def resupply_pass(model, first, last, verbose=True):
     print("")
     print(f"  counting only rows {first}-{last}; rows outside it are not "
           f"repriced and do not count")
-    print(f"  {'core':<30}{'rows':>6}{'wants':>7}   short?")
-    short = []
-    for slot, count in sorted(held.items()):
-        core = calibration.FAVOURITE_ITEMS[str(slot)]
-        wants = calibration.rows_threshold(core)
-        mark = ""
-        if wants is not None and count < wants:
+    print(f"  {'core':<30}{'rows':>6}{'margin':>10}{'wants':>7}   short?")
+    short, wanted, done = [], {}, []
+    try:
+        for slot, count in sorted(held.items()):
+            core = calibration.FAVOURITE_ITEMS[str(slot)]
+            mark, diff, wants = "", None, None
             if not convert.cell_for(core) and not craft_route(core):
                 mark = "neither convertible nor craftable"
             elif not buying_enabled(core):
                 mark = "buying off"
             else:
-                mark = "YES"
-                short.append(slot)
-        print(f"  {core:<30}{count:>6}{('-' if wants is None else wants):>7}"
-              f"   {mark}")
-    if not short:
-        print("")
-        print(f"  nothing inside rows {first}-{last} is short of its row "
-              f"threshold and convertible.")
-        return []
-    done = []
-    try:
+                _, _, diff = price_gap(slot, say=False)
+                if diff is None:
+                    mark = "would not price"
+                else:
+                    wants = calibration.rows_by_margin(core, diff)
+                    if count < wants:
+                        mark = "YES"
+                        short.append(slot)
+                        wanted[slot] = wants
+            gap = '-' if diff is None else f'{diff:,}'
+            print(f"  {core:<30}{count:>6}{gap:>10}"
+                  f"{('-' if wants is None else wants):>7}   {mark}")
+        if not short:
+            print("")
+            print(f"  nothing inside rows {first}-{last} holds fewer rows "
+                  f"than its margin is worth.")
+            return []
         for slot in short:
             core_here = calibration.FAVOURITE_ITEMS[str(slot)]
-            wants = calibration.rows_threshold(core_here)
+            wants = wanted[slot]
             have = held[slot]
             route = (resupply_chaos if craft_route(core_here)
                      else resupply_one)

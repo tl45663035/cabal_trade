@@ -101,11 +101,11 @@ Then read the dead run's log for **what it was in the middle of** -- the
 screen shows the game, not the task. Two things to find, every time:
 
 ```
-grep -n "^-- .*: [0-9]* row(s), threshold\|resupply .*: bought\|resupply of .* stopped\|-- round\|held$" <LOG> | tail -n 12
+grep -n "^-- .*: [0-9]* row(s)\|resupply .*: bought\|resupply of .* stopped\|-- round\|held$" <LOG> | tail -n 12
 grep -c "\-> tab 4 slot (1, 1)" <LOG>; grep "\-> tab 4 slot" <LOG> | tail -n 1
 ```
 
-- A resupply block (`-- Force Core (Ultimate): 1 row(s), threshold 2 --`)
+- A resupply block (`-- Force Core (Ultimate): 1 row(s) --`)
   that bought (`balance after ... bought N pack(s)`) with no
   `resupply <core>: bought N, ... listed` line after it was **cut off with
   stock in the bag**: Sets bought and not converted, or (Chaos) cores
@@ -115,8 +115,10 @@ grep -c "\-> tab 4 slot (1, 1)" <LOG>; grep "\-> tab 4 slot" <LOG> | tail -n 1
   slot (1,1) was already occupied when that run started -- stock a run
   before it left behind. It has been sitting there the whole run: the live
   run never converts outside a resupply, never counts bag stock in its
-  `short?` table, and resupplies only when a core's rows drop under its
-  threshold. Nothing picks it up but you.
+  `short?` table, and resupplies only when a core holds fewer rows than
+  its margin is worth (`rows_by_margin` in config.json: the core-minus-Set
+  gap, or Set-minus-core for a crafted one, in steps of 5,000 Alz, read
+  afresh at the start of every pass). Nothing picks it up but you.
 
 **A "disconnect notice" is only real in the centre of the screen** (about
 `(960, 430)`, its OK at `(961, 609)`). `recovery.disconnected()` matches the

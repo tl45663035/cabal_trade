@@ -47,11 +47,10 @@ DEFAULTS = {
     "resupply": {
         "enabled": False,
         "enable_buying": {},
-        "rows_threshold": {"default": 3},
+        "rows_by_margin": {"step": 5000, "default": [1, 2, 3, 4, 5]},
         "buy_min": {"default": 250},
         "buy_max": {"default": 500},
         "buy_retries": 3,
-        "price_diff_threshold": {},
     },
     "debug": {
         "frames": False,
@@ -2708,25 +2707,49 @@ def calibrate_convert(verbose=True):
             "columns": [int(v) for v in xs], "rows": [int(v) for v in ys]}
 
 
+def _per_item_raw(table, core_name):
+    want = re.sub(r"[^a-z0-9]", "", (core_name or "").lower())
+    for name, value in table.items():
+        if re.sub(r"[^a-z0-9]", "", name.lower()) == want:
+            return value
+    return table.get("default")
+
+
 def _per_item(key, core_name):
     run = load_shared()["resupply"]
     table = run.get(key)
     if not isinstance(table, dict):
         return None if table is None else int(table)
-    want = re.sub(r"[^a-z0-9]", "", (core_name or "").lower())
-    for name, value in table.items():
-        if re.sub(r"[^a-z0-9]", "", name.lower()) == want:
-            return int(value)
-    fallback = table.get("default")
-    return int(fallback) if fallback is not None else None
+    value = _per_item_raw(table, core_name)
+    return int(value) if value is not None else None
 
 
-def price_diff_threshold(core_name):
-    return _per_item("price_diff_threshold", core_name)
+def rows_by_margin(core_name, margin):
+    table = load_shared()["resupply"].get("rows_by_margin")
+    if not isinstance(table, dict):
+        return None
+    ladder = _per_item_raw(
+        {k: v for k, v in table.items() if k != "step"}, core_name)
+    if not ladder:
+        return None
+    tier = int(margin // int(table["step"]))
+    if tier < 1:
+        return 0
+    return int(ladder[min(tier, len(ladder)) - 1])
 
 
-def rows_threshold(core_name):
-    return _per_item("rows_threshold", core_name)
+def margin_for_rows(core_name, rows):
+    table = load_shared()["resupply"].get("rows_by_margin")
+    if not isinstance(table, dict):
+        return None
+    ladder = _per_item_raw(
+        {k: v for k, v in table.items() if k != "step"}, core_name)
+    if not ladder:
+        return None
+    for tier, count in enumerate(ladder, 1):
+        if int(count) >= rows:
+            return tier * int(table["step"])
+    return None
 
 
 def buy_min(core_name):
