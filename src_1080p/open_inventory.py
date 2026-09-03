@@ -68,7 +68,7 @@ def _event(vk: int, up: bool) -> _Input:
                   u=_InputUnion(ki=_KeyInput(vk, scan, flags, 0, None)))
 
 
-def press(vk: int) -> None:
+def press(vk: int, hold: float = None) -> None:
     sent = _user32.SendInput(
         1, ctypes.byref(_event(vk, up=False)), ctypes.sizeof(_Input))
     try:
@@ -76,7 +76,7 @@ def press(vk: int) -> None:
             err = ctypes.get_last_error()
             raise OSError(err, f"SendInput sent {sent} of 1 events "
                                f"(GetLastError {err}). Nothing was pressed.")
-        time.sleep(KEY_HOLD)
+        time.sleep(KEY_HOLD if hold is None else hold)
     finally:
         _user32.SendInput(
             1, ctypes.byref(_event(vk, up=True)), ctypes.sizeof(_Input))

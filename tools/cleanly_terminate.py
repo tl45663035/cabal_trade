@@ -15,6 +15,7 @@ POLL = float(_S["timing"]["retry_gap"])
 SETTLE = float(_S["recovery"]["world_timeout"])
 PRESSES = int(_S["run"]["stop_key_presses"])
 WINDOW = float(_S["run"]["stop_key_window"])
+HOLD = float(_S["run"]["stop_key_hold"])
 CALL_TIMEOUT = float(_S["timing"]["dialog_timeout"])
 GIFT_MARKER = "the gift box at"
 
@@ -64,11 +65,11 @@ def press_the_stop_key(verbose=True):
     vk = _S["input"]["VK_CONTROL"]
     gap = WINDOW / (PRESSES + 2)
     for _ in range(PRESSES):
-        press(vk)
+        press(vk, hold=HOLD)
         time.sleep(gap)
     if verbose:
-        print(f"  Ctrl {PRESSES} times within {WINDOW:g}s, the way "
-              f"the run says it wants to be stopped")
+        print(f"  Ctrl {PRESSES} times within {WINDOW:g}s, each held {HOLD:g}s "
+              f"so the run's stop_key_poll cannot miss it")
 
 
 def wait_for_exit(pid, verbose=True):

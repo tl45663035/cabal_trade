@@ -169,30 +169,30 @@ def watch(pid, log):
             quiet = time.time() - log.stat().st_mtime
         except OSError:
             quiet = 0
+        if time.time() - last_look >= K["screen_gap"]:
+            last_look = time.time()
+            state = read_state(popup_only=True)
+            if state["disconnect"] or state["login"] or state["failed"]:
+                if disconnect_since is None:
+                    disconnect_since = time.time()
+                    event("disconnected (run still up)", "alive")
+                    snap("disconnect_seen", state["image"])
+                elif time.time() - disconnect_since > K["disconnect_kill"]:
+                    event(f"disconnected {K['disconnect_kill']}s and the "
+                          f"run has not died; killing pid {pid}", "dead")
+                    kill(pid)
+            else:
+                disconnect_since = None
         if quiet > K["quiet_after"]:
-            if war_open(text):
-                if not told_quiet:
+            if not told_quiet:
+                if war_open(text):
                     event(f"war window, log quiet {quiet:.0f}s", "alive")
-                    told_quiet = True
-            elif time.time() - last_look >= K["screen_gap"]:
-                last_look = time.time()
-                state = read_state(popup_only=True)
-                if state["disconnect"] or state["login"] or state["failed"]:
-                    if disconnect_since is None:
-                        disconnect_since = time.time()
-                        event("disconnected (run still up)", "alive")
-                        snap("disconnect_seen", state["image"])
-                    elif time.time() - disconnect_since > K["disconnect_kill"]:
-                        event(f"disconnected {K['disconnect_kill']}s and the "
-                              f"run has not died; killing pid {pid}", "dead")
-                        kill(pid)
-                elif not told_quiet:
+                elif disconnect_since is None:
                     event(f"log quiet {quiet:.0f}s, not a disconnect",
                           "alive")
-                    told_quiet = True
+                told_quiet = True
         else:
             told_quiet = False
-            disconnect_since = None
 
         if not alive(pid):
             reason = death_reason(read(log))
@@ -203,8 +203,8 @@ def watch(pid, log):
 
 def read_state(image=None, popup_only=False):
     image = image if image is not None else calibration.grab()
-    words = (calibration.ocr(image, popup_box()) if popup_only
-             else recovery._words(image))
+    words = (calibration.ocr(image, recovery._box_frac(recovery.POPUP_F))
+             if popup_only else recovery._words(image))
     login = recovery._find(
         recovery.LOGIN_WORD, whole=True,
         words=calibration.ocr(image, recovery._box_frac(recovery.LOGIN_PANEL_F)))
@@ -213,12 +213,15 @@ def read_state(image=None, popup_only=False):
         "disconnect": recovery.disconnected(words=words),
         "failed": recovery.failed_to_connect(words=words),
         "login": login,
-        "alz": calibration.find_alz(image) is not None,
-        "trade": calibration._trade_window_open(image),
-        "vendor": calibration.vendor_open(image),
-        "buttons": row_model.dialog_buttons(image),
-        "underprice": calibration.underprice_warning(image),
     }
+    if not popup_only:
+        state.update({
+            "alz": calibration.find_alz(image) is not None,
+            "trade": calibration._trade_window_open(image),
+            "vendor": calibration.vendor_open(image),
+            "buttons": row_model.dialog_buttons(image),
+            "underprice": calibration.underprice_warning(image),
+        })
     state["summary"] = ", ".join(
         f"{k}={v if not isinstance(v, tuple) else list(v)}"
         for k, v in state.items() if k != "image")
