@@ -236,6 +236,7 @@ def relist_one(model, index, verbose=True):
             text, row = row_at(model, index, verbose=False)
             button = row_model.row_button()
         if complete or button == row_model.REGISTER_WORD or row is None:
+            model._slots.pop(index, None)
             model.forget_floor(index)
             if verbose:
                 print(f"    collected; row {index} is empty, nothing to "
