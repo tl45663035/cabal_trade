@@ -9,6 +9,8 @@ LEDGER = ROOT / "src_1080p" / "sales.db"
 LOGS = ROOT / "src_1080p" / "logs"
 PACK = re.compile(r"\bX\s*[\d,]+", re.I)
 DAYS_BACK = 7
+ENDED = re.compile(r"ended (\d\d):(\d\d):(\d\d), ran for")
+LOG_STAMP = "%Y-%m-%d_%H%M%S"
 
 
 def key(name):
@@ -205,6 +207,39 @@ def run_hours(run):
     return max(0.0, (ended - began).total_seconds() / 3600)
 
 
+def run_spans(since):
+    spans = []
+    for log in LOGS.glob("*_run.log"):
+        try:
+            began = datetime.datetime.strptime(
+                log.name[:len(datetime.datetime.now().strftime(LOG_STAMP))],
+                LOG_STAMP)
+        except ValueError:
+            continue
+        if began < since:
+            continue
+        try:
+            found = ENDED.search(log.read_text(encoding="utf-8",
+                                               errors="replace"))
+            ended = datetime.datetime.fromtimestamp(log.stat().st_mtime)
+        except OSError:
+            continue
+        if found:
+            clock = datetime.time(*(int(part) for part in found.groups()))
+            ended = datetime.datetime.combine(began.date(), clock)
+            if ended < began:
+                ended += datetime.timedelta(days=1)
+        spans.append((began, ended))
+    return spans
+
+
+def up_hours(spans, begin, end):
+    end = min(end, datetime.datetime.now())
+    seconds = sum(max(0.0, (min(ended, end) - max(began, begin)).total_seconds())
+                  for began, ended in spans)
+    return seconds / 3600
+
+
 def line(char="-", width=96):
     print(char * width)
 
@@ -223,26 +258,34 @@ def by_day(count=DAYS_BACK):
     print("a run counts on the day it was LAUNCHED; each run is closed on "
           "its own stock, unsold lots at the price they were bought against")
     print("")
-    print(f"{'day':<26}{'profit':>15}{'realised':>15}{'assumed':>15}"
-          f"{'units':>8}{'margin':>8}")
-    line()
+    print(f"{'day':<26}{'hours':>8}{'profit':>15}{'realised':>15}"
+          f"{'assumed':>15}{'units':>8}{'margin':>8}{'an hour':>14}")
+    line(width=118)
     grand = collections.Counter()
+    spans = run_spans(datetime.datetime.combine(first, datetime.time.min)
+                      - datetime.timedelta(days=1))
+    all_up = 0.0
     for back in range(count - 1, -1, -1):
         day = today - datetime.timedelta(days=back)
         begin = datetime.datetime.combine(day, datetime.time.min)
-        closed = close_window(stamp(begin),
-                              stamp(begin + datetime.timedelta(days=1)))
+        end = begin + datetime.timedelta(days=1)
+        closed = close_window(stamp(begin), stamp(end))
         t = collections.Counter()
         for c in closed:
             t.update(totals(c))
         grand.update(t)
+        up = up_hours(spans, begin, end)
+        all_up += up
         label = f"{day:%a %Y-%m-%d}" + (" (so far)" if not back else "")
-        print(f"{label:<26}{profit(t):>15,.0f}{realised(t):>15,.0f}"
-              f"{assumed(t):>15,.0f}{t['sold'] + t['held']:>8,}{margin(t)}")
-    line("=")
-    print(f"{f'{count} DAYS':<26}{profit(grand):>15,.0f}{realised(grand):>15,.0f}"
-          f"{assumed(grand):>15,.0f}{grand['sold'] + grand['held']:>8,}"
-          f"{margin(grand)}")
+        print(f"{label:<26}{up:>7.2f}h{profit(t):>15,.0f}"
+              f"{realised(t):>15,.0f}{assumed(t):>15,.0f}"
+              f"{t['sold'] + t['held']:>8,}{margin(t)}"
+              f"{profit(t) / up if up else 0:>14,.0f}")
+    line("=", width=118)
+    print(f"{f'{count} DAYS':<26}{all_up:>7.2f}h{profit(grand):>15,.0f}"
+          f"{realised(grand):>15,.0f}{assumed(grand):>15,.0f}"
+          f"{grand['sold'] + grand['held']:>8,}{margin(grand)}"
+          f"{profit(grand) / all_up if all_up else 0:>14,.0f}")
 
 
 def report_day():

@@ -16,10 +16,15 @@ py tools/profit_summary.py
 The tool prints two blocks. Report **both, every time**, whatever was asked
 for -- "profit", "how are we doing", "today", a bare `/profit_summary`:
 
-1. **LAST 7 DAYS**, one row per day: profit, realised, assumed, units,
-   margin. Give every day its own line including the zero days, then the
-   7-day total. Do not collapse it to a total, do not drop the empty days,
-   and do not skip the block because the question was about today.
+1. **LAST 7 DAYS**, one row per day: hours, profit, realised, assumed, units,
+   margin (**hours** is second: how long a run was alive that day, midnight to midnight,
+   from the run logs' launch stamp and `ended HH:MM:SS` line, the live run
+   to now) and **an hour** (the day's profit over those hours). Give every
+   day its own line including the zero days, then the 7-day total. Do not
+   collapse it to a total, do not drop the empty days, and do not skip the
+   block because the question was about today. Profit sits on the run's
+   launch day but hours sit where they fall, so a run crossing midnight
+   skews the two days against each other; the 7-day figure is the fair one.
 2. **The day summary** that follows -- per-item lines, the Cores/Chaos
    split, the total, `by run`, what was sold but not bought, and the live
    run's open stock.
