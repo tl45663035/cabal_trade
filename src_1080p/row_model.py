@@ -537,6 +537,10 @@ def pack_size(name):
     return int(found.group(1)) if found else 1
 
 
+def item_key(name):
+    return _key(_PACK.sub("", name or ""))
+
+
 class Row:
     __slots__ = ("name", "qty", "price", "buy_cost", "units")
 
@@ -887,6 +891,7 @@ class RowModel:
             raise Divergence(
                 f"nothing loaded into the shop slot from ({row},{col}) after "
                 f"{LOAD_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
+        count = None
         if unit_market:
             count = max(1, round(suggested / unit_market))
             if floor_each:
@@ -975,7 +980,8 @@ class RowModel:
                   + (f"; it lands in row {int(lands_in)}"
                      if lands_in is not None else ""))
         return {"slot": (int(row), int(col)), "qty": qty,
-                "price": want, "row": lands_in, "floored": floored}
+                "price": want, "row": lands_in, "floored": floored,
+                "units": count}
 
     def collect(self, index, remaining=0):
         index = int(index)

@@ -175,7 +175,7 @@ def seed(verbose=True):
                 print(f"    {index:2}  UNREAD {text!r}")
             continue
         known = remembered.get(index)
-        if known is not None and row_model._key(known[0]) == row.key:
+        if known is not None and                 row_model.item_key(known[0]) == row_model.item_key(row.name):
             row.buy_cost = known[1]
         found[index] = row
         if verbose:
@@ -293,7 +293,7 @@ def relist_one(model, index, verbose=True):
         print(f"  row {index}: {row.name!r} x{row.qty} at {row.price:,} "
               f"-> tab {row_model.WORK_TAB} slot {landing}")
     held = model.get(index)
-    if held is not None and held.key == row.key:
+    if held is not None and             row_model.item_key(held.name) == row_model.item_key(row.name):
         row.buy_cost = held.buy_cost
     model._slots[index] = row
     unit_floor, pair = calibration.price_floor(row.name)
@@ -669,7 +669,8 @@ def do_craft_chaos(verbose=True):
                                      unit_market=set_row["unit_price"],
                                      floor_each=unit_cost)
         model.place(lands_in, row_model.Row(set_name, qty=listed["qty"],
-                                            price=listed["price"]))
+                                            price=listed["price"],
+                                            units=listed["units"]))
         rows.append(lands_in)
         listed_total += listed["qty"]
     calibration.phases_table(
@@ -1285,7 +1286,8 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                                      floor_each=unit_cost)
         model.place(lands_in, row_model.Row(
             set_name, qty=listed["qty"], price=listed["price"],
-            buy_cost=unit_cost if bought and paid else 0))
+            buy_cost=unit_cost if bought and paid else 0,
+            units=listed["units"]))
         rows.append(lands_in)
         listed_total += listed["qty"]
     if not full:
