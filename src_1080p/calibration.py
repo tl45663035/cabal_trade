@@ -84,6 +84,7 @@ DEFAULTS = {
         "search_retries": 3,
         "dialog_timeout": 8.0,
         "retry_gap": 1.0,
+        "gift_open_tries": 2,
     },
     "input": {
         "INPUT_MOUSE": 0,
@@ -1700,24 +1701,48 @@ def gift_column(points):
     return sorted(best, key=lambda p: p[1])
 
 
+def _gift_window(image=None):
+    image = image if image is not None else grab()
+    return (gift_column(_gift_reads(RECEIPT_WORD, image)),
+            _gift_reads(CLOSE_WORD, image))
+
+
+def _gift_window_shows(listed, shut):
+    return len(listed) >= GIFT_BOXES and bool(shut)
+
+
+def _await_gift_window():
+    listed, shut = [], []
+    deadline = time.monotonic() + DIALOG_TIMEOUT
+    while time.monotonic() < deadline:
+        listed, shut = _gift_window()
+        if _gift_window_shows(listed, shut):
+            break
+        time.sleep(POLL_GAP)
+    return listed, shut
+
+
 def calibrate_gifts(verbose=True):
     say = print if verbose else (lambda *a: None)
     icon = _point(GIFT_ICON_F)
     say(f"  the gift box at {list(icon)}")
-    click(*icon)
-    time.sleep(_S["timing"]["action_gap"])
-
-    listed, shut = [], []
-    deadline = time.monotonic() + DIALOG_TIMEOUT
-    while time.monotonic() < deadline:
-        image = grab()
-        listed = gift_column(_gift_reads(RECEIPT_WORD, image))
-        shut = _gift_reads(CLOSE_WORD, image)
-        if len(listed) >= GIFT_BOXES and shut:
+    listed, shut = _gift_window()
+    if _gift_window_shows(listed, shut):
+        say(f"  the gift box was already open; not clicking its icon")
+    for attempt in range(1, GIFT_OPEN_TRIES + 1):
+        if _gift_window_shows(listed, shut):
             break
-        time.sleep(POLL_GAP)
+        if attempt > 1:
+            snap("gift_window_short")
+            say(f"  the gift box shows {len(listed)} {RECEIPT_WORD} button(s) "
+                f"in one column and {len(shut)} {CLOSE_WORD}, not "
+                f"{GIFT_BOXES} and one; clicking its icon again, "
+                f"{attempt} of {GIFT_OPEN_TRIES}")
+        click(*icon)
+        time.sleep(_S["timing"]["action_gap"])
+        listed, shut = _await_gift_window()
 
-    if len(listed) < GIFT_BOXES or not shut:
+    if not _gift_window_shows(listed, shut):
         snap("gift_window_short")
         say(f"  the gift box shows {len(listed)} {RECEIPT_WORD} button(s) in "
             f"one column and {len(shut)} {CLOSE_WORD}, not {GIFT_BOXES} and "
@@ -2136,6 +2161,7 @@ ACTION_BUTTON_WORDS = (_S["text"]["confirm_word"], _S["text"]["dismiss_word"],
 RECEIPT_WORD = _S["text"]["receipt_word"]
 CLOSE_WORD = _S["text"]["close_word"]
 GIFT_BOXES = int(_S["game_facts"]["gift_boxes"])
+GIFT_OPEN_TRIES = int(_S["timing"]["gift_open_tries"])
 GIFT_COLUMN_SPREAD = int(_S["detect"]["gift_column_spread"])
 GIFT_ICON_F = tuple(_S["regions"]["gift_icon"])
 GIFT_WINDOW_F = tuple(_S["regions"]["gift_window"])
@@ -3076,9 +3102,27 @@ def calibrate_actions(shop, verbose=True):
         if not buttons_now():
             break
     else:
-        raise RuntimeError(
-            "the dialog stayed open after Confirmation on row 1; the cancel "
-            "is unconfirmed.")
+        snap("row_one_cancel_refused")
+        say(f"  the dialog stayed open after Confirmation on row 1; the game "
+            f"is refusing to withdraw it (it says so when the bag has no "
+            f"room for what would come back). Dismissing the dialog and "
+            f"leaving row 1 listed. Earlier positions stand.")
+        click(*cancel)
+        park()
+        deadline = time.monotonic() + budget
+        while time.monotonic() < deadline:
+            if not buttons_now():
+                break
+            time.sleep(POLL_GAP)
+        else:
+            from open_inventory import VK_ESCAPE, press
+            press(VK_ESCAPE)
+            park()
+            if buttons_now():
+                raise RuntimeError(
+                    "the dialog stayed open after Confirmation on row 1, "
+                    "and neither Cancel nor Escape closed it.")
+        return learned
 
     after = read_line(grab(), row_one)
     say(f"  row 1 now reads {after!r}")
@@ -3427,6 +3471,24 @@ def close_everything(verbose: bool = False) -> None:
         else:
             print("  I: pressed, but the balance is still visible -- the "
                   "panel did not close. Close it by hand.")
+
+
+def close_gift_window(verbose: bool = False) -> bool:
+    from open_inventory import focus_game
+    if not focus_game():
+        return False
+    shut = _gift_reads(CLOSE_WORD)
+    if not shut:
+        if verbose:
+            print("  no gift box open; not clicking Close")
+        return False
+    click(*shut[0])
+    time.sleep(load_shared()["timing"]["action_gap"])
+    snap("close_gift_window")
+    park()
+    if verbose:
+        print(f"  {CLOSE_WORD}: gift box closed")
+    return True
 
 
 class _Tee:

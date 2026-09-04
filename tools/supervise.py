@@ -241,18 +241,24 @@ def run_child(argv, cwd, timeout):
 
 
 def run_driver(*args):
-    no_driver_alive()
-    print(f"$ py src_1080p/driver.py {' '.join(args)}", flush=True)
-    code, out = run_child([sys.executable, str(DRIVER), *args], ROOT,
-                          K["command_timeout"])
-    tail = [l for l in out.splitlines()
-            if l.strip() and not l.startswith("#") and "%" not in l][-8:]
-    for line in tail:
-        print("   " + line[:140])
-    if code:
-        raise Stop(f"driver.py {' '.join(args)} exited {code}: "
-                   f"{death_reason(out)[:100]}")
-    return out
+    for attempt in range(1, K["stall_retries"] + 2):
+        no_driver_alive()
+        print(f"$ py src_1080p/driver.py {' '.join(args)}", flush=True)
+        code, out = run_child([sys.executable, str(DRIVER), *args], ROOT,
+                              K["command_timeout"])
+        tail = [l for l in out.splitlines()
+                if l.strip() and not l.startswith("#") and "%" not in l][-8:]
+        for line in tail:
+            print("   " + line[:140])
+        if not code:
+            return out
+        reason = death_reason(out)
+        if "ServerStalled" not in reason or attempt > K["stall_retries"]:
+            raise Stop(f"driver.py {' '.join(args)} exited {code}: "
+                       f"{reason[:100]}")
+        event(f"server stalled under driver.py {args[0]}; waiting "
+              f"{K['stall_wait']}s, then attempt {attempt + 1}", "dead")
+        time.sleep(K["stall_wait"])
 
 
 def recover_login():
@@ -282,8 +288,27 @@ def dismiss_dialog(state):
         calibration.park()
         time.sleep(K["dialog_settle"])
         state = read_state()
-    raise Stop(f"the dialog stayed up after {K['dialog_tries']} "
-               f"Confirmation clicks")
+    print(f"  {K['dialog_tries']} {row_model.CONFIRM_WORD} clicks did nothing; "
+          f"the game is refusing it, so {row_model.DISMISS_WORD} instead and "
+          f"the row stays listed for the next run to retry")
+    point = row_model.find_button(row_model.DISMISS_WORD,
+                                  timeout=K["dialog_settle"])
+    if point is not None:
+        print(f"  {row_model.DISMISS_WORD} at {list(point)}")
+        calibration.click(*point)
+        calibration.park()
+        time.sleep(K["dialog_settle"])
+        state = read_state()
+    if row_model.CONFIRM_WORD in state["buttons"]:
+        press(VK_ESCAPE)
+        time.sleep(K["escape_settle"])
+        state = read_state()
+    if row_model.CONFIRM_WORD in state["buttons"]:
+        raise Stop(f"the dialog stayed up after {K['dialog_tries']} "
+                   f"{row_model.CONFIRM_WORD} clicks, {row_model.DISMISS_WORD} "
+                   f"and Escape")
+    snap("dialog_dismissed", state["image"])
+    return state
 
 
 def squash(name):
@@ -564,6 +589,7 @@ def recover(reason, text, plan=False, log=None, watched=True):
                   f"if it came back to tab {WORK_TAB}; otherwise the row kept it, "
                   f"it sold, or it was listed by hand. The next run reads the "
                   f"board.")
+    calibration.close_gift_window(True)
     calibration.close_everything(True)
     snap("reset")
 

@@ -142,6 +142,7 @@
     "craft_settle_max": 300.0,
     "stop_key_poll": 0.03,
     "gift_gap": 0.5,
+    "gift_open_tries": 2,
     "search_settle": 1.5,
     "convert_grid_settle": 2.0
   },
@@ -220,6 +221,8 @@
     "hover_cap": 40,
     "keep_frames": 30,
     "keep_reels": 1,
-    "escape_settle": 1
+    "escape_settle": 1,
+    "stall_wait": 60,
+    "stall_retries": 2
   }
 }

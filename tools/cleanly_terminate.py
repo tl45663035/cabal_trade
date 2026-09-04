@@ -100,6 +100,7 @@ def cleanly_terminate(verbose=True):
         return False
     print("")
     print("returning the game to its default state:")
+    calibration.close_gift_window(verbose=verbose)
     calibration.close_everything(verbose=verbose)
     print(f"  done; the run wrote {log.name}")
     return True

@@ -38,9 +38,14 @@ Every run is its own book. Nothing crosses from one run to the next.
 - **Every purchase carries `expect`**: the unit price the core was selling
   at when it was bought (`sells_at` in `buy.py`, written by
   `ledger.bought`). The margin is known the moment the stock is bought.
-- **A sale is matched oldest-lot-first against what the same run bought.**
-  Profit on those units is what the collection actually paid minus what
-  those lots cost. That is **realised**.
+- **A sale is matched oldest-lot-first against what the same run had
+  bought before that sale.** Profit on those units is what the collection
+  actually paid minus what those lots cost. That is **realised**. A sale
+  earlier than every lot of the run is the previous run's stock clearing,
+  whatever run the ledger tagged it with; it goes under `sold by a run that
+  did not buy it`. Until 2026-09-04 the match ignored time, so a run's
+  first minutes booked the old stock against lots bought later -- the live
+  run showed -641K "realised" on Sets it had not sold yet.
 - **When the run ends, every lot it still holds is taken as sold at its
   `expect`.** That is **assumed**. It closes the run.
 - **The live run** is closed the same way, with its open stock listed
@@ -54,8 +59,11 @@ expected revenue.
 ## Ledger conventions that bite
 
 - Purchase `qty` is in cores. Sale `qty` is in units too, already expanded
-  from bundles -- `Chaos Core Set X 165` books as 167 units, not 1. Never
-  scale a sale by the pack in its name.
+  from bundles by `round(proceeds / market_unit)` -- `Chaos Core Set X 165`
+  books as 167 units, not 1. The tool corrects it to the name's `X N` times
+  the bundles that qty amounts to (`units_sold`), because a Set sells above
+  the Core and the rounding drifts a few percent; a bundle whose ledger name
+  carries no pack keeps the booked qty.
 - Revenue is `proceeds`, the balance delta the collection actually showed.
   Fall back to `price x qty` only when it is NULL.
 - `Force Core Set (High) X 435` and `Force Core(High)` are the same item:
@@ -74,10 +82,14 @@ expected revenue.
   Fixed or not, under this model the stock simply stays "held" and closes
   at `expect` -- the profit is counted, at the bought-against price rather
   than the real one.
-- **Bundle unit counts** come from `round(price / market_unit)`, not the
-  `X N` in the name, so a bundle can book a few units off.
-- Whether the game's sales fee is inside `proceeds` is unconfirmed; if it
-  is not, real margins are lower.
+- **Bundle unit counts** in the ledger come from `round(price /
+  market_unit)`, not the `X N` in the name; the tool re-derives them from
+  the name where it has one, but some sale rows are booked without the
+  pack (`Chaos Core Set`, 174 units for an X 162 on 2026-09-04) and those
+  stay a few percent off.
+- The Register panel shows `Sales Fee (%0.0%)` on this shop (screen,
+  2026-09-04), and `proceeds` equals the price the game's chat reports the
+  row sold for, so revenue is the full sale price.
 
 ## Reading the result
 

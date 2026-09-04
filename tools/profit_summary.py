@@ -6,7 +6,12 @@ Each run is its own book:
   * every purchase carries the unit price the core was selling at when it
     was bought (`expect`), so its margin is known the moment it is bought;
   * a sale is matched, oldest purchase first, against what the SAME run
-    bought, and the profit on those units is what the sale actually made;
+    had bought BEFORE that sale, and the profit on those units is what the
+    sale actually made. A sale earlier than every lot is the previous run's
+    stock clearing, however the ledger tags it;
+  * a bundle's units are the `X N` in its name times the bundles sold;
+    the ledger's `qty` (proceeds over the market price) is used only when
+    the name carries no pack;
   * when the run ends, whatever it bought and has not sold is taken as sold
     at the price it was bought against. That closes the run. The next run
     finds that stock on the board and ignores it, because it is already
@@ -36,12 +41,21 @@ def key(name):
 
 
 def pack(name):
-    # Units in a bundle from the `X N` in its name. Not used for the ledger
-    # here (sales are already in units); networth.py values the board with it.
+    # Units in a bundle from the `X N` in its name; 1 without one.
     found = PACK.findall(name or "")
     if not found:
         return 1
     return max(1, int(re.sub(r"[^\d]", "", found[-1])))
+
+
+def units_sold(item, qty):
+    # The ledger books a bundle's units as proceeds over the market price,
+    # which drifts by a few percent because a Set sells above the Core. The
+    # name's `X N` is exact, so take N times the bundles the qty amounts to.
+    per = pack(item)
+    if per == 1 or not qty:
+        return qty
+    return max(1, round(qty / per)) * per
 
 
 def bucket(name):
@@ -100,7 +114,8 @@ def load(start, end=None):
             f"WHERE {where} ORDER BY at, id", args):
         if qty:
             gross = proceeds if proceeds is not None else (price or 0) * qty
-            runs[run]["sells"].append((at, item, qty, gross))
+            runs[run]["sells"].append((at, item, units_sold(item, qty),
+                                       gross))
     conn.close()
     return runs
 
@@ -126,15 +141,22 @@ def close_run(run, book, fallback):
     against."""
     lots = collections.defaultdict(collections.deque)
     guessed = 0
-    for _at, item, spend, qty, expect in book["buys"]:
-        k = key(item)
-        cost = spend / qty
-        if not expect:
-            expect = fallback.get(k)
-            guessed += qty
-        if not expect:
-            expect = cost
-        lots[k].append([qty, cost, expect, item])
+    buys = collections.deque(sorted(book["buys"]))
+
+    def stock_up(until):
+        # Lots become matchable only once bought; a sale before every lot
+        # is the previous run's stock, whatever run the ledger tagged it.
+        nonlocal guessed
+        while buys and (until is None or buys[0][0] <= until):
+            _at, item, spend, qty, expect = buys.popleft()
+            k = key(item)
+            cost = spend / qty
+            if not expect:
+                expect = fallback.get(k)
+                guessed += qty
+            if not expect:
+                expect = cost
+            lots[k].append([qty, cost, expect, item])
 
     items = {}
 
@@ -144,7 +166,8 @@ def close_run(run, book, fallback):
             "sold_cost": 0.0, "held": 0, "expected": 0.0, "held_cost": 0.0})
 
     ignored = collections.Counter()
-    for _at, item, qty, gross in book["sells"]:
+    for at, item, qty, gross in sorted(book["sells"]):
+        stock_up(at)
         if not gross:
             continue
         k = key(item)
@@ -163,6 +186,7 @@ def close_run(run, book, fallback):
                 lots[k].popleft()
         if left:
             ignored[k] += left
+    stock_up(None)
 
     for k, dq in lots.items():
         for units, cost, expect, name in dq:
@@ -360,8 +384,8 @@ def report_day():
               f"never sold")
 
     print("")
-    print("revenue is what the collections actually paid; if the game's "
-          "sales fee is not in the ledger, margins are lower than shown")
+    print("revenue is what the collections actually paid; the shop's sales "
+          "fee is 0.0%, so that is the full sale price")
 
 
 def main():
