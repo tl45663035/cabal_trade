@@ -1,5 +1,3 @@
-# Show one Windows toast. Used by tools/supervise.py for its event lines.
-#   powershell -NoProfile -ExecutionPolicy Bypass -File tools/toast.ps1 "<line>"
 param([string]$Line = "")
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null

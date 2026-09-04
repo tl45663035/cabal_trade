@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-# Emit one line per event on a live driver.py run: server lag, a stop
-# condition, a disconnect, or the run ending. Every event says whether the
-# run is still alive, because "server lag" means something different if the
-# process died with it.
 #
-#   tools/watch_run.sh <pid> <log>
 #
-# Meant to be handed to the Monitor tool, which turns each stdout line into
-# a notification. See .claude/skills/watch_run/SKILL.md.
 
 PID="$1"
 LOG="$2"
@@ -24,8 +17,6 @@ if [ -z "$PID" ] || [ -z "$LOG" ]; then
   exit 2
 fi
 
-# grep -c prints 0 AND exits 1 when nothing matches, so `|| echo 0` would
-# make the value "0\n0" and every -gt after it an "integer expected" error.
 count() {
   c=$(grep -cE "$1" "$LOG" 2>/dev/null)
   echo "${c:-0}" | head -1

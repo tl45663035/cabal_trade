@@ -17,9 +17,6 @@ MARKET_HEAD = re.compile(r"^market prices:\s*$")
 MARKET_ROW = re.compile(r"^\s{2}(\S.*?)\s{2,}([\d,]+)\s*$")
 BOARD_ROW = re.compile(r"^\s{4,}(\d+)\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+)\s*$")
 BOARD_UNREAD = re.compile(r"^\s{4,}(\d+)\s+UNREAD\s+(.*)$")
-# board_report() heads its table with "board after pass N:", so a board whose
-# row 1 is empty does not pile onto the one before it. seed() has no header
-# of its own; its table is caught by the row-1 rule below.
 BOARD_HEAD = re.compile(r"^\s+board after pass \d+:")
 BALANCE = re.compile(r"balance (?:after|before|now)\s+([\d,]+)")
 RESUPPLY = re.compile(r'^TASK \{"kind": "resupply", "core": "([^"]+)"')

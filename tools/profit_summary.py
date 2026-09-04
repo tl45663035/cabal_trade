@@ -1,27 +1,3 @@
-"""Profit per run, closed the way the runs are run.
-
-Each run is its own book:
-
-  * stock the run did not buy does not count for it, even if it sells it;
-  * every purchase carries the unit price the core was selling at when it
-    was bought (`expect`), so its margin is known the moment it is bought;
-  * a sale is matched, oldest purchase first, against what the SAME run
-    had bought BEFORE that sale, and the profit on those units is what the
-    sale actually made. A sale earlier than every lot is the previous run's
-    stock clearing, however the ledger tags it;
-  * a bundle's units are the `X N` in its name times the bundles sold;
-    the ledger's `qty` (proceeds over the market price) is used only when
-    the name carries no pack;
-  * when the run ends, whatever it bought and has not sold is taken as sold
-    at the price it was bought against. That closes the run. The next run
-    finds that stock on the board and ignores it, because it is already
-    counted.
-
-The live run is reported the same way, with its open stock shown apart, so
-what is realised and what is still expected can be told apart.
-
-Reads src_1080p/sales.db read-only. Safe while a run is in progress.
-"""
 import collections
 import datetime
 import pathlib
@@ -41,7 +17,6 @@ def key(name):
 
 
 def pack(name):
-    # Units in a bundle from the `X N` in its name; 1 without one.
     found = PACK.findall(name or "")
     if not found:
         return 1
@@ -49,9 +24,6 @@ def pack(name):
 
 
 def units_sold(item, qty):
-    # The ledger books a bundle's units as proceeds over the market price,
-    # which drifts by a few percent because a Set sells above the Core. The
-    # name's `X N` is exact, so take N times the bundles the qty amounts to.
     per = pack(item)
     if per == 1 or not qty:
         return qty
@@ -78,9 +50,6 @@ LIVE_WITHIN = 10 * 60
 
 
 def run_is_live(run):
-    """A run whose log is still being written and has no closing 'ran for'
-    line is still going. A run that died without writing one has a log
-    that stopped moving, so the age of the log tells the two apart."""
     log = run_log(run)
     if log is None or not log.exists():
         return False
@@ -95,7 +64,6 @@ def run_is_live(run):
 
 
 def load(start, end=None):
-    """Purchases and sales per run launched in [start, end)."""
     if not LEDGER.exists():
         raise SystemExit(f"no ledger at {LEDGER}")
     conn = sqlite3.connect(f"file:{LEDGER}?mode=ro", uri=True)
@@ -121,8 +89,6 @@ def load(start, end=None):
 
 
 def sale_prices(start, end=None):
-    """Median unit sale price per item over the window, for purchases that
-    predate the `expect` column and need a price to be closed at."""
     conn = sqlite3.connect(f"file:{LEDGER}?mode=ro", uri=True)
     where = "run>=?" if end is None else "run>=? AND run<?"
     args = (start,) if end is None else (start, end)
@@ -136,16 +102,11 @@ def sale_prices(start, end=None):
 
 
 def close_run(run, book, fallback):
-    """One run's book: realised on what it bought and sold, assumed on what
-    it bought and still holds, valued at the price each lot was bought
-    against."""
     lots = collections.defaultdict(collections.deque)
     guessed = 0
     buys = collections.deque(sorted(book["buys"]))
 
     def stock_up(until):
-        # Lots become matchable only once bought; a sale before every lot
-        # is the previous run's stock, whatever run the ledger tagged it.
         nonlocal guessed
         while buys and (until is None or buys[0][0] <= until):
             _at, item, spend, qty, expect = buys.popleft()
