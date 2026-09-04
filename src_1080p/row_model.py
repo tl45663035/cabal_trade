@@ -593,8 +593,21 @@ class RowModel:
         self._broken = set()
         self._top = None
         self.ready = False
+        self.tracked = False
         self.enforce = enforce
         self.divergences = 0
+
+    def save(self):
+        if self.tracked:
+            ledger.board_save(self._slots)
+
+    def place(self, index, row):
+        self._slots[int(index)] = row
+        self.save()
+
+    def drop(self, index):
+        self._slots.pop(int(index), None)
+        self.save()
 
     def forget_floor(self, index):
         self._floored.pop(int(index), None)
@@ -663,6 +676,7 @@ class RowModel:
         if row is None:
             raise ValueError(f"row {index} is already empty; nothing to cancel")
         del self._slots[index]
+        self.save()
         landing = self.next_work_slot()
         if landing is not None:
             self._work[landing] = row.copy()
@@ -975,6 +989,7 @@ class RowModel:
         else:
             row.qty = remaining
             left = row
+        self.save()
         return {
             "row": index,
             "remaining": left,

@@ -27,6 +27,14 @@ _SCHEMA = (
            qty      INTEGER,
            note     TEXT
        )""",
+    """CREATE TABLE IF NOT EXISTS board (
+           row      INTEGER PRIMARY KEY,
+           at       TEXT    NOT NULL,
+           item     TEXT    NOT NULL,
+           qty      INTEGER,
+           price    INTEGER,
+           buy_cost INTEGER
+       )""",
 )
 
 _RUN = None
@@ -65,6 +73,27 @@ def bought(item, price, spend, qty, note=None, expect=None):
 def sold(item, price, proceeds, qty, note=None):
     _write("sales", ("item", "price", "proceeds", "qty", "note"),
            (item, int(price or 0), int(proceeds or 0), int(qty or 0), note))
+
+
+def board_save(rows):
+    if _RUN is None:
+        start()
+    at = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    with sqlite3.connect(DB) as db:
+        db.execute("DELETE FROM board")
+        db.executemany(
+            "INSERT INTO board (row, at, item, qty, price, buy_cost) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            [(int(index), at, row.name, int(row.qty), int(row.price),
+              int(row.buy_cost)) for index, row in rows.items()])
+
+
+def board_costs():
+    if _RUN is None:
+        start()
+    with sqlite3.connect(DB) as db:
+        return {int(row): (item, int(cost or 0)) for row, item, cost
+                in db.execute("SELECT row, item, buy_cost FROM board")}
 
 
 _PACK = re.compile(r"\bX\s*[\d,]+", re.I)

@@ -15,7 +15,8 @@ def key(name):
 
 MARKET_HEAD = re.compile(r"^market prices:\s*$")
 MARKET_ROW = re.compile(r"^\s{2}(\S.*?)\s{2,}([\d,]+)\s*$")
-BOARD_ROW = re.compile(r"^\s{4,}(\d+)\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+)\s*$")
+BOARD_ROW = re.compile(r"^\s{4,}(\d+)\s{2,}(.+?)\s+x([\d,]+)"
+                       r"(?:\s+(?:[\d,]+|-|[-+]?[\d.]+%))*\s+([\d,]+)\s*$")
 BOARD_UNREAD = re.compile(r"^\s{4,}(\d+)\s+UNREAD\s+(.*)$")
 BOARD_HEAD = re.compile(r"^\s+board after pass \d+:")
 BALANCE = re.compile(r"balance (?:after|before|now)\s+([\d,]+)")

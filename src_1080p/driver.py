@@ -93,13 +93,25 @@ def board_report(model, passes):
               f"the pass carries on")
 
 
+def board_header():
+    return (f"    {'':2}  {'':34} {'':5} {'bought/u':>10} {'listed/u':>10} "
+            f"{'margin':>7} {'row price':>14}")
+
+
+def board_line(index, row):
+    bought = f"{row.buy_cost:,}" if row.buy_cost else "-"
+    margin = (f"{(row.sell_unit - row.buy_cost) / row.sell_unit:+.1%}"
+              if row.buy_cost and row.sell_unit else "-")
+    return (f"    {index:2}  {row.name[:34]:34} x{row.qty:<4} {bought:>10} "
+            f"{row.sell_unit:>10,} {margin:>7} {row.price:>14,}")
+
+
 def _board_report(model, passes):
-    lines = ["", f"  board after pass {passes}:"]
+    lines = ["", f"  board after pass {passes}:", board_header()]
     by_item = {}
     for index in model.occupied():
         row = model.get(index)
-        lines.append(f"    {index:2}  {row.name[:34]:34} x{row.qty:<4} "
-                     f"{row.price:>14,}")
+        lines.append(board_line(index, row))
         item = row_model._PACK.sub("", row.name).strip()
         rows, units, listed = by_item.get(item, (0, 0, 0))
         by_item[item] = (rows + 1, units + row.units, listed + row.sell_total)
@@ -149,6 +161,9 @@ def seed(verbose=True):
     model = row_model.RowModel().seed({})
     model.home(verbose=verbose)
     found = {}
+    remembered = ledger.board_costs()
+    if verbose:
+        print(board_header())
     for index in range(1, row_model.MAX_TOP + 1):
         model.scroll_to(index, verbose=False)
         text = row_model.read_row_one()
@@ -159,11 +174,15 @@ def seed(verbose=True):
             if verbose:
                 print(f"    {index:2}  UNREAD {text!r}")
             continue
+        known = remembered.get(index)
+        if known is not None and row_model._key(known[0]) == row.key:
+            row.buy_cost = known[1]
         found[index] = row
         if verbose:
-            print(f"    {index:2}  {row.name[:34]:34} x{row.qty:<4} "
-                  f"{row.price:>14,}")
+            print(board_line(index, row))
     model.seed(found, top=row_model.MAX_TOP)
+    model.tracked = True
+    model.save()
     model.home(verbose=verbose)
     if verbose:
         print(f"  seeded {len(found)} of rows 1-{row_model.MAX_TOP}")
@@ -237,7 +256,7 @@ def relist_one(model, index, verbose=True):
             text, row = row_at(model, index, verbose=False)
             button = row_model.row_button()
         if complete or button == row_model.REGISTER_WORD or row is None:
-            model._slots.pop(index, None)
+            model.drop(index)
             model.forget_floor(index)
             if verbose:
                 print(f"    collected; row {index} is empty, nothing to "
@@ -247,7 +266,7 @@ def relist_one(model, index, verbose=True):
             print(f"    collected; {row.qty} left to relist")
 
     if row_model.row_one_is_empty(text) or button == row_model.REGISTER_WORD:
-        model._slots.pop(index, None)
+        model.drop(index)
         model.forget_floor(index)
         if verbose:
             print(f"  row {index} is empty; nothing to relist")
@@ -273,6 +292,9 @@ def relist_one(model, index, verbose=True):
     if verbose:
         print(f"  row {index}: {row.name!r} x{row.qty} at {row.price:,} "
               f"-> tab {row_model.WORK_TAB} slot {landing}")
+    held = model.get(index)
+    if held is not None and held.key == row.key:
+        row.buy_cost = held.buy_cost
     model._slots[index] = row
     unit_floor, pair = calibration.price_floor(row.name)
     if not unit_floor:
@@ -285,7 +307,8 @@ def relist_one(model, index, verbose=True):
                       f"read as stacked lines it is {again.name!r}, so the "
                       f"floor and the name are taken from that")
                 unit_floor, pair = floor_again, pair_again
-                row = row_model.Row(again.name, qty=row.qty, price=row.price)
+                row = row_model.Row(again.name, qty=row.qty, price=row.price,
+                                    buy_cost=row.buy_cost)
                 model._slots[index] = row
     if verbose:
         if not unit_floor:
@@ -360,7 +383,7 @@ def relist_one(model, index, verbose=True):
         model.receive(index, verbose=False)
         seen = row_model.read_row_one()
         if row_model.row_one_is_empty(seen):
-            model._slots.pop(index, None)
+            model.drop(index)
             model.forget_floor(index)
             print(f"    collected; row {index} is empty")
         else:
@@ -370,8 +393,9 @@ def relist_one(model, index, verbose=True):
     task_done("relist", row=index, lands_in=lands_in, qty=out["qty"],
               price=out["price"])
     model._slots.pop(index, None)
-    model._slots[lands_in] = row_model.Row(row.name, qty=out["qty"],
-                                           price=out["price"])
+    model.place(lands_in, row_model.Row(row.name, qty=out["qty"],
+                                        price=out["price"],
+                                        buy_cost=row.buy_cost))
     model.carry_floor(index, lands_in, breaking, out["floored"], parked)
     if verbose:
         note = ""
@@ -644,8 +668,8 @@ def do_craft_chaos(verbose=True):
                                      lands_in=lands_in,
                                      unit_market=set_row["unit_price"],
                                      floor_each=unit_cost)
-        model._slots[lands_in] = row_model.Row(set_name, qty=listed["qty"],
-                                               price=listed["price"])
+        model.place(lands_in, row_model.Row(set_name, qty=listed["qty"],
+                                            price=listed["price"]))
         rows.append(lands_in)
         listed_total += listed["qty"]
     calibration.phases_table(
@@ -744,8 +768,8 @@ def do_convert(slot, verbose=True):
                 listed = model.list_slot(*remaining[0], floor=floor, why=why,
                                          verbose=verbose, lands_in=lands_in,
                                          expect_item=core)
-            model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
-                                                   price=listed["price"])
+            model.place(lands_in, row_model.Row(core, qty=listed["qty"],
+                                                price=listed["price"]))
             rows.append(lands_in)
             listed_total += listed["qty"]
         if full:
@@ -1003,8 +1027,9 @@ def list_round(model, job, first, last, verbose=True):
             listed = model.list_slot(*remaining[0], floor=floor, why=why,
                                      verbose=verbose, lands_in=lands_in,
                                      expect_item=core)
-        model._slots[lands_in] = row_model.Row(core, qty=listed["qty"],
-                                               price=listed["price"])
+        model.place(lands_in, row_model.Row(
+            core, qty=listed["qty"], price=listed["price"],
+            buy_cost=job["floor"] if job["paid"] else 0))
         job["rows"].append(lands_in)
         job["listed"] += listed["qty"]
         still = calibration.occupied_slots()
@@ -1258,8 +1283,9 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                                      lands_in=lands_in,
                                      unit_market=set_row["unit_price"],
                                      floor_each=unit_cost)
-        model._slots[lands_in] = row_model.Row(set_name, qty=listed["qty"],
-                                               price=listed["price"])
+        model.place(lands_in, row_model.Row(
+            set_name, qty=listed["qty"], price=listed["price"],
+            buy_cost=unit_cost if bought and paid else 0))
         rows.append(lands_in)
         listed_total += listed["qty"]
     if not full:
