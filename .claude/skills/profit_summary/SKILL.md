@@ -13,7 +13,7 @@ py tools/profit_summary.py
 
 ## Always report both blocks, in this order
 
-The tool prints two blocks. Report **both, every time**, whatever was asked
+The tool prints three blocks. Report **all three, every time**, whatever was asked
 for -- "profit", "how are we doing", "today", a bare `/profit_summary`:
 
 1. **LAST 7 DAYS**, one row per day: hours, profit, realised, assumed, units,
@@ -28,6 +28,12 @@ for -- "profit", "how are we doing", "today", a bare `/profit_summary`:
 2. **The day summary** that follows -- per-item lines, the Cores/Chaos
    split, the total, `by run`, what was sold but not bought, and the live
    run's open stock.
+
+3. **ROWS** -- the live run's latest board, from the newest run log: the
+   `board after pass N` table (index, name, qty, bought/u, listed/u, margin,
+   row price), the per-item rows/units/listed summary, `balance now` and the
+   pass line. Before any pass has finished it is the launch table. Quote it
+   row by row; it is the "rows summary" the user asks for.
 
 The 7-day block comes first. The day is read against it, not on its own.
 

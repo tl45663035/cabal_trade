@@ -392,11 +392,45 @@ def report_day():
           "fee is 0.0%, so that is the full sale price")
 
 
+BOARD_HEAD = re.compile(r"^  board after pass (\d+):$", re.M)
+LAUNCH_HEAD = re.compile(r"^ +bought/u +listed/u", re.M)
+
+
+def report_board():
+    logs = sorted(LOGS.glob("*_run.log"), key=lambda f: f.stat().st_mtime)
+    if not logs:
+        return
+    log = logs[-1]
+    text = log.read_text(encoding="utf-8", errors="replace")
+    heads = list(BOARD_HEAD.finditer(text))
+    if heads:
+        head = heads[-1]
+        title = f"board after pass {head.group(1)}"
+        start = head.end() + 1
+    else:
+        head = LAUNCH_HEAD.search(text)
+        if head is None:
+            print(f"ROWS -- {log.name}: no board printed yet")
+            return
+        title = "board at launch, no pass finished yet"
+        start = head.start()
+    print(f"ROWS -- {log.name}, {title}"
+          f"{'' if 'ran for' in text else ' (live)'}")
+    for row in text[start:].splitlines():
+        if row.startswith("-- pass") or row.startswith("  server clock"):
+            break
+        if row.strip():
+            print(row)
+
+
 def main():
     by_day()
     print("")
     print("")
     report_day()
+    print("")
+    print("")
+    report_board()
 
 
 if __name__ == "__main__":
