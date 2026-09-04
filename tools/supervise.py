@@ -65,6 +65,14 @@ class Stop(Exception):
     pass
 
 
+class Held(Stop):
+    pass
+
+
+def held_reason(reason):
+    return any(word in reason for word in K["held_reasons"])
+
+
 def now():
     return datetime.datetime.now().strftime("%H:%M:%S")
 
@@ -177,9 +185,11 @@ def watch(pid, log):
                     disconnect_since = time.time()
                     event("disconnected (run still up)", "alive")
                     snap("disconnect_seen", state["image"])
-                elif time.time() - disconnect_since > K["disconnect_kill"]:
-                    event(f"disconnected {K['disconnect_kill']}s and the "
-                          f"run has not died; killing pid {pid}", "dead")
+                    time.sleep(K["disconnect_kill"])
+                    state = read_state(popup_only=True)
+                if state["disconnect"] or state["login"] or state["failed"]:
+                    event(f"disconnected {time.time() - disconnect_since:.0f}s "
+                          f"on; killing pid {pid}", "dead")
                     kill(pid)
             else:
                 disconnect_since = None
@@ -253,12 +263,18 @@ def run_driver(*args):
         if not code:
             return out
         reason = death_reason(out)
-        if "ServerStalled" not in reason or attempt > K["stall_retries"]:
+        if not held_reason(reason):
             raise Stop(f"driver.py {' '.join(args)} exited {code}: "
                        f"{reason[:100]}")
-        event(f"server stalled under driver.py {args[0]}; waiting "
+        if attempt > K["stall_retries"]:
+            raise Held(f"driver.py {' '.join(args)} exited {code}: "
+                       f"{reason[:100]}")
+        event(f"driver.py {args[0]} held up: {reason[:60]}; waiting "
               f"{K['stall_wait']}s, then attempt {attempt + 1}", "dead")
         time.sleep(K["stall_wait"])
+        state = read_state()
+        if row_model.CONFIRM_WORD in state["buttons"]:
+            dismiss_dialog(state)
 
 
 def recover_login():
@@ -304,7 +320,7 @@ def dismiss_dialog(state):
         time.sleep(K["escape_settle"])
         state = read_state()
     if row_model.CONFIRM_WORD in state["buttons"]:
-        raise Stop(f"the dialog stayed up after {K['dialog_tries']} "
+        raise Held(f"the dialog stayed up after {K['dialog_tries']} "
                    f"{row_model.CONFIRM_WORD} clicks, {row_model.DISMISS_WORD} "
                    f"and Escape")
     snap("dialog_dismissed", state["image"])
@@ -350,7 +366,11 @@ def tab_slots(tab):
     calibration.click(*calibration.inventory_tab_point(tab), settle=0.0)
     time.sleep(row_model.TAB_SETTLE)
     calibration.park()
-    slots = sorted(calibration.occupied_slots(calibration.grab()))
+    slots = set()
+    for _ in range(K["slot_reads"]):
+        slots |= calibration.occupied_slots(calibration.grab())
+        time.sleep(K["slot_read_gap"])
+    slots = sorted(slots)
     snap(f"tab{tab}_{len(slots)}slots")
     return slots
 
@@ -480,22 +500,22 @@ def clear_work_tab(budget):
         found = None
         for row, col in todo:
             if hovered >= K["hover_cap"]:
-                event(f"gave up on tab {WORK_TAB}: {hovered} slot(s) hovered, "
-                      f"{len(left)} still held; the run lands beside it",
-                      "dead")
-                return budget
+                break
             hovered += 1
             _image, item = reading_at(WORK_TAB, row, col)
             if item is not None:
                 found = (row, col, item)
                 break
         if found is None:
-            event(f"stranded stock on tab {WORK_TAB}: {len(left)} slot(s) the "
-                  f"tooltip does not name, from {left[0]}; the run lands "
-                  f"beside it", "dead")
-            return budget
-        row, col, (slot, name) = found
-        args = action_for(row, col, slot, name)
+            row, col = todo[0]
+            name = "whatever is there"
+            args = ("list", str(row), str(col), "0", str(WORK_TAB))
+            event(f"tab {WORK_TAB} slot ({row},{col}) has no tooltip name; "
+                  f"listing it at the panel's price and the full quantity",
+                  "dead")
+        else:
+            row, col, (slot, name) = found
+            args = action_for(row, col, slot, name)
         what = " ".join(args)
         budget = spend(budget, what)
         run_driver(*args)
@@ -643,6 +663,19 @@ def plan(log_path=None, png=None):
     recover(death_reason(text), text, plan=True)
 
 
+def recover_and_launch(reason, log, watched=True):
+    for attempt in range(1, K["held_retries"] + 2):
+        try:
+            recover(reason, read(log), log=log, watched=watched)
+            return launch()
+        except Held as exc:
+            if attempt > K["held_retries"]:
+                raise Stop(str(exc))
+            event(f"recovery held up: {str(exc)[:80]}; waiting "
+                  f"{K['held_wait']}s, then attempt {attempt + 1}", "dead")
+            time.sleep(K["held_wait"])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true")
@@ -667,25 +700,28 @@ def main():
                 print("no run alive and no run log; launching one")
                 get_in()
                 calibration.close_everything(True)
+                pid, log = launch()
             else:
-                text = read(log)
-                reason = death_reason(text)
+                reason = death_reason(read(log))
                 event(f"no run alive; {log.name} ended: {reason[:80]}",
                       "dead")
-                recover(reason, text, log=log, watched=False)
-            pid, log = launch()
+                pid, log = recover_and_launch(reason, log, watched=False)
             if args.once:
                 return 0
         short = 0
         while True:
             launched = time.time()
             reason = watch(pid, log)
-            short = short + 1 if time.time() - launched < K["short_run"] else 0
+            if held_reason(reason):
+                event(f"the server took the run down: {reason[:60]}; "
+                      f"not counted as a short run", "dead")
+            else:
+                short = (short + 1 if time.time() - launched < K["short_run"]
+                         else 0)
             if short >= K["short_runs"]:
                 raise Stop(f"{K['short_runs']} runs in a row died within "
                            f"{K['short_run']}s of launch; last: {reason[:80]}")
-            recover(reason, read(log), log=log)
-            pid, log = launch()
+            pid, log = recover_and_launch(reason, log)
             if args.once:
                 return 0
     except KeyboardInterrupt:

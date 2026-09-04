@@ -206,7 +206,7 @@
     "poll": 20,
     "quiet_after": 150,
     "screen_gap": 60,
-    "disconnect_kill": 180,
+    "disconnect_kill": 5,
     "command_timeout": 1800,
     "login_timeout": 900,
     "tool_timeout": 30,
@@ -219,10 +219,27 @@
     "dialog_tries": 3,
     "tooltip_settle": 1.2,
     "hover_cap": 40,
+    "slot_reads": 3,
+    "slot_read_gap": 1.0,
     "keep_frames": 30,
     "keep_reels": 1,
     "escape_settle": 1,
     "stall_wait": 60,
-    "stall_retries": 2
+    "stall_retries": 2,
+    "held_reasons": ["ServerStalled", "the dialog stayed open"],
+    "held_wait": 180,
+    "held_retries": 20,
+    "record": {
+      "fps": 4,
+      "pre": 45,
+      "tail": 45,
+      "abandon": 240,
+      "cap": 1800,
+      "scale": 0.5,
+      "quality": 80,
+      "codec": ["-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-pix_fmt", "yuv420p", "-movflags", "+faststart"],
+      "on": ["disconnect"],
+      "done": ["relaunched", "supervisor stopped", "supervisor crashed", "supervisor cancelled"]
+    }
   }
 }
