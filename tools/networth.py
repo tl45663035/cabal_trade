@@ -15,8 +15,8 @@ def key(name):
 
 MARKET_HEAD = re.compile(r"^market prices:\s*$")
 MARKET_ROW = re.compile(r"^\s{2}(\S.*?)\s{2,}([\d,]+)\s*$")
-BOARD_ROW = re.compile(r"^\s{4,}(\d+)\s{2,}(.+?)\s+x([\d,]+)"
-                       r"(?:\s+(?:[\d,]+|-|[-+]?[\d.]+%))*\s+([\d,]+)\s*$")
+BOARD_ROW = re.compile(r"^\s{4,}(\d+)\s{2,}(.+?)\s+x([\d,]+)\s+(?:[\d,]+|-)"
+                       r"\s+([\d,]+)\s+(?:[-+]?[\d.]+%|-)\s+([\d,]+)\s*$")
 BOARD_UNREAD = re.compile(r"^\s{4,}(\d+)\s+UNREAD\s+(.*)$")
 BOARD_HEAD = re.compile(r"^\s+board after pass \d+:")
 BALANCE = re.compile(r"balance (?:after|before|now)\s+([\d,]+)")
@@ -59,7 +59,8 @@ def read(log):
             if index == 1 and board:
                 board, unread, bought = [], [], []
             board.append((index, found.group(2).strip(),
-                          number(found.group(3)), number(found.group(4))))
+                          number(found.group(3)), number(found.group(4)),
+                          number(found.group(5))))
             continue
 
         found = BOARD_UNREAD.match(line)
@@ -93,10 +94,9 @@ def report(log, market, board, unread, balance, bought):
     print("-" * len(head))
 
     total = 0
-    for index, name, qty, listed in board:
+    for index, name, qty, each, listed in board:
         units = qty * pack(name)
-        each = listed // units if pack(name) > 1 else listed
-        worth = listed if pack(name) > 1 else listed * qty
+        worth = listed * qty if listed == each and qty > 1 else listed
         at = market.get(key(name))
         total += worth
         print(f"{index:>4}  {name[:27]:<28}{units:>8,}{each:>12,}"

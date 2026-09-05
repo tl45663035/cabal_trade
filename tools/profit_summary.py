@@ -394,6 +394,18 @@ def report_day():
 
 BOARD_HEAD = re.compile(r"^  board after pass (\d+):$", re.M)
 LAUNCH_HEAD = re.compile(r"^ +bought/u +listed/u", re.M)
+BOARD_LINE = re.compile(r"^(\s{4,}\d+\s{2,}.+?\s+x([\d,]+)\s+(?:[\d,]+|-)\s+([\d,]+)"
+                        r"\s+(?:[-+]?[\d.]+%|-)\s+)([\d,]+)(\s*)$")
+
+
+def row_total(line):
+    found = BOARD_LINE.match(line)
+    if not found:
+        return line
+    qty, each, last = (int(found.group(i).replace(",", "")) for i in (2, 3, 4))
+    if last != each:
+        return line
+    return f"{found.group(1).rstrip()} {last * qty:>14,}{found.group(5)}"
 
 
 def report_board():
@@ -420,7 +432,7 @@ def report_board():
         if row.startswith("-- pass") or row.startswith("  server clock"):
             break
         if row.strip():
-            print(row)
+            print(row_total(row))
 
 
 def main():
