@@ -83,6 +83,38 @@ def read(log):
     return market, board, unread, balance, bought
 
 
+def row_worth(qty, each, listed):
+    return listed * qty if listed == each and qty > 1 else listed
+
+
+def bought_worth(market, bought):
+    out = []
+    for name, units, spent in bought:
+        at = market.get(key(name))
+        out.append((name, units, at, units * at if at is not None else spent))
+    return out
+
+
+def summary(log, indent="    "):
+    market, board, unread, balance, bought = read(log)
+    if not board:
+        return
+    stock = sum(row_worth(qty, each, listed)
+                for _, _, qty, each, listed in board)
+    held = sum(worth for *_, worth in bought_worth(market, bought))
+    width = 40
+    print(f"{indent}{'stock at its listed price':<{width}}{stock:>18,}")
+    if held:
+        print(f"{indent}{'bought since that board, not on it yet':<{width}}"
+              f"{held:>18,}")
+    if unread:
+        print(f"{indent}{f'{len(unread)} row(s) unread, worth nothing here':<{width}}"
+              f"{0:>18,}")
+    print(f"{indent}{'Alz, latest balance line':<{width}}"
+          f"{(f'{balance:,}' if balance is not None else 'unread'):>18}")
+    print(f"{indent}{'NET WORTH':<{width}}{stock + held + (balance or 0):>18,}")
+
+
 def report(log, market, board, unread, balance, bought):
     print(f"NET WORTH -- from {log.name}")
     print("stock is valued at what each row is listed for; the market column "
@@ -96,7 +128,7 @@ def report(log, market, board, unread, balance, bought):
     total = 0
     for index, name, qty, each, listed in board:
         units = qty * pack(name)
-        worth = listed * qty if listed == each and qty > 1 else listed
+        worth = row_worth(qty, each, listed)
         at = market.get(key(name))
         total += worth
         print(f"{index:>4}  {name[:27]:<28}{units:>8,}{each:>12,}"
@@ -107,9 +139,7 @@ def report(log, market, board, unread, balance, bought):
         print("bought since that board was printed, so already paid for but "
               "not on it yet, in the bag or being listed, at the launch "
               "market price or what was spent:")
-        for name, units, spent in bought:
-            at = market.get(key(name))
-            worth = units * at if at is not None else spent
+        for name, units, at, worth in bought_worth(market, bought):
             total += worth
             print(f"{'':>4}  {(name or '?')[:27]:<28}{units:>8,}{'':>12}"
                   f"{(f'{at:,}' if at is not None else '--'):>12}"

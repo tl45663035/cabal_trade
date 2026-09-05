@@ -433,6 +433,9 @@ def report_board():
             break
         if row.strip():
             print(row_total(row))
+    import networth
+    print("")
+    networth.summary(log)
 
 
 def main():

@@ -45,7 +45,13 @@ for -- "profit", "how are we doing", "today", a bare `/profit_summary`:
    `board after pass N` table (index, name, qty, bought/u, listed/u, margin,
    row price), the per-item rows/units/listed summary, `balance now` and the
    pass line. Before any pass has finished it is the launch table. Quote it
-   row by row; it is the "rows summary" the user asks for.
+   row by row; it is the "rows summary" the user asks for. It ends with the
+   net worth: stock at its listed price, anything bought since that board
+   was printed (paid for, not on a row yet), the **latest** balance line in
+   the log (`balance now|after|before`, whichever came last -- newer than
+   the board's own `balance now` when a resupply has run since) and
+   `NET WORTH`, the same figures `tools/networth.py` prints, from
+   `networth.summary()`.
 
 The 7-day block comes first. The day is read against it, not on its own.
 
