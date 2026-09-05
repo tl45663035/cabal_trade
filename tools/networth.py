@@ -84,55 +84,45 @@ def read(log):
 
 def report(log, market, board, unread, balance, bought):
     print(f"NET WORTH -- from {log.name}")
-    print("stock is valued at the market price that run last read, not at "
-          "what it is listed for")
+    print("stock is valued at what each row is listed for; the market column "
+          "is the price the run read at launch, for reference")
     print("")
-    head = (f"{'row':>4}  {'item':<28}{'units':>8}{'market':>12}"
-            f"{'value':>18}")
+    head = (f"{'row':>4}  {'item':<28}{'units':>8}{'listed/u':>12}"
+            f"{'market':>12}{'value':>18}")
     print(head)
     print("-" * len(head))
 
-    total, priced, unpriced = 0, 0, []
+    total = 0
     for index, name, qty, listed in board:
         units = qty * pack(name)
+        each = listed // units if pack(name) > 1 else listed
+        worth = listed if pack(name) > 1 else listed * qty
         at = market.get(key(name))
-        if at is None:
-            unpriced.append((index, name, units, listed))
-            continue
-        worth = units * at
         total += worth
-        priced += 1
-        print(f"{index:>4}  {name[:27]:<28}{units:>8,}{at:>12,}{worth:>18,}")
-
-    if unpriced:
-        print("")
-        print("no market price this run read, valued at what it is listed for:")
-        for index, name, units, listed in unpriced:
-            worth = listed
-            total += worth
-            print(f"{index:>4}  {name[:27]:<28}{units:>8,}{'--':>12}"
-                  f"{worth:>18,}")
+        print(f"{index:>4}  {name[:27]:<28}{units:>8,}{each:>12,}"
+              f"{(f'{at:,}' if at is not None else '--'):>12}{worth:>18,}")
 
     if bought:
         print("")
         print("bought since that board was printed, so already paid for but "
-              "not on it yet, in the bag or being listed:")
+              "not on it yet, in the bag or being listed, at the launch "
+              "market price or what was spent:")
         for name, units, spent in bought:
             at = market.get(key(name))
             worth = units * at if at is not None else spent
             total += worth
-            print(f"{'':>4}  {(name or '?')[:27]:<28}{units:>8,}"
+            print(f"{'':>4}  {(name or '?')[:27]:<28}{units:>8,}{'':>12}"
                   f"{(f'{at:,}' if at is not None else '--'):>12}"
                   f"{worth:>18,}")
 
     print("-" * len(head))
-    print(f"{'':>4}  {'stock':<28}{'':>8}{'':>12}{total:>18,}")
+    print(f"{'':>4}  {'stock':<28}{'':>8}{'':>12}{'':>12}{total:>18,}")
     if balance is None:
-        print(f"{'':>4}  {'Alz':<28}{'':>8}{'':>12}{'unread':>18}")
+        print(f"{'':>4}  {'Alz':<28}{'':>8}{'':>12}{'':>12}{'unread':>18}")
     else:
-        print(f"{'':>4}  {'Alz':<28}{'':>8}{'':>12}{balance:>18,}")
+        print(f"{'':>4}  {'Alz':<28}{'':>8}{'':>12}{'':>12}{balance:>18,}")
     print("=" * len(head))
-    print(f"{'':>4}  {'NET WORTH':<28}{'':>8}{'':>12}"
+    print(f"{'':>4}  {'NET WORTH':<28}{'':>8}{'':>12}{'':>12}"
           f"{total + (balance or 0):>18,}")
 
     if unread:

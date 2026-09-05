@@ -11,7 +11,19 @@ Run the tool and report what it prints:
 py tools/profit_summary.py
 ```
 
-## Always report both blocks, in this order
+## Run it and hand over the output. Nothing else.
+
+The whole job is: run the command, paste what it printed **verbatim inside
+one fenced code block**, stop. No markdown tables, no re-typing the numbers
+into another layout, no bold, no per-block headings of your own -- the tool
+already formatted it, and re-typing it is what made the answer take minutes
+to arrive when the terminal had shown it in seconds. **Do not add a
+reading, a comparison with an earlier call, a "what moved" paragraph, a
+market comment or advice.** The notes below exist so the numbers can be
+explained when the user asks a question about them -- they are not a
+licence to volunteer analysis after the output.
+
+## Always report all three blocks, in this order
 
 The tool prints three blocks. Report **all three, every time**, whatever was asked
 for -- "profit", "how are we doing", "today", a bare `/profit_summary`:
