@@ -229,6 +229,8 @@
     "held_reasons": ["ServerStalled", "the dialog stayed open"],
     "held_wait": 180,
     "held_retries": 20,
+    "recover_wait": 60,
+    "recover_retries": 2,
     "record": {
       "fps": 4,
       "pre": 45,

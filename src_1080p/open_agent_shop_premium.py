@@ -29,6 +29,12 @@ def grab():
 
 def panel_open(image=None, verbose: bool = True) -> bool:
     image = image if image is not None else grab()
+    rules = calibration.grid_rules(image)
+    if rules is not None and rules < calibration.GRID_RULES_MIN:
+        if verbose:
+            print(f"  Inventory shut: slot grid {rules:.2f}, "
+                  f"needs {calibration.GRID_RULES_MIN}")
+        return False
     value = calibration.read_balance_from(image)
     if value is None:
         return False

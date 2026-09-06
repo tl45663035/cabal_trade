@@ -69,6 +69,10 @@ class Held(Stop):
     pass
 
 
+class Cancelled(Stop):
+    pass
+
+
 def held_reason(reason):
     return any(word in reason for word in K["held_reasons"])
 
@@ -226,7 +230,8 @@ def read_state(image=None, popup_only=False):
     }
     if not popup_only:
         state.update({
-            "alz": calibration.find_alz(image) is not None,
+            "alz": (calibration.inventory_grid_shown(image)
+                    and calibration.find_alz(image) is not None),
             "trade": calibration._trade_window_open(image),
             "vendor": calibration.vendor_open(image),
             "buttons": row_model.dialog_buttons(image),
@@ -589,7 +594,7 @@ def keep_evidence(log):
 
 def recover(reason, text, plan=False, log=None, watched=True):
     if watched and "interrupted from the keyboard" in reason:
-        raise Stop("cancelled with Ctrl x4")
+        raise Cancelled("cancelled with Ctrl x4")
     if log is not None and not plan:
         keep_evidence(log)
     get_in(plan)
@@ -664,16 +669,27 @@ def plan(log_path=None, png=None):
 
 
 def recover_and_launch(reason, log, watched=True):
-    for attempt in range(1, K["held_retries"] + 2):
+    held = failed = 0
+    while True:
         try:
             recover(reason, read(log), log=log, watched=watched)
             return launch()
         except Held as exc:
-            if attempt > K["held_retries"]:
+            held += 1
+            if held > K["held_retries"]:
                 raise Stop(str(exc))
             event(f"recovery held up: {str(exc)[:80]}; waiting "
-                  f"{K['held_wait']}s, then attempt {attempt + 1}", "dead")
+                  f"{K['held_wait']}s, then attempt {held + 1}", "dead")
             time.sleep(K["held_wait"])
+        except Cancelled:
+            raise
+        except Stop as exc:
+            failed += 1
+            if failed > K["recover_retries"]:
+                raise
+            event(f"recovery attempt {failed} failed: {str(exc)[:70]}; "
+                  f"attempt {failed + 1} in {K['recover_wait']}s", "dead")
+            time.sleep(K["recover_wait"])
 
 
 def main():

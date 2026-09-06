@@ -181,6 +181,8 @@ DEFAULTS = {
         "panel_scale_high": 1.2,
         "panel_scale_step": 0.002,
         "panel_rule_contrast": 20,
+        "grid_rules_min": 0.33,
+        "grid_rule_slack": 0.125,
         "grid_fit_min": 0.02,
         "panel_open_change": 0.30,
         "edge_candidates": 40,
@@ -550,6 +552,8 @@ PANEL_SCALE_LOW = _DET["panel_scale_low"]
 PANEL_SCALE_HIGH = _DET["panel_scale_high"]
 PANEL_SCALE_STEP = _DET["panel_scale_step"]
 PANEL_RULE_CONTRAST = _DET["panel_rule_contrast"]
+GRID_RULES_MIN = _DET["grid_rules_min"]
+GRID_RULE_SLACK = _DET["grid_rule_slack"]
 MIN_PLAUSIBLE_BALANCE = _DET["min_plausible_balance"]
 VOUCHER_WORD = _S["text"]["voucher_word"]
 VOUCHER_FLOOR_PARTS = 1000
@@ -1509,8 +1513,43 @@ def locate_alz(verbose=True):
     return box
 
 
+def grid_rules(image=None):
+    inventory = _measured().get("inventory")
+    if inventory is None:
+        return None
+    image = image if image is not None else grab()
+    one = inventory["slots"]["1x1"]
+    spx, spy = inventory["slot_pitch"]
+    x0, y0 = round(one[0] - spx / 2), round(one[1] - spy / 2)
+    x1, y1 = round(x0 + GRID * spx) + 1, round(y0 + GRID * spy) + 1
+    grey = np.asarray(image.crop((x0, y0, x1, y1)).convert("L"), dtype=float)
+    if grey.shape[0] <= GRID or grey.shape[1] <= GRID:
+        return 0.0
+    down = (np.abs(np.diff(grey, axis=1)) > PANEL_RULE_CONTRAST).sum(axis=0)
+    across = (np.abs(np.diff(grey, axis=0)) > PANEL_RULE_CONTRAST).sum(axis=1)
+
+    def present(profile, pitch, span):
+        slack = round(pitch * GRID_RULE_SLACK)
+        found = []
+        for k in range(GRID + 1):
+            at = round(k * pitch)
+            lo, hi = max(0, at - slack), min(len(profile), at + slack + 1)
+            found.append(profile[lo:hi].max() / span if hi > lo else 0.0)
+        return sum(found) / len(found)
+
+    return min(present(down, spx, grey.shape[0]),
+               present(across, spy, grey.shape[1]))
+
+
+def inventory_grid_shown(image=None):
+    rules = grid_rules(image)
+    return rules is None or rules >= GRID_RULES_MIN
+
+
 def inventory_open(image=None):
     image = image if image is not None else grab()
+    if not inventory_grid_shown(image):
+        return None
     box = find_alz(image)
     if box is None:
         return None
@@ -1529,8 +1568,7 @@ def await_inventory(timeout=None, verbose=False):
         return box
     for attempt in (1, 2):
         if verbose:
-            print(f"  no balance is readable, so the Inventory panel is not "
-                  f"open; pressing I (attempt {attempt})")
+            print(f"  Inventory shut; pressing I (attempt {attempt})")
         press(VK_I)
         snap("press_I")
         deadline = time.monotonic() + span
@@ -3458,7 +3496,7 @@ def close_everything(verbose: bool = False) -> None:
         print("  no Trade window or vendor open; not pressing Escape")
 
     park()
-    if find_alz(grab()) is None:
+    if not inventory_grid_shown(grab()):
         if verbose:
             print("  Inventory already closed")
         return
@@ -3466,11 +3504,10 @@ def close_everything(verbose: bool = False) -> None:
     time.sleep(gap)
     park()
     if verbose:
-        if find_alz(grab()) is None:
+        if not inventory_grid_shown(grab()):
             print("  I: Inventory closed")
         else:
-            print("  I: pressed, but the balance is still visible -- the "
-                  "panel did not close. Close it by hand.")
+            print("  I: pressed; Inventory still open")
 
 
 def close_gift_window(verbose: bool = False) -> bool:
