@@ -44,6 +44,12 @@ game, no clicking, no ledger.
   log has for each item. Before that date rows were valued at the launch
   market price, which drifted hours stale -- Chaos Sets read 738,500 at
   launch while listed at 799,6xx five hours later, 16M under.
+- **Profit if sold** -- per row, `(listed/u - bought/u) x units`, the
+  board's own `bought/u` column against its `listed/u`; the `PROFIT IF
+  SOLD` total sits under `NET WORTH`. A row showing `-` for `bought/u` was
+  not bought by this run, has no cost, and is left out of the total (the
+  line under the table says how many). Stock bought since the board is on
+  no row yet, so it carries no profit here.
 - **Market** -- the `market prices:` block the run prints at startup, one
   line per favourite, shown beside `listed/u` **for reference only**. The
   last block in the log wins. It is the only per-item market read the run
