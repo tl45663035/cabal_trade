@@ -68,6 +68,10 @@ class SlotNeverFilled(Divergence):
     pass
 
 
+class NothingLoaded(Divergence):
+    pass
+
+
 def _key(text):
     return _NOT_ALNUM.sub("", (text or "").lower())
 
@@ -674,6 +678,15 @@ class RowModel:
                     return (row, col)
         return None
 
+    def work_slots(self):
+        return sorted(self._work)
+
+    def hold_work(self, slot, what=None):
+        self._work[tuple(int(n) for n in slot)] = what
+
+    def release_work(self, slot):
+        self._work.pop(tuple(int(n) for n in slot), None)
+
     def note_cancel(self, index):
         index = int(index)
         row = self._slots.get(index)
@@ -826,7 +839,7 @@ class RowModel:
     def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
                   lands_in=None, expect_item=None,
                   expect_price=None, unit_market=None, floor_each=0,
-                  listed_at=None):
+                  listed_at=None, wait_fill=True):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -846,7 +859,7 @@ class RowModel:
                 f"{standing:,}; clear it before listing another item.")
 
         deadline = time.monotonic() + DIALOG_TIMEOUT
-        filled, lagged = False, 0
+        filled, lagged = not wait_fill, 0
         while not filled:
             while time.monotonic() < deadline:
                 with calibration.step(f"wait for slot ({row},{col}) to fill"):
@@ -888,7 +901,7 @@ class RowModel:
                 print(f"  ctrl-click {attempt}/{LOAD_ATTEMPTS} loaded nothing "
                       f"from ({row},{col})")
         if suggested is None:
-            raise Divergence(
+            raise NothingLoaded(
                 f"nothing loaded into the shop slot from ({row},{col}) after "
                 f"{LOAD_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
         count = None
@@ -974,6 +987,7 @@ class RowModel:
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
                 f"listing committed is unknown -- check the shop by hand.")
+        self.release_work((row, col))
         calibration.steps_table(f"list {qty} at {want:,}")
         if verbose:
             print(f"  listed {qty} at {want:,}"

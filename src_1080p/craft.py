@@ -151,7 +151,7 @@ def close_craft():
     return not calibration.craft_window_open()
 
 
-def craft_sets(core=None, verbose=True, held=None):
+def craft_sets(core=None, verbose=True, held=None, slot=None):
     say = print if verbose else (lambda *a: None)
     CORE_NAME = _core_name(core)
     calibration.steps_reset()
@@ -172,18 +172,25 @@ def craft_sets(core=None, verbose=True, held=None):
     with calibration.step(f"select inventory tab {calibration.WORK_TAB} "
                           f"before completing"):
         show_work_tab()
-    with calibration.step("read the slots before any Set arrives"):
-        pre = calibration.occupied_slots()
+    if slot is None:
+        with calibration.step("read the slots before any Set arrives"):
+            pre = calibration.occupied_slots()
     with calibration.step(f"{calibration.CRAFT_COMPLETE_WORD} All"):
         complete_all(verbose=verbose)
-    arrived = sorted(calibration.occupied_slots() - pre)
-    if arrived:
-        landed = arrived[0]
-        say(f"  the Sets arrived in {[tuple(a) for a in arrived]}")
+    if slot is not None:
+        landed = tuple(slot)
+        say(f"  the Sets land from tab {calibration.WORK_TAB} slot {landed}, "
+            f"the first the run holds nothing in")
+        time.sleep(TAB_SETTLE)
     else:
-        landed = tuple(calibration.WORK_SLOT)
-        say(f"  no new slot filled, so the Sets can only have stacked into "
-            f"{landed}")
+        arrived = sorted(calibration.occupied_slots() - pre)
+        if arrived:
+            landed = arrived[0]
+            say(f"  the Sets arrived in {[tuple(a) for a in arrived]}")
+        else:
+            landed = tuple(calibration.WORK_SLOT)
+            say(f"  no new slot filled, so the Sets can only have stacked "
+                f"into {landed}")
     with calibration.step("compress the crafted Sets"):
         compress(landed, verbose=verbose)
     say(f"  {used if used is not None else 'an unknown number of'} "

@@ -466,6 +466,120 @@ def report_board():
     networth.summary(log, BOARD_INDENT, BOARD_LABEL, BOARD_NUMBER, PROFIT_WIDTH)
 
 
+PASS_HEAD = re.compile(r"^-- pass (\d+) --$", re.M)
+PASS_COLUMNS = re.compile(r"^  core\s+rows\s+(buy/u\s+sell/u\s+)?margin\s+wants\s+short\?\s*$")
+PASS_LINE = re.compile(r"^  (\S.*?)\s{2,}(\d+)\s+(.*?)\s*$")
+PRICE_LINE = re.compile(r"^  (\S.*?) ([\d,]+) - (\S.*?) ([\d,]+) = (-?[\d,]+)$")
+MARKET_LINE = re.compile(r"^  (\S.*?)\s{2,}([\d,]+)\s*$")
+SET_WORD = re.compile(r"\s*\bSet\b\s*")
+
+
+def core_key(name):
+    return re.sub(r"[^a-z0-9]", "", SET_WORD.sub("", PACK.sub("", name)).lower())
+
+
+def last_prices(lines, upto):
+    priced = {}
+    for line in lines[:upto]:
+        found = PRICE_LINE.match(line)
+        if found:
+            priced[core_key(found.group(1))] = (number(found.group(4)),
+                                                number(found.group(2)))
+    return priced
+
+
+def launch_prices(lines):
+    out, inside = {}, False
+    for line in lines:
+        if line.startswith("market prices:"):
+            inside, out = True, {}
+            continue
+        if inside:
+            found = MARKET_LINE.match(line)
+            if not found:
+                inside = False
+                continue
+            out[found.group(1)] = number(found.group(2))
+    pairs = {}
+    for name, price in out.items():
+        pairs.setdefault(core_key(name), {})["set" if "Set" in name else "core"] = price
+    return pairs
+
+
+def number(text):
+    return int(text.replace(",", ""))
+
+
+def report_market():
+    logs = sorted(LOGS.glob("*_run.log"), key=lambda f: f.stat().st_mtime)
+    if not logs:
+        return
+    log = logs[-1]
+    lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+    heads = [i for i, line in enumerate(lines) if PASS_HEAD.match(line)]
+    if not heads:
+        print(f"MARKET -- {log.name}: no pass finished yet")
+        return
+    start = heads[-1]
+    number_of_pass = PASS_HEAD.match(lines[start]).group(1)
+    written = datetime.datetime.fromtimestamp(log.stat().st_mtime)
+    table, columns = [], None
+    for i in range(start, len(lines)):
+        if columns is None:
+            found = PASS_COLUMNS.match(lines[i])
+            if found:
+                columns = bool(found.group(1))
+            continue
+        found = PASS_LINE.match(lines[i])
+        if not found:
+            break
+        table.append(found.groups())
+    if columns is None:
+        print(f"MARKET -- {log.name}: pass {number_of_pass} printed no core table")
+        return
+    print(f"MARKET -- {log.name}, pass {number_of_pass}, log last written {written:%H:%M}"
+          f"{'' if any('ran for' in l for l in lines[-40:]) else ' (live)'}")
+    print("buy/u is what a unit costs on the Purchase tab, sell/u what the other side of the "
+          "pair lists for; margin is sell minus buy, wants the rows that margin is worth")
+    print("")
+    print(f"{'core':<30}{'rows':>6}{'buy/u':>12}{'sell/u':>12}{'margin':>10}{'margin %':>10}"
+          f"{'wants':>7}   short?{'' if columns else '  priced'}")
+    line(width=100)
+    priced = None if columns else last_prices(lines, start)
+    launch = None if columns else launch_prices(lines)
+    for core, rows, rest in table:
+        cells = rest.split()
+        if columns:
+            buy, sell, margin, wants = cells[:4]
+            mark = " ".join(cells[4:])
+            when = ""
+        else:
+            margin, wants = cells[:2]
+            mark = " ".join(cells[2:])
+            got = priced.get(core_key(core))
+            if got:
+                buy, sell = (f"{got[0]:,}", f"{got[1]:,}")
+                when = "last resupply"
+            else:
+                pair = launch.get(core_key(core), {})
+                b, s = pair.get("core"), pair.get("set")
+                if b is not None and s is not None and margin != "-" and (
+                        (s - b < 0) != (number(margin) < 0)):
+                    b, s = s, b
+                buy = "-" if b is None else f"{b:,}"
+                sell = "-" if s is None else f"{s:,}"
+                when = "launch"
+        pct = "-"
+        if buy != "-" and sell != "-" and margin != "-":
+            pct = f"{number(margin) / number(sell) * 100:.1f}%"
+        print(f"{core:<30}{rows:>6}{buy:>12}{sell:>12}{margin:>10}{pct:>10}{wants:>7}   "
+              f"{mark:<6}{'' if columns else '  ' + when}")
+    if not columns:
+        print("")
+        print("this run prints only the margin each pass; buy/u and sell/u are from the "
+              "last time it priced that core (its last resupply, else launch)")
+
+
 def main():
     by_day()
     print("")
@@ -474,6 +588,9 @@ def main():
     print("")
     print("")
     report_board()
+    print("")
+    print("")
+    report_market()
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ on tab 4` and the run relaunches beside it; a full tab stops), reset,
 relaunch. A tooltip is read on every slot it lists from, and to find a
 withdrawn item on another tab when its slot is empty (capped by
 `supervise.hover_cap`). Every frame it acts
-on is saved under `logs/supervise_frames/`. Every event is a Windows toast and a line in
+on is saved under `logs/supervise_frames/`. Every event is a line in
 `src_1080p/logs/supervise.log` (`<reason>,<time>,<alive|dead>`); its own
 transcript is `logs/<ts>_supervise.log`. Relay the event file with
 `Monitor("tail -n 0 -f .../src_1080p/logs/supervise.log")` and push each

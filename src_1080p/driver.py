@@ -281,13 +281,11 @@ def relist_one(model, index, verbose=True):
               f"{row_model.row_button_text()!r}")
         return False
 
-    with calibration.phase(f"find a free slot on tab {row_model.WORK_TAB}"):
-        landing = calibration.first_free_slot(row_model.WORK_TAB,
-                                              verbose=False)
+    landing = model.next_work_slot()
     if landing is None:
         raise NotReady(
-            f"inventory tab {row_model.WORK_TAB} is full, so row {index} "
-            f"would come back with nowhere to go. Nothing cancelled.")
+            f"the run holds every slot of tab {row_model.WORK_TAB}, so row "
+            f"{index} would come back with nowhere to go. Nothing cancelled.")
 
     if verbose:
         print(f"  row {index}: {row.name!r} x{row.qty} at {row.price:,} "
@@ -380,6 +378,7 @@ def relist_one(model, index, verbose=True):
             raise
         print(f"  row {index} sold while it was being cancelled, so nothing "
               f"came back to tab {row_model.WORK_TAB}; collecting it instead")
+        model.release_work(landing)
         model.receive(index, verbose=False)
         seen = row_model.read_row_one()
         if row_model.row_one_is_empty(seen):
@@ -643,10 +642,6 @@ def do_craft_chaos(verbose=True):
         time.sleep(row_model.TAB_SETTLE)
 
     work = tuple(made["slot"])
-    if work not in calibration.occupied_slots():
-        raise NotReady(
-            f"tab {row_model.WORK_TAB} slot {work}, where the {set_name} was "
-            f"compressed, is empty; there is nothing to list.")
     unit_cost, floor_pair = calibration.price_floor(set_name)
     unit_cost = unit_cost or core_row["unit_price"]
     why = f"a {floor_pair} costs {unit_cost:,}, a Set at a time"
@@ -656,23 +651,35 @@ def do_craft_chaos(verbose=True):
           f"that")
 
     rows, listed_total = [], 0
-    while work in calibration.occupied_slots():
+    while True:
         empty = [i for i in model.empty() if first <= i <= last]
         if not empty:
             print(f"  rows {first}-{last} are full; what is left of the "
                   f"{set_name} stays on tab {row_model.WORK_TAB}.")
+            model.hold_work(work, set_name)
             break
         lands_in = min(empty)
-        with calibration.phase(f"list {set_name} from {work}"):
-            listed = model.list_slot(*work, why=why, verbose=verbose,
-                                     lands_in=lands_in,
-                                     unit_market=set_row["unit_price"],
-                                     floor_each=unit_cost)
+        try:
+            with calibration.phase(f"list {set_name} from {work}"):
+                listed = model.list_slot(*work, why=why, verbose=verbose,
+                                         lands_in=lands_in,
+                                         unit_market=set_row["unit_price"],
+                                         floor_each=unit_cost,
+                                         wait_fill=False)
+        except row_model.NothingLoaded as exc:
+            if rows:
+                break
+            model.hold_work(work, set_name)
+            raise NotReady(
+                f"{exc} Tab {row_model.WORK_TAB} slot {work} is left to the "
+                f"{set_name} compressed there.")
         model.place(lands_in, row_model.Row(set_name, qty=listed["qty"],
                                             price=listed["price"],
                                             units=listed["units"]))
         rows.append(lands_in)
         listed_total += listed["qty"]
+        if listed["qty"] < row_model.MAX_STACK:
+            break
     calibration.phases_table(
         f"craft {core}: {made['used']} into the craft, listed "
         f"{listed_total} in rows {rows}")
@@ -761,6 +768,8 @@ def do_convert(slot, verbose=True):
                 print(f"  rows {first}-{last} are full; {len(remaining)} "
                       f"slot(s) of {core} stay on tab "
                       f"{calibration.CONVERT_INVENTORY_TAB}.")
+                for left in remaining:
+                    model.hold_work(left, core)
                 full = True
                 break
             lands_in = min(empty)
@@ -1020,6 +1029,8 @@ def list_round(model, job, first, last, verbose=True):
         if not empty:
             print(f"  rows {first}-{last} are full; {len(remaining)} "
                   f"slot(s) of {core} stay on tab {tab}.")
+            for left in remaining:
+                model.hold_work(left, core)
             full = True
             break
         lands_in = min(empty)
@@ -1105,7 +1116,7 @@ def craft_route(core):
     return bool(calibration.load().get("craft"))
 
 
-def resupply_chaos(model, slot, held, first, last, verbose=True):
+def start_craft_resupply(model, slot, held, first, last, verbose=True):
     run = calibration.load_shared()["resupply"]
     core = calibration.FAVOURITE_ITEMS[str(slot)]
     pair = calibration.pair_slot(slot)
@@ -1148,23 +1159,37 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
               f"already down to their last {leave}, up to {steps_max} step(s)")
     task("resupply", core=core, set=set_name, slot=slot,
          tab=row_model.WORK_TAB)
-    bought = orders = paid = steps = 0
+    return {"slot": slot, "core": core, "set": set_name, "diff": diff,
+            "target": target, "want_max": want_max,
+            "sells_at": set_row["unit_price"],
+            "core_price": core_row["unit_price"], "gap": threshold,
+            "leave": leave, "steps_max": steps_max, "step": "buy",
+            "orders": 0, "bought": 0, "paid": 0, "crafted": 0, "work": None,
+            "rows": [], "listed": 0}
+
+
+def buy_cores(job, verbose=True):
+    run = calibration.load_shared()["resupply"]
+    core, slot, target = job["core"], job["slot"], job["target"]
+    batch = calibration.CRAFT_CORES_PER_SET
+    steps = 0
     searched = False
     THIN = object()
 
     def order(want, on_margin=True):
-        nonlocal orders, searched
-        orders += 1
+        nonlocal searched
+        job["orders"] += 1
         for attempt in range(1, int(run["buy_retries"]) + 1):
             try:
-                with calibration.phase(f"buy order {orders}"):
+                with calibration.phase(f"buy order {job['orders']}"):
                     out = buy.buy_row_one(slot, want, verbose=verbose,
-                                          held=bought, floor_qty=target,
-                                          ceiling=want_max,
-                                          sells_at=set_row["unit_price"],
-                                          gap=threshold if on_margin
+                                          held=job["bought"],
+                                          floor_qty=target,
+                                          ceiling=job["want_max"],
+                                          sells_at=job["sells_at"],
+                                          gap=job["gap"] if on_margin
                                           else None,
-                                          leave_behind=leave,
+                                          leave_behind=job["leave"],
                                           search=not searched)
                 searched = True
                 return out
@@ -1184,9 +1209,10 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
 
     def step_down():
         nonlocal steps
-        if steps >= steps_max:
-            print(f"  {steps_max} step(s) down this order and nothing worth "
-                  f"buying; leaving {core} at {bought} of {target}")
+        if steps >= job["steps_max"]:
+            print(f"  {job['steps_max']} step(s) down this order and nothing "
+                  f"worth buying; leaving {core} at {job['bought']} of "
+                  f"{target}")
             return False
         steps += 1
         with calibration.phase(f"step down to the next offer ({steps})"):
@@ -1194,7 +1220,7 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         return True
 
     def take(want, on_margin=True):
-        nonlocal bought, paid, steps, searched
+        nonlocal steps, searched
         steps = 0
         searched = False
         while True:
@@ -1205,43 +1231,58 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                 continue
             if got is None or got["bought"] <= 0:
                 return False
-            bought += got["bought"]
-            paid += got["spent"]
+            job["bought"] += got["bought"]
+            job["paid"] += got["spent"]
             return True
 
-    while bought < target:
-        print(f"  {bought}/{target} {core} held")
-        if not take(target - bought):
+    while job["bought"] < target:
+        print(f"  {job['bought']}/{target} {core} held")
+        if not take(target - job["bought"]):
             break
 
-    while bought % batch:
-        short = batch - (bought % batch)
-        print(f"  {bought} {core} is {short} short of a whole batch of "
-              f"{batch}; topping up whatever the margin says, because a "
+    while job["bought"] % batch:
+        short = batch - (job["bought"] % batch)
+        print(f"  {job['bought']} {core} is {short} short of a whole batch "
+              f"of {batch}; topping up whatever the margin says, because a "
               f"remainder crafts into nothing")
         if not take(short, on_margin=False):
             break
 
+    bought = job["bought"]
     if bought <= 0:
         print(f"  nothing bought; not opening the craft window.")
-        return None
+        return False
     spare = bought % batch
     if bought < batch:
         print(f"  {bought} {core} is under a whole batch of {batch}; there is "
               f"nothing to craft and they stay on tab {row_model.WORK_TAB}.")
-        return None
+        return False
     if spare:
         print(f"  {bought} {core} is {spare} over whole batches of {batch}; "
               f"crafting {bought - spare} and leaving {spare} on tab "
               f"{row_model.WORK_TAB}.")
+    job["step"] = "craft"
+    return True
 
+
+def craft_cores(model, job, verbose=True):
+    core, set_name, bought = job["core"], job["set"], job["bought"]
+    spare = bought % calibration.CRAFT_CORES_PER_SET
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
     with calibration.phase(f"craft {core} into {set_name}"):
-        made = craft.craft_sets(core, verbose=verbose, held=bought - spare)
+        made = craft.craft_sets(core, verbose=verbose, held=bought - spare,
+                                slot=model.next_work_slot())
+    job["work"] = tuple(made["slot"])
+    job["crafted"] = made["used"]
+    job["step"] = "list"
     with calibration.phase("close the craft window"):
         craft.close_craft()
 
+
+def list_sets(model, job, first, last, verbose=True):
+    core, set_name = job["core"], job["set"]
+    bought, paid, work = job["bought"], job["paid"], job["work"]
     with calibration.phase("reopen the Agent Shop"):
         if not back_to_the_shop(verbose=verbose):
             raise NotReady("the Agent Shop would not reopen after crafting.")
@@ -1252,53 +1293,98 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
                           settle=0.0)
         time.sleep(row_model.TAB_SETTLE)
 
-    work = tuple(made["slot"])
-    if work not in calibration.occupied_slots():
-        raise NotReady(
-            f"tab {row_model.WORK_TAB} slot {work}, where the {set_name} was "
-            f"compressed, is empty; there is nothing to list.")
     unit_floor, floor_pair = calibration.price_floor(set_name)
     if bought and paid:
         unit_cost = -(-paid // bought)
         why = f"a {core} cost {unit_cost:,} this pass, a Set at a time"
     else:
-        unit_cost = unit_floor or core_row["unit_price"]
+        unit_cost = unit_floor or job["core_price"]
         why = f"a {floor_pair} costs {unit_cost:,}, a Set at a time"
     print(f"  listing the {set_name} compressed into {work} from "
-          f"{made['used']} {core}(s)")
-    print(f"  the board's cheapest is {set_row['unit_price']:,} a Set, and the "
+          f"{job['crafted']} {core}(s)")
+    print(f"  the board's cheapest is {job['sells_at']:,} a Set, and the "
           f"panel scales that to whatever the bundle holds")
     print(f"  it cost {unit_cost:,} a Core, so no Set goes out under that")
 
-    rows, listed_total, full = [], 0, False
-    while work in calibration.occupied_slots():
+    full = False
+    while True:
         empty = [i for i in model.empty() if first <= i <= last]
         if not empty:
             print(f"  rows {first}-{last} are full; what is left of the "
                   f"{set_name} stays on tab {row_model.WORK_TAB}.")
+            model.hold_work(work, set_name)
             full = True
             break
         lands_in = min(empty)
-        with calibration.phase(f"list {set_name} from {work}"):
-            listed = model.list_slot(*work, why=why, verbose=verbose,
-                                     lands_in=lands_in,
-                                     unit_market=set_row["unit_price"],
-                                     floor_each=unit_cost)
+        try:
+            with calibration.phase(f"list {set_name} from {work}"):
+                listed = model.list_slot(*work, why=why, verbose=verbose,
+                                         lands_in=lands_in,
+                                         unit_market=job["sells_at"],
+                                         floor_each=unit_cost,
+                                         wait_fill=False)
+        except row_model.NothingLoaded as exc:
+            if job["rows"]:
+                break
+            model.hold_work(work, set_name)
+            raise NotReady(
+                f"{exc} Tab {row_model.WORK_TAB} slot {work} is left to the "
+                f"{set_name} compressed there.")
         model.place(lands_in, row_model.Row(
             set_name, qty=listed["qty"], price=listed["price"],
             buy_cost=unit_cost if bought and paid else 0,
             units=listed["units"]))
-        rows.append(lands_in)
-        listed_total += listed["qty"]
+        job["rows"].append(lands_in)
+        job["listed"] += listed["qty"]
+        if listed["qty"] < row_model.MAX_STACK:
+            break
+    return full
+
+
+def finish_craft_resupply(model, job, first, last, verbose=True):
+    if job["step"] == "buy" and not buy_cores(job, verbose=verbose):
+        return None
+    if job["step"] == "craft":
+        craft_cores(model, job, verbose=verbose)
+    full = list_sets(model, job, first, last, verbose=verbose)
+    core, set_name, bought = job["core"], job["set"], job["bought"]
     if not full:
-        task_done("resupply", core=core, bought=bought, listed=listed_total,
-                  rows=rows)
+        task_done("resupply", core=core, bought=bought, listed=job["listed"],
+                  rows=job["rows"])
     calibration.phases_table(
-        f"resupply {core}: bought {bought}, {made['used']} into the craft, "
-        f"listed {listed_total} in rows {rows}")
-    return {"slot": slot, "core": core, "set": set_name, "diff": diff,
-            "bought": bought, "crafted": made["used"],
-            "listed": listed_total, "rows": rows}
+        f"resupply {core}: bought {bought}, {job['crafted']} into the craft, "
+        f"listed {job['listed']} in rows {job['rows']}")
+    return {"slot": job["slot"], "core": core, "set": set_name,
+            "diff": job["diff"], "bought": bought, "crafted": job["crafted"],
+            "listed": job["listed"], "rows": job["rows"]}
+
+
+def resupply_chaos(model, slot, held, first, last, verbose=True):
+    global _PENDING
+    job = _PENDING if _PENDING and _PENDING["slot"] == slot else None
+    if job is None:
+        job = start_craft_resupply(model, slot, held, first, last,
+                                   verbose=verbose)
+        if job is None:
+            return None
+    else:
+        print("")
+        print(f"-- {job['core']}: carrying on at {job['step']} after the "
+              f"stall; {job['bought']} bought, {job['listed']} listed --")
+        task("resupply", core=job["core"], set=job["set"], slot=slot,
+             tab=row_model.WORK_TAB, resumed=job["step"])
+    _PENDING = job
+    try:
+        out = finish_craft_resupply(model, job, first, last, verbose=verbose)
+    except calibration.ServerStalled:
+        print(f"  {job['core']} keeps its place at {job['step']}; the next "
+              f"pass carries on there")
+        raise
+    except BaseException:
+        _PENDING = None
+        raise
+    _PENDING = None
+    return out
 
 
 def gifts_at_the_end(verbose=True):
@@ -1350,11 +1436,14 @@ def resupply_pass(model, first, last, verbose=True):
     try:
         if _PENDING is not None:
             core_here = _PENDING["core"]
+            route = (resupply_chaos if craft_route(core_here)
+                     else resupply_one)
             war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
             try:
-                out = resupply_one(model, _PENDING["slot"], 0, first, last,
-                                   verbose=verbose)
-            except (convert.Refused, buy.Refused, NotReady) as exc:
+                out = route(model, _PENDING["slot"], 0, first, last,
+                            verbose=verbose)
+            except (convert.Refused, craft.Refused, buy.Refused,
+                    NotReady) as exc:
                 print(f"  resupply of {core_here!r} stopped: {exc}")
                 out = None
             if out and out.get("rows"):
@@ -1365,27 +1454,33 @@ def resupply_pass(model, first, last, verbose=True):
         print("")
         print(f"  counting only rows {first}-{last}; rows outside it are not "
               f"repriced and do not count")
-        print(f"  {'core':<30}{'rows':>6}{'margin':>10}{'wants':>7}   short?")
+        print(f"  {'core':<30}{'rows':>6}{'buy/u':>10}{'sell/u':>10}"
+              f"{'margin':>10}{'wants':>7}   short?")
         for slot, count in sorted(held.items()):
             core = calibration.FAVOURITE_ITEMS[str(slot)]
             mark, diff, wants = "", None, None
+            buy_at = sell_at = None
             if not convert.cell_for(core) and not craft_route(core):
                 mark = "neither convertible nor craftable"
             elif not buying_enabled(core):
                 mark = "buying off"
             else:
-                _, _, diff = price_gap(slot, say=False)
+                core_row, set_row, diff = price_gap(slot, say=False)
                 if diff is None:
                     mark = "would not price"
                 else:
+                    buy_at, sell_at = ((core_row, set_row) if craft_route(core)
+                                       else (set_row, core_row))
                     wants = calibration.rows_by_margin(core, diff)
                     if count < wants:
                         mark = "YES"
                         short.append(slot)
                         wanted[slot] = wants
             gap = '-' if diff is None else f'{diff:,}'
-            print(f"  {core:<30}{count:>6}{gap:>10}"
-                  f"{('-' if wants is None else wants):>7}   {mark}")
+            print(f"  {core:<30}{count:>6}"
+                  f"{('-' if buy_at is None else f'{buy_at['unit_price']:,}'):>10}"
+                  f"{('-' if sell_at is None else f'{sell_at['unit_price']:,}'):>10}"
+                  f"{gap:>10}{('-' if wants is None else wants):>7}   {mark}")
         if not short:
             print("")
             print(f"  nothing inside rows {first}-{last} holds fewer rows "

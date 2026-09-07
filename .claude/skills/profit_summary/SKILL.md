@@ -23,9 +23,9 @@ market comment or advice.** The notes below exist so the numbers can be
 explained when the user asks a question about them -- they are not a
 licence to volunteer analysis after the output.
 
-## Always report all three blocks, in this order
+## Always report all four blocks, in this order
 
-The tool prints three blocks. Report **all three, every time**, whatever was asked
+The tool prints four blocks. Report **all four, every time**, whatever was asked
 for -- "profit", "how are we doing", "today", a bare `/profit_summary`:
 
 1. **LAST 7 DAYS**, one row per day: hours, profit, realised, assumed, units,
@@ -57,6 +57,18 @@ for -- "profit", "how are we doing", "today", a bare `/profit_summary`:
    being its `X N` pack. A row whose `bought/u` is `-` (stock this run did
    not buy, so no cost) prints `-` and is left out of the total, and the
    line under it says how many such rows there are.
+
+4. **MARKET** -- the live run's latest pass table, one line per core:
+   rows held inside the counted range, `buy/u` (what a unit costs on the
+   Purchase tab), `sell/u` (what the other half of the pair lists for),
+   `margin` (sell minus buy, the figure `rows_by_margin` is fed), `margin %`
+   (over sell), `wants` (rows that margin is worth) and `short?`. Since the
+   driver started printing `buy/u` and `sell/u` in the pass table the prices
+   are from that very pass; a log from before that prints only the margin
+   each pass, so the tool fills the prices from the last `A p - B q = d`
+   line the run printed for that core (its last resupply decision) or, if
+   it never priced it, from the launch `market prices:` block, and the
+   `priced` column says which. Only the margin is fresh in that case.
 
 The 7-day block comes first. The day is read against it, not on its own.
 

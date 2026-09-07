@@ -39,7 +39,7 @@ LOGS = SRC / "logs"
 EVENTS = LOGS / "supervise.log"
 FRAMES = LOGS / "supervise_frames"
 DEAD = LOGS / "dead_runs"
-TOAST = ROOT / "tools" / "toast.ps1"
+REELS = LOGS / "recovery_video"
 DRIVER = SRC / "driver.py"
 K = json.loads(calibration.CONFIG.read_text(encoding="utf-8"))["supervise"]
 LAG = re.compile(r"not answering|answering again|does not count|"
@@ -97,12 +97,6 @@ def event(reason, state):
     LOGS.mkdir(parents=True, exist_ok=True)
     with open(EVENTS, "a", encoding="utf-8") as handle:
         handle.write(line + "\n")
-    try:
-        subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy",
-                        "Bypass", "-File", str(TOAST), line],
-                       timeout=K["tool_timeout"], capture_output=True)
-    except Exception as exc:
-        print(f"  (toast failed: {type(exc).__name__}: {exc})")
 
 
 def driver_pids():
@@ -155,8 +149,28 @@ def death_reason(text):
     return "ended without a reason line"
 
 
+def prune_before_today():
+    today = f"{datetime.date.today():%Y-%m-%d}"
+    gone = 0
+    for folder in (FRAMES, DEAD, REELS):
+        if not folder.exists():
+            continue
+        for item in folder.iterdir():
+            if item.name[:len(today)] < today:
+                if item.is_dir():
+                    shutil.rmtree(item, ignore_errors=True)
+                else:
+                    item.unlink(missing_ok=True)
+                gone += 1
+    if gone:
+        print(f"  pruned {gone} frame(s), reel(s) and dead run(s) from "
+              f"before {today}")
+    return today
+
+
 def watch(pid, log):
     print(f"watching pid {pid}, {log.name}", flush=True)
+    day = prune_before_today()
     text = read(log)
     seen_lag = len(LAG.findall(text))
     seen_stop = text.count("STOPPED:")
@@ -212,6 +226,8 @@ def watch(pid, log):
             reason = death_reason(read(log))
             event(reason[:110], "dead")
             return reason
+        if f"{datetime.date.today():%Y-%m-%d}" != day:
+            day = prune_before_today()
         time.sleep(K["poll"])
 
 
@@ -234,6 +250,7 @@ def read_state(image=None, popup_only=False):
                     and calibration.find_alz(image) is not None),
             "trade": calibration._trade_window_open(image),
             "vendor": calibration.vendor_open(image),
+            "craft": calibration.craft_window_open(image),
             "buttons": row_model.dialog_buttons(image),
             "underprice": calibration.underprice_warning(image),
         })
@@ -294,6 +311,20 @@ def recover_login():
     event("already in the world; nothing to recover"
           if "already in the world" in out else "recovered: back in the world",
           "dead")
+
+
+def close_craft_window(state):
+    for attempt in range(1, K["dialog_tries"] + 1):
+        if not state["craft"]:
+            snap("craft_window_closed", state["image"])
+            return state
+        print(f"  Escape on the craft window (attempt {attempt})")
+        calibration.park()
+        press(VK_ESCAPE)
+        time.sleep(K["escape_settle"])
+        state = read_state()
+    raise Held(f"the craft window stayed open after {K['dialog_tries']} "
+               f"Escapes; nothing can reopen the Agent Shop over it")
 
 
 def dismiss_dialog(state):
@@ -564,6 +595,11 @@ def get_in(plan=False):
             press(VK_ESCAPE)
             time.sleep(K["escape_settle"])
             state = read_state()
+
+    if state["craft"]:
+        print("  case: the craft window is open -> Escape")
+        if not plan:
+            state = close_craft_window(state)
 
     if row_model.CONFIRM_WORD in state["buttons"]:
         print("  case: a registration dialog is open -> Confirmation")
