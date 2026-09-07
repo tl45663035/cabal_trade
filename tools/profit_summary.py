@@ -394,18 +394,46 @@ def report_day():
 
 BOARD_HEAD = re.compile(r"^  board after pass (\d+):$", re.M)
 LAUNCH_HEAD = re.compile(r"^ +bought/u +listed/u", re.M)
-BOARD_LINE = re.compile(r"^(\s{4,}\d+\s{2,}.+?\s+x([\d,]+)\s+(?:[\d,]+|-)\s+([\d,]+)"
+BOARD_LINE = re.compile(r"^(\s{4,}\d+\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+|-)\s+([\d,]+)"
                         r"\s+(?:[-+]?[\d.]+%|-)\s+)([\d,]+)(\s*)$")
+BOARD_COLUMNS = re.compile(r"^(\s+bought/u\s+listed/u\s+margin\s+row price)\s*$")
+ITEM_COLUMNS = re.compile(r"^(\s{4}item\s+rows\s+units\s+listed)\s*$")
+ITEM_LINE = re.compile(r"^(\s{4}(\S.*?)\s{2,}\d+\s+[\d,]+\s+[\d,]+)\s*$")
+PROFIT_WIDTH = 16
+BOARD_INDENT = "    "
+BOARD_LABEL = 49
+BOARD_NUMBER = 16
 
 
-def row_total(line):
+def row_total(line, gains):
+    found = BOARD_COLUMNS.match(line)
+    if found:
+        return f"{found.group(1)}{'profit if sold':>{PROFIT_WIDTH}}"
+    found = ITEM_COLUMNS.match(line)
+    if found:
+        return f"{found.group(1)}{'profit if sold':>{PROFIT_WIDTH}}"
+    found = ITEM_LINE.match(line)
+    if found:
+        item = found.group(2)
+        gain = gains.get("board" if item == "board" else key_item(item))
+        return f"{found.group(1)}{(f'{gain:,}' if gain is not None else '-'):>{PROFIT_WIDTH}}"
     found = BOARD_LINE.match(line)
     if not found:
         return line
-    qty, each, last = (int(found.group(i).replace(",", "")) for i in (2, 3, 4))
-    if last != each:
-        return line
-    return f"{found.group(1).rstrip()} {last * qty:>14,}{found.group(5)}"
+    name, cost = found.group(2), found.group(4)
+    qty, each, last = (int(found.group(i).replace(",", "")) for i in (3, 5, 6))
+    head = found.group(1).rstrip()
+    price = f"{head} {last * qty:>14,}" if last == each else f"{head} {last:>14,}"
+    if cost == "-":
+        return f"{price}{'-':>{PROFIT_WIDTH}}"
+    gain = (each - int(cost.replace(",", ""))) * qty * pack(name)
+    gains[key_item(name)] = gains.get(key_item(name), 0) + gain
+    gains["board"] = gains.get("board", 0) + gain
+    return f"{price}{gain:>{PROFIT_WIDTH},}"
+
+
+def key_item(name):
+    return PACK.sub("", name).strip()
 
 
 def report_board():
@@ -428,14 +456,14 @@ def report_board():
         start = head.start()
     print(f"ROWS -- {log.name}, {title}"
           f"{'' if 'ran for' in text else ' (live)'}")
+    gains = {}
     for row in text[start:].splitlines():
         if row.startswith("-- pass") or row.startswith("  server clock"):
             break
         if row.strip():
-            print(row_total(row))
+            print(row_total(row, gains))
     import networth
-    print("")
-    networth.summary(log)
+    networth.summary(log, BOARD_INDENT, BOARD_LABEL, BOARD_NUMBER, PROFIT_WIDTH)
 
 
 def main():

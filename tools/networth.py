@@ -109,32 +109,26 @@ def bought_worth(market, bought):
     return out
 
 
-def summary(log, indent="    "):
+def summary(log, indent="    ", width=40, number=18, extra=0):
     market, board, unread, balance, bought = read(log)
     if not board:
         return
     stock = sum(row_worth(qty, each, listed)
                 for _, _, qty, each, listed, _ in board)
     held = sum(worth for *_, worth in bought_worth(market, bought))
-    width = 40
-    print(f"{indent}{'stock at its listed price':<{width}}{stock:>18,}")
+    _, total, unknown = profit_if_sold(board)
+    print(f"{indent}{'stock at its listed price':<{width}}{stock:>{number},}")
     if held:
         print(f"{indent}{'bought since that board, not on it yet':<{width}}"
-              f"{held:>18,}")
+              f"{held:>{number},}")
     if unread:
         print(f"{indent}{f'{len(unread)} row(s) unread, worth nothing here':<{width}}"
-              f"{0:>18,}")
+              f"{0:>{number},}")
     print(f"{indent}{'Alz, latest balance line':<{width}}"
-          f"{(f'{balance:,}' if balance is not None else 'unread'):>18}")
-    print(f"{indent}{'NET WORTH':<{width}}{stock + held + (balance or 0):>18,}")
-    rows, total, unknown = profit_if_sold(board)
-    print("")
-    print(f"{indent}profit if sold, each row at its listed price against what "
-          f"it was bought for:")
-    for index, name, units, gain in rows:
-        print(f"{indent}{index:>4}  {name[:27]:<28}{units:>8,}"
-              f"{(f'{gain:,}' if gain is not None else '-'):>18}")
-    print(f"{indent}{'PROFIT IF SOLD':<{width}}{total:>18,}")
+          f"{(f'{balance:,}' if balance is not None else 'unread'):>{number}}")
+    print(f"{indent}{'NET WORTH':<{width}}{stock + held + (balance or 0):>{number},}")
+    print(f"{indent}{'PROFIT IF SOLD, every row at its listed price':<{width}}"
+          f"{'':>{number}}{total:>{extra},}")
     if unknown:
         print(f"{indent}{unknown} row(s) show no bought price and are not counted")
 

@@ -51,10 +51,12 @@ for -- "profit", "how are we doing", "today", a bare `/profit_summary`:
    the log (`balance now|after|before`, whichever came last -- newer than
    the board's own `balance now` when a resupply has run since) and
    `NET WORTH`, the same figures `tools/networth.py` prints, from
-   `networth.summary()`. After it, **profit if sold**: one line per row,
-   `(listed/u - bought/u) x units`, and the `PROFIT IF SOLD` total; a row
-   whose `bought/u` is `-` (stock this run did not buy, so no cost) prints
-   `-` and is left out, and the block says how many such rows there are.
+   `networth.summary()`, then `PROFIT IF SOLD`, the sum of the board's
+   **profit if sold** column. That column is added to every board row by
+   `row_total()`: `(listed/u - bought/u) x units`, a bundle row's units
+   being its `X N` pack. A row whose `bought/u` is `-` (stock this run did
+   not buy, so no cost) prints `-` and is left out of the total, and the
+   line under it says how many such rows there are.
 
 The 7-day block comes first. The day is read against it, not on its own.
 
