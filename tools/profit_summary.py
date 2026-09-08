@@ -65,112 +65,214 @@ def run_is_live(run):
     return "ran for" not in text
 
 
-def load(start, end=None):
+FIELDS = ("sold", "revenue", "sold_cost", "held", "expected", "held_cost",
+          "gone", "gone_value", "gone_cost")
+
+
+def load(start):
     if not LEDGER.exists():
         raise SystemExit(f"no ledger at {LEDGER}")
     conn = sqlite3.connect(f"file:{LEDGER}?mode=ro", uri=True)
     columns = {row[1] for row in conn.execute("PRAGMA table_info(purchases)")}
     expect = "expect" if "expect" in columns else "NULL"
-    where = "run>=?" if end is None else "run>=? AND run<?"
-    args = (start,) if end is None else (start, end)
-    runs = collections.defaultdict(lambda: {"buys": [], "sells": []})
+    buys, sells = [], []
     for at, run, item, spend, qty, exp in conn.execute(
             f"SELECT at, run, item, spend, qty, {expect} FROM purchases "
-            f"WHERE {where} ORDER BY at, id", args):
+            f"WHERE at>=? ORDER BY at, id", (start,)):
         if qty:
-            runs[run]["buys"].append((at, item, spend or 0, qty, exp))
+            buys.append((at, run, item, spend or 0, qty, exp))
     for at, run, item, qty, price, proceeds in conn.execute(
-            f"SELECT at, run, item, qty, price, proceeds FROM sales "
-            f"WHERE {where} ORDER BY at, id", args):
+            "SELECT at, run, item, qty, price, proceeds FROM sales "
+            "WHERE at>=? ORDER BY at, id", (start,)):
         if qty:
             gross = proceeds if proceeds is not None else (price or 0) * qty
-            runs[run]["sells"].append((at, item, units_sold(item, qty),
-                                       gross))
+            sells.append((at, run, item, units_sold(item, qty), gross))
     conn.close()
-    return runs
+    return buys, sells
 
 
-def sale_prices(start, end=None):
-    conn = sqlite3.connect(f"file:{LEDGER}?mode=ro", uri=True)
-    where = "run>=?" if end is None else "run>=? AND run<?"
-    args = (start,) if end is None else (start, end)
+def sale_prices(sells):
     seen = collections.defaultdict(list)
-    for item, qty, proceeds in conn.execute(
-            f"SELECT item, qty, proceeds FROM sales WHERE {where}", args):
-        if qty and proceeds:
-            seen[key(item)].append(proceeds / qty)
-    conn.close()
+    for at, _run, item, units, gross in sells:
+        if units and gross:
+            seen[key(item)].append(gross / units)
+            seen[(at[:10], key(item))].append(gross / units)
     return {k: sorted(v)[len(v) // 2] for k, v in seen.items() if v}
 
 
-def close_run(run, book, fallback):
-    lots = collections.defaultdict(collections.deque)
+def listed_now():
+    import networth
+    log = networth.newest_log()
+    if log is None:
+        return {}, None, None
+    _market, board, _unread, _balance, bought = networth.read(log)
+    units = collections.Counter()
+    worth = collections.Counter()
+    for _index, name, qty, each, _listed, _cost in board:
+        k = key(name)
+        n = qty * pack(name)
+        units[k] += n
+        worth[k] += n * each
+    listed = {k: worth[k] / units[k] for k in units if units[k]}
+    for name, cores, _spent in bought:
+        units[key(name)] += cores
+    return listed, units, log
+
+
+BUDGET = re.compile(r"^relisting rows \d+-\d+ for ([\d.]+) minute\(s\)")
+PASS_LEFT = re.compile(r"^  pass \d+: .*?([\d.]+) minute\(s\) left")
+
+
+def log_launch(log):
+    try:
+        return datetime.datetime.strptime(
+            log.name[:len(datetime.datetime.now().strftime(LOG_STAMP))],
+            LOG_STAMP)
+    except ValueError:
+        return None
+
+
+def boards(since):
+    import networth
+    snaps = []
+    for log in LOGS.glob("*_run.log"):
+        launched = log_launch(log)
+        if launched is None or launched < since:
+            continue
+        try:
+            text = log.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        budget = None
+        table = None
+        for line in text.splitlines():
+            found = networth.BOARD_ROW.match(line)
+            if found:
+                if table is None or int(found.group(1)) == 1:
+                    table = collections.Counter()
+                name = found.group(2).strip()
+                table[key(name)] += networth.number(found.group(3)) * pack(name)
+                continue
+            found = BUDGET.match(line)
+            if found:
+                budget = float(found.group(1))
+                if table is not None:
+                    snaps.append((launched, table))
+                    table = None
+                continue
+            found = PASS_LEFT.match(line)
+            if found and table is not None and budget is not None:
+                when = launched + datetime.timedelta(
+                    minutes=budget - float(found.group(1)))
+                snaps.append((when, table))
+                table = None
+    return sorted(snaps, key=lambda snap: snap[0])
+
+
+def checkpoints(snaps, first_midnight, on_board):
+    checks = []
+    midnight = first_midnight
+    today = datetime.datetime.combine(datetime.date.today(),
+                                      datetime.time.min)
+    while midnight <= today:
+        before = [snap for snap in snaps if snap[0] <= midnight]
+        if before:
+            when, table = before[-1]
+            if not checks or checks[-1][0] != stamp(when):
+                checks.append((stamp(when), table))
+        midnight += datetime.timedelta(days=1)
+    if on_board is not None:
+        checks.append((stamp(datetime.datetime.now()), on_board))
+    return checks
+
+
+def close_book(buys, sells, fallback, listed, checks):
+    lots = []
+    open_lots = collections.defaultdict(collections.deque)
+    unmatched = []
     guessed = 0
-    buys = collections.deque(sorted(book["buys"]))
+    buys = collections.deque(sorted(buys))
 
     def stock_up(until):
         nonlocal guessed
         while buys and (until is None or buys[0][0] <= until):
-            _at, item, spend, qty, expect = buys.popleft()
+            at, run, item, spend, qty, expect = buys.popleft()
             k = key(item)
-            cost = spend / qty
             if not expect:
                 expect = fallback.get(k)
                 guessed += qty
-            if not expect:
-                expect = cost
-            lots[k].append([qty, cost, expect, item])
+            cost = spend / qty
+            lot = {"at": at, "run": run, "k": k, "item": item,
+                   "bucket": bucket(item), "qty": qty, "cost": cost,
+                   "expect": expect or cost, "sold": 0, "revenue": 0.0,
+                   "gone": 0, "gone_value": 0.0, "left": qty}
+            lots.append(lot)
+            open_lots[k].append(lot)
 
-    items = {}
+    def reconcile(at, on_board):
+        for k, queue in open_lots.items():
+            over = sum(lot["left"] for lot in queue) - on_board.get(k, 0)
+            while over > 0 and queue:
+                lot = queue[0]
+                take = min(over, lot["left"])
+                at_price = fallback.get((at[:10], k),
+                                        fallback.get(k, lot["expect"]))
+                lot["gone"] += take
+                lot["gone_value"] += take * at_price
+                lot["left"] -= take
+                over -= take
+                if lot["left"] <= 0:
+                    queue.popleft()
 
-    def row(k, name):
-        return items.setdefault(k, {
-            "bucket": bucket(name), "sold": 0, "revenue": 0.0,
-            "sold_cost": 0.0, "held": 0, "expected": 0.0, "held_cost": 0.0})
-
-    ignored = collections.Counter()
-    for at, item, qty, gross in sorted(book["sells"]):
+    events = [(sale[0], 1, sale) for sale in sells]
+    events += [(at, 0, table) for at, table in checks]
+    for at, kind, event in sorted(events, key=lambda e: (e[0], e[1])):
         stock_up(at)
+        if kind == 0:
+            reconcile(at, event)
+            continue
+        _at, run, item, n, gross = event
         if not gross:
             continue
         k = key(item)
-        each = gross / qty
-        left = qty
-        while left and lots[k]:
-            lot = lots[k][0]
-            take = min(left, lot[0])
-            r = row(k, item)
-            r["sold"] += take
-            r["revenue"] += take * each
-            r["sold_cost"] += take * lot[1]
-            lot[0] -= take
+        each = gross / n
+        left = n
+        while left and open_lots[k]:
+            lot = open_lots[k][0]
+            take = min(left, lot["left"])
+            lot["sold"] += take
+            lot["revenue"] += take * each
+            lot["left"] -= take
             left -= take
-            if lot[0] <= 0:
-                lots[k].popleft()
+            if lot["left"] <= 0:
+                open_lots[k].popleft()
         if left:
-            ignored[k] += left
+            unmatched.append((at, k, left))
     stock_up(None)
 
-    for k, dq in lots.items():
-        for units, cost, expect, name in dq:
-            if units <= 0:
-                continue
-            r = row(k, name)
-            r["held"] += units
-            r["expected"] += units * expect
-            r["held_cost"] += units * cost
-
-    return {"run": run, "items": items, "ignored": ignored,
-            "guessed": guessed, "live": run_is_live(run)}
+    for lot in lots:
+        lot["priced"] = "listed" if lot["k"] in listed else "expect"
+        lot["value"] = listed.get(lot["k"], lot["expect"])
+    return lots, unmatched, guessed
 
 
-def totals(closed):
-    t = {"sold": 0, "revenue": 0.0, "sold_cost": 0.0,
-         "held": 0, "expected": 0.0, "held_cost": 0.0}
-    for r in closed["items"].values():
-        for k in t:
-            t[k] += r[k]
+def totals(lots):
+    t = {f: 0 for f in FIELDS}
+    for lot in lots:
+        t["sold"] += lot["sold"]
+        t["revenue"] += lot["revenue"]
+        t["sold_cost"] += lot["sold"] * lot["cost"]
+        t["held"] += lot["left"]
+        t["expected"] += lot["left"] * lot["value"]
+        t["held_cost"] += lot["left"] * lot["cost"]
+        t["gone"] += lot["gone"]
+        t["gone_value"] += lot["gone_value"]
+        t["gone_cost"] += lot["gone"] * lot["cost"]
     return t
+
+
+def units(t):
+    return t["sold"] + t["held"] + t["gone"]
 
 
 def realised(t):
@@ -178,7 +280,7 @@ def realised(t):
 
 
 def assumed(t):
-    return t["expected"] - t["held_cost"]
+    return t["expected"] - t["held_cost"] + t["gone_value"] - t["gone_cost"]
 
 
 def profit(t):
@@ -186,8 +288,15 @@ def profit(t):
 
 
 def margin(t):
-    gross = t["revenue"] + t["expected"]
+    gross = t["revenue"] + t["expected"] + t["gone_value"]
     return f"{100 * profit(t) / gross:>7.1f}%" if gross else f"{'--':>8}"
+
+
+def within(lots, begin, end=None):
+    start = stamp(begin)
+    stop = None if end is None else stamp(end)
+    return [lot for lot in lots
+            if lot["at"] >= start and (stop is None or lot["at"] < stop)]
 
 
 def run_hours(run):
@@ -244,19 +353,33 @@ def line(char="-", width=96):
     print(char * width)
 
 
-def close_window(start, end=None):
-    runs = load(start, end)
-    fallback = sale_prices(start, end)
-    return [close_run(run, runs[run], fallback) for run in sorted(runs)]
-
-
-def by_day(count=DAYS_BACK):
+def open_book(count=DAYS_BACK):
     today = datetime.date.today()
     first = today - datetime.timedelta(days=count - 1)
+    since = datetime.datetime.combine(first, datetime.time.min)
+    opened = since - datetime.timedelta(days=count)
+    buys, sells = load(stamp(opened))
+    listed, on_board, log = listed_now()
+    checks = checkpoints(boards(opened - datetime.timedelta(days=1)),
+                         opened + datetime.timedelta(days=1), on_board)
+    lots, unmatched, guessed = close_book(buys, sells, sale_prices(sells),
+                                         listed, checks)
+    return {"first": first, "today": today, "lots": lots,
+            "unmatched": unmatched, "guessed": guessed, "listed": listed,
+            "log": log}
+
+
+def by_day(book):
+    count = DAYS_BACK
+    first, today = book["first"], book["today"]
     print(f"LAST {count} DAYS -- {first:%Y-%m-%d} to {today:%Y-%m-%d}, each "
           f"day midnight to midnight")
-    print("a run counts on the day it was LAUNCHED; each run is closed on "
-          "its own stock, unsold lots at the price they were bought against")
+    print("a lot counts on the day it was BOUGHT; a sale is matched "
+          "oldest-lot-first whichever run sold it; stock still on the board "
+          "is valued at the price it is listed at")
+    print("at each midnight and now, stock the book holds beyond what the "
+          "board showed left without a booked sale; it closes at that day's "
+          "median sale price")
     print("")
     print(f"{'day':<26}{'hours':>8}{'profit':>15}{'realised':>15}"
           f"{'assumed':>15}{'units':>8}{'margin':>8}{'an hour':>14}")
@@ -269,123 +392,135 @@ def by_day(count=DAYS_BACK):
         day = today - datetime.timedelta(days=back)
         begin = datetime.datetime.combine(day, datetime.time.min)
         end = begin + datetime.timedelta(days=1)
-        closed = close_window(stamp(begin), stamp(end))
-        t = collections.Counter()
-        for c in closed:
-            t.update(totals(c))
+        t = collections.Counter(totals(within(book["lots"], begin, end)))
         grand.update(t)
         up = up_hours(spans, begin, end)
         all_up += up
         label = f"{day:%a %Y-%m-%d}" + (" (so far)" if not back else "")
         print(f"{label:<26}{up:>7.2f}h{profit(t):>15,.0f}"
               f"{realised(t):>15,.0f}{assumed(t):>15,.0f}"
-              f"{t['sold'] + t['held']:>8,}{margin(t)}"
+              f"{units(t):>8,}{margin(t)}"
               f"{profit(t) / up if up else 0:>14,.0f}")
     line("=", width=118)
     print(f"{f'{count} DAYS':<26}{all_up:>7.2f}h{profit(grand):>15,.0f}"
           f"{realised(grand):>15,.0f}{assumed(grand):>15,.0f}"
-          f"{grand['sold'] + grand['held']:>8,}{margin(grand)}"
+          f"{units(grand):>8,}{margin(grand)}"
           f"{profit(grand) / all_up if all_up else 0:>14,.0f}")
 
 
-def report_day():
+def report_day(book):
     start = datetime.datetime.now().replace(hour=0, minute=0, second=0,
                                             microsecond=0)
     now = datetime.datetime.now().strftime("%H:%M")
-    print(f"PROFIT SUMMARY -- runs launched since {start:%Y-%m-%d} 00:00 "
+    print(f"PROFIT SUMMARY -- stock bought since {start:%Y-%m-%d} 00:00 "
           f"(as of {now})")
-    print("realised = bought and sold by the same run; assumed = bought and "
-          "still held, at the price it was bought against")
+    print("realised = sold, at what the collection paid, whichever run sold "
+          "it; assumed = still on the board at its listed price, plus stock "
+          "that left the board with no booked sale, at its day's median sale "
+          "price")
     print("")
-    closed = close_window(stamp(start))
-    if not closed:
-        print("  no run has traded today.")
+    lots = within(book["lots"], start)
+    if not lots:
+        print("  nothing has been bought today.")
         return
 
     items = {}
-    for c in closed:
-        for k, r in c["items"].items():
-            acc = items.setdefault(k, {"bucket": r["bucket"]})
-            for f in ("sold", "revenue", "sold_cost", "held", "expected",
-                      "held_cost"):
-                acc[f] = acc.get(f, 0) + r[f]
+    for lot in lots:
+        acc = items.setdefault(lot["k"], {"bucket": lot["bucket"], "lots": []})
+        acc["lots"].append(lot)
+    rows = {k: dict(totals(v["lots"]), bucket=v["bucket"])
+            for k, v in items.items()}
 
     print(f"{'item':<26}{'profit':>15}{'realised':>15}{'assumed':>15}"
           f"{'units':>8}{'margin':>8}{'cost':>16}")
     line(width=103)
     groups = {"Cores": collections.Counter(), "Chaos": collections.Counter()}
-    for k, r in sorted(items.items(),
+    for k, r in sorted(rows.items(),
                        key=lambda kv: -(kv[1]["revenue"] + kv[1]["expected"])):
-        cost = r["sold_cost"] + r["held_cost"]
+        cost = r["sold_cost"] + r["held_cost"] + r["gone_cost"]
         print(f"{k[:25]:<26}{profit(r):>15,.0f}{realised(r):>15,.0f}"
-              f"{assumed(r):>15,.0f}{r['sold'] + r['held']:>8,}{margin(r)}"
+              f"{assumed(r):>15,.0f}{units(r):>8,}{margin(r)}"
               f"{cost:>16,.0f}")
-        groups[r["bucket"]].update({f: r[f] for f in (
-            "sold", "revenue", "sold_cost", "held", "expected", "held_cost")})
+        groups[r["bucket"]].update({f: r[f] for f in FIELDS})
     line(width=103)
     total = collections.Counter()
     for label in ("Cores", "Chaos"):
         g = groups[label]
         total.update(g)
-        if not (g["sold"] + g["held"]):
+        if not units(g):
             continue
         print(f"{label:<26}{profit(g):>15,.0f}{realised(g):>15,.0f}"
-              f"{assumed(g):>15,.0f}{g['sold'] + g['held']:>8,}{margin(g)}"
-              f"{g['sold_cost'] + g['held_cost']:>16,.0f}")
+              f"{assumed(g):>15,.0f}{units(g):>8,}{margin(g)}"
+              f"{g['sold_cost'] + g['held_cost'] + g['gone_cost']:>16,.0f}")
     line("=", width=103)
+    spent = total["sold_cost"] + total["held_cost"] + total["gone_cost"]
     print(f"{'TOTAL':<26}{profit(total):>15,.0f}{realised(total):>15,.0f}"
-          f"{assumed(total):>15,.0f}{total['sold'] + total['held']:>8,}"
-          f"{margin(total)}{total['sold_cost'] + total['held_cost']:>16,.0f}")
+          f"{assumed(total):>15,.0f}{units(total):>8,}"
+          f"{margin(total)}{spent:>16,.0f}")
 
     print("")
-    print("by run:")
+    print("by run, on the stock each run bought:")
     print(f"  {'launched':<21}{'units':>7}{'realised':>15}{'assumed':>15}"
           f"{'profit':>15}{'hours':>7}{'an hour':>15}")
+    runs = sorted({lot["run"] for lot in lots if lot["run"]})
     all_hours = 0.0
-    for c in closed:
-        t = totals(c)
-        ran = run_hours(c["run"])
+    for run in runs:
+        t = totals([lot for lot in lots if lot["run"] == run])
+        ran = run_hours(run)
         all_hours += ran
         rate = f"{profit(t) / ran:>15,.0f}" if ran else f"{'--':>15}"
-        tag = "  live, open stock at its expected price" if c["live"] else ""
-        print(f"  {c['run']:<21}{t['sold'] + t['held']:>7,}{realised(t):>15,.0f}"
+        tag = "  live" if run_is_live(run) else ""
+        print(f"  {run:<21}{units(t):>7,}{realised(t):>15,.0f}"
               f"{assumed(t):>15,.0f}{profit(t):>15,.0f}{ran:>7.2f}{rate}{tag}")
     line(width=103)
-    print(f"  {len(closed)} run(s) trading for {all_hours:.2f} hour(s)"
+    print(f"  {len(runs)} run(s) trading for {all_hours:.2f} hour(s)"
           f"{'':>40}{profit(total) / all_hours if all_hours else 0:>15,.0f} an hour")
     print("  hours are launch to last trade, so a run still going is short by "
           "whatever it has not traded in yet")
 
-    ignored = collections.Counter()
-    for c in closed:
-        ignored.update(c["ignored"])
-    if ignored:
+    unmatched = collections.Counter()
+    for at, k, n in book["unmatched"]:
+        if at >= stamp(start):
+            unmatched[k] += n
+    if unmatched:
         print("")
-        print("sold by a run that did not buy it, so already counted by the "
-              "run that did (or never bought by the script):")
-        for k, units in ignored.most_common():
-            print(f"  {k:<26}{units:>8,} units")
+        print("sold today but matched to no lot the script bought:")
+        for k, n in unmatched.most_common():
+            print(f"  {k:<26}{n:>8,} units")
 
-    live = [c for c in closed if c["live"]]
-    for c in live:
-        held = {k: r for k, r in c["items"].items() if r["held"]}
-        if not held:
-            continue
+    gone = {k: r for k, r in rows.items() if r["gone"]}
+    if gone:
         print("")
-        print(f"open on the live run {c['run']}, counted above at the price "
-              f"each lot was bought against:")
+        print("bought today, off the board with no sale in the ledger; "
+              "closed at the median sale price of the item on the day it "
+              "left:")
+        for k, r in sorted(gone.items(), key=lambda kv: -kv[1]["gone_cost"]):
+            print(f"  {k:<26}{r['gone']:>8,} units  cost {r['gone_cost']:>15,.0f}"
+                  f"  closed {r['gone_value']:>15,.0f}  "
+                  f"({r['gone_value'] - r['gone_cost']:>+13,.0f})")
+
+    held = {k: r for k, r in rows.items() if r["held"]}
+    if held:
+        print("")
+        print("still on the board from today's stock, counted above at the "
+              "price it is listed at now:")
         for k, r in sorted(held.items(), key=lambda kv: -kv[1]["held_cost"]):
+            priced = {lot["priced"] for lot in items[k]["lots"] if lot["left"]}
+            note = ("" if priced == {"listed"} else
+                    "  (not on the board; at the price it was bought against)"
+                    if priced == {"expect"} else
+                    "  (partly off the board, that part at the price it was "
+                    "bought against)")
             print(f"  {k:<26}{r['held']:>8,} units  cost {r['held_cost']:>15,.0f}"
-                  f"  expected {r['expected']:>15,.0f}  "
-                  f"({assumed(r):>+13,.0f})")
+                  f"  listed {r['expected']:>15,.0f}  "
+                  f"({r['expected'] - r['held_cost']:>+13,.0f}){note}")
 
-    guessed = sum(c["guessed"] for c in closed)
-    if guessed:
+    if book["guessed"]:
         print("")
-        print(f"{guessed:,} unit(s) were bought before the ledger recorded the "
-              f"price they were bought against; those are closed at the "
-              f"day's median sale price for the item, or at cost if it "
-              f"never sold")
+        print(f"{book['guessed']:,} unit(s) were bought before the ledger "
+              f"recorded the price they were bought against; unsold ones off "
+              f"the board are valued at the median sale price for the item, "
+              f"or at cost if it never sold")
 
     print("")
     print("revenue is what the collections actually paid; the shop's sales "
@@ -581,10 +716,11 @@ def report_market():
 
 
 def main():
-    by_day()
+    book = open_book()
+    by_day(book)
     print("")
     print("")
-    report_day()
+    report_day(book)
     print("")
     print("")
     report_board()

@@ -177,6 +177,7 @@ def seed(verbose=True):
         known = remembered.get(index)
         if known is not None and                 row_model.item_key(known[0]) == row_model.item_key(row.name):
             row.buy_cost = known[1]
+            row.floor_at = known[2]
         found[index] = row
         if verbose:
             print(board_line(index, row))
@@ -293,8 +294,11 @@ def relist_one(model, index, verbose=True):
     held = model.get(index)
     if held is not None and             row_model.item_key(held.name) == row_model.item_key(row.name):
         row.buy_cost = held.buy_cost
+        row.floor_at = held.floor_at
     model._slots[index] = row
     unit_floor, pair = calibration.price_floor(row.name)
+    if row.floor_at:
+        unit_floor, pair = row.floor_at, "what it cost"
     if not unit_floor:
         stacked = row_model.read_row_one_stacked()
         again = _row_from(stacked)
@@ -306,7 +310,8 @@ def relist_one(model, index, verbose=True):
                       f"floor and the name are taken from that")
                 unit_floor, pair = floor_again, pair_again
                 row = row_model.Row(again.name, qty=row.qty, price=row.price,
-                                    buy_cost=row.buy_cost)
+                                    buy_cost=row.buy_cost,
+                                    floor_at=row.floor_at)
                 model._slots[index] = row
     if verbose:
         if not unit_floor:
@@ -347,15 +352,17 @@ def relist_one(model, index, verbose=True):
     why = ""
     if unit_floor:
         why = (f"it is worth {pair}" if whole
+               else f"it cost {unit_floor:,} each" if row.floor_at
                else f"a {pair} costs {unit_floor:,}")
         if pack > 1:
             why += f", and this listing carries {pack}"
     break_after = int(calibration.load_shared()["run"]["floor_break_after"])
     parked = model._floored.get(index, 0)
     broken = index in model._broken
-    breaking = (break_after > 0 and not whole
+    holds = whole or bool(row.floor_at)
+    breaking = (break_after > 0 and not holds
                 and (broken or parked >= break_after))
-    if whole and floor and parked >= break_after > 0:
+    if holds and floor and parked >= break_after > 0:
         print(f"    row {index} has sat on its {floor:,} floor for {parked} "
               f"relist(s) and holds it; {pair} does not go to the market")
     if breaking:
@@ -394,7 +401,8 @@ def relist_one(model, index, verbose=True):
     model._slots.pop(index, None)
     model.place(lands_in, row_model.Row(row.name, qty=out["qty"],
                                         price=out["price"],
-                                        buy_cost=row.buy_cost))
+                                        buy_cost=row.buy_cost,
+                                        floor_at=row.floor_at))
     model.carry_floor(index, lands_in, breaking, out["floored"], parked)
     if verbose:
         note = ""
@@ -1387,6 +1395,201 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
     return out
 
 
+def our_set_price(model, set_name):
+    prices = [row.sell_unit for row in (model._slots or {}).values()
+              if row is not None
+              and row_model.item_key(row.name) == row_model.item_key(set_name)]
+    return min(prices) if prices else None
+
+
+def buy_sets_under(job, verbose=True):
+    run = calibration.load_shared()["resupply"]
+    pair, set_name, want_min = job["pair"], job["set"], job["want_min"]
+    attempt = 0
+    while job["bought"] < want_min:
+        if job["set_row"] is None:
+            with calibration.phase(f"price {set_name} again"):
+                job["set_row"] = get_price.get_price(pair, verbose=False)
+            if job["set_row"] is None:
+                print(f"  {set_name} would not price again; not buying "
+                      f"blind.")
+                job["more"] = False
+                break
+        cheapest = job["set_row"]["unit_price"]
+        if cheapest >= job["under"]:
+            print(f"  the cheapest {set_name} is {cheapest:,} a Set, not under "
+                  f"{job['under']:,}; nothing left to buy under ours")
+            job["more"] = False
+            break
+        print(f"  {job['bought']}/{want_min} {set_name} held; row 1 asks "
+              f"{cheapest:,} a Set against ours at {job['ours']:,}")
+        job["orders"] += 1
+        try:
+            with calibration.phase(f"buy order {job['orders']}"):
+                got = buy.buy_row_one(pair, want_min - job["bought"],
+                                      verbose=verbose, held=job["bought"],
+                                      floor_qty=want_min,
+                                      ceiling=job["want_max"],
+                                      sells_at=job["ours"], gap=None,
+                                      search=False)
+        except buy.Refused as exc:
+            job["set_row"] = None
+            if not getattr(exc, "retryable", False):
+                print(f"  stopping: {exc}")
+                job["more"] = False
+                break
+            attempt += 1
+            print(f"  attempt {attempt}/{run['buy_retries']}: {exc}")
+            if attempt >= int(run["buy_retries"]):
+                print(f"  the board kept moving through "
+                      f"{run['buy_retries']} attempt(s); giving up on "
+                      f"{set_name} this cycle.")
+                job["more"] = False
+                break
+            continue
+        attempt = 0
+        job["set_row"] = None
+        if got["bought"] <= 0:
+            print(f"  the last order bought nothing; stopping.")
+            job["more"] = False
+            break
+        job["bought"] += got["bought"]
+        job["paid"] += got["spent"]
+    if job["bought"] <= 0:
+        print(f"  nothing bought; nothing to compress.")
+        return False
+    if job["bought"] < want_min:
+        print(f"  bought {job['bought']} of the {want_min} wanted; listing "
+              f"what there is")
+    if job["set_row"] is None:
+        with calibration.phase(f"price {set_name} after buying"):
+            job["set_row"] = get_price.get_price(pair, verbose=False)
+    job["step"] = "list"
+    return True
+
+
+def list_sets_under(model, job, first, last, verbose=True):
+    set_name, work = job["set"], job["work"]
+    bought, paid = job["bought"], job["paid"]
+    unit_cost = -(-paid // bought)
+    with calibration.phase("select the Register tab"):
+        register_tab(verbose=verbose)
+    with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
+                          settle=0.0)
+        time.sleep(row_model.TAB_SETTLE)
+    market = (job["set_row"] or {}).get("unit_price") or job["under"]
+    print(f"  listing the {set_name} that landed in {work}: {bought} "
+          f"bought at {unit_cost:,} a Set; asking ours, {job['ours']:,} a Set, "
+          f"no lower than {unit_cost:,}")
+    empty = [i for i in model.empty() if first <= i <= last]
+    if not empty:
+        print(f"  rows {first}-{last} are full; the {set_name} stays on tab "
+              f"{row_model.WORK_TAB}.")
+        model.hold_work(work, set_name)
+        return None
+    lands_in = min(empty)
+    try:
+        with calibration.phase(f"list {set_name} from {work}"):
+            listed = model.list_slot(*work, verbose=verbose,
+                                     why=f"a {set_name} cost {unit_cost:,} "
+                                         f"this pass",
+                                     lands_in=lands_in, unit_market=market,
+                                     floor_each=unit_cost,
+                                     price_each=job["ours"], wait_fill=False)
+    except row_model.NothingLoaded as exc:
+        model.hold_work(work, set_name)
+        raise NotReady(
+            f"{exc} Tab {row_model.WORK_TAB} slot {work} is left to the "
+            f"{set_name} that landed there.")
+    job["step"] = "listed"
+    model.place(lands_in, row_model.Row(
+        set_name, qty=listed["qty"], price=listed["price"],
+        buy_cost=unit_cost, units=listed["units"], floor_at=unit_cost))
+    if listed["units"] != bought:
+        print(f"  the panel counted {listed['units']} in the bundle against "
+              f"the {bought} bought; the slot holds every {set_name} the "
+              f"game stacked into it")
+    return lands_in
+
+
+def buy_under_lister(model, slot, first, last, verbose=True):
+    core = calibration.FAVOURITE_ITEMS[str(slot)]
+    pair = calibration.pair_slot(slot)
+    cap = int(calibration.buy_under_lister(core))
+    if cap <= 0 or pair is None or not buying_enabled(core):
+        return []
+    set_name = calibration.FAVOURITE_ITEMS[str(pair)]
+    print("")
+    print(f"-- {set_name} under our listing: up to {cap} row(s) --")
+    ours = our_set_price(model, set_name)
+    if ours is None:
+        print(f"  no {set_name} of ours on the board, so there is no listing "
+              f"of ours to buy under; not buying")
+        return []
+    core_row, set_row, diff = price_gap(slot)
+    if diff is None:
+        return []
+    core_at = core_row["unit_price"]
+    under = min(ours, core_at)
+    print(f"  ours is listed at {ours:,} a Set and a {core} sells at "
+          f"{core_at:,}; buying every Set under {under:,}")
+    want_min = calibration.buy_min(core)
+    want_max = calibration.buy_max(core)
+    rows = []
+    while len(rows) < cap:
+        if set_row is not None and set_row["unit_price"] >= under:
+            print(f"  the cheapest {set_name} is {set_row['unit_price']:,} a "
+                  f"Set, not under {under:,}; nothing to buy under ours")
+            break
+        if not [i for i in model.empty() if first <= i <= last]:
+            print(f"  rows {first}-{last} are full; a bought {set_name} with "
+                  f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
+                  f"buying.")
+            break
+        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        landing = model.next_work_slot()
+        if landing is None:
+            raise NotReady(f"the run holds every slot of tab "
+                           f"{row_model.WORK_TAB}; nowhere for a bought "
+                           f"{set_name} to land.")
+        with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
+            calibration.click(*calibration.inventory_tab_point(
+                row_model.WORK_TAB), settle=0.0)
+            time.sleep(TAB_SETTLE)
+        task("resupply", core=set_name, slot=pair, tab=row_model.WORK_TAB,
+             under=under, landing=list(landing))
+        job = {"pair": pair, "set": set_name, "ours": ours, "under": under,
+               "want_min": want_min, "want_max": want_max, "set_row": set_row,
+               "work": landing, "orders": 0, "bought": 0, "paid": 0,
+               "more": True, "step": "buy"}
+        calibration.phases_reset()
+        try:
+            if not buy_sets_under(job, verbose=verbose):
+                task_done("resupply", core=set_name, bought=0)
+                break
+            lands_in = list_sets_under(model, job, first, last,
+                                       verbose=verbose)
+        except BaseException:
+            if job["bought"] > 0 and job["step"] != "listed":
+                model.hold_work(landing, set_name)
+            raise
+        if lands_in is None:
+            break
+        rows.append(lands_in)
+        task_done("resupply", core=set_name, bought=job["bought"],
+                  rows=[lands_in])
+        calibration.phases_table(
+            f"{set_name} under ours: bought {job['bought']} at "
+            f"{-(-job['paid'] // job['bought']):,}, listed in row {lands_in}")
+        print(f"  {set_name}: {len(rows)} of {cap} row(s) bought under ours "
+              f"this pass")
+        set_row = None
+        if not job["more"]:
+            break
+    return rows
+
+
 def gifts_at_the_end(verbose=True):
     import collect_gifts
     try:
@@ -1450,6 +1653,14 @@ def resupply_pass(model, first, last, verbose=True):
                 done.append(out)
         if not run["enabled"]:
             return done
+        for slot in core_slots():
+            if not craft_route(calibration.FAVOURITE_ITEMS[str(slot)]):
+                continue
+            war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+            try:
+                buy_under_lister(model, slot, first, last, verbose=verbose)
+            except (craft.Refused, buy.Refused, NotReady) as exc:
+                print(f"  buying under our listing stopped: {exc}")
         held = rows_by_core(model, first, last)
         print("")
         print(f"  counting only rows {first}-{last}; rows outside it are not "

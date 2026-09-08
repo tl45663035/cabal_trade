@@ -34,12 +34,12 @@ for -- "profit", "how are we doing", "today", a bare `/profit_summary`:
    to now) and **an hour** (the day's profit over those hours). Give every
    day its own line including the zero days, then the 7-day total. Do not
    collapse it to a total, do not drop the empty days, and do not skip the
-   block because the question was about today. Profit sits on the run's
-   launch day but hours sit where they fall, so a run crossing midnight
-   skews the two days against each other; the 7-day figure is the fair one.
+   block because the question was about today. A lot sits on the day it
+   was bought and hours sit where they fall, so stock bought late and sold
+   after midnight shows its profit on the day it was bought.
 2. **The day summary** that follows -- per-item lines, the Cores/Chaos
-   split, the total, `by run`, what was sold but not bought, and the live
-   run's open stock.
+   split, the total, `by run`, what was sold but never bought, what left
+   the board with no booked sale, and what is still on the board.
 
 3. **ROWS** -- the live run's latest board, from the newest run log: the
    `board after pass N` table (index, name, qty, bought/u, listed/u, margin,
@@ -75,32 +75,52 @@ The 7-day block comes first. The day is read against it, not on its own.
 It reads `src_1080p/sales.db` read-only, so it is safe while a run is in
 progress.
 
-## How a run is closed
+## How the book is closed
 
-Every run is its own book. Nothing crosses from one run to the next.
+One book, since 2026-09-08. Every purchase is a lot; a lot belongs to the
+day it was bought and to the run that bought it, and the runs only share
+it.
 
-- **Stock the run did not buy does not count for it**, even when the run
-  sells it. That stock was closed by the run that bought it.
-- **Every purchase carries `expect`**: the unit price the core was selling
-  at when it was bought (`sells_at` in `buy.py`, written by
-  `ledger.bought`). The margin is known the moment the stock is bought.
-- **A sale is matched oldest-lot-first against what the same run had
-  bought before that sale.** Profit on those units is what the collection
-  actually paid minus what those lots cost. That is **realised**. A sale
-  earlier than every lot of the run is the previous run's stock clearing,
-  whatever run the ledger tagged it with; it goes under `sold by a run that
-  did not buy it`. Until 2026-09-04 the match ignored time, so a run's
-  first minutes booked the old stock against lots bought later -- the live
-  run showed -641K "realised" on Sets it had not sold yet.
-- **When the run ends, every lot it still holds is taken as sold at its
-  `expect`.** That is **assumed**. It closes the run.
-- **The live run** is closed the same way, with its open stock listed
-  separately under `open on the live run`, so realised and assumed can be
-  told apart. `live` means the run's log was written in the last 10
-  minutes and has no `ran for` line.
+- **A sale is matched oldest-lot-first against every lot bought before
+  it, whichever run sold it.** Profit on those units is what the collection
+  actually paid minus what those lots cost. That is **realised**. A
+  restart no longer breaks the chain: the next run selling the previous
+  run's stock realises it at the real price, on the previous run's line.
+  Before this the book was per run, the inheriting run's sales went under
+  `sold by a run that did not buy it`, and the held stock was closed at
+  `expect` -- the day's assumed ran 60M over the board's own `PROFIT IF
+  SOLD` on 2026-09-08.
+- **Stock still on the board is valued at the price it is listed at**, the
+  units-weighted `listed/u` for the item on the newest run log's last
+  board (`networth.read`). Only stock on no board falls back to `expect`,
+  the unit price the core was selling at when it was bought (`sells_at` in
+  `buy.py`, written by `ledger.bought`). That is **assumed**, and the day
+  summary lists it under `still on the board from today's stock`.
+- **The board is the truth of what is held.** The ledger misses sales (a
+  row that sells while being cancelled, bundle rounding), so the book would
+  hold Chaos Sets for ever -- 5,000 phantom units by 2026-09-08. At each
+  midnight the book is checked against the last `board after pass` table
+  printed before it (its time is the run's launch plus the budget minus the
+  `minute(s) left` on the pass line) and again, now, against the newest
+  board plus what was bought since it. Whatever the book holds beyond the
+  board left without a booked sale; the oldest such lots close at the
+  median booked sale price for the item on that day. Those units are also
+  **assumed**, and print under `off the board with no sale in the ledger`.
+  Logs from before 2026-09-04 print no `board after pass`, so the first
+  checkpoint is 2026-09-04 23:51.
+- The book is loaded from 7 days before the 7-day window so a sale at the
+  window's edge finds the lots it belongs to; lots bought before the window
+  are matched but never reported.
+- **A sale with no lot left to match** is stock the script never bought,
+  or a mis-booked sale: `sold today but matched to no lot the script
+  bought`. The 20,000-unit core sales booked on 2026-09-06 to 08 are such
+  rows; they consume every open lot of the item at their unit price and
+  the rest shows here.
+- `live` on a `by run` line means the run's log was written in the last
+  10 minutes and has no `ran for` line.
 
 `profit = realised + assumed`. `margin` is profit over realised revenue plus
-expected revenue.
+what the held and gone stock is valued at.
 
 ## Ledger conventions that bite
 
@@ -125,9 +145,8 @@ expected revenue.
 - **A row that sells while it is being cancelled is collected but not
   booked** (`driver.py` `SlotNeverFilled` path calls `receive` after
   `note_cancel` dropped the slot, so `_book` has nothing to book against).
-  Fixed or not, under this model the stock simply stays "held" and closes
-  at `expect` -- the profit is counted, at the bought-against price rather
-  than the real one.
+  The midnight and now checks against the board catch the stock; it
+  closes at the day's median booked sale price, not the real one.
 - **Bundle unit counts** in the ledger come from `round(price /
   market_unit)`, not the `X N` in the name; the tool re-derives them from
   the name where it has one, but some sale rows are booked without the
@@ -140,13 +159,15 @@ expected revenue.
 ## Reading the result
 
 - `by run` gives units, realised, assumed, profit, hours and profit an
-  hour. **Hours are launch to last trade** from the ledger, so a run still
-  going is short by whatever it has not traded in yet.
-- A run with big `assumed` and small `realised` bought late and was stopped
-  before it sold; the profit is what the board said it would make, not what
-  it made.
-- `sold by a run that did not buy it` is information only. Big numbers
-  there after a restart are normal: the previous run's stock clearing.
+  hour, on the stock each run bought, whoever sold it. **Hours are launch
+  to last trade** from the ledger, so a run still going is short by
+  whatever it has not traded in yet.
+- A run with big `assumed` and small `realised` bought stock that is still
+  on the board; the profit is what the board asks for it now, not what it
+  made.
+- The day's `assumed` on stock still on the board should sit close to the
+  board block's `PROFIT IF SOLD`; the gap is stock bought on an earlier
+  day that is still listed.
 
 ## Do not
 
@@ -154,5 +175,5 @@ expected revenue.
 - Do not hardcode a date. It caught fire once: `SINCE` was pinned to
   `2026-08-20T08:00:00` and silently reported 52 hours under a "SINCE 08:00"
   heading.
-- Do not carry lots across runs, however tempting. The next run seeing the
-  previous run's stock on the board is expected; it is already closed.
+- Do not close the book per run again. Runs share one book; a lot's profit
+  belongs to the day and run that bought it whoever sells it.

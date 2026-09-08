@@ -546,13 +546,15 @@ def item_key(name):
 
 
 class Row:
-    __slots__ = ("name", "qty", "price", "buy_cost", "units")
+    __slots__ = ("name", "qty", "price", "buy_cost", "units", "floor_at")
 
-    def __init__(self, name, qty=1, price=0, buy_cost=0, units=None):
+    def __init__(self, name, qty=1, price=0, buy_cost=0, units=None,
+                 floor_at=0):
         self.name = name
         self.qty = int(qty)
         self.price = int(price)
         self.buy_cost = int(buy_cost)
+        self.floor_at = int(floor_at or 0)
         self.units = int(units) if units is not None \
             else int(qty) * pack_size(name)
 
@@ -585,11 +587,13 @@ class Row:
         return _key(self.name)
 
     def copy(self):
-        return Row(self.name, self.qty, self.price, self.buy_cost, self.units)
+        return Row(self.name, self.qty, self.price, self.buy_cost, self.units,
+                   self.floor_at)
 
     def __repr__(self):
         return (f"Row({self.name!r}, qty={self.qty}, units={self.units}, "
                 f"price={self.price:,}, buy={self.buy_cost:,}, "
+                f"floor_at={self.floor_at:,}, "
                 f"sell_unit={self.sell_unit:,}, margin={self.margin:+,})")
 
 
@@ -839,7 +843,7 @@ class RowModel:
     def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
                   lands_in=None, expect_item=None,
                   expect_price=None, unit_market=None, floor_each=0,
-                  listed_at=None, wait_fill=True):
+                  listed_at=None, wait_fill=True, price_each=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -913,6 +917,11 @@ class RowModel:
                 print(f"  the panel prices the bundle at {suggested:,}, "
                       f"{count} x {unit_market:,}"
                       + (f"; the floor is {floor:,}" if floor else ""))
+            if price is None and price_each:
+                price = price_each * count
+                if verbose:
+                    print(f"  asking {price_each:,} each, {price:,} for the "
+                          f"{count}")
 
         want = price if price is not None else calibration.undercut(suggested)
         if want is None:

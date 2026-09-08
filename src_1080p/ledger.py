@@ -50,6 +50,9 @@ def start(stamp=None):
         columns = {row[1] for row in db.execute("PRAGMA table_info(purchases)")}
         if "expect" not in columns:
             db.execute("ALTER TABLE purchases ADD COLUMN expect INTEGER")
+        columns = {row[1] for row in db.execute("PRAGMA table_info(board)")}
+        if "floor_at" not in columns:
+            db.execute("ALTER TABLE board ADD COLUMN floor_at INTEGER")
     return _RUN
 
 
@@ -82,18 +85,21 @@ def board_save(rows):
     with sqlite3.connect(DB) as db:
         db.execute("DELETE FROM board")
         db.executemany(
-            "INSERT INTO board (row, at, item, qty, price, buy_cost) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO board (row, at, item, qty, price, buy_cost, "
+            "floor_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [(int(index), at, row.name, int(row.qty), int(row.price),
-              int(row.buy_cost)) for index, row in rows.items()])
+              int(row.buy_cost), int(row.floor_at))
+             for index, row in rows.items()])
 
 
 def board_costs():
     if _RUN is None:
         start()
     with sqlite3.connect(DB) as db:
-        return {int(row): (item, int(cost or 0)) for row, item, cost
-                in db.execute("SELECT row, item, buy_cost FROM board")}
+        return {int(row): (item, int(cost or 0), int(floor_at or 0))
+                for row, item, cost, floor_at
+                in db.execute("SELECT row, item, buy_cost, floor_at "
+                              "FROM board")}
 
 
 _PACK = re.compile(r"\bX\s*[\d,]+", re.I)
