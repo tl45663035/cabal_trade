@@ -246,6 +246,8 @@ def read_state(image=None, popup_only=False):
     }
     if not popup_only:
         state.update({
+            "select": (recovery.character_list(image)
+                       or recovery.server_list(image)),
             "alz": (calibration.inventory_grid_shown(image)
                     and calibration.find_alz(image) is not None),
             "trade": calibration._trade_window_open(image),
@@ -582,8 +584,9 @@ def get_in(plan=False):
     print(f"  screen: {state['summary']}")
     if not plan:
         snap("found", state["image"])
-    if state["disconnect"] or state["login"] or state["failed"]:
-        print("  case: disconnect / login screen -> recovery.py")
+    if (state["disconnect"] or state["login"] or state["failed"]
+            or state.get("select")):
+        print("  case: disconnect / login / select screen -> recovery.py")
         if not plan:
             recover_login()
             state = read_state()

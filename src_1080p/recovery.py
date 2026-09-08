@@ -30,6 +30,7 @@ YES_WORD = _R["yes_word"]
 ENTER_WORD = _R["enter_word"]
 
 SCREEN_TIMEOUT = _R["screen_timeout"]
+CHARACTER_WAIT = _R["character_wait"]
 WORLD_TIMEOUT = _R["world_timeout"]
 SUB_PASSWORD_WAIT = _R["sub_password_wait"]
 AFTER_TYPING_WAIT = _R["after_typing_wait"]
@@ -135,10 +136,32 @@ def _find(want, words=None, whole=True):
     return None
 
 
-def _find_in(want, region_frac, whole=False):
+def _find_in(want, region_frac, whole=False, image=None):
     box = _box_frac(region_frac)
-    words = calibration.ocr(calibration.grab(), box)
+    image = image if image is not None else calibration.grab()
+    words = calibration.ocr(image, box)
     return _find(want, words=words, whole=whole)
+
+
+def _account_or_none():
+    try:
+        return account()
+    except Refused:
+        return None
+
+
+def character_list(image=None, who=None):
+    who = who or _account_or_none()
+    if who is None:
+        return None
+    return _find_in(who["character"], SELECT_PANEL_F, image=image)
+
+
+def server_list(image=None, who=None):
+    who = who or _account_or_none()
+    if who is None:
+        return None
+    return _find_in(who["channel"], SELECT_PANEL_F, image=image)
 
 
 def _box_frac(frac):
@@ -364,10 +387,21 @@ def recover(verbose=True):
                       "balance reads, so the character is already in the "
                       "world")
             return True
+        if character_list(who=who) is not None:
+            calibration.snap("recovery_character_list_up")
+            if verbose:
+                print("  no login screen; the character list is already up")
+            return _pick_character(who, verbose=verbose)
+        if server_list(who=who) is not None:
+            calibration.snap("recovery_server_list_up")
+            if verbose:
+                print("  no login screen; the server list is already up")
+            _pick_channel(who, verbose=verbose)
+            return _pick_character(who, verbose=verbose)
         calibration.snap("recovery_nothing_to_recover")
         raise Refused(
-            "no disconnect notice and no login screen, so there is nothing "
-            "to recover from. Nothing clicked.")
+            "no disconnect notice, no login screen, no server or character "
+            "list, so there is nothing to recover from. Nothing clicked.")
     elif verbose:
         print("  no disconnect notice; the login screen is already up")
 
@@ -469,6 +503,11 @@ def recover(verbose=True):
             f"the server refused the login {LOGIN_TRIES} times; it is not "
             f"taking connections. Nothing more to try now.")
 
+    _pick_channel(who, verbose=verbose)
+    return _pick_character(who, verbose=verbose)
+
+
+def _pick_channel(who, verbose=True):
     channel = None
     deadline = time.monotonic() + RECONNECT_SETTLE
     while time.monotonic() < deadline and channel is None:
@@ -489,8 +528,10 @@ def recover(verbose=True):
     if enter is not None:
         calibration.click(*enter)
 
+
+def _pick_character(who, verbose=True):
     who_at = None
-    deadline = time.monotonic() + SCREEN_TIMEOUT
+    deadline = time.monotonic() + CHARACTER_WAIT
     while time.monotonic() < deadline and who_at is None:
         who_at = _find_in(who["character"], SELECT_PANEL_F)
         if who_at is None:
@@ -499,7 +540,7 @@ def recover(verbose=True):
         calibration.snap("recovery_no_character")
         raise Refused(
             f"no {who['character']!r} in the character list within "
-            f"{SCREEN_TIMEOUT:g}s. Nothing entered.")
+            f"{CHARACTER_WAIT:g}s. Nothing entered.")
     calibration.snap("recovery_character_select")
     if verbose:
         print(f"  {who['character']!r} at {list(who_at)}; entering")
