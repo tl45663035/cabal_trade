@@ -150,13 +150,13 @@ def death_reason(text):
 
 
 def prune_before_today():
-    today = f"{datetime.date.today():%Y-%m-%d}"
+    today = datetime.date.today()
     gone = 0
     for folder in (FRAMES, DEAD, REELS):
         if not folder.exists():
             continue
         for item in folder.iterdir():
-            if item.name[:len(today)] < today:
+            if datetime.date.fromtimestamp(item.stat().st_mtime) < today:
                 if item.is_dir():
                     shutil.rmtree(item, ignore_errors=True)
                 else:
@@ -164,8 +164,8 @@ def prune_before_today():
                 gone += 1
     if gone:
         print(f"  pruned {gone} frame(s), reel(s) and dead run(s) from "
-              f"before {today}")
-    return today
+              f"before {today:%Y-%m-%d}")
+    return f"{today:%Y-%m-%d}"
 
 
 def watch(pid, log):
