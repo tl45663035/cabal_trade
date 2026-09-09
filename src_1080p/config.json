@@ -207,7 +207,12 @@
     "ok_word": "ok",
     "confirm_word": "confirmation",
     "yes_word": "yes",
-    "enter_word": "enter server"
+    "enter_word": "enter server",
+    "menu_word": "select character",
+    "menu_tries": 3,
+    "menu_wait": 3.0,
+    "logout_yes_wait": 5.0,
+    "logout_wait": 30.0
   },
   "supervise": {
     "poll": 20,
@@ -221,6 +226,7 @@
     "launch_settle": 3,
     "short_run": 300,
     "short_runs": 3,
+    "relog_tries": 1,
     "task_cap": 8,
     "dialog_settle": 5,
     "dialog_tries": 3,

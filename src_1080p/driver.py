@@ -493,6 +493,10 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
             resupply_pass(model, first, last, verbose=verbose)
             made, missed, bare = relist_pass(model, first, last,
                                              verbose=verbose)
+            done += made
+            skipped += missed
+            empty += bare
+            rest_the_game(verbose=verbose)
         except calibration.ServerStalled as exc:
             print(f"  {exc}")
             if time.monotonic() >= deadline:
@@ -503,10 +507,6 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
             print(f"  STOPPED: {exc}")
             stopped = exc
             break
-        done += made
-        skipped += missed
-        empty += bare
-        rest_the_game(verbose=verbose)
         model.home(verbose=False)
         board_report(model, passes)
         left = deadline - time.monotonic()

@@ -315,6 +315,18 @@ def recover_login():
           "dead")
 
 
+def relog():
+    no_driver_alive()
+    print("$ py src_1080p/recovery.py --relog", flush=True)
+    code, out = run_child([sys.executable, str(SRC / "recovery.py"),
+                           "--relog"], SRC, K["login_timeout"])
+    for line in [l for l in out.splitlines() if l.strip()][-6:]:
+        print("   " + line[:140])
+    if code or "Refused" in out:
+        raise Stop(f"relog refused: {out.strip().splitlines()[-1][:100]}")
+    event("relogged: back in the world", "dead")
+
+
 def close_craft_window(state):
     for attempt in range(1, K["dialog_tries"] + 1):
         if not state["craft"]:
@@ -707,11 +719,13 @@ def plan(log_path=None, png=None):
     recover(death_reason(text), text, plan=True)
 
 
-def recover_and_launch(reason, log, watched=True):
+def recover_and_launch(reason, log, watched=True, relog_first=False):
     held = failed = 0
     while True:
         try:
             recover(reason, read(log), log=log, watched=watched)
+            if relog_first:
+                relog()
             return launch()
         except Held as exc:
             held += 1
@@ -763,20 +777,30 @@ def main():
                 pid, log = recover_and_launch(reason, log, watched=False)
             if args.once:
                 return 0
-        short = 0
+        short = relogs = 0
         while True:
             launched = time.time()
             reason = watch(pid, log)
             if held_reason(reason):
                 event(f"the server took the run down: {reason[:60]}; "
                       f"not counted as a short run", "dead")
+            elif time.time() - launched < K["short_run"]:
+                short += 1
             else:
-                short = (short + 1 if time.time() - launched < K["short_run"]
-                         else 0)
-            if short >= K["short_runs"]:
+                short = relogs = 0
+            if short < K["short_runs"]:
+                pid, log = recover_and_launch(reason, log)
+            elif relogs < K["relog_tries"]:
+                relogs += 1
+                short = 0
+                event(f"{K['short_runs']} runs in a row died within "
+                      f"{K['short_run']}s of launch; relogging "
+                      f"({relogs} of {K['relog_tries']})", "dead")
+                pid, log = recover_and_launch(reason, log, relog_first=True)
+            else:
                 raise Stop(f"{K['short_runs']} runs in a row died within "
-                           f"{K['short_run']}s of launch; last: {reason[:80]}")
-            pid, log = recover_and_launch(reason, log)
+                           f"{K['short_run']}s of launch after {relogs} "
+                           f"relog(s); last: {reason[:80]}")
             if args.once:
                 return 0
     except KeyboardInterrupt:

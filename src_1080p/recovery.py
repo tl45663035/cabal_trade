@@ -28,6 +28,11 @@ OK_WORD = _R["ok_word"]
 CONFIRM_WORD = _R["confirm_word"]
 YES_WORD = _R["yes_word"]
 ENTER_WORD = _R["enter_word"]
+MENU_WORD = _R["menu_word"]
+MENU_TRIES = _R["menu_tries"]
+MENU_WAIT = _R["menu_wait"]
+LOGOUT_YES_WAIT = _R["logout_yes_wait"]
+LOGOUT_WAIT = _R["logout_wait"]
 
 SCREEN_TIMEOUT = _R["screen_timeout"]
 CHARACTER_WAIT = _R["character_wait"]
@@ -40,6 +45,7 @@ DIALOG_BUTTON_F = tuple(_REG["recovery_dialog_button"])
 DUAL_YES_F = tuple(_REG["recovery_dual_yes"])
 SELECT_PANEL_F = tuple(_REG["recovery_select_panel"])
 ENTER_BUTTON_F = tuple(_REG["recovery_enter_button"])
+MENU_F = tuple(_REG["recovery_menu"])
 LOGIN_PANEL_F = tuple(_REG["recovery_login_panel"])
 KEYPAD_F = tuple(_REG["recovery_keypad"])
 KEYPAD_COLUMNS = _R["keypad_columns"]
@@ -507,6 +513,62 @@ def recover(verbose=True):
     return _pick_character(who, verbose=verbose)
 
 
+def logout(verbose=True):
+    from open_inventory import focus_game, press
+    keys = calibration.load_shared()["input"]
+    who = account()
+
+    if not focus_game():
+        raise Refused("could not bring the game to the foreground.")
+
+    if character_list(who=who) is not None:
+        calibration.snap("logout_character_list_up")
+        if verbose:
+            print("  the character list is already up; nothing to log out "
+                  "of")
+        return True
+
+    entry = None
+    for attempt in range(1, MENU_TRIES + 1):
+        if verbose:
+            print(f"  Escape for the menu (attempt {attempt})")
+        press(keys["VK_ESCAPE"])
+        entry = _wait_for(MENU_WORD, timeout=MENU_WAIT, verbose=verbose,
+                          region=MENU_F)
+        if entry is not None:
+            break
+    if entry is None:
+        calibration.snap("logout_no_menu")
+        raise Refused(
+            f"no {MENU_WORD!r} in the menu after {MENU_TRIES} Escape(s). "
+            f"Nothing clicked.")
+    calibration.snap("logout_menu")
+    calibration.click(*entry)
+
+    yes = _needed(YES_WORD, timeout=LOGOUT_YES_WAIT, verbose=verbose,
+                  region=POPUP_F)
+    calibration.snap("logout_confirm")
+    calibration.click(*yes)
+
+    deadline = time.monotonic() + LOGOUT_WAIT
+    while time.monotonic() < deadline:
+        if character_list(who=who) is not None:
+            calibration.snap("logout_character_list")
+            if verbose:
+                print("  the character list is up")
+            return True
+        time.sleep(POLL_GAP)
+    calibration.snap("logout_never_left")
+    raise Refused(
+        f"no character list within {LOGOUT_WAIT:g}s of confirming "
+        f"{MENU_WORD!r}, so the character is still in the world.")
+
+
+def relog(verbose=True):
+    logout(verbose=verbose)
+    return recover(verbose=verbose)
+
+
 def _pick_channel(who, verbose=True):
     channel = None
     deadline = time.monotonic() + RECONNECT_SETTLE
@@ -585,5 +647,9 @@ if __name__ == "__main__":
         for text, conf, point in _words():
             if text.strip():
                 print(f"  {text!r:<28} conf={round(conf):<4} at {list(point)}")
+    elif "--logout" in sys.argv:
+        logout()
+    elif "--relog" in sys.argv:
+        relog()
     else:
         recover()

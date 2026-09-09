@@ -134,6 +134,7 @@ DEFAULTS = {
         "recovery_dual_yes": [0.4766, 0.5457],
         "recovery_select_panel": [0.7800, 0.3000, 0.9900, 0.7500],
         "recovery_enter_button": [0.8000, 0.9000, 0.9900, 0.9800],
+        "recovery_menu": [0.4200, 0.3000, 0.5800, 0.6800],
         "alz_search": [0.8750, 0.6245, 0.9805, 0.6567],
         "top_strip": [0.0000, 0.0197, 0.5078, 0.1585],
         "tab_band": [0.0000, 0.0270, 0.2734, 0.0709],
@@ -325,6 +326,11 @@ DEFAULTS = {
         "confirm_word": "confirmation",
         "yes_word": "yes",
         "enter_word": "enter server",
+        "menu_word": "select character",
+        "menu_tries": 3,
+        "menu_wait": 3.0,
+        "logout_yes_wait": 5.0,
+        "logout_wait": 30.0,
     },
 }
 
@@ -3267,6 +3273,15 @@ def calibrate_actions(shop, verbose=True):
 
 
 def main(close: bool = True) -> None:
+    while True:
+        try:
+            return _measure(close)
+        except ServerStalled as exc:
+            print(f"  {exc}")
+            print("  measuring this screen again from the start")
+
+
+def _measure(close: bool) -> None:
     from open_inventory import VK_I, VK_ESCAPE, focus_game, press
 
     write_config_if_absent()
