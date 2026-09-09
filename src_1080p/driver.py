@@ -1531,9 +1531,11 @@ def buy_under_lister(model, slot, first, last, verbose=True):
     if diff is None:
         return []
     core_at = core_row["unit_price"]
-    under = min(ours, core_at)
+    gap = int(calibration.buy_under_gap(core))
+    under = min(ours, core_at) - gap
     print(f"  ours is listed at {ours:,} a Set and a {core} sells at "
-          f"{core_at:,}; buying every Set under {under:,}")
+          f"{core_at:,}; buying every Set under {under:,}, {gap:,} a Set "
+          f"below the lower of the two")
     want_min = calibration.buy_min(core)
     want_max = calibration.buy_max(core)
     rows = []

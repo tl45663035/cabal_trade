@@ -2832,6 +2832,10 @@ def buy_under_lister(core_name):
     return _per_item("buy_under_lister", core_name) or 0
 
 
+def buy_under_gap(core_name):
+    return _per_item("buy_under_gap", core_name) or 0
+
+
 def _swap_or_die(slot, get_price):
     if str(slot) not in SWAP_SLOTS:
         return
