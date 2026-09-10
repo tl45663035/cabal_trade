@@ -26,6 +26,7 @@ DEFAULTS = {
         "relist_from": 1,
         "relist_to": 22,
         "undercut_by": 1,
+        "max_drop": 10,
         "home_notches": 30,
         "for_minutes": 60,
         "price_check_factor": 2.0,

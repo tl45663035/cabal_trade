@@ -928,6 +928,15 @@ class RowModel:
             raise Divergence(
                 "no price was given and the panel suggests none, so there is "
                 "nothing to list at. Nothing has been listed.")
+        cap = int(calibration.load_shared()["run"].get("max_drop") or 0)
+        each = count or (pack_size(expect_item) if expect_item else 1)
+        held = listed_at - cap * each if cap and listed_at else 0
+        if held and want < held:
+            if verbose:
+                print(f"    the market asks {want:,}, {listed_at - want:,} "
+                      f"under our {listed_at:,}; holding at {held:,}, the "
+                      f"most this row may fall in one relist")
+            want = held
         floored = bool(floor) and want < floor
         if floored:
             if verbose:
