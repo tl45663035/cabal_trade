@@ -688,25 +688,37 @@ def report_market():
     if not heads:
         print(f"MARKET -- {log.name}: no pass finished yet")
         return
-    start = heads[-1]
-    number_of_pass = PASS_HEAD.match(lines[start]).group(1)
     written = datetime.datetime.fromtimestamp(log.stat().st_mtime)
-    table, columns = [], None
-    for i in range(start, len(lines)):
-        if columns is None:
-            found = PASS_COLUMNS.match(lines[i])
-            if found:
-                columns = bool(found.group(1))
-            continue
-        found = PASS_LINE.match(lines[i])
-        if not found:
+    behind = 0
+    for back, start in enumerate(reversed(heads)):
+        stop = heads[heads.index(start) + 1] if start != heads[-1] else len(lines)
+        table, columns = [], None
+        for i in range(start, stop):
+            if columns is None:
+                found = PASS_COLUMNS.match(lines[i])
+                if found:
+                    columns = bool(found.group(1))
+                continue
+            found = PASS_LINE.match(lines[i])
+            if not found:
+                break
+            table.append(found.groups())
+        if columns is not None and table:
+            number_of_pass = PASS_HEAD.match(lines[start]).group(1)
+            behind = back
             break
-        table.append(found.groups())
-    if columns is None:
-        print(f"MARKET -- {log.name}: pass {number_of_pass} printed no core table")
+    else:
+        newest = PASS_HEAD.match(lines[heads[-1]]).group(1)
+        print(f"MARKET -- {log.name}: no pass has printed a core table yet "
+              f"(newest is pass {newest})")
         return
+    stale = ""
+    if behind:
+        newest = PASS_HEAD.match(lines[heads[-1]]).group(1)
+        stale = (f"; pass {newest} is under way and has not priced the cores "
+                 f"yet, so this is the last table it printed")
     print(f"MARKET -- {log.name}, pass {number_of_pass}, log last written {written:%H:%M}"
-          f"{'' if any('ran for' in l for l in lines[-40:]) else ' (live)'}")
+          f"{'' if any('ran for' in l for l in lines[-40:]) else ' (live)'}{stale}")
     print("buy/u is what a unit costs on the Purchase tab, sell/u what the other side of the "
           "pair lists for; margin is sell minus buy, wants the rows that margin is worth")
     print("")
