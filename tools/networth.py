@@ -16,9 +16,13 @@ def key(name):
 MARKET_HEAD = re.compile(r"^market prices:\s*$")
 MARKET_ROW = re.compile(r"^\s{2}(\S.*?)\s{2,}([\d,]+)\s*$")
 BOARD_ROW = re.compile(r"^\s{4,}(\d+)\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+|-)"
-                       r"\s+([\d,]+)\s+(?:[-+]?[\d.]+%|-)\s+([\d,]+)\s*$")
+                       r"\s+([\d,]+)\s+(?:[-+]?[\d.]+%|-)\s+([\d,]+)"
+                       r"(?:\s+(?:[\d,]+|-))?(?:\s+<- here)?\s*$")
 BOARD_UNREAD = re.compile(r"^\s{4,}(\d+)\s+UNREAD\s+(.*)$")
-BOARD_HEAD = re.compile(r"^\s+board after pass \d+:")
+BOARD_HEAD = re.compile(r"^\s+board (?:after pass \d+:|during pass \d+, at row )")
+HELD_HEAD = re.compile(r"^\s+held on tab \d+, bought and not listed yet:")
+AFTER_HEAD = re.compile(r"^\s+board after pass (\d+):", re.M)
+TRACE_HEAD = re.compile(r"^\s+board during pass (\d+), at row ")
 BALANCE = re.compile(r"balance (?:after|before|now)\s+([\d,]+)")
 RESUPPLY = re.compile(r'^TASK \{"kind": "resupply", "core": "([^"]+)"')
 BOUGHT = re.compile(r"balance after\s+[\d,]+; spent ([\d,]+) bought \d+ pack\(s\) "
@@ -30,11 +34,35 @@ def newest_log():
     return logs[-1] if logs else None
 
 
+def trace_for(log):
+    if log is None:
+        return None
+    path = log.with_name(f"{log.stem}_board.log")
+    return path if path.exists() else None
+
+
+def last_pass(text):
+    seen = [int(found.group(1)) for found in AFTER_HEAD.finditer(text)]
+    return max(seen) if seen else 0
+
+
+def fresher(log):
+    trace = trace_for(log)
+    if trace is None:
+        return None
+    text = trace.read_text(encoding="utf-8", errors="replace")
+    found = TRACE_HEAD.match(text.splitlines()[0] if text else "")
+    if found is None:
+        return None
+    body = log.read_text(encoding="utf-8", errors="replace")
+    return text if int(found.group(1)) > last_pass(body) else None
+
+
 def number(text):
     return int(text.replace(",", ""))
 
 
-def read(log):
+def read(log, board_text=None):
     market, board, unread, balance = {}, [], [], None
     bought, core = [], None
     in_market = False
@@ -82,6 +110,25 @@ def read(log):
             if found:
                 bought.append((core, number(found.group(2)),
                                number(found.group(1))))
+    if board_text is not None:
+        fresh, held = [], []
+        for line in board_text.splitlines():
+            found = BOARD_ROW.match(line)
+            if found:
+                cost = found.group(4)
+                fresh.append((int(found.group(1)), found.group(2).strip(),
+                              number(found.group(3)), number(found.group(5)),
+                              number(found.group(6)),
+                              None if cost == "-" else number(cost)))
+                continue
+            found = BOARD_UNREAD.match(line)
+            if found:
+                held.append((int(found.group(1)), found.group(2).strip()))
+            found = BALANCE.search(line)
+            if found:
+                balance = number(found.group(1))
+        if fresh:
+            board, unread, bought = fresh, held, []
     return market, board, unread, balance, bought
 
 
@@ -109,8 +156,9 @@ def bought_worth(market, bought):
     return out
 
 
-def summary(log, indent="    ", width=40, number=18, extra=0):
-    market, board, unread, balance, bought = read(log)
+def summary(log, indent="    ", width=40, number=18, extra=0,
+            board_text=None):
+    market, board, unread, balance, bought = read(log, board_text)
     if not board:
         return
     stock = sum(row_worth(qty, each, listed)
@@ -199,7 +247,7 @@ def networth():
     if log is None:
         print("  no run log to read")
         return False
-    market, board, unread, balance, bought = read(log)
+    market, board, unread, balance, bought = read(log, fresher(log))
     if not board:
         print(f"  {log.name} has no row table yet; the run prints one once it "
               f"has seeded the board")

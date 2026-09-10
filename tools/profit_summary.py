@@ -571,12 +571,45 @@ def key_item(name):
     return PACK.sub("", name).strip()
 
 
+TRACE_HEAD = re.compile(r"^  board during pass (\d+), at row (\d+) of "
+                        r"(\d+)-(\d+), read (\S+)$")
+
+
+def trace_for(log):
+    path = log.with_name(f"{log.stem}_board.log")
+    return path if path.exists() else None
+
+
+def report_trace(log, text):
+    trace = trace_for(log)
+    if trace is None:
+        return False
+    body = trace.read_text(encoding="utf-8", errors="replace")
+    found = TRACE_HEAD.match(body.splitlines()[0] if body else "")
+    if found is None:
+        return False
+    printed = [int(head.group(1)) for head in BOARD_HEAD.finditer(text)]
+    if printed and max(printed) >= int(found.group(1)):
+        return False
+    print(f"ROWS -- {trace.name}, board during pass {found.group(1)} at row "
+          f"{found.group(2)}, read {found.group(5)}"
+          f"{'' if 'ran for' in text else ' (live)'}")
+    for line in body.splitlines()[1:]:
+        print(line)
+    import networth
+    networth.summary(log, BOARD_INDENT, BOARD_LABEL, BOARD_NUMBER,
+                     PROFIT_WIDTH, board_text=body)
+    return True
+
+
 def report_board():
     logs = sorted(LOGS.glob("*_run.log"), key=lambda f: f.stat().st_mtime)
     if not logs:
         return
     log = logs[-1]
     text = log.read_text(encoding="utf-8", errors="replace")
+    if report_trace(log, text):
+        return
     heads = list(BOARD_HEAD.finditer(text))
     if heads:
         head = heads[-1]

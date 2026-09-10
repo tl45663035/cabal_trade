@@ -85,6 +85,90 @@ def require_shop(verbose=True):
     return True
 
 
+def trace_path():
+    log = calibration.log_to_file()
+    return log.with_name(f"{log.stem}_board.log")
+
+
+def row_gain(row):
+    if not row.buy_cost or not row.sell_unit:
+        return None
+    return (row.sell_unit - row.buy_cost) * row.units
+
+
+def trace_line(index, row, here):
+    gain = row_gain(row)
+    mark = " <- here" if here else ""
+    return (f"{board_line(index, row)}"
+            f"{(f'{gain:,}' if gain is not None else '-'):>16}{mark}")
+
+
+def trace_empty(index, here):
+    mark = " <- here" if here else ""
+    return (f"    {index:2}  {'(empty)':34} {'':5} {'-':>10} {'-':>10} "
+            f"{'-':>7} {'-':>14}{'-':>16}{mark}")
+
+
+def board_trace(model, passes, index, first, last):
+    if not _SHARED["debug"].get("board_trace"):
+        return
+    try:
+        _board_trace(model, passes, index, first, last)
+    except Exception as exc:
+        print(f"    the board trace failed ({type(exc).__name__}: {exc}); "
+              f"the pass carries on")
+
+
+def _board_trace(model, passes, index, first, last):
+    at = time.strftime("%Y-%m-%dT%H:%M:%S")
+    lines = [f"  board during pass {passes}, at row {index} of {first}-{last}, "
+             f"read {at}", board_header() + f"{'profit if sold':>16}"]
+    by_item, gains = {}, {}
+    for seat in sorted(set(model.occupied()) | {index}):
+        row = model.get(seat)
+        if row is None:
+            lines.append(trace_empty(seat, seat == index))
+            continue
+        lines.append(trace_line(seat, row, seat == index))
+        item = row_model._PACK.sub("", row.name).strip()
+        rows, units, listed = by_item.get(item, (0, 0, 0))
+        by_item[item] = (rows + 1, units + row.units, listed + row.sell_total)
+        gain = row_gain(row)
+        if gain is not None:
+            gains[item] = gains.get(item, 0) + gain
+    if by_item:
+        lines.append(f"    {'item':34} rows   units          listed"
+                     f"{'profit if sold':>16}")
+        for item, (rows, units, listed) in sorted(by_item.items()):
+            gain = gains.get(item)
+            lines.append(f"    {item[:34]:34} {rows:4} {units:7,} "
+                         f"{listed:>15,}"
+                         f"{(f'{gain:,}' if gain is not None else '-'):>16}")
+        lines.append(f"    {'board':34} {model.used():4} "
+                     f"{sum(u for _, u, _ in by_item.values()):7,} "
+                     f"{sum(l for _, _, l in by_item.values()):>15,}"
+                     f"{sum(gains.values()):>16,}")
+    else:
+        lines.append(f"    the board is empty")
+    if get_alz.LAST.get("alz"):
+        lines.append(f"    balance now {get_alz.LAST['alz']:,}, read "
+                     f"{get_alz.LAST['at']}")
+    held = [(slot, what) for slot, what in sorted(model._work.items())
+            if what is not None]
+    if held:
+        lines.append(f"    held on tab {row_model.WORK_TAB}, bought and not "
+                     f"listed yet:")
+        for slot, what in held:
+            name = getattr(what, "name", what)
+            units = getattr(what, "units", None)
+            cost = getattr(what, "buy_cost", None)
+            lines.append(f"    {str(name)[:34]:34} slot {slot} "
+                         f"{(f'{units:,}' if units else '-'):>9} unit(s) "
+                         f"{(f'{cost:,}' if cost else '-'):>12} a unit")
+    path = trace_path()
+    path.write_text(chr(10).join(lines) + chr(10), encoding="utf-8")
+
+
 def board_report(model, passes):
     try:
         _board_report(model, passes)
@@ -178,6 +262,17 @@ def seed(verbose=True):
         if known is not None and                 row_model.item_key(known[0]) == row_model.item_key(row.name):
             row.buy_cost = known[1]
             row.floor_at = known[2]
+        else:
+            same = [(cost, floor_at) for item, cost, floor_at
+                    in remembered.values()
+                    if row_model.item_key(item) == row_model.item_key(row.name)
+                    and cost]
+            if same:
+                row.buy_cost, row.floor_at = max(same)
+                if verbose:
+                    print(f"    row {index} moved since it was remembered; "
+                          f"its bought price comes from another row of the "
+                          f"same item")
         found[index] = row
         if verbose:
             print(board_line(index, row))
@@ -447,7 +542,7 @@ def shop_ready(why, verbose=True):
     return calibration._trade_window_open()
 
 
-def relist_pass(model, first, last, verbose=True):
+def relist_pass(model, first, last, passes=0, verbose=True):
     shop_ready(f"rows {first}-{last}", verbose=verbose)
     model.home(verbose=False)
     calibration.phases_reset()
@@ -460,6 +555,7 @@ def relist_pass(model, first, last, verbose=True):
             skipped += 1
         else:
             empty += 1
+        board_trace(model, passes, index, first, last)
     if done or skipped:
         calibration.phases_table(
             f"relisting rows {first}-{last}: {done} relisted, {empty} empty, "
@@ -488,10 +584,11 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         passes += 1
         print("")
         print(f"-- pass {passes} --")
+        board_trace(model, passes, first, first, last)
         try:
             shop_ready(f"pass {passes}", verbose=verbose)
             resupply_pass(model, first, last, verbose=verbose)
-            made, missed, bare = relist_pass(model, first, last,
+            made, missed, bare = relist_pass(model, first, last, passes,
                                              verbose=verbose)
             done += made
             skipped += missed

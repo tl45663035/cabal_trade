@@ -54,6 +54,7 @@ DEFAULTS = {
     },
     "debug": {
         "frames": False,
+        "board_trace": True,
         "keep_frames": 2000,
         "frames_queued": 64,
         "video_fps": 15,

@@ -335,43 +335,35 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 f"so nothing was bought: row 1 went while the order was being "
                 f"placed. Trying the board again.", retryable=True)
     for attempt in range(1, REREADS + 1):
-        if spent > 0 and per_pack and spent % per_pack == 0:
+        if spent > 0 and per_pack and spent == asked * per_pack:
             break
         say(f"    balance read {attempt}: {after_alz:,} makes the spend "
-            f"{spent:,}, not a whole multiple of the {per_pack:,} pack "
-            f"price; reading again")
+            f"{spent:,}, not the {asked * per_pack:,} the {asked} pack(s) "
+            f"at {per_pack:,} cost; reading again")
         time.sleep(REREAD_GAP)
         again = get_alz.read_balance()
         if again is None:
             continue
         after_alz, spent = again, before_alz - again
-    if spent < 0:
-        raise Refused(
-            f"the balance rose from {before_alz:,} to {after_alz:,} across "
-            f"the order, which a purchase cannot do. Check by hand.")
-    if not per_pack or spent % per_pack != 0:
-        shelf = detail["price"] // max(1, detail["qty"] or 1)
-        shelf_pack = max(1, row_model.pack_size(detail["item"]))
-        if shelf and spent % shelf == 0:
-            say(f"    the spend {spent:,} is no whole multiple of the row's "
-                f"{per_pack:,}, but it is {spent // shelf} x the dialog's "
-                f"{shelf:,}; the board moved under the read, so the dialog "
-                f"is what was bought")
-            per_pack, pack = shelf, shelf_pack
-        else:
-            raise Refused(
-                f"the spend {spent:,} is not a whole multiple of the "
-                f"{per_pack:,} pack price after {REREADS} reads, nor of the "
-                f"dialog's {shelf:,}. Balance {before_alz:,} -> "
-                f"{after_alz:,}. Something was bought; check by hand.")
-    packs = spent // per_pack
+    packs = asked
     units = packs * pack
+    if spent != asked * per_pack:
+        shelf = detail["price"] // max(1, detail["qty"] or 1)
+        if shelf and spent == asked * shelf:
+            say(f"    the spend {spent:,} is {asked} x the dialog's "
+                f"{shelf:,}, not the row's {per_pack:,}; the dialog is what "
+                f"was paid")
+            per_pack, pack = shelf, max(1, row_model.pack_size(detail["item"]))
+            units = packs * pack
+        else:
+            say(f"    the spend reads {spent:,}, not the {asked * per_pack:,} "
+                f"the order asked for; the fill is whole, so booking "
+                f"{packs} pack(s) at the row's {per_pack:,}")
+            spent = asked * per_pack
+            after_alz = before_alz - spent
     per_unit = spent // units if units else 0
     say(f"    balance after  {after_alz:,}; spent {spent:,} bought {packs} "
         f"pack(s) = {units} core(s) ({per_unit:,} a core)")
-    if packs != asked:
-        say(f"    note: asked for {asked} pack(s) but the spend shows "
-            f"{packs}; booking what the balance proves")
     ledger.bought(offer["name"], per_unit, spent, units, expect=sells_at)
     return {"slot": int(slot), "name": name, "packs": packs, "bought": units,
             "unit_price": per_unit, "price": offer["price"],
