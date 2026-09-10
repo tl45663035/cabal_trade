@@ -1,19 +1,3 @@
-"""Recording keeps a rolling window instead of stopping dead.
-
-RECORD_LIMIT used to STOP recording at 12,000 frames, announcing it once on
-stderr. A 494-cycle run on 2026-08-05 therefore produced no diagnostic frames
-at all -- and reconstructing a failure from the frames it left behind is how
-every bug found on 2026-08-04/05 was found. The newest frames are also the
-useful ones: they match the current build and the current shop.
-
-The dangerous part is not the deleting, it is keeping the index in step. A
-frame with no index line is an orphan no test can interpret; an index line with
-no frame makes the corpus suite assert against a file that is not there. Both
-directions are asserted here.
-
-Uses a temporary RECORD_DIR throughout -- nothing here may touch the real
-corpus, which is 12,000 frames of live evidence.
-"""
 import json
 import shutil
 import sys
@@ -23,13 +7,12 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 
-from harness import check, section, summary  # noqa: E402
+from harness import check, section, summary
 
-import trade  # noqa: E402
+import trade
 
 
 class Corpus:
-    """A throwaway RECORD_DIR seeded with `n` frames and a matching index."""
 
     def __init__(self, n, keep=None, slack=None):
         self.n, self.keep, self.slack = n, keep, slack
@@ -72,7 +55,6 @@ class Corpus:
         return out
 
 
-# ===========================================================================
 section("below the threshold, nothing is touched")
 
 with Corpus(50, keep=1000, slack=100) as c:
@@ -87,7 +69,6 @@ with Corpus(1050, keep=1000, slack=100) as c:
           f"{removed} -- pruning on every frame would rewrite the whole index "
           f"each time")
 
-# ===========================================================================
 section("over the threshold, the OLDEST go")
 
 with Corpus(1200, keep=1000, slack=100) as c:
@@ -100,7 +81,6 @@ with Corpus(1200, keep=1000, slack=100) as c:
           f"{frames[0]} .. {frames[-1]} -- the newest frames match the current "
           f"build and the current shop; the oldest match neither")
 
-# ===========================================================================
 section("the index stays in step -- both directions")
 
 with Corpus(1300, keep=1000, slack=100) as c:
@@ -116,13 +96,9 @@ with Corpus(1300, keep=1000, slack=100) as c:
     check("the index has exactly the surviving frames",
           len(indexed) == 1000, f"{len(indexed)}")
 
-# ===========================================================================
 section("ordering is by sequence number, not mtime")
 
 with Corpus(1200, keep=1000, slack=100) as c:
-    # Touch an OLD frame so its mtime is the newest in the directory. Ordering
-    # by mtime would spare it and delete something newer; a copy or a restore
-    # rewrites mtimes wholesale, so it cannot be the authority on age.
     old = c.dir / "run_00005.png"
     old.write_bytes(b"touched")
     trade.prune_recordings()
@@ -131,11 +107,9 @@ with Corpus(1200, keep=1000, slack=100) as c:
           "mtime is whatever the filesystem last recorded; the sequence "
           "number is what actually says which frame came first")
 
-# ===========================================================================
 section("pruning never breaks a run")
 
 with Corpus(1200, keep=1000, slack=100) as c:
-    # An unparseable index line must not lose the whole index.
     with (c.dir / "run_index.jsonl").open("a", encoding="utf-8") as fh:
         fh.write("{not json at all\n")
     removed = trade.prune_recordings()
@@ -155,7 +129,6 @@ try:
 finally:
     trade.RECORD_DIR = saved_dir
 
-# ===========================================================================
 section("record() prunes as it writes")
 
 with Corpus(1200, keep=1000, slack=100) as c:
@@ -163,7 +136,7 @@ with Corpus(1200, keep=1000, slack=100) as c:
     saved_enabled = trade.RECORD_ENABLED
     try:
         trade.RECORD_ENABLED = True
-        trade._record_seq = 0          # forces the highest-number bootstrap
+        trade._record_seq = 0
         trade.record("t.frame", Image.new("RGB", (4, 4)))
         frames = c.frames()
         check("recording continues past the old hard stop",

@@ -1,38 +1,7 @@
-"""The operator's floors are these NUMBERS. Stated once, in one place.
-
-WHY THIS FILE EXISTS. On 2026-08-09 the VIP row was deleted from
-ITEM_PRICE_FLOORS entirely -- `item_price_floor("Yekaterina VIP Membership")`
-returning 0 -- and three of the five floor suites stayed GREEN:
-
-    floor_catalogue_test.py      STILL GREEN
-    floor_fuzz_test.py           STILL GREEN
-    floor_booster_test.py        STILL GREEN
-    floor_siena_test.py          crashed (StopIteration, not a clean failure)
-    floor_paths_test.py          correctly failed
-
-Every one of them reads the expected floor out of the table it is testing.
-floor_fuzz_test.py:16 is the purest case -- `FLOOR = m.item_price_floor(...)`,
-commented "derived, never restated" -- so deleting the row makes FLOOR 0 and
-every check compares 0 to 0. floor_catalogue_test.py is
-`for token, label, floor in ITEM_PRICE_FLOORS: check(item_price_floor(label)
-== floor)`, which is the dict asserting it equals itself.
-
-The suites' stated reason for avoiding literals is that a floor is an operator
-setting and a test should not fight a deliberate change. That gets it exactly
-backwards: a suite that cannot go red when the number CHANGES cannot go red
-when the number is WRONG -- and on 2026-08-04 a request for 110,000,000 shipped
-as 105,000,000, the commit message claimed 110,000,000, all three floor suites
-passed, and four VIPs then sold at 109,999,999.
-
-So: literals, here, once. Changing a floor is a deliberate act and should
-require editing the number in two places -- the catalogue and this file --
-with the diff showing both. Every other floor suite may keep deriving; this is
-the one that pins.
-"""
 import sys
 
 sys.path.insert(0, r"C:\Users\Trung\Cabal")
-import trade as m  # noqa: E402
+import trade as m
 
 m.NO_INPUT = True
 failures = []
@@ -46,11 +15,6 @@ def check(ok, what):
         failures.append(what)
 
 
-# item as the operator names it  ->  the floor, in Alz
-#
-# UPDATE BOTH SIDES TOGETHER. If you are here because this file failed, the
-# question to answer is "did I mean to move this floor?" -- not "how do I make
-# the test pass".
 FLOORS = {
     "Yekaterina VIP Membership": 104_000_000,
     "Siena's Unbinding Stone":    71_000_000,
@@ -66,31 +30,22 @@ for name, want in FLOORS.items():
           f"{name} resolved to NO floor at all -- the catalogue entry is "
           f"missing or its name no longer matches")
 
-# The catalogue holds these and only these. An entry appearing without a
-# pinned amount is a floor nobody has stated.
 catalogue = {label for _token, label, _floor in m.ITEM_PRICE_FLOORS}
 check(catalogue == set(FLOORS),
       f"ITEM_PRICE_FLOORS and this file disagree about WHICH items have "
       f"floors.\n  only in trade.py: {sorted(catalogue - set(FLOORS))}\n"
       f"  only here:        {sorted(set(FLOORS) - catalogue)}")
 
-# The raw tuples carry the same numbers. item_price_floor could in principle
-# return a right answer from a wrong row.
 for _token, label, floor in m.ITEM_PRICE_FLOORS:
     if label in FLOORS:
         check(floor == FLOORS[label],
               f"the ITEM_PRICE_FLOORS row for {label} says {floor:,}, this "
               f"file says {FLOORS[label]:,}")
 
-# strictest_price_floor gates `--price` on an unnamed item, so it must be the
-# real maximum rather than whatever happens to be first.
 check(m.strictest_price_floor() == max(FLOORS.values()),
       f"the strictest floor is {max(FLOORS.values()):,}, got "
       f"{m.strictest_price_floor():,}")
 
-# And the floors must reach listing_floor, which is what register_item calls --
-# in BOTH positions of the cost-floor flag, because that flag is not allowed to
-# touch them.
 _saved = m.COST_FLOOR_ON_RELIST
 try:
     for state in (True, False):

@@ -1,23 +1,3 @@
-"""Collecting a sale when identical stacks are listed.
-
-This is the failure that ended both live runs on 2026-08-04. The shop routinely
-holds two stacks of the same item at the same price, and sometimes at the same
-quantity too -- at which point they are indistinguishable in every readable
-respect.
-
-The old code answered "did my Receive click work?" by looking for a row
-matching the collected listing's identity. With a duplicate present that
-question has no answer, and it got a confident wrong one:
-
-    two identical stacks  -> one survivor matches perfectly, read as "the click
-                             did not take", so the sibling was collected too
-    three identical stacks -> two survivors, 'ambiguous', run stopped with the
-                             collected item stranded in the work tab
-
-The fix counts the family instead of identifying members of it. These tests
-pin that behaviour down from the outside: what matters is how many Receive
-clicks are sent and what the call returns, not how it decides.
-"""
 from harness import (Harness, RECEIPT_XY, check, make_row, run, section,
                      summary)
 
@@ -25,7 +5,6 @@ import trade
 
 
 def receipts(h):
-    """How many times the Confirm Receipt accept button was clicked."""
     n = 0
     for name, args, _ in h.calls:
         if name == "click" and len(args) >= 2:
@@ -36,7 +15,6 @@ def receipts(h):
 
 
 def sold_pair(qty=217, price=210_000, count=2, name="Force Core(High)"):
-    """`count` stacks identical in name, quantity AND price, all sold."""
     return [make_row(i, name, action="receive", price=price, qty=qty)
             for i in range(1, count + 1)]
 
@@ -77,7 +55,6 @@ with Harness(rows=sold_pair(count=3)) as h:
 section("a genuinely dropped click must still retry")
 
 class Stubborn(Harness):
-    """The Receive click is accepted but the game does nothing."""
 
     def _collect(self):
         return
@@ -98,11 +75,6 @@ with Stubborn(rows=sold_pair(count=2)) as h:
 
 section("a lone sold stack still collects exactly once")
 
-# A filler row of a DIFFERENT item, because a real shop is never an empty
-# table: it always carries other listings and Register slots. Without one,
-# collecting the only row leaves read_rows returning [], which the code treats
-# as "the table could not be read" rather than "the shop is empty" -- the same
-# conservative rule the premium-slot bug exists to enforce.
 lone = sold_pair(count=1) + [make_row(2, "Upgrade Core(Highest)",
                                       price=134_000, qty=62)]
 with Harness(rows=lone) as h:

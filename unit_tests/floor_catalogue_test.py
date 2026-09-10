@@ -1,22 +1,3 @@
-"""Every configured floor, checked generically against the whole catalogue.
-
-    py unit_tests\\floor_catalogue_test.py
-
-Driven from ITEM_PRICE_FLOORS rather than from a hand-written list, so adding a
-floor adds its coverage automatically instead of quietly having none. Three
-questions per entry:
-
-  1. does its own item get the floor, including through OCR damage?
-  2. does it capture any OTHER floored item? (a floor is a MINIMUM, so a
-     mis-tagged cheap item is listed at the expensive item's price, never
-     sells, and pays a percentage fee on the inflated figure)
-  3. does it capture any item the reader has actually produced that should
-     have no floor at all?
-
-Question 3 is checked against every distinct name in baseline_rows.json -- real
-reader output, not invented strings -- so a new token is measured against what
-this account really lists.
-"""
 
 import json
 import sys
@@ -25,7 +6,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-import trade as m  # noqa: E402
+import trade as m
 
 BASELINE = HERE / "baseline_rows.json"
 
@@ -44,13 +25,11 @@ def check(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def damaged(name: str) -> list[tuple[str, str]]:
-    """Plausible OCR corruptions of a catalogue name."""
     out = [("dropped space", name.replace(" ", "", 1)),
            ("o -> 0", name.replace("o", "0", 1)),
            ("O -> 0", name.replace("O", "0", 1)),
            ("leading glyph clipped", name[1:]),
            ("dropped letter", name[:5] + name[6:])]
-    # A trailer the column was too narrow to hold.
     if " " in name:
         out.append(("trailer clipped", name.rsplit(" ", 1)[0]))
     return [(why, bad) for why, bad in out if bad and bad != name]
@@ -69,20 +48,6 @@ def main() -> int:
         check(f"{label!r} -> {floor:,}", got == floor, f"got {got:,}")
 
     print("\n--- 1b. ...and keeps it through OCR damage ---")
-    # NEVER BELOW the entry's floor, rather than exactly equal to it.
-    #
-    # Equality was right while every catalogue name was distinct. It became
-    # wrong when a prefix-related PAIR was catalogued: "Epic Booster (High)"
-    # and "(Highest)" cannot be told apart once damaged, so the lookup returns
-    # the HIGHER of the two, and asserting equality here demanded the cheaper
-    # floor for a read that might be either item -- exactly the underpricing
-    # this whole area exists to prevent.
-    #
-    # The (High) entry was removed on 2026-08-07, so no such pair is catalogued
-    # at the moment. "Never below" stays anyway: it is the property that
-    # actually matters, it costs nothing while names are distinct, and the next
-    # near-name added to the catalogue would silently reintroduce the problem
-    # if this had been tightened back to equality in the meantime.
     for token, label, floor in floors:
         lost = [(why, bad) for why, bad in damaged(label)
                 if m.item_price_floor(bad) < floor]
@@ -121,8 +86,6 @@ def main() -> int:
               f"{len(expected)} carry a floor")
         for n, got in sorted(expected.items()):
             print(f"     {got:>14,}  {n!r}")
-        # Every floored name must correspond to a configured entry, by
-        # similarity to its catalogue name -- not merely "some floor applied".
         stray = []
         for n, got in expected.items():
             owner = next((lab for _t, lab, f in floors if f == got), None)
@@ -139,10 +102,6 @@ def main() -> int:
               not stray, "; ".join(stray))
 
     print("\n--- 4. the known over-match, asserted so it cannot drift ---")
-    # A different pack size scores >0.94 against the x400 name, so the
-    # similarity route claims it whatever token is chosen. Asserted as CURRENT
-    # behaviour: if someone narrows it later this test fails and says why,
-    # rather than the change going unnoticed.
     gem = next((f for t, lab, f in m.ITEM_PRICE_FLOORS
                 if "gempack" in t), None)
     if gem:

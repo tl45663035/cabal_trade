@@ -1,8 +1,3 @@
-"""cancel_item() failure paths.
-
-Each case states what the code SHOULD do (from its own docstring and comments)
-and asserts what it ACTUALLY does. Divergences are findings.
-"""
 import harness as H
 from harness import Harness, check, note, section, summary, run, where, make_row
 import trade
@@ -19,9 +14,7 @@ def fresh(**flags):
     return h
 
 
-# ---------------------------------------------------------------------------
 section("1a. the Registration Extension dialog never appears")
-# SHOULD: abort, back out, return False, commit nothing, and record the abort.
 h = fresh(suppress_extension=True)
 with h:
     ok, exc = run(trade.cancel_item, 1)
@@ -38,14 +31,11 @@ check("1a clicked only Change", len(h.clicks()) == 1, str(h.clicks()))
 check("1a printed the diagnostic evidence",
       h.said("dialog_kind sees") and h.said("strongest words"), h.out()[-400:])
 check("1a said nothing was changed", h.said("Nothing was changed"), h.out()[-300:])
-# after_change is recorded with dialog='none' -- the frame that shows the miss
 check("1a recorded cancel.after_change",
       "cancel.after_change" in h.labels(), str(h.labels()))
 
 
-# ---------------------------------------------------------------------------
 section("1b. the dialog appears, then vanishes before its Cancel is found")
-# SHOULD: abort before clicking anything else; commit nothing.
 h = fresh(extension_vanishes=True)
 with h:
     ok, exc = run(trade.cancel_item, 1)
@@ -58,10 +48,7 @@ check("1b listing untouched", len(h.rows) == 2)
 check("1b clicked only Change", len(h.clicks()) == 1, str(h.clicks()))
 
 
-# ---------------------------------------------------------------------------
 section("1c. the Confirmation button is never found")
-# SHOULD: abort with nothing committed, back out of the confirm dialog with
-# Cancel, and leave the listing on the market.
 h = fresh(no_confirm_button=True)
 with h:
     ok, exc = run(trade.cancel_item, 1)
@@ -76,10 +63,7 @@ check("1c backed out of the dialog", h.said("Backed out of the open dialog"),
 check("1c dialog really closed", h.dialog is None, repr(h.dialog))
 
 
-# ---------------------------------------------------------------------------
 section("1d. the dialog stays open after Confirmation -- game REFUSED it")
-# The real observed failure. SHOULD: report False, never click again, and say
-# the listing is still on the market (which it is).
 h = fresh(confirm_sticks=True, commit_on_stick=False)
 with h:
     ok, exc = run(trade.cancel_item, 1)
@@ -87,18 +71,6 @@ with h:
 check("1d returns False", ok is False, f"got {ok!r}")
 check("1d aborted on 'dialog stayed open'",
       h.said("dialog stayed open after Confirmation"), h.out()[-500:])
-# HEDGED, deliberately, and this check used to demand the opposite.
-#
-# A confirmation dialog still up USUALLY means the game refused -- but the game
-# stacks confirmation dialogs (MAX_CONFIRM_STEPS exists for that on the
-# register side), so it can commit AND still be showing one. Stating "the game
-# did NOT accept it" as fact would send the operator away from a listing that
-# had in fact been withdrawn, leaving the stack sitting unlisted in the work
-# tab while they looked elsewhere.
-#
-# So the contract is: say what it usually means, and say plainly that it is not
-# proof. Demanding the unhedged sentence was demanding a claim the code cannot
-# support from one frame.
 check("1d says the cancellation was probably refused",
       h.said("means the game refused the cancellation"), h.out()[-600:])
 check("1d does NOT state that as proof",
@@ -109,19 +81,6 @@ check("1d listing really is still there", len(h.rows) == 2)
 check("1d clicked nothing after Confirmation", len(h.clicks()) == 3,
       str(h.clicks()))
 aborted = h.rec("cancel.aborted") or {}
-# TWO DIFFERENT FACTS, and this check used to conflate them.
-#
-# `committed` means only "the Confirmation click was sent". It is set BEFORE
-# the click on purpose: with the reverse order there was a window where the
-# confirm had been delivered and committed still read False, and _relist_cycle
-# retries on `committed is False` -- so with two identical stacks at the same
-# price the retry re-resolved to the surviving sibling and withdrew that one
-# too. Forcing committed=False here to mean "refused" would put that back.
-#
-# Whether the game ACCEPTED it is the separate question, and `accepted` is the
-# field that answers it -- added precisely because the corpus was storing the
-# first while the log printed the second. So the honest assertion is that both
-# are recorded, and that they disagree in the way this scenario describes.
 check("1d records that the click was sent",
       aborted.get("committed") is True,
       f"committed must stay True -- it means the Confirmation click went out, "
@@ -137,10 +96,7 @@ check("1d records the dialog it saw afterwards",
       f"can re-judge it. got {aborted.get('dialog_after')!r}")
 
 
-# ---------------------------------------------------------------------------
 section("1e. the dialog stays open after Confirmation -- game ACCEPTED it")
-# A second stacked dialog (the game does exactly this on the register side)
-# leaves 'confirm' up while the withdrawal has gone through.
 h = fresh(confirm_sticks=True, commit_on_stick=True)
 with h:
     ok, exc = run(trade.cancel_item, 1)
@@ -159,10 +115,7 @@ check("1e must not claim the listing is still on the market",
       "a stacked second dialog makes the 'still open => refused' inference wrong")
 
 
-# ---------------------------------------------------------------------------
 section("1f. PermissionError raised by the Change click")
-# SHOULD (arguably): be reported like any other failure, with the abort frame
-# recorded. ACTUALLY: PermissionError is not Aborted, so nothing is recorded.
 h = fresh(click_fault={1: PermissionError(trade.CURSOR_BLOCKED_HINT)})
 with h:
     ok, exc = run(trade.cancel_item, 1)
@@ -176,7 +129,6 @@ check("1f last record is cancel.before_change",
 note("1f escape path", where(exc))
 
 
-# ---------------------------------------------------------------------------
 section("1g. PermissionError raised by the CONFIRMATION click")
 h = fresh(click_fault={3: PermissionError(trade.CURSOR_BLOCKED_HINT)})
 with h:
@@ -193,7 +145,6 @@ note("1g committed flag",
      "would have written record('cancel.aborted', committed=...)")
 
 
-# ---------------------------------------------------------------------------
 section("1h. grab() raises OSError")
 h = fresh(grab_fault={1: OSError("gdi32.dll: screen capture failed")})
 with h:
@@ -204,7 +155,6 @@ check("1h raises OSError out of cancel_item", isinstance(exc, OSError)
 check("1h recorded nothing at all", h.labels() == [], str(h.labels()))
 note("1h escape path", where(exc))
 
-# and a grab that fails mid-sequence, after the Change click has gone in
 h = fresh()
 h.arm_after = {"cancel.before_change": ("grab", OSError("capture failed"))}
 with h:
@@ -219,7 +169,6 @@ note("1h2 state left behind",
      "exception skips the except-Aborted recovery at trade.py:3586")
 
 
-# ---------------------------------------------------------------------------
 section("1i. the row moved since the caller chose it (expect= guard)")
 h = fresh()
 ref = trade.RowRef(VIP, 100, 410_000, 0)
@@ -233,7 +182,6 @@ check("1i explained the shift", h.said("no longer holds") or h.said("now at row"
       h.out()[-400:])
 
 
-# ---------------------------------------------------------------------------
 section("1j. a dialog is already open before starting")
 h = fresh(dialog="confirm")
 with h:

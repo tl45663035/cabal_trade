@@ -1,14 +1,3 @@
-"""Where every millisecond of scrolling and row access goes.
-
-DRIVES THE GAME. Scrolls the Register table and reads it. Clicks nothing in
-the table, buys nothing, lists nothing.
-
-Every primitive is wrapped and timed: the wheel notch by notch, the cursor
-park, the screenshot, each OCR launch by region, and the row reads. Then the
-three ways of reaching a row are run and broken down against those totals.
-
-    python unit_tests/scroll_profile.py
-"""
 import collections
 import functools
 import os
@@ -110,7 +99,6 @@ class Clock:
 
 def main() -> int:
     import trade
-    print(__doc__)
     trade.PREMIUM_ENABLED = True
 
     if not trade.ensure_shop_ready(verbose=False):

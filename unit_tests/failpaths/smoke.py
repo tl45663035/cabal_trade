@@ -1,4 +1,3 @@
-"""Harness smoke test: the happy path must work before failures mean anything."""
 import harness as H
 from harness import Harness, check, section, summary, run
 import trade

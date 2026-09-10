@@ -1,20 +1,7 @@
-"""bring_into_view: don't scroll to find something already on screen.
-
-`scrolling` in relist_rows is a BATCH-level flag -- one row past the first
-screen sends every row down this path -- so on `--relist-rows 1-12` the ten
-rows already visible each paid a full scroll-to-top plus a table read to
-rediscover where they already were. Measured on the 18:33 run of 2026-08-08:
-~24s of silent work at the head of every row, ~2.5 min of a 22-minute cycle.
-
-The saving is only real if the early return is actually TAKEN, and only safe if
-the walk still happens when the listing is genuinely further down. A suite that
-passes without exercising either proves nothing, so both are asserted by
-counting the scrolls rather than by reading the result.
-"""
 import sys
 
 sys.path.insert(0, r"C:\Users\Trung\Cabal")
-import trade as m  # noqa: E402
+import trade as m
 
 m.NO_INPUT = True
 failures = []
@@ -38,7 +25,6 @@ def screen(*names, start=1):
 
 
 class Harness:
-    """Counts what bring_into_view does to the view."""
 
     def __init__(self, here, after_top=None, chunks=()):
         self.here = here
@@ -75,7 +61,6 @@ class Harness:
         return list(self.chunks.pop(0)), notches
 
 
-# -- already on screen: no scrolling at all -------------------------------
 here = screen("Alpha", "Beta", "Gamma")
 ref = m.RowRef.of(here[1], here)
 with Harness(here) as h:
@@ -89,7 +74,6 @@ check(h.scrolled_to_top == 0,
 check(h.chunk_calls == 0,
       f"and no chunks were walked, got {h.chunk_calls}")
 
-# The first row and the last row of the screen, not just the middle.
 for want in ("Alpha", "Gamma"):
     target = m.RowRef.of([r for r in here if r.name == want][0], here)
     with Harness(here) as h:
@@ -97,7 +81,6 @@ for want in ("Alpha", "Gamma"):
     check(h.scrolled_to_top == 0 and out is not None,
           f"{want} at the edge of the screen also needs no scrolling")
 
-# A SOLD row (action 'receive') is still a candidate -- relist() collects it.
 sold = [row("Alpha"), row("Beta", 2, action="receive")]
 target = m.RowRef.of(sold[1], sold)
 with Harness(sold) as h:
@@ -105,9 +88,6 @@ with Harness(sold) as h:
 check(h.scrolled_to_top == 0 and out is not None,
       "a sold row already on screen needs no scrolling either")
 
-# A row that is NOT actionable must not satisfy the check. An empty slot
-# carries a name the filter drops, and returning early on it would hand the
-# caller a view that does not contain the listing at all.
 empties = [row("(empty)", 1, action="register"),
            row("(empty)", 2, action="register")]
 ghost = m.RowRef("Delta")
@@ -118,7 +98,6 @@ check(h.scrolled_to_top == 1,
       f"{h.scrolled_to_top}")
 
 
-# -- not on screen: the walk still happens --------------------------------
 top = screen("Alpha", "Beta")
 deep = screen("Yankee", "Zulu", start=11)
 target = m.RowRef("Zulu")
@@ -132,8 +111,6 @@ check(h.chunk_calls >= 1,
 check(out is not None and any(r.name == "Zulu" for r in out),
       f"and returns the view holding it, got {[r.name for r in (out or [])]}")
 
-# An unreadable table is None, not an empty view. Conflating them lets "I
-# cannot see the table" launder into "the listing sold".
 class Blind(Harness):
     def __enter__(self):
         super().__enter__()
@@ -147,8 +124,6 @@ with Blind([]) as h:
 check(out is None,
       f"an unreadable table is None, not an empty view, got {out!r}")
 
-# A blank current view must fall through to the walk rather than be treated as
-# "not there". await_rows returning [] is a failed read, not an empty shop.
 with Harness([], after_top=screen("Alpha")) as h:
     m.bring_into_view(m.RowRef("Alpha"), verbose=False)
 check(h.scrolled_to_top == 1,
@@ -156,9 +131,6 @@ check(h.scrolled_to_top == 1,
       f"{h.scrolled_to_top}")
 
 
-# -- duplicates still resolve by position ---------------------------------
-# Two identical stacks: the ordinal is what tells them apart, and the early
-# return must respect it rather than taking whichever is first.
 dupes = [row("Twin", 1, qty=8, price=54_000_000),
          row("Twin", 2, qty=8, price=54_000_000)]
 second = m.RowRef.of(dupes[1], dupes)
@@ -169,10 +141,6 @@ check(h.scrolled_to_top == 0 and out is not None,
 live = [r for r in (out or []) if r.action == "change"]
 found, note = m.locate_row(live, second)
 check(found is not None, f"and one of the pair is identified, got {note!r}")
-# The SECOND one, which is what the ref names. Identity here is name+qty+price
-# plus the ordinal, and the early return must not quietly hand back the first
-# twin -- these are the rows the log calls "2 rows are identical ... taking row
-# N by position".
 check(found is not None and found is live[1],
       f"and it is the SECOND twin, the one the ref names, got index "
       f"{live.index(found) if found in live else '?'} -- note {note!r}")
@@ -180,19 +148,13 @@ check("taking row 2" in note,
       f"and the disambiguation is reported rather than silent, got {note!r}")
 
 
-# -- the positional hint --------------------------------------------------
-# relist_rows has just enumerated the shop, so it knows where the listing was.
-# Stepping there rediscovers it a screen at a time: 93s of "stepping 3 instead
-# of 7" on the 18:33 run. The hint jumps straight there and verifies by
-# identity.
 class Jumper:
-    """Captures the wheel, and serves a queue of views to await_rows."""
 
     def __init__(self, top, views, scrollable=True):
         self.top = top
         self.views = list(views)
         self.scrollable = scrollable
-        self.wheel = []          # notches sent
+        self.wheel = []
         self.tops = 0
         self.chunks = 0
         self._saved = {}
@@ -229,10 +191,9 @@ class Jumper:
         return list(before), 0
 
 
-TOP = screen(*[f"Row{i:02d}" for i in range(1, 11)])          # rows 1-10
-DEEP = screen("Row11", "Row12", "Target", start=11)           # rows 11-13
+TOP = screen(*[f"Row{i:02d}" for i in range(1, 11)])
+DEEP = screen("Row11", "Row12", "Target", start=11)
 
-# The listing is not on screen, and the catalogue says it is at row 13.
 with Jumper(top=TOP, views=[[], DEEP]) as j:
     out = m.bring_into_view(m.RowRef("Target"), verbose=False, hint=13)
 check(out is not None and any(r.name == "Target" for r in out),
@@ -243,15 +204,11 @@ check(j.chunks == 0,
       f"and no stepping at all -- that is the saving, got {j.chunks} chunk(s)")
 check(j.tops == 1, f"the top is established once, got {j.tops}")
 
-# A hint inside the first screen is not a jump: the listing should already
-# have been found, and scrolling by a negative amount would go the wrong way.
 with Jumper(top=TOP, views=[[], TOP]) as j:
     m.bring_into_view(m.RowRef("Row04"), verbose=False, hint=4)
 check(j.wheel == [],
       f"a hint inside the first screen never scrolls, got {j.wheel}")
 
-# A STALE hint must not strand the row. The catalogue said 13, the listing has
-# moved, and the walk has to run anyway.
 with Jumper(top=TOP, views=[[], screen("Nope", "Nothing", start=11)]) as j:
     j.chunks = 0
     out = m.bring_into_view(m.RowRef("Target"), verbose=False, hint=13)
@@ -262,17 +219,12 @@ check(j.tops == 2,
 check(j.chunks >= 1,
       f"and the verified walk still runs, got {j.chunks} chunk(s)")
 
-# Without a hint, nothing jumps -- the old behaviour is intact for every
-# caller that does not have a catalogue.
 with Jumper(top=TOP, views=[[], DEEP]) as j:
     m.bring_into_view(m.RowRef("Target"), verbose=False)
 check(j.wheel == [],
       f"no hint means no jump, got {j.wheel}")
 check(j.chunks >= 1, "and the walk runs as before")
 
-# A table that refuses to scroll must not be wheeled at anyway. This is the
-# guard scroll_chunk applies before every movement, and the wheel is the most
-# dangerous primitive here: with the Trade window shut it zooms the camera.
 with Jumper(top=TOP, views=[[], DEEP], scrollable=False) as j:
     m.bring_into_view(m.RowRef("Target"), verbose=False, hint=13)
 check(j.wheel == [],

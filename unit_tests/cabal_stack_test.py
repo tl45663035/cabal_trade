@@ -1,19 +1,13 @@
-"""The standalone src/cabal stack: layout maths, calibration, offer parsing.
-
-DRIVES NOTHING. Nothing here calls screen.grab, screen.click or the game. The
-calibration tests render their own frames, so they are deterministic and need
-no captured screenshot committed to the repo.
-"""
 import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT / "src"))
 
-from PIL import Image, ImageDraw          # noqa: E402
+from PIL import Image, ImageDraw
 
-from cabal import calibrate, geometry as geo, ocr, purchase   # noqa: E402
-from cabal.layout import Layout, reference_layout             # noqa: E402
+from cabal import calibrate, geometry as geo, ocr, purchase
+from cabal.layout import Layout, reference_layout
 
 PASS = FAIL = 0
 
@@ -33,7 +27,6 @@ def rule(title):
     print("=" * 70)
 
 
-# --------------------------------------------------------------------------
 rule("layout: positions take the origin, distances do not")
 
 L = Layout(screen=(1920, 1080), origin=(7, 28), scale=0.75,
@@ -62,19 +55,15 @@ check(clamped == (0, 0, 1920, 1080),
 check(L.clamp((100, 100, 50, 50))[2] > L.clamp((100, 100, 50, 50))[0],
       "an inverted box is corrected, not passed on to raise mid-sequence")
 
-# --------------------------------------------------------------------------
 rule("calibration recovers a known transform from a rendered frame")
 
 
 def render(scale, origin, size=(1920, 1080), anchors=None):
-    """Draw the anchor words where a window at (origin, scale) would put them."""
     img = Image.new("RGB", size, (14, 14, 16))
     draw = ImageDraw.Draw(img)
     for phrase, (rx, ry) in (anchors or geo.REF_ANCHORS):
         x = origin[0] + rx * scale
         y = origin[1] + ry * scale
-        # Drawn centred on the anchor point, because that is what find_phrase
-        # measures and what the reference coordinates mean.
         w = draw.textlength(phrase)
         draw.text((x - w / 2, y - 6), phrase, fill=(232, 232, 232))
     return img
@@ -96,8 +85,6 @@ for want_scale, want_origin in ((1.0, (10, 30)), (0.75, (7, 28)),
 
 rule("calibration refuses rather than guessing")
 
-# Anchors bunched at the top: a perfect fit that describes the rest of the
-# window wrongly.
 bunched = [a for a in geo.REF_ANCHORS if a[1][1] < 130]
 frame = render(0.75, (7, 28), anchors=bunched)
 pairs = calibrate.find_anchors(frame, upscale=2.7)
@@ -107,7 +94,6 @@ check(calibrate._spread(pairs) < geo.MIN_ANCHOR_SPREAD,
 check(calibrate._fit(pairs[:1]) is None, "one anchor cannot fit a transform")
 check(calibrate._fit([]) is None, "no anchors cannot fit a transform")
 
-# A scale outside SCALE_LIMITS is a bad fit, not a small window.
 absurd = [((0, 0), (0, 0)), ((10000, 10000), (100, 100))]
 check(calibrate._fit(absurd) is None,
       "an implausible scale is refused -- a wrong scale does not fail loudly, "
@@ -161,10 +147,6 @@ rule("favourite slots")
 check(purchase.favourite_point(L, 1) == L.point(geo.FAVOURITE_FIRST),
       "slot 1 is the first favourite")
 step = (purchase.favourite_point(L, 2)[0] - purchase.favourite_point(L, 1)[0])
-# Within a pixel of the scaled pitch, not exactly equal: the two POSITIONS
-# round independently, so their difference can differ from the rounded
-# DISTANCE by one. What matters is that it tracks the scale rather than the
-# raw constant -- 42 or 43 at 0.75, never 57.
 check(abs(step - L.length(geo.FAVOURITE_PITCH)) <= 1,
       f"the gap between slots is the SCALED pitch ({step}px), not the raw one "
       f"({geo.FAVOURITE_PITCH}px)")
@@ -203,7 +185,7 @@ check(frame.reads == 3, "so is a different upscale -- it changes the answer")
 
 rule("speed: only row 1 is read unless more is asked for")
 
-import inspect                                             # noqa: E402
+import inspect
 sig = inspect.signature(purchase.read_offer_rows)
 check(sig.parameters["rows"].default == 1,
       "read_offer_rows defaults to ONE row: this flow never looks further "

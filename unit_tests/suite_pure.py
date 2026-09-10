@@ -1,27 +1,15 @@
-"""Combinatorial coverage of every pure decision in trade.
-
-These are the functions that decide what price to list at, which row to act on,
-and what a number says -- i.e. everywhere a wrong answer costs money. Each
-block sweeps a real matrix rather than sampling, so the counts below are
-distinct cases, not repetitions.
-
-Run: py suite_pure.py       (prints a per-block tally and a total)
-"""
 
 import itertools
 import random
 import sys
 
-from pathlib import Path as _Path  # noqa: E402
+from pathlib import Path as _Path
 _ROOT = _Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-import trade as m  # noqa: E402
+import trade as m
 
 VIP = "Yekaterina VIP Membership Use Period: 30 days"
-# Derived from the table, never hard-coded: this suite asserted a literal
-# 105,000,000 and would have gone on passing against the old number after the
-# floor was raised, testing nothing.
 FLOOR = m.item_price_floor(VIP)
 STOCK = ["Upgrade Core (Ultimate)", "Upgrade Core(High)", "Upgrade Core(Highest)",
          "Force Core(High)", "Force Core(Highest)", "Mana Absorb Bracelet",
@@ -42,10 +30,7 @@ def block(name, before):
     print(f"  {name:44} {RAN - before:6,d} cases")
 
 
-# ---------------------------------------------------------------- pricing --
 start = RAN
-# Boundaries expressed relative to FLOOR so they keep straddling it when the
-# floor moves; the fixed values around it are real market prices off the table.
 MARKETS = [0, 1, 999, 1_000, 85_000, 410_000, 10_000_000,
            FLOOR - 1, FLOOR, FLOOR + 1, 250_000_000, 10**12]
 FLOORS = [0, FLOOR]
@@ -54,7 +39,6 @@ for market, floor, cli in itertools.product(MARKETS, FLOORS, CLI_FLOORS):
     try:
         price, _ = m.choose_price(market, cli or 0, None, floor)
     except m.Aborted:
-        # Only the explicit --floor may refuse.
         ok(bool(cli) and market > 0 and market < cli,
            f"choose_price refused unexpectedly {market}/{cli}/{floor}")
         continue
@@ -66,7 +50,6 @@ for market, floor, cli in itertools.product(MARKETS, FLOORS, CLI_FLOORS):
     ok(price > 0, f"non-positive price {price}")
 block("choose_price matrix", start)
 
-# ------------------------------------------------------------ floor names --
 start = RAN
 CONFUSE = {"V": "YUWN", "I": "T1l|!i", "P": "FRBD", "M": "NH", "e": "co",
            "a": "oe", "r": "n", "n": "rm", "b": "h", "s": "5", "t": "f",
@@ -78,21 +61,17 @@ def corrupt_at(text, i, replacement):
     return text[:i] + replacement + text[i + 1:]
 
 
-# Every single-character substitution of the VIP name that the font can produce.
 for i, ch in enumerate(VIP):
     for repl in CONFUSE.get(ch, ""):
         ok(m.item_price_floor(corrupt_at(VIP, i, repl)) == FLOOR,
            f"VIP floor lost: {corrupt_at(VIP, i, repl)!r}")
-# Every single deletion.
 for i in range(len(VIP)):
     ok(m.item_price_floor(VIP[:i] + VIP[i + 1:]) == FLOOR,
        f"VIP floor lost on deletion at {i}")
-# Every single insertion of a stroke-like glyph.
 for i in range(0, len(VIP), 2):
     for ins in "il1|":
         ok(m.item_price_floor(VIP[:i] + ins + VIP[i:]) == FLOOR,
            f"VIP floor lost on insertion at {i}")
-# No non-VIP item may EVER gain a floor, under the same corruptions.
 for name in STOCK:
     ok(m.item_price_floor(name) == 0, f"clean {name!r} gained a floor")
     for i, ch in enumerate(name):
@@ -104,7 +83,6 @@ for name in STOCK:
            f"{name!r} minus char {i} gained a floor")
 block("item_price_floor corruption sweep", start)
 
-# ------------------------------------------------------------ number reads --
 start = RAN
 for value in [0, 1, 2, 9, 10, 23, 60, 65, 99, 158, 162, 210, 220, 250, 9999,
               85_000, 410_000, 118_999_999, 10_000_000_000]:
@@ -114,32 +92,26 @@ for value in [0, 1, 2, 9, 10, 23, 60, 65, 99, 158, 162, 210, 220, 250, 9999,
     ok(m._price_value(text + " Alz") == value, f"_price_value({text!r})")
     for junk in ["", " ", "\n", "\t"]:
         ok(m._digits(junk + text + junk) == value, f"_digits padded {text!r}")
-# "0 Alz" arrives with no digits at all.
 for zeroish in ["OAlz", "OAIz", "0Alz", "O Alz", "0 Alz"]:
     ok(m._price_value(zeroish) == 0, f"_price_value({zeroish!r}) should be 0")
-# Nothing numeric at all must not become a price.
 for junk in ["Alz", "", "   ", "Change", "On Sale", "Refresh"]:
     ok(m._price_value(junk) in (None, 0), f"_price_value({junk!r})")
 block("digit and price parsing", start)
 
-# ------------------------------------------------------- name canonicalising --
 start = RAN
 for name in [VIP] + STOCK:
     ok(m._canonical(name) == m._canonical(name), f"_canonical stable {name!r}")
     ok(m._canonical(name.upper()) == m._canonical(name.lower()),
        f"_canonical case-insensitive {name!r}")
     ok(m._floor_key(name) == m._floor_key(name), f"_floor_key stable {name!r}")
-# +6 and +9 must never collide -- folding digits once made them equal.
 for a, b in itertools.combinations("0123456789", 2):
     ok(m._canonical(f"Blade +{a}") != m._canonical(f"Blade +{b}"),
        f"+{a} collided with +{b}")
-# (FA) vs (FB) must stay distinct.
 for a, b in itertools.combinations("ABCD", 2):
     ok(m._canonical(f"SIGMetal Headgear (F{a})")
        != m._canonical(f"SIGMetal Headgear (F{b})"), f"F{a} vs F{b}")
 block("name canonicalisation", start)
 
-# ---------------------------------------------------------- row identity --
 start = RAN
 
 
@@ -151,7 +123,6 @@ def row(index, name, qty, price, action="change"):
 
 QTYS = [None, 1, 2, 60, 162, 210, 220]
 PRICES = [None, 85_000, 238_700, 410_000, 118_999_999]
-# A two-row table of same-named stacks, swept over every qty/price combination.
 for q1, q2, p1, p2 in itertools.product(QTYS, QTYS, PRICES, PRICES):
     table = [row(1, "Force Core(High)", q1, p1), row(2, "Force Core(High)", q2, p2)]
     for target in (1, 2):
@@ -159,7 +130,6 @@ for q1, q2, p1, p2 in itertools.product(QTYS, QTYS, PRICES, PRICES):
         found, note = m.locate_row(table, ref)
         ok(found is not None, f"lost a row entirely q={q1},{q2} p={p1},{p2}")
         if found is not None and (q1, p1) != (q2, p2):
-            # Distinguishable rows must resolve to the right one.
             distinct = (q1 != q2 and None not in (q1, q2)) or \
                        (p1 != p2 and None not in (p1, p2))
             if distinct:
@@ -168,7 +138,6 @@ for q1, q2, p1, p2 in itertools.product(QTYS, QTYS, PRICES, PRICES):
 block("locate_row duplicate matrix", start)
 
 start = RAN
-# A genuinely absent row is 'missing'; a flaked one is 'unmatched'.
 for name in [VIP] + STOCK:
     table = [row(1, name, 10, 1_000_000)]
     other = [row(1, "Completely Different Item", 10, 1_000_000)]
@@ -178,7 +147,6 @@ for name in [VIP] + STOCK:
     ok(note == "missing", f"{name!r} vs empty table -> {note}")
     found, note = m.locate_row(table, m.RowRef(name, 10, 1_000_000))
     ok(found is not None and note == "", f"{name!r} exact match -> {note}")
-    # One substituted character anywhere must read as 'unmatched', never gone.
     for i, ch in enumerate(name):
         for repl in CONFUSE.get(ch, "")[:1]:
             flaked = [row(1, corrupt_at(name, i, repl), 10, 1_000_000)]
@@ -187,7 +155,6 @@ for name in [VIP] + STOCK:
                f"flaked {name!r}@{i} read as MISSING (would report sold out)")
 block("missing vs unmatched", start)
 
-# ---------------------------------------------------------------- layout --
 start = RAN
 GEOMETRY = sorted(set(m._TRADE_FRAME_GEOMETRY) | set(m._INVENTORY_FRAME_GEOMETRY)
                   | set(m._CLIENT_FRAME_GEOMETRY))
@@ -213,7 +180,6 @@ for name in GEOMETRY:
        f"{name} is not identical after a round trip")
 block("apply_layout scale/origin matrix", start)
 
-# ------------------------------------------------------------- dialog kind --
 start = RAN
 TITLES = {"receipt": ["Confirm", "Receipt"],
           "confirm": ["Cancel", "item", "registration", "Confirmation"],
@@ -231,7 +197,6 @@ for kind, words in TITLES.items():
                    "extension" if (m._mentions(texts, "extension")
                                    or m._mentions(texts, "registration")) else None)
             ok(got == kind, f"{kind}: {variant} -> {got}")
-# Table chrome must never look like a dialog.
 for words in [["Change"], ["Receive"], ["Register"], ["Refresh"], ["On", "Sale"],
               ["Register", "Item"], ["Register", "QTY"], ["registered"],
               ["Name"], ["QTY"], ["Price"], ["Status"], ["Function"],
@@ -243,7 +208,6 @@ for words in [["Change"], ["Receive"], ["Register"], ["Refresh"], ["On", "Sale"]
        f"table chrome {words} read as a dialog")
 block("dialog classification", start)
 
-# ------------------------------------------------------------- row specs --
 start = RAN
 for spec, want in [("1", [1]), ("1-3", [1, 2, 3]), ("1,3,5", [1, 3, 5]),
                    ("1-10", list(range(1, 11))), ("5-5", [5]),
@@ -257,7 +221,6 @@ for bad in ["3-1", "10-1"]:
         ok(True, "")
 block("row spec parsing", start)
 
-# ------------------------------------------------------------ NPC sweep --
 start = RAN
 for scale in [1.0, 0.7895, 0.5, 2.0]:
     m.apply_layout(m.Layout(screen=(2560, 1440), origin=(10, 30), scale=scale,
@@ -272,7 +235,6 @@ m.apply_layout(m.Layout(screen=m.REF_SCREEN, origin=m.REF_TRADE_ORIGIN,
                         scale=1.0, client=m.REF_CLIENT))
 block("NPC sweep geometry", start)
 
-# ----------------------------------------------------------------- fuzz --
 start = RAN
 rng = random.Random(20260803)
 for _ in range(4000):

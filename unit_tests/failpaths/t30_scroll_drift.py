@@ -1,28 +1,3 @@
-"""measure_shift must survive the table moving under it -- but never guess.
-
-From the 07:57 run of 2026-08-06: cycles 5 and 6 both died on
-
-    could not tell how far the view moved - refusing to guess which listing is
-    which
-
-and the breaker stopped a run that was otherwise working. The old test was
-
-    all(b[i] == a[j] for i, j in overlap)
-
-so ONE changed row anywhere in the overlap made the true offset match nothing,
-and then nothing matched at all. Not ambiguity -- zero candidates. Three things
-cause that here and each was enough alone:
-
-  * a quantity misreading (140 -> 120 and 130 -> 30 both recorded that run)
-  * a listing selling during the ~18s scroll
-  * this script's own repricing between the two reads
-
-The fix keeps the exact test first and unchanged, then falls back to scoring.
-The safety property is the MARGIN: the best offset must beat the runner-up by
-SCROLL_MATCH_MARGIN rows. Picking the wrong offset means cancelling the wrong
-listing, which is far worse than losing a cycle, so a close call must still
-refuse. Most of this file is that refusal.
-"""
 from harness import check, section, summary
 
 import trade
@@ -34,14 +9,12 @@ def mk(i, name, qty=None, price=None, action="change"):
 
 
 def win(src, start, n=10):
-    """A 10-row screen onto `src`, renumbered 1..n as read_rows would."""
     return [mk(j + 1, r.name, r.qty, r.price, r.action)
             for j, r in enumerate(src[start:start + n])]
 
 
 FULL = [mk(i, f"Item {i:02d}", 10 + i, 100_000 + i) for i in range(1, 31)]
 
-# The shop exactly as it stood when cycle 6 died.
 LIVE = ([mk(1, "Force Gem Package (x400)", 2, 187_000_000),
          mk(2, "Yekaterina VIP Membership", 2, 108_999_999),
          mk(3, "Force Core(High)", 2, 210_000),
@@ -58,7 +31,6 @@ LIVE = ([mk(1, "Force Gem Package (x400)", 2, 187_000_000),
            mk(20, "Force Core(High)", 250, 215_000)])
 
 
-# ===========================================================================
 section("the exact case still answers exactly")
 
 for off in (1, 3, 5, 7):
@@ -73,11 +45,9 @@ check("the real emptied shop, scroll 7",
       f"the cause and it was wrong")
 
 
-# ===========================================================================
 section("one changed row no longer loses the cycle")
 
 def drift(src, off, changes):
-    """The scrolled screen, with `changes` rows perturbed."""
     rows = win(src, off)
     for idx, fn in changes:
         rows[idx] = fn(rows[idx])
@@ -95,9 +65,6 @@ check("a listing selling during the scroll",
       trade.measure_shift(win(FULL, 0), drift(FULL, 7, [sold_midway])) == 7, "")
 check("a price moving between reads",
       trade.measure_shift(win(FULL, 0), drift(FULL, 7, [repriced])) == 7, "")
-# A 7-row step leaves only 3 rows overlapping, so all three drifting means
-# there is no surviving evidence at all. Refusing is the right answer, not a
-# shortcoming -- what recovers it is the smaller step, below.
 check("all three drift at a 7-row step: refuses",
       trade.measure_shift(win(FULL, 0),
                           drift(FULL, 7, [qty_misread, sold_midway, repriced]))
@@ -109,11 +76,6 @@ check("...and the smaller step carries all three",
       f"got {trade.measure_shift(win(FULL, 0), drift(FULL, 3, [qty_misread, sold_midway]))!r} "
       f"-- 7 rows overlap at a 3-row step, so two drifting still leaves five")
 
-# On the real shop a 7-row step lands the whole overlap inside the block of
-# empty slots, so there is nothing distinctive to agree on. It must refuse --
-# scoring plain matches here returned 5 for a view that had moved 7, which
-# would have cancelled the wrong listing. enumerate_listings recovers by
-# re-sweeping at SCROLL_STEP_FALLBACK, which leaves 7 rows overlapping.
 got = trade.measure_shift(win(LIVE, 0), drift(LIVE, 7, [sold_midway]))
 check("the live shop, drift inside the empty block: refuses, never guesses",
       got is None,
@@ -127,24 +89,18 @@ check("SCROLL_STEP_FALLBACK leaves more overlap than SCROLL_STEP",
       f"{trade.SCROLL_STEP_FALLBACK} vs {trade.SCROLL_STEP}")
 
 
-# ===========================================================================
 section("but it still refuses rather than guess")
 
-# Everything changed: there is no evidence for any offset.
 scrambled = [mk(i + 1, f"Other {i:02d}", 99, 999_999) for i in range(10)]
 check("a completely different table refuses",
       trade.measure_shift(win(FULL, 0), scrambled) is None,
       f"got {trade.measure_shift(win(FULL, 0), scrambled)!r}")
 
-# Identical reads report 0 -- "nothing moved" -- even when the rows are
-# interchangeable. The protection against acting on that is no longer here: a 0
-# arriving before the measured bottom is rejected by the sweep as a stuck view.
 same = [mk(i + 1, "Force Core(High)", 250, 215_000) for i in range(10)]
 check("an all-identical table reports 0, not a guess",
       trade.measure_shift(same, same[:]) == 0,
       f"got {trade.measure_shift(same, same[:])!r}")
 
-# Majority-changed: below the ratio, so not a candidate at all.
 heavy = win(FULL, 7)
 for k in range(6):
     heavy[k] = mk(heavy[k].index, f"Replaced {k}", 5, 50_000)
@@ -157,18 +113,10 @@ check("an empty reading refuses",
       and trade.measure_shift(win(FULL, 0), []) is None, "")
 
 
-# ===========================================================================
 section("the margin: a close second place must refuse")
 
-# A repeating shop: every row identical to the one 5 below it. Offsets 0 and 5
-# then score alike, and taking "the best" would cancel a listing five rows from
-# the one intended. Only the margin refuses here.
 period = [mk(i, f"Item {(i - 1) % 5:02d}", 10 + ((i - 1) % 5),
              100_000 + ((i - 1) % 5)) for i in range(1, 31)]
-# The two screens are byte-identical, so this reports 0 even though the view
-# really moved 5. It is the one reading the pixels support, and it is SAFE
-# rather than correct: the sweep sees 0 before the measured bottom, calls the
-# view stuck, and fails instead of mislabelling five listings.
 got = trade.measure_shift(win(period, 0), win(period, 5))
 check("a shop repeating every 5 rows reports 0 rather than guessing 5",
       got == 0,
@@ -183,22 +131,15 @@ check("the ratio demands a real majority",
       f"SCROLL_MATCH_RATIO={trade.SCROLL_MATCH_RATIO}")
 
 
-# ===========================================================================
 section("an exact answer always beats a scored one")
 
-# Where the exact test succeeds, the fallback must never get a vote: it is
-# strictly weaker evidence.
 exact = trade.measure_shift(win(FULL, 0), win(FULL, 4))
 check("exact wins outright", exact == 4, f"got {exact!r}")
 
-# And where the exact test finds SEVERAL, that is real ambiguity -- the
-# fallback must not be used to break the tie.
 twins = [mk(i, "Force Core(High)", 250, 215_000) for i in range(1, 11)]
 check("identical twins report 0 rather than falling through to scoring",
       trade.measure_shift(twins, twins[:]) == 0,
       f"got {trade.measure_shift(twins, twins[:])!r}")
-# Real ambiguity -- different content, several offsets fitting -- must still
-# refuse. That guarantee has not moved.
 _dead = [mk(1, "Siena's Unbinding Stone", 1, 75_000_000)] +         [mk(i, "(empty)", None, None, "register") for i in range(2, 11)]
 _next = [mk(i, "(empty)", None, None, "register") for i in range(1, 10)] +         [mk(10, "Force Core(Highest)", 0, 200_000, "receive")]
 check("genuine ambiguity still refuses",
@@ -208,14 +149,8 @@ check("genuine ambiguity still refuses",
 
 
 
-# ===========================================================================
 section("the actual cause: an overlap of nothing but empty slots")
 
-# Reproduced live on 2026-08-06. The top screen was six listings then four
-# empty slots; a 7-row step left three empty rows overlapping, and BOTH shift 6
-# and shift 7 fitted them perfectly. Two exact answers is not tolerance-of-
-# drift, it is ambiguity, and no amount of fuzzy scoring can resolve it -- the
-# rows genuinely carry no information. The step has to change instead.
 TOP = [mk(1, "Force Gem Package (x400)", 2, 187_000_000),
        mk(2, "Yekaterina VIP Membership", 2, 108_999_999),
        mk(3, "Force Core(High)", 2, 210_000),
@@ -249,7 +184,6 @@ check("never returns a step that leaves too little overlap",
           >= trade.MIN_SCROLL_OVERLAP
           for s in (TOP, full_screen, all_empty)), "")
 
-# The pair that actually defeated it, asserted directly.
 after7 = [mk(i, "(empty)", None, None, "register") for i in range(1, 8)] + \
          [mk(8, "Force Core(Highest)", 0, 200_000, "receive"),
           mk(9, "Force Core(High)", 250, 215_000),
@@ -262,13 +196,8 @@ check("the recorded 7-row step is ambiguous and refuses",
 
 
 
-# ===========================================================================
 section("every scroll site uses the step rule, not just the sweep")
 
-# Fixing enumerate_listings alone was not enough: bring_into_view scrolled with
-# a fixed SCROLL_STEP and failed identically on the first cycle of the 11:50
-# run of 2026-08-06 -- row 15, "could not tell how far the view moved". A rule
-# that only some callers follow is not a rule.
 import inspect
 
 for fn in (trade.bring_into_view, trade._enumerate_at_step):
@@ -288,15 +217,8 @@ check("bring_into_view still terminates",
 
 
 
-# ===========================================================================
 section("inside a run of empty slots, the wheel decides -- not the content")
 
-# The state that stopped the shop on 2026-08-06. Mid-sweep, every offset fitted:
-#     exact fits: [(7,3), (6,4), (5,5), (4,6), (3,7), (2,8), (1,9)]
-# No step size helps, because the rows carry no information at any scale. The
-# wheel does: a notch moves one row. So when the overlap is made up ENTIRELY of
-# empty slots, take the shift that was asked for -- every row skipped is empty
-# by construction, so no listing can be mislabelled.
 DEAD = [mk(1, "Siena's Unbinding Stone", 1, 75_000_000)] + \
        [mk(i, "(empty)", None, None, "register") for i in range(2, 11)]
 NEXT = [mk(i, "(empty)", None, None, "register") for i in range(1, 10)] + \
@@ -312,12 +234,10 @@ check("a different requested shift is honoured too",
       trade.measure_shift(DEAD, NEXT, expected=3) == 3,
       f"got {trade.measure_shift(DEAD, NEXT, expected=3)!r}")
 
-# It must not rescue an offset that does not fit at all.
 check("a requested shift that fits nothing is still refused",
       trade.measure_shift(DEAD, NEXT, expected=9) is None,
       f"got {trade.measure_shift(DEAD, NEXT, expected=9)!r}")
 
-# The moment a nameable row is in the overlap, content decides again.
 NAMED = [mk(1, "Siena's Unbinding Stone", 1, 75_000_000),
          mk(2, "Force Core(High)", 250, 215_000)] + \
         [mk(i, "(empty)", None, None, "register") for i in range(3, 11)]
@@ -326,12 +246,6 @@ check("a nameable row in the overlap is not overridden by the wheel",
       f"got {trade.measure_shift(NAMED, NAMED[:], expected=5)!r} -- the "
       f"content says the view did not move, and content outranks the wheel")
 
-# The bottom clamp: the wheel is asked to move but nothing does. This must
-# report 0, or the sweep believes it is descending and never terminates.
-# An all-empty screen reads identically whether the view moved or not, so
-# content has no opinion and the wheel is the better witness. Answering 0 here
-# wedges the sweep inside the gap -- the live shop did exactly that at 14:5x
-# with a fifteen-row run of empty slots.
 ALL_EMPTY = [mk(i, "(empty)", None, None, "register") for i in range(1, 11)]
 check("identical all-empty reads follow the wheel, not the pixels",
       trade.measure_shift(ALL_EMPTY, ALL_EMPTY[:], expected=7) == 7,
@@ -346,16 +260,10 @@ check("a screen with ANY nameable row still reports 0",
 check("...and an unmoved view of distinct listings reports 0 too",
       trade.measure_shift(FULL[:10], FULL[:10], expected=7) == 0,
       "distinct rows pin d=0 on their own, with no clamp rule needed")
-# Two identical reads report 0 -- "nothing moved" -- whatever the rows hold,
-# and the wheel's request must NOT override that. Claiming movement the pixels
-# deny would advance the absolute index past rows that never scrolled by.
 ident = [mk(i, "Force Core(High)", 250, 215_000) for i in range(1, 11)]
 check("identical reads report 0, not the requested shift",
       trade.measure_shift(ident, ident[:], expected=7) == 0,
       f"got {trade.measure_shift(ident, ident[:], expected=7)!r}")
-# 0 means "nothing moved", NEVER "the bottom". The sweep decides the bottom by
-# reaching the screen it measured, so a 0 arriving early is a stuck view and is
-# reported as a failure -- not as a finished shop.
 import inspect as _ins
 _src = _ins.getsource(trade._enumerate_at_step)
 check("the sweep measures the bottom instead of inferring it",
@@ -371,7 +279,6 @@ check("...the sweep ends on the tail, guarded for a featureless bottom",
       "an all-empty bottom screen matches every all-empty screen above it, so "
       "reaching it is necessary but not sufficient")
 
-# Both scroll sites must pass the wheel's request through.
 import inspect as _i
 for fn in (trade.scroll_chunk, trade.scroll_one):
     check(f"{fn.__name__} tells measure_shift what it asked for",
@@ -381,19 +288,8 @@ for fn in (trade.scroll_chunk, trade.scroll_one):
 
 
 
-# ===========================================================================
 section("the wheel never reaches the camera")
 
-# With the Trade window shut the wheel is a CAMERA ZOOM, and scroll_to_end
-# sends forty notches. On 2026-08-06 that zoomed the view so far in that the
-# NPC left the screen: the next two cycles could not find her, the breaker
-# stopped the run, and the camera had to be wound back by hand. One row scrolled
-# a moment after the window closed was enough.
-#
-# Damage the script cannot see or undo, from an input it sends routinely -- so
-# the guard is at the wheel, not at the callers. A rule only some callers follow
-# is how the earlier step fix failed: it covered enumerate_listings and missed
-# bring_into_view.
 from harness import Harness, empty_panel, make_row, run
 
 def rows10():
@@ -408,7 +304,7 @@ for name, call in (
 ):
     h = Harness(rows=rows10(), panel=empty_panel(), verbose=False)
     with h:
-        h.trade_open = False                 # the window is shut
+        h.trade_open = False
         run(call)
         wheels = [c for c in h.calls if c[0] == "scroll_wheel"]
         check(f"{name} sends no wheel input with the window shut",
@@ -418,7 +314,7 @@ for name, call in (
 
     h = Harness(rows=rows10(), panel=empty_panel(), verbose=False)
     with h:
-        h.trade_open = True                  # the window is open
+        h.trade_open = True
         run(call)
         wheels = [c for c in h.calls if c[0] == "scroll_wheel"]
         check(f"{name} still scrolls when the window IS open", len(wheels) >= 1,
@@ -442,21 +338,8 @@ with h:
 
 
 
-# ===========================================================================
 section("only offsets the wheel could have produced are candidates")
 
-# The failure that killed the 15:19 run. A downward scroll moves the view
-# between 0 and N rows -- never up, never past N. Searching the whole range
-# invented candidates that made a perfectly determined shift look ambiguous.
-# Recorded live for a view that had moved exactly 3, with SEVEN rows agreeing:
-#
-#     exact fits: [(3, 7), (-6, 4), (-7, 3)]
-#
-# Minus six and minus seven are nonsense -- the wheel was asked to go down.
-# They fit only the three or four mostly-empty rows at the screen edge, and
-# their presence alone was enough to refuse and lose the cycle. scroll_chunk
-# already bounded the result (`0 <= shift <= notches`), but only after
-# measure_shift had thrown the answer away.
 E = lambda i: mk(i, "(empty)", None, None, "register")
 
 MOVED_3_BEFORE = [E(1), E(2), E(3), E(4), mk(5, "Force Core(High)", 247, 215_000),
@@ -494,20 +377,8 @@ check("with no expectation the full range is still searched",
 
 
 
-# ===========================================================================
 section("a lying window detector must not let the wheel through")
 
-# The live failure of 2026-08-07. trade_window_open() is a text search inside
-# TRADE_WINDOW_SEARCH, and the 3D world can supply those glyphs. close_shop
-# pressed Escape, asked it, was told the window was still open, and warned
-# "the Trade window would not close with Escape" -- when it had closed. Two
-# reads later the scroll guard asked the same detector, believed it, and forty
-# notches zoomed the camera until the NPC left the screen. The next two cycles
-# could not find her and the breaker stopped the run.
-#
-# panel_covers_trade_area() compares two frames a moment apart: the world
-# animates, an opaque panel does not. It cannot be fooled by stray glyphs, and
-# open_trade_window already requires BOTH before claiming the shop is open.
 from harness import Harness as _H, empty_panel as _ep, make_row as _mk, run as _run
 
 def _rows10():
@@ -522,8 +393,8 @@ for name, call in (
 ):
     h = _H(rows=_rows10(), panel=_ep(), verbose=False)
     with h:
-        h.trade_open = True                       # the OCR check LIES
-        h.patch("panel_covers_trade_area", lambda *a, **k: False)  # world animates
+        h.trade_open = True
+        h.patch("panel_covers_trade_area", lambda *a, **k: False)
         _run(call)
         wheels = [c for c in h.calls if c[0] == "scroll_wheel"]
         check(f"{name}: a false 'window open' alone does not open the gate",

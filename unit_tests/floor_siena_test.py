@@ -1,25 +1,15 @@
-"""Two floors now. Prove the second one binds, and that it binds to ONE item.
-
-Adding a floor is not just "does it fire" -- it is also "what else does it fire
-on". A floor granted to the wrong item parks that item at a price nobody pays;
-a floor missed on the right item is the failure the user has said twice must
-never happen. So both directions get measured, on realistic OCR damage rather
-than on clean strings.
-"""
 
 import random
 import sys
 
-from pathlib import Path as _Path  # noqa: E402
+from pathlib import Path as _Path
 _ROOT = _Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-import trade as m  # noqa: E402
+import trade as m
 
 VIP = "Yekaterina VIP Membership"
 SIENA = "Siena's Unbinding Stone"
-# Read out of the table rather than restated, so raising a floor cannot leave
-# this suite green while asserting the old number.
 VIP_FLOOR = next(f for t, _, f in m.ITEM_PRICE_FLOORS if t == "vip")
 SIENA_FLOOR = next(f for t, _, f in m.ITEM_PRICE_FLOORS if t == "siena")
 
@@ -34,10 +24,6 @@ def check(cond, label):
 print("=== 1. the table itself ===")
 for token, catalogue, floor in m.ITEM_PRICE_FLOORS:
     print(f"  {token:8} {catalogue:28} {floor:>12,}")
-# Derived from the table, not pinned to a count. Hardcoding "exactly two"
-# turned adding a third floor into two red suites that were not testing
-# anything about the new floor -- noise that has to be edited away, which is
-# how a real failure gets edited away with it.
 check(len(m.ITEM_PRICE_FLOORS) >= 2,
       f"expected at least the two original floors, got "
       f"{len(m.ITEM_PRICE_FLOORS)}")
@@ -60,29 +46,16 @@ for name, want in ((VIP, VIP_FLOOR), (SIENA, SIENA_FLOOR),
     check(got == want, f"{name!r} -> {got:,}, wanted {want:,}")
 
 print("\n=== 3. items that must NOT get a floor ===")
-# Real names read off the live table, plus the near-misses that matter.
 innocent = [
     "Force Core(High)", "Force Core (Ultimate)", "Force Core(Highest)",
     "Upgrade Core (Ultimate)", "Upgrade Core(Highest)", "Upgrade Core(High)",
-    "V|pgrade Core(High)",            # folds to contain 'vip'
+    "V|pgrade Core(High)",
     "Master's SIGMetal Headpiece (BL)", "Archridium Plate(GL)",
     "Sienna Powder",
-    # Rejected on SIMILARITY (0.7368 against the 0.75 bar), not on length, so
-    # it stays out regardless of FLOOR_LENGTH_RATIO.
     "Unbinding Stone (High)",
     "(empty)", "",
 ]
 
-# Deliberately NOT in the list above. These are separate, cheaper items whose
-# folded names sit inside "Siena's Unbinding Stone", and with
-# FLOOR_LENGTH_RATIO disabled they collect its 71M floor.
-#
-# That is the accepted cost of the revert, not an oversight: a damaged read of
-# the real item that loses its first word folds to exactly the same key, so no
-# threshold can separate them. Flooring a cheap item means it does not sell;
-# missing the floor on the real one means it sells for a fraction of its worth.
-# Asserted in the direction the choice was made, so that flipping the constant
-# back makes this test fail loudly rather than quietly.
 ACCEPTED_OVER_MATCH = ["Unbinding Stone", "Binding Stone"]
 for name in innocent:
     got = m.item_price_floor(name)
@@ -101,10 +74,7 @@ for name in ACCEPTED_OVER_MATCH:
           "that reintroduces the floor-loss this revert exists to prevent")
 
 print("\n=== 4. the collision that actually worries me ===")
-# Cabal has a plain 'Unbinding Stone' as a separate, cheap item. It is not in
-# the innocent list above because it is genuinely ambiguous, so it is measured
-# and reported rather than asserted either way.
-from difflib import SequenceMatcher  # noqa: E402
+from difflib import SequenceMatcher
 
 for name in ("Unbinding Stone", "Unbinding Stone (High)"):
     key = m._floor_key(m.item_name(name))
@@ -118,8 +88,6 @@ for name in ("Unbinding Stone", "Unbinding Stone (High)"):
     print(f"    -> floor {got:,}")
 
 print("\n=== 4b. a CLIPPED read must keep its floor (the length guard's risk) ===")
-# FLOOR_LENGTH_RATIO could plausibly reject a name the column cut short. It
-# must not: the token route is exempt precisely so a clipped read survives.
 for name, want in (
     ("Siena's Unbinding Ston", SIENA_FLOOR),
     ("Siena's Unbinding", SIENA_FLOOR),
@@ -128,7 +96,7 @@ for name, want in (
     ("Yekaterina VIP Membershi", VIP_FLOOR),
     ("Yekaterina VIP Member", VIP_FLOOR),
     ("Yekaterina VIP", VIP_FLOOR),
-    ("Yekaterina Membership", VIP_FLOOR),   # token itself destroyed
+    ("Yekaterina Membership", VIP_FLOOR),
 ):
     got = m.item_price_floor(name)
     key, ref = m._floor_key(name), m._floor_key(
@@ -138,9 +106,6 @@ for name, want in (
     check(got == want, f"clipped {name!r} lost its floor ({got:,})")
 
 print("\n=== 4c. token-route over-matches, reported not asserted ===")
-# These carry the token, so they keep the floor by design. Listing a cheap
-# item too high only means it does not sell; losing a floor is the failure
-# that matters, so the token route is left permissive on purpose.
 for name in ("Siena Stone", "Siena's Powder", "Siena"):
     print(f"  {m.item_price_floor(name):>12,}  {name!r}")
 

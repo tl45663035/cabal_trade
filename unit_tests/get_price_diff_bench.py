@@ -1,24 +1,3 @@
-"""Speed: trade.py's chaos_margin_now against src/get_price_diff.
-
-DRIVES NOTHING. Both implementations run their REAL control flow against a
-rendered Purchase tab; only the screen, the input and the sleeps are replaced.
-
-Why a rendered frame rather than a captured one: it is deterministic, it needs
-no screenshot committed to the repo, and both implementations read the same
-reference geometry, so one frame at 2560x1440 serves both without favouring
-either.
-
-What is measured:
-
-  OCR LAUNCHES   the number of times tesseract.exe is started, and the wall
-                 clock inside those calls. This is the real cost -- ~70ms of
-                 every read is process startup, so the count matters more than
-                 the pixels.
-
-  SLEEPS         reported separately and NOT counted as a win. Both wait for
-                 the same server, and a settle that is too short is a misread,
-                 not a saving.
-"""
 import sys
 import time
 from pathlib import Path
@@ -27,27 +6,15 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, str(_ROOT / "src"))
 
-import os                                        # noqa: E402
-import tempfile                                  # noqa: E402
+import os
+import tempfile
 os.environ.setdefault("CABAL_SALES_DB",
                       str(Path(tempfile.gettempdir()) / "gpd_bench.db"))
 
-from PIL import Image, ImageDraw                 # noqa: E402
+from PIL import Image, ImageDraw
 
 
-# --------------------------------------------------------------------------
-# A Purchase tab, drawn where both implementations expect it
-# --------------------------------------------------------------------------
 
-# THE FIVE TRADES, one per Core/Set pair in the favourites table.
-#
-# Rows are what the Purchase tab would show under Price: Low to High, i.e.
-# sorted by LISTING TOTAL -- which is why row 1 is the smallest bundle rather
-# than the best price per unit, and why the two implementations can disagree.
-#
-# Prices are representative of this market, not live quotes. What the run
-# measures is SPEED; the price diff is here so the two implementations can be
-# checked against each other on identical input.
 PAIRS = [
     ("Chaos", 4, 3,
      [("Chaos Core Set X 10", 1, 7_400_000),
@@ -87,7 +54,6 @@ PAIRS = [
 
 
 def render(rows, size=(2560, 1440)):
-    """The Purchase tab at reference scale, with `rows` in the offer table."""
     img = Image.new("RGB", size, (16, 16, 20))
     d = ImageDraw.Draw(img)
 
@@ -96,7 +62,6 @@ def render(rows, size=(2560, 1440)):
             x -= d.textlength(text) / 2
         d.text((x, y - 7), text, fill=(236, 236, 236))
 
-    # Window furniture, at the reference positions both implementations use.
     at(608, 19, "Trade", centre=True)
     at(128, 67, "Purchase", centre=True)
     at(382, 69, "Register", centre=True)
@@ -106,9 +71,7 @@ def render(rows, size=(2560, 1440)):
     at(1010, 119, "Status", centre=True)
     at(1126, 118, "Function", centre=True)
     at(142, 122, "Item", centre=True)
-    # The sort control, inside PURCHASE_SORT_REGION / geo.SORT_REGION.
     at(950, 195, "By Price:Low to High", centre=True)
-    # Anchors near the bottom, so calibration has a real vertical span.
     at(55, 869, "Period", centre=True)
     at(331, 982, "Selling", centre=True)
     at(503, 982, "Expired", centre=True)
@@ -116,8 +79,6 @@ def render(rows, size=(2560, 1440)):
     at(863, 980, "Total", centre=True)
     at(1119, 981, "Refresh", centre=True)
 
-    # The offer rows: name left of 700, qty between 700 and 900, price in
-    # 900..1080. Both implementations split a row band by those x boundaries.
     for i, (name, qty, price) in enumerate(rows):
         y = 340 + i * 76
         at(280, y, name)
@@ -126,17 +87,12 @@ def render(rows, size=(2560, 1440)):
     return img
 
 
-# One rendered frame per slot, built once and reused by every repeat so the
-# rendering cost never lands inside a measurement.
 FRAMES = {}
 for _name, _set_slot, _core_slot, _set_rows, _core_rows in PAIRS:
     FRAMES[_set_slot] = render(_set_rows)
     FRAMES[_core_slot] = render(_core_rows)
 
 
-# --------------------------------------------------------------------------
-# Instrumentation
-# --------------------------------------------------------------------------
 
 class Meter:
     def __init__(self, name):
@@ -155,7 +111,6 @@ class Meter:
 
 
 def bench_new(slot_a, slot_b):
-    """src/get_price_diff, everything but the OCR replaced."""
     from cabal import ocr, purchase, screen, shop
     import get_price_diff as gpd
     from cabal.layout import Layout
@@ -195,8 +150,6 @@ def bench_new(slot_a, slot_b):
         saved[(mod, name)] = getattr(mod, name)
         setattr(mod, name, fn)
 
-    # The favourite search must see the frame belonging to the slot it just
-    # pressed, exactly as the live client would swap it.
     real_search = purchase.run_favourite_search
 
     def searching(layout, slot, *a, **k):
@@ -219,7 +172,6 @@ def bench_new(slot_a, slot_b):
 
 
 def bench_old(slot_a, slot_b):
-    """trade.py's chaos_margin_now, everything but the OCR replaced."""
     import trade
 
     meter = Meter("OLD  trade.chaos_margin_now")
@@ -287,7 +239,6 @@ REPEATS = 5
 
 
 def main():
-    print(__doc__)
     print("=" * 86)
     print(f"All {len(PAIRS)} Core/Set pairs, {REPEATS} repeats each, both "
           f"implementations")

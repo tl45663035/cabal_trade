@@ -1,81 +1,27 @@
-﻿"""convert_cores(): the vendor grid, the Purchase Item dialog, and the refusals.
-
-This is the only code in the file that clicks inside an NPC vendor window, and
-that window is unlike every other surface the script touches:
-
-    plain click   Immediate Purchase -- spends something AT ONCE, no dialog
-    Alt + click   Mass Purchase, which asks for a quantity
-    Ctrl + click  links the item into chat
-
-Everywhere else, a misplaced click costs a wasted cycle. Here it costs items,
-silently, with nothing on screen to undo. So the tests that matter most are not
-the happy path -- they are the ones asserting that a click DOES NOT HAPPEN when
-anything is unverified, and that the CORE -> SET cells (the same trade run
-backwards, which would burn the whole margin) are unreachable by any input.
-
-Three layers, none of which trust the layer below:
-
-  1. the grid: names resolve to cells, Set names resolve to nothing at all
-  2. the dialog: what it says is compared against what was intended, AFTER the
-     click that opens it but BEFORE anything is spent
-  3. the sequence: a simulated game records every click, and each scenario
-     asserts on the recording rather than on a return value
-
-Layer 3 is what earns its keep. A function can return the right answer having
-clicked the wrong thing on the way, and this project has shipped exactly that
-bug more than once -- the buying path bought row 2 while reporting row 1, and
-an unguarded capture script walked the character across the map by clicking 80
-times without re-checking where it was.
-
-The dialog geometry here was measured off a live capture on 2026-08-07:
-
-    +-------------- Purchase Item --------------+
-    |  Force Core(High)                         |
-    |  Purchase QTY   [   1   ] / 55   [^v]     |
-    |  Purchase Price  Force Core Set (High) 55/1|
-    |                        [ OK ]  [ Cancel ] |
-    +-------------------------------------------+
-"""
-import sys
+﻿import sys
 import time
 from pathlib import Path as _Path
 
 _ROOT = _Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-# NO GAME INPUT FROM A TEST. Imported before trade is used, so
-# every click, keystroke, wheel turn and screen grab raises
-# instead of reaching the live client. On 2026-08-12 a test
-# called the real restock pipeline and drove the operator's
-# game for over two minutes.
 import os as _os_guard
 import sys as _sys_guard
 _sys_guard.path.insert(0, _os_guard.path.dirname(
     _os_guard.path.abspath(__file__)))
-import _no_input_guard  # noqa: F401  -- arms every input primitive to raise
+import _no_input_guard
 
-import trade as m  # noqa: E402
+import trade as m
 
-# NOTHING in this suite may touch the game, and this is set at IMPORT so no
-# section can forget it. A test that turned it off to reach a guard is how a
-# mutation run -- which deletes that guard by design -- Alt+clicked four
-# coordinates into the game world and walked the character across the map.
 m.NO_INPUT = True
 
 fails = []
 count = 0
-# Image sections that did not run because the frame was not on disk. The
-# corpus is gitignored -- it is live session data -- so this is the normal
-# state everywhere except the machine that captured it. Counted so the summary
-# cannot imply the pixels were checked when they were not.
 skipped = []
 _quiet = "-v" not in sys.argv
 
 
 def check(cond, label):
-    """Record one assertion. Only failures print unless -v is given: this suite
-    runs a few thousand cases and a wall of 'ok' hides the one line that matters.
-    """
     global count
     count += 1
     if not cond:
@@ -89,14 +35,10 @@ def section(title):
     print(f"\n--- {title}")
 
 
-# The coordinates of every cell that converts the WRONG way. Nothing in this
-# suite may ever produce a click at one of these, under any scenario.
 FORBIDDEN_POINTS = {m.convert_cell_point(r, c) for (r, c) in m.CONVERT_TO_SET}
 
 
-# ==========================================================================
 section("grid geometry")
-# ==========================================================================
 
 check(len(m.CONVERT_TO_CORE) == 10,
       f"exactly 10 SET->CORE cells, got {len(m.CONVERT_TO_CORE)}")
@@ -131,17 +73,9 @@ check(list(m.CONVERT_ROWS) == sorted(m.CONVERT_ROWS),
       "rows ascend top to bottom")
 
 
-# ==========================================================================
 section("name resolution: cores in, sets never")
-# ==========================================================================
 
 def variants(name):
-    """Spellings of one item that a reader might plausibly produce.
-
-    Deliberately does NOT include a pack suffix ("... x 62"). That marker
-    belongs to Agent Shop SET listings, never to a vendor Core, and the lookup
-    is exact on purpose -- see the strictness checks below.
-    """
     return [
         name,
         name.upper(),
@@ -163,7 +97,6 @@ for (row, col), (gives, costs) in sorted(m.CONVERT_TO_CORE.items()):
         check(got is None,
               f"the SET name {text!r} must resolve to nothing, got {got}")
 
-# Nothing outside the grid resolves to anything.
 for junk in ["", "   ", "Siena's Unbinding Stone", "Epic Booster (Highest)",
              "Force", "Core", "Set", "Force Core", "Upgrade Core",
              "Force Core Set", "Highest", "Bike", "Force Core(Legendary)",
@@ -171,17 +104,12 @@ for junk in ["", "   ", "Siena's Unbinding Stone", "Epic Booster (Highest)",
     got = m.convert_cell_for(junk)
     check(got is None, f"{junk!r} resolves to nothing, got {got}")
 
-# Strictness, stated on purpose. A name carrying anything the grid does not
-# recognise resolves to nothing rather than to its nearest neighbour: a
-# refusal costs a cycle, a near-miss spends the wrong items.
 for (row, col), (gives, _c) in sorted(m.CONVERT_TO_CORE.items()):
     for junk in [f"{gives} x 62", f"{gives} X 250", f"{gives} and something",
                  f"Superior {gives}"]:
         check(m.convert_cell_for(junk) is None,
               f"{junk!r} does not resolve to a cell by near-miss")
 
-# The grade prefixes, which are the trap. Low/Medium/High/Highest/Ultimate are
-# prefixes of one another, so every one must resolve to ITSELF and no other.
 for (row, col), (gives, _c) in sorted(m.CONVERT_TO_CORE.items()):
     got = m.convert_cell_for(gives)
     check(got == (row, col), f"{gives} resolves to its own cell, got {got}")
@@ -190,7 +118,6 @@ for (row, col), (gives, _c) in sorted(m.CONVERT_TO_CORE.items()):
             check(m.convert_cell_for(other) != (row, col),
                   f"{other} does not resolve to r{row}c{col}, which is {gives}")
 
-# The safety property stated as a property, over everything tried above.
 probes = []
 for _, (gives, costs) in m.CONVERT_TO_CORE.items():
     probes += variants(gives) + variants(costs)
@@ -201,13 +128,10 @@ for text in probes:
           f"convert_cell_for({text!r}) never returns a CORE->SET cell")
 
 
-# ==========================================================================
 section("dialog identity: what it says vs what was meant")
-# ==========================================================================
 
 def detail_for(row, col, *, qty=1, qty_max=55, held=None, cost=1,
                item=None, price=None):
-    """A Purchase Item dialog reading, shaped like the real one."""
     gives, costs = m.CONVERT_TO_CORE[(row, col)]
     held = qty_max if held is None else held
     return {
@@ -220,7 +144,6 @@ def detail_for(row, col, *, qty=1, qty_max=55, held=None, cost=1,
     }
 
 
-# Every dialog against every cell: it may match its own and nothing else.
 for (row, col) in sorted(m.CONVERT_TO_CORE):
     d = detail_for(row, col)
     for r2 in range(1, 5):
@@ -231,8 +154,6 @@ for (row, col) in sorted(m.CONVERT_TO_CORE):
                   f"dialog for r{row}c{col} vs cell r{r2}c{c2}: "
                   f"expected {want}, got {got}")
 
-# The dangerous confusion specifically: the cell one row up names the same
-# item and is the reverse trade. It must not match on the name alone.
 for col in range(1, 6):
     d = detail_for(2, col)
     check(not m.mass_purchase_matches(1, col, d),
@@ -241,8 +162,6 @@ for col in range(1, 6):
     check(not m.mass_purchase_matches(3, col, d),
           f"an Upgrade dialog does not match the CORE->SET cell r3c{col}")
 
-# A dialog naming the right Core but the wrong payment is not a match. This is
-# the case the tooltip check alone would wave through.
 for (row, col), (gives, costs) in sorted(m.CONVERT_TO_CORE.items()):
     wrong = detail_for(row, col, price="Something Else 5 / 1")
     check(not m.mass_purchase_matches(row, col, wrong),
@@ -254,22 +173,18 @@ for (row, col), (gives, costs) in sorted(m.CONVERT_TO_CORE.items()):
     check(not m.mass_purchase_matches(row, col, blank),
           f"r{row}c{col} rejects an empty dialog reading")
 
-# An unmapped cell matches nothing, whatever it is handed.
 for bad in [(0, 0), (5, 1), (2, 0), (2, 6), (1, 3), (3, 3)]:
     check(not m.mass_purchase_matches(bad[0], bad[1], detail_for(2, 3)),
           f"cell {bad} is not a SET->CORE cell and matches nothing")
 
 
-# ==========================================================================
 section("price-line parsing")
-# ==========================================================================
 
 class FakeShot:
-    """Stands in for a screenshot; the readers are patched, not the pixels."""
+    pass
 
 
 def parse_price(text):
-    """Run mass_purchase_details' parsing over one price line."""
     saved_words, saved_number = m.find_words, m.read_number
     try:
         m.find_words = lambda s, r, c=40.0: (
@@ -301,21 +216,12 @@ for text, held, cost in PRICE_CASES:
     check(d["price_line"] == text, f"{text!r} round-trips as the price line")
 
 
-# ==========================================================================
 section("the sequence: a simulated vendor that records every click")
-# ==========================================================================
 
 class Sim:
-    """A stand-in game. Records actions; nothing reaches the real screen.
 
-    Defaults describe a healthy vendor holding 55 Force Core Set (High) --
-    exactly the state captured on 2026-08-07. Each scenario overrides only the
-    one thing it is about, so a test that breaks the tooltip is visibly a test
-    about the tooltip.
-    """
-
-    OK = m.Word("OK", 1273, 902, 1297, 916, 96.0)          # centre (1285, 909)
-    CANCEL = m.Word("Cancel", 1438, 901, 1496, 917, 96.0)  # centre (1467, 909)
+    OK = m.Word("OK", 1273, 902, 1297, 916, 96.0)
+    CANCEL = m.Word("Cancel", 1438, 901, 1496, 917, 96.0)
 
     def __init__(self, cell=(2, 3), *, shop_open=True, dialog=True,
                  dialog_cell=None, qty_max=55,
@@ -331,7 +237,7 @@ class Sim:
         self.qty_max = qty_max
         self.dialog_cost = dialog_cost
         self.qty_max_readable = qty_max_readable
-        self.typing = typing   # works | ignored | wrong | over | unreadable
+        self.typing = typing
         self.focus = focus
         self.inv_open = inv_open
         self.inv_tab = inv_tab
@@ -341,12 +247,11 @@ class Sim:
         self.free_slots = free_slots
 
         self.log = []
-        self.field = 1                # what the QTY field shows
+        self.field = 1
         self.dialog_up = False
         self.purchased = None
         self.clock = 1000.0
 
-    # -- the patched surface -------------------------------------------------
     def focus_game(self, settle=0.35):
         self.log.append(("focus",))
         return self.focus
@@ -355,8 +260,6 @@ class Sim:
         return self.shop_open
 
     def active_vendor_tab(self, source=None):
-        # The conversion grid only exists on the Dungeon tab; on any other page
-        # these coordinates point at something else entirely.
         return m.CONVERT_VENDOR_TAB if self.shop_open else None
 
     def grab(self):
@@ -373,9 +276,6 @@ class Sim:
         return True
 
     def _landing_slots(self, n):
-        """The first `n` free slots, which is where Cores go. They do not
-        stack, so each one takes a slot of its own -- that is what makes the
-        count at the end a measurement rather than an inference."""
         out = []
         for r in range(1, m.GRID_SIZE + 1):
             for c in range(1, m.GRID_SIZE + 1):
@@ -434,11 +334,9 @@ class Sim:
             self.field = min(value, self.qty_max) + 1
             return
         if self.typing == "over":
-            # MORE than was asked for. Not a clamp -- a clamp can only ever
-            # reduce -- so the field holds something this round did not type.
             self.field = value + 5
             return
-        self.field = min(value, self.qty_max)   # the game clamps
+        self.field = min(value, self.qty_max)
 
     def press_escape(self, settle=0.5):
         self.log.append(("escape",))
@@ -454,7 +352,6 @@ class Sim:
         self.clock += 0.01
         return self.clock
 
-    # -- helpers -------------------------------------------------------------
     def clicks(self):
         return [(a[1], a[2]) for a in self.log if a[0] in ("click", "alt_click")]
 
@@ -466,7 +363,6 @@ class Sim:
 
 
 def run(sim, name="Force Core(High)", quantity=250, execute=True):
-    """Drive the real convert_cores against a Sim. Returns (result, error)."""
     patches = {
         "focus_game": sim.focus_game,
         "vendor_shop_open": sim.vendor_shop_open,
@@ -500,7 +396,6 @@ def run(sim, name="Force Core(High)", quantity=250, execute=True):
             setattr(m, k, v)
 
 
-# -- the healthy path ------------------------------------------------------
 sim = Sim()
 result, err = run(sim)
 check(err is None, f"a healthy vendor converts without aborting ({err})")
@@ -528,12 +423,7 @@ check(len([a for a in sim.log[:ok_at] if a[0] == "details"]) >= 2,
 check(sim.log[-1][0] in ("park", "tooltip"),
       "the cursor is parked at the end")
 
-# -- the Shop window closing part-way through ------------------------------
-# A check is only true at the instant it is taken, and between the opening
-# check and the click there is a hover plus up to four OCR passes -- seconds in
-# which the window can be closed by hand, by a death, or by a stray Escape.
 class ShopCloses(Sim):
-    """The vendor window is open for the first `n` checks, then gone."""
 
     def __init__(self, *a, after=1, **kw):
         Sim.__init__(self, *a, **kw)
@@ -545,7 +435,7 @@ class ShopCloses(Sim):
         return self.checks <= self.after
 
 
-s = ShopCloses(after=1)          # open at the top, closed by the click
+s = ShopCloses(after=1)
 res, err = run(s)
 check(err is not None, "the shop closing before the Alt+click aborts")
 check(not [a for a in s.log if a[0] == "alt_click"],
@@ -556,7 +446,7 @@ check(s.checks >= 2,
       f"the window is re-checked at the click, not just at the top "
       f"(only {s.checks} check(s))")
 
-s = ShopCloses(after=2)          # open through the Alt+click, gone by OK
+s = ShopCloses(after=2)
 res, err = run(s)
 check(err is not None, "the shop closing before OK aborts")
 check(not s.bought(), "the shop closing before OK means OK is NEVER clicked")
@@ -566,7 +456,6 @@ check(s.checks >= 3,
       f"the window is checked again before the confirm click "
       f"(only {s.checks} check(s))")
 
-# The healthy path must check it at least three times: entry, click, confirm.
 s = Sim()
 saved = s.vendor_shop_open
 s.checks = 0
@@ -583,9 +472,7 @@ check(s.checks >= 3,
       f"a healthy run checks the Shop window at least 3 times, got {s.checks}")
 
 
-# -- a dialog left open before we start ------------------------------------
 class StaleDialog(Sim):
-    """A Purchase Item dialog is already up when convert_cores is called."""
 
     def __init__(self, *a, closes=True, **kw):
         Sim.__init__(self, *a, **kw)
@@ -595,7 +482,7 @@ class StaleDialog(Sim):
     def click(self, x, y, settle=0.15):
         if not self.closes and (x, y) == self.CANCEL.centre:
             self.log.append(("click", x, y))
-            return                      # a modal that will not go away
+            return
         Sim.click(self, x, y, settle)
 
     def press_escape(self, settle=0.5):
@@ -620,16 +507,12 @@ check(err is not None, "a modal that will not close aborts")
 check(not [a for a in s.log if a[0] == "alt_click"],
       "a modal that will not close means the grid is NEVER clicked")
 
-# -- refusals: nothing may be clicked at all -------------------------------
 NO_CLICK_CASES = [
     ("the vendor Shop window is not open", Sim(shop_open=False), "Force Core(High)"),
     ("Cabal will not come to the foreground", Sim(focus=False), "Force Core(High)"),
     ("the name is a Set, not a Core", Sim(), "Force Core Set (High)"),
     ("the name is not in the grid", Sim(), "Siena's Unbinding Stone"),
     ("the name is empty", Sim(), ""),
-    # The inventory gate. Tab 4 holds the Sets, (1,1) is the stack, (1,2) is
-    # where the Cores land -- and none of the slot checks mean anything on the
-    # wrong tab, so the tab is verified before they are consulted.
     ("the Inventory panel is closed", Sim(inv_open=False), "Force Core(High)"),
     ("the Inventory is on the wrong tab", Sim(inv_tab=2), "Force Core(High)"),
     ("the active tab cannot be identified", Sim(inv_tab=None),
@@ -645,7 +528,6 @@ for label, s, name in NO_CLICK_CASES:
     check(not s.clicks(), f"{label}: NOTHING is clicked ({s.clicks()})")
     check(not s.bought(), f"{label}: nothing is bought")
 
-# -- refusals after the dialog is open: cancel, never confirm ---------------
 CANCEL_CASES = [
     ("the dialog names a different Core", Sim(dialog_cell=(2, 4))),
     ("the dialog names the Upgrade row", Sim(dialog_cell=(4, 3))),
@@ -661,43 +543,23 @@ for label, s in CANCEL_CASES:
           f"{label}: the dialog is closed rather than left up")
     check(not s.dialog_up, f"{label}: no modal is left covering the shop")
 
-# ---- THE QUANTITY IS TYPED BLINDLY AND THE DIALOG CLAMPS IT --------------
-#
-# These three used to cancel the round. They no longer do, and that is the
-# point: the QTY maximum is a right-aligned number in a 70px box, and a
-# single-digit maximum does not read at any confidence. On 2026-08-11 an
-# unreadable "4" cancelled every conversion of 4 Force Core Set (Ultimate)
-# that were already paid for; those Sets then blocked the work tab, every
-# cycle failed, and the run died after 37 minutes.
-#
-# So the maximum is advisory, the quantity is typed blindly, and whatever the
-# field settles at IS the round -- measured, not predicted. Converting fewer
-# than asked costs one more round of a loop that already repeats until every
-# Set is listed.
 CLAMP_CASES = [
     ("the QTY maximum cannot be read", Sim(qty_max_readable=False), 55),
     ("the typed quantity never lands", Sim(typing="ignored"), 1),
     ("the field settles somewhere lower", Sim(typing="wrong"), 56),
-    # Unreadable AFTER typing is the second half of the same wedge: the value
-    # field settled on a lone "4" that would not read, so requiring it just
-    # cancelled the round one line further down than before.
     ("the field cannot be read back", Sim(typing="unreadable"), None),
 ]
 for label, s, want in CLAMP_CASES:
     res, err = run(s)
     check(err is None, f"{label}: the round proceeds ({err!r})")
-    # `purchased`, not `bought()` -- the latter is a bool, and `True == 1`
-    # would have let the "never lands" case pass for the wrong reason.
     check(s.purchased == want,
           f"{label}: confirms what the field shows -- {want}, got {s.purchased}")
     check(not s.dialog_up, f"{label}: no modal is left covering the shop")
 
-# The dialog-identity refusals must bail before typing anything at all.
 for label, s in CANCEL_CASES[:3]:
     check(not [a for a in s.log if a[0] == "type"],
           f"{label}: refuses before typing a quantity")
 
-# -- the dialog never appears ----------------------------------------------
 s = Sim(dialog=False)
 res, err = run(s)
 check(err is not None, "no dialog after Alt+click: aborts")
@@ -706,7 +568,6 @@ check(("escape",) in s.log, "no dialog after Alt+click: Escape is pressed")
 check(s.clicks() == [m.convert_cell_point(2, 3)],
       f"no dialog: the Alt+click is the only input ({s.clicks()})")
 
-# -- the reverse-direction cells are unreachable ---------------------------
 every_sim = [Sim(), Sim(shop_open=False), Sim(dialog=False),
              Sim(dialog_cell=(2, 4)), Sim(typing="ignored"), Sim(qty_max=0),
              Sim(dialog_cell=(4, 3)), Sim(dialog_cost=2),
@@ -719,7 +580,6 @@ for i, s in enumerate(every_sim):
     check(not hit,
           f"scenario {i}: no click ever lands on a CORE->SET cell ({hit})")
 
-# Asking for a Core by name can only ever click that Core's own cell.
 for (row, col), (gives, _costs) in sorted(m.CONVERT_TO_CORE.items()):
     s = Sim(cell=(row, col))
     run(s, name=gives)
@@ -730,14 +590,8 @@ for (row, col), (gives, _costs) in sorted(m.CONVERT_TO_CORE.items()):
     check(not others, f"{gives} clicks no other grid cell ({others})")
 
 
-# ==========================================================================
 section("quantity: typed, clamped, verified")
-# ==========================================================================
 
-# The rule under test: whatever is typed, the game clamps to the maximum, and
-# the number the script REPORTS must be the clamped one -- not the number it
-# asked for. Reporting the request instead of the result is how the sales
-# tally once claimed 2.5 billion Alz.
 QUANTITIES = [1, 2, 7, 13, 55, 100, 249, 250, 251, 999, 9999]
 LIMITS = [1, 2, 3, 7, 13, 25, 54, 55, 56, 100, 249, 250, 251, 400, 1000]
 for q in QUANTITIES:
@@ -745,9 +599,6 @@ for q in QUANTITIES:
         s = Sim(qty_max=limit)
         res, err = run(s, quantity=q)
         want = min(q, limit)
-        # One tab holds GRID_SIZE^2 slots, one of which is the Set stack, so
-        # only this many Cores can be COUNTED here; the rest land on a later
-        # tab. That ceiling is the game's, not the script's.
         countable = min(want, m.GRID_SIZE * m.GRID_SIZE - 1)
         check(err is None, f"qty={q} limit={limit}: no abort ({err})")
         check(res is not None and res["expected"] == want,
@@ -764,8 +615,6 @@ for q in QUANTITIES:
         check(s.field == want,
               f"qty={q} limit={limit}: the field settles at {want}")
 
-# The typed value is always the caller's number, never the clamp. This is what
-# lets CONVERT_QUANTITY stay a flat 250 instead of reading the panel first.
 for limit in (1, 7, 55, 250, 900):
     s = Sim(qty_max=limit)
     run(s, quantity=m.CONVERT_QUANTITY)
@@ -773,7 +622,6 @@ for limit in (1, 7, 55, 250, 900):
     check(typed == [250],
           f"limit={limit}: 250 is typed verbatim, got {typed}")
 
-# A default call uses CONVERT_QUANTITY.
 s = Sim(qty_max=999)
 res, _ = run(s, quantity=m.CONVERT_QUANTITY)
 check(res["expected"] == 250, "a default call asks for a full 250 when held")
@@ -783,14 +631,8 @@ check(res["countable"] == m.GRID_SIZE * m.GRID_SIZE - 1,
 check(res["verified"], "and it verifies against what it could count")
 
 
-# ==========================================================================
 section("the after-check: counting what actually arrived")
-# ==========================================================================
 
-# Cores do not stack, so the number that arrived is the number of NEW slots.
-# That is a measurement, not an inference from a before/after subtraction, and
-# it cannot be defeated by the colour the vendor draws its text in -- which is
-# what broke the tooltip this replaced.
 s = Sim()
 res, err = run(s)
 check(err is None, f"a healthy conversion does not raise ({err})")
@@ -805,9 +647,6 @@ check(res["converted"] == 0, f"nothing arrived, got {res['converted']}")
 check(res["landed"] is False, "and the landing slot is still empty")
 check(not res["verified"], "so nothing is claimed")
 
-# The game clamps to the free space available, and counting slots gets that
-# right for free -- where a subtraction of held counts would have reported the
-# number ASKED FOR and been quietly wrong.
 s = Sim(qty_max=55, free_slots=25)
 res, err = run(s)
 check(err is None, "a partial conversion does not raise")
@@ -817,7 +656,6 @@ check(res["expected"] == 55, "while 55 is what it asked for")
 check(not res["verified"],
       "the gap between asked and arrived is reported, not hidden")
 
-# Across a range of sizes, the count tracks the slots and nothing else.
 for size in (1, 2, 7, 13, 36, 55, 63):
     s = Sim(qty_max=size)
     res, _ = run(s)
@@ -825,16 +663,13 @@ for size in (1, 2, 7, 13, 36, 55, 63):
           f"limit {size}: {size} slots filled, got {res['converted']}")
     check(res["verified"], f"limit {size}: verified")
 
-# The Sets' own slot is never counted as an arrival: it was occupied before.
 s = Sim(qty_max=3)
 res, _ = run(s)
 check(res["converted"] == 3,
       f"the pre-existing Set stack is not counted, got {res['converted']}")
 
 
-# ==========================================================================
 section("execute=False looks but does not touch")
-# ==========================================================================
 
 for (row, col), (gives, _c) in sorted(m.CONVERT_TO_CORE.items()):
     s = Sim(cell=(row, col))
@@ -846,33 +681,15 @@ for (row, col), (gives, _c) in sorted(m.CONVERT_TO_CORE.items()):
           f"{res['would_convert']}")
     check(res["converted"] == 0, f"{gives}: reports converting nothing")
 
-# It still refuses the things that are wrong, rather than reporting a plan for
-# a trade it would never make.
 for label, s, name in NO_CLICK_CASES[:6]:
     res, err = run(s, name=name, execute=False)
     check(err is not None, f"execute=False still refuses when {label}")
 
 
-# ==========================================================================
 section("alt_click refuses on its own, without help from its caller")
-# ==========================================================================
 
-# The guard lives in the PRIMITIVE, not in the caller.
-#
-# Alt+click exists for one thing: the SET/CORE grid, whose coordinates sit low
-# and left. With no vendor window there that is bare ground, and a click on the
-# ground is click-to-move -- the character walks off, and the NPC every other
-# part of this file looks for goes with it.
-#
-# It happened. A diagnostic script PRINTED vendor_shop_open() and clicked
-# regardless; convert_cores checks it twice and would have refused, but a guard
-# a caller can skip is not a guard. Same lesson as NO_INPUT, and as the
-# scroll_wheel camera zoom before it.
 _saved_open = m.vendor_shop_open
 try:
-    # NO_INPUT stays ON throughout. alt_click checks this precondition BEFORE
-    # its suppression early-return precisely so it can be tested with input
-    # suppressed -- see the comment there.
     m.vendor_shop_open = lambda source=None: False
     refused = False
     try:
@@ -885,8 +702,6 @@ try:
           "alt_click refuses when the vendor Shop is shut, even though the "
           "caller never asked it to check")
 
-    # And it refuses BEFORE moving the cursor: a move alone is harmless, but
-    # the refusal has to come from the state, not from the click failing.
     for point in [m.convert_cell_point(2, 3), m.convert_cell_point(4, 1),
                   (10, 10), (2000, 1300)]:
         raised = False
@@ -898,8 +713,6 @@ try:
             raised = False
         check(raised, f"alt_click at {point} is refused with the shop shut")
 
-    # With the shop open it does NOT refuse -- the guard must not block the
-    # ordinary work it exists to allow.
     m.vendor_shop_open = lambda source=None: True
     allowed = True
     try:
@@ -911,11 +724,8 @@ finally:
     m.vendor_shop_open = _saved_open
 
 
-# ==========================================================================
 section("golden frame (skipped if the capture is not present)")
-# ==========================================================================
 
-# Gitignored: unit_tests/corpus/*.png. The frame is a live session.
 GOLDEN = _ROOT / "unit_tests" / "corpus" / "convert_dialog_force_high.png"
 if GOLDEN.exists():
     from PIL import Image
@@ -928,11 +738,6 @@ if GOLDEN.exists():
     check(buttons is not None, "the Purchase Item dialog is recognised")
     if buttons:
         ok, cancel = buttons
-        # Within a few pixels, not exactly. This is an OCR centroid, and it
-        # moves by a pixel when the crop it was read from changes -- which it
-        # did when the buttons were given their own tighter region. A click
-        # tolerates that; an equality assertion does not, and would fail for a
-        # reason that has nothing to do with correctness.
         def near(got, want, slack=4):
             return (abs(got[0] - want[0]) <= slack
                     and abs(got[1] - want[1]) <= slack)
@@ -966,13 +771,6 @@ else:
     print(f"  (no golden frame at {GOLDEN}; image checks skipped)")
     skipped.append("golden frame at {GOLDEN}")
 
-# -- the tooltip, in both colours -------------------------------------------
-# The vendor draws an affordable price in white and an unaffordable one in RED,
-# and red is the colour greyscale throws away: pure red sits at luminance ~54
-# against a panel around 30, so the line that reads at 96% in white came back
-# as 'ee'. That matters because 0 held is the ANSWER, not a fault -- it means
-# the conversion finished. Both frames are from the live run on 2026-08-07,
-# before and after converting 55 Sets.
 CORPUS = _ROOT / "unit_tests" / "corpus"
 TIP_FRAMES = [
     (CORPUS / "convert_tip_held55.png", 55, "white"),
@@ -999,8 +797,6 @@ if all(p.exists() for p, _, _ in TIP_FRAMES):
         check(not m._names_agree(line, "Force Core Set (Highest)"),
               f"{path.name}: and is NOT taken for the Highest grade")
 
-    # The red pass must not be reached on a frame the normal pass can read, and
-    # vice versa: each colour is legible to exactly one of them.
     shot = _Img.open(CORPUS / "convert_tip_held55.png")
     _, held, _ = m._price_from_lines(m._tooltip_lines(shot, m.CONVERT_TIP_REGION))
     check(held == 55, "the white line needs no red pass at all")
@@ -1013,10 +809,6 @@ else:
     print("  (no tooltip frames in the corpus; colour checks skipped)")
     skipped.append("tooltip frames in the corpus")
 
-# -- the inventory readers, on real frames ----------------------------------
-# Ground truth read off the tab strip by eye: the selected tab is drawn RAISED.
-# Converting 55 Sets left tab II with 56 items (the 55 new Cores plus one that
-# was already there) filling rows 1-7 solid, and row 8 empty.
 INV_FRAMES = [
     (CORPUS / "convert_tip_held0.png", 2, "after converting 55"),
     (CORPUS / "convert_dialog_force_high.png", 1, "before converting"),
@@ -1034,10 +826,6 @@ if all(p.exists() for p, _, _ in INV_FRAMES):
               f"{path.name} ({when}): active tab reads {want_tab}, "
               f"got {got_tab}")
 
-    # The tab test must not merely be right, it must be right by a MARGIN.
-    # Reading the numerals instead of the raised edge produced a confident 8
-    # for a frame showing tab I -- and select_inventory_tab treats a confident
-    # answer as "already on the right tab" and skips the click.
     for path, want_tab, _when in INV_FRAMES:
         shot = _Img2.open(path)
         origin = m.inventory_origin(shot)
@@ -1054,10 +842,6 @@ if all(p.exists() for p, _, _ in INV_FRAMES):
               f"{path.name}: the active tab clears the median by {margin:.1f}, "
               f"comfortably past the {m.TAB_ACTIVE_MARGIN} bar")
 
-    # The conversion's own result, read as pixels: 55 Cores arrived, so rows
-    # 1-7 are solid and row 8 is bare. Nothing here asks what the items ARE --
-    # that is the point, since the check has to work for an item it has never
-    # seen.
     shot = _Img2.open(CORPUS / "convert_tip_held0.png")
     origin = m.inventory_origin(shot)
     filled = set(m.occupied_slots(shot, origin))
@@ -1071,9 +855,6 @@ if all(p.exists() for p, _, _ in INV_FRAMES):
     check(m.CONVERT_CORE_SLOT in filled,
           f"the landing slot {m.CONVERT_CORE_SLOT} holds the Cores")
 
-    # An empty slot and a full one must not sit near the threshold: if they do,
-    # the check passes today and flakes on the next item that happens to be
-    # dark.
     def spread(im, org, r, c):
         cx, cy = m.slot_centre_at(org, r, c)
         cell = im.crop((cx - m.SLOT_INSET, cy - m.SLOT_INSET,
@@ -1097,11 +878,6 @@ else:
     print("  (no inventory frames in the corpus; slot checks skipped)")
     skipped.append("inventory frames in the corpus")
 
-# -- an inventory slot's tooltip, which is ORANGE on a translucent panel -----
-# The title is the only line carrying the GRADE, and greyscale loses it: a live
-# hover of 36 x Force Core Set (High) read as "Force Core", dropping exactly
-# the part that separates High from Highest. The warm-colour pass is what
-# recovers it, and this frame is that hover.
 SLOT_TIP = CORPUS / "slot_tip_force_set_high.png"
 if SLOT_TIP.exists():
     from PIL import Image as _Img3
@@ -1128,10 +904,6 @@ if SLOT_TIP.exists():
                   for l in warm_lines),
           "nor for any other grade")
 
-    # The region has to actually contain the tooltip. A slot tooltip renders to
-    # the LEFT of the panel; reading it through CONVERT_TIP_REGION, which
-    # covers the shop grid in the opposite corner, returned fragments of the
-    # game world and refused a conversion whose Sets were sitting in the slot.
     wrong = m._tooltip_lines(shot, m.CONVERT_TIP_REGION)
     check(not any(m._names_agree(l, "Force Core Set (High)") for l in wrong),
           "the shop grid's tooltip region does not see an inventory tooltip")
@@ -1142,9 +914,6 @@ else:
     print("  (no slot tooltip frame in the corpus; title checks skipped)")
     skipped.append("slot tooltip frame in the corpus")
 
-# The conversion tab and the relist work tab are the same tab. That is a real
-# coupling -- require_empty_work_tab() refuses to start a relist run while tab
-# 4 holds anything -- so it is asserted here rather than left to drift.
 check(m.CONVERT_INVENTORY_TAB == m.WORK_TAB,
       f"the conversion tab ({m.CONVERT_INVENTORY_TAB}) is the work tab "
       f"({m.WORK_TAB})")
@@ -1154,11 +923,7 @@ for slot in (m.CONVERT_SET_SLOT, m.CONVERT_CORE_SLOT):
     check(1 <= slot[0] <= m.GRID_SIZE and 1 <= slot[1] <= m.GRID_SIZE,
           f"slot {slot} is inside the {m.GRID_SIZE}x{m.GRID_SIZE} grid")
 
-# Leading decoration must not become a letter.
 
-# Leading decoration must not become a letter. _floor_key folds '[' onto 'i',
-# so a bracket picked up beside the name survives as part of the key unless it
-# is stripped first -- which is exactly what the red pass produces.
 for noise in ["[ ", "* ", "|", "• ", "  ", "] [", "~ "]:
     check(m._names_agree(f"{noise}Force Core Set (High) 0 / 1",
                          "Force Core Set (High)"),
@@ -1167,10 +932,6 @@ for noise in ["[ ", "* ", "|", "• ", "  ", "] [", "~ "]:
                              "Force Core Set (Highest)"),
           f"{noise!r} before the name still does not match Highest")
 
-# The other direction, which a positive-only test cannot see: a reader stuck at
-# True passes every check above. These frames are the Agent Shop and the
-# Purchase tab -- real screens, none of them the NPC vendor -- so the window
-# check has to say no to them.
 NEGATIVE = sorted((_ROOT / "unit_tests" / "corpus").glob("run_*.png"))[:4]
 NEGATIVE += sorted((_ROOT / "unit_tests" / "corpus" / "buying").glob("*.png"))[:2]
 if NEGATIVE:
@@ -1186,20 +947,8 @@ else:
     skipped.append("non-vendor frames in the corpus")
 
 
-# ==========================================================================
 section("the listings scroll never reaches the Purchase tab")
-# ==========================================================================
 
-# The wheel is the one input that damages state the script cannot see, and it
-# had two guards: "is the Trade window up" and "is an opaque panel covering the
-# area". The PURCHASE tab satisfies both, so a listings-table scroll could fire
-# while the buy tab was showing -- which scrolls the OFFERS.
-#
-# That is worse than wasted motion. The entire buying design rests on row 1
-# being the cheapest listing; move the offers and row 1 becomes whatever is at
-# the top now, so "always buy row 1" silently starts meaning something else.
-# Seen live on 2026-08-07: a restock left the Purchase tab showing and the next
-# capacity check enumerated the shop.
 _saved_scroll = (m.trade_window_open, m.panel_covers_trade_area,
                  m.register_tab_open, m.record)
 try:
@@ -1216,7 +965,6 @@ try:
           "but NOT on the Purchase tab -- that wheel would move the offers "
           "and row 1 would stop meaning the cheapest one")
 
-    # The older guard still holds: no window at all is still a camera zoom.
     m.trade_window_open = lambda src=None: False
     m.register_tab_open = lambda src=None: True
     check(m.table_scrollable(verbose=False) is False,
@@ -1232,15 +980,10 @@ finally:
      m.record) = _saved_scroll
 
 
-# ==========================================================================
 print(f"\n{'=' * 60}")
 print(f"convert_cores: {count} checks, {len(fails)} failed"
       + (f", {len(skipped)} IMAGE SECTION(S) SKIPPED" if skipped else ""))
 if skipped:
-    # Named, not just counted. These are the only checks in the file that
-    # touch real pixels, and a mutation to the tooltip geometry is caught by
-    # nothing else -- so a green run without them is a weaker claim, and it
-    # should say so rather than read the same as a full one.
     print("  no corpus frames for: " + "; ".join(skipped))
     print("  -> the OCR geometry was NOT exercised. Run "
           "unit_tests/capture_goldens.py to record frames.")

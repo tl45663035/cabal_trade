@@ -1,18 +1,13 @@
-"""get_price_diff: row 1 always, per unit always, None never 0.
-
-DRIVES NOTHING. Every module that would click is replaced before the function
-under test can reach it.
-"""
 import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT / "src"))
 
-from cabal import geometry as geo         # noqa: E402
-from cabal.layout import Layout           # noqa: E402
-from cabal.purchase import Offer          # noqa: E402
-import get_price_diff as gpd              # noqa: E402
+from cabal import geometry as geo
+from cabal.layout import Layout
+from cabal.purchase import Offer
+import get_price_diff as gpd
 
 PASS = FAIL = 0
 
@@ -41,7 +36,6 @@ def offer(row, name, price, pack, available=1):
 
 
 class Game:
-    """Stands in for every cabal.* call get_price_diff makes."""
 
     def __init__(self, results, window_open=True, register=False,
                  purchase_tab=True, sort=True, can_open=False,
@@ -58,10 +52,6 @@ class Game:
 
     def __enter__(self):
         patches = {
-            # The layout is cached across calls in the real module, so the
-            # test replaces the accessor rather than the calibration beneath
-            # it -- otherwise the second test in a run would reuse the first
-            # test's layout.
             (gpd, "_current_layout"): lambda *a, **k: (self.layout, None),
             (gpd.shop, "read_state"): self._state,
             (gpd.shop, "trade_window_open"): lambda *a, **k: self.window_open,

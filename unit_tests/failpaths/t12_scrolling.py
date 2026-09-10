@@ -1,24 +1,9 @@
-﻿"""Reaching listings past the visible ten.
-
-The shop holds thirty; the table shows ten. A sale sitting at row 25 was never
-collected, because nothing in the loop could see it.
-
-The two things that must both hold:
-
-  * a batch asking for rows past ten reaches the RIGHT listing, by identity,
-    after the view has been scrolled -- and refuses rather than guessing when
-    it cannot tell which listing is which,
-  * a batch asking only for rows 1-10 behaves EXACTLY as before: no
-    enumeration, no scrolling, one table read. That path works and must not
-    pay for this one.
-"""
-from harness import Harness, check, make_row, run, section, summary
+﻿from harness import Harness, check, make_row, run, section, summary
 
 import trade
 
 
 def item(n, name=None, action="change", price=None, qty=None):
-    """One shop listing. Distinct by default, so identity is unambiguous."""
     return {"name": name or f"Item {n:02d}",
             "action": action,
             "price": price if price is not None else 100_000 + n * 1_000,
@@ -26,7 +11,6 @@ def item(n, name=None, action="change", price=None, qty=None):
 
 
 class ScrollShop(Harness):
-    """A Harness whose shop is longer than the screen and really scrolls."""
 
     def __init__(self, shop, **kw):
         self.shop = [dict(s) for s in shop]
@@ -52,7 +36,6 @@ class ScrollShop(Harness):
         return list(self.rows)
 
     def _scroll(self, x, y, notches, **kwargs):
-        # Negative notches scroll DOWN, and the list clamps at both ends.
         self.log("scroll_wheel", x, y, notches)
         highest = max(0, len(self.shop) - trade.EXPECTED_ROWS)
         self.view_top = max(0, min(highest, self.view_top - notches))
@@ -71,13 +54,11 @@ def shop_of(n=30, **overrides):
 
 
 def targeted(h):
-    """The names relist() was actually asked to act on."""
     return [kw["expect"].name for name, _args, kw in h.calls
             if name == "relist_call" and kw.get("expect") is not None]
 
 
 def spy(h):
-    """Patch relist() to record what it was aimed at, and succeed."""
     def fake(row, *a, expect=None, **kw):
         h.log("relist_call", row, expect=expect)
         return trade.RELISTED
@@ -118,7 +99,6 @@ with h:
 
 section("the sale at the bottom of the shop is now reachable")
 
-# The concrete case from the live shop: 'Sold 1' with no Receive on screen.
 h = ScrollShop(shop_of(30, **{"28": {"action": "receive"}}))
 with h:
     h.patch("relist", spy(h))
@@ -164,8 +144,6 @@ for size in (4, 12, 25, 30):
               targeted(h) == want,
               f"got {len(targeted(h))} of {size}: {targeted(h)}")
 
-# The point of 'all': the count is never stated, so a shop that changes size
-# between runs needs no edit.
 h = ScrollShop(shop_of(30))
 with h:
     h.patch("relist", spy(h))
@@ -173,7 +151,6 @@ with h:
     check("all: no row number was needed", len(targeted(h)) == 30,
           f"{len(targeted(h))}")
 
-# Empty slots and sold rows are part of the sweep, not gaps in it.
 h = ScrollShop(shop_of(20, **{"7": {"action": "register"},
                               "15": {"action": "receive"}}))
 with h:
@@ -206,9 +183,6 @@ check("parse_row_spec('1-3') still works",
       trade.parse_row_spec(["1-3"]) == [1, 2, 3],
       f"{trade.parse_row_spec(['1-3'])!r}")
 
-# --repeat drives run_sequence, which is where an unattended run lives. If
-# 'all' were parsed there as a row list it would be empty and relist nothing,
-# silently, for hours.
 h = ScrollShop(shop_of(14))
 with h:
     h.patch("relist", spy(h))
@@ -223,10 +197,6 @@ with h:
 
 section("--listings must survive an UNPRICED row")
 
-# The reporting half of this feature, which crashed live: --listings scrolled
-# the whole shop, enumerated all 30 rows, and then raised TypeError printing
-# them, because an empty slot has no price and the inline conditional applied a
-# width spec to None. The scroll was perfect and the output was a traceback.
 check("money() formats a real price with grouping",
       trade.money(80_000_000) == "80,000,000", f"{trade.money(80_000_000)!r}")
 check("money() renders no price as a blank marker",
@@ -242,8 +212,6 @@ check("money() renders zero, not a blank",
 check("the blank marker is caller-chosen",
       trade.money(None, blank="unread") == "unread", "")
 
-# Every row the enumerator can produce must format. An empty slot and a
-# Premium marker both arrive with price AND qty unset.
 for row in (make_row(1, "(empty)", action="register", price=None, qty=None),
             make_row(2, "Premium Exclusive Slot", action="register",
                      price=None, qty=None),
@@ -257,9 +225,6 @@ for row in (make_row(1, "(empty)", action="register", price=None, qty=None),
 
 section("an indistinguishable shop is refused rather than guessed at")
 
-# Every listing identical: measure_shift cannot pin the offset down, so the
-# position of anything past the first screen is unknowable. Refusing is the
-# only safe answer -- acting would cancel an arbitrary stack.
 same = [item(i, name="Force Core(High)", price=210_000, qty=217)
         for i in range(1, 31)]
 h = ScrollShop(same)

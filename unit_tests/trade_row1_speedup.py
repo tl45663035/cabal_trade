@@ -1,18 +1,3 @@
-"""trade.py BEFORE vs AFTER the row-1 change, live, one iteration.
-
-DRIVES THE GAME. Runs the real margin gate against the real market. Buys
-nothing -- the gate only searches and reads.
-
-BOTH VERSIONS IN ONE PROCESS, back to back, so the market cannot drift
-between them. BEFORE is loaded from git HEAD~ (or a given ref) under a
-different module name; AFTER is the working tree.
-
-The items are walked in SEQUENCE rather than repeated, so a search that never
-ran is visible: the screen still shows the previous item and the name does not
-match. Repeating one item leaves its results on screen and hides that.
-
-    python unit_tests/trade_row1_speedup.py [git-ref-for-before]
-"""
 import importlib.util
 import json
 import os
@@ -34,7 +19,6 @@ STOP = _ROOT / "STOP"
 
 
 def load_before(ref: str):
-    """trade.py as of `ref`, imported under its own module name."""
     src = subprocess.run(["git", "show", f"{ref}:trade.py"], cwd=_ROOT,
                          capture_output=True, text=True, encoding="utf-8")
     if src.returncode != 0:
@@ -57,7 +41,6 @@ BASELINE = _ROOT / "unit_tests" / ".row1_baseline.json"
 
 
 def load_baseline(ref: str) -> "dict | None":
-    """The cached BEFORE pass for `ref`, or None."""
     if "--rebaseline" in sys.argv or not BASELINE.exists():
         return None
     try:
@@ -66,8 +49,6 @@ def load_baseline(ref: str) -> "dict | None":
         return None
     if blob.get("ref") != ref:
         return None
-    # The MARGINS are not reused, only the timings. A cached price would be
-    # stale market data presented as a live comparison.
     return {k: (v[0], v[1]) for k, v in blob.get("runs", {}).items()}
 
 
@@ -81,7 +62,6 @@ def save_baseline(ref: str, runs: dict) -> None:
 
 
 def run(module, label: str) -> dict:
-    """One pass over the sequence. Returns {item: (seconds, answer)}."""
     out = {}
     for name, set_slot, core_slot in SEQUENCE:
         if STOP.exists():
@@ -99,41 +79,23 @@ def run(module, label: str) -> dict:
 
 
 def main(ref: str = "HEAD") -> int:
-    print(__doc__)
     import trade as after
 
     print("=" * 80)
     print(f"loading BEFORE from {ref}...")
     before = load_before(ref)
 
-    # The premium key, as config.json runs it. Without this PREMIUM_ENABLED
-    # defaults False and ensure_shop_ready walks to the NPC instead, which
-    # needs the character standing next to her.
     for module in (before, after):
         module.PREMIUM_ENABLED = True
 
-    # OPEN FIRST, CALIBRATE SECOND. Calibration measures the Trade WINDOW, so
-    # there is nothing to measure until it is on screen -- and open_trade_window
-    # does not need a fitted layout to work, it falls back to finding the tab
-    # by its text.
     if not after.ensure_shop_ready(verbose=True):
         print("Could not open the Agent Shop.")
         return 2
 
-    # CALIBRATE ON THE REGISTER TAB. Half the anchors -- Selling, Expired,
-    # Sold, Total, Period, Refresh -- are the Register listing table's own
-    # furniture and simply do not exist on the Purchase tab. Calibrating there
-    # leaves the survivors bunched at the top of the window and the fit is
-    # correctly refused: "the anchors cover 791px horizontally and 100px
-    # vertically; at least 250px on BOTH axes is needed".
-    #
-    # ensure_shop_ready lands on Register when it OPENS the window, but returns
-    # early when the window is already up -- on whichever tab it was left on.
     if not after.open_trade_window(verbose=False):
         print("Could not get back to the Register tab to calibrate.")
         return 2
 
-    # One calibration, shared, so neither pays for it inside a measurement.
     if not after.calibrate(verbose=False):
         print("Could not calibrate with the shop open.")
         return 2
@@ -152,13 +114,6 @@ def main(ref: str = "HEAD") -> int:
     print("Hands off the mouse.")
     print("=" * 80)
 
-    # THE BASELINE IS CACHED. BEFORE is a fixed git ref reading the same
-    # market, and it came out 99.2s then 99.4s on consecutive runs -- 0.2%
-    # apart. Re-measuring it costs 100 seconds of clicking for a number
-    # already known, so it is measured once per ref and reused.
-    #
-    # Invalidated by the ref: a different BEFORE is a different baseline.
-    # Delete the file to force a fresh one, or pass --rebaseline.
     b = load_baseline(ref)
     if b is None:
         print(f"  no cached baseline for {ref} - measuring it once")

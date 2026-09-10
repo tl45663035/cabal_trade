@@ -1,5 +1,4 @@
-﻿"""Are the 'index stops mid-cycle' gaps missing RUN, or missing INDEX LINES?"""
-
+﻿
 import sys as _sys
 from pathlib import Path as _Path
 _ROOT = _Path(__file__).resolve().parent.parent.parent

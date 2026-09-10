@@ -1,36 +1,8 @@
-﻿"""Collecting is decided by the ACTION column, not by the quantities.
-
-From the live run of 2026-08-06 07:57, read out of the recorded table.target
-frames rather than the log's prose -- 10 of 10 retried collects looked like
-this:
-
-    before (attempt 1): row 10 'Force Core(Highest)' receive x79 @ 190,000
-    after  (attempt 2): row 10 'Force Core(Highest)' change  x79 @ 190,000
-
-"Receive" means there are proceeds waiting. It does NOT mean the listing sold
-out, and the quantity column shows what is STILL on sale -- which collecting
-does not change. Only the action flips.
-
-So for a partial sale the family's quantities are byte-identical either side,
-collect_delta returns (lost=[], gained=[]), and the multiset test concluded
-"the click did not take" about a collect that had worked. Every time. The
-answer was in the same frame, in the column the check never read.
-
-Two costs, and the second is the one that bites: the poll loop waits the whole
-TABLE_READ_BUDGET for a quantity change that cannot happen (~40s per collect),
-and the attempt is spent, so a row with any further hiccup reaches the attempts
-limit and fails outright on "Still sold on the final attempt".
-
-The multiset test is kept and still runs FIRST. It is the only thing that can
-tell a fully-sold row from a sibling shifting up into its slot, which is
-exactly the duplicate-stack trap this shop hits constantly.
-"""
-from harness import Harness, check, empty_panel, make_row, run, section, summary
+﻿from harness import Harness, check, empty_panel, make_row, run, section, summary
 
 import trade
 
 
-# The recorded pairs, verbatim from table.target. (row, item, qty, price)
 LIVE = [
     (10, "Force Core(Highest)",   79, 190_000),
     (7,  "Force Core (Ultimate)", 150, 381_615),
@@ -46,13 +18,6 @@ LIVE = [
 
 
 class Collect(Harness):
-    """A shop where clicking Receive flips the action and nothing else.
-
-    Which is what the game actually does for a partial sale, and what no test
-    modelled before: every previous collect fixture had the row vanish or its
-    quantity shrink, so the case that happens most often in production was the
-    one case never exercised.
-    """
 
     def __init__(self, table, target_row, flips=True, **kw):
         super().__init__(rows=list(table), panel=empty_panel(), **kw)
@@ -61,16 +26,9 @@ class Collect(Harness):
         self.collects = 0
 
     def _collect(self):
-        """A PARTIAL sale: the proceeds are taken, the rest stays listed.
-
-        Harness._collect removes the row outright, which is the fully-sold
-        case. That was the ONLY collect the harness could model, so the
-        outcome that dominates this shop in production had no fixture -- which
-        is the whole reason the action-column bug survived 26 suites.
-        """
         self.collects += 1
         if not self.flips:
-            return                        # the click was genuinely dropped
+            return
         row = self.rows[self.target_row - 1]
         self.rows[self.target_row - 1] = make_row(
             row.index, row.name, action="change",
@@ -78,7 +36,6 @@ class Collect(Harness):
 
 
 def shop(target_row, name, qty, price, siblings=()):
-    """A 10-row table with the target sold and optional identical siblings."""
     table = []
     for i in range(1, 11):
         if i == target_row:
@@ -93,7 +50,6 @@ def shop(target_row, name, qty, price, siblings=()):
     return table
 
 
-# ===========================================================================
 section("every recorded live case is read as collected")
 
 for row_no, name, qty, price in LIVE:
@@ -117,12 +73,8 @@ for row_no, name, qty, price in LIVE:
           outcome == trade.RELISTED, f"got {outcome!r} {exc!r}")
 
 
-# ===========================================================================
 section("it does not wait out the budget for a change that cannot come")
 
-# The old loop polled until the QUANTITIES moved. For a partial sale they never
-# do, so every collect paid the full TABLE_READ_BUDGET before giving a wrong
-# answer. The clock is virtual here, so this measures the polling, not wall time.
 h = Collect(shop(3, "Force Core(High)", 140, 210_000), 3)
 with h:
     h.patch("cancel_item", lambda *a, **k: True)
@@ -137,7 +89,6 @@ check("the collect settles well inside the read budget",
       f"action flips on the first read, so there is nothing to wait for")
 
 
-# ===========================================================================
 section("a click that genuinely did not take is still caught")
 
 h = Collect(shop(4, "Force Core(High)", 140, 210_000), 4, flips=False)
@@ -154,23 +105,13 @@ check("...and does not claim it collected",
       not h.said("went from Receive to Change"), h.out()[-400:])
 
 
-# ===========================================================================
 section("the duplicate-stack trap: a sibling shifting up is NOT my collect")
 
-# Two identical stacks. The target sells out completely, so its row vanishes
-# and the sibling shifts up into the same index -- matching on name, price AND
-# quantity. Deciding by "the row at my index now says change" would relist the
-# sibling and report the sale as a remainder.
-#
-# The multiset test runs first and sees lost=[q], so it returns SOLD_OUT before
-# the action check is ever consulted. This asserts that ordering.
 table = shop(4, "Force Core(High)", 140, 210_000, siblings=(5,))
 
 
 class SoldOut(Collect):
     def _collect(self):
-        # Fully sold: the row goes and everything below shifts up, so the
-        # identical sibling at row 5 lands on row 4.
         self.collects += 1
         remaining = [r for r in self.rows if r.index != self.target_row]
         self.rows = [make_row(i + 1, r.name, action=r.action,
@@ -193,34 +134,20 @@ check("...and it did not report a Receive->Change collect",
       not h.said("went from Receive to Change"), h.out()[-400:])
 
 
-# ===========================================================================
 section("a different listing at my index is not my collect")
 
-# The case the identity guard actually exists for, and the only one that
-# reaches it. Mutating the target's name, price or qty changes the FAMILY
-# multiset, so the multiset test fires first and collected() is never
-# consulted -- a mutation removing the guard entirely survived those three
-# checks untouched. What reaches it is the family staying identical while the
-# table reorders under the index: the target is still sold, but it has moved,
-# and another listing now sits at row 4.
-#
-# Without the guard that other listing is read as "my collect, with a
-# remainder", and gets cancelled and relisted -- a fee and a new price on a
-# stack nobody asked to touch. The same shape as the listing_family bug.
 class Reordered(Collect):
     def _collect(self):
-        self.collects += 1              # the click landed; the table moved
+        self.collects += 1
         target = self.rows[self.target_row - 1]
         rest = [r for r in self.rows if r.index != self.target_row]
         rebuilt = []
         for i, r in enumerate(rest, start=1):
             if i == self.target_row:
-                # An unrelated live listing takes the vacated index...
                 rebuilt.append(make_row(i, "Unrelated Stack",
                                         action="change", price=99_000, qty=3))
             rebuilt.append(make_row(len(rebuilt) + 1, r.name, action=r.action,
                                     price=r.price, qty=r.qty))
-        # ...while the target, still sold, survives further down the table.
         rebuilt.append(make_row(len(rebuilt) + 1, target.name,
                                 action="receive", price=target.price,
                                 qty=target.qty))
@@ -234,8 +161,6 @@ h = Reordered(list(table), 4)
 with h:
     h.patch("cancel_item", lambda *a, **k: True)
     h.patch("register_item", lambda *a, **k: True)
-    # expect=ref is how relist_rows calls this (trade.py:5735) -- the
-    # unattended path always carries the identity forward.
     outcome, exc = run(trade.relist, 4, None, None, False, 8.0, True,
                        trade.RELIST_ATTEMPTS, ref)
 
@@ -251,7 +176,6 @@ check("...it follows the target to its new row instead",
       f"got {outcome!r}: {h.out()[-600:]}")
 
 
-# ===========================================================================
 section("the identity fields are checked, not just the slot")
 
 for field, mutate in (

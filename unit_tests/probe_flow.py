@@ -1,45 +1,11 @@
-﻿"""Every coordinate and every reader the trading flow uses, against this screen.
-
-    py unit_tests\\probe_flow.py            # probe the live screen
-    py unit_tests\\probe_flow.py FRAME.png  # probe a saved frame instead
-
-READ-ONLY. It grabs the screen and runs OCR. No clicks, no keys, no scrolling,
-no window is opened or closed -- so it is safe alongside a live trading run.
-
-WHAT IT IS FOR. When something moves -- a resolution change, a patch, a dragged
-window -- the script's failure is a click landing somewhere unintended, and the
-symptom is a row that would not relist or a search that "did not run". This
-prints what every region actually reads RIGHT NOW, so the broken one is visible
-instead of inferred.
-
-It walks the whole flow in the order the script does:
-
-    0  calibration and the frame itself
-    1  favourite slots        -- where a search is clicked
-    2  purchase tab           -- what a buy reads and where Buy is
-    3  confirm dialog         -- the last thing before Alz moves
-    4  vendor and the grid    -- where a conversion is Alt+clicked
-    5  mass purchase dialog   -- the typed quantity and its limit
-    6  inventory              -- the counts the pipeline is measured by
-    7  register / relist      -- the table, the panel, the buttons
-    8  NPC                    -- the walk back
-    9  floors and thresholds  -- what the money rules currently are
-
-Each line says what was READ, not what was expected, and anything unreadable is
-called out rather than skipped. A region that is off-screen is flagged
-separately from one that is on-screen and simply empty: they have different
-causes and different fixes.
-"""
-import sys
+﻿import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-import trade as m  # noqa: E402
+import trade as m
 
-# Belt and braces: nothing here calls an input primitive, but a future edit
-# might, and this file must stay safe to run against a live session.
 m.NO_INPUT = True
 
 OK, BAD, WARN = "  ok  ", " MISS ", " warn "
@@ -68,14 +34,13 @@ def box_on_screen(box, screen) -> bool:
 def words_in(shot, box, conf=40.0) -> str:
     try:
         got = [w for w in m.find_words(shot, box, 20) if w.conf >= conf]
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return f"<error {type(exc).__name__}: {exc}>"
     return " ".join(w.text for w in sorted(got, key=lambda w: (w.centre[1] // 12,
                                                               w.centre[0])))
 
 
 def probe_box(shot, name, box, screen, conf=40.0) -> None:
-    """Report a region: where it is, whether it is on screen, what it reads."""
     if not box_on_screen(box, screen):
         note(BAD, f"{name:26} {str(box):26}", "OFF SCREEN or inverted")
         return
@@ -100,7 +65,6 @@ def main() -> int:
 
     screen = shot.size
 
-    # ---------------------------------------------------------------- 0
     head(f"0. CALIBRATION -- probing {source}")
     note(OK, "frame size", f"{screen[0]}x{screen[1]}")
     lay = m.LAYOUT
@@ -120,7 +84,6 @@ def main() -> int:
          f"{len(m._INVENTORY_FRAME_GEOMETRY)} inventory, "
          f"{len(m._CLIENT_FRAME_GEOMETRY)} client")
 
-    # what state is the game in at all?
     head("0b. WHAT IS ON SCREEN")
     states = {
         "trade window": m.trade_window_open(shot),
@@ -137,19 +100,7 @@ def main() -> int:
         note(BAD, "the client is disconnected",
              "everything below reads a frozen screen")
 
-    # ---------------------------------------------------------------- 0c
     head("0c. SERVER CLOCK -- what avoid_warlag() reads")
-    # Checked on its own because it is the one region here that is NOT part of
-    # the Trade window. It is a HUD element in the bottom-left of the SCREEN,
-    # mapped through the Trade window's frame like SHOP_WINDOW_TITLE and the
-    # vendor regions -- exact on the reference display and approximate
-    # anywhere else. On a machine that never presses N and never buys, this is
-    # the one new coordinate still worth confirming, because the war schedule
-    # silently stops working if it does not read.
-    #
-    # The crop is also narrow and Tesseract is crop-sensitive here: widening it
-    # ten pixels reads nothing at all. So a blank result means "wrong place",
-    # not "no clock".
     note(OK, "SERVER_CLOCK_REGION", f"{m.SERVER_CLOCK_REGION}")
     _clock = m.read_server_clock(source=shot)
     if _clock is not None:
@@ -167,7 +118,6 @@ def main() -> int:
              f"schedule without this. If the corner looks right on screen, the "
              f"crop needs re-measuring for this display.")
 
-    # ---------------------------------------------------------------- 1
     head("1. FAVOURITE SLOTS -- where a search is clicked")
     note(OK, "geometry", f"first={m.FAVOURITE_FIRST} pitch={m.FAVOURITE_PITCH}")
     for slot in sorted(m.FAVOURITE_SLOTS):
@@ -197,7 +147,6 @@ def main() -> int:
              f"set_behind says {behind!r}"
              + ("" if agree else "   THESE DISAGREE"))
 
-    # ---------------------------------------------------------------- 2
     head("2. PURCHASE TAB -- what a buy reads")
     note(OK, "row geometry",
          f"top={m.PURCHASE_ROW_TOP} pitch={m.PURCHASE_ROW_PITCH} "
@@ -228,7 +177,6 @@ def main() -> int:
     else:
         note(WARN, "purchase tab is not open", "rows not probed")
 
-    # ---------------------------------------------------------------- 3
     head("3. CONFIRM PURCHASE DIALOG -- the last thing before Alz moves")
     for name in ("PURCHASE_DIALOG_REGION", "PURCHASE_DLG_ITEM",
                  "PURCHASE_DLG_QTY_VALUE", "PURCHASE_DLG_QTY_MAX",
@@ -254,7 +202,6 @@ def main() -> int:
     else:
         note(WARN, "no Confirm Purchase dialog on screen", "regions only")
 
-    # ---------------------------------------------------------------- 4
     head("4. VENDOR AND THE CONVERSION GRID -- where Alt+click lands")
     probe_box(shot, "SHOP_WINDOW_TITLE", m.SHOP_WINDOW_TITLE, screen)
     probe_box(shot, "VENDOR_TAB_REGION", m.VENDOR_TAB_REGION, screen)
@@ -300,7 +247,6 @@ def main() -> int:
         note(OK if on_screen(point, screen) else BAD, f"{core[:30]:32}",
              f"cell r{cell[0]}c{cell[1]} at {point}")
 
-    # ---------------------------------------------------------------- 5
     head("5. MASS PURCHASE DIALOG -- the typed quantity")
     for name in ("CONVERT_DIALOG_REGION", "CONVERT_DLG_ITEM",
                  "CONVERT_DLG_PRICE", "CONVERT_DLG_QTY_VALUE",
@@ -320,7 +266,6 @@ def main() -> int:
     else:
         note(WARN, "no Mass Purchase dialog on screen", "regions only")
 
-    # ---------------------------------------------------------------- 6
     head("6. INVENTORY -- the counts the pipeline is measured by")
     note(OK, "work tab", f"{m.WORK_TAB}   convert tab {m.CONVERT_INVENTORY_TAB}")
     origin = m.inventory_origin(shot)
@@ -341,7 +286,6 @@ def main() -> int:
         if filled:
             note(OK, "  first few occupied", f"{filled[:8]}")
 
-    # ---------------------------------------------------------------- 7
     head("7. REGISTER / RELIST -- the table, the panel, the buttons")
     for name in ("TRADE_REGION", "REGISTER_PANEL", "PRICE_ROWS", "PRICE_FIELD",
                  "QTY_FIELD", "NET_SALES_ROWS", "SHOP_SLOT_BOX",
@@ -367,7 +311,6 @@ def main() -> int:
     else:
         note(WARN, "register tab is not open", "table not probed")
 
-    # ---------------------------------------------------------------- 8
     head("8. THE NPC -- the walk back after converting")
     probe_box(shot, "NPC_SEARCH_REGION", m.NPC_SEARCH_REGION, screen)
     where = m.find_npc(shot, retries=1)
@@ -378,7 +321,6 @@ def main() -> int:
             note(OK if on_screen(point, screen) else BAD,
                  f"  click offset ({dx:+},{dy:+})", f"{point}")
 
-    # ---------------------------------------------------------------- 9
     head("9. THE MONEY RULES currently in force")
     note(OK, "restock target (hard minimum)", f"{m.RESTOCK_TARGET}")
     note(OK, "buy maximum (soft)", f"{m.BUY_MAXIMUM}")
@@ -396,7 +338,7 @@ def main() -> int:
     try:
         m.validate_price_diff_floors()
         note(OK, "price-diff table validates", "")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         note(BAD, "PRICE_DIFF_FLOOR_BY_ITEM", str(exc))
     print(f"\n  {'item':30} {'buy?':>5} {'saving':>9} {'cost':>11} "
           f"{'catalogue':>12} {'binding floor':>14}")
@@ -411,7 +353,6 @@ def main() -> int:
     for _token, cat, _f in m.ITEM_PRICE_FLOORS:
         print(f"  {cat[:34]:34} {m.item_price_floor(cat):>14,}")
 
-    # ---------------------------------------------------------------- end
     head("SUMMARY")
     if _issues:
         print(f"{len(_issues)} region(s)/reader(s) need attention:\n")

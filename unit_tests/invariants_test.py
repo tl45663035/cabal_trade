@@ -1,24 +1,3 @@
-"""Structural and safety invariants over every row the reader has ever produced.
-
-    py unit_tests\\invariants_test.py
-
-Why this exists
----------------
-The corpus suite compares read_rows against values recorded BY read_rows, so a
-reader that was wrong when the frame was recorded produces a green suite. An
-audit of ~2,895 assertions found 91.8% bit-identically circular and ZERO
-independent. This suite is the independent kind: it asserts PROPERTIES that
-must hold whatever the pixels said, so no recorded value can excuse a
-violation.
-
-It reads baseline_rows.json rather than re-OCRing the corpus, so it costs
-about a second and does not compete with a live run for cores.
-
-The invariants are chosen for consequence, not tidiness. The ones that matter
-most are about the CLICK TARGET: read_rows hands `change` straight to click(),
-and a click that lands outside its row cancels the wrong listing, while one
-outside the table lands in the game world and moves the character or an item.
-"""
 
 import json
 import sys
@@ -28,32 +7,14 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-import trade  # noqa: E402
+import trade
 
 BASELINE = HERE / "baseline_rows.json"
 
 VALID_ACTIONS = {"change", "receive", "register"}
-# The click column is found per row by OCR, so its x wobbles a little between
-# rows of the same frame. This is the widest wobble that still cannot reach a
-# neighbouring column: the Function column's buttons sit ~1116 and the nearest
-# other clickable thing (a dialog button) is past x=1200.
 CLICK_X_SPREAD = 60
-# A screen this side of absurd. Purely a "did the arithmetic run away" bound.
 MAX_COORD = 10_000
-# Row bands are derived by scaling a reference pitch and rounding to whole
-# pixels, so adjacent bands can share an edge. Measured: 152 of 30,124 adjacent
-# pairs overlap, every one of them by exactly 1px, and all of them in frames
-# whose pitch rounded to 77px instead of 79px.
-#
-# That cannot move a click -- the click target is the band's centre, and the
-# bands are only otherwise used to crop text for OCR, where one shared row of
-# pixels changes nothing. A LARGE overlap is a different animal: it means two
-# rows are being read from the same pixels, so this still asserts, just not at
-# a threshold that only catches rounding.
 MAX_BAND_OVERLAP = 2
-# How far off-centre a click may sit within its row, as a fraction of the row
-# height. A click near the boundary risks the divider between rows rather than
-# the button.
 MAX_CLICK_OFFSET = 0.40
 
 failures: list[str] = []
@@ -85,7 +46,6 @@ def main() -> int:
         print("baseline holds no rows - nothing to assert")
         return 0
 
-    # -- collect every violation, then assert on the counts -----------------
     bad_action, bad_index, bad_band, overlap = [], [], [], []
     click_outside_band, click_absurd, click_spread = [], [], []
     register_priced, live_unnamed, empty_named = [], [], []
@@ -121,9 +81,6 @@ def main() -> int:
 
             cx, cy = r["change"]
             xs.append(cx)
-            # The click must land inside the row it names. Outside it, the
-            # cancel hits a different listing -- and every downstream identity
-            # check would confirm the WRONG row happily.
             if not (top <= cy <= bottom):
                 click_outside_band.append(
                     f"{frame} row {r['index']}: click y={cy} outside "
@@ -139,7 +96,6 @@ def main() -> int:
 
             price, qty, name = r["price"], r["qty"], (r["name"] or "")
             if r["action"] == "register":
-                # An empty slot has nothing listed in it.
                 if price is not None or qty is not None:
                     register_priced.append(
                         f"{frame} row {r['index']}: empty slot priced "

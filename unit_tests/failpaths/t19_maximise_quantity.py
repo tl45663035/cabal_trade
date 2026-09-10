@@ -1,49 +1,13 @@
-"""MAXIMISE_ALL_QUANTITIES must mean the same thing at every entry point.
-
-The bug, found by listing six VIP passes by hand on 2026-08-04:
-
-    py trade.py --register 1 1 --price 110000000
-    Loaded: qty '1 /6' -> 1/6
-    Registered (1,1) qty 1 at 110,000,000 Alz each
-
-One listed, five left in the inventory, and no "Setting quantity" line at all.
-MAXIMISE_ALL_QUANTITIES was True the whole time.
-
-The two entry points disagreed about a global setting:
-
-    relist path   maximise_qty=wants_max_quantity(name)   -> True
-    CLI  path     maximise_qty=args.max_qty               -> False unless
-                                                              --max-qty given
-
-so `--register` silently overrode the setting with an argparse flag default.
-maximise_qty is now tri-state: True/False for a caller that has decided, None
-for "use the configured policy". The CLI passes None when the flag is absent.
-
-The exclusion list is the wrinkle. wants_max_quantity() checks the item's NAME
-against NO_MAX_QUANTITY_ITEMS, and `--register` reads an inventory slot, which
-the script cannot name -- the same reason it refuses to auto-price there. With
-an empty exclusion list the policy is unambiguous; with a non-empty one it is
-not, and the ambiguous case is refused rather than guessed.
-"""
 from harness import Harness, check, empty_panel, make_row, run, section, summary
 
 import trade
 
 ITEM = "Yekaterina VIP Membership Use Period: 30 days"
 
-# Above the STRICTEST floor on the books, derived rather than pinned.
-#
-# `--register` loads an inventory slot, so the item cannot be named, and a
-# stated price below the dearest floored item is refused -- it might BE that
-# item. A literal here therefore stops being legal the moment a dearer floor is
-# added, and did: this suite went red across the board when the Force Gem
-# Package floor landed at 180M and its 110M price fell under it. Nothing was
-# wrong with the code; the test had pinned a number that the config owns.
 PRICE = max(f for *_, f in trade.ITEM_PRICE_FLOORS) + 1_000_000
 
 
 def fresh(qty=1, qty_max=6, **flags):
-    """A slot holding `qty_max` of one item, with `qty` loaded into the panel."""
     h = Harness(rows=[make_row(1, ITEM, price=PRICE, qty=qty_max)],
                 panel=empty_panel())
     h.load_as = {"qty": qty, "qty_max": qty_max,
@@ -55,7 +19,6 @@ def fresh(qty=1, qty_max=6, **flags):
 
 
 def typed_quantities(h):
-    """Every value typed into the quantity field."""
     out = []
     for name, args, _ in h.calls:
         if name == "type_number" and args:
@@ -64,12 +27,10 @@ def typed_quantities(h):
 
 
 def listed_qty(h):
-    """The quantity the game ended up registering."""
     return h.registered[-1]["qty"] if h.registered else None
 
 
 def settings(maximise=None, exclude=None):
-    """Temporarily set the two globals; returns the previous pair."""
     before = (trade.MAXIMISE_ALL_QUANTITIES, trade.NO_MAX_QUANTITY_ITEMS)
     if maximise is not None:
         trade.MAXIMISE_ALL_QUANTITIES = maximise
@@ -82,12 +43,10 @@ def restore(before):
     trade.MAXIMISE_ALL_QUANTITIES, trade.NO_MAX_QUANTITY_ITEMS = before
 
 
-# ===========================================================================
 section("the reported bug: --register must list the whole stack")
 
 h = fresh()
 with h:
-    # Exactly what the CLI now passes when neither --qty nor --max-qty is given.
     ok, exc = run(trade.register_item, 1, 1, force_price=PRICE,
                   maximise_qty=None)
     check("no exception", exc is None, repr(exc))
@@ -100,7 +59,6 @@ with h:
     check("it said so in the log", h.said("Setting quantity"), h.out()[-300:])
 
 
-# ===========================================================================
 section("an explicit decision still wins over the policy")
 
 h = fresh()
@@ -133,7 +91,6 @@ with h:
           f"typed {typed_quantities(h)}")
 
 
-# ===========================================================================
 section("the policy is honoured, whichever way it is set")
 
 before = settings(maximise=False, exclude=())
@@ -164,7 +121,6 @@ finally:
     restore(before)
 
 
-# ===========================================================================
 section("the exclusion list, when the item CAN be named")
 
 before = settings(maximise=True, exclude=("yekaterina",))
@@ -190,13 +146,8 @@ finally:
     restore(before)
 
 
-# ===========================================================================
 section("the exclusion list, when the item CANNOT be named")
 
-# --register reads an inventory slot. The script cannot name what is in it --
-# the same reason it refuses to auto-price there -- so it cannot check the
-# exclusion list either. Guessing would maximise an item the list exists to
-# protect.
 before = settings(maximise=True, exclude=("yekaterina",))
 try:
     h = fresh()
@@ -214,15 +165,10 @@ try:
         check("...and lists nothing", listed_qty(h) is None,
               f"listed {listed_qty(h)}")
 
-    # The same case with the caller stating what it wants goes through.
     h = fresh()
     with h:
         ok, exc = run(trade.register_item, 1, 1, force_price=PRICE,
                       force_qty=6)
-        # `ok is True`, not merely `exc is None`. register_item catches Aborted
-        # and RETURNS False, so checking only the exception passes while the
-        # call refused and listed nothing -- which is exactly what it was doing
-        # here until this check was tightened.
         check("unnameable + explicit --qty: proceeds", ok is True,
               f"ok={ok!r} exc={exc!r}")
         check("unnameable + explicit --qty: lists that many",
@@ -240,8 +186,6 @@ try:
 finally:
     restore(before)
 
-# With an EMPTY exclusion list -- the shipped configuration -- there is nothing
-# ambiguous about an unnameable item, so it must not refuse.
 before = settings(maximise=True, exclude=())
 try:
     h = fresh()
@@ -258,11 +202,8 @@ finally:
     restore(before)
 
 
-# ===========================================================================
 section("the relist path is unchanged")
 
-# It passes a resolved bool, so none of the above can alter it. Asserted
-# because this is the path that has been working and must keep working.
 for policy, excluded, expect_max in ((True, (), True),
                                      (True, ("yekaterina",), False),
                                      (False, (), False)):

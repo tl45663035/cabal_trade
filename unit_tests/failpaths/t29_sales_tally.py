@@ -1,23 +1,3 @@
-"""What sold, and for how much -- printed on every termination including Ctrl+C.
-
-The table cannot answer "how much sold". A row's QTY column shows what is STILL
-on sale, and collecting the proceeds does not change it (the same fact behind
-the collect-by-action fix in t26). So the quantity sold is not readable from the
-listing either before or after the collect.
-
-The Alz balance is. Read either side of a Receive it gives that sale's credit
-exactly, and dividing by the listing's unit price recovers the quantity. The
-division doubles as the check: a remainder means the two readings do not
-describe one clean sale at that price, so the quantity is left unclaimed rather
-than guessed.
-
-The failure mode that matters is get_alz's contract: it returns 0 -- never
-raises -- when the Inventory panel is closed or the digits do not read. Treated
-as a real balance, a 0 "before" would book a sale worth the entire purse and a 0
-"after" would book a negative one. Every path here therefore reads 0 as UNKNOWN,
-counts the sale, and says so in the report rather than folding a guess into the
-gross.
-"""
 from harness import Harness, check, empty_panel, make_row, run, section, summary
 
 import trade
@@ -27,7 +7,6 @@ def clear():
     trade.SALES.clear()
 
 
-# ===========================================================================
 section("note_sale: quantity is derived, and only when it divides")
 
 clear()
@@ -38,7 +17,7 @@ check("quantity recovered from proceeds / price", sale["qty"] == 30,
 check("proceeds kept as read", sale["proceeds"] == 6_300_000, f"{sale!r}")
 
 clear()
-trade.note_sale("Force Core(High)", 210_000, 6_300_001)   # does not divide
+trade.note_sale("Force Core(High)", 210_000, 6_300_001)
 check("an inexact division claims no quantity",
       trade.SALES[-1]["qty"] is None,
       f"{trade.SALES[-1]!r} -- a remainder means the readings do not describe "
@@ -64,7 +43,6 @@ check("a zero credit is not a measured sale",
       trade.SALES[-1]["qty"] is None, f"{trade.SALES[-1]!r}")
 
 
-# ===========================================================================
 section("the report")
 
 clear()
@@ -72,10 +50,10 @@ check("nothing sold prints nothing", trade.sales_report() == "",
       f"{trade.sales_report()!r}")
 
 clear()
-trade.note_sale("Force Core(High)", 210_000, 6_300_000)      # 30
-trade.note_sale("Force Core(High)", 210_000, 2_100_000)      # 10
+trade.note_sale("Force Core(High)", 210_000, 6_300_000)
+trade.note_sale("Force Core(High)", 210_000, 2_100_000)
 trade.note_sale("Force Gem Package (x400)", 187_000_000, 187_000_000)
-trade.note_sale("Force Core(Highest)", 200_000, None)        # unmeasured
+trade.note_sale("Force Core(Highest)", 200_000, None)
 report = trade.sales_report()
 
 check("totals the gross", "195,400,000" in report, report)
@@ -97,11 +75,9 @@ check("no warning when everything measured",
       trade.sales_report())
 
 
-# ===========================================================================
 section("a collect records a sale, measured off the Alz balance")
 
 class Selling(Harness):
-    """A shop where collecting credits the balance."""
 
     def __init__(self, credit, before=500_000_000, readable=True, **kw):
         super().__init__(rows=[make_row(1, "Force Core(High)",
@@ -144,12 +120,8 @@ check("...and recorded to the index", h.rec("sale.collected") is not None,
       f"{h.labels()}")
 
 
-# ===========================================================================
 section("an unreadable balance never invents a sale")
 
-# get_alz returns 0 when the Inventory panel is closed. 0 read as a real
-# balance would book a sale worth the whole purse on the "before" side, or a
-# negative one on the "after" side.
 clear()
 h = Selling(credit=6_300_000, readable=False)
 with h:
@@ -162,7 +134,6 @@ check("but no proceeds are invented", trade.SALES[0]["proceeds"] is None,
       f"{trade.SALES!r} -- a 0 balance is UNKNOWN, not 'the purse is empty'")
 check("and it says so", h.said("counted but not measured"), h.out()[-400:])
 
-# A balance that goes DOWN across the collect is not a sale either.
 clear()
 h = Selling(credit=-1_000_000)
 with h:
@@ -174,7 +145,6 @@ check("a falling balance books no proceeds",
       f"{trade.SALES!r}")
 
 
-# ===========================================================================
 section("a broken Alz reader must not cost the listing")
 
 clear()
@@ -192,7 +162,6 @@ check("no exception escaped", exc is None, repr(exc))
 check("the sale is counted anyway", len(trade.SALES) == 1, f"{trade.SALES!r}")
 
 
-# ===========================================================================
 section("printed on termination, including Ctrl+C")
 
 clear()
@@ -213,8 +182,6 @@ check("...with the gross", "6,300,000" in out, out[:400])
 check("...alongside the duration line", "Ran for" in out, out[:400])
 check("...on the Ctrl+C path", "KeyboardInterrupt" in out, out[:400])
 
-# finish_run_log is registered with atexit AND called from the __main__ guard,
-# so it can fire twice. Printing the tally twice would double-report a run.
 printed.clear()
 try:
     builtins.print = lambda *a, **k: printed.append(" ".join(str(x) for x in a))
@@ -226,7 +193,6 @@ check("a second call prints nothing", printed == [], f"{printed!r}")
 trade._run_finished = False
 clear()
 
-# Nothing sold: the run must not grow a stats block it has no data for.
 trade._run_finished = False
 printed.clear()
 try:
@@ -245,27 +211,10 @@ clear()
 
 
 
-# ===========================================================================
 section("a reading larger than the listing could be worth is refused")
 
-# From a live run on 2026-08-06 the report printed:
-#
-#   Yekaterina VIP Membership   1 sale       -   1,662,294,744
-#   Epic Booster (Highest)      1 sale      16     876,764,416
-#   TOTAL                                        2,539,059,160
-#
-# The VIP sells for about 106,000,000, and the Booster stack held EIGHT at
-# 54,797,776 -- yet 876,764,416 divided by that price exactly, so the report
-# confidently claimed sixteen units from a stack of eight. An exact division is
-# not evidence of anything when the numerator is wrong.
-#
-# Root cause was get_alz reading the shop's "...has been sold for N" overlay
-# instead of the balance. This is the second line of defence: the row on screen
-# carries the price and the quantity, so the most a sale can be worth is known
-# exactly.
 
 class Inflated(Harness):
-    """A collect where the Alz reading jumps by more than the stack is worth."""
 
     def __init__(self, credit, qty=8, price=54_797_776, **kw):
         super().__init__(rows=[make_row(1, "Epic Booster (Highest)",
@@ -288,7 +237,7 @@ class Inflated(Harness):
 
 
 clear()
-h = Inflated(credit=876_764_416)            # exactly 2x an 8-stack at that price
+h = Inflated(credit=876_764_416)
 with h:
     h.patch("cancel_item", lambda *a, **k: True)
     h.patch("register_item", lambda *a, **k: True)
@@ -305,7 +254,7 @@ check("...so the report calls the gross a floor",
       "could not be measured" in trade.sales_report(), trade.sales_report())
 
 clear()
-h = Inflated(credit=8 * 54_797_776)         # the whole stack sold: exactly at the ceiling
+h = Inflated(credit=8 * 54_797_776)
 with h:
     h.patch("cancel_item", lambda *a, **k: True)
     h.patch("register_item", lambda *a, **k: True)
@@ -317,7 +266,7 @@ check("...with the quantity derived", trade.SALES[0]["qty"] == 8,
       f"{trade.SALES!r}")
 
 clear()
-h = Inflated(credit=3 * 54_797_776)         # a partial sale, well under the ceiling
+h = Inflated(credit=3 * 54_797_776)
 with h:
     h.patch("cancel_item", lambda *a, **k: True)
     h.patch("register_item", lambda *a, **k: True)
@@ -331,13 +280,8 @@ clear()
 
 
 
-# ===========================================================================
 section("every collection is written to the database as it happens")
 
-# The end-of-run report was the only place this lived, and a tally held in
-# memory is worth nothing if the process never reaches its last line. On
-# 2026-08-06 one run was stopped by Ctrl+C, one by the failure breaker, and one
-# by a crash inside the tidy-up itself. A committed row survives all three.
 import sqlite3
 import tempfile
 from pathlib import Path as _Path
@@ -358,8 +302,6 @@ try:
     check("both collections are already on disk", len(rows) == 2,
           f"{rows!r} -- written at the collect, not at the end of the run")
 
-    # Read with a SEPARATE connection: proves the rows are committed, not
-    # sitting in an open transaction that a killed process would lose.
     conn = sqlite3.connect(_tmp)
     got = conn.execute("SELECT item, price, proceeds, qty, note FROM sales"
                        " ORDER BY id").fetchall()
@@ -374,10 +316,6 @@ try:
           and "implausible" in (got[1][4] or ""),
           f"{got[1]!r} -- 'why is this blank' has to be answerable later")
 
-    # Timestamps store to the second, so a sub-second window still contains a
-    # row written this second -- my first version of this asserted otherwise
-    # and failed for that reason, not because the window was broken. Test it
-    # with a row that really is old.
     conn = sqlite3.connect(_tmp)
     with conn:
         conn.execute("INSERT INTO sales (at, item, price, proceeds, qty)"
@@ -392,7 +330,6 @@ try:
     check("sales_since(None) returns everything",
           len(trade.sales_since(hours=None)) == 3, "two recent plus the old one")
 
-    # Bookkeeping must never be able to cost a listing.
     trade.SALES_DB = _Path("Z:/nonexistent/dir/sales.db")
     trade._sales_db_ready = False
     clear()

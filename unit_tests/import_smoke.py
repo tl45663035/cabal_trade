@@ -1,23 +1,14 @@
-"""Regression guard: the module imports, every global its functions read
-exists, and apply_layout() is an identity at the reference layout.
-
-py_compile cannot catch a deleted module-level name -- the reference lives
-inside a function body and only fails at call time. This already caught two
-real breakages: TRADE_REGION/POPUP_REGION deleted during the calibration
-refactor, and VK_MENU being function-local while release_modifiers() read it
-as a global.
-"""
 
 import ast
 import sys
 
-from pathlib import Path as _Path  # noqa: E402
+from pathlib import Path as _Path
 _ROOT = _Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
 PATH = _ROOT / "trade.py"
 
-import trade as mod  # noqa: E402  - the import is itself the first test
+import trade as mod
 
 print("import: OK")
 
@@ -26,7 +17,6 @@ FUNCS = (ast.FunctionDef, ast.AsyncFunctionDef)
 
 
 def bound_names(func):
-    """Names bound anywhere in `func`'s own body (not nested functions)."""
     names = {a.arg for a in ast.walk(func) if isinstance(a, ast.arg)}
     for node in ast.walk(func):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
@@ -41,8 +31,6 @@ def bound_names(func):
     return names
 
 
-# Parent chain, so a nested function can see its enclosing scopes -- `say`,
-# `verbose`, `dry_run` and friends are closures, not missing globals.
 parent = {}
 for node in ast.walk(tree):
     for child in ast.iter_child_nodes(node):
@@ -106,7 +94,6 @@ print(f"  DIALOG_BUTTON_MIN_X {mod.DIALOG_BUTTON_MIN_X}  "
 assert mod.DIALOG_BUTTON_MIN_X > mod.LAYOUT.x(mod.REF_FUNCTION_COLUMN_X), \
     "the dialog boundary must stay right of the Function column"
 
-# Leave the module on the reference layout for anything that imports after us.
 mod.apply_layout(mod.Layout(screen=mod.REF_SCREEN, origin=mod.REF_TRADE_ORIGIN,
                             scale=1.0))
 

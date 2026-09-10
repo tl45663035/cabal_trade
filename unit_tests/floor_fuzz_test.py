@@ -1,27 +1,20 @@
-"""Does the VIP floor survive realistic OCR corruption, without false hits?
-
-The floor is looked up from a name that OCR produced, so the question is not
-"does it work on clean text" but "what fraction of realistic misreads lose it".
-"""
 
 import random
 import sys
 
-from pathlib import Path as _Path  # noqa: E402
+from pathlib import Path as _Path
 _ROOT = _Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-import trade as m  # noqa: E402
+import trade as m
 
-FLOOR = m.item_price_floor("Yekaterina VIP Membership")   # derived, never restated
+FLOOR = m.item_price_floor("Yekaterina VIP Membership")
 VIP = "Yekaterina VIP Membership Use Period: 30 days"
 VIP_SHORT = "Yekaterina VIP Membership"
-# The user's actual non-VIP stock. None of these may EVER gain a floor.
 STOCK = ["Upgrade Core (Ultimate)", "Upgrade Core(High)", "Upgrade Core(Highest)",
          "Force Core(High)", "Force Core(Highest)", "Mana Absorb Bracelet",
          "Archridium Coat (FB)", "Vampiric Earring +8", "Archridium Plate(GL)"]
 
-# Confusions this font actually produces, per the OCR work in this session.
 CONFUSE = {"V": "YUW", "I": "T1l|!", "P": "FRB", "0": "O", "o": "0",
            "1": "il|", "l": "1i", "i": "1l", "e": "c", "c": "e", "a": "o",
            "S": "5", "5": "S", "B": "8", "8": "B", "r": "n", "n": "r",
@@ -46,9 +39,9 @@ def corrupt(text, rng, edits=1):
         if roll < 0.55 and ch in CONFUSE:
             out[i] = rng.choice(CONFUSE[ch])
         elif roll < 0.80:
-            out[i] = ""                      # dropped glyph
+            out[i] = ""
         else:
-            out.insert(i, rng.choice("il1|"))  # inserted stroke
+            out.insert(i, rng.choice("il1|"))
     return "".join(out)
 
 

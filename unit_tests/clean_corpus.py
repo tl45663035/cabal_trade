@@ -1,19 +1,3 @@
-"""Drop corpus entries that are test debris rather than real cycles.
-
-Two kinds, both from the 09:55 manual-testing block before the fixes landed:
-
-  * coordinate labels  -- the label/at collision, recoverable (see repair)
-  * placeholder context -- a hand-run `--cancel` with name='VIP', price=1,
-    qty=3 against a table that actually held 'Yekaterina VIP Membership' at a
-    different row. The FRAME is real, but the recorded values are fiction, and
-    the suite checks frames against their recorded values.
-
-Junk ground truth is worse than no ground truth: it makes a passing reader
-look broken, and the natural response to that is to loosen the assertion.
-
-    py clean_corpus.py            report
-    py clean_corpus.py --apply    repair labels, drop debris entries
-"""
 
 import json
 import re
@@ -21,7 +5,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from pathlib import Path as _Path  # noqa: E402
+from pathlib import Path as _Path
 _ROOT = _Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
@@ -29,9 +13,7 @@ CORPUS = _ROOT / "unit_tests" / "corpus"
 INDEX = CORPUS / "run_index.jsonl"
 COORD = re.compile(r"^\(\d+,\s*\d+\)$")
 
-# Labels that were never real steps -- one-off probes while wiring recording up.
 DEBRIS_LABELS = {"x", "selftest.step", "selftest.aborted"}
-# A recorded item name this short is a hand-typed placeholder, not a game item.
 PLACEHOLDER_NAMES = {"VIP", "x"}
 
 raw = INDEX.read_text(encoding="utf-8").splitlines()
@@ -65,11 +47,6 @@ for line in raw:
         dropped.append(e)
         continue
 
-    # Price records the current code cannot produce, so they predate the
-    # guards and cannot be asserted against:
-    #   * rows '[]' -- require(bool(rows_seen)) now runs BEFORE this record
-    #   * a price below MIN_PLAUSIBLE_PRICE -- register_item refuses to list
-    #     there at all now, so a recorded 1 Alz is from a hand-forced test
     import trade as _mm
     if e.get("label") == "price.suggestions" and e.get("rows") in ("[]", "", None):
         e["dropped_because"] = "price rows '[]' cannot occur under current code"
@@ -82,12 +59,6 @@ for line in raw:
         dropped.append(e)
         continue
 
-    # An npc.found frame that does not contain the NPC is misattributed: the
-    # old code recorded _last_shot, and find_npc's retries mean that is not
-    # necessarily the frame she matched in. Fixed at the source (find_npc now
-    # reports the frame via `seen`), but frames already recorded cannot be
-    # re-attributed, so they are dropped rather than asserted against.
-    # Measured: 1 of 39.
     if e.get("label") == "npc.found" and (CORPUS / e.get("file", "")).exists():
         import trade as _m
         from PIL import Image as _Image
@@ -113,8 +84,6 @@ print(f"entries kept:       {len(keep)}  (was {seen})")
 
 if "--apply" in sys.argv:
     INDEX.write_text("\n".join(keep) + "\n", encoding="utf-8")
-    # The PNGs of dropped entries stay on disk: they are real frames and cost
-    # nothing to leave, and the suite only ever iterates the index.
     print("written")
 else:
     print("dry run - pass --apply to write")

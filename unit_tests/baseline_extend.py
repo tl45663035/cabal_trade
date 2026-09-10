@@ -1,17 +1,3 @@
-"""Add newly recorded frames to baseline_rows.json without re-reading the rest.
-
-    py unit_tests\\baseline_extend.py [--jobs N]
-
-A full `baseline_rows.py save` re-OCRs every frame in the corpus, which is ~25
-minutes and sixteen busy cores. While the live script is running that competes
-with it for exactly the resource it needs -- and a table read that times out is
-one of the failures the live script dies of.
-
-This reads ONLY the frames that are not in the baseline yet, merges them in,
-and defaults to a small worker count so the game keeps its headroom. Existing
-entries are never re-read or overwritten: a baseline whose old entries drift
-because they were re-measured is no longer a baseline.
-"""
 
 import json
 import sys
@@ -22,10 +8,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-from baseline_rows import BASELINE, CORPUS, read_one, _ignore_sigint  # noqa: E402
+from baseline_rows import BASELINE, CORPUS, read_one, _ignore_sigint
 
-# Deliberately small. This runs beside a live game whose own OCR is on the
-# critical path; finishing five minutes sooner is not worth a failed cycle.
 DEFAULT_JOBS = 4
 
 

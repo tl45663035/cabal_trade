@@ -1,27 +1,9 @@
-"""A sold-out shop should finish the run, not cycle over nothing.
-
-Before this, a shop whose rows were all empty slots returned a "successful"
-cycle having relisted nothing, and --repeat kept doing that for the rest of its
-500 minutes: no work, the machine held awake, the cursor moving, and the moment
-the shop actually sold out buried in hours of identical log.
-
-ShopEmpty is deliberately NOT an Aborted subclass. Aborted means "this cycle
-did not work, try again"; this means "the work is finished". It has to reach
-run_loop past run_sequence's `except Aborted` and past run_loop's own catch-all
-`except Exception`, so the ordering of those handlers is asserted here rather
-than assumed.
-
-The other half is leaving the game tidy. A run that stops with the Trade window
-open parks the character in a UI, and an open Trade window is exactly what makes
-a later find_npc fail, because it covers the NPC.
-"""
 from harness import Harness, check, empty_panel, make_row, run, section, summary
 
 import trade
 
 
 def empty_rows(n=10):
-    """A table of nothing but empty Register slots."""
     return [make_row(i, "(empty)", action="register", price=None, qty=None)
             for i in range(1, n + 1)]
 
@@ -31,7 +13,6 @@ def live_rows(n=3):
             for i in range(1, n + 1)]
 
 
-# ===========================================================================
 section("an all-empty shop raises ShopEmpty rather than looping")
 
 h = Harness(rows=empty_rows(), panel=empty_panel())
@@ -48,12 +29,9 @@ with h:
           exc is not None and "sold out" in str(exc), f"{exc!r}")
 
 
-# ===========================================================================
 section("one bad frame must not end the run")
 
-# "Every row is empty" is also what a table caught mid-refresh looks like.
 class Flaky(Harness):
-    """The first read is empty; the re-read shows the shop is fine."""
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -62,7 +40,6 @@ class Flaky(Harness):
 
     def _read_rows(self, source=None, words=None, **_):
         self.reads += 1
-        # 1st read: the batch snapshot, empty. Later: the truth.
         return empty_rows() if self.reads <= 1 else list(self.real_rows)
 
 
@@ -78,7 +55,6 @@ with h:
           h.said("after all") or h.said("mid-refresh"), h.out()[-300:])
 
 
-# ===========================================================================
 section("a shop with ANY live row carries on as normal")
 
 h = Harness(rows=live_rows() + empty_rows(3), panel=empty_panel())
@@ -90,7 +66,6 @@ with h:
     check("batch succeeded", ok is True, f"got {ok!r} {exc!r}")
 
 
-# ===========================================================================
 section("run_loop stops, counts it a success, and closes the shop")
 
 h = Harness(rows=empty_rows(), panel=empty_panel())
@@ -119,7 +94,6 @@ with h:
           "and an open Trade window covers the NPC for the next run")
 
 
-# ===========================================================================
 section("leave_shop tidies whatever it finds")
 
 h = Harness(rows=live_rows(), panel=empty_panel(), dialog="confirm")
@@ -138,8 +112,6 @@ with h:
     check("already tidy: still succeeds, no exception",
           ok is True and exc is None, f"{ok!r} {exc!r}")
 
-# It runs at the very end of a run whose outcome is already decided, so an
-# exception here must never replace that outcome.
 h = Harness(rows=live_rows(), panel=empty_panel())
 with h:
     h.patch("trade_window_open",

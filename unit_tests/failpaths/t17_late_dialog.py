@@ -1,29 +1,7 @@
-"""Bug 2: the dialog arrives after the wait has given up.
-
-From the 07:51 log, two consecutive lines:
-
-    ABORTED: the Registration Extension dialog did not appear.
-      dialog_kind sees: 'extension'
-
-The wait polled, saw nothing, and expired. The diagnostic probe fired one line
-later and read the dialog at 97% confidence. It had arrived in between.
-
-The axis swept here is WHEN it becomes visible, counted in dialog_kind calls:
-early enough for the wait to catch it, late enough that only the diagnostic
-probe does, or never at all. The invariants must hold at every point on that
-axis, because the boundary moves with the machine's speed and the game's --
-which is exactly why this was intermittent.
-
-The strongest property is the monotonicity one at the end: a dialog appearing
-LATER can never turn a failure into a success. If the pass/fail pattern is not
-a clean prefix, something is deciding on timing noise rather than on evidence.
-"""
 from harness import Harness, check, empty_panel, make_row, run, section, summary
 
 import trade
 
-# Spread across the whole range: inside the wait, around its expiry, past the
-# diagnostic probe, and never.
 REVEALS = (1, 2, 3, 4, 6, 8, 10, 13, 16, 20, 25, 30, 40, 60, None)
 
 
@@ -33,10 +11,6 @@ def rows():
 
 
 def run_with_reveal(reveal_at):
-    """Drive cancel_item with the title becoming readable at call `reveal_at`.
-
-    reveal_at=None means it never reads at all.
-    """
     h = Harness(rows=rows(), panel=empty_panel())
     with h:
         real = h._dialog_kind
@@ -101,9 +75,6 @@ check("never visible: the dialog was still closed on the way out",
 
 section("a dialog arriving later can never help")
 
-# The property that matters most: the set of arrival points that succeed has to
-# be a contiguous prefix. A hole in it means the outcome is being decided by
-# timing noise rather than by whether the dialog is actually there.
 order = [r for r in REVEALS if r is not None] + [None]
 outcomes = [(r, results[r]["ok"]) for r in order]
 first_fail = next((i for i, (_r, ok) in enumerate(outcomes) if not ok),
@@ -125,9 +96,6 @@ print(f"  arrival points that succeed: "
 
 section("the recheck must not invent a dialog that is not there")
 
-# The fix accepts the diagnostic probe as evidence. It must therefore refuse
-# when the probe shows something ELSE, or nothing -- otherwise it is a guess
-# wearing evidence's clothes.
 h = Harness(rows=rows(), panel=empty_panel())
 with h:
     h.patch("dialog_kind", lambda *a, **k: None)
@@ -138,7 +106,6 @@ with h:
 
 h = Harness(rows=rows(), panel=empty_panel())
 with h:
-    # The probe reports the WRONG dialog: not the one a Change click opens.
     h.patch("dialog_kind", lambda *a, **k: "receipt")
     ok, exc = run(trade.cancel_item, 1)
     check("probe sees the wrong dialog: refuses", ok is False, f"got {ok!r}")

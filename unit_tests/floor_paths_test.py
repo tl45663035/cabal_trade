@@ -1,15 +1,11 @@
-"""The VIP floor must bind on every path into register_item's pricing.
-
-Exercises the pricing block's logic directly -- no input, no game.
-"""
 
 import sys
 
-from pathlib import Path as _Path  # noqa: E402
+from pathlib import Path as _Path
 _ROOT = _Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-import trade as m  # noqa: E402
+import trade as m
 
 fails = []
 
@@ -27,7 +23,6 @@ CORE = "Upgrade Core(High)"
 
 def price_for(expect_item, force_price=None, suggested=90_000_000,
               price_floor=0):
-    """Mirror of register_item's pricing block, including the final gates."""
     if expect_item:
         absolute_floor = m.item_price_floor(expect_item)
     else:
@@ -47,22 +42,13 @@ def price_for(expect_item, force_price=None, suggested=90_000_000,
     return price
 
 
-FLOOR = m.item_price_floor("Yekaterina VIP Membership")   # derived, never restated
+FLOOR = m.item_price_floor("Yekaterina VIP Membership")
 print(f"VIP floor: {FLOOR:,}\n")
 check("item_price_floor(VIP)", m.item_price_floor(VIP), FLOOR)
-# Call the REAL helper, not a reimplementation. This test mirrored the pricing
-# logic inline and therefore missed strictest_price_floor() raising ValueError
-# after ITEM_PRICE_FLOORS grew a third field -- a crash on every --price run.
-# The HIGHEST floor in the table, which is not necessarily the VIP's -- it was
-# when this was written and stopped being so the moment a third, dearer item
-# was added. Derived, so the next addition does not turn this red for a reason
-# that has nothing to do with what it is testing.
 check("strictest_price_floor() runs and returns the table's highest",
       m.strictest_price_floor(), max(f for *_, f in m.ITEM_PRICE_FLOORS))
 
 print("\n--- named VIP: the floor binds however low the market goes ---")
-# Relative to FLOOR, not literals: 118,999,999 was written here as "above the
-# floor", which was true at 105M and false the moment the floor moved to 119M.
 for market in (FLOOR - 1, 90_000_000, 1_000_000, 1):
     check(f"relist VIP, market {market:,}", price_for(VIP, suggested=market),
           FLOOR)

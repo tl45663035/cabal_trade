@@ -1,17 +1,3 @@
-"""Reproduce the observed crash signature.
-
-Observed: the frame index stops mid-cycle between
-
-    record("inventory.before_cancel")      (trade.py:4360, _relist_cycle)
-    record("cancel.before_change")         (trade.py:4360 -> 3544, cancel_item)
-
-with NO abort recorded, and the run had to be restarted by hand.
-
-This drives the FULL stack -- run_loop -> run_sequence -> relist_rows ->
-relist -> _relist_cycle -> cancel_item -- and arms one fault at a time on the
-first stub called after record("inventory.before_cancel"), then reports the
-resulting index tail and whether the loop survived.
-"""
 import harness as H
 from harness import (Harness, check, note, section, summary, run, make_row,
                      empty_panel)
@@ -19,16 +5,11 @@ import trade
 
 ITEM = "Upgrade Core (Ultimate)"
 
-# Labels the loop itself writes. Their own comments in trade.py say they were
-# added AFTER the outage this test reproduces ("THE entry that was missing",
-# "which is what made a five-hour outage unattributable"), so the build that
-# produced the observed index did not have them.
 LOOP_LABELS = {"cycle.start", "cycle.end", "cycle.exception", "loop.stopped"}
 
 HINT = trade.CURSOR_BLOCKED_HINT
 
 CASES = [
-    # (title, stub, exception, is it reachable on the real I/O layer?)
     ("park_cursor raises PermissionError", "park_cursor", PermissionError(HINT),
      "YES - move_mouse() returning False is the documented UIPI signal "
      "(trade.py:1591); this is the first input call after the label"),
@@ -66,7 +47,6 @@ def tail(h, n=6):
 
 
 def signature(h) -> bool:
-    """Exactly the observed signature, judged on the pre-instrumentation build."""
     labels = [lab for lab in h.labels() if lab not in LOOP_LABELS]
     return (bool(labels) and labels[-1] == "inventory.before_cancel"
             and "cancel.aborted" not in labels
@@ -75,7 +55,6 @@ def signature(h) -> bool:
 
 section(f"build under test: {H.VERSION}")
 
-# ---------------------------------------------------------------------------
 section("5.0 the control: a clean cycle records the whole chain")
 h, ok, exc = drive(minutes=0.05)
 print("  labels:", [lab for lab in h.labels() if lab not in LOOP_LABELS])
@@ -83,7 +62,6 @@ check("5.0 the control cycle passes through both boundary labels",
       "inventory.before_cancel" in h.labels()
       and "cancel.before_change" in h.labels(), str(h.labels()))
 
-# ---------------------------------------------------------------------------
 section("5.1 fault matrix: one fault armed after inventory.before_cancel")
 results = []
 for title, stub, exc_obj, reachable in CASES:
@@ -104,7 +82,6 @@ for title, stub, exc_obj, reachable in CASES:
     print(f"    run_loop said: "
           f"{[l.strip() for l in h.printed if 'refused' in l or 'raised' in l or 'in a row' in l][:1]}")
 
-# ---------------------------------------------------------------------------
 section("5.2 contrast: faults that DO leave an abort in the index")
 for title, setup in [
     ("focus_game returns False",
@@ -118,7 +95,6 @@ h.focus_fault = {}
 
 
 def focus_false_after_label(h):
-    """focus_game returns False on the call cancel_item makes."""
     original = h._focus
 
     def patched(settle=0.35, **_):
@@ -160,7 +136,6 @@ if "loop.stopped" not in h.labels():
          "because the workstation locked therefore ends with a cycle.start "
          "and no explanation -- the one remaining unexplained-stop shape.")
 
-# a click failure lands AFTER cancel.before_change, so it is also distinguishable
 h = build()
 h.arm_after = {"cancel.before_change": ("click", PermissionError(HINT))}
 with h:
@@ -170,7 +145,6 @@ check("5.2c a failed Change click stops one label later",
       tail(h)[-1] == "cancel.before_change", str(tail(h)))
 
 
-# ---------------------------------------------------------------------------
 section("5.3 the verdict")
 matches = [r for r in results if r[4]]
 single = [r for r in results if r[4] and r[3] and r[5] == 1]
@@ -208,13 +182,7 @@ note("5.3 DISCRIMINATOR",
      "retried until MAX_CONSECUTIVE_FAILURES stopped it.")
 
 
-# ---------------------------------------------------------------------------
 section("5.4 the OTHER way the index can stop: recording itself failing")
-# record() swallows every exception by design (trade.py:1400-1401). If the PNG
-# write fails -- a full disk, with ~3,600 frames at 1-3 MB each -- the index
-# line is dropped too, silently, and the index truncates while the run carries
-# on. Exercised against the REAL record(), with RECORD_DIR redirected into the
-# scratchpad so the project corpus is never touched.
 import json
 from pathlib import Path
 from PIL import Image
@@ -224,10 +192,6 @@ TMP.mkdir(exist_ok=True)
 for stale in TMP.glob("*"):
     stale.unlink()
 
-# _record_full is gone: it was the "recording has stopped for good" latch, and
-# recording no longer stops -- it prunes to a rolling window instead. RECORD_KEEP
-# is saved in its place so this test's temporary corpus cannot be pruned out
-# from under it mid-assertion.
 saved = (trade.RECORD_DIR, trade.RECORD_ENABLED, trade._record_seq,
          trade.RECORD_KEEP)
 try:
@@ -245,7 +209,7 @@ try:
     err = None
     try:
         trade.record("t.disk_full", Unwritable(), note="dropped")
-    except BaseException as exc:      # noqa: BLE001
+    except BaseException as exc:
         err = exc
 
     index = TMP / "run_index.jsonl"

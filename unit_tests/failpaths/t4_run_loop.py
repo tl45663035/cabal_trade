@@ -1,4 +1,3 @@
-"""run_loop() failure paths: which failures stop the run and which retry."""
 import harness as H
 from harness import (Harness, check, note, section, summary, run, make_row,
                      empty_panel)
@@ -16,7 +15,6 @@ def fresh(**flags):
 
 
 def loop_with(sequence, minutes=0.2, actions=("relist-rows 1",)):
-    """Drive run_loop with run_sequence replaced by `sequence`."""
     h = fresh()
     with h:
         h.patch("run_sequence", sequence)
@@ -28,9 +26,7 @@ def cycles(h) -> int:
     return h.out().count("===== cycle ")
 
 
-# ---------------------------------------------------------------------------
 section("4a. a cycle raising PermissionError")
-# SHOULD stop: retrying cannot fix blocked input.
 def refused(*a, **k):
     raise PermissionError(trade.CURSOR_BLOCKED_HINT)
 
@@ -50,7 +46,6 @@ note("4a", "cycle.start/loop.stopped are recent additions (their own comments "
      "0 cycle.end and 0 loop.stopped entries in 3,776 lines.")
 
 
-# ---------------------------------------------------------------------------
 section("4b. a cycle raising a generic Exception")
 state = {"n": 0}
 
@@ -71,7 +66,6 @@ check("4b it said it would retry", h.said("Will retry next cycle"),
 check("4b later cycles succeeded", ok is True, f"got {ok!r}")
 
 
-# ---------------------------------------------------------------------------
 section("4c. three consecutive failures")
 def always_raises(*a, **k):
     raise RuntimeError("a coordinate is wrong")
@@ -83,7 +77,6 @@ check(f"4c stops at MAX_CONSECUTIVE_FAILURES={trade.MAX_CONSECUTIVE_FAILURES}",
 check("4c said why", h.said("cycles have failed in a row"), h.out()[-500:])
 check("4c returns False", ok is False, f"got {ok!r}")
 
-# the same, but returning False rather than raising
 def always_false(*a, **k):
     return False
 
@@ -93,7 +86,6 @@ check("4c2 three False cycles also stop the run",
       cycles(h) == trade.MAX_CONSECUTIVE_FAILURES, f"{cycles(h)} cycles")
 
 
-# ---------------------------------------------------------------------------
 section("4d. FatalAbort")
 def fatal(*a, **k):
     raise trade.FatalAbort("listed the wrong thing; withdrawn")
@@ -105,7 +97,6 @@ check("4d said FATAL", h.said("FATAL:"), h.out()[-400:])
 check("4d returns False", ok is False, f"got {ok!r}")
 
 
-# ---------------------------------------------------------------------------
 section("4e. the workstation locks")
 h = fresh(locked=True)
 with h:
@@ -116,17 +107,7 @@ check("4e said the workstation is locked", h.said("workstation is locked"),
       h.out()[-400:])
 
 
-# ---------------------------------------------------------------------------
 section("4f. a cycle that did nothing is not a success")
-# FIXED 2026-08-08. run_sequence returned True for an empty action list and
-# run_loop counted it as a succeeded cycle, so a loop with nothing to do stayed
-# green for hours AND reset the consecutive-failure breaker -- the breaker that
-# exists to stop exactly that.
-#
-# The two checks that used to assert the bug ("produces green cycles",
-# "reports overall success") are gone rather than inverted: they described the
-# defect, and a defect that no longer exists should not leave a test asserting
-# its symptoms.
 h = fresh()
 with h:
     ok, exc = run(trade.run_loop, [], 0.05, 0.0)
@@ -136,17 +117,10 @@ check("4f and it says why rather than failing silently",
       h.said("No actions to run") or h.said("caller error"),
       h.out()[-400:])
 
-# (ii) a table of empty rows. DIFFERENT, and still True on purpose: the shop
-# genuinely having nothing to relist is a legitimate outcome, not a caller
-# error. Kept beside 4f because the two look alike and are not.
 h = fresh(rows=[make_row(1, "(empty)", action="register", price=None, qty=None),
                 make_row(2, "(empty)", action="register", price=None, qty=None)])
 with h:
     ok2, exc = run(trade.relist_rows, [1, 2])
-# An all-empty shop raises ShopEmpty, and that IS the success signal: main()
-# catches it, prints "SOLD OUT" and exits 0, precisely so that scripting this
-# does not read "finished" as "failed". The old assertion here wanted True and
-# had been failing since before 2026-08-08 -- a stale expectation, not a defect.
 check("4f2 an all-empty shop signals SOLD OUT rather than failing",
       isinstance(exc, trade.ShopEmpty),
       f"got {ok2!r} / {exc!r}")
@@ -156,7 +130,6 @@ check("4f2 and ShopEmpty is deliberately not an Aborted",
       "possible outcome and must not trip the failure breaker")
 
 
-# ---------------------------------------------------------------------------
 section("4g. run_sequence: Aborted stops the batch, PermissionError escapes")
 h = fresh()
 with h:
@@ -176,7 +149,6 @@ check("4g2 PermissionError escapes run_sequence deliberately",
       isinstance(exc, PermissionError), f"{ok!r} {exc!r}")
 
 
-# ---------------------------------------------------------------------------
 section("4h. an exception raised in the FINALLY of relist cannot mask the run")
 h = fresh()
 with h:

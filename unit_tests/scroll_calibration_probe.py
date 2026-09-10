@@ -1,40 +1,14 @@
-﻿"""Measure the wheel against the live table. SCROLLING ONLY -- no money.
-
-    py unit_tests/scroll_calibration_probe.py [max_rows]
-
-THIS DRIVES THE GAME. It sends wheel notches and moves the cursor. It does not
-click a button, cancel a listing, open a dialog or buy anything -- the only
-inputs are scrolls and cursor moves -- but it must not run while trade.py is
-running, and the Agent Shop must be open on the Register tab.
-
-WHAT IT ANSWERS
----------------
-Whether calibrating the wheel once is enough to stop the sweep re-deriving the
-shift at every step.
-
-Before: the sweep scrolled, read the whole table, and ran measure_shift over
-the overlap to learn how far it had gone. Where the overlap held fewer than two
-distinguishable rows -- runs of identical Core rows, blocks of empty slots --
-informative_step shrank the stride to ONE ROW, so it paid a ~9s table read per
-row. 134 seconds to walk 25 rows on 2026-08-10.
-
-After: one notch is measured once, and the stride is taken on that number.
-
-It prints the ratio, then walks with the calibration ON and OFF and compares
-the two, so the claim is measured on this shop rather than argued.
-"""
-import sys
+﻿import sys
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import trade as m  # noqa: E402
+import trade as m
 
 
 def walk(label, rows_wanted, calibrated):
-    """One bounded walk. Returns (seconds, rows_found, steps_logged)."""
     steps = []
     real_say = None
 
@@ -59,8 +33,6 @@ def main():
         print("Calibration failed - is the Trade window open?")
         return 1
     if not m.trade_window_open():
-        # One right-click on the --premium shop key. The probe otherwise only
-        # scrolls; without the window there is nothing to scroll.
         print("The Trade window is not open; opening it from the shop key.")
         m.PREMIUM_ENABLED = True
         if not m.ensure_shop_ready(verbose=True) or not m.trade_window_open():
@@ -70,7 +42,6 @@ def main():
     print(f"\nProbing the wheel against rows 1-{rows_wanted}. "
           f"Scrolling only -- nothing is clicked or bought.\n")
 
-    # 1. What does one notch actually move?
     m.forget_scroll_calibration()
     ratio = m.calibrate_scroll(timeout=8.0, verbose=True)
     if ratio is None:
@@ -83,7 +54,6 @@ def main():
         print(f"  SCROLL_STEP is {m.SCROLL_STEP}, so a full stride is "
               f"{m.SCROLL_STEP / ratio:.0f} notch(es)")
 
-    # 2. Walk it both ways and compare.
     print("\nwalking the same rows twice:")
     off_s, off_n, _ = walk("measuring every step (old)", rows_wanted, False)
     on_s, on_n, _ = walk("calibrated stride (new)", rows_wanted, True)

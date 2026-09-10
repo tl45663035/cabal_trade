@@ -1,14 +1,3 @@
-"""Where trade.chaos_margin_now spends its time, live.
-
-DRIVES THE GAME: it runs the real margin gate against the real market. It
-buys nothing -- the gate only searches and reads.
-
-Prints every OCR launch grouped by region, plus the sleeps, so the next
-change is aimed at the thing that actually costs rather than the thing that
-looks expensive.
-
-    python unit_tests/trade_margin_profile.py [item ...]
-"""
 import collections
 import os
 import sys
@@ -30,7 +19,6 @@ PAIRS = [("Chaos", 4, 3), ("FCH", 8, 7), ("FCHH", 2, 1),
 def main() -> int:
     import trade
 
-    # OPEN FIRST, CALIBRATE SECOND: calibration measures the Trade WINDOW.
     trade.PREMIUM_ENABLED = True
     if not trade.ensure_shop_ready(verbose=True):
         print("Could not open the Agent Shop.")

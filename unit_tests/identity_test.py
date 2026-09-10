@@ -1,25 +1,3 @@
-"""Row identity and collect-counting, driven against every recorded table.
-
-    py unit_tests\\identity_test.py
-
-This is the machinery that ended both live runs on 2026-08-04, so it is worth
-exercising against real shop states rather than invented ones. It replays
-4,000+ tables that the script actually saw and asserts properties of the real
-functions -- locate_row, RowRef, listing_family, collect_delta -- with no
-recorded expectations involved, so nothing here can be circular.
-
-The four questions:
-
-  1. Can a row be found again from its own RowRef? If not, the batch acts on
-     the wrong listing or reports a live stack as sold.
-  2. When it CANNOT be told apart, does strict mode say so rather than
-     returning a confident wrong row?
-  3. After collecting a sale, does the count say "collected" -- even when the
-     collected stack had an identical twin? Getting this wrong collected a
-     second stack for one sale.
-  4. Does a dropped click still read as "nothing moved"? Getting this wrong
-     reports a live stack as sold and abandons it.
-"""
 
 import json
 import sys
@@ -29,7 +7,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-import trade  # noqa: E402
+import trade
 
 BASELINE = HERE / "baseline_rows.json"
 
@@ -55,7 +33,6 @@ def as_rows(raw: list[dict]) -> list[trade.Row]:
 
 
 def twin(a: trade.Row, b: trade.Row) -> bool:
-    """Indistinguishable in every readable respect."""
     return (a.name, a.price, a.qty, a.action) == (b.name, b.price, b.qty,
                                                   b.action)
 
@@ -98,7 +75,6 @@ def main() -> int:
             twin_rows += len(siblings) > 1
             family_sizes[len(siblings)] += 1
 
-            # 1. round trip: a row must be findable from its own reference
             ref = trade.RowRef.of(row, table)
             found, note = trade.locate_row(live, ref)
             if found is None:
@@ -109,7 +85,6 @@ def main() -> int:
                     f"{name} row {row.index}: {row.name!r} x{row.qty} "
                     f"resolved to row {found.index} {found.name!r} x{found.qty}")
 
-            # 2. strict mode must never return a DIFFERENT row
             s_found, s_note = trade.locate_row(live, ref, strict=True)
             if s_found is not None and not twin(s_found, row):
                 strict_wrong.append(
@@ -120,13 +95,11 @@ def main() -> int:
                     f"{name} row {row.index}: {len(siblings)} identical rows "
                     f"but strict returned one anyway")
 
-            # 3/4. the collect decision, using the real functions
             fam = trade.listing_family(live, row.name, row.price)
             before = trade.family_quantities(fam)
 
             if row.action == "receive":
                 sold_seen += 1
-                # Fully collected: that row leaves the table.
                 after = trade.family_quantities([r for r in fam
                                                  if r is not row])
                 lost, gained = trade.collect_delta(before, after)
@@ -136,7 +109,6 @@ def main() -> int:
                         f"x{row.qty} gave lost={lost} gained={gained} "
                         f"(family of {len(fam)})")
 
-                # Partial sale: the stack shrinks rather than vanishing.
                 if isinstance(row.qty, int) and row.qty > 1:
                     smaller = row.qty - 1
                     after_p = trade.family_quantities(
@@ -148,7 +120,6 @@ def main() -> int:
                             f"{name} row {row.index}: partial {row.qty}->"
                             f"{smaller} gave lost={lost_p} gained={gained_p}")
 
-            # A click that did nothing: the table is unchanged.
             lost_d, gained_d = trade.collect_delta(before, list(before))
             if lost_d or gained_d:
                 dropped_wrong.append(

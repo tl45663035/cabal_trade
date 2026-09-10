@@ -1,4 +1,3 @@
-"""Zoom in on the interesting windows of the real run_index.jsonl."""
 
 import sys as _sys
 from pathlib import Path as _Path
@@ -22,19 +21,15 @@ def show(lo, hi, title):
               f"{e.get('file'):15} {str(extra)[:90]}")
 
 
-# the two adjacent inventory.before_cancel pairs
 show(126, 160, "09:55 and 09:58 - inventory.before_cancel with no cancel after it")
 
-# the third truncation
 show(714, 730, "10:53 - inventory.before_cancel followed by a fresh refresh")
 
-# the five-hour outage
 target = datetime.fromisoformat("2026-08-03T19:56:48")
 idx = min(range(len(entries)),
           key=lambda i: abs(datetime.fromisoformat(entries[i]["at"]) - target))
 show(idx - 20, idx + 6, "19:56 - the 5-hour outage")
 
-# the four aborts actually recorded
 print(f"\n{'=' * 74}\nevery cancel.aborted / register.aborted recorded\n{'=' * 74}")
 for i, e in enumerate(entries):
     if e.get("label") in ("cancel.aborted", "register.aborted"):
@@ -42,7 +37,6 @@ for i, e in enumerate(entries):
               + str({k: v for k, v in e.items()
                      if k not in ('file', 'label', 'at')})[:200])
 
-# file numbering: does the index ever skip a frame number?
 print(f"\n{'=' * 74}\nframe numbering continuity\n{'=' * 74}")
 nums = [int(e["file"][4:9]) for e in entries if e.get("file", "").startswith("run_")]
 skips = [(a, b) for a, b in zip(nums, nums[1:]) if b != a + 1]

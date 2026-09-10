@@ -1,8 +1,3 @@
-"""register_item() failure paths.
-
-Central question for every case: is the item left in the shop slot, and is the
-caller told enough to know that?
-"""
 import harness as H
 from harness import (Harness, check, note, section, summary, run, where,
                      make_row, loaded_panel, empty_panel)
@@ -28,9 +23,7 @@ def call(h, **kwargs):
     return ok, exc, report
 
 
-# ---------------------------------------------------------------------------
 section("2a. nothing loads into the shop slot")
-# SHOULD: retry LOAD_ATTEMPTS times, abort, leave nothing listed, commit nothing.
 h = fresh(load_fails=True)
 ok, exc, report = call(h)
 
@@ -49,21 +42,11 @@ check("2a shop slot really is empty", h.panel["loaded"] is False)
 check("2a nothing was listed", len(h.rows) == 1)
 
 
-# ---------------------------------------------------------------------------
 section("2b. qty_max disagrees with expect_qty (a DIFFERENT item loaded)")
-# SHOULD: abort before pricing, and make sure the wrong item does not stay in
-# the shop slot -- the next cycle cannot register anything while it sits there.
 h = fresh(load_as={"qty": 64, "qty_max": 64})
 ok, exc, report = call(h)
 
 check("2b returns False", ok is False, f"got {ok!r}")
-# The cross-check became a LOWER BOUND on 2026-08-08. It used to demand
-# equality, but expect_qty is what the LISTING held while qty_max is what the
-# panel offers -- everything owned of that item across the whole inventory,
-# because a Ctrl+Click gathers matching items from every tab. Owning MORE is
-# ordinary (a 250-Core conversion spills past tab 4 by design); owning FEWER is
-# the case worth refusing, and is what this section exercises: 100 cancelled,
-# 64 offered.
 check("2b aborted on the quantity cross-check",
       h.said("offers only") or h.said("not the same item"), h.out()[-400:])
 check("2b and said how big the shortfall was",
@@ -85,7 +68,6 @@ check("2b return value alone does not distinguish 'wrong item' from "
       f"report={report}")
 
 
-# ---------------------------------------------------------------------------
 section("2b2. qty_max is None -- the cross-check silently does not run")
 h = fresh(load_as={"qty": 64, "qty_max": None})
 ok, exc, report = call(h)
@@ -101,7 +83,6 @@ if ok:
          "depends on fails. A 64-stack was listed under a 100-stack's identity "
          "with no complaint and no note in the output.")
 
-# the tolerance band: a mismatch inside max(5, 10%) is accepted on purpose
 h = fresh(load_as={"qty": 95, "qty_max": 95})
 ok, exc, report = call(h)
 check("2b3 a mismatch inside the slack is accepted", ok is True, f"{ok!r}")
@@ -119,7 +100,6 @@ check("2b3 the disagreement reaches the caller's report",
       f"{report} -- `report and report.update(...)` is dead on an empty dict")
 
 
-# ---------------------------------------------------------------------------
 section("2c. net sales is not divisible by the price")
 h = fresh(net_sales_extra=7)
 ok, exc, report = call(h)
@@ -136,7 +116,6 @@ check("2c the price was already selected before the abort",
       "price.before_select" in h.labels(), str(h.labels()))
 
 
-# ---------------------------------------------------------------------------
 section("2d. the Register button cannot be found")
 h = fresh(register_button_present=False)
 ok, exc, report = call(h)
@@ -152,10 +131,7 @@ check("2d no register.priced frame was recorded",
       "register.priced" not in h.labels(), str(h.labels()))
 
 
-# ---------------------------------------------------------------------------
 section("2e. post-commit failure: the shop slot never clears")
-# SHOULD: report the commit through `report` so the caller verifies rather than
-# assuming, even though the function returns False.
 h = fresh(post_commit_slot_sticks=True)
 ok, exc, report = call(h)
 
@@ -173,7 +149,6 @@ check("2e recorded register.aborted with committed=True",
 check("2e warned the operator", h.said("may have gone through"), h.out()[-300:])
 
 
-# ---------------------------------------------------------------------------
 section("2f. post-commit failure: a confirmation dialog stays open")
 h = fresh(confirm_sticks=True)
 ok, exc, report = call(h)
@@ -193,7 +168,6 @@ check("2f the caller is given the price it must verify against",
       report.get("price") == 410_000, str(report))
 
 
-# ---------------------------------------------------------------------------
 section("2g. PermissionError during the Register click")
 h = fresh()
 h.arm_after = {"register.priced": ("click", PermissionError(
@@ -207,14 +181,12 @@ check("2g the item is left in the shop slot", h.panel["loaded"] is True)
 note("2g escape path", where(exc) if exc else "-")
 
 
-# ---------------------------------------------------------------------------
 section("2h. PermissionError AFTER the commit click")
 h = fresh()
 h.arm_after = {}
 h.click_fault = {}
 with h:
     report = {}
-    # fail the grab that follows the committing click
     h.arm_after = {}
     original = h._click
     committed_seen = {"n": 0}

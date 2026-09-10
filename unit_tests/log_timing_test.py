@@ -1,24 +1,8 @@
-"""Every log line carries how long the step before it took.
-
-Added on 2026-08-08 because two separate investigations that day stalled on the
-same thing: the log had timestamps only at cycle boundaries, so "why does a
-cycle take 22 minutes" could not be answered from it, and a silent scroll path
-had its cost attributed to whatever printed next.
-
-Two properties matter and both are easy to lose:
-
-  * the durations come from a MONOTONIC clock, because this machine keeps bad
-    time and a duration from a jumping clock is worse than none -- it looks
-    authoritative and is wrong; and
-  * the prefix reaches the FILE only. The failpath suites capture stdout and
-    assert on exact wording, so stamping the console would break a dozen
-    suites for a reason unrelated to what they test.
-"""
 import io
 import sys
 
 sys.path.insert(0, r"C:\Users\Trung\Cabal")
-import trade as m  # noqa: E402
+import trade as m
 
 m.NO_INPUT = True
 failures = []
@@ -33,7 +17,6 @@ def check(ok, what):
 
 
 def run(lines, clock=None):
-    """Write `lines` through a _Tee; return (console text, file text)."""
     console, handle = io.StringIO(), io.StringIO()
     real = m.time.monotonic
     if clock is not None:
@@ -47,29 +30,23 @@ def run(lines, clock=None):
     return console.getvalue(), handle.getvalue()
 
 
-# -- the console must not change ------------------------------------------
 TEXT = ["first action\n", "\n", "second action\n", "multi\nline\n",
         "partial", " continuation\n"]
 console, logged = run(TEXT)
 check(console == "".join(TEXT),
       f"the console text must be byte-identical, got {console!r}")
 
-# -- the file must be stamped ---------------------------------------------
 body = logged.splitlines()
 check(all(l.startswith("[") for l in body if l.strip()),
       f"every non-blank log line is stamped, got {body}")
 check(any(l == "" for l in body),
       "blank separator lines are left bare rather than stamped")
 
-# A line written in two write() calls is stamped ONCE, at its start. print()
-# emits the text and the newline separately, so this is the normal case rather
-# than an edge one.
 check(sum(1 for l in body if "continuation" in l) == 1
       and body[-1].count("[") == 1,
       f"a line split across writes is stamped once, got {body[-1]!r}")
 
 
-# -- the numbers are elapsed and delta, from the monotonic clock ----------
 clock = [1000.0]
 console2, handle2 = io.StringIO(), io.StringIO()
 real = m.time.monotonic
@@ -107,8 +84,6 @@ check(abs(e2 - 112.5) < 0.05, f"elapsed accumulates, got {e2}")
 check(abs(d2 - 100.0) < 0.05,
       f"delta is the LAST gap, not the total, got {d2}")
 
-# The wall clock must not be able to move these. A run that spans an NTP
-# correction or daylight saving must still report honest durations.
 class _JumpingClock:
     @staticmethod
     def now():
@@ -131,10 +106,7 @@ finally:
 check(m.datetime is saved_dt, "datetime was restored")
 
 
-# -- the header explains the format ---------------------------------------
-# A bare "[ 123.4 +2.1]" in front of every line is unreadable without a key,
-# and the log is read by a human hunting a slow step.
-import inspect  # noqa: E402
+import inspect
 
 source = inspect.getsource(m.start_run_log)
 check("timing" in source and "delta" in source,

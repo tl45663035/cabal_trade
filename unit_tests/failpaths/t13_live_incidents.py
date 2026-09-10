@@ -1,23 +1,3 @@
-"""The five ways cycles actually died on 2026-08-04, replayed.
-
-Every scenario here is taken from a real run log, not invented. The names carry
-the cycle number so a failure points at the incident it is guarding:
-
-  cycle 1  two rows relisted and VERIFIED, then the post-row table wait timed
-           out and the whole batch was abandoned -- 8 rows never attempted and
-           a productive cycle scored as a failure
-  cycle 3  cancel committed, the returned item could not be identified in the
-           work tab, so it was left stranded and every later row failed the
-           same precondition
-  cycle 5  the Registration Extension dialog never appeared; nothing was
-           changed, so the batch SHOULD carry on to the other nine rows
-  cycle 6  the table could not be read at all at the start of the batch
-  cycle 7  a sold row was collected and a duplicate made the follow-up
-           ambiguous, stranding the collected item
-
-What matters in each is not the message but the DECISION: keep going, or stop.
-Getting that wrong is what turned single bad rows into dead runs.
-"""
 from harness import Harness, check, empty_panel, make_row, run, section, summary
 
 import trade
@@ -32,13 +12,6 @@ def ten_rows():
 
 
 def relisted_after(h, failures, strands=False):
-    """Patch relist(): FAILED for the named rows, RELISTED otherwise.
-
-    `strands` models what actually happened on cycles 3 and 7 -- the row's
-    cancel COMMITTED and then could not be completed, leaving an item in the
-    work tab. The tab must be clean when the batch starts, or relist_rows
-    refuses to begin at all, which is a different (and correct) refusal.
-    """
     def fake(row, *a, expect=None, **kw):
         name = expect.name if expect is not None else f"row {row}"
         h.log("relist_call", row, expect=expect)
@@ -54,14 +27,13 @@ def acted(h):
             if n == "relist_call" and kw.get("expect") is not None]
 
 
-# ---------------------------------------------------------------------------
 section("cycle 1: a verified relist must survive a post-row refresh timeout")
 
 h = Harness(rows=ten_rows(), panel=empty_panel())
 with h:
     h.patch("relist", relisted_after(h, set()))
-    h.table_refreshes = False          # every wait_for_table times out
-    h.work_tab_empty = True            # ...but nothing is stranded
+    h.table_refreshes = False
+    h.work_tab_empty = True
     ok, exc = run(trade.relist_rows, [1, 2, 3])
     check("c1 batch still succeeded", ok is True, f"got {ok!r} {exc!r}")
     check("c1 all three rows were attempted",
@@ -73,12 +45,10 @@ with h:
           h.out()[-400:])
 
 
-# ---------------------------------------------------------------------------
 section("cycle 1b: the same timeout WITH a dirty tab must still stop")
 
 h = Harness(rows=ten_rows(), panel=empty_panel())
 with h:
-    # Clean at the start, dirty once row 1 has been through relist().
     h.patch("relist", relisted_after(h, set(), strands=True))
     h.table_refreshes = False
     ok, exc = run(trade.relist_rows, [1, 2, 3])
@@ -89,13 +59,12 @@ with h:
     check("c1b named the dirty tab", h.said("not clean"), h.out()[-300:])
 
 
-# ---------------------------------------------------------------------------
 section("cycle 5: one row aborting cleanly must not freeze the other nine")
 
 h = Harness(rows=ten_rows(), panel=empty_panel())
 with h:
     h.patch("relist", relisted_after(h, {"Item 01"}))
-    h.work_tab_empty = True            # the abort changed nothing
+    h.work_tab_empty = True
     ok, exc = run(trade.relist_rows, [1, 2, 3])
     check("c5 batch continued past the bad row",
           acted(h) == ["Item 01", "Item 02", "Item 03"],
@@ -107,13 +76,10 @@ with h:
           h.out()[-500:])
 
 
-# ---------------------------------------------------------------------------
 section("cycle 3: a failure with a dirty tab stops the batch")
 
 h = Harness(rows=ten_rows(), panel=empty_panel())
 with h:
-    # The cancel committed and the item could not be re-listed, so it is now
-    # sitting in the work tab: exactly the state cycle 3 stopped in.
     h.patch("relist", relisted_after(h, {"Item 01"}, strands=True))
     ok, exc = run(trade.relist_rows, [1, 2, 3])
     check("c3 batch stopped", ok is False, f"got {ok!r}")
@@ -123,7 +89,6 @@ with h:
           h.out()[-300:])
 
 
-# ---------------------------------------------------------------------------
 section("cycle 6: an unreadable table is never an empty shop")
 
 h = Harness(rows=[], panel=empty_panel())
@@ -137,13 +102,11 @@ with h:
     check("c6 clicked nothing at all", h.clicks() == [], f"{h.clicks()[:4]}")
 
 
-# ---------------------------------------------------------------------------
 section("cycle 6b: a table that goes unreadable MID-batch also stops")
 
 h = Harness(rows=ten_rows(), panel=empty_panel())
 with h:
     h.patch("relist", relisted_after(h, set()))
-    # The first read works; the table then stops being readable.
     original = h._read_rows
     state = {"n": 0}
 
@@ -160,21 +123,9 @@ with h:
           h.out()[-400:])
 
 
-# ---------------------------------------------------------------------------
 section("05:13: a row that leaves a dialog up must not doom the batch")
 
-# The 2026-08-05 run, three identical cycles:
-#
-#   row 2 -> ABORTED: the dialog stayed open after Confirmation
-#            Trade window would not close with Escape
-#            ...continuing with 8 row(s) still to go
-#   row 3 -> The listings could not be read
-#
-# The work tab was clean, so the batch continued -- straight into a modal
-# covering the table. One bad row cost all eight remaining rows and the cycle,
-# every cycle, until the breaker stopped an 11-minute run.
 class StuckDialog(Harness):
-    """A row fails and leaves a confirmation dialog on screen."""
 
     def __init__(self, *a, closes=True, **kw):
         super().__init__(*a, **kw)
@@ -199,7 +150,7 @@ def fails_leaving_dialog(h, failing):
         name = expect.name if expect is not None else f"row {row}"
         h.log("relist_call", row, expect=expect)
         if name in failing:
-            h.dialog = "confirm"          # left on screen, covering the table
+            h.dialog = "confirm"
             return trade.FAILED
         return trade.RELISTED
     return fake
@@ -221,8 +172,6 @@ with h:
           acted(h) == ["Item 01", "Item 02", "Item 03", "Item 04"],
           f"{acted(h)} -- this is the 8 rows the live run threw away")
 
-# ...but a dialog that will NOT close still stops the batch, because
-# continuing into it is guaranteed to fail.
 h = StuckDialog(rows=ten_rows(), panel=empty_panel(), closes=False)
 with h:
     h.patch("relist", fails_leaving_dialog(h, {"Item 02"}))
@@ -234,7 +183,6 @@ with h:
           h.said("would fail its read") or h.said("not attempted"),
           h.out()[-400:])
 
-# A failure with no dialog behaves exactly as before -- no new close attempt.
 h = StuckDialog(rows=ten_rows(), panel=empty_panel())
 with h:
     h.patch("relist", relisted_after(h, {"Item 01"}))

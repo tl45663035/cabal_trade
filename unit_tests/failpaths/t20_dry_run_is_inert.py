@@ -1,44 +1,19 @@
-﻿"""A dry run must not touch the game AT ALL -- not merely "not click".
-
-The incident, 2026-08-04 23:14:
-
-    py trade.py --relist-rows all --dry-run
-
-sent 40 wheel notches at the Trade window's centre, because scroll_to_end is
-not gated on dry_run and nothing under it was either. The Trade window happened
-to be closed, so the wheel went to the game WORLD as a camera zoom. The live run
-in progress -- healthy for 48 minutes -- then failed two cycles in a row on
-"Lady Yekaterina (Agent Shop) is not on screen" and its breaker stopped it.
-
-Nothing was clicked. That was exactly the problem: `dry_run` was a per-call
-argument threaded through the ACTING functions, so "does not click" was true
-and "does not touch the game" was not. An argument can be forgotten by a new
-caller; a check inside the primitive cannot.
-
-Deliberately does NOT use the Harness for the primitive checks. The harness
-REPLACES click/scroll_wheel/type_number with recorders, so a test written
-against it proves the recorder sends nothing -- which is true whether or not
-the guard exists. The real functions are called here, with only the Windows
-call at the very bottom (_send) intercepted.
-"""
-import sys
+﻿import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 
-from harness import check, section, summary  # noqa: E402
+from harness import check, section, summary
 
-import trade  # noqa: E402
+import trade
 
-# Captured at import, before any harness has installed anything over them.
 REAL = {name: getattr(trade, name) for name in
         ("scroll_wheel", "click", "ctrl_click", "press_escape",
          "type_number", "move_mouse")}
 
 
 class Spy:
-    """Intercept the lowest layer only: the actual Windows input call."""
 
     def __init__(self):
         self.events = []
@@ -52,8 +27,6 @@ class Spy:
                          ("print", self.printed.append)):
             self._saved[name] = getattr(trade, name, None)
             setattr(trade, name, fn)
-        # SetCursorPos is a real Windows call; stub it so a test can never move
-        # a cursor even if the guard is broken.
         self._saved["_real_move"] = trade.move_mouse
         return self
 
@@ -79,7 +52,6 @@ def with_no_input(flag):
     return before
 
 
-# ===========================================================================
 section("every input primitive is silent when NO_INPUT is set")
 
 before = with_no_input(True)
@@ -118,21 +90,12 @@ finally:
     with_no_input(before)
 
 
-# ===========================================================================
 section("with NO_INPUT clear, the primitives DO act")
 
-# Without this the suite would pass just as well against a scroll_wheel that
-# never works at all.
 before = with_no_input(False)
 try:
     with Spy() as spy:
-        trade.move_mouse = lambda x, y: True      # no real cursor, ever
-        # scroll_wheel now refuses unless the wheel would reach the listings
-        # table. That precondition lives INSIDE the primitive on purpose -- a
-        # guard a caller can skip is not a guard, and forty notches into the
-        # game world once zoomed the camera until the NPC left the screen. It
-        # has its own tests; this section is about suppression being
-        # conditional, so the precondition is satisfied rather than exercised.
+        trade.move_mouse = lambda x, y: True
         real_scrollable = trade.table_scrollable
         trade.table_scrollable = lambda verbose=True: True
         try:
@@ -156,14 +119,11 @@ finally:
     with_no_input(before)
 
 
-# ===========================================================================
 section("the sweep, the exact path that caused the incident")
 
 before = with_no_input(True)
 try:
     with Spy() as spy:
-        # scroll_to_end is what --relist-rows all reaches first, and what sent
-        # the 40 notches.
         trade.scroll_to_end(up=True, timeout=0.01, verbose=False)
         check("scroll_to_end sends no input under NO_INPUT", not spy.events,
               f"{len(spy.events)} input event(s) -- this is the call that "
@@ -172,7 +132,6 @@ finally:
     with_no_input(before)
 
 
-# ===========================================================================
 section("the flag defaults off and is restored")
 
 check("NO_INPUT is False by default", trade.NO_INPUT is False,

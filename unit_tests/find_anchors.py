@@ -1,36 +1,3 @@
-"""Measure candidate calibration anchors from recorded frames.
-
-    py unit_tests\\find_anchors.py            # report candidates
-    py unit_tests\\find_anchors.py -v         # include the rejected ones
-
-READ-ONLY. It opens saved frames and runs OCR. It never touches the game and
-never edits trade.py -- it prints a table for a human to copy from.
-
-WHY THIS IS NOT A JUDGEMENT CALL. calibrate() fits an origin and a scale to the
-anchors it finds. A wrong reference position does not fail loudly: it is
-absorbed into `scale`, so calibration reports success and every derived
-coordinate is quietly wrong by a proportion of the window. The file already
-records two anchors that had to be removed for exactly that -- "Function" was
-out by 74px in y, and "Purchase" was never found at 1440p because the game
-draws its FPS overlay across that tab.
-
-So a candidate has to earn its place on evidence, and this measures the five
-things that matter:
-
-  PRESENT     found in every frame examined, not most of them
-  UNIQUE      exactly one hit per frame -- two hits and the fit picks
-              arbitrarily between them, which moves the origin frame to frame
-  STABLE      its position varies by at most a pixel or two across frames once
-              each frame's own layout is removed
-  CONFIDENT   OCRs well above the bar, because a marginal word becomes a
-              marginal anchor
-  CHROME      present on the Purchase tab as well as the Register tab, or
-              calibrating on the wrong tab finds nothing
-
-Positions are reported in REFERENCE coordinates -- (measured - origin) / scale,
-using the layout recorded beside each frame -- so they can be pasted straight
-into REF_ANCHORS.
-"""
 import collections
 import json
 import statistics
@@ -40,7 +7,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-import trade as m  # noqa: E402
+import trade as m
 
 m.NO_INPUT = True
 
@@ -48,21 +15,12 @@ CORPUS = _ROOT / "unit_tests" / "corpus"
 INDEX = CORPUS / "run_index.jsonl"
 VERBOSE = "-v" in sys.argv
 
-# How many frames of each tab to measure. More is better evidence and costs
-# OCR time; twelve of each was enough to separate the stable words from the
-# rest by an order of magnitude.
 SAMPLE = 12
-# A candidate must sit within this many reference pixels of its own median in
-# every frame. The existing anchors fit to a worst residual of 1.7px, so
-# anything looser is not evidence of a fixed position.
 MAX_DRIFT = 2.5
-# ...and read at least this well. NEAR_ANCHOR_MIN_CONF is 70 for a clipped
-# word; a whole-word anchor should be far better than that.
 MIN_CONF = 85.0
 
 
 def frames_by_tab():
-    """Recorded frames grouped by which tab they show, newest first."""
     if not INDEX.exists():
         return {}
     rows = []
@@ -87,7 +45,7 @@ def frames_by_tab():
         path = CORPUS / row["file"]
         try:
             shot = Image.open(path)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
         if not m.trade_window_open(shot):
             continue
@@ -99,22 +57,18 @@ def frames_by_tab():
 
 
 def to_reference(point, layout):
-    """A measured point, expressed in reference coordinates."""
     ox, oy = layout["origin"]
     scale = layout.get("scale") or 1.0
     return ((point[0] - ox) / scale, (point[1] - oy) / scale)
 
 
 def measure(samples):
-    """{word: [(ref_x, ref_y, conf, hits_in_frame), ...]} over the samples."""
     seen = collections.defaultdict(list)
     for _path, shot, layout in samples:
         words = m.find_words(shot, m.TRADE_REGION, 20)
         by_text = collections.defaultdict(list)
         for w in words:
             text = w.text.strip()
-            # Words only: a number moves with the data, and punctuation is
-            # never a reliable single hit.
             if len(text) < 4 or not text.isalpha():
                 continue
             by_text[text].append(w)

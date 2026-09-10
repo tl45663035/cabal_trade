@@ -1,23 +1,3 @@
-"""Did the price floors actually hold, on the screens the script really saw?
-
-    py unit_tests\\floor_live_test.py
-
-The three existing floor suites test floor BEHAVIOUR: given a market price and
-a floor, is the floor honoured? They all passed while ITEM_PRICE_FLOORS carried
-105,000,000 instead of the 110,000,000 that was asked for, because behaviour
-was right and the number was wrong. Four VIP memberships went out at
-109,999,999 before anyone noticed.
-
-This suite asks the other question -- what price is actually on the screen --
-against every frame the script recorded. It is the only check here that could
-have caught that, and it needs no ground truth: the floor is in the code and
-the price is in the picture.
-
-A listing made BEFORE a floor was raised keeps its old price until the script
-next relists it, so a frame is only held to a floor if it was recorded after
-that floor landed AND after the run that would have relisted it. Older frames
-are reported, never asserted -- they were legal when they were taken.
-"""
 
 import json
 import sys
@@ -27,29 +7,13 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-import trade  # noqa: E402
+import trade
 
 BASELINE = HERE / "baseline_rows.json"
 CORPUS = HERE / "corpus"
 
-# When ITEM_PRICE_FLOORS last changed, from git. A frame older than this was
-# taken under a different rule and cannot be judged by this one.
-#
-# UPDATE THIS WHENEVER A FLOOR MOVES. If it is left stale the suite judges
-# frames against a floor that was not in force when they were taken, and
-# reports violations that were legal at the time.
-#   (this commit)  2026-08-04 21:20  Force Gem Package (x400) -> 180,000,000
-#   faee956  2026-08-04 08:19:43 -0700  VIP floor -> 104,000,000
-#   dfdd426  2026-08-04 07:45:15 -0700  VIP floor -> 110,000,000
 FLOORS_CURRENT_FROM = datetime(2026, 8, 4, 21, 20, 0)
-# RAISING a floor does not reprice what is already listed: those rows keep the
-# old price until the script next relists them, which takes a cycle or two. So
-# a violation only counts once the script has had time to act on it. (Lowering
-# a floor cannot create a violation at all -- everything listed is above it.)
 RELIST_GRACE_MINUTES = 45
-# Below this many judged frames the suite is asserting almost nothing, which
-# looks identical to passing. Say so instead: a green tick over an empty set is
-# the failure mode this whole exercise exists to remove.
 MIN_JUDGED_FRAMES = 20
 
 failures: list[str] = []
@@ -107,8 +71,6 @@ def main() -> int:
             floor = trade.item_price_floor(r["name"] or "")
             if not floor:
                 continue
-            # Which configured floor is this? item_price_floor resolves the
-            # name; match it back to a label for reporting.
             label = next((lab for _t, lab, f in floors if f == floor),
                          r["name"])
             seen[label].append(price)
@@ -127,16 +89,6 @@ def main() -> int:
           f"grace and therefore asserted on: {settled:,}")
     print(f"frames too old to judge (reported only): {ignored:,}")
 
-    # A suite that asserts over an empty set passes for the wrong reason -- but
-    # failing for it is worse. Changing a floor makes `judged` zero by
-    # construction: no frame can postdate a change that was made seconds ago.
-    # Hard-failing there paints the regression red for a reason that is not a
-    # defect, until the game happens to be run again -- and a suite that is red
-    # for a non-reason is one people learn to skip past, which is exactly how
-    # the failpaths harness came to be hiding a dead suite this morning.
-    #
-    # So it is reported unmissably and does not gate. What DOES gate is a
-    # violation, and those are asserted below on whatever data exists.
     if judged < MIN_JUDGED_FRAMES:
         print()
         print("  " + "!" * 66)
@@ -155,21 +107,6 @@ def main() -> int:
               f"the script has not had time to reprice what was already "
               f"listed.")
 
-    # `judged == 0` and `resolved == 0` are NOT the same, and only
-    # the second is a defect in this file.
-    #
-    # judged == 0 happens by construction when a floor has just
-    # changed -- no frame can postdate a change made seconds ago.
-    # That is what the soft warning above exists for, and failing
-    # hard on it would paint this red for a non-reason.
-    #
-    # resolved == 0 means not ONE baselined frame is on disk: the
-    # corpus rotated out from under the baseline (run_11046.png ->
-    # run_32010.png), so every row hit the `continue` above and
-    # every assertion below passed over an empty set. This suite
-    # reported pass in that state for a full day while asserting
-    # nothing -- and it is the only one that can catch a wrong
-    # floor VALUE against real screenshots.
     check("the baseline resolves against the corpus", resolved > 0,
           f"0 of {len(data)} baselined frames are present in "
           f"{CORPUS}. The corpus has rotated away from this "

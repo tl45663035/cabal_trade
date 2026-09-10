@@ -1,7 +1,3 @@
-"""Read-only forensics on the real run_index.jsonl.
-
-Applies the discriminator from t5 to the actual recorded evidence.
-"""
 import json
 from collections import Counter
 from pathlib import Path as _Path
@@ -33,8 +29,6 @@ print("\ncycle-boundary instrumentation present?")
 for label in ("cycle.start", "cycle.end", "cycle.exception", "loop.stopped"):
     print(f"  {label:18} {labels.get(label, 0)}")
 
-# Every point at which the chain reached inventory.before_cancel and what
-# came next.
 print("\nwhat followed each inventory.before_cancel:")
 after = Counter()
 truncations = []
@@ -58,7 +52,6 @@ for e in entries[-15:]:
              if k not in ("file", "label", "at")}
     print(f"  {e.get('at')}  {e.get('label'):26} {str(extra)[:110]}")
 
-# Gaps in wall-clock time: where a run stopped and a new one started.
 print("\nlargest time gaps between consecutive entries:")
 from datetime import datetime
 stamped = [(datetime.fromisoformat(e["at"]), e) for e in entries if e.get("at")]

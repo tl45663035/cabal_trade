@@ -1,4 +1,3 @@
-"""Resolve the exact line numbers cited in the report, against the live file."""
 
 import sys as _sys
 from pathlib import Path as _Path

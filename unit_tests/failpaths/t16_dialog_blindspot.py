@@ -1,25 +1,3 @@
-"""Bug 1: a dialog is on screen and dialog_kind reports nothing.
-
-Swept systematically, because the live failure was not "dialog_kind is broken"
--- it reads correctly most of the time. It is that dialog_kind reads the TITLE,
-Tesseract's segmentation is crop-dependent, and ornate title glyphs vanish at
-POPUP_REGION scale on SOME frames. So the interesting axis is not whether the
-title reads, it is how UNRELIABLY it reads:
-
-    honest   reads correctly every time          (the common case)
-    blind    never reads the title               (the worst case)
-    flaky    reads on alternate frames           (what actually happened)
-    late     reads only after several attempts   (the 07:57 case)
-
-Every combination of dialog kind and reliability is checked, and the property
-is always the same: a dialog that is up must be SEEN, and must not survive the
-code that is supposed to clear it. A modal left on screen covers the table, and
-every read afterwards returns no rows.
-
-The reverse is asserted just as hard: on a clean screen nothing may be detected
-and no Cancel may be clicked. A detector that always says yes would click for
-ever.
-"""
 from harness import Harness, check, empty_panel, make_row, run, section, summary
 
 import trade
@@ -34,7 +12,6 @@ def rows():
 
 
 def unreliable(h, mode, reveal_at=8):
-    """Replace dialog_kind with a title reader of the given reliability."""
     real = h._dialog_kind
     seen = {"n": 0}
 
@@ -60,7 +37,6 @@ def fresh(kind=None, **flags):
     return h
 
 
-# ===========================================================================
 section("A. an open dialog must be DETECTED, however badly the title reads")
 
 for kind in KINDS:
@@ -74,7 +50,6 @@ for kind in KINDS:
                   "covers the table for every read that follows")
 
 
-# ===========================================================================
 section("B. a clean screen must NOT look like a dialog, in any mode")
 
 for mode in MODES:
@@ -87,12 +62,8 @@ for mode in MODES:
               "Cancel for ever at a screen with nothing on it")
 
 
-# ===========================================================================
 section("C. the honest limit: both signals gone means undetectable")
 
-# Worth pinning down rather than pretending otherwise. If neither the title
-# nor the Cancel button reads, nothing can see the dialog -- and the test says
-# so, so a future change that claims to fix it has to prove it.
 for kind in KINDS:
     h = fresh(kind, no_cancel_button=True)
     with h:
@@ -103,7 +74,6 @@ for kind in KINDS:
               "the last line and there is nothing behind it")
 
 
-# ===========================================================================
 section("D. close_any_dialog clears it whatever the title does")
 
 for kind in KINDS:
@@ -118,7 +88,6 @@ for kind in KINDS:
                   f"button finder precisely so the title cannot stop it")
 
 
-# ===========================================================================
 section("E. the next cycle's prepare clears it too")
 
 for kind in KINDS:
@@ -134,7 +103,6 @@ for kind in KINDS:
                   f"got {ok!r} {exc!r}")
 
 
-# ===========================================================================
 section("F. prepare does not click at a screen with nothing on it")
 
 for mode in MODES:
@@ -152,7 +120,6 @@ for mode in MODES:
               not cancels, f"{len(cancels)} Cancel click(s) on a clean screen")
 
 
-# ===========================================================================
 section("G. cancel_item never leaves a dialog behind, whatever it decides")
 
 for mode in MODES:
@@ -164,7 +131,6 @@ for mode in MODES:
         check(f"G {mode:6}: no dialog left on screen", h.dialog is None,
               f"still {h.dialog!r} -- whether it committed or backed out, "
               f"leaving one up poisons every read that follows")
-        # Whatever it decided, it must not half-commit.
         commits = h.out().count("Cancelled registration")
         check(f"G {mode:6}: committed at most once", commits <= 1,
               f"{commits} commits")
@@ -179,12 +145,8 @@ for mode in MODES:
                   commits == 1, f"{commits} commits")
 
 
-# ===========================================================================
 section("H. a dialog appearing mid-recovery is still caught")
 
-# close_any_dialog walks a chain: Cancel on the Extension dialog opens the
-# confirmation dialog, whose Cancel closes both. A title that reads on the
-# first and not the second must not strand the second.
 for mode in MODES:
     h = fresh("extension")
     with h:

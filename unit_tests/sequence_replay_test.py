@@ -1,57 +1,3 @@
-"""Sequential replay: every recorded step must leave the screen in the state
-the next step assumes.
-
-WHY THIS FILE EXISTS
---------------------
-The stub suites drive the state machine's control flow honestly and cannot see
-anything the stubs answer for -- coordinates, regions, tabs, confidence,
-frames. A 2026-08-10 audit measured that directly: 32 of 43 mutations survived
-the failpath suites and 14 of 20 survived the unit suites, because the fixtures
-answer from ground truth and ignore the argument whose wrongness IS the bug.
-
-This suite has no stubs. It replays the frames the live script recorded, in the
-order it recorded them, and asserts at each step that the REAL readers see the
-state the NEXT step depends on. A frame cannot be argued with.
-
-WHAT AN EPISODE IS
-------------------
-The operator's framing: "after one click the next window is expected... each
-row is 1 separate test, entire cycle can be 1 unit test, one chaos resupply is
-1 unit test, one core resupply is 1 unit test."
-
-run_index.jsonl is exactly that recording. Every record() call writes a labelled
-frame; with --debug-frames every INPUT writes one too (label "do.action"). So a
-run is a sequence of (label, frame, context), and an episode is the span between
-two markers:
-
-    cycle.start ...          one relist cycle
-    restock.scoped ...       one Core resupply
-    chaos.bought ...         one chaos resupply
-    cancel.before_change ... one row
-
-Each episode becomes its own set of checks, so a failure names the step that
-broke rather than "the suite is red".
-
-WHAT IS ASSERTED
-----------------
-Two independent things, and the second is the one the stubs can never do:
-
-  1. TRANSITIONS. After the step labelled X, the frame must satisfy the
-     precondition the code checks before doing Y. `register.before_load` must
-     show the Register tab open; `buy.dialog` must show a Confirm Purchase
-     dialog that purchase_confirm() can actually read; `refresh.after` must not
-     be mid-reload.
-
-  2. AGREEMENT WITH RECORDED TRUTH. The index stores the VALUES the script
-     believed at that moment -- item, price, qty, spend, available. Re-reading
-     the frame must reproduce them. This is what catches a reader that was
-     wrong when the frame was taken, which is how a green suite once shipped a
-     misreading table reader.
-
-A missing corpus is announced and skips; it is gitignored and not every machine
-has it. A missing FRAME inside a present corpus is a failure, not a skip --
-that is the silent-no-coverage shape this file is written to avoid.
-"""
 import json
 import sys
 from pathlib import Path
@@ -59,11 +5,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import trade as m  # noqa: E402
+import trade as m
 
 try:
     from PIL import Image
-except Exception:  # noqa: BLE001
+except Exception:
     Image = None
 
 m.NO_INPUT = True
@@ -90,13 +36,12 @@ def load_index():
             continue
         try:
             rows.append(json.loads(line))
-        except Exception:  # noqa: BLE001 - a torn tail line is not a failure
+        except Exception:
             continue
     return rows
 
 
 def frame_of(entry):
-    """The image for an index entry, with its layout applied. None if absent."""
     name = entry.get("file")
     if not name:
         return None
@@ -111,12 +56,6 @@ def frame_of(entry):
     return Image.open(path)
 
 
-# --------------------------------------------------------------------------
-# EPISODES
-# --------------------------------------------------------------------------
-# A marker opens an episode; the episode runs until the next marker of any
-# kind. The label tells us which kind of work it was, which is what decides
-# the assertions that apply to it.
 EPISODE_MARKERS = {
     "cycle.start": "cycle",
     "restock.scoped": "core resupply",
@@ -140,19 +79,12 @@ def episodes(rows):
     return out
 
 
-# --------------------------------------------------------------------------
-# STEP EXPECTATIONS
-# --------------------------------------------------------------------------
-# What the frame recorded AT a label must satisfy, expressed as the very
-# predicate the production code consults before its next action. Each returns
-# (ok, detail); a reader raising is a failure, never a skip.
 def expect_purchase_dialog(shot, entry):
     dialog = m.purchase_confirm(shot)
     if not dialog:
         return False, "purchase_confirm() found no dialog"
     if not dialog.get("buy"):
         return False, "no Buy button located"
-    # The two fields that decide how much money moves.
     if dialog.get("qty_max") is None:
         return False, "qty_max did not read - buy_offer falls back to ONE listing"
     if not dialog.get("price"):
@@ -190,11 +122,7 @@ STEP_CHECKS = {
 }
 
 
-# --------------------------------------------------------------------------
-# AGREEMENT WITH WHAT THE SCRIPT BELIEVED
-# --------------------------------------------------------------------------
 def agrees_with_record(shot, entry):
-    """Re-read the frame and compare with the values stored beside it."""
     label = entry.get("label")
     if label == "buy.dialog":
         dialog = m.purchase_confirm(shot)
@@ -204,18 +132,12 @@ def agrees_with_record(shot, entry):
         want = entry.get("available")
         got = dialog.get("qty_max")
         if want is not None and got is not None:
-            # qty_max is the dialog's own limit and `available` is the table's
-            # count; they may legitimately differ when the market moves between
-            # the two reads, so this is bounded rather than exact.
             out.append((got <= want + 2,
                         f"qty_max {got} exceeds the table's {want} available"))
         return out
     return []
 
 
-# --------------------------------------------------------------------------
-# RUN
-# --------------------------------------------------------------------------
 if not INDEX.exists():
     print(f"SKIP: no corpus index at {INDEX} (it is gitignored). "
           f"Run the script once with recording on to build one.")
@@ -242,13 +164,11 @@ for ep in eps:
             continue
         shot = frame_of(entry)
         if shot is None:
-            # A recorded step whose frame is gone. Counted, not skipped: this
-            # is the "silent no coverage" shape the file exists to avoid.
             skipped += 1
             continue
         try:
             ok, detail = rule(shot, entry)
-        except Exception as exc:  # noqa: BLE001 - a reader that raises is a bug
+        except Exception as exc:
             ok, detail = False, f"{type(exc).__name__}: {exc}"
         check(ok, f"[{title}] {entry['label']} ({entry.get('file')}): {detail}")
         for agree_ok, agree_detail in agrees_with_record(shot, entry):
@@ -263,9 +183,6 @@ if skipped:
     print(f"NOTE: {skipped} recorded step(s) had no frame on disk "
           f"(the corpus prunes old PNGs; the index outlives them).")
 
-# The suite must not pass by covering nothing -- the failure shape found in
-# t35_buying_golden, which exits 0 having asserted nothing when its corpus is
-# absent. A present index with zero checkable steps is a failure.
 check(checks > 0, "the corpus index is present but produced NO checks at all")
 
 print(f"\n{checks} checks, {len(failures)} FAILED")

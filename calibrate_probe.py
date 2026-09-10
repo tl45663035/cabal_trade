@@ -1,28 +1,3 @@
-"""Report why calibration fails on this machine. Read-only: never clicks.
-
-Run it on the machine that cannot calibrate, with Cabal open and the Agent
-Shop showing the Register tab:
-
-    py calibrate_probe.py
-
-It prints every input calibration uses, the fit it computes, the point at
-which it gives up, and what every derived coordinate would become. Alongside
-it writes, into calibrate_probe_out/:
-
-    screen.png          the full screen it measured
-    trade_region.png    the area the Trade window is believed to occupy
-    anchor_*.png        a crop around each anchor's EXPECTED position, so a
-                        missing anchor can be seen rather than guessed at
-    words.txt           every word OCR found on screen, with confidence
-    report.txt          everything printed below
-
-Send the folder back. The images are what make a remote diagnosis possible:
-"the anchor was not found" has half a dozen causes and they look completely
-different.
-
-Nothing here moves the mouse, presses a key, or changes the game. The only
-actions are screen captures and OCR.
-"""
 import io
 import sys
 import time
@@ -32,7 +7,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import trade  # noqa: E402
+import trade
 
 OUT = HERE / "calibrate_probe_out"
 OUT.mkdir(exist_ok=True)
@@ -47,41 +22,23 @@ def show(label, value, note=""):
 
 
 def env():
-    """Everything about the DISPLAY, before trade.py's own view of it.
-
-    This section exists because the machine that cannot calibrate differs from
-    the one that can in three ways at once -- 1920x1080 instead of 2560x1440,
-    ONE monitor instead of two, and very likely Windows display scaling -- and
-    each of those breaks calibration differently. Guessing which is which from
-    "calibration failed" is not possible; this prints all three.
-
-    Read only. No clicks, no keys, no window changes.
-    """
     rule("0. the display, measured three ways")
 
-    # --- what Windows thinks, BEFORE we declare DPI awareness --------------
     import ctypes
     u32 = ctypes.windll.user32
     naive = (u32.GetSystemMetrics(0), u32.GetSystemMetrics(1))
     show("GetSystemMetrics (naive)", naive,
          "logical pixels; shrinks under display scaling")
 
-    # --- and after ---------------------------------------------------------
     try:
         trade.make_dpi_aware()
         aware = (u32.GetSystemMetrics(0), u32.GetSystemMetrics(1))
         show("GetSystemMetrics (aware)", aware,
              "MATCHES naive" if aware == naive else "<-- DPI scaling IS on")
-    except Exception as exc:            # noqa: BLE001 - diagnostic
+    except Exception as exc:
         show("make_dpi_aware()", f"FAILED: {exc}")
         aware = naive
 
-    # --- the scaling factor itself ----------------------------------------
-    #
-    # A 1080p laptop at 150% reports 1280x720 logical against 1920x1080
-    # physical. mss captures PHYSICAL pixels; SetCursorPos takes LOGICAL ones.
-    # Mixing them puts every click at two thirds of where it belongs, which
-    # looks exactly like a bad calibration and is not one.
     try:
         hdc = u32.GetDC(0)
         LOGPIXELSX = 88
@@ -90,17 +47,9 @@ def env():
         show("system DPI", f"{dpi}  ({dpi / 96 * 100:.0f}% scaling)",
              "100% is the only value this script was built against"
              if dpi != 96 else "")
-    except Exception as exc:            # noqa: BLE001 - diagnostic
+    except Exception as exc:
         show("system DPI", f"could not read: {exc}")
 
-    # --- every monitor mss can see ----------------------------------------
-    #
-    # monitors[0] is the UNION of all displays; real ones start at index 1.
-    # On a dual-monitor machine the union is wider than any single display and
-    # a second monitor sits at a non-zero origin -- so a capture of it yields
-    # image coordinates starting at (0,0) that do NOT match cursor
-    # coordinates. On a single monitor at (0,0) the two spaces coincide, which
-    # is why code can be silently wrong on one machine and right on the other.
     try:
         import mss
         with mss.mss() as sct:
@@ -119,16 +68,9 @@ def env():
         else:
             show("verdict", f"{len(real)} monitor(s)",
                  "<-- capture origin may differ from cursor origin")
-    except Exception as exc:            # noqa: BLE001 - diagnostic
+    except Exception as exc:
         show("mss", f"FAILED: {exc}  <-- fatal, nothing can be captured")
 
-    # --- physical vs logical, the actual trap ------------------------------
-    #
-    # COMPARE THE PRIMARY, NOT THE UNION. monitors[0] is every display glued
-    # together -- on a dual-monitor machine it is legitimately larger than the
-    # screen user32 reports, and comparing the two flags a DPI problem that
-    # does not exist. The real test is the PRIMARY display's physical pixels
-    # against the logical size clicks are addressed in.
     try:
         import mss
         with mss.mss() as sct:
@@ -148,16 +90,9 @@ def env():
             else:
                 show("physical == logical", "yes",
                      "capture and click coordinates agree")
-    except Exception:                   # noqa: BLE001 - already reported
+    except Exception:
         pass
 
-    # --- the game window ---------------------------------------------------
-    #
-    # The reference layout was measured with the Trade window at a FIXED pixel
-    # size. If that holds, a different resolution only moves it, and
-    # calibration is a translation. If the window is a different SIZE here,
-    # the whole reference layout has to be rescaled and every raw pixel
-    # constant in trade.py is wrong.
     try:
         rect = trade.client_rect()
         show("game client rect", rect)
@@ -169,22 +104,11 @@ def env():
         show("REF_TRADE_SIZE", trade.REF_TRADE_SIZE,
              "if the Trade window is this size here too, "
              "calibration is pure translation")
-    except Exception as exc:            # noqa: BLE001 - diagnostic
+    except Exception as exc:
         show("client_rect()", f"FAILED: {exc}")
 
 
 def window_hunt():
-    """Every visible top-level window, so a title mismatch cannot hide.
-
-    GAME_TITLE_HINT is a single substring, and it is the single point of
-    failure for the whole bootstrap: if it does not match, find_game_window
-    returns None, client_rect returns None, the OCR upscale seed falls back to
-    the built-in 1.0, and the upscale drops to the value that splits 'Refresh'
-    into 'R' + 'efresh'. calibrate() then prints "game client area: not found"
-    and carries on, so every downstream symptom looks like an anchor problem.
-
-    Printing the real list turns that into a five-second diagnosis.
-    """
     rule("0b. every window on this machine")
     import ctypes
     from ctypes import wintypes
@@ -209,7 +133,7 @@ def window_hunt():
 
     try:
         u32.EnumWindows(each, 0)
-    except Exception as exc:              # noqa: BLE001 - diagnostic
+    except Exception as exc:
         show("EnumWindows", f"FAILED: {exc}")
         return
     hint = (trade.GAME_TITLE_HINT or "").casefold()
@@ -232,14 +156,6 @@ def window_hunt():
 
 
 def row_count():
-    """How many rows the Agent Shop table shows.
-
-    The one thing calibration cannot fix. EXPECTED_ROWS is a hard gate --
-    `if len(buttons) != EXPECTED_ROWS: return []` -- so if this screen shows a
-    different number, read_rows returns nothing on every frame for ever,
-    await_rows burns its whole budget each call, and three cycles later the
-    breaker stops the run with a message about the Trade window being closed.
-    """
     rule("4b. how many rows the table actually shows")
     show("EXPECTED_ROWS", trade.EXPECTED_ROWS, "what the code demands")
     try:
@@ -260,32 +176,21 @@ def row_count():
             print("    No Change/Receive/Register buttons read at all. Either"
                   " the Register tab\n    is not showing, or the OCR upscale"
                   " is wrong for this resolution.")
-    except Exception as exc:              # noqa: BLE001 - diagnostic
+    except Exception as exc:
         show("find_row_buttons", f"FAILED: {exc}")
 
 
 def scale_agreement():
-    """The client-rect ratio against the anchor-fitted scale.
-
-    Two independent measurements of the same thing: one from Win32 geometry
-    with no OCR at all, one from a least-squares fit of a dozen OCR'd words.
-    On the machine that could not calibrate they agreed to 0.04% -- which is
-    what proved the UI scales with the client rather than staying a fixed
-    pixel size, and therefore that the whole transform model is sound.
-
-    A large disagreement here means something this port has not accounted for
-    -- most likely the game's own UI-scale setting differing between machines.
-    """
     rule("5b. do the two independent scale measurements agree?")
     seed = None
     try:
         seed = trade._ocr_reference_scale()
         show("client-rect ratio", f"{seed:.4f}", "no OCR involved")
-    except Exception as exc:              # noqa: BLE001 - diagnostic
+    except Exception as exc:
         show("client-rect ratio", f"FAILED: {exc}")
     try:
         layout = trade.measure_layout(verbose=False)
-    except Exception as exc:              # noqa: BLE001 - diagnostic
+    except Exception as exc:
         show("anchor fit", f"FAILED: {exc}")
         return
     if layout is None:
@@ -304,13 +209,6 @@ _BEFORE: dict = {}
 
 
 def tesseract_selftest():
-    """Prove the OCR engine works before blaming the geometry.
-
-    Every section from 3 onward is OCR. If the binary is missing, the version
-    differs, or eng.traineddata is absent, all of them fail at once and the
-    symptoms read as anchor and scale problems -- which is where the last two
-    days of this port were spent looking. Ten lines here name the cause.
-    """
     rule("0c. is Tesseract itself working?")
     print("  Through trade.py's OWN path. It does not use pytesseract -- it")
     print("  runs tesseract.exe as a subprocess -- so testing the library")
@@ -335,13 +233,10 @@ def tesseract_selftest():
                 note = ("eng present" if "eng" in (out.stdout or "")
                         else "<-- 'eng' MISSING: every read returns empty")
             show(label, first or "(no output)", note)
-        except Exception as exc:                  # noqa: BLE001 - diagnostic
+        except Exception as exc:
             show(label, f"FAILED: {exc}",
                  "<-- the binary is there but will not run")
             return
-    # A round trip through find_words, which is the function every later
-    # section depends on. A failure here is the engine or the wiring, never
-    # the geometry -- and that is the distinction worth ten seconds.
     try:
         from PIL import Image as _I, ImageDraw as _D
         card = _I.new("RGB", (420, 70), (18, 18, 18))
@@ -351,25 +246,11 @@ def tesseract_selftest():
         show("find_words on a test card", " ".join(texts) or "(nothing)",
              "the OCR path is healthy" if any("egister" in t for t in texts)
              else "<-- ENGINE PROBLEM: it cannot read its own test card")
-    except Exception as exc:                      # noqa: BLE001 - diagnostic
+    except Exception as exc:
         show("find_words on a test card", f"FAILED: {exc}")
 
 
 def anchor_stability(frames: int = 6, gap: float = 1.2):
-    """Read the anchors over several frames instead of one.
-
-    A single frame cannot tell a permanent failure from a passing one. The
-    game animates: tooltips fade, the target nameplate comes and goes, a sale
-    notification slides across the bottom-right, and the mouse cursor sits on
-    top of whatever it is over. Any of those can cover an anchor for the one
-    frame the probe happened to grab, and the report then says MISSING about a
-    word that is on screen 95% of the time.
-
-    That distinction changes the fix. An anchor missing on every frame is
-    wrong text, wrong upscale, or a word this build does not have. An anchor
-    missing on one frame in six is noise, and calibrate()'s own retry already
-    handles it -- chasing it wastes the time the real fault needed.
-    """
     rule(f"4c. are the anchors STABLE? ({frames} frames, ~{gap}s apart)")
     print("  A single frame cannot separate a permanent failure from a passing")
     print("  one. Anything below 100% here was on screen for some frames and")
@@ -384,7 +265,7 @@ def anchor_stability(frames: int = 6, gap: float = 1.2):
             shot = trade.grab()
             words = trade.find_words(shot, (0, 0, *shot.size), 40.0)
             lines = trade._text_lines(words)
-        except Exception as exc:                  # noqa: BLE001 - diagnostic
+        except Exception as exc:
             print(f"    frame {n + 1}: FAILED {exc}")
             continue
         for phrase, _ref in trade.REF_ANCHORS_ALL:
@@ -396,7 +277,7 @@ def anchor_stability(frames: int = 6, gap: float = 1.2):
             fitted = trade.measure_layout(verbose=False, source=shot)
         except TypeError:
             fitted = trade.measure_layout(verbose=False)
-        except Exception:                         # noqa: BLE001 - diagnostic
+        except Exception:
             fitted = None
         if fitted is not None:
             scales.append(fitted.scale)
@@ -532,8 +413,6 @@ def probe():
                 missing += 1
                 print(f"    MISSING {phrase:<12} {'':>14}  "
                       f"reference {str(ref):>14}")
-            # A crop around where it SHOULD be, at the reference position
-            # scaled by the seed -- so a missing anchor can be looked at.
             try:
                 seed = trade._ocr_reference_scale()
                 cx, cy = int(ref[0] * seed), int(ref[1] * seed)
@@ -556,7 +435,7 @@ def probe():
             print("  MISSING line above, and the two need opposite fixes.")
             try:
                 seed = trade._ocr_reference_scale()
-            except Exception:                     # noqa: BLE001 - diagnostic
+            except Exception:
                 seed = 1.0
             for phrase, ref in trade.REF_ANCHORS_ALL:
                 if trade._anchor_centre(phrase, words, lines) is not None:
@@ -614,17 +493,14 @@ def probe():
                    {n: "box" for n in trade._CLIENT_FRAME_GEOMETRY})]
 
         if layout is not None:
-            # Apply for real, then read the globals the run itself would use.
-            # calibrate() in section 7 applies the identical layout moments
-            # later, so this leaves nothing behind that section does not.
             trade.apply_layout(layout)
             print(f"  (applied the measured layout: origin {layout.origin}, "
                   f"scale {layout.scale})\n")
-            read = lambda n: getattr(trade, n, "<missing>")   # noqa: E731
+            read = lambda n: getattr(trade, n, "<missing>")
         else:
             print("  (calibration REFUSED, so these are the built-in reference")
             print("   values, unchanged -- the run would not have started)\n")
-            read = lambda n: trade._REFERENCE_GEOMETRY.get(n, "<missing>")  # noqa: E731
+            read = lambda n: trade._REFERENCE_GEOMETRY.get(n, "<missing>")
 
         total = 0
         for title, table in tables:
@@ -641,15 +517,12 @@ def probe():
             print()
         show("coordinates reported", total)
 
-        # Nothing may be registered in a table yet absent from the dump.
         missing = [n for _, t in tables for n in t
                    if n not in trade._REFERENCE_GEOMETRY]
         if missing:
             show("REGISTERED BUT NOT CAPTURED", ", ".join(sorted(missing)),
                  "<-- these never get rewritten; they stay at reference")
 
-        # And nothing may sit in the module looking like geometry while being
-        # registered nowhere -- that is the constant that never scales.
         known = {n for _, t in tables for n in t}
         known |= {"NPC_BODY_OFFSET", "NPC_CLICK_OFFSETS", "LAYOUT",
                   "REF_SCREEN", "REF_CLIENT", "REF_TRADE_ORIGIN",
@@ -699,12 +572,11 @@ def probe():
         for name, fn in checks:
             try:
                 now = fn(after)
-            except Exception as exc:              # noqa: BLE001 - diagnostic
+            except Exception as exc:
                 now = f"FAILED: {exc}"
             was = _BEFORE.get(name, "?")
             moved = "  <== CHANGED, section 3 was wrong" if str(was) != str(now) else ""
             print(f"    {name:<20} before {str(was):<18} now {now}{moved}")
-        # The region that matters most, cropped with the fitted numbers.
         try:
             after.crop(trade.TRADE_REGION).save(OUT / "trade_region_calibrated.png")
             show("TRADE_REGION crop", trade.TRADE_REGION,
@@ -712,7 +584,7 @@ def probe():
             print("    Open that PNG: it should contain the Trade window and"
                   " almost nothing else.\n    If it is off-centre or clipped,"
                   " the fit is wrong no matter what the residual says.")
-        except Exception as exc:                  # noqa: BLE001 - diagnostic
+        except Exception as exc:
             print(f"    could not crop TRADE_REGION: {exc}")
         if not trade.find_row_buttons(after):
             print("\n    !! No row buttons read even after calibrating. read_rows"

@@ -1,20 +1,3 @@
-"""Freeze read_rows' output on every corpus frame, so a rewrite can be proved.
-
-    py unit_tests\\baseline_rows.py save     write baseline_rows.json
-    py unit_tests\\baseline_rows.py check    compare the current code against it
-
-The comparison separates three things, because lumping them together made a
-successful bug fix look like a regression:
-
-  HARD      price, quantity, action, index, click band -- these decide which
-            row gets cancelled and at what price. Any change is a failure.
-  NAME      a changed name is only acceptable if it is the old name with junk
-            tokens removed (the option-socket icon OCRs as 'an' / 'mm').
-  NEW       frames captured since the baseline was written. Not differences.
-
-This complements suite_corpus: that checks frames which carry recorded ground
-truth, this one checks EVERY frame, including the ones nothing else asserts on.
-"""
 
 import json
 import os
@@ -25,27 +8,24 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-import trade as m  # noqa: E402
+import trade as m
 
 HERE = Path(__file__).resolve().parent
 CORPUS = HERE / "corpus"
 BASELINE = HERE / "baseline_rows.json"
 
-# Matches suite_corpus: fixed, not scaled to the machine, because the game and
-# the live recording script are normally running alongside this.
 JOBS = 16
 
 HARD_FIELDS = ("index", "price", "qty", "action", "change", "top", "bottom")
 
 
 def read_one(path_name):
-    """One frame's rows, as plain data. Runs in a worker process."""
     path = CORPUS / path_name
     try:
         rows = m.read_rows(Image.open(path))
-    except Exception:                      # noqa: BLE001 - a frame is not worth a crash
+    except Exception:
         return path_name, None
     return path_name, [
         {"index": r.index, "name": r.name, "price": r.price, "qty": r.qty,
@@ -56,7 +36,6 @@ def read_one(path_name):
 
 
 def _ignore_sigint():
-    """Pool worker initialiser: let the parent own Ctrl+C. See suite_corpus."""
     import signal
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
@@ -86,9 +65,6 @@ def snapshot(jobs=JOBS):
         print(f"\ninterrupted after {done}/{len(frames)} frames", flush=True)
         raise
     finally:
-        # terminate(), not close(), and in a finally: close() waits for every
-        # queued frame, which on an interrupt is the rest of the corpus, and
-        # sitting after the loop meant an exception orphaned the workers.
         if pool is not None:
             pool.terminate()
             pool.join()
@@ -96,7 +72,6 @@ def snapshot(jobs=JOBS):
 
 
 def is_junk_removal(before: str, after: str) -> bool:
-    """Is `after` just `before` with whole tokens dropped?"""
     want, got = after.split(), before.split()
     i = 0
     for tok in got:
@@ -124,9 +99,6 @@ def main():
         print(f"baseline written to {BASELINE}")
         return 0
 
-    # A fresh machine has no corpus: the script builds one by running. Without
-    # this, every baselined frame reads as "unreadable now" and the suite
-    # reports ~1000 failures on a checkout that is perfectly fine.
     if n == 0:
         print("no corpus frames on this machine yet - nothing to compare.")
         print("Run the script once to record some, then 'save' a baseline.")
@@ -146,15 +118,6 @@ def main():
             new.append(frame)
             continue
         if b is None:
-            # A frame that is GONE is not a frame that reads differently. The
-            # recorder keeps a rolling window of the newest RECORD_KEEP frames
-            # and deletes the rest, so every baseline outlives some of the
-            # frames it was built from. Counting those as failures would make
-            # this suite go permanently red for doing exactly what it is meant
-            # to do.
-            #
-            # A frame still ON DISK that will not read is a different animal
-            # entirely, and still fails.
             if not (CORPUS / frame).exists():
                 pruned.append(frame)
                 continue
@@ -176,9 +139,6 @@ def main():
 
     print(f"  {'frames in baseline':38} {len(old):6,d}")
     print(f"  {'new since baseline (not differences)':38} {len(new):6,d}")
-    # Printed always, including zero, so a baseline quietly emptying itself is
-    # visible. Once this approaches 'frames in baseline' the comparison is
-    # running on almost nothing and wants re-saving.
     print(f"  {'pruned since baseline (not differences)':38} {len(pruned):6,d}")
     print(f"  {'HARD changes':38} {len(hard):6,d}   <- must be 0")
     print(f"  {'row-count changes':38} {len(shape):6,d}   <- must be 0")

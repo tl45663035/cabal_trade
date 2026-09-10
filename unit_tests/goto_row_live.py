@@ -1,21 +1,3 @@
-"""LIVE: does scrolling N-1 notches actually put absolute row N at the top?
-
-DRIVES THE GAME. It scrolls the Register table and reads it. It clicks
-nothing in the table, buys nothing and lists nothing.
-
-THE TEST. One full walk of all 30 slots establishes ground truth -- what is
-really in each row. Then goto_row(N) is asked to place a spread of rows at
-screen position 1, and what it reads back is compared against that truth.
-
-A pass means row access can stop searching: instead of walking the shop and
-matching by identity, the caller computes a notch count and reads ONE band.
-
-It also measures the alternative the operator described -- stepping down one
-notch per row instead of returning to the top -- because a batch that walks
-rows in order pays 0+1+2+...+9 notches the first way and 9 the second.
-
-    python unit_tests/goto_row_live.py
-"""
 import os
 import sys
 import tempfile
@@ -40,7 +22,6 @@ def rule(title):
 
 def main() -> int:
     import trade
-    print(__doc__)
     trade.PREMIUM_ENABLED = True
 
     rule("0. open the shop, calibrate, calibrate the wheel")
@@ -76,7 +57,6 @@ def main() -> int:
     print("    ...")
 
     rule("2. goto_row against that truth")
-    # A spread: the top, a middle, the limit, and the boundary beyond it.
     wanted = [1, 2, 3, 7, 12, 20]
     wanted = [n for n in wanted if n in truth]
     checks = passes = 0

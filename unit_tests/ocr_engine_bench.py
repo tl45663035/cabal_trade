@@ -1,34 +1,3 @@
-"""Compare OCR engines on the same golden frames: speed AND correctness.
-
-    py unit_tests/ocr_engine_bench.py            # every engine it can load
-    py unit_tests/ocr_engine_bench.py rapid      # just one
-
-Reads only. Never touches the game, never writes to the repo.
-
-WHY BOTH NUMBERS
-----------------
-"Faster" is the easy half and the useless half on its own. This program's
-regions, confidence thresholds and psm fallbacks are all tuned to Tesseract's
-failure modes -- this morning's bug was Tesseract segmenting "/ 91" into the
-token 'fl'. A different engine will not make that mistake; it will make
-different ones, and the guards calibrated against the old ones stop meaning
-what they say. So an engine that is twice as fast and reads one price wrong is
-a loss, not a win, on a program that spends real money per read.
-
-The corpus makes that measurable rather than arguable: run_index.jsonl records
-the VALUES the script believed at each frame -- item, price, qty, available --
-next to the frame itself. Re-reading a frame and comparing against its own
-recorded value is a real accuracy score, not a self-consistency check.
-
-WHAT IS SCORED
---------------
-  purchase_confirm  price and qty_max      -- the two fields that decide how
-                                              much money a Buy moves
-  read_rows         row count and names    -- the table the whole relist rests on
-
-Tesseract is always measured first as the baseline, so the comparison is
-against this machine on this day rather than against a remembered number.
-"""
 import json
 import statistics
 import sys
@@ -38,11 +7,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import trade as m  # noqa: E402
+import trade as m
 
 try:
     from PIL import Image
-except Exception:  # noqa: BLE001
+except Exception:
     print("PIL is required to open the frames.")
     raise SystemExit(1)
 
@@ -52,7 +21,6 @@ INDEX = CORPUS / "run_index.jsonl"
 
 
 def frames(label, limit):
-    """(entry, image) pairs for `label`, with the layout applied."""
     out = []
     if not INDEX.exists():
         return out
@@ -62,7 +30,7 @@ def frames(label, limit):
             continue
         try:
             entry = json.loads(line)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
         if entry.get("label") != label or not entry.get("file"):
             continue
@@ -84,7 +52,6 @@ def apply(entry):
 
 
 def score_engine(name):
-    """Run every check under one engine. Returns a summary dict."""
     ok = m.select_ocr_engine(name, verbose=False)
     if not ok and name != "tesseract":
         return {"engine": name, "available": False}
@@ -93,7 +60,6 @@ def score_engine(name):
     times, right, wrong, unread = [], 0, 0, 0
     detail = []
 
-    # --- the Confirm Purchase dialog: price and the quantity limit ---------
     for entry, path in frames("buy.dialog", 12):
         shot = Image.open(path)
         apply(entry)
@@ -112,9 +78,6 @@ def score_engine(name):
             wrong += 1
             detail.append(f"{path.name}: price {got_price} != {want_price}")
 
-        # qty_max has no recorded truth, but `available` bounds it: the dialog
-        # can never offer more than the table showed, give or take a market
-        # move between the two reads.
         got_max = (dialog or {}).get("qty_max")
         want_avail = entry.get("available")
         if got_max is None:
@@ -126,7 +89,6 @@ def score_engine(name):
         else:
             right += 1
 
-    # --- the listings table ----------------------------------------------
     for entry, path in frames("table.target", 6):
         shot = Image.open(path)
         apply(entry)
@@ -181,7 +143,6 @@ def main():
         print(f"\n{r['engine']} vs tesseract: {speed:.2f}x on speed, "
               f"{r['wrong']} wrong vs {base['wrong']}, "
               f"{r['unread']} unread vs {base['unread']}")
-        # An engine is only a win if it is BOTH faster and no less correct.
         if r["wrong"] > base["wrong"] or r["unread"] > base["unread"]:
             print(f"  -> NOT a win: it reads {r['engine']} less reliably, "
                   f"and every guard in trade.py is calibrated to the reader "

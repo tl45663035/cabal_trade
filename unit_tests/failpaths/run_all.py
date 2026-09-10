@@ -1,10 +1,3 @@
-"""Run every failure-path suite and summarise.
-
-    py run_all.py
-
-A FAIL here is a FINDING, not a broken test: each check states what the code
-should do, so a failure is a place where trade.py does something else.
-"""
 import os
 import subprocess
 import tempfile
@@ -14,14 +7,6 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-# Point the sales ledger at a scratch file before any suite starts.
-#
-# These suites replay the collect path FOR REAL, and note_sale() writes a row
-# wherever SALES_DB points -- which, left alone, is the user's live ledger.
-# Measured on 2026-08-07: 1,163 of its 1,168 rows were this suite, so every
-# "what did I make today" total had been counting replayed corpus frames as
-# income. Set here as well as in the parent runner, so running this file
-# directly is safe too.
 os.environ.setdefault("CABAL_SALES_DB",
                       str(Path(tempfile.gettempdir()) / "cabal_test_sales.db"))
 
@@ -65,16 +50,6 @@ FORENSICS = [
     ("8 orphan frames",        "t8_orphans.py"),
 ]
 
-# Suites with findings that are KNOWN OPEN, so a new one is distinguishable
-# from the backlog.
-#
-# The alternative designs are both worse. Gating on every finding leaves this
-# permanently red, and a suite that is always red stops being read. Not gating
-# at all hides real defects behind a green tick. So: these five are reported
-# loudly on every run and do not fail the build; anything else does.
-#
-# Shrink this list as the defects are fixed. A suite dropping OFF it is the
-# signal that the work landed.
 KNOWN_OPEN = {
     "1 cancel_item":
         "PARTLY FIXED 2026-08-08: cancel_item now takes a `report` "
@@ -86,54 +61,8 @@ KNOWN_OPEN = {
         "after accepting one. Making the message definitive would be "
         "overclaiming, so this stays open rather than being satisfied.",
 }
-# Closed 2026-08-08:
-#
-#   "2 register_item -- the identity cross-check is skipped entirely when the
-#    panel's qty_max reads None". Two changes: the panel is re-read once before
-#    concluding the field is unreadable, and when it still cannot be read the
-#    skip is announced and recorded (register.qty_unverified) instead of
-#    happening silently. It is NOT made fatal -- the cancel has already
-#    committed by then, so aborting strands the stack, and a strand now
-#    terminates the run. sanity_check still reads the listing back afterwards,
-#    which is the check that actually proves identity.
-#
-#   Note the entry's wording never matched the check that failed. 2h was about
-#   report["committed"] being set on the statement AFTER the confirm click, so
-#   a click that delivered its button-down and then raised left a live listing
-#   reported as uncommitted. Fixed by marking it BEFORE the click: `committed`
-#   answers "may this be retried", and once the click is attempted the answer
-#   is no. The same trap the file already documents -- a KNOWN_OPEN reason
-#   written from an assumption rather than read off the suite's output.
-#
-#   "4 run_loop -- an empty action list returns True". run_sequence now returns
-#   False for an empty list and says why: reaching it with no actions is a
-#   caller error, not a completed cycle, and counting it as success reset the
-#   very breaker that exists to stop a loop doing nothing.
 
-# Closed 2026-08-06: "9 outage replay -- the recovery (clearing a stranded work
-# tab) does not exist". It exists now (recover_stranded_work_tab), t9 grew a 9d
-# for it, and t25 covers it directly.
-#
-# Two things were wrong with that entry beyond the missing fix. Its wording
-# described the recovery, but the check actually failing was about recording --
-# and trade.py had recorded worktab.not_empty since before the entry was
-# written. The check could not pass either way: 9c patched
-# require_empty_work_tab out and then asserted that it recorded a frame, so it
-# was measuring the stub. Same shape as the t6 NameError: a KNOWN_OPEN reason
-# written from an assumption rather than read off the suite's output, which
-# then survives every green run because nobody re-reads a line that is expected
-# to be there.
 
-# The FORENSICS scripts contain NO assertions -- they print what the recorded
-# index contains and always exit 0. They cannot fail, so showing them as
-# "clean" beside suites that can is a false green: three rows that look like
-# passing tests and test nothing.
-#
-# '6 index forensics' was listed in KNOWN_OPEN with a confident description of
-# findings it had supposedly reported. It had reported nothing: it was dying on
-# a NameError, exiting 1, and the exit code was read as "has findings". The
-# reason was written to fit that assumption instead of being read off the
-# suite's output, and it survived a full green run.
 REPORT_ONLY = {"6 index forensics", "7 index windows", "8 orphan frames"}
 
 
@@ -149,15 +78,6 @@ def main(include_forensics=True):
         print(proc.stdout, end="", flush=True)
         if proc.stderr:
             print(proc.stderr, end="", flush=True)
-        # A suite that DIED is not a suite that reported findings, but both
-        # exit 1, so KNOWN_OPEN swallowed the difference: a NameError in t6
-        # was filed under its known finding and the build stayed green while
-        # the suite executed nothing at all. The give-away was in the summary
-        # the whole time -- 0.0s -- and it read like just another known one.
-        #
-        # A crash therefore fails the build no matter what KNOWN_OPEN says.
-        # KNOWN_OPEN is a statement about findings the suite REPORTS; it can
-        # never be a licence for the suite not to run.
         crashed = "Traceback (most recent call last)" in proc.stderr
         results.append((label, time.monotonic() - started, proc.returncode,
                         crashed))
@@ -191,8 +111,6 @@ def main(include_forensics=True):
         print("\n  These do not fail the build. They are defects that have been "
               "found and\n  not yet fixed -- shrink KNOWN_OPEN as they land.")
 
-    # A suite that was expected to fail and now passes is worth saying out
-    # loud: it means a fix landed and the list should shrink.
     fixed = [label for label, _, code, crashed in results
              if code == 0 and not crashed and label in KNOWN_OPEN
              and label not in REPORT_ONLY]

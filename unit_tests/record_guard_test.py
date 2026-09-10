@@ -1,18 +1,3 @@
-"""record() must not be able to corrupt its own index entry.
-
-Two separate failures came out of this one function, and the second was
-caused by the fix for the first:
-
-  1. `record("npc.found", label=...)` raised TypeError at argument-binding
-     time -- before the internal try could swallow it -- and killed three
-     consecutive cycles. Fixed by making label/shot positional-only.
-  2. That fix let the same kwarg through as *context*, where entry.update()
-     silently overwrote the label. Fifteen frames were written with a
-     coordinate as their label and `npc.found` vanished from the index
-     entirely. Silent corruption, strictly worse than the crash.
-
-So this checks both the call sites and the function's own behaviour.
-"""
 
 import ast
 import json
@@ -20,21 +5,16 @@ import sys
 import tempfile
 from pathlib import Path
 
-from pathlib import Path as _Path  # noqa: E402
+from pathlib import Path as _Path
 _ROOT = _Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-import trade as m  # noqa: E402
+import trade as m
 
 SRC = _ROOT / "trade.py"
-# Keys the index is keyed on: context using these would clobber the entry.
 RESERVED = ("file", "label", "at")
-# The positional-only parameter names. Passing either as a KEYWORD is legal
-# now but almost always a mistake: `record(..., shot=shot)` does not set the
-# frame, it files the PIL object into the index as context and records
-# whatever grab() last returned instead. Two call sites did exactly that.
 POSITIONAL_ONLY = ("label", "shot")
 
 fails = []
@@ -45,8 +25,7 @@ def check(cond, label):
         fails.append(label)
 
 
-# ---- 1. every call site binds, and none uses a reserved kwarg -------------
-import inspect  # noqa: E402
+import inspect
 
 tree = ast.parse(SRC.read_text(encoding="utf-8-sig"))
 sig = inspect.signature(m.record)
@@ -76,7 +55,6 @@ print(f"call sites: {sites}   binding failures: "
       f"{len([f for f in fails if 'does not bind' in f])}   "
       f"reserved-kwarg uses: {clashes}")
 
-# ---- 2. the function itself defends the three keyed fields ----------------
 with tempfile.TemporaryDirectory() as tmp:
     m.RECORD_DIR = Path(tmp)
     m.RECORD_ENABLED = True
@@ -84,7 +62,6 @@ with tempfile.TemporaryDirectory() as tmp:
     m._record_seq = 0
     shot = Image.new("RGB", (8, 8), "white")
 
-    # The exact call that caused failure 2, plus every other collision.
     m.record("npc.found", shot, label="(1351, 248)")
     m.record("tab.before_register_click", shot, at="(392, 99)")
     m.record("some.step", shot, file="nonsense.png")
@@ -111,7 +88,6 @@ with tempfile.TemporaryDirectory() as tmp:
         check(len(at) == 19 and at[4] == "-" and at[10] == "T",
               f"timestamp corrupted: {at!r}")
 
-    # the caller's value must survive, just under a prefixed name
     check(entries[0].get("ctx_label") == "(1351, 248)",
           "colliding label value was lost instead of prefixed")
     check(entries[1].get("ctx_at") == "(392, 99)",
@@ -122,11 +98,10 @@ with tempfile.TemporaryDirectory() as tmp:
           "ordinary context did not survive")
     check("centre" not in entries[5], "a None context value was written")
 
-    # ---- 3. recording must never raise, whatever it is handed ------------
     for bad_shot in (object(), "not an image", 42):
         try:
-            m.record("hostile", bad_shot)          # type: ignore[arg-type]
-        except Exception as exc:                   # noqa: BLE001
+            m.record("hostile", bad_shot)
+        except Exception as exc:
             fails.append(f"record raised on {type(bad_shot).__name__}: {exc!r}")
     print("\nhostile shot values: no exception raised")
 

@@ -1,19 +1,4 @@
-﻿"""Revert each fix and prove a test goes red.
-
-A green suite is evidence of nothing until it can fail. The ten-agent review
-found four bugs that 2,805 existing checks did not catch, and the reason was
-always the same: the tests could not have failed if the code were wrong.
-
-So every fix made in response to that review is reverted here, in memory, and
-the suites are re-run against the broken build. A mutation that survives is a
-fix with no test behind it, and is reported as a failure of THIS file.
-
-Nothing is written to trade.py and nothing touches the game.
-
-    py unit_tests/mutation_check.py            # all mutations
-    py unit_tests/mutation_check.py -v         # show each suite's output
-"""
-import io
+﻿import io
 import os
 import sys
 import tempfile
@@ -28,10 +13,6 @@ VERBOSE = "-v" in sys.argv
 os.environ["CABAL_SALES_DB"] = str(
     Path(tempfile.mkdtemp(prefix="cabal_mutation_")) / "scratch.db")
 
-# (name, what it breaks, old, new)
-#
-# Each `old` is quoted from the fix, so a later edit that moves the code makes
-# this file complain rather than silently stop testing anything.
 MUTATIONS = [
     ("cost-floor pack marker",
      "favourite_for stops stripping the pack marker, so a listed row resolves "
@@ -69,11 +50,6 @@ MUTATIONS = [
     ("balance is the proof",
      "buy_offer claims a purchase whenever the balance is merely READABLE, "
      "without checking that any money actually moved",
-     # Was `== offer.price` until quantity buying landed and the comparison
-     # became `== expected` (price x take). The mutation silently stopped
-     # applying at that point and reported "the code moved" rather than a pass,
-     # which is the only reason it was noticed -- a mutation that cannot be
-     # applied proves nothing, exactly like the test it is meant to police.
      'if before and after and before - after == expected:',
      'if before and after:'),
 
@@ -239,14 +215,8 @@ SUITES = ["review_fixes_test.py", "buying_gaps_test.py", "restock_test.py",
 
 
 def build(source):
-    """Load `source` as the `trade` module, replacing any cached one."""
     for name in [n for n in sys.modules if n == "trade"]:
         del sys.modules[name]
-    # AND THE GUARD WITH IT. A suite's `import _no_input_guard` is a cached
-    # no-op after the first build, so every rebuilt trade module would be
-    # UNARMED -- and four of the six suites here are guarded precisely because
-    # they reach the real pipeline. A mutation run has walked the character
-    # off once already.
     sys.modules.pop("_no_input_guard", None)
     module = types.ModuleType("trade")
     module.__file__ = str(ROOT / "trade.py")
@@ -257,7 +227,6 @@ def build(source):
 
 
 def run_suite(name):
-    """Run one suite against whatever `trade` currently is. True if green."""
     path = ROOT / "unit_tests" / name
     namespace = {"__name__": "__main__", "__file__": str(path)}
     buf = io.StringIO()
@@ -269,7 +238,7 @@ def run_suite(name):
         if VERBOSE:
             print(buf.getvalue())
         return not exc.code
-    except Exception as exc:  # noqa: BLE001 - a crash is a red suite
+    except Exception as exc:
         if VERBOSE:
             print(f"    {type(exc).__name__}: {exc}")
         return False
@@ -294,7 +263,7 @@ for label, describes, old, new in MUTATIONS:
         continue
     try:
         build(SOURCE.replace(old, new, 1))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"  ok  {label}: the module will not even import ({exc})")
         continue
     caught = [name for name in SUITES if not run_suite(name)]

@@ -1,26 +1,3 @@
-"""A frame must carry the geometry it was READ under, and replay under it.
-
-    py unit_tests\\layout_replay_test.py
-
-The gap this closes
--------------------
-Every search region is derived from LAYOUT, and Tesseract's sparse-text
-segmentation is crop-dependent: hand it a crop one pixel different and it can
-segment the same pixels differently. So replaying a recorded frame under a
-different layout can legitimately produce a different answer, and comparing the
-two is not a test of the reader -- it is an unfair comparison that reports the
-reader as broken.
-
-That is not theoretical. Calibration lands on origin (9,29) or (10,30) from OCR
-jitter alone -- 11 times and 13 times across one day's runs -- and frames
-recorded at one and replayed at the other shifted the NPC nameplate centre by
-up to 5px, failing 4 of 378,764 corpus assertions.
-
-The fix was to stamp each frame with its layout and restore it on replay. This
-suite is that fix's own coverage, which it did not have: the fix was made and
-shipped on the strength of the corpus run going green, and "the suite stopped
-complaining" is exactly the evidence that has been wrong before.
-"""
 
 import json
 import sys
@@ -31,10 +8,10 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-import suite_corpus as sc  # noqa: E402
-import trade as m  # noqa: E402
+import suite_corpus as sc
+import trade as m
 
 failures: list[str] = []
 checks = 0
@@ -63,11 +40,8 @@ def section(title):
     print(f"\n{'=' * 70}\n{title}\n{'=' * 70}")
 
 
-# ===========================================================================
 section("1. the premise: a different layout really does move the crops")
 
-# If this fails the whole fix is pointless, so it is asserted rather than
-# assumed. These are the regions the coordinate readers actually search.
 m.apply_layout(layout_at(ORIGIN_A))
 regions_a = (m.TRADE_REGION, m.NPC_SEARCH_REGION)
 m.apply_layout(layout_at(ORIGIN_B))
@@ -87,7 +61,6 @@ check("a scale change moves them too", big != regions_b[0],
       f"{big} vs {regions_b[0]}")
 
 
-# ===========================================================================
 section("2. record() stamps the layout it was reading under")
 
 shot = Image.new("RGB", (200, 120))
@@ -125,7 +98,6 @@ for origin, scale in ((ORIGIN_A, 1.0), (ORIGIN_B, 1.0), ((100, 200), 1.25)):
           and "at" in entry, f"entry: {entry!r}")
 
 
-# ===========================================================================
 section("3. a recorded layout round-trips to the same crops")
 
 for origin, scale in ((ORIGIN_A, 1.0), (ORIGIN_B, 1.0), ((100, 200), 1.25)):
@@ -133,7 +105,7 @@ for origin, scale in ((ORIGIN_A, 1.0), (ORIGIN_B, 1.0), ((100, 200), 1.25)):
     wanted = (m.TRADE_REGION, m.NPC_SEARCH_REGION, m.POPUP_REGION)
     spec = {"origin": list(origin), "scale": scale, "screen": [2560, 1440]}
 
-    m.apply_layout(layout_at((1, 1), 2.0))          # somewhere else entirely
+    m.apply_layout(layout_at((1, 1), 2.0))
     restored = sc._restore_layout({"layout": spec})
     got = (m.TRADE_REGION, m.NPC_SEARCH_REGION, m.POPUP_REGION)
 
@@ -145,13 +117,8 @@ for origin, scale in ((ORIGIN_A, 1.0), (ORIGIN_B, 1.0), ((100, 200), 1.25)):
           f"still comparing against different pixels")
 
 
-# ===========================================================================
 section("4. an entry with no layout falls back, and does not inherit")
 
-# The subtle one. Without an explicit fallback, a frame with no layout is read
-# under whatever the PREVIOUS frame in that worker happened to set -- so the
-# same frame gives different answers depending on what ran before it, and the
-# suite becomes order-dependent.
 m.apply_layout(layout_at((500, 600), scale=1.9))
 polluted = m.TRADE_REGION
 restored = sc._restore_layout({})
@@ -173,7 +140,6 @@ check("malformed layout: geometry still reset",
       m.TRADE_REGION == sc._DEFAULT_LAYOUT.trade, f"{m.TRADE_REGION}")
 
 
-# ===========================================================================
 section("5. coordinate comparison: exact when replayable, tolerant when not")
 
 TOL = sc.LEGACY_COORD_TOLERANCE
@@ -202,14 +168,8 @@ check("tuples and the index's string form compare the same",
       sc._coord_matches((100, 200), (100, 200), True) is True, "")
 
 
-# ===========================================================================
 section("5b. 'found nothing' is a failure only when the layout is known")
 
-# The tri-state. On a replayable frame the crop is reproduced exactly, so the
-# reader finding nothing is a real regression. On a legacy frame it cannot be
-# told apart from the crop having moved -- run_05284 is the worked example --
-# so it is counted, never judged. Silently passing it would hide a genuine
-# reader failure; failing it would report un-replayable history as a defect.
 check("replayable + found nothing -> FAILURE",
       sc._coord_matches(None, "(100, 200)", True) is False,
       f"got {sc._coord_matches(None, '(100, 200)', True)!r} -- with the crop "
@@ -229,7 +189,6 @@ check("...but is a failure when the layout WAS reproduced",
       f"got {sc._coord_matches((1, 2), 'not a coordinate', True)!r}")
 
 
-# ===========================================================================
 section("6. the tolerance is a concession, and stays small")
 
 check(f"legacy tolerance is {TOL}px, comfortably under one sweep step",

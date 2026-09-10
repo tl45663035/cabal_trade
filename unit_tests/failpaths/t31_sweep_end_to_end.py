@@ -1,30 +1,9 @@
-"""enumerate_listings must return the WHOLE shop, over a shop that really scrolls.
-
-This is the coverage whose absence let three separate scroll bugs reach the
-live game on 2026-08-06. t30 tests measure_shift in isolation and asserts
-_enumerate_at_step's shape by reading its source -- neither can see a sweep
-that fails end to end, and all three failures were exactly that:
-
-  * the sweep stopped inside a run of empty slots and reported 14 slots and 4
-    live while eight listings sat below the gap, four of them sold
-  * the sweep wedged in the gap and refused outright
-  * the sweep refused because offsets the wheel could not have produced made a
-    determined shift look ambiguous
-
-Every one of them passed the whole suite. So this drives the real function over
-a real scrolling model and asserts the only thing that matters: every listing
-comes back, at its true absolute position.
-
-The gap sizes are the point. A shop with no empties never exercised any of it;
-the live shop had runs of four, nine and fifteen.
-"""
 from harness import Harness, check, empty_panel, make_row, section, summary
 
 import trade
 
 
 class ScrollShop(Harness):
-    """A shop deeper than the screen, which really scrolls and really clamps."""
 
     def __init__(self, shop, **kw):
         self.shop = list(shop)
@@ -43,8 +22,6 @@ class ScrollShop(Harness):
         return list(self.rows)
 
     def _scroll(self, x, y, notches, **kw):
-        # Negative notches scroll DOWN; the list clamps at both ends, which is
-        # how the real wheel behaves and how the sweep learns it has finished.
         self.log("scroll_wheel", x, y, notches)
         highest = max(0, len(self.shop) - trade.EXPECTED_ROWS)
         self.view_top = max(0, min(highest, self.view_top - notches))
@@ -66,7 +43,6 @@ def empty(i):
 
 
 def shop_with_gap(total=30, gap_at=6, gap_len=9):
-    """A shop of `total` slots with a run of `gap_len` empties inside it."""
     out = []
     for i in range(1, total + 1):
         if gap_at <= i < gap_at + gap_len:
@@ -83,7 +59,6 @@ def sweep(shop):
     return h, found
 
 
-# ===========================================================================
 section("a shop with a gap is enumerated whole")
 
 for gap_len in (0, 1, 4, 9, 15, 19):
@@ -99,8 +74,6 @@ for gap_len in (0, 1, 4, 9, 15, 19):
           f"got {len(found)} -- anything short is the silent truncation that "
           f"hid eight listings on the live shop")
 
-    # Position matters as much as presence: a listing found at the wrong index
-    # gets the wrong one cancelled.
     wrong = [(i, r.name, shop[i - 1]["name"])
              for i, r in found if r.name != shop[i - 1]["name"]]
     check(f"{label}: every listing is at its true position", wrong == [],
@@ -113,11 +86,8 @@ for gap_len in (0, 1, 4, 9, 15, 19):
           f"found {live_found} of {live_expected}")
 
 
-# ===========================================================================
 section("the listings BELOW a gap are the ones that went missing")
 
-# The live failure was specific: everything above the gap was fine, everything
-# below it was invisible. Assert the bottom of the shop directly.
 shop = shop_with_gap(30, gap_at=6, gap_len=9)
 shop[24] = listing(25, "Upgrade Core(Highest)", qty=0, price=98_000,
                    action="receive")
@@ -141,11 +111,8 @@ if found:
           f"shop indefinitely")
 
 
-# ===========================================================================
 section("a gap at the very bottom")
 
-# The terminator is the measured bottom screen. If that screen is entirely
-# empty slots it is also the least distinctive one in the shop.
 shop = [listing(i) for i in range(1, 16)] + [empty(i) for i in range(16, 31)]
 h, found = sweep(shop)
 check("a shop ending in 15 empty slots still enumerates", found is not None, "")
@@ -155,16 +122,11 @@ if found:
     check("...at their true positions",
           all(r.name == shop[i - 1]["name"] for i, r in found[:15]),
           "a listing at the wrong index gets the wrong one cancelled")
-    # The exact number of trailing empty slots is not knowable from content --
-    # every all-empty screen looks like every other -- and it does not matter:
-    # relist skips empty slots without a table read. What must hold is that no
-    # LISTING is lost, and that the count never runs away.
     check("...and the slot count is sane", 15 <= len(found) <= 40,
           f"got {len(found)} -- a runaway count means the sweep never "
           f"recognised the bottom")
 
 
-# ===========================================================================
 section("a one-screen shop needs no sweeping")
 
 shop = [listing(i) for i in range(1, 8)] + [empty(i) for i in range(8, 11)]

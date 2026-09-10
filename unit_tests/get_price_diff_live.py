@@ -1,17 +1,3 @@
-"""LIVE head-to-head: trade.chaos_margin_now against src/get_price_diff.
-
-DRIVES THE REAL GAME. Both implementations click real favourite slots in the
-real client and read the real market. Neither buys anything -- both only
-search and read -- but the mouse will be busy for several minutes.
-
-Requires the Agent Shop to be open. It switches to the Purchase tab, runs the
-comparison, and puts the Register tab back at the end.
-
-Stop it by creating a file named STOP in the repo root; it is checked between
-calls, never inside one.
-
-    python unit_tests/get_price_diff_live.py [repeats]
-"""
 import os
 import sys
 import tempfile
@@ -22,27 +8,11 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, str(_ROOT / "src"))
 
-# NEVER THE REAL LEDGER. Nothing here sells anything, but trade.py opens the
-# sales database on import and this is a benchmark, not a trading run.
 os.environ["CABAL_SALES_DB"] = str(
     Path(tempfile.gettempdir()) / "get_price_diff_live_bench.db")
 
 STOP = _ROOT / "STOP"
 
-# Core/Set pairs from the favourites table. A is the SET (the crafted output),
-# B is the CORE (the raw input), so a positive difference is profit per unit.
-#
-# THE ORDER IS THE TEST. Running one pair five times in a row is not a fair
-# measurement: after the first search that item's results are already on
-# screen, so every later search finds the name it was looking for whether or
-# not the click did anything. offers_match_slot passes trivially and a search
-# that never ran is invisible -- which flatters whichever implementation is
-# worse at making the search happen.
-#
-# Sequencing through different items makes a failed search visible: the screen
-# still shows the PREVIOUS item, the name does not match, and the retry fires.
-# Each pair is also internally fair, because a call searches its Set slot and
-# then its Core slot, which are different items.
 SEQUENCE = [
     ("Chaos", 4, 3),
     ("FCH", 8, 7),
@@ -62,7 +32,6 @@ def main(rounds: int = 2) -> int:
     from cabal import calibrate, purchase, screen, shop
     import get_price_diff as gpd
 
-    print(__doc__)
     print("=" * 88)
 
     layout = calibrate.calibrated_layout(verbose=True)
@@ -78,8 +47,6 @@ def main(rounds: int = 2) -> int:
         return 2
     was_register = state.register_tab
 
-    # Both implementations need the Purchase tab and the Low-to-High sort.
-    # Done once here so neither pays for it inside a measurement.
     if not shop.open_purchase_tab(layout, verbose=True):
         print("\nCould not reach the Purchase tab. Nothing else was clicked.")
         return 2
@@ -98,11 +65,6 @@ def main(rounds: int = 2) -> int:
                for name, _, _ in SEQUENCE}
     order = []
     try:
-        # ONE IMPLEMENTATION AT A TIME, each walking the whole sequence twice.
-        #
-        # Not alternating OLD/NEW per item: that would hand the second one the
-        # first one's results already on screen, which is the very thing the
-        # sequencing is here to avoid.
         for label in ("old", "new"):
             for lap in range(rounds):
                 for name, set_slot, core_slot in SEQUENCE:
