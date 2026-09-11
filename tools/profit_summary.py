@@ -530,17 +530,37 @@ def report_day(book):
 BOARD_HEAD = re.compile(r"^  board after pass (\d+):$", re.M)
 LAUNCH_HEAD = re.compile(r"^ +bought/u +listed/u", re.M)
 BOARD_LINE = re.compile(r"^(\s{4,}\d+\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+|-)\s+([\d,]+)"
-                        r"\s+(?:[-+]?[\d.]+%|-)\s+)([\d,]+)(\s*)$")
+                        r"\s+(?:[-+]?[\d,.]+%?|-)\s+)([\d,]+)(\s*)$")
 BOARD_COLUMNS = re.compile(r"^(\s+bought/u\s+listed/u\s+margin\s+row price)\s*$")
 ITEM_COLUMNS = re.compile(r"^(\s{4}item\s+rows\s+units\s+listed)\s*$")
 ITEM_LINE = re.compile(r"^(\s{4}(\S.*?)\s{2,}\d+\s+[\d,]+\s+[\d,]+)\s*$")
 PROFIT_WIDTH = 16
+MARGIN_WIDTH = 10
+MARGIN_COLUMNS = re.compile(r"^(\s+bought/u\s+listed/u)\s+margin"
+                            r"(\s+row price.*)$")
+MARGIN_ROW = re.compile(r"^(\s{4,}\d+\s{2,}.+?\s+x[\d,]+\s+([\d,]+|-)"
+                        r"\s+([\d,]+)\s+)(?:[-+]?[\d,.]+%?|-)(\s+.*)$")
 BOARD_INDENT = "    "
 BOARD_LABEL = 49
 BOARD_NUMBER = 16
 
 
+def raw_margin(line):
+    found = MARGIN_COLUMNS.match(line)
+    if found:
+        return (f"{found.group(1)} {'margin':>{MARGIN_WIDTH}}"
+                f"{found.group(2)}")
+    found = MARGIN_ROW.match(line)
+    if found is None:
+        return line
+    cost, each = found.group(2), int(found.group(3).replace(",", ""))
+    shown = "-" if cost == "-" else f"{each - int(cost.replace(',', '')):+,}"
+    return (f"{found.group(1).rstrip()} {shown:>{MARGIN_WIDTH}}"
+            f"{found.group(4)}")
+
+
 def row_total(line, gains):
+    line = raw_margin(line)
     found = BOARD_COLUMNS.match(line)
     if found:
         return f"{found.group(1)}{'profit if sold':>{PROFIT_WIDTH}}"
@@ -595,7 +615,7 @@ def report_trace(log, text):
           f"{found.group(2)}, read {found.group(5)}"
           f"{'' if 'ran for' in text else ' (live)'}")
     for line in body.splitlines()[1:]:
-        print(line)
+        print(raw_margin(line))
     import networth
     networth.summary(log, BOARD_INDENT, BOARD_LABEL, BOARD_NUMBER,
                      PROFIT_WIDTH, board_text=body)

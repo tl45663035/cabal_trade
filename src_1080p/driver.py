@@ -392,8 +392,9 @@ def relist_one(model, index, verbose=True):
         row.floor_at = held.floor_at
     model._slots[index] = row
     unit_floor, pair = calibration.price_floor(row.name)
-    if row.floor_at:
-        unit_floor, pair = row.floor_at, "what it cost"
+    cost = row.floor_at or row.buy_cost
+    if cost:
+        unit_floor, pair = cost, "what it cost"
     if not unit_floor:
         stacked = row_model.read_row_one_stacked()
         again = _row_from(stacked)
@@ -447,7 +448,7 @@ def relist_one(model, index, verbose=True):
     why = ""
     if unit_floor:
         why = (f"it is worth {pair}" if whole
-               else f"it cost {unit_floor:,} each" if row.floor_at
+               else f"it cost {unit_floor:,} each" if cost
                else f"a {pair} costs {unit_floor:,}")
         if pack > 1:
             why += f", and this listing carries {pack}"
