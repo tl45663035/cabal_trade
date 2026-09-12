@@ -2796,11 +2796,24 @@ def _per_item(key, core_name):
     return int(value) if value is not None else None
 
 
+def _ladder_today(run, core_name):
+    wide = run.get("rows_by_margin_on")
+    if not isinstance(wide, dict):
+        return None
+    days = wide.get("days") or []
+    today = time.strftime("%a")
+    if not any(today.lower().startswith(str(d)[:3].lower()) for d in days):
+        return None
+    return _per_item_raw({k: v for k, v in wide.items() if k != "days"},
+                         core_name)
+
+
 def rows_by_margin(core_name, margin):
-    table = load_shared()["resupply"].get("rows_by_margin")
+    run = load_shared()["resupply"]
+    table = run.get("rows_by_margin")
     if not isinstance(table, dict):
         return None
-    ladder = _per_item_raw(
+    ladder = _ladder_today(run, core_name) or _per_item_raw(
         {k: v for k, v in table.items() if k != "step"}, core_name)
     if not ladder:
         return None
