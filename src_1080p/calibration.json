@@ -19,6 +19,7 @@
     "VK_RETURN": 13,
     "INPUT_STRUCT_SIZE": 40,
     "SW_RESTORE": 9,
+    "SW_MINIMIZE": 6,
     "DWORD_MASK": 4294967295,
     "VK_CONTROL": 17,
     "VK_0": 48,
@@ -87,6 +88,12 @@
       0.9,
       0.99,
       0.98
+    ],
+    "recovery_menu": [
+      0.42,
+      0.3,
+      0.58,
+      0.68
     ],
     "alz_search": [
       0.875,
@@ -208,6 +215,34 @@
       0.832,
       0.8451
     ],
+    "cash_icon": [
+      0.1813,
+      0.962
+    ],
+    "cash_tabs": [
+      0.23,
+      0.115,
+      0.56,
+      0.175
+    ],
+    "cash_grid": [
+      0.2422,
+      0.1717,
+      0.7734,
+      0.7575
+    ],
+    "cash_dialog": [
+      0.375,
+      0.355,
+      0.6406,
+      0.63
+    ],
+    "cash_balance": [
+      0.5906,
+      0.7962,
+      0.6406,
+      0.8174
+    ],
     "register_table_band": [
       0.1,
       0.12,
@@ -249,6 +284,12 @@
       0.0709,
       0.1133,
       0.7597
+    ],
+    "cash_cell": [
+      0.2422,
+      0.1717,
+      0.4141,
+      0.2929
     ],
     "vendor_title_band": [
       0.0,
@@ -381,6 +422,12 @@
       0.1389,
       0.7604,
       0.6481
+    ],
+    "use_confirm": [
+      0.38,
+      0.38,
+      0.62,
+      0.62
     ]
   },
   "text": {
@@ -398,6 +445,12 @@
     "close_word": "Close",
     "register_word": "Register",
     "status_complete": "Complete",
+    "cash_purchase_word": "Purchase",
+    "cash_ok_word": "OK",
+    "cash_cancel_word": "Cancel",
+    "cash_price_word": "Price",
+    "cash_balance_word": "Balance",
+    "cash_tab_word": "Useable",
     "vendor_tab_words": "normal|dungeon|repurchase",
     "convert_confirm_word": "OK",
     "convert_cancel_word": "Cancel",
@@ -425,7 +478,34 @@
       "D": "0"
     },
     "alz_word": "a[il1]z",
-    "underprice_warning": "than\\W*the\\W*average"
+    "underprice_warning": "than\\W*the\\W*average",
+    "money_grouped": "^\\d+(,\\d{3})+$",
+    "money_wedged": "\\d[A-Za-z]|[A-Za-z]\\d",
+    "money_separator": "(?<=\\d)[.,\\s]+(?=\\d)",
+    "lookalikes": {
+      "C": "0",
+      "c": "0",
+      "O": "0",
+      "o": "0",
+      "D": "0",
+      "Q": "0",
+      "U": "0",
+      "I": "1",
+      "l": "1",
+      "|": "1",
+      "i": "1",
+      "S": "5",
+      "s": "5",
+      "B": "8",
+      "G": "6",
+      "Z": "2",
+      "z": "2",
+      "T": "7",
+      "A": "4"
+    },
+    "use_question": "refill your Cash",
+    "yes_word": "Yes",
+    "no_word": "No"
   },
   "game_facts": {
     "favourite_count": 10,
@@ -475,7 +555,23 @@
     },
     "convert_tab": "Dungeon",
     "convert_inventory_tab": 4,
-    "clock_epoch": "2024-01-03"
+    "clock_epoch": "2024-01-03",
+    "buy_row": 1,
+    "voucher_cash": 1000,
+    "swap_slots": [
+      "5",
+      "6"
+    ],
+    "swap_pairs": {
+      "Divine Stone": [
+        "Divine Stone",
+        "Divine Stone Set"
+      ],
+      "Force Core (Ultimate)": [
+        "Force Core (Ultimate)",
+        "Force Core Set (Ultimate)"
+      ]
+    }
   },
   "by_resolution": {
     "2560x1440": {
@@ -483,7 +579,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-08-27T15:06:43",
+      "measured_at": "2026-09-14T16:36:42",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -508,13 +604,13 @@
       "inventory": {
         "alz_box": [
           2249,
-          890,
-          2482,
+          891,
+          2481,
           909
         ],
         "anchor": [
-          2482,
-          890
+          2481,
+          891
         ],
         "tabs": {
           "1": [
@@ -829,10 +925,6 @@
           1290,
           879
         ],
-        "refresh_point": [
-          1129,
-          1012
-        ],
         "purchase_tab": [
           130,
           100
@@ -845,48 +937,49 @@
         "favourites": [
           [
             651,
-            1020
+            1016
           ],
           [
             708,
-            1020
+            1016
           ],
           [
             765,
-            1020
+            1016
           ],
           [
             822,
-            1020
+            1016
           ],
           [
             879,
-            1020
+            1016
           ],
           [
             936,
-            1020
+            1016
           ],
           [
             993,
-            1020
+            1016
           ],
           [
             1050,
-            1020
+            1016
           ],
           [
             1107,
-            1020
+            1016
           ],
           [
             1164,
-            1020
+            1016
           ]
         ],
-        "favourite_pitch": 57.0,
+        "favourite_pitch": 57,
         "evidence": {
           "register_conf": 96,
+          "favourite_raw_pitch": 57.0,
           "favourite_pitch_spread": 0,
           "purchase_is_derived": true
         },
@@ -948,7 +1041,7 @@
           1229
         ],
         "row_one_y": 230,
-        "row_pitch": 79,
+        "row_pitch": 78,
         "row_one_box": [
           256,
           191,
@@ -958,10 +1051,14 @@
         "button_x": 1126,
         "table_point": [
           526,
-          309
+          308
         ],
         "rows_per_notch": 1,
         "register_rows_seen": 9,
+        "refresh_point": [
+          1129,
+          1012
+        ],
         "panel": {
           "panel_box": [
             10,
@@ -1014,52 +1111,52 @@
             802
           ]
         },
+        "button_cancel": [
+          1472,
+          853
+        ],
         "button_register": [
           178,
           1014
         ],
-        "button_cancel": [
-          1472,
-          854
-        ],
         "button_confirmation": [
           1291,
-          854
+          853
         ]
       },
       "convert": {
         "tab": "Dungeon",
         "tab_point": [
-          195,
+          196,
           205
         ],
         "cells": {
           "1x1": [
-            252,
-            1064
+            253,
+            1063
           ],
           "1x2": [
-            318,
-            1064
+            319,
+            1063
           ],
           "1x3": [
             384,
-            1064
+            1063
           ],
           "1x4": [
             446,
-            1064
+            1063
           ],
           "1x5": [
             511,
-            1064
+            1063
           ],
           "2x1": [
-            252,
+            253,
             1129
           ],
           "2x2": [
-            318,
+            319,
             1129
           ],
           "2x3": [
@@ -1075,51 +1172,51 @@
             1129
           ],
           "3x1": [
-            252,
-            1180
+            253,
+            1189
           ],
           "3x2": [
-            318,
-            1180
+            319,
+            1189
           ],
           "3x3": [
             384,
-            1180
+            1189
           ],
           "3x4": [
             446,
-            1180
+            1189
           ],
           "3x5": [
             511,
-            1180
+            1189
           ],
           "4x1": [
-            252,
-            1254
+            253,
+            1259
           ],
           "4x2": [
-            318,
-            1254
+            319,
+            1259
           ],
           "4x3": [
             384,
-            1254
+            1259
           ],
           "4x4": [
             446,
-            1254
+            1259
           ],
           "4x5": [
             511,
-            1254
+            1259
           ]
         },
         "set_to_core": {
           "Force Core(Low)": {
             "cell": "2x1",
             "point": [
-              252,
+              253,
               1129
             ],
             "costs": "Force Core Set (Low)"
@@ -1127,7 +1224,7 @@
           "Force Core(Medium)": {
             "cell": "2x2",
             "point": [
-              318,
+              319,
               1129
             ],
             "costs": "Force Core Set (Medium)"
@@ -1159,16 +1256,16 @@
           "Upgrade Core(Low)": {
             "cell": "4x1",
             "point": [
-              252,
-              1254
+              253,
+              1259
             ],
             "costs": "Upgrade Core Set (Low)"
           },
           "Upgrade Core(Medium)": {
             "cell": "4x2",
             "point": [
-              318,
-              1254
+              319,
+              1259
             ],
             "costs": "Upgrade Core Set (Medium)"
           },
@@ -1176,7 +1273,7 @@
             "cell": "4x3",
             "point": [
               384,
-              1254
+              1259
             ],
             "costs": "Upgrade Core Set (High)"
           },
@@ -1184,7 +1281,7 @@
             "cell": "4x4",
             "point": [
               446,
-              1254
+              1259
             ],
             "costs": "Upgrade Core Set (Highest)"
           },
@@ -1192,23 +1289,23 @@
             "cell": "4x5",
             "point": [
               511,
-              1254
+              1259
             ],
             "costs": "Upgrade Core Set (Ultimate)"
           }
         },
         "columns": [
-          252,
-          318,
+          253,
+          319,
           384,
           446,
           511
         ],
         "rows": [
-          1064,
+          1063,
           1129,
-          1180,
-          1254
+          1189,
+          1259
         ]
       },
       "craft": {
@@ -1224,10 +1321,6 @@
           "Chaos Core": [
             198,
             358
-          ],
-          "Divine Stone": [
-            202,
-            398
           ]
         },
         "request": [
@@ -1271,6 +1364,48 @@
         "close": [
           1989,
           1138
+        ]
+      },
+      "cashshop": {
+        "useable": [
+          1120,
+          218
+        ],
+        "purchase": [
+          978,
+          386
+        ],
+        "window": [
+          987,
+          523,
+          1565,
+          857
+        ],
+        "ok": [
+          1284,
+          820
+        ],
+        "cancel": [
+          1465,
+          820
+        ],
+        "icon": [
+          464,
+          1340
+        ],
+        "balance": [
+          1512,
+          1113,
+          1640,
+          1142
+        ],
+        "tab_useable": [
+          1120,
+          218
+        ],
+        "purchase_yekaterinavipmembership": [
+          978,
+          386
         ]
       }
     },
@@ -2081,26 +2216,26 @@
     "2": "Force Core Set (Highest)",
     "3": "Chaos Core",
     "4": "Chaos Core Set",
-    "5": "Divine Stone",
-    "6": "Divine Stone Set",
+    "5": "Force Core (Ultimate)",
+    "6": "Force Core Set (Ultimate)",
     "7": "Force Core(High)",
     "8": "Force Core Set (High)",
     "9": "Upgrade Core (Ultimate)",
     "10": "Upgrade Core Set (Ultimate)"
   },
   "market": {
-    "measured_at": "2026-09-02T09:55:08",
+    "measured_at": "2026-09-14T16:36:42",
     "unit_price": {
-      "1": 314930,
-      "2": 200833,
-      "3": 704265,
-      "4": 717993,
-      "5": 434911,
-      "6": 464278,
-      "7": 207986,
-      "8": 204704,
-      "9": 442710,
-      "10": 442710
+      "1": 197500,
+      "2": 190476,
+      "3": 699900,
+      "4": 725932,
+      "5": 498832,
+      "6": 396485,
+      "7": 208995,
+      "8": 193333,
+      "9": 477990,
+      "10": 478260
     }
   },
   "detect": {
@@ -2120,6 +2255,8 @@
     "panel_scale_high": 1.2,
     "panel_scale_step": 0.002,
     "panel_rule_contrast": 20,
+    "grid_rules_min": 0.33,
+    "grid_rule_slack": 0.125,
     "grid_fit_min": 0.02,
     "panel_open_change": 0.3,
     "edge_candidates": 40,
@@ -2133,6 +2270,15 @@
     "dialog_button_half": [
       70,
       24
+    ],
+    "row_inset": 8,
+    "cash_frame_bright": 75,
+    "cash_frame_run": 0.6,
+    "cash_cell_reach": [
+      0.1406,
+      0.0804,
+      0.0234,
+      0.0146
     ],
     "receipt_drop_ratio": 0.14,
     "min_plausible_balance": 1000,
@@ -2195,10 +2341,15 @@
       -6,
       8,
       -8
-    ]
+    ],
+    "name_line_letters": 3,
+    "button_prefix_min": 4,
+    "button_missing_max": 2,
+    "fav_count_short": 1,
+    "fav_count_extra": 2
   },
   "voucher": {
-    "measured_at": "2026-09-02T09:55:08",
-    "unit_price": 390000000
+    "measured_at": "2026-09-14T16:36:42",
+    "unit_price": 379999990
   }
 }

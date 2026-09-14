@@ -24,7 +24,7 @@ FIELD_SETTLE = _SHARED["timing"]["field_settle"]
 REREADS = _SHARED["detect"]["panel_rereads"]
 REREAD_GAP = _SHARED["timing"]["panel_reread_gap"]
 ROW_SELECT_X = _SHARED["detect"]["purchase_row_select_x"]
-BUY_ROW = 1
+BUY_ROW = int(_SHARED["game_facts"]["buy_row"])
 
 
 step = calibration.step
@@ -40,6 +40,10 @@ class Refused(Exception):
 
 
 class TooThin(Refused):
+    pass
+
+
+class Broke(Refused):
     pass
 
 
@@ -172,16 +176,26 @@ def await_balance(differs_from=None, timeout=None):
     return seen
 
 
+def _whole_batches(held, pack, packs, batch):
+    if batch <= 1:
+        return packs
+    for fewer in range(packs, 0, -1):
+        if (held + pack * fewer) % batch == 0:
+            return fewer
+    return packs if pack > 1 and held + pack * packs >= batch else 0
+
+
 def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 ceiling=None, sells_at=0, gap=None, leave_behind=0,
-                search=True):
+                search=True, batch=1):
     steps_reset()
     outcome = "REFUSED"
     try:
         out = _buy_row_one(slot, want, verbose=verbose, held=held,
                            floor_qty=floor_qty, ceiling=ceiling,
                            sells_at=sells_at, gap=gap,
-                           leave_behind=leave_behind, search=search)
+                           leave_behind=leave_behind, search=search,
+                           batch=batch)
         outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
         return out
     finally:
@@ -191,7 +205,7 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
 def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                  ceiling=None, sells_at=0, gap=None, leave_behind=0,
-                 search=True):
+                 search=True, batch=1):
     say = print if verbose else (lambda *a: None)
     with step("get_price: search the favourite and read row 1"):
         offer = get_price.get_price(int(slot), verbose=False,
@@ -214,6 +228,37 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 f"{sells_at:,}, a gap of {now:,} against the {gap:,} wanted. "
                 f"Nothing bought.")
         say(f"    row 1 leaves {now:,} a core against the {gap:,} wanted")
+
+    pack = max(1, row_model.pack_size(offer["name"]))
+    want_packs = max(1, -(-int(want) // pack))
+    with step("read the balance before buying"):
+        before_alz = get_alz.read_balance()
+    if before_alz is None:
+        raise Refused("the Alz balance would not read, so a purchase could "
+                      "not be checked against it. Nothing clicked.")
+    say(f"    balance before {before_alz:,}")
+    affordable = before_alz // max(1, int(offer["price"]))
+    if affordable < 1:
+        raise Broke(f"Alz {before_alz:,} held and row 1 asks "
+                    f"{offer['price']:,} a pack; nothing can be bought. "
+                    f"Nothing clicked.")
+    if affordable < want_packs:
+        whole = _whole_batches(held, pack, affordable, batch)
+        say(f"    Alz {before_alz:,} covers {affordable} pack(s) at "
+            f"{offer['price']:,}, not the {want_packs} wanted; asking for "
+            f"{whole}"
+            + (f" so that with {held} held the cores make whole batches "
+               f"of {batch}" if whole != affordable else ""))
+        if whole < 1:
+            raise Broke(f"Alz {before_alz:,} covers {affordable} pack(s) at "
+                        f"{offer['price']:,}, and with {held} held that does "
+                        f"not complete a batch of {batch}. Nothing clicked.")
+        want_packs = whole
+    stock = max(1, int(offer["qty"] or 1))
+    spare = stock - leave_behind if leave_behind else stock
+    if leave_behind:
+        say(f"    row 1 holds {stock}, {leave_behind} stays behind, so at "
+            f"most {spare} comes off it")
 
     with step(f"click the row at {row_point()}"):
         calibration.click(*row_point(), settle=FIELD_SETTLE)
@@ -238,19 +283,25 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         _cancel(f"the dialog offers a maximum of {detail['qty_max']}. "
                 f"Cancelled without buying.")
 
-    pack = max(1, row_model.pack_size(offer["name"]))
-    want_packs = max(1, -(-int(want) // pack))
-    on_offer = int(detail["qty_max"])
-    if leave_behind:
-        spare = on_offer - leave_behind
-        if spare < 1:
-            _cancel(f"the dialog offers {on_offer} and {leave_behind} stays "
-                    f"behind, so there is nothing spare on row 1. Cancelled "
-                    f"without buying.", kind=TooThin)
-        say(f"    {on_offer} on offer, {leave_behind} stays behind, so at "
-            f"most {spare} comes off row 1")
-        on_offer = spare
-    asked = min(want_packs, on_offer)
+    cap = int(detail["qty_max"])
+    if cap < stock:
+        say(f"    the dialog allows at most {cap} of the row's {stock}")
+    asked = min(want_packs, spare, cap)
+    if cap < min(spare, want_packs):
+        whole = _whole_batches(held, pack, cap, batch)
+        if whole != cap:
+            say(f"    the dialog caps the order at {cap}, which is the Alz "
+                f"limit; taking {whole} so that with {held} held the cores "
+                f"make whole batches of {batch}")
+        if whole < 1:
+            _cancel(f"the dialog allows {cap} and with {held} held that does "
+                    f"not complete a batch of {batch}. Cancelled without "
+                    f"buying.", kind=Broke)
+        asked = min(asked, whole)
+    if asked < 1:
+        _cancel(f"the dialog allows {cap} and {leave_behind} of the row's "
+                f"{stock} stays behind, so nothing can be taken. Cancelled "
+                f"without buying.")
     if ceiling is not None and held + pack * asked > ceiling:
         if held <= 0:
             say(f"    nothing held yet: taking row 1's bundle of {pack} even "
@@ -289,16 +340,10 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         say(f"    ordering {asked} pack(s) at {want_total:,}; the spend will "
             f"confirm what actually bought")
 
-    with step("read the balance before buying"):
-        before_alz = get_alz.read_balance()
-    if before_alz is None:
-        _cancel("the Alz balance would not read, so a purchase could not be "
-                "checked against it. Cancelled without buying.")
-    say(f"    balance before {before_alz:,}")
     if before_alz < want_total:
         _cancel(f"the order costs {want_total:,} and only {before_alz:,} is "
                 f"held. Cancelled without buying; this core waits for the "
-                f"next cycle.")
+                f"next cycle.", kind=Broke)
 
     with step(f"find the {CONFIRM_WORD} button"):
         point = dialog_button(CONFIRM_WORD)
@@ -320,7 +365,6 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         raise Refused(
             f"the Alz balance would not read after {CONFIRM_WORD}. Whether "
             f"{want_total:,} was spent is unknown -- check by hand.")
-    pack = max(1, row_model.pack_size(offer["name"]))
     spent = before_alz - after_alz
     if spent == 0:
         with step("read the balance once more before calling it unbought"):
@@ -368,6 +412,147 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     return {"slot": int(slot), "name": name, "packs": packs, "bought": units,
             "unit_price": per_unit, "price": offer["price"],
             "spent": spent, "balance": after_alz}
+
+
+def _voucher_name(text):
+    seen = re.sub(r"[^a-z0-9]", "", (text or "").lower())
+    return all(re.sub(r"[^a-z0-9]", "", w.lower()) in seen
+               for w in (get_price.VOUCHER_SEARCH, get_price.VOUCHER_WORD))
+
+
+def buy_voucher(confirm=True, verbose=True):
+    steps_reset()
+    outcome = "REFUSED"
+    try:
+        out = _buy_voucher(confirm=confirm, verbose=verbose)
+        outcome = ("bought 1 voucher" if out["bought"]
+                   else "cancelled at the dialog")
+        return out
+    finally:
+        if verbose and _STEPS:
+            steps_table(f"buy the {get_price.VOUCHER_WORD} voucher: {outcome}")
+
+
+def _buy_voucher(confirm=True, verbose=True):
+    say = print if verbose else (lambda *a: None)
+    with step("read row 1"):
+        fields = get_price.read_fields()
+        offer = get_price.parse_fields(fields)
+    if offer is None or not _voucher_name(offer["name"]):
+        raise Refused(f"row 1 reads {fields.get('row')!r}, not a "
+                      f"{get_price.VOUCHER_WORD} voucher; nothing clicked.")
+    say(f"  row 1 offers {offer['name']!r} x{offer['qty']} at "
+        f"{offer['price']:,}")
+
+    with step(f"click the row at {row_point()}"):
+        calibration.click(*row_point(), settle=FIELD_SETTLE)
+    with step(f"click Buy at {buy_point()}"):
+        calibration.click(*buy_point(), settle=0.0)
+    with step("await the Purchase dialog"):
+        appeared = await_dialog()
+    if not appeared:
+        raise Refused(
+            f"no {DIALOG_MARKER} dialog appeared after clicking Buy on row 1. "
+            f"Nothing was confirmed.", retryable=True)
+
+    with step("read the dialog (item, price, qty, qty_max)"):
+        detail = dialog_details()
+    say(f"    dialog: {detail['item']!r}  qty {detail['qty']} of "
+        f"{detail['qty_max']}  price {detail['price']}")
+    if not _voucher_name(detail["item"]):
+        _cancel(f"the dialog offers {detail['item']!r}, not a "
+                f"{get_price.VOUCHER_WORD} voucher. Cancelled without buying.")
+    if detail["qty"] != 1:
+        with step("click the quantity field and type 1"):
+            calibration.click(*calibration._centre(
+                tuple(calibration._REG["buy_dialog_qty"])))
+            row_model.type_number(1, CLEAR_PRESSES_QTY)
+            calibration.park()
+    price = offer["price"]
+    shelf = detail["price"] // max(1, detail["qty"] or 1)
+    if shelf != price:
+        say(f"    the dialog price read {shelf:,} against the row's "
+            f"{price:,}; the row is the shelf price the game charges, so "
+            f"trusting it -- the spend confirms it after")
+
+    with step("read the balance before buying"):
+        before_alz = get_alz.read_balance()
+    if before_alz is None:
+        _cancel("the Alz balance would not read, so a purchase could not be "
+                "checked against it. Cancelled without buying.")
+    say(f"    balance before {before_alz:,}")
+    if before_alz < price:
+        _cancel(f"the voucher costs {price:,} and only {before_alz:,} is "
+                f"held. Cancelled without buying.")
+
+    if not confirm:
+        with step(f"find the {CANCEL_WORD} button"):
+            point = dialog_button(CANCEL_WORD)
+        if point is None:
+            _cancel(f"no {CANCEL_WORD} button on the dialog. Cancelled.")
+        with step(f"click {CANCEL_WORD}"):
+            calibration.click(*point, settle=0.0)
+        with step("park"):
+            calibration.park()
+        with step("confirm the dialog is gone"):
+            still = dialog_open()
+        if still:
+            from open_inventory import press
+            press(_SHARED["input"]["VK_ESCAPE"])
+            time.sleep(ACTION_GAP)
+            if dialog_open():
+                raise Refused(f"the dialog stayed open after {CANCEL_WORD} "
+                              f"and Escape. Nothing bought; look before "
+                              f"running again.")
+        say(f"  cancelled at the dialog as asked; nothing bought")
+        return {"name": offer["name"], "bought": 0, "price": price,
+                "spent": 0, "balance": before_alz, "cancelled": True}
+
+    with step(f"find the {CONFIRM_WORD} button"):
+        point = dialog_button(CONFIRM_WORD)
+    if point is None:
+        _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
+    with step(f"click {CONFIRM_WORD}"):
+        calibration.click(*point, settle=0.0)
+    with step("park"):
+        calibration.park()
+    with step("confirm the dialog is gone"):
+        still = dialog_open()
+    if still:
+        raise Refused(
+            f"the dialog stayed open after {CONFIRM_WORD}. Whether anything "
+            f"was bought is unknown -- look before running again.")
+    with step("read the balance after buying"):
+        after_alz = await_balance(differs_from=before_alz)
+    if after_alz is None:
+        raise Refused(
+            f"the Alz balance would not read after {CONFIRM_WORD}. Whether "
+            f"{price:,} was spent is unknown -- check by hand.")
+    spent = before_alz - after_alz
+    for attempt in range(1, REREADS + 1):
+        if spent == price:
+            break
+        say(f"    balance read {attempt}: {after_alz:,} makes the spend "
+            f"{spent:,}, not the {price:,} a voucher costs; reading again")
+        time.sleep(REREAD_GAP)
+        again = get_alz.read_balance()
+        if again is None:
+            continue
+        after_alz, spent = again, before_alz - again
+    if spent <= 0:
+        raise Refused(
+            f"the balance never moved from {before_alz:,}, so nothing was "
+            f"bought: row 1 went while the order was being placed.",
+            retryable=True)
+    if spent != price:
+        say(f"    the spend reads {spent:,}, not the {price:,} the voucher "
+            f"cost; booking it at the row's price")
+        spent = price
+        after_alz = before_alz - spent
+    say(f"    balance after  {after_alz:,}; spent {spent:,} on 1 "
+        f"{offer['name']!r}")
+    return {"name": offer["name"], "bought": 1, "price": price,
+            "spent": spent, "balance": after_alz, "cancelled": False}
 
 
 def buy_item(slot, want=None, verbose=True):

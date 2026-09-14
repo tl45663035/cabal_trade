@@ -14,6 +14,7 @@ ACTION_GAP = CAL["timing"]["action_gap"]
 DIALOG_TIMEOUT = CAL["timing"]["dialog_timeout"]
 POLL_GAP = CAL["timing"]["poll_gap"]
 LOAD_ATTEMPTS = CAL["detect"]["load_attempts"]
+TOGGLE_TRIES = int(CAL["timing"]["toggle_tries"])
 
 
 MIN_PLAUSIBLE_BALANCE = CAL["detect"]["min_plausible_balance"]
@@ -97,18 +98,18 @@ def ensure_inventory_open(verbose: bool = True) -> None:
             print("  inventory already open")
         return
 
-    for attempt in (1, 2):
+    for attempt in range(1, TOGGLE_TRIES + 1):
         press(VK_I)
         time.sleep(ACTION_GAP)
-        if panel_open(verbose=(attempt == 2)):
+        if panel_open(verbose=(attempt == TOGGLE_TRIES)):
             if verbose:
                 print("  inventory opened"
-                      + ("  (took two presses -- it had been left open)"
-                         if attempt == 2 else ""))
+                      + ("  (took more than one press -- it had been left "
+                         "open)" if attempt > 1 else ""))
             return
     raise RuntimeError(
-        "pressed I twice; the Inventory panel is not open where "
-        "calibration.json says it is.")
+        f"pressed I {TOGGLE_TRIES} times; the Inventory panel is not open "
+        f"where calibration.json says it is.")
 
 
 def open_agent_shop(verbose: bool = True) -> None:

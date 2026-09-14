@@ -1,5 +1,6 @@
 import collections
 import datetime
+import json
 import pathlib
 import re
 import sqlite3
@@ -8,7 +9,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 LEDGER = ROOT / "src_1080p" / "sales.db"
 LOGS = ROOT / "src_1080p" / "logs"
 PACK = re.compile(r"\bX\s*[\d,]+", re.I)
-DAYS_BACK = 7
+KNOBS = json.loads((ROOT / "src_1080p" / "config.json")
+                   .read_text(encoding="utf-8"))["tools"]
+DAYS_BACK = int(KNOBS["profit_days_back"])
 ENDED = re.compile(r"ended (\d\d):(\d\d):(\d\d), ran for")
 LOG_STAMP = "%Y-%m-%d_%H%M%S"
 
@@ -48,7 +51,7 @@ def run_log(run):
     return LOGS / f"{began:%Y-%m-%d_%H%M%S}_run.log"
 
 
-LIVE_WITHIN = 10 * 60
+LIVE_WITHIN = float(KNOBS["live_within"])
 
 
 def run_is_live(run):
@@ -738,7 +741,7 @@ def report_market():
         stale = (f"; pass {newest} is under way and has not priced the cores "
                  f"yet, so this is the last table it printed")
     print(f"MARKET -- {log.name}, pass {number_of_pass}, log last written {written:%H:%M}"
-          f"{'' if any('ran for' in l for l in lines[-40:]) else ' (live)'}{stale}")
+          f"{'' if any('ran for' in l for l in lines[-KNOBS["log_tail_lines"]:]) else ' (live)'}{stale}")
     print("buy/u is what a unit costs on the Purchase tab, sell/u what the other side of the "
           "pair lists for; margin is sell minus buy, wants the rows that margin is worth")
     print("")

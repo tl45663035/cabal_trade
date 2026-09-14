@@ -13,7 +13,9 @@ SETTLE_PER_BLOCK = _SHARED["timing"]["craft_settle_per_block"]
 SETTLE_BLOCK = _SHARED["timing"]["craft_settle_block"]
 SETTLE_MAX = _SHARED["timing"]["craft_settle_max"]
 CORES_PER_SET = calibration.CRAFT_CORES_PER_SET
-UNKNOWN_HELD = 300
+UNKNOWN_HELD = int(_SHARED["resupply"]["craft_unknown_held"])
+
+
 def _core_name(core=None):
     if core:
         return core

@@ -32,7 +32,7 @@ def finish(out):
     if done.returncode == 0 and out.exists():
         raw.unlink()
         return out
-    say(f"kept {raw.name} as recorded: {done.stderr.strip()[:120]}")
+    say(f"kept {raw.name} as recorded: {done.stderr.strip()[:K['reason_width']]}")
     return raw
 
 

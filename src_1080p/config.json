@@ -2,29 +2,88 @@
   "resupply": {
     "enabled": true,
     "enable_buying": {
-      "Force Core(Highest)": true,
+      "Force Core(Highest)": false,
       "Chaos Core": true,
       "Divine Stone": false,
-      "Force Core (Ultimate)": true,
+      "Force Core (Ultimate)": false,
       "Force Core(High)": true,
-      "Upgrade Core (Ultimate)": true
+      "Upgrade Core (Ultimate)": false
     },
     "rows_by_margin": {
       "step": 5000,
-      "default": [0, 1, 2, 3, 3, 4],
-      "Force Core (Ultimate)": [0, 0, 1, 1, 2, 2, 3, 3],
-      "Upgrade Core (Ultimate)": [0, 0, 1, 1, 2, 2, 3, 3],
-      "Force Core(High)": [0, 2, 3, 4, 5],
-      "Force Core(Highest)": [0, 2, 3, 4, 5],
-      "Chaos Core": [3, 5],
-      "Divine Stone": [2, 3, 3, 4, 4, 5, 5, 6, 6, 7]
+      "default": [
+        0,
+        1,
+        2,
+        3,
+        3,
+        4
+      ],
+      "Force Core (Ultimate)": [
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "Upgrade Core (Ultimate)": [
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "Force Core(High)": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ],
+      "Force Core(Highest)": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ],
+      "Chaos Core": [
+        3,
+        5
+      ],
+      "Divine Stone": [
+        2,
+        3,
+        3,
+        4,
+        4,
+        5,
+        5,
+        6,
+        6,
+        7
+      ]
     },
     "rows_by_margin_on": {
-      "days": ["Fri", "Sat", "Sun"],
-      "Chaos Core": [3, 10]
+      "days": [
+        "Fri",
+        "Sat",
+        "Sun"
+      ],
+      "Chaos Core": [
+        3,
+        10
+      ]
     },
     "buy_min": {
       "default": 200,
+      "Yekaterina VIP Membership": 1,
       "Chaos Core": 150,
       "Divine Stone": 150
     },
@@ -46,13 +105,30 @@
     "buy_under_gap": {
       "default": 5000
     },
-    "buy_retries": 3
+    "cash_shop": {
+      "tabs": {
+        "default": "Useable"
+      },
+      "rows": {
+        "Yekaterina VIP Membership": 1
+      }
+    },
+    "buy_retries": 3,
+    "craft_unknown_held": 300,
+    "order": [
+      "Yekaterina VIP Membership",
+      "Chaos Core",
+      "Force Core(High)",
+      "Force Core(Highest)",
+      "Upgrade Core (Ultimate)",
+      "Force Core (Ultimate)"
+    ]
   },
   "run": {
     "relist_from": 1,
     "relist_to": 21,
     "undercut_by": 1,
-    "max_drop": 100,
+    "max_drop": 10000,
     "home_notches": 30,
     "for_minutes": 10000,
     "price_check_factor": 5.0,
@@ -123,7 +199,19 @@
   "debug": {
     "frames": true,
     "board_trace": true,
-    "keep_frames": 500
+    "keep_frames": 500,
+    "frames_queued": 64,
+    "video_fps": 15,
+    "video_seconds": 180,
+    "keep_videos": 5,
+    "video_scale": 0.5,
+    "prune_every": 50,
+    "banner_scale": 2,
+    "banner_colours": {
+      "FINISHED": "32",
+      "STOPPED": "33",
+      "CRASHED": "31"
+    }
   },
   "timing": {
     "action_gap": 0.5,
@@ -156,11 +244,24 @@
     "gift_gap": 0.5,
     "gift_open_tries": 2,
     "search_settle": 1.5,
-    "convert_grid_settle": 2.0
+    "convert_grid_settle": 2.0,
+    "refresh_settle": 0.05,
+    "stale_sweep": 1.0,
+    "git_timeout": 5,
+    "toggle_tries": 2
   },
   "war": {
     "enabled": true,
-    "start_hours": [1, 4, 7, 10, 13, 16, 19, 22],
+    "start_hours": [
+      1,
+      4,
+      7,
+      10,
+      13,
+      16,
+      19,
+      22
+    ],
     "war_minutes": 30,
     "quiet_before_end": 60,
     "quiet_seconds": 300,
@@ -245,7 +346,10 @@
     "escape_settle": 1,
     "stall_wait": 60,
     "stall_retries": 2,
-    "held_reasons": ["ServerStalled", "the dialog stayed open"],
+    "held_reasons": [
+      "ServerStalled",
+      "the dialog stayed open"
+    ],
     "held_wait": 180,
     "held_retries": 20,
     "recover_wait": 60,
@@ -258,9 +362,39 @@
       "cap": 1800,
       "scale": 0.5,
       "quality": 80,
-      "codec": ["-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-pix_fmt", "yuv420p", "-movflags", "+faststart"],
-      "on": ["disconnect"],
-      "done": ["relaunched", "supervisor stopped", "supervisor crashed", "supervisor cancelled"]
-    }
+      "codec": [
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "26",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart"
+      ],
+      "on": [
+        "disconnect"
+      ],
+      "done": [
+        "relaunched",
+        "supervisor stopped",
+        "supervisor crashed",
+        "supervisor cancelled"
+      ]
+    },
+    "launch_poll": 1,
+    "tail_lines": 8,
+    "head_lines": 4,
+    "line_width": 140,
+    "reason_width": 150
+  },
+  "tools": {
+    "profit_days_back": 7,
+    "live_within": 600,
+    "log_tail_lines": 40,
+    "calib_repeats": 100,
+    "calib_fail_limit": 3
   }
 }

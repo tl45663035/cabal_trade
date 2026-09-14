@@ -187,7 +187,7 @@ def watch(pid, log):
         stops = text.count("STOPPED:")
         if stops > seen_stop:
             line = re.findall(r"STOPPED: (.*)", text)[-1].strip()
-            event(f"stop condition: {line[:80]}",
+            event(f"stop condition: {line[:K['reason_width']]}",
                   "alive" if alive(pid) else "dead")
             seen_stop = stops
 
@@ -224,7 +224,7 @@ def watch(pid, log):
 
         if not alive(pid):
             reason = death_reason(read(log))
-            event(reason[:110], "dead")
+            event(reason[:K['reason_width']], "dead")
             return reason
         if f"{datetime.date.today():%Y-%m-%d}" != day:
             day = prune_before_today()
@@ -281,19 +281,19 @@ def run_driver(*args):
         code, out = run_child([sys.executable, str(DRIVER), *args], ROOT,
                               K["command_timeout"])
         tail = [l for l in out.splitlines()
-                if l.strip() and not l.startswith("#") and "%" not in l][-8:]
+                if l.strip() and not l.startswith("#") and "%" not in l][-K['tail_lines']:]
         for line in tail:
-            print("   " + line[:140])
+            print("   " + line[:K['line_width']])
         if not code:
             return out
         reason = death_reason(out)
         if not held_reason(reason):
             raise Stop(f"driver.py {' '.join(args)} exited {code}: "
-                       f"{reason[:100]}")
+                       f"{reason[:K['reason_width']]}")
         if attempt > K["stall_retries"]:
             raise Held(f"driver.py {' '.join(args)} exited {code}: "
-                       f"{reason[:100]}")
-        event(f"driver.py {args[0]} held up: {reason[:60]}; waiting "
+                       f"{reason[:K['reason_width']]}")
+        event(f"driver.py {args[0]} held up: {reason[:K['reason_width']]}; waiting "
               f"{K['stall_wait']}s, then attempt {attempt + 1}", "dead")
         time.sleep(K["stall_wait"])
         state = read_state()
@@ -306,10 +306,10 @@ def recover_login():
     print("$ py src_1080p/recovery.py", flush=True)
     code, out = run_child([sys.executable, str(SRC / "recovery.py")], SRC,
                           K["login_timeout"])
-    for line in [l for l in out.splitlines() if l.strip()][-6:]:
-        print("   " + line[:140])
+    for line in [l for l in out.splitlines() if l.strip()][-K['tail_lines']:]:
+        print("   " + line[:K['line_width']])
     if code or "Refused" in out:
-        raise Stop(f"recovery refused: {out.strip().splitlines()[-1][:100]}")
+        raise Stop(f"recovery refused: {out.strip().splitlines()[-1][:K['reason_width']]}")
     event("already in the world; nothing to recover"
           if "already in the world" in out else "recovered: back in the world",
           "dead")
@@ -320,10 +320,10 @@ def relog():
     print("$ py src_1080p/recovery.py --relog", flush=True)
     code, out = run_child([sys.executable, str(SRC / "recovery.py"),
                            "--relog"], SRC, K["login_timeout"])
-    for line in [l for l in out.splitlines() if l.strip()][-6:]:
-        print("   " + line[:140])
+    for line in [l for l in out.splitlines() if l.strip()][-K['tail_lines']:]:
+        print("   " + line[:K['line_width']])
     if code or "Refused" in out:
-        raise Stop(f"relog refused: {out.strip().splitlines()[-1][:100]}")
+        raise Stop(f"relog refused: {out.strip().splitlines()[-1][:K['reason_width']]}")
     event("relogged: back in the world", "dead")
 
 
@@ -399,6 +399,15 @@ def item_in(image):
         key = squash(name)
         if key in seen and (best is None or len(key) > len(squash(best[1]))):
             best = (int(slot), name)
+    if best is None:
+        named = calibration.voucher_floor_ratio(seen)[0]
+        if named is None:
+            rows = (calibration.load_shared()["resupply"].get("cash_shop")
+                    or {}).get("rows") or {}
+            named = next((item for item in rows if squash(item) in seen),
+                         None)
+        if named:
+            best = (None, named)
     return best
 
 
@@ -515,7 +524,7 @@ def describe(kind, info):
 
 
 def action_for(row, col, slot, name):
-    if convert.cell_for(name):
+    if slot is None or convert.cell_for(name):
         return ("list", str(row), str(col), "0", str(WORK_TAB), name)
     pair = calibration.pair_slot(slot)
     if pair is not None and             convert.cell_for(calibration.FAVOURITE_ITEMS[str(pair)]):
@@ -596,6 +605,14 @@ def get_in(plan=False):
     print(f"  screen: {state['summary']}")
     if not plan:
         snap("found", state["image"])
+    if (state.get("select") and not plan
+            and not (state["disconnect"] or state["login"] or state["failed"])):
+        if recovery.world_answers():
+            print(f"  the name reads at {list(state['select'])} but the "
+                  f"Inventory opens and the Alz reads: the world, not the "
+                  f"select screen; not recovering")
+            state = read_state()
+            print(f"  screen: {state['summary']}")
     if (state["disconnect"] or state["login"] or state["failed"]
             or state.get("select")):
         print("  case: disconnect / login / select screen -> recovery.py")
@@ -680,7 +697,7 @@ def launch():
                             creationflags=subprocess.CREATE_NEW_CONSOLE,
                             startupinfo=info)
     for waited in range(1, K["launch_wait"] + 1):
-        time.sleep(1)
+        time.sleep(K['launch_poll'])
         log = newest_log()
         if log is not None and log != before:
             break
@@ -691,7 +708,7 @@ def launch():
         raise Stop(f"no new run log {K['launch_wait']}s after launching "
                    f"driver.py (pid {proc.pid} still up)")
     time.sleep(K["launch_settle"])
-    for line in read(log).splitlines()[:4]:
+    for line in read(log).splitlines()[:K['head_lines']]:
         print("   " + line)
     event(f"relaunched (pid {proc.pid})", "alive")
     return proc.pid, log
@@ -703,7 +720,7 @@ def plan(log_path=None, png=None):
     pids = driver_pids()
     print(f"driver.py alive: {pids or 'none'}")
     print(f"log: {log.name if log else 'none'}; last reason: "
-          f"{death_reason(text)[:120]}")
+          f"{death_reason(text)[:K['reason_width']]}")
     for kind, info in interrupted(text):
         print(f"  interrupted: {describe(kind, info)}")
     if png:
@@ -731,7 +748,7 @@ def recover_and_launch(reason, log, watched=True, relog_first=False):
             held += 1
             if held > K["held_retries"]:
                 raise Stop(str(exc))
-            event(f"recovery held up: {str(exc)[:80]}; waiting "
+            event(f"recovery held up: {str(exc)[:K['reason_width']]}; waiting "
                   f"{K['held_wait']}s, then attempt {held + 1}", "dead")
             time.sleep(K["held_wait"])
         except Cancelled:
@@ -740,7 +757,7 @@ def recover_and_launch(reason, log, watched=True, relog_first=False):
             failed += 1
             if failed > K["recover_retries"]:
                 raise
-            event(f"recovery attempt {failed} failed: {str(exc)[:70]}; "
+            event(f"recovery attempt {failed} failed: {str(exc)[:K['reason_width']]}; "
                   f"attempt {failed + 1} in {K['recover_wait']}s", "dead")
             time.sleep(K["recover_wait"])
 
@@ -772,7 +789,7 @@ def main():
                 pid, log = launch()
             else:
                 reason = death_reason(read(log))
-                event(f"no run alive; {log.name} ended: {reason[:80]}",
+                event(f"no run alive; {log.name} ended: {reason[:K['reason_width']]}",
                       "dead")
                 pid, log = recover_and_launch(reason, log, watched=False)
             if args.once:
@@ -782,7 +799,7 @@ def main():
             launched = time.time()
             reason = watch(pid, log)
             if held_reason(reason):
-                event(f"the server took the run down: {reason[:60]}; "
+                event(f"the server took the run down: {reason[:K['reason_width']]}; "
                       f"not counted as a short run", "dead")
             elif time.time() - launched < K["short_run"]:
                 short += 1
@@ -800,7 +817,7 @@ def main():
             else:
                 raise Stop(f"{K['short_runs']} runs in a row died within "
                            f"{K['short_run']}s of launch after {relogs} "
-                           f"relog(s); last: {reason[:80]}")
+                           f"relog(s); last: {reason[:K['reason_width']]}")
             if args.once:
                 return 0
     except KeyboardInterrupt:
@@ -812,7 +829,7 @@ def main():
     except Exception as exc:
         import traceback
         traceback.print_exc()
-        event(f"supervisor crashed: {type(exc).__name__}: {exc}"[:150], "dead")
+        event(f"supervisor crashed: {type(exc).__name__}: {exc}"[:K['reason_width']], "dead")
         return 1
 
 

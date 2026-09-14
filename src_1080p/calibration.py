@@ -21,321 +21,6 @@ LOG_DIR = HERE / "logs"
 _CACHE = None
 _MERGED = None
 
-DEFAULTS = {
-    "run": {
-        "relist_from": 1,
-        "relist_to": 22,
-        "undercut_by": 1,
-        "max_drop": 10,
-        "home_notches": 30,
-        "for_minutes": 60,
-        "price_check_factor": 2.0,
-        "stop_key_presses": 4,
-        "floor_break_after": 5,
-        "stop_key_window": 1.5,
-    },
-    "war": {
-        "enabled": False,
-        "start_hours": [1, 4, 7, 10, 13, 16, 19, 22],
-        "war_minutes": 30,
-        "quiet_before_end": 60,
-        "quiet_seconds": 300,
-        "clock_uncertainty": 59,
-        "clock_resync": 1800.0,
-        "clock_confirm_pause": 1.0,
-        "clock_max_drift": 150.0,
-    },
-    "resupply": {
-        "enabled": False,
-        "enable_buying": {},
-        "rows_by_margin": {"step": 5000, "default": [1, 2, 3, 4, 5]},
-        "buy_min": {"default": 250},
-        "buy_max": {"default": 500},
-        "buy_retries": 3,
-    },
-    "debug": {
-        "frames": False,
-        "board_trace": True,
-        "keep_frames": 2000,
-        "frames_queued": 64,
-        "video_fps": 15,
-        "video_seconds": 180,
-        "keep_videos": 5,
-        "video_scale": 0.5,
-    },
-    "timing": {
-        "action_gap": 0.5,
-        "key_hold": 0.02,
-        "key_gap": 0.05,
-        "hover_settle": 0.15,
-        "modifier_settle": 0.25,
-        "click_hold": 0.12,
-        "focus_settle": 0.35,
-        "wheel_gap": 0.12,
-        "park_settle": 0.25,
-        "tab_settle": 0.6,
-        "refresh_settle": 0.05,
-        "poll_gap": 0.0,
-        "stop_key_poll": 0.03,
-        "stale_sweep": 1.0,
-        "panel_reread_gap": 1.0,
-        "craft_settle_per_block": 5.0,
-        "craft_settle_block": 50,
-        "craft_settle_max": 300.0,
-        "search_timeout": 8.0,
-        "search_retries": 3,
-        "dialog_timeout": 8.0,
-        "retry_gap": 1.0,
-        "gift_open_tries": 2,
-    },
-    "input": {
-        "INPUT_MOUSE": 0,
-        "INPUT_KEYBOARD": 1,
-        "KEYEVENTF_KEYUP": 0x0002,
-        "KEYEVENTF_UNICODE": 0x0004,
-        "KEYEVENTF_SCANCODE": 0x0008,
-        "MAPVK_VK_TO_VSC": 0,
-        "MOUSEEVENTF_LEFTDOWN": 0x0002,
-        "MOUSEEVENTF_LEFTUP": 0x0004,
-        "MOUSEEVENTF_RIGHTDOWN": 0x0008,
-        "MOUSEEVENTF_RIGHTUP": 0x0010,
-        "MOUSEEVENTF_WHEEL": 0x0800,
-        "WHEEL_DELTA": 120,
-        "VK_I": 0x49,
-        "VK_MENU": 0x12,
-        "VK_ESCAPE": 0x1B,
-        "VK_END": 0x23,
-        "VK_RETURN": 0x0D,
-        "INPUT_STRUCT_SIZE": 40,
-        "SW_RESTORE": 9,
-        "SW_MINIMIZE": 6,
-        "DWORD_MASK": 0xFFFFFFFF,
-    },
-    "game": {
-        "title_hint": "PlayCabal",
-    },
-    "panel_layout": {
-        "slot_one": [-496, -596],
-        "slot_pitch": [73.3, 73.4],
-        "tab_one": [-524, -668],
-        "tab_pitch": 69.6,
-    },
-    "ocr": {
-        "tesseract": r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-        "scale": 3,
-        "min_conf": 45.0,
-        "psm": "11",
-        "row_psm": "7",
-        "digit_psm": "13",
-        "digit_whitelist": "0123456789,",
-        "timeout": 60,
-    },
-    "regions": {
-        "park": [0.5078, 0.8800],
-        "recovery_dialog_button": [0.5005, 0.5808],
-        "recovery_dual_yes": [0.4766, 0.5457],
-        "recovery_select_panel": [0.7800, 0.3000, 0.9900, 0.7500],
-        "recovery_enter_button": [0.8000, 0.9000, 0.9900, 0.9800],
-        "recovery_menu": [0.4200, 0.3000, 0.5800, 0.6800],
-        "alz_search": [0.8750, 0.6245, 0.9805, 0.6567],
-        "top_strip": [0.0000, 0.0197, 0.5078, 0.1585],
-        "tab_band": [0.0000, 0.0270, 0.2734, 0.0709],
-        "fav_band": [0.2422, 0.7100, 0.4648, 0.7465],
-        "boundary_window": [0.0781, 0.1289],
-        "slot_pitch": [0.0266, 0.0312],
-        "craft_window": [0.0039, 0.0051, 0.5078, 0.7283],
-        "craft_tiers": [0.0234, 0.1147, 0.2031, 0.2023],
-        "craft_recipes": [0.0234, 0.1147, 0.2031, 0.2900],
-        "craft_material": [0.2188, 0.4215, 0.3906, 0.4945],
-        "craft_buttons": [0.0234, 0.6771, 0.5078, 0.7210],
-        "purchase_sort_band": [0.2500, 0.1200, 0.5000, 0.1700],
-        "purchase_buy_band": [0.3000, 0.6800, 0.5100, 0.7300],
-        "purchase_search_bar": [0.2057, 0.0942],
-        "purchase_search_button": [0.4333, 0.1239],
-        "voucher_suggestions": [0.0104, 0.1060, 0.4062, 0.1952],
-        "voucher_gold": [0.0714, 0.1695],
-        "purchase_table_band": [0.1000, 0.1500, 0.4800, 0.6600],
-        "popup": [0.1953, 0.2389, 0.8203, 0.8232],
-        "dialog_buttons": [0.4688, 0.5296, 0.6641, 0.7085],
-        "gift_icon": [0.1480, 0.9620],
-        "gift_window": [0.1719, 0.1585, 0.8320, 0.8451],
-        "register_table_band": [0.1000, 0.1200, 0.4800, 0.6600],
-        "register_footer_band": [0.1000, 0.6600, 0.5100, 0.7300],
-        "register_button_band": [0.41, 0.12, 0.48, 0.66],
-        "purchase_button_band": [0.41, 0.15, 0.48, 0.66],
-        "purchase_header_band": [0.02, 0.155, 0.48, 0.205],
-        "trade_tabs_band": [0.0, 0.035, 0.24, 0.08],
-        "register_panel": [0.0039, 0.0709, 0.1133, 0.7597],
-    },
-    "detect": {
-        "alz_bright": 110,
-        "alz_saturation": 45,
-        "alz_min_pixels": 150,
-        "alz_line_half": 14,
-        "alz_max_width_fraction": 0.95,
-        "alz_min_height": 8,
-        "alz_max_height": 30,
-        "alz_sweep_height": 44,
-        "alz_sweep_step": 18,
-        "alz_label_back": 260,
-        "alz_band_pad": 8,
-        "alz_band_left": 60,
-        "panel_scale_low": 0.6,
-        "panel_scale_high": 1.2,
-        "panel_scale_step": 0.002,
-        "panel_rule_contrast": 20,
-        "grid_rules_min": 0.33,
-        "grid_rule_slack": 0.125,
-        "grid_fit_min": 0.02,
-        "panel_open_change": 0.30,
-        "edge_candidates": 40,
-        "edge_min_gap": 15,
-        "rule_candidates": 60,
-        "rule_min_gap": 30,
-        "purchase_header_up": 66,
-        "purchase_header_down": 10,
-        "purchase_divider_sigma": 3.0,
-        "purchase_cell_inset": 2,
-        "dialog_button_half": [70, 24],
-        "receipt_drop_ratio": 0.14,
-        "min_plausible_balance": 1000,
-        "row_border_candidates": 30,
-        "row_border_min_gap": 15,
-        "qty_half_width": 45,
-        "function_half_width": 46,
-        "price_right_gap": 46,
-        "ink_threshold": 160,
-        "ink_pad": 4,
-        "bulk_min_conf": 55.0,
-        "rescue_min_conf": 30.0,
-        "min_plausible_price": 1000,
-        "price_min_digits": 4,
-        "min_client_side": 100,
-        "fit_pitch_step": 0.02,
-        "fit_start_step": 0.5,
-        "fav_peak_cut": 0.6,
-        "fav_merge_gap": 40,
-        "fav_pitch_spread": 4,
-        "sort_pad_left": 40,
-        "sort_pad_right": 90,
-        "sort_pad_y": 16,
-        "scroll_point_inset": 600,
-        "panel_field_inset": 30,
-        "panel_field_half": 14,
-        "panel_label_gap": 22,
-        "panel_label_pad": 12,
-        "word_row_slack": 6,
-        "tier_row_slack": 4,
-        "panel_rereads": 5,
-        "min_name_overlap": 6,
-        "alz_min_digits": 4,
-        "slot_half": 24,
-        "slot_occupied_stdev": 30.0,
-        "gift_column_spread": 12,
-        "server_lag_pixels": 2000,
-        "server_lag_sure": 4000,
-        "server_lag_red": 210,
-        "server_lag_green": [120, 200],
-        "server_lag_blue": 80,
-        "panel_moved_slack": 30,
-    },
-    "text": {
-        "empty_row": "premiumexclusiveslot",
-        "sort_direction": r"price\s*:?\s*(low|high)",
-        "purchase_row": '^(?P<name>.*?)\\s+(?P<qty>\\S+)\\s+(?P<price>\\d[\\d,]*)\\s*\\D*$',
-        "pack_marker": r"\bX\s*(\d+)\s*$",
-        "row_grouping": r"(?<=\d)[.\s](?=\d{3}(?!\d)(?!,))",
-        "change_word": "Change",
-        "dismiss_word": "Cancel",
-        "confirm_word": "Confirmation",
-        "receipt_word": "Receive",
-        "voucher_search": "voucher",
-        "voucher_word": "Gold",
-        "close_word": "Close",
-        "register_word": "Register",
-        "status_complete": "Complete",
-    },
-    "favourite_items": {
-        "1": "Force Core(Highest)",
-        "2": "Force Core Set (Highest)",
-        "3": "Chaos Core",
-        "4": "Chaos Core Set",
-        "5": "Divine Stone",
-        "6": "Divine Stone Set",
-        "7": "Force Core(High)",
-        "8": "Force Core Set (High)",
-        "9": "Upgrade Core (Ultimate)",
-        "10": "Upgrade Core Set (Ultimate)",
-    },
-    "game_facts": {
-        "favourite_count": 10,
-        "vendor_tabs": "Normal|Dungeon|Repurchase",
-        "craft_tab": 8,
-        "craft_key_slot": [1, 8],
-        "craft_tier_words": "2000|2999",
-        "craft_recipe_words": "Chaos Core Set|x3",
-        "craft_recipes": {
-            "Chaos Core": "Chaos Core Set|x3",
-            "Divine Stone": "Divine Stone Set|x3"
-        },
-        "refresh_word": "Refresh",
-        "set_word": "set",
-        "held_of_needed": "/",
-        "craft_request_words": "Request|All",
-        "craft_request_word": "Repeat",
-        "craft_complete_word": "Complete",
-        "craft_material_word": "Material",
-        "craft_cores_per_set": 3,
-        "grid_size": 8,
-        "agent_shop_tab": 8,
-        "agent_shop_slot": [1, 7],
-        "work_tab": 4,
-        "gift_boxes": 4,
-        "work_slot": "1,1",
-        "shop_capacity": 30,
-        "shop_visible": 10,
-        "max_stack": 250,
-    },
-    "recovery": {
-        "screen_timeout": 25.0,
-        "world_timeout": 120.0,
-        "sub_password_wait": 12.0,
-        "after_typing_wait": 10.0,
-        "failed_retry_wait": 5.0,
-        "reconnect_settle": 60.0,
-        "login_tries": 6,
-        "reconnect_tries": 4,
-        "notice_tries": 3,
-        "clear_keys": 32,
-        "double_gap": 0.08,
-        "phrase_gap_x": 260,
-        "phrase_gap_y": 16,
-        "password_above_login": 86,
-        "username_above_login": 127,
-        "panel_reach": 0.16,
-        "near_above": 10,
-        "keypad_columns": 6,
-        "keypad_rows": 2,
-        "notice_ok_wait": 2.0,
-        "disconnect_ok_wait": 10.0,
-        "dual_yes_wait": 2.0,
-        "failed_confirm_wait": 2.0,
-        "disconnect_words": ["disconnect", "disconnected", "log-out", "logged"],
-        "failed_words": ["failed to connect", "try later"],
-        "dual_words": ["dual login", "already in use", "like to reconnect"],
-        "login_word": "login",
-        "ok_word": "ok",
-        "confirm_word": "confirmation",
-        "yes_word": "yes",
-        "enter_word": "enter server",
-        "menu_word": "select character",
-        "menu_tries": 3,
-        "menu_wait": 3.0,
-        "logout_yes_wait": 5.0,
-        "logout_wait": 30.0,
-    },
-}
-
 
 def screen_size() -> "tuple[int, int]":
     import mss
@@ -349,55 +34,39 @@ def resolution_key(size=None) -> str:
     return f"{w}x{h}"
 
 
-CONFIG_SECTIONS = ("run", "debug", "timing", "resupply", "war", "recovery")
-
-
 def _read(path) -> dict:
     if not path.exists():
-        return {}
+        raise RuntimeError(f"{path.name} is missing; nothing is built in.")
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+    except (OSError, ValueError) as exc:
+        raise RuntimeError(f"{path.name} would not read: {exc}") from exc
 
 
-def write_config_if_absent() -> None:
-    if CONFIG.exists():
-        return
-    CONFIG.write_text(json.dumps(
-        {"_README": [
-            "The knobs. calibration.json holds what was measured off the",
-            "screen; nothing in here is measured and a calibration pass",
-            "never writes to this file.",
-        ]} | {k: dict(DEFAULTS[k]) for k in CONFIG_SECTIONS},
-        indent=2), encoding="utf-8")
-
-
-SWAP_SLOTS = ("5", "6")
-SWAP_PAIRS = {
-    "Divine Stone": ("Divine Stone", "Divine Stone Set"),
-    "Force Core (Ultimate)": ("Force Core (Ultimate)",
-                              "Force Core Set (Ultimate)"),
-}
+def _sections(data) -> dict:
+    return {name: dict(values) for name, values in data.items()
+            if isinstance(values, dict) and name != "by_resolution"}
 
 
 def _resolve_swap(shared):
-    table = (shared.get("resupply") or {}).get("enable_buying") or {}
+    slots = [str(s) for s in shared["game_facts"]["swap_slots"]]
+    pairs = shared["game_facts"]["swap_pairs"]
+    table = shared["resupply"]["enable_buying"]
     fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
-    on = [core for core in SWAP_PAIRS
+    on = [core for core in pairs
           if any(fold(name) == fold(core) and value
                  for name, value in table.items())]
     if len(on) > 1:
         raise SystemExit(
             f"config.json enables {' and '.join(repr(c) for c in on)} at "
-            f"once. They share favourite slots {'-'.join(SWAP_SLOTS)}, so "
+            f"once. They share favourite slots {'-'.join(slots)}, so "
             f"only one can be favourited in the game. Turn one off in "
             f"resupply.enable_buying.")
     if not on:
         return shared
-    core, made = SWAP_PAIRS[on[0]]
-    shared["favourite_items"][SWAP_SLOTS[0]] = core
-    shared["favourite_items"][SWAP_SLOTS[1]] = made
+    core, made = pairs[on[0]]
+    shared["favourite_items"][slots[0]] = core
+    shared["favourite_items"][slots[1]] = made
     return shared
 
 
@@ -417,15 +86,9 @@ def swapped_for(slot, text):
 
 
 def load_shared() -> dict:
-    measured = _read(OUT)
-    knobs = _read(CONFIG)
-    out = {}
-    for section, default in DEFAULTS.items():
-        merged = dict(default)
-        merged.update(measured.get(section) or {})
-        if section in CONFIG_SECTIONS:
-            merged.update(knobs.get(section) or {})
-        out[section] = merged
+    out = _sections(_read(OUT))
+    for section, values in _sections(_read(CONFIG)).items():
+        out.setdefault(section, {}).update(values)
     return _resolve_swap(out)
 
 
@@ -481,10 +144,7 @@ def load(force: bool = False) -> dict:
             f"{known or 'nothing'}.")
 
     merged = dict(per)
-    for shared, default in DEFAULTS.items():
-        section = dict(default)
-        section.update(data.get(shared) or {})
-        merged[shared] = section
+    merged.update(_sections(data))
     merged["resolution"] = key
     _MERGED = merged
     return merged
@@ -563,8 +223,16 @@ PANEL_RULE_CONTRAST = _DET["panel_rule_contrast"]
 GRID_RULES_MIN = _DET["grid_rules_min"]
 GRID_RULE_SLACK = _DET["grid_rule_slack"]
 MIN_PLAUSIBLE_BALANCE = _DET["min_plausible_balance"]
+BUTTON_PREFIX_MIN = int(_DET["button_prefix_min"])
+BUTTON_MISSING_MAX = int(_DET["button_missing_max"])
+FAV_COUNT_SHORT = int(_DET["fav_count_short"])
+FAV_COUNT_EXTRA = int(_DET["fav_count_extra"])
+TOGGLE_TRIES = int(_S["timing"]["toggle_tries"])
 VOUCHER_WORD = _S["text"]["voucher_word"]
-VOUCHER_FLOOR_PARTS = 1000
+VOUCHER_FLOOR_PARTS = int(_S["game_facts"]["voucher_cash"])
+SWAP_SLOTS = tuple(str(s) for s in _S["game_facts"]["swap_slots"])
+SWAP_PAIRS = {core: tuple(pair)
+              for core, pair in _S["game_facts"]["swap_pairs"].items()}
 EDGE_CANDIDATES = _DET["edge_candidates"]
 EDGE_MIN_GAP = _DET["edge_min_gap"]
 PURCHASE_HEADER_UP = _DET["purchase_header_up"]
@@ -751,7 +419,7 @@ def clear_frames() -> int:
     return gone
 
 
-PRUNE_EVERY = 50
+PRUNE_EVERY = int(_S["debug"]["prune_every"])
 
 
 def frames_on(enabled: "bool | None" = None) -> bool:
@@ -1104,9 +772,9 @@ def _tesseract(prepared, psm, whitelist=None):
     return run.stdout.decode("utf-8", "replace")
 
 
-_GROUPED = re.compile(r"^\d+(,\d{3})+$")
-_WEDGED = re.compile(r"\d[A-Za-z]|[A-Za-z]\d")
-_SEPARATOR = re.compile(r"(?<=\d)[.,\s]+(?=\d)")
+_GROUPED = re.compile(_S["text"]["money_grouped"])
+_WEDGED = re.compile(_S["text"]["money_wedged"])
+_SEPARATOR = re.compile(_S["text"]["money_separator"])
 
 
 def _digits(text):
@@ -1173,11 +841,7 @@ def balance_box():
             max(band[2], measured[2]), max(band[3], measured[3]))
 
 
-_LOOKALIKE = str.maketrans({"C": "0", "c": "0", "O": "0", "o": "0",
-                            "D": "0", "Q": "0", "U": "0",
-                            "I": "1", "l": "1", "|": "1", "i": "1",
-                            "S": "5", "s": "5", "B": "8", "G": "6",
-                            "Z": "2", "z": "2", "T": "7", "A": "4"})
+_LOOKALIKE = str.maketrans(dict(_S["text"]["lookalikes"]))
 
 
 def read_balance_from(image):
@@ -1558,13 +1222,16 @@ def inventory_open(image=None):
     image = image if image is not None else grab()
     if not inventory_grid_shown(image):
         return None
-    box = find_alz(image)
-    if box is None:
-        return None
-    digits = re.sub(r"[^0-9]", "", read_line(image, box))
-    if len(digits) < ALZ_MIN_DIGITS:
-        return None
-    return box
+    found = find_alz(image)
+    boxes = [found] if found is not None else []
+    measured = (_measured().get("inventory") or {}).get("alz_box")
+    if measured:
+        boxes.append(tuple(measured))
+    for box in boxes:
+        digits = re.sub(r"[^0-9]", "", read_line(image, box))
+        if len(digits) >= ALZ_MIN_DIGITS:
+            return box
+    return None
 
 
 def await_inventory(timeout=None, verbose=False):
@@ -1574,7 +1241,7 @@ def await_inventory(timeout=None, verbose=False):
     box = inventory_open()
     if box is not None:
         return box
-    for attempt in (1, 2):
+    for attempt in range(1, TOGGLE_TRIES + 1):
         if verbose:
             print(f"  Inventory shut; pressing I (attempt {attempt})")
         press(VK_I)
@@ -1884,7 +1551,8 @@ def calibrate_shop(verbose=True):
     say(f"  favourites: {len(found)} found, pitch {f_pitch:.2f}px, "
         f"first {[found[0], y] if found else None} "
         f"last {[found[-1], y] if found else None}")
-    if not gaps or not (FAVOURITE_COUNT - 1 <= len(found) <= FAVOURITE_COUNT + 2):
+    if not gaps or not (FAVOURITE_COUNT - FAV_COUNT_SHORT <= len(found)
+                        <= FAVOURITE_COUNT + FAV_COUNT_EXTRA):
         raise RuntimeError(
             f"expected about {FAVOURITE_COUNT} favourite slots, found "
             f"{len(found)} at {found}. Not writing a calibration that does "
@@ -2198,7 +1866,8 @@ def button_word_matches(seen, word):
         return False
     if seen == word:
         return True
-    return len(seen) >= 4 and word.startswith(seen) and len(word) - len(seen) <= 2
+    return (len(seen) >= BUTTON_PREFIX_MIN and word.startswith(seen)
+            and len(word) - len(seen) <= BUTTON_MISSING_MAX)
 
 
 ACTION_BUTTON_WORDS = (_S["text"]["confirm_word"], _S["text"]["dismiss_word"],
@@ -2211,6 +1880,158 @@ GIFT_OPEN_TRIES = int(_S["timing"]["gift_open_tries"])
 GIFT_COLUMN_SPREAD = int(_S["detect"]["gift_column_spread"])
 GIFT_ICON_F = tuple(_S["regions"]["gift_icon"])
 GIFT_WINDOW_F = tuple(_S["regions"]["gift_window"])
+CASH_ICON_F = tuple(_S["regions"]["cash_icon"])
+CASH_TABS_F = tuple(_S["regions"]["cash_tabs"])
+CASH_DIALOG_F = tuple(_S["regions"]["cash_dialog"])
+CASH_BALANCE_F = tuple(_S["regions"]["cash_balance"])
+CASH_FRAME_BRIGHT = _DET["cash_frame_bright"]
+CASH_FRAME_RUN = _DET["cash_frame_run"]
+
+
+def _await_cash(read, timeout=None):
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    while time.monotonic() < deadline:
+        seen = read()
+        if seen:
+            return seen
+        time.sleep(POLL_GAP)
+    return None
+
+
+def _longest_run(flags):
+    best = run = 0
+    for flag in flags:
+        run = run + 1 if flag else 0
+        if run > best:
+            best = run
+    return best
+
+
+def frame_box(image, box):
+    bright = (np.asarray(image.crop(box).convert("L"), dtype=int)
+              > CASH_FRAME_BRIGHT)
+    height, width = bright.shape
+    rows = [y for y in range(height)
+            if _longest_run(bright[y]) >= CASH_FRAME_RUN * width]
+    cols = [x for x in range(width)
+            if _longest_run(bright[:, x]) >= CASH_FRAME_RUN * height]
+    if len(rows) < 2 or len(cols) < 2:
+        return None
+    return (box[0] + cols[0], box[1] + rows[0],
+            box[0] + cols[-1], box[1] + rows[-1])
+
+
+def calibrate_cashshop(verbose=True):
+    import cashshop
+    from open_inventory import VK_ESCAPE, press
+    say = print if verbose else (lambda *a: None)
+    icon = cashshop.icon_point()
+    say(f"  the Cash Shop icon at {list(icon)}")
+    if cashshop.is_open():
+        say("  the Cash Shop was already open; not clicking its icon")
+    else:
+        click(*icon)
+        if _await_cash(cashshop.is_open) is None:
+            snap("cash_shop_never_opened")
+            say(f"  no {cashshop.DEFAULT_TAB} tab within {DIALOG_TIMEOUT:g}s "
+                f"of clicking the icon; leaving the Cash Shop unmeasured")
+            park()
+            return None
+    block = {"icon": list(icon)}
+    balance = _await_cash(cashshop.read_cc)
+    if balance is None:
+        snap("cash_balance_unread")
+        say(f"  the Cash balance box {list(cashshop.balance_box())} would "
+            f"not read; not recorded")
+    else:
+        say(f"  the Cash balance box {list(cashshop.balance_box())} reads "
+            f"{balance:,}")
+        block["balance"] = list(cashshop.balance_box())
+    if not cashshop.items():
+        say("  no items under resupply.cash_shop.rows; only the icon and "
+            "the balance are measured")
+    confirmed = False
+    for item in cashshop.items():
+        word = cashshop.tab_for(item)
+        tab = cashshop.tab_point(word)
+        if tab is None:
+            snap("cash_no_tab_" + cashshop._fold(word))
+            say(f"  no {word!r} tab for {item!r}; not measured")
+            continue
+        say(f"  {word} at {list(tab)}")
+        click(*tab)
+        time.sleep(TAB_SETTLE)
+        park()
+        block["tab_" + cashshop._fold(word)] = list(tab)
+        cell = _await_cash(lambda: cashshop.find_cell(item))
+        if cell is None:
+            snap("cash_cell_not_found_" + cashshop._fold(item))
+            say(f"  {item!r} is not on the {word} tab's first page with a "
+                f"{cashshop.PURCHASE_WORD} button; not measured")
+            continue
+        say(f"  {item} at {cell['price']} Cash; {cashshop.PURCHASE_WORD} at "
+            f"{list(cell['purchase'])}")
+        block["purchase_" + cashshop._fold(item)] = list(cell["purchase"])
+        if confirmed:
+            continue
+        if balance is not None and cell["price"] is not None \
+                and balance < cell["price"]:
+            say(f"  {balance:,} Cash held and {item} costs {cell['price']}; "
+                f"the game opens no confirmation for that, so it is not "
+                f"measured this launch")
+            continue
+        click(*cell["purchase"], settle=0.0)
+        seen = _await_cash(cashshop.dialog)
+        if seen is None:
+            snap("cash_no_confirmation")
+            say(f"  no {cashshop.OK_WORD} and {cashshop.CANCEL_WORD} within "
+                f"{DIALOG_TIMEOUT:g}s of {cashshop.PURCHASE_WORD}; nothing "
+                f"pressed")
+            park()
+            continue
+        snap("cash_confirmation")
+        ok, cancel = seen["ok"], seen["cancel"]
+        window = frame_box(grab(), _box(CASH_DIALOG_F))
+        if window is not None and not (window[0] < ok[0] < cancel[0] < window[2]
+                                       and window[1] < ok[1] < window[3]):
+            say(f"  the frame lines read {list(window)}, which do not "
+                f"enclose {cashshop.OK_WORD} and {cashshop.CANCEL_WORD}; the "
+                f"window is not recorded")
+            window = None
+        if window is None:
+            say("  the confirmation window was not found by its frame lines")
+        else:
+            say(f"  the confirmation window {list(window)}, "
+                f"{window[2] - window[0]}x{window[3] - window[1]}")
+            block["window"] = list(window)
+        say(f"  {cashshop.OK_WORD} at {list(ok)}; {cashshop.CANCEL_WORD} at "
+            f"{list(cancel)}")
+        block["ok"], block["cancel"] = list(ok), list(cancel)
+        click(*cancel)
+        park()
+        if _await_cash(lambda: cashshop.dialog() is None) is None:
+            say(f"  the confirmation stayed after {cashshop.CANCEL_WORD}; "
+                f"clicking it again")
+            click(*cancel)
+            park()
+        confirmed = True
+    for attempt in range(1, TOGGLE_TRIES + 1):
+        if not cashshop.is_open():
+            break
+        say(f"  Escape to close the Cash Shop (attempt {attempt})")
+        press(VK_ESCAPE)
+        time.sleep(ACTION_GAP)
+        if _await_cash(lambda: not cashshop.is_open()):
+            break
+    park()
+    if inventory_open() is None:
+        say("  the Inventory closed with the Cash Shop; opening it again")
+        if await_inventory(verbose=verbose) is None:
+            snap("cash_shop_left_inventory_shut")
+            say("  the Inventory would not reopen after the Cash Shop")
+    snap("cash_shop_measured")
+    return block
 
 
 def panel_quantity(panel, want_price, say=lambda *a: None):
@@ -2421,7 +2242,7 @@ def await_vendor(timeout=None, verbose=False):
     span = DIALOG_TIMEOUT if timeout is None else timeout
     if vendor_open():
         return True
-    for attempt in (1, 2):
+    for attempt in range(1, TOGGLE_TRIES + 1):
         if verbose:
             print(f"  pressing N to open the vendor Shop "
                   f"(attempt {attempt})")
@@ -2720,7 +2541,7 @@ def calibrate_convert(verbose=True):
     looks = 1
     while (len(rows) != CONVERT_ROW_COUNT
            or len(cols) != len(CONVERT_GRADES)) and             time.monotonic() < deadline:
-        time.sleep(POLL_GAP or 0.1)
+        time.sleep(POLL_GAP)
         image, cols, rows = _read_grid()
         looks += 1
     if looks > 1:
@@ -2824,7 +2645,7 @@ def rows_by_margin(core_name, margin):
 
 
 def margin_for_rows(core_name, rows):
-    table = load_shared()["resupply"].get("rows_by_margin")
+    table = load_shared()["resupply"]["rows_by_margin"]
     if not isinstance(table, dict):
         return None
     ladder = _per_item_raw(
@@ -2901,7 +2722,7 @@ def calibrate_voucher(verbose=True):
 
 
 def voucher_default():
-    return int(load_shared()["run"].get("voucher_default") or 0)
+    return int(load_shared()["run"]["voucher_default"])
 
 
 def voucher_unit():
@@ -2910,11 +2731,11 @@ def voucher_unit():
 
 
 def voucher_floor_ratio(name):
-    table = load_shared()["run"].get("voucher_floor") or {}
+    table = load_shared()["run"]["voucher_floor"]
     want = re.sub(r"[^a-z0-9]", "", (name or "").lower())
     for item, rule in table.items():
         if isinstance(rule, dict):
-            ratio, words = int(rule.get("ratio") or 0), rule.get("any") or [item]
+            ratio, words = int(rule["ratio"]), rule.get("any") or [item]
         else:
             ratio, words = int(rule), [item]
         for word in words:
@@ -3021,7 +2842,7 @@ def calibrate_panel(verbose=True):
 
 
 def slot_half():
-    return round(SLOT_HALF * (load()["inventory"].get("panel_scale") or 1))
+    return round(SLOT_HALF * load()["inventory"]["panel_scale"])
 
 
 def slot_is_empty(image, row, col):
@@ -3299,8 +3120,6 @@ def main(close: bool = True) -> None:
 def _measure(close: bool) -> None:
     from open_inventory import VK_I, VK_ESCAPE, focus_game, press
 
-    write_config_if_absent()
-
     shared = load_shared()
     gap = shared["timing"]["action_gap"]
     facts = shared["game_facts"]
@@ -3336,14 +3155,27 @@ def _measure(close: bool) -> None:
     if gift_block is not None:
         remember("gifts", gift_block)
 
+    print("cash shop:")
+    cash_block = calibrate_cashshop()
+    if cash_block is not None:
+        remember("cashshop", cash_block)
+
     print("opening the Agent Shop:")
     tab = inventory["tabs"][str(facts["agent_shop_tab"])]
     row, col = facts["agent_shop_slot"]
     key = inventory["slots"][f"{row}x{col}"]
+    if inventory_open() is None:
+        print(f"  the Inventory panel is not on screen; tab "
+              f"{facts['agent_shop_tab']} at {tab} is not there to click")
+        snap("inventory_gone_before_tab")
+        if await_inventory(verbose=True) is None:
+            raise RuntimeError(
+                "the Inventory panel would not open, so the Agent Shop key "
+                "cannot be reached. Nothing clicked.")
     print(f"  tab {facts['agent_shop_tab']} at {tab}")
     click(*tab)
 
-    for attempt in (1, 2):
+    for attempt in range(1, TOGGLE_TRIES + 1):
         if _trade_window_open():
             break
         if inventory_open() is None:
@@ -3360,14 +3192,14 @@ def _measure(close: bool) -> None:
         time.sleep(gap)
         park()
         if _trade_window_open():
-            if attempt == 2:
+            if attempt > 1:
                 print("  (the shop had been left open by an earlier run; "
-                      "clicked twice to get back to a known state)")
+                      "clicked again to get back to a known state)")
             break
-        if attempt == 2:
+        if attempt == TOGGLE_TRIES:
             raise RuntimeError(
-                "right-clicked the Agent Shop key twice and the Trade window "
-                "never appeared. Nothing written.")
+                f"right-clicked the Agent Shop key {TOGGLE_TRIES} times and "
+                f"the Trade window never appeared. Nothing written.")
 
     snap("shop_open")
     print("agent shop:")
@@ -3420,7 +3252,7 @@ def _measure(close: bool) -> None:
         snap("press_escape_after_vendor")
 
     craft_block = None
-    _enabled = shared["resupply"]["enable_buying"] or {}
+    _enabled = shared["resupply"]["enable_buying"]
     if any(_enabled.get(core) for core in craft_cores()):
         print("craft window:")
         craft_block = calibrate_craft()
@@ -3455,6 +3287,8 @@ def _measure(close: bool) -> None:
         measured["craft"] = craft_block
     if gift_block is not None:
         measured["gifts"] = gift_block
+    if cash_block is not None:
+        measured["cashshop"] = cash_block
 
     existing = {}
     if OUT.exists():
@@ -3464,13 +3298,6 @@ def _measure(close: bool) -> None:
             existing = {}
 
     out = dict(existing)
-    for section in DEFAULTS:
-        if section in CONFIG_SECTIONS:
-            out.pop(section, None)
-            continue
-        merged = dict(DEFAULTS[section])
-        merged.update(existing.get(section) or {})
-        out[section] = merged
     per = out.setdefault("by_resolution", {})
     prior = dict(per.get(resolution_key()) or {})
     kept = {}
@@ -3604,15 +3431,18 @@ _BIG_GLYPHS = {
     "T": ("#####", "  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "  #  "),
 }
 
-_BANNER_COLOUR = {"FINISHED": "32", "STOPPED": "33", "CRASHED": "31"}
+_BANNER_COLOUR = dict(_S["debug"]["banner_colours"])
+_BANNER_SCALE = int(_S["debug"]["banner_scale"])
+_GLYPH_ROWS = len(next(iter(_BIG_GLYPHS.values())))
 
 
-def _big_text(word, scale=2):
+def _big_text(word):
     rows = []
-    for r in range(7):
-        line = "  ".join("".join(ch * scale for ch in _BIG_GLYPHS[letter][r])
+    for r in range(_GLYPH_ROWS):
+        line = "  ".join("".join(ch * _BANNER_SCALE
+                                 for ch in _BIG_GLYPHS[letter][r])
                          for letter in word if letter in _BIG_GLYPHS)
-        rows.extend([line] * scale)
+        rows.extend([line] * _BANNER_SCALE)
     return rows
 
 

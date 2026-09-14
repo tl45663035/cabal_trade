@@ -14,6 +14,7 @@ if __name__ == "__main__":
                                   if a != "--frames"), "run"))
 
 import buy
+import cashshop
 import ledger
 import convert
 import craft
@@ -34,6 +35,9 @@ _GROUPING = re.compile(_SHARED["text"]["row_grouping"])
 MIN_PLAUSIBLE_PRICE = _SHARED["detect"]["min_plausible_price"]
 CAPACITY = _SHARED["game_facts"]["shop_capacity"]
 VISIBLE = _SHARED["game_facts"]["shop_visible"]
+USE_CONFIRM_F = tuple(_SHARED["regions"]["use_confirm"])
+USE_QUESTION = _SHARED["text"]["use_question"]
+YES_WORD = _SHARED["text"]["yes_word"]
 
 
 class NotReady(Exception):
@@ -110,7 +114,7 @@ def trace_empty(index, here):
 
 
 def board_trace(model, passes, index, first, last):
-    if not _SHARED["debug"].get("board_trace"):
+    if not _SHARED["debug"]["board_trace"]:
         return
     try:
         _board_trace(model, passes, index, first, last)
@@ -250,10 +254,12 @@ def seed(verbose=True):
         print(board_header())
     for index in range(1, row_model.MAX_TOP + 1):
         model.scroll_to(index, verbose=False)
+        if row_model.row_button() == row_model.REGISTER_WORD:
+            continue
         text = row_model.read_row_one()
         if row_model.row_one_is_empty(text):
             continue
-        row = _row_from(text)
+        text, row = row_from_screen(text)
         if row is None:
             if verbose:
                 print(f"    {index:2}  UNREAD {text!r}")
@@ -301,7 +307,7 @@ def _parsed_row(text):
     if price < MIN_PLAUSIBLE_PRICE:
         return None
     return row_model.Row(
-        found.group("name").strip(" |-)("),
+        row_model.canonical(found.group("name").strip(" |-)(")),
         qty=qty if qty >= 1 else 1,
         price=price)
 
@@ -313,6 +319,31 @@ def _row_from(text):
         return row
     regrouped = _GROUPING.sub(",", cleaned)
     return _parsed_row(regrouped) if regrouped != cleaned else None
+
+
+def known_item(name):
+    return (calibration.favourite_slot_of(name) is not None
+            or calibration.voucher_floor_ratio(name)[0] is not None
+            or any(cashshop.matches(item, name) for item in cashshop.items()))
+
+
+def row_from_screen(text):
+    row = _row_from(text)
+    if row is not None and known_item(row.name):
+        return text, row
+    if row is None and row_model.row_one_is_empty(text):
+        return text, None
+    tries = 1 if row is not None else row_model.PANEL_REREADS + 1
+    for attempt in range(1, tries + 1):
+        stacked = row_model.read_row_one_stacked()
+        again = _row_from(stacked)
+        if again is not None and known_item(again.name):
+            print(f"    one line read {text!r}; read as stacked lines it is "
+                  f"{stacked!r}")
+            return stacked, again
+        if attempt < tries:
+            time.sleep(row_model.PANEL_REREAD_GAP)
+    return text, row
 
 
 def cancel(model, index, verbose=True):
@@ -338,8 +369,15 @@ def relist_one(model, index, verbose=True):
     with calibration.phase(f"{calibration.REFRESH_WORD} the table"):
         row_model.refresh_table(model, verbose=False)
     with calibration.phase("scroll to the row and read it"):
-        text, row = row_at(model, index, verbose=False)
-        button = row_model.row_button()
+        model.scroll_to(index, verbose=False)
+        button = (row_model.row_button() if model.get(index) is None
+                  else None)
+        if button == row_model.REGISTER_WORD:
+            text, row = "", None
+        else:
+            text = row_model.read_row_one()
+            text, row = row_from_screen(text)
+            button = row_model.row_button()
 
     if button == row_model.RECEIPT_WORD:
         complete = row_model.row_complete(text)
@@ -674,7 +712,7 @@ def report(model):
 def row_at(model, index, verbose=True):
     model.scroll_to(index, verbose=False)
     text = row_model.read_row_one()
-    row = _row_from(text)
+    text, row = row_from_screen(text)
     if verbose:
         print(f"  row {index}: {text!r}")
         print(f"    function {row_model.row_function(text)!r}  "
@@ -921,7 +959,7 @@ def core_slots():
 
 
 def buying_enabled(core_name):
-    table = calibration.load_shared()["resupply"].get("enable_buying") or {}
+    table = calibration.load_shared()["resupply"]["enable_buying"]
     want = re.sub(r"[^a-z0-9]", "", (core_name or "").lower())
     for name, on in table.items():
         if re.sub(r"[^a-z0-9]", "", name.lower()) == want:
@@ -984,6 +1022,21 @@ def margin_says_buy(core, held, diff):
     if held >= wants:
         return None
     return calibration.margin_for_rows(core, held + 1)
+
+
+def alz_covers(what, units, unit_price, verbose=True):
+    balance = get_alz.read_balance()
+    cost = int(units) * int(unit_price or 0)
+    if balance is None:
+        print(f"  the Alz balance would not read; not buying {what} blind.")
+        return False
+    if balance < cost:
+        print(f"  Alz {balance:,} held; even {units} {what} at {unit_price:,} "
+              f"needs {cost:,}; not buying.")
+        return False
+    print(f"  Alz {balance:,} held covers {balance // max(1, int(unit_price or 1)):,} "
+          f"{what} at {unit_price:,}; buying what it covers")
+    return True
 
 
 def start_resupply(model, slot, held, first, last, verbose=True):
@@ -1195,8 +1248,8 @@ def resupply_one(model, slot, held, first, last, verbose=True):
             return None
     else:
         print("")
-        print(f"-- {job['core']}: carrying on at {job['step']} after the "
-              f"stall; {job['bought']} bought, {job['listed']} listed --")
+        print(f"-- {job['core']}: carrying on at {job['step']} where it "
+              f"stopped; {job['bought']} bought, {job['listed']} listed --")
         task("resupply", core=job["core"], set=job["set"], slot=slot,
              tab=calibration.CONVERT_INVENTORY_TAB,
              landing=list(job["landing"]), resumed=job["step"])
@@ -1206,6 +1259,14 @@ def resupply_one(model, slot, held, first, last, verbose=True):
     except calibration.ServerStalled:
         print(f"  {job['core']} keeps its place at {job['step']}; the next "
               f"pass carries on there")
+        raise
+    except (NotReady, convert.Refused, buy.Refused):
+        if job["step"] != "buy" and job["bought"] > 0:
+            print(f"  {job['core']} keeps its place at {job['step']}; "
+                  f"{job['bought']} bought are in the bag and the next pass "
+                  f"carries on there")
+            raise
+        _PENDING = None
         raise
     except BaseException:
         _PENDING = None
@@ -1246,7 +1307,7 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True):
         return None
     print(f"  {len(free_rows)} row(s) free inside {first}-{last}")
 
-    jitter = int(run.get("buy_random_range", 0))
+    jitter = int(run["buy_random_range"])
     rolled = int(want_min)
     if jitter > 0:
         rolled = max(batch, int(want_min) + random.randint(-jitter, jitter))
@@ -1296,13 +1357,19 @@ def buy_cores(job, verbose=True):
                                           gap=job["gap"] if on_margin
                                           else None,
                                           leave_behind=job["leave"],
-                                          search=not searched)
+                                          search=not searched,
+                                          batch=batch)
                 searched = True
                 return out
             except buy.TooThin as exc:
                 searched = True
                 print(f"  {exc}")
                 return THIN
+            except buy.Broke as exc:
+                searched = True
+                job["broke"] = True
+                print(f"  stopping: {exc}")
+                return None
             except buy.Refused as exc:
                 searched = False
                 if not getattr(exc, "retryable", False):
@@ -1346,7 +1413,7 @@ def buy_cores(job, verbose=True):
         if not take(target - job["bought"]):
             break
 
-    while job["bought"] % batch:
+    while job["bought"] % batch and not job.get("broke"):
         short = batch - (job["bought"] % batch)
         print(f"  {job['bought']} {core} is {short} short of a whole batch "
               f"of {batch}; topping up whatever the margin says, because a "
@@ -1475,8 +1542,8 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
             return None
     else:
         print("")
-        print(f"-- {job['core']}: carrying on at {job['step']} after the "
-              f"stall; {job['bought']} bought, {job['listed']} listed --")
+        print(f"-- {job['core']}: carrying on at {job['step']} where it "
+              f"stopped; {job['bought']} bought, {job['listed']} listed --")
         task("resupply", core=job["core"], set=job["set"], slot=slot,
              tab=row_model.WORK_TAB, resumed=job["step"])
     _PENDING = job
@@ -1486,11 +1553,541 @@ def resupply_chaos(model, slot, held, first, last, verbose=True):
         print(f"  {job['core']} keeps its place at {job['step']}; the next "
               f"pass carries on there")
         raise
+    except (NotReady, craft.Refused, buy.Refused):
+        if job["step"] != "buy" and job["bought"] > 0:
+            print(f"  {job['core']} keeps its place at {job['step']}; "
+                  f"{job['bought']} bought are in the bag and the next pass "
+                  f"carries on there")
+            raise
+        _PENDING = None
+        raise
     except BaseException:
         _PENDING = None
         raise
     _PENDING = None
     return out
+
+
+def cash_seats(model, item, first, last):
+    return [(index, row.name) for index, row in sorted(
+        (model._slots or {}).items())
+        if row is not None and first <= index <= last
+        and cashshop.matches(item, row.name)]
+
+
+def cash_rows(model, item, first, last):
+    return len(cash_seats(model, item, first, last))
+
+
+def cash_status(model, item, first, last, wants):
+    seats = cash_seats(model, item, first, last)
+    where = (", ".join(f"row {index} {name!r}" for index, name in seats)
+             if seats else "none")
+    print(f"  {item}: {len(seats)} row(s) inside {first}-{last}, {wants} "
+          f"wanted; {where}")
+    measured = int((calibration._read(calibration.OUT).get("voucher")
+                    or {}).get("unit_price") or 0)
+    voucher = calibration.voucher_unit()
+    source = ("read at launch" if measured >= calibration.MIN_PLAUSIBLE_PRICE
+              else "the config default")
+    _name, ratio = calibration.voucher_floor_ratio(item)
+    if ratio:
+        floor = voucher * ratio // calibration.VOUCHER_FLOOR_PARTS
+        print(f"    floor {floor:,}: {ratio}/{calibration.VOUCHER_FLOOR_PARTS} "
+              f"of the {voucher:,} voucher, {source}")
+    else:
+        print(f"    floor: its Cash price over {calibration.VOUCHER_FLOOR_PARTS} "
+              f"of the {voucher:,} voucher ({source}), read off the Cash "
+              f"Shop when it buys")
+    return len(seats)
+
+
+def work_tab_slots(verbose=True):
+    if calibration.await_inventory(verbose=verbose) is None:
+        raise NotReady(f"the Inventory panel would not open, so tab "
+                       f"{row_model.WORK_TAB} cannot be read.")
+    calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
+                      settle=0.0)
+    time.sleep(row_model.TAB_SETTLE)
+    calibration.park()
+    return calibration.occupied_slots()
+
+
+def await_arrival(before, verbose=True):
+    arrived = work_tab_slots(verbose=verbose) - before
+    deadline = time.monotonic() + calibration.DIALOG_TIMEOUT
+    while not arrived and time.monotonic() < deadline:
+        time.sleep(row_model.POLL_GAP)
+        arrived = calibration.occupied_slots() - before
+    return arrived
+
+
+def start_cash(model, item, held, first, last, verbose=True):
+    count = int(calibration.buy_min(item) or 1)
+    print("")
+    print(f"-- {item}: {held} row(s) --")
+    free = [i for i in model.empty() if first <= i <= last]
+    if not free:
+        print(f"  rows {first}-{last} are full, and a bought {item} with "
+              f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
+              f"buying.")
+        return None
+    print(f"  {len(free)} row(s) free inside {first}-{last}; buying {count} "
+          f"at the Cash Shop, one at a time")
+    task("resupply", core=item, tab=row_model.WORK_TAB)
+    return {"kind": "cash", "core": item, "slot": None, "step": "buy",
+            "count": count, "bought": 0, "price": 0, "cc_seen": None,
+            "cc_before_voucher": None, "voucher_paid": 0,
+            "voucher_before": [], "voucher_slot": None, "before": [],
+            "work": [], "rows": [], "listed": 0}
+
+
+def cash_floor(job, verbose=True):
+    item, price = job["core"], int(job["price"] or 0)
+    if price <= 0:
+        raise NotReady(f"the Cash price of {item!r} is unknown, so its floor "
+                       f"cannot be set; not buying.")
+    paid = int(job.get("voucher_paid") or 0)
+    voucher = paid or calibration.voucher_unit()
+    if voucher < calibration.MIN_PLAUSIBLE_PRICE:
+        raise NotReady(f"no Gold voucher price to floor {item!r} against; "
+                       f"not buying.")
+    floor = voucher * price // calibration.VOUCHER_FLOOR_PARTS
+    why = (f"{price}/{calibration.VOUCHER_FLOOR_PARTS} of the {voucher:,} "
+           f"voucher " + ("bought this pass" if paid else "priced at launch"))
+    if verbose:
+        print(f"    floor {floor:,}: {why}")
+    return floor, why
+
+
+def _leave_cash_shop():
+    try:
+        cashshop.close_cash_shop(verbose=False)
+    except Exception as exc:
+        print(f"  the Cash Shop would not close on the way out: {exc}")
+
+
+def cash_buy_step(job, confirm=True, verbose=True):
+    item, tab = job["core"], row_model.WORK_TAB
+    with calibration.phase("close the Agent Shop"):
+        calibration.close_everything()
+    with calibration.phase(f"select inventory tab {tab}"):
+        before = work_tab_slots(verbose=verbose)
+    job["before"] = sorted(before)
+    print(f"  tab {tab} holds {len(before)} slot(s) and is showing, so the "
+          f"{item} lands there")
+    with calibration.phase("open the Cash Shop"):
+        cashshop.open_cash_shop(verbose=verbose)
+    try:
+        word = cashshop.tab_for(item)
+        with calibration.phase(f"select the {word} tab"):
+            cashshop.select_tab(word, verbose=verbose)
+        with calibration.phase("read the price and the Cash"):
+            cell = cashshop.cell_for(item, verbose=verbose)
+            cc = cashshop.cc_now(verbose=verbose)
+        if cc is None:
+            raise NotReady("the Cash balance would not read; not buying "
+                           "blind.")
+        job["price"] = int(cell["price"])
+        if job["cc_before_voucher"] is not None:
+            print(f"  Cash {job['cc_before_voucher']:,} before the voucher, "
+                  f"{cc:,} after, up {cc - job['cc_before_voucher']:,}")
+            job["cc_before_voucher"] = None
+        job["cc_seen"] = cc
+        print(f"  {item} costs {job['price']:,} Cash; {cc:,} Cash held")
+        if cc < job["price"]:
+            if job["voucher_paid"]:
+                raise NotReady(
+                    f"{cc:,} Cash is still under the {job['price']:,} a "
+                    f"{item} costs after a voucher was bought and used; not "
+                    f"buying another voucher blind.")
+            print(f"  {cc:,} Cash is under the {job['price']:,} a {item} "
+                  f"costs; buying a Gold voucher and using it first")
+            job["cc_before_voucher"] = cc
+            job["step"] = "voucher"
+            return
+        floor, why = cash_floor(job, verbose=verbose)
+        with calibration.phase("buy at the Cash Shop"):
+            got = cashshop.purchase(item, confirm=confirm, verbose=verbose)
+    except BaseException:
+        _leave_cash_shop()
+        raise
+    finally:
+        if job["step"] == "voucher":
+            with calibration.phase("close the Cash Shop"):
+                cashshop.close_cash_shop(verbose=verbose)
+    with calibration.phase("close the Cash Shop"):
+        cashshop.close_cash_shop(verbose=verbose)
+    if not got["bought"]:
+        print(f"  cancelled at the confirmation as asked; nothing bought, "
+              f"nothing to list")
+        job["step"] = "cancelled"
+        return
+    job["bought"] += 1
+    ledger.bought(item, floor, floor, 1)
+    job["work"].append({"slot": None, "floor": floor, "why": why})
+    print(f"  bought 1 {item} for {got['price']:,} Cash, "
+          f"{got['balance'] - got['price']:,} Cash left; its floor is "
+          f"{floor:,}")
+    job["step"] = "land"
+
+
+def cash_voucher_step(job, confirm=True, verbose=True):
+    tab = row_model.WORK_TAB
+    with calibration.phase("reopen the Agent Shop"):
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady("the Agent Shop would not reopen for the "
+                           "voucher.")
+    with calibration.phase(f"select inventory tab {tab}"):
+        before = work_tab_slots(verbose=verbose)
+    if not alz_covers(f"{calibration.VOUCHER_WORD} voucher", 1,
+                      calibration.voucher_unit(), verbose=verbose):
+        raise NotReady(f"the Alz on hand does not cover a "
+                       f"{calibration.VOUCHER_WORD} voucher at "
+                       f"about {calibration.voucher_unit():,}; no Cash can "
+                       f"be made for {job['core']}.")
+    job["voucher_before"] = sorted(before)
+    with calibration.phase("buy the cheapest Gold voucher"):
+        out = voucher_buy_flow(confirm=confirm, verbose=verbose)
+    if not out["bought"]:
+        print(f"  cancelled at the voucher dialog as asked; nothing bought, "
+              f"nothing to list")
+        job["step"] = "cancelled"
+        return
+    job["voucher_paid"] = int(out["price"])
+    job["step"] = "use"
+
+
+def cash_use_step(job, verbose=True):
+    slot = voucher_use({tuple(s) for s in job["voucher_before"]},
+                       verbose=verbose)
+    job["voucher_slot"] = list(slot) if slot else None
+    job["step"] = "buy"
+
+
+def cash_land_step(job, verbose=True):
+    item, tab = job["core"], row_model.WORK_TAB
+    with calibration.phase(f"wait for the {item} to land on tab {tab}"):
+        arrived = await_arrival({tuple(s) for s in job["before"]},
+                                verbose=verbose)
+    if not arrived:
+        calibration.snap("cash_item_never_landed")
+        raise NotReady(
+            f"no slot on tab {tab} filled after the purchase; the {item} is "
+            f"not where it was expected. Nothing listed.")
+    landed = min(arrived)
+    for entry in job["work"]:
+        if entry["slot"] is None:
+            entry["slot"] = list(landed)
+            break
+    print(f"  the {item} landed in tab {tab} slot {landed}")
+    job["step"] = "buy" if job["bought"] < job["count"] else "list"
+
+
+def cash_list_step(model, job, first, last, verbose=True):
+    item, tab = job["core"], row_model.WORK_TAB
+    with calibration.phase("reopen the Agent Shop"):
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady("the Agent Shop would not reopen after the Cash "
+                           "Shop.")
+    with calibration.phase("select the Register tab"):
+        register_tab(verbose=verbose)
+    with calibration.phase(f"select inventory tab {tab}"):
+        calibration.click(*calibration.inventory_tab_point(tab), settle=0.0)
+        time.sleep(row_model.TAB_SETTLE)
+    full = False
+    for entry in job["work"]:
+        if entry["slot"] is None or entry.get("listed"):
+            continue
+        slot = tuple(entry["slot"])
+        if slot not in calibration.occupied_slots():
+            print(f"  tab {tab} slot {slot} is empty; the {item} there went "
+                  f"out already")
+            entry["listed"] = True
+            continue
+        empty = [i for i in model.empty() if first <= i <= last]
+        if not empty:
+            print(f"  rows {first}-{last} are full; the {item} stays on "
+                  f"tab {tab} slot {slot}.")
+            model.hold_work(slot, item)
+            full = True
+            continue
+        lands_in = min(empty)
+        with calibration.phase(f"list {item} from {slot}"):
+            listed = model.list_slot(*slot, floor=entry["floor"],
+                                     why=entry["why"], verbose=verbose,
+                                     lands_in=lands_in, expect_item=item)
+        model.place(lands_in, row_model.Row(item, qty=listed["qty"],
+                                            price=listed["price"],
+                                            buy_cost=entry["floor"],
+                                            floor_at=entry["floor"]))
+        entry["listed"] = True
+        job["rows"].append(lands_in)
+        job["listed"] += listed["qty"]
+    return full
+
+
+def finish_cash(model, job, first, last, confirm=True, verbose=True):
+    item = job["core"]
+    while job["step"] != "list":
+        if job["step"] == "buy":
+            cash_buy_step(job, confirm=confirm, verbose=verbose)
+        elif job["step"] == "voucher":
+            cash_voucher_step(job, confirm=confirm, verbose=verbose)
+        elif job["step"] == "use":
+            cash_use_step(job, verbose=verbose)
+        elif job["step"] == "land":
+            cash_land_step(job, verbose=verbose)
+        elif job["step"] == "cancelled":
+            task_done("resupply", core=item, bought=job["bought"])
+            return None
+        else:
+            raise NotReady(f"the {item} job is at an unknown step "
+                           f"{job['step']!r}.")
+    full = cash_list_step(model, job, first, last, verbose=verbose)
+    if not full:
+        task_done("resupply", core=item, bought=job["bought"],
+                  listed=job["listed"], rows=job["rows"])
+    calibration.phases_table(
+        f"resupply {item}: bought {job['bought']} at {job['price']:,} Cash"
+        + (f" after a {job['voucher_paid']:,} voucher" if job["voucher_paid"]
+           else "")
+        + f", listed {job['listed']} in rows {job['rows']}")
+    return {"item": item, "bought": job["bought"], "listed": job["listed"],
+            "rows": job["rows"]}
+
+
+def resupply_cash(model, item, held, first, last, confirm=True,
+                  verbose=True):
+    global _PENDING
+    job = (_PENDING if _PENDING and _PENDING.get("kind") == "cash"
+           and _PENDING.get("core") == item else None)
+    if job is None:
+        job = start_cash(model, item, held, first, last, verbose=verbose)
+        if job is None:
+            return None
+    else:
+        print("")
+        print(f"-- {item}: carrying on at {job['step']} after the stall --")
+        task("resupply", core=item, tab=row_model.WORK_TAB,
+             resumed=job["step"])
+    _PENDING = job
+    try:
+        out = finish_cash(model, job, first, last, confirm=confirm,
+                          verbose=verbose)
+    except calibration.ServerStalled:
+        print(f"  {item} keeps its place at {job['step']}; the next pass "
+              f"carries on there")
+        raise
+    except BaseException:
+        _PENDING = None
+        raise
+    _PENDING = None
+    return out
+
+
+def do_cash(item=None, cancel=False, verbose=True):
+    run = calibration.load_shared()["run"]
+    first, last = int(run["relist_from"]), int(run["relist_to"])
+    item = item or (cashshop.items()[0] if cashshop.items() else None)
+    if not item:
+        raise NotReady("no cash shop item was named and none is configured "
+                       "under resupply.cash_shop.rows; nothing to do.")
+    initialise(verbose=verbose)
+    register_tab(verbose=verbose)
+    model = seed(verbose=verbose)
+    print("")
+    held = cash_status(model, item, first, last, cashshop.rows_wanted(item))
+    started = time.perf_counter()
+    if cancel:
+        print(f"  dry run: whichever dialog comes first gets Cancel, not "
+              f"{cashshop.OK_WORD}")
+    try:
+        out = resupply_cash(model, item, held, first, last,
+                            confirm=not cancel, verbose=verbose)
+    finally:
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady("the Agent Shop is not open after the Cash Shop.")
+        register_tab(verbose=verbose)
+    print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
+    return out
+
+
+def voucher_buy_flow(confirm=True, verbose=True):
+    word = get_price.VOUCHER_WORD
+    print("")
+    print(f"-- {word} voucher: buy the cheapest on offer --")
+    if not confirm:
+        print(f"  dry run: the {buy.DIALOG_MARKER} dialog gets "
+              f"{buy.CANCEL_WORD}, not {buy.CONFIRM_WORD}")
+    with calibration.phase("search the voucher"):
+        row = get_price.get_voucher_price(verbose=verbose)
+    if row is None:
+        raise NotReady(f"the {word} voucher would not price; nothing to buy.")
+    print(f"  row 1: {row['name']!r} at {row['unit_price']:,} a voucher")
+    with calibration.phase("confirm the sort"):
+        try:
+            sort = get_price.confirm_sort_low_to_high("voucher",
+                                                      verbose=verbose)
+        except get_price.NotReady as exc:
+            raise NotReady(f"{exc} Not buying.")
+    if sort != "ok":
+        raise NotReady(f"the offers table went away while the sort was "
+                       f"being read ({sort}); not buying.")
+    with calibration.phase("buy row 1"):
+        try:
+            out = buy.buy_voucher(confirm=confirm, verbose=verbose)
+        except buy.Refused as exc:
+            raise NotReady(f"{exc}")
+    print(f"  {word} voucher: "
+          + (f"bought 1 at {out['price']:,}" if out["bought"]
+             else "cancelled at the dialog"))
+    return out
+
+
+def use_question(image=None):
+    image = image if image is not None else calibration.grab()
+    fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
+    words = calibration.ocr(image, calibration._box(USE_CONFIRM_F))
+    if fold(USE_QUESTION) not in fold(" ".join(t for t, _c, _p in words)):
+        return None
+    yes = [point for text, _c, point in words if fold(text) == fold(YES_WORD)]
+    return yes[0] if yes else None
+
+
+def answer_use_question(point, verbose=True):
+    if verbose:
+        print(f"  the game asks {USE_QUESTION!r}; clicking {YES_WORD} at "
+              f"{list(point)}")
+    calibration.snap("use_question")
+    calibration.click(*point)
+    calibration.park()
+
+
+def answer_pending_use_question(verbose=True):
+    asked = use_question()
+    if asked is None:
+        return False
+    print(f"  the game is already asking {USE_QUESTION!r}; answering that "
+          f"before anything else")
+    answer_use_question(asked, verbose=verbose)
+    with calibration.phase("wait for the question to go"):
+        deadline = time.monotonic() + calibration.DIALOG_TIMEOUT
+        while time.monotonic() < deadline:
+            if use_question() is None:
+                return True
+            time.sleep(row_model.POLL_GAP)
+    calibration.snap("use_question_stayed")
+    raise NotReady(f"the {USE_QUESTION!r} question stayed on screen "
+                   f"{calibration.DIALOG_TIMEOUT:g}s after {YES_WORD}. "
+                   f"Nothing more clicked.")
+
+
+def voucher_use(before, verbose=True):
+    tab = row_model.WORK_TAB
+    if answer_pending_use_question(verbose=verbose):
+        print(f"  the voucher was used by answering the question; its slot "
+              f"on tab {tab} was not read")
+        return None
+    with calibration.phase("close the Agent Shop"):
+        calibration.close_everything()
+    with calibration.phase(f"find the voucher on tab {tab}"):
+        arrived = await_arrival(set(before), verbose=verbose)
+    if not arrived:
+        calibration.snap("voucher_never_landed")
+        raise NotReady(
+            f"no slot on tab {tab} filled after buying the voucher; it is "
+            f"not where it was expected. Nothing used.")
+    slot = min(arrived)
+    point = calibration.inventory_slot_point(*slot)
+    print(f"  the voucher landed in tab {tab} slot {slot}; right-clicking "
+          f"it at {point} to use it")
+    with calibration.phase("right-click the voucher"):
+        calibration.right_click(*point)
+        calibration.park()
+    answered = False
+    with calibration.phase("answer the question and wait for the voucher to go"):
+        deadline = time.monotonic() + calibration.DIALOG_TIMEOUT
+        gone = False
+        while time.monotonic() < deadline:
+            image = calibration.grab()
+            gone = calibration.slot_is_empty(image, *slot)
+            if gone:
+                break
+            if not answered:
+                asked = use_question(image)
+                if asked is not None:
+                    answer_use_question(asked, verbose=verbose)
+                    answered = True
+                    deadline = time.monotonic() + calibration.DIALOG_TIMEOUT
+            time.sleep(row_model.POLL_GAP)
+    if not gone:
+        calibration.snap("voucher_not_used")
+        raise NotReady(
+            f"the voucher is still in tab {tab} slot {slot} "
+            f"{calibration.DIALOG_TIMEOUT:g}s after "
+            + (f"{YES_WORD} was clicked" if answered else
+               f"the right-click, and no {USE_QUESTION!r} question showed")
+            + ". Nothing more clicked.")
+    print(f"  the voucher is gone from slot {slot}; it was used"
+          + (f" after {YES_WORD}" if answered else ""))
+    return slot
+
+
+def use_voucher_in_bag(verbose=True):
+    tab = row_model.WORK_TAB
+    if not inv.focus_game():
+        raise NotReady("could not bring the game to the foreground.")
+    calibration.load(force=True)
+    calibration.phases_reset()
+    if use_question() is None:
+        held = work_tab_slots(verbose=verbose)
+        if len(held) != 1:
+            raise NotReady(
+                f"tab {tab} holds {len(held)} slot(s); the voucher to use "
+                f"must be the only thing there. Nothing clicked.")
+    slot = voucher_use(set(), verbose=verbose)
+    value = cashshop.get_cc(verbose=verbose)
+    print(f"  Cash after using the voucher"
+          + (f" from slot {slot}" if slot else "") + ": "
+          + (f"{value:,}" if value is not None else "unreadable"))
+    calibration.phases_table("use the voucher in the bag")
+    return value
+
+
+def buy_and_use_voucher(confirm=True, verbose=True):
+    tab = row_model.WORK_TAB
+    initialise(verbose=verbose)
+    started = time.perf_counter()
+    calibration.phases_reset()
+    with calibration.phase(f"select inventory tab {tab}"):
+        before = work_tab_slots(verbose=verbose)
+    out = voucher_buy_flow(confirm=confirm, verbose=verbose)
+    if out["bought"]:
+        out["slot"] = voucher_use(before, verbose=verbose)
+        with calibration.phase("read the Cash after the voucher"):
+            out["cc"] = cashshop.get_cc(verbose=verbose)
+        print(f"  Cash after the voucher: "
+              + (f"{out['cc']:,}" if out["cc"] is not None else "unread"))
+    calibration.phases_table(
+        f"{get_price.VOUCHER_WORD} voucher: "
+        + (f"bought 1 at {out['price']:,} and used" if out["bought"]
+           else "cancelled at the dialog"))
+    print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
+    return out
+
+
+def do_cc(verbose=True):
+    if not inv.focus_game():
+        raise NotReady("could not bring the game to the foreground.")
+    calibration.load(force=True)
+    if calibration._trade_window_open():
+        calibration.close_everything(verbose=verbose)
+    started = time.perf_counter()
+    value = cashshop.get_cc(verbose=verbose)
+    print(f"  Cash {value:,}" if value is not None else "  Cash: unreadable")
+    print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
+    return value
 
 
 def our_set_price(model, set_name):
@@ -1642,6 +2239,9 @@ def buy_under_lister(model, slot, first, last, verbose=True):
             print(f"  the cheapest {set_name} is {set_row['unit_price']:,} a "
                   f"Set, not under {under:,}; nothing to buy under ours")
             break
+        if set_row is not None and not alz_covers(
+                set_name, 1, set_row["unit_price"], verbose=verbose):
+            break
         if not [i for i in model.empty() if first <= i <= last]:
             print(f"  rows {first}-{last} are full; a bought {set_name} with "
                   f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
@@ -1731,93 +2331,161 @@ def back_to_the_shop(verbose=True):
     return calibration._trade_window_open()
 
 
+def resupply_order(jobs):
+    fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
+    listed = [fold(name)
+              for name in calibration.load_shared()["resupply"]["order"]]
+
+    def rank(job):
+        kind, key, name = job
+        first = (listed.index(fold(name)) if fold(name) in listed
+                 else len(listed))
+        return (first, 0, 0) if kind == "cash" else (first, 1, int(key))
+    return sorted(jobs, key=rank)
+
+
+def price_table(model, first, last, verbose=True):
+    for slot in core_slots():
+        if not craft_route(calibration.FAVOURITE_ITEMS[str(slot)]):
+            continue
+        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        try:
+            buy_under_lister(model, slot, first, last, verbose=verbose)
+        except (craft.Refused, buy.Refused, NotReady) as exc:
+            print(f"  buying under our listing stopped: {exc}")
+    held = rows_by_core(model, first, last)
+    priced, wanted, short = {}, {}, []
+    print("")
+    print(f"  counting only rows {first}-{last}; rows outside it are not "
+          f"repriced and do not count")
+    print(f"  {'core':<30}{'rows':>6}{'buy/u':>10}{'sell/u':>10}"
+          f"{'margin':>10}{'wants':>7}   short?")
+    for slot, count in sorted(held.items()):
+        core = calibration.FAVOURITE_ITEMS[str(slot)]
+        mark, diff, wants = "", None, None
+        buy_at = sell_at = None
+        if not convert.cell_for(core) and not craft_route(core):
+            mark = "neither convertible nor craftable"
+        elif not buying_enabled(core):
+            mark = "buying off"
+        else:
+            core_row, set_row, diff = price_gap(slot, say=False)
+            if diff is None:
+                mark = "would not price"
+            else:
+                buy_at, sell_at = ((core_row, set_row) if craft_route(core)
+                                   else (set_row, core_row))
+                priced[slot] = buy_at
+                wants = calibration.rows_by_margin(core, diff)
+                if count < wants:
+                    mark = "YES"
+                    short.append(slot)
+                    wanted[slot] = wants
+        gap = '-' if diff is None else f'{diff:,}'
+        print(f"  {core:<30}{count:>6}"
+              f"{('-' if buy_at is None else f'{buy_at['unit_price']:,}'):>10}"
+              f"{('-' if sell_at is None else f'{sell_at['unit_price']:,}'):>10}"
+              f"{gap:>10}{('-' if wants is None else wants):>7}   {mark}")
+    if not short:
+        print("")
+        print(f"  nothing inside rows {first}-{last} holds fewer rows "
+              f"than its margin is worth.")
+    return held, priced, short, wanted
+
+
+def resupply_core_rows(model, slot, have, wants, priced, first, last, done,
+                       verbose=True):
+    core_here = calibration.FAVOURITE_ITEMS[str(slot)]
+    route = resupply_chaos if craft_route(core_here) else resupply_one
+    bought_name = (core_here if craft_route(core_here)
+                   else calibration.FAVOURITE_ITEMS[
+                       str(calibration.pair_slot(slot))])
+    while have < wants:
+        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        least = (calibration.CRAFT_CORES_PER_SET
+                 if craft_route(core_here) else 1)
+        if _PENDING is None and slot in priced and not alz_covers(
+                bought_name, least, priced[slot]["unit_price"],
+                verbose=verbose):
+            break
+        try:
+            out = route(model, slot, have, first, last, verbose=verbose)
+        except (convert.Refused, craft.Refused, buy.Refused,
+                NotReady) as exc:
+            print(f"  resupply of {core_here!r} stopped: {exc}")
+            out = None
+        if not out or not out.get("rows"):
+            break
+        done.append(out)
+        have += len(out["rows"])
+        print(f"  {core_here}: {have} of {wants} row(s) after that one")
+
+
+def resupply_cash_rows(model, item, wants, first, last, done, verbose=True):
+    print("")
+    have = cash_status(model, item, first, last, wants)
+    while have < wants:
+        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        try:
+            out = resupply_cash(model, item, have, first, last,
+                                verbose=verbose)
+        except (cashshop.Refused, NotReady) as exc:
+            print(f"  resupply of {item!r} stopped: {exc}")
+            out = None
+        if not out or not out.get("rows"):
+            break
+        done.append(out)
+        have += len(out["rows"])
+        print(f"  {item}: {have} of {wants} row(s) after that one")
+
+
 def resupply_pass(model, first, last, verbose=True):
     run = calibration.load_shared()["resupply"]
     if not run["enabled"] and _PENDING is None:
         return []
-    short, wanted, done = [], {}, []
+    done = []
     try:
         if _PENDING is not None:
             core_here = _PENDING["core"]
-            route = (resupply_chaos if craft_route(core_here)
-                     else resupply_one)
             war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
             try:
-                out = route(model, _PENDING["slot"], 0, first, last,
-                            verbose=verbose)
+                if _PENDING.get("kind") == "cash":
+                    out = resupply_cash(model, _PENDING["core"], 0, first,
+                                        last, verbose=verbose)
+                else:
+                    route = (resupply_chaos if craft_route(core_here)
+                             else resupply_one)
+                    out = route(model, _PENDING["slot"], 0, first, last,
+                                verbose=verbose)
             except (convert.Refused, craft.Refused, buy.Refused,
-                    NotReady) as exc:
+                    cashshop.Refused, NotReady) as exc:
                 print(f"  resupply of {core_here!r} stopped: {exc}")
                 out = None
             if out and out.get("rows"):
                 done.append(out)
         if not run["enabled"]:
             return done
-        for slot in core_slots():
-            if not craft_route(calibration.FAVOURITE_ITEMS[str(slot)]):
-                continue
-            war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
-            try:
-                buy_under_lister(model, slot, first, last, verbose=verbose)
-            except (craft.Refused, buy.Refused, NotReady) as exc:
-                print(f"  buying under our listing stopped: {exc}")
-        held = rows_by_core(model, first, last)
+        jobs = resupply_order(
+            [("cash", item, item) for item in cashshop.items()
+             if cashshop.rows_wanted(item) > 0]
+            + [("core", slot, calibration.FAVOURITE_ITEMS[str(slot)])
+               for slot in core_slots()])
         print("")
-        print(f"  counting only rows {first}-{last}; rows outside it are not "
-              f"repriced and do not count")
-        print(f"  {'core':<30}{'rows':>6}{'buy/u':>10}{'sell/u':>10}"
-              f"{'margin':>10}{'wants':>7}   short?")
-        for slot, count in sorted(held.items()):
-            core = calibration.FAVOURITE_ITEMS[str(slot)]
-            mark, diff, wants = "", None, None
-            buy_at = sell_at = None
-            if not convert.cell_for(core) and not craft_route(core):
-                mark = "neither convertible nor craftable"
-            elif not buying_enabled(core):
-                mark = "buying off"
-            else:
-                core_row, set_row, diff = price_gap(slot, say=False)
-                if diff is None:
-                    mark = "would not price"
-                else:
-                    buy_at, sell_at = ((core_row, set_row) if craft_route(core)
-                                       else (set_row, core_row))
-                    wants = calibration.rows_by_margin(core, diff)
-                    if count < wants:
-                        mark = "YES"
-                        short.append(slot)
-                        wanted[slot] = wants
-            gap = '-' if diff is None else f'{diff:,}'
-            print(f"  {core:<30}{count:>6}"
-                  f"{('-' if buy_at is None else f'{buy_at['unit_price']:,}'):>10}"
-                  f"{('-' if sell_at is None else f'{sell_at['unit_price']:,}'):>10}"
-                  f"{gap:>10}{('-' if wants is None else wants):>7}   {mark}")
-        if not short:
-            print("")
-            print(f"  nothing inside rows {first}-{last} holds fewer rows "
-                  f"than its margin is worth.")
-            return done
-        for slot in short:
-            core_here = calibration.FAVOURITE_ITEMS[str(slot)]
-            wants = wanted[slot]
-            have = held[slot]
-            route = (resupply_chaos if craft_route(core_here)
-                     else resupply_one)
-            while have < wants:
-                war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
-                try:
-                    out = route(model, slot, have, first, last,
-                                verbose=verbose)
-                except (convert.Refused, craft.Refused, buy.Refused,
-                        NotReady) as exc:
-                    print(f"  resupply of {core_here!r} stopped: {exc}")
-                    out = None
-                if not out or not out.get("rows"):
-                    break
-                done.append(out)
-                have += len(out["rows"])
-                print(f"  {core_here}: {have} of {wants} row(s) after that "
-                      f"one")
+        print("  resupply order: "
+              + ", ".join(name for _kind, _key, name in jobs))
+        table = None
+        for kind, key, name in jobs:
+            if kind == "cash":
+                resupply_cash_rows(model, name, cashshop.rows_wanted(name),
+                                   first, last, done, verbose=verbose)
+                continue
+            if table is None:
+                table = price_table(model, first, last, verbose=verbose)
+            held, priced, short, wanted = table
+            if key not in short:
+                continue
+            resupply_core_rows(model, key, held[key], wanted[key], priced,
+                               first, last, done, verbose=verbose)
     finally:
         if not back_to_the_shop(verbose=verbose):
             raise NotReady("the Agent Shop is not open after resupplying.")
@@ -1861,6 +2529,15 @@ def usage():
     print("                                   core and list it")
     print("  neither buys; both price only to know what to list at")
     print("")
+    print("  py src/driver.py cash [ITEM] [cancel]  resupply one cash shop")
+    print("                                   item (the first under")
+    print("                                   resupply.cash_shop.rows if none is")
+    print("                                   named): Cash checked, a Gold")
+    print("                                   voucher bought and used if short,")
+    print("                                   the item bought and listed at its")
+    print("                                   Cash price over 1000 of the")
+    print("                                   voucher; 'cancel' cancels at the")
+    print("                                   first dialog it reaches")
     print("  py src/driver.py scan            read the balance, walk rows 1-21")
     print("                                   and print the model, no changes")
     print("  py src/driver.py cancel N        cancel row N (collects it first")
@@ -1876,6 +2553,21 @@ def usage():
     print("  py src/driver.py row N           read row N without touching it")
     print("  py src/driver.py price N         market price for favourite slot N")
     print("  py src/driver.py alz             read the balance")
+    print("  py src/driver.py buy_voucher [cancel]  search the Gold voucher,")
+    print("                                   check the sort is Price: Low to")
+    print("                                   High, buy row 1, then right-click")
+    print("                                   it on tab 4, answer Yes to the")
+    print("                                   game's question and so turn it")
+    print("                                   into Cash; 'cancel' walks the")
+    print("                                   same way and cancels the dialog")
+    print("  py src/driver.py use_voucher     use the voucher already on tab 4")
+    print("                                   (the only thing there): answer")
+    print("                                   the question if it is on screen,")
+    print("                                   else right-click and answer it,")
+    print("                                   then read the Cash")
+    print("  py src/driver.py cc              open the Cash Shop, read the Cash")
+    print("                                   balance in its bottom right corner")
+    print("                                   and close it again")
     print("  py src/driver.py voucher         search the Agent Shop for the")
     print("                                   CABAL Gift Voucher (Gold) and")
     print("                                   read what one costs")
@@ -1897,7 +2589,8 @@ def _git_id():
     def git(*a):
         try:
             done = subprocess.run(("git", "-C", here) + a,
-                                  capture_output=True, text=True, timeout=5)
+                                  capture_output=True, text=True,
+                                  timeout=_SHARED["timing"]["git_timeout"])
         except Exception:
             return None
         return done.stdout.strip() if done.returncode == 0 else None
@@ -1982,6 +2675,17 @@ def _dispatch(args):
         do_craft_chaos()
     elif what == "convert" and len(args) > 1:
         do_convert(int(args[1]))
+    elif what in ("cash", "vip"):
+        rest = [a for a in args[1:] if a.lower() != "cancel"]
+        do_cash(item=" ".join(rest) if rest else None,
+                cancel=any(a.lower() == "cancel" for a in args[1:]))
+    elif what == "cc":
+        do_cc()
+    elif what == "buy_voucher":
+        buy_and_use_voucher(
+            confirm=not (len(args) > 1 and args[1].lower() == "cancel"))
+    elif what == "use_voucher":
+        use_voucher_in_bag()
     elif what == "chaos":
         crafted = [n for n in core_slots()
                    if craft_route(calibration.FAVOURITE_ITEMS[str(n)])]

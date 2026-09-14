@@ -149,6 +149,18 @@ def _find_in(want, region_frac, whole=False, image=None):
     return _find(want, words=words, whole=whole)
 
 
+def _bare_words(words):
+    return [(text, conf, point) for text, conf, point in words
+            if "[" not in text and "]" not in text]
+
+
+def _find_bare_in(want, region_frac, image=None):
+    box = _box_frac(region_frac)
+    image = image if image is not None else calibration.grab()
+    words = _bare_words(calibration.ocr(image, box))
+    return _find(want, words=words, whole=False)
+
+
 def _account_or_none():
     try:
         return account()
@@ -160,14 +172,24 @@ def character_list(image=None, who=None):
     who = who or _account_or_none()
     if who is None:
         return None
-    return _find_in(who["character"], SELECT_PANEL_F, image=image)
+    return _find_bare_in(who["character"], SELECT_PANEL_F, image=image)
 
 
 def server_list(image=None, who=None):
     who = who or _account_or_none()
     if who is None:
         return None
-    return _find_in(who["channel"], SELECT_PANEL_F, image=image)
+    return _find_bare_in(who["channel"], SELECT_PANEL_F, image=image)
+
+
+def world_answers(verbose=True):
+    box = calibration.await_inventory(timeout=ACTION_GAP, verbose=verbose)
+    if box is None:
+        return False
+    if verbose:
+        print("  the Inventory opens and the Alz balance reads, so this is "
+              "the world")
+    return True
 
 
 def _box_frac(frac):
@@ -386,7 +408,7 @@ def recover(verbose=True):
                       f"button seat at {list(shut)}")
         calibration.click(*shut)
     elif _find_in(LOGIN_WORD, LOGIN_PANEL_F, whole=True) is None:
-        if in_the_world():
+        if in_the_world() or world_answers(verbose=verbose):
             calibration.snap("recovery_already_in_world")
             if verbose:
                 print("  no disconnect notice and no login screen; the Alz "

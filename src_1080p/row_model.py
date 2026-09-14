@@ -38,8 +38,10 @@ STATUS_COMPLETE = _TEXT["status_complete"]
 BUTTON_HALF = tuple(_SHARED["detect"]["dialog_button_half"])
 RECEIPT_DROP_RATIO = _SHARED["detect"]["receipt_drop_ratio"]
 WORD_ROW_SLACK = _SHARED["detect"]["word_row_slack"]
+ROW_INSET = int(_SHARED["detect"]["row_inset"])
 _PRICE_LIKE = re.compile(r"\d[\d,]{%d,}"
                          % _SHARED["detect"]["price_min_digits"])
+NAME_LINE_LETTERS = int(_SHARED["detect"]["name_line_letters"])
 DIALOG_TIMEOUT = _T["dialog_timeout"]
 TAB_SETTLE = _T["tab_settle"]
 REFRESH_SETTLE = _T["refresh_settle"]
@@ -101,7 +103,7 @@ def row_one_box():
     shop = _shop()
     x0, x1 = _need("table_x")
     y = _need("row_one_y")
-    half = _need("row_pitch") // 2
+    half = max(1, _need("row_pitch") // 2 - ROW_INSET)
     return (x0, y - half, x1, y + half)
 
 
@@ -480,10 +482,19 @@ def _row_words(image, box):
     if not lines:
         return ""
     seats = sorted(lines)
-    keep = [seats[0]]
-    for seat in seats[1:]:
-        if _PRICE_LIKE.search(" ".join(w for _x, w in lines[seat])):
+    priced = [seat for seat in seats
+              if _PRICE_LIKE.search(" ".join(w for _x, w in lines[seat]))]
+    first_price = priced[0] if priced else None
+    keep = []
+    for seat in seats:
+        text = " ".join(w for _x, w in lines[seat])
+        if seat in priced:
             keep.append(seat)
+        elif ((first_price is None or seat < first_price)
+              and len(re.sub(r"[^A-Za-z]", "", text)) >= NAME_LINE_LETTERS):
+            keep.append(seat)
+    if not keep:
+        keep = [seats[0]]
     out = []
     for seat in keep:
         out.extend(word for _x, word in sorted(lines[seat]))
@@ -543,6 +554,20 @@ def pack_size(name):
 
 def item_key(name):
     return _key(_PACK.sub("", name or ""))
+
+
+def canonical(name):
+    named = calibration.voucher_floor_ratio(name or "")[0]
+    return named or (name or "")
+
+
+def same_item(name, text):
+    key = _key(name)
+    if key and key in _key(text):
+        return True
+    named = calibration.voucher_floor_ratio(name or "")[0]
+    return (named is not None
+            and calibration.voucher_floor_ratio(text or "")[0] == named)
 
 
 class Row:
@@ -788,9 +813,9 @@ class RowModel:
         if action == REGISTER_WORD:
             raise Divergence(
                 f"row {index} is empty on screen; nothing to cancel.")
-        if not expected.key or expected.key not in _key(seen):
+        if not expected.key or not same_item(expected.name, seen):
             stacked = read_row_one_stacked()
-            if not expected.key or expected.key not in _key(stacked):
+            if not expected.key or not same_item(expected.name, stacked):
                 raise Divergence(
                     f"row {index} should hold {expected.name!r} but position "
                     f"1 reads {seen!r} on one line, and {stacked!r} read as "
@@ -928,7 +953,7 @@ class RowModel:
             raise Divergence(
                 "no price was given and the panel suggests none, so there is "
                 "nothing to list at. Nothing has been listed.")
-        cap = int(calibration.load_shared()["run"].get("max_drop") or 0)
+        cap = int(calibration.load_shared()["run"]["max_drop"])
         each = count or (pack_size(expect_item) if expect_item else 1)
         held = listed_at - cap * each if cap and listed_at else 0
         if held and want < held:

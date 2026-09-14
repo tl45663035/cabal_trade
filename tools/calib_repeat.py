@@ -1,14 +1,25 @@
-import sys, os, time, json, functools, copy
+import copy
+import functools
+import json
+import os
+import sys
+import time
+
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "src"))
+sys.path.insert(0, os.path.join(HERE, "..", "src_1080p"))
 import calibration
 
-N = int(sys.argv[1]) if len(sys.argv) > 1 else 100
+KNOBS = calibration.load_shared()["tools"]
+N = int(sys.argv[1]) if len(sys.argv) > 1 else int(KNOBS["calib_repeats"])
 OUT = sys.argv[2]
+FAIL_LIMIT = int(KNOBS["calib_fail_limit"])
 
 MARKS = []
+
+
 def wrap(name):
     fn = getattr(calibration, name)
+
     @functools.wraps(fn)
     def inner(*a, **k):
         t = time.perf_counter()
@@ -18,6 +29,8 @@ def wrap(name):
             MARKS.append((name, a[:2], (time.perf_counter() - t) * 1000,
                           time.perf_counter()))
     setattr(calibration, name, inner)
+
+
 for n in ("click", "ctrl_click", "calibrate_actions", "calibrate_inventory",
           "calibrate_shop", "calibrate_purchase", "calibrate_register_table",
           "calibrate_panel", "close_everything"):
@@ -37,15 +50,7 @@ for i in range(1, N + 1):
     phases = {n: ms for n, _a, ms, _t in MARKS
               if n.startswith("calibrate_") or n == "close_everything"}
     ctrl = [t for n, _a, _ms, t in MARKS if n == "ctrl_click"]
-    acts = [(a, t, ms) for n, a, ms, t in MARKS if n == "click"]
     cancel_ms = list_ms = None
-    if ctrl and acts:
-        cut = ctrl[0]
-        pre = [t for _a, t, _ms in acts if t < cut]
-        post = [t for _a, t, _ms in acts if t > cut]
-        if pre:
-            act_start = min(t for _a, t, _ms in acts
-                            if t > cut - 60) if False else None
     end_marks = [t for n, _a, _ms, t in MARKS if n == "calibrate_actions"]
     if end_marks:
         act_total = phases.get("calibrate_actions")
@@ -55,9 +60,7 @@ for i in range(1, N + 1):
             cancel_ms = act_total - list_ms if act_total else None
     snap = {}
     try:
-        data = json.loads(open(os.path.join(HERE, "..", "src",
-                                            "calibration.json"),
-                               encoding="utf-8").read())
+        data = json.loads(calibration.OUT.read_text(encoding="utf-8"))
         per = data["by_resolution"][calibration.resolution_key()]
         snap = {"shop": copy.deepcopy(per["shop"]),
                 "inventory": copy.deepcopy(per["inventory"])}
@@ -70,6 +73,6 @@ for i in range(1, N + 1):
           flush=True)
     with open(OUT, "w", encoding="utf-8") as fh:
         json.dump(runs, fh)
-    if fails >= 3:
-        print("three failures in a row - stopping", flush=True)
+    if fails >= FAIL_LIMIT:
+        print(f"{FAIL_LIMIT} failures in a row - stopping", flush=True)
         break
