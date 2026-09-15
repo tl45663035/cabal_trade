@@ -2,12 +2,12 @@
   "resupply": {
     "enabled": true,
     "enable_buying": {
-      "Force Core(Highest)": false,
+      "Force Core(Highest)": true,
       "Chaos Core": true,
       "Divine Stone": false,
-      "Force Core (Ultimate)": false,
+      "Force Core (Ultimate)": true,
       "Force Core(High)": true,
-      "Upgrade Core (Ultimate)": false
+      "Upgrade Core (Ultimate)": true
     },
     "rows_by_margin": {
       "step": 5000,
@@ -78,7 +78,7 @@
       ],
       "Chaos Core": [
         3,
-        10
+        5
       ]
     },
     "buy_min": {
