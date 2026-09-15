@@ -1,0 +1,2780 @@
+2026-09-15_143519  C:\Users\Trung\Cabal\src_1080p\driver.py
+  logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-15_143519_run.log
+  code 1c94d82
+  ledger C:\Users\Trung\Cabal\src_1080p\sales.db run 2026-09-15T14:35:19
+  debug frames -> C:\Users\Trung\Cabal\src_1080p\debug_frames
+  cleared 488 frame(s) from earlier runs; this one numbers from 00001
+  recording -> C:\Users\Trung\Cabal\src_1080p\debug_video (180s a reel, 5 kept)
+  cleared 5 reel(s) from earlier runs; this one numbers from 0001
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  measuring this screen before touching anything
+inventory:
+  Inventory shut; pressing I (attempt 1)
+  Alz box (1780, 688, 1860, 700)   anchor (1860, 688)
+  grid fitted in (1221, 23, 1920, 661): pitch 56.0x56.1 against a shared 73.3x73.4, slot (1,1) at 1479,236, scores 48 and 46
+  tab I [1458, 181]  tab VIII [1830, 181]
+  slot (1,1) [1479, 236]  (1,7) [1815, 236]  (8,8) [1871, 629]
+gift box:
+  the gift box at [284, 994]
+  Receive at [[1214, 327], [1214, 425], [1214, 524], [1214, 622]]
+  Close at [1483, 846]
+cash shop:
+  the Cash Shop icon at [348, 994]
+  the Cash balance box [1134, 826, 1230, 848] reads 650
+  Useable at [844, 168]
+  Yekaterina VIP Membership at 300 Cash; Purchase at [739, 290]
+  the confirmation window [744, 390, 1169, 638], 425x248
+  OK at [963, 611]; Cancel at [1096, 610]
+  Escape to close the Cash Shop (attempt 1)
+  the Inventory closed with the Cash Shop; opening it again
+  Inventory shut; pressing I (attempt 1)
+opening the Agent Shop:
+  tab 8 at [1830, 181]
+  right-clicking slot (1,7) at [1815, 236]
+agent shop:
+  Register (288, 80)
+  Purchase [96, 80]  (mirrored about the boundary at x=192)
+  favourites: 10 found, pitch 42.00px, first [480, 755] last [858, 755]
+  favourite row set on an even 42px grid from 480: [480, 522, 564, 606, 648, 690, 732, 774, 816, 858]
+purchase tab:
+  switching to the Purchase tab at (96, 80)
+  sort reads 'IC y Price:Low to »Eal' -> region [622, 134, 752, 166]
+  running favourite 1 at (480, 755) to fill the table (attempt 1/10)
+  offers arrived after 0.1s
+  row content [232, 231, 870, 285] -> 'Force Core(Highest) 206 265,919 Buy'
+    name      [232, 231, 554, 285]  -> 'Force Core(Highest)'
+    qty       [556, 231, 646, 285]  -> '206'
+    price     [654, 231, 782, 285]  -> '265,919'
+    function  [782, 231, 874, 285]  -> 'Buy'
+  Buy column x=828, 8 row(s), pitch 54px
+  row 1 centre y=258, box [192, 231, 922, 285]
+register table:
+  button column (787, 144, 922, 689)
+  Register table: 9 row(s), pitch 58px, row 1 y=175
+  table_x [192, 922], scroll point [231, 233]
+  Refresh at [833, 752]
+market prices:
+  Force Core(Highest)              265,919
+  Force Core Set (Highest)         199,194
+  Chaos Core                       700,000
+  Chaos Core Set                   719,953
+  Force Core (Ultimate)            444,767
+  Force Core Set (Ultimate)        397,063
+  Force Core(High)                 199,981
+  Force Core Set (High)            194,999
+  Upgrade Core (Ultimate)          479,965
+  Upgrade Core Set (Ultimate)      477,475
+voucher:
+  a Gold voucher costs 384,599,987
+register panel:
+  price field [37, 411, 188, 439] (click [112, 425])
+  quantity box [37, 472, 188, 500] (click [59, 486])
+  2 suggested price row(s) at y [358, 384]
+  net sales box [37, 574, 188, 602]
+  Register button at [131, 754]
+actions:
+  tab 4 slot (1,1) is the first free one; a withdrawal lands there
+  row 1 is 'Force Core (Ultimate) 200 444,768 On Sale Change : )'
+  Change at (831, 175)
+  Cancel at (1102, 635)
+  Confirmation at (968, 634)
+  row 1 now reads 'Premium Exclusive Slot Register : \\'
+  back to inventory tab 4 at (1617, 181); the withdrawal moves the panel to whichever tab it landed on
+  listing it back from tab 4 slot (1, 1) at (1479, 236)
+  panel suggests 444,765; listing at 444,764
+  typed 250; the net sales make it 200
+  listed 200 at 444,764; it lands in the lowest empty row
+  learned button_cancel, button_confirmation, button_register
+conversion vendor:
+  pressing N to open the vendor Shop (attempt 1)
+  Dungeon tab at (143, 158)
+  grid band (163, 770, 413, 946): 5 column(s) at [187, 235, 283, 328, 377], 4 row(s) at [792, 839, 883, 931]
+    Force Core(Low)              <- Force Core Set (Low)           r2c1 at (187, 839)
+    Force Core(Medium)           <- Force Core Set (Medium)        r2c2 at (235, 839)
+    Force Core(High)             <- Force Core Set (High)          r2c3 at (283, 839)
+    Force Core(Highest)          <- Force Core Set (Highest)       r2c4 at (328, 839)
+    Force Core (Ultimate)        <- Force Core Set (Ultimate)      r2c5 at (377, 839)
+    Upgrade Core(Low)            <- Upgrade Core Set (Low)         r4c1 at (187, 931)
+    Upgrade Core(Medium)         <- Upgrade Core Set (Medium)      r4c2 at (235, 931)
+    Upgrade Core(High)           <- Upgrade Core Set (High)        r4c3 at (283, 931)
+    Upgrade Core(Highest)        <- Upgrade Core Set (Highest)     r4c4 at (328, 931)
+    Upgrade Core (Ultimate)      <- Upgrade Core Set (Ultimate)    r4c5 at (377, 931)
+craft window:
+  Inventory shut; pressing I (attempt 1)
+  right-clicking the craft key on tab 8 slot (1, 8) at (1871, 236)
+  recipe Chaos Core Set x3 at [146, 268]
+  tier 2000-2999 at [90, 209]
+  Request All at [263, 730]
+  Complete All at [872, 729]
+  material counter [420, 448, 750, 522]
+
+wrote C:\Users\Trung\Cabal\src_1080p\calibration.json  [1920x1080]
+  resolutions in the file: ['1920x1080', '2560x1440']
+  kept 3 value(s) this pass does not measure in shop: button_receive, buy_button_buy, buy_button_cancel
+reopening the Agent Shop the caller was promised:
+  Inventory shut; pressing I (attempt 1)
+  the Agent Shop is open again
+  calibrated for 1920x1080, measured 2026-09-15T14:36:28, shop open
+  server clock 23:36 (+59s for the unshown seconds)
+  server 23:36:59; the next war quiet runs 01:29:00 to 01:34:59, in 112.0 min
+  scrolled to the top; row 1 is at position 1
+                                                   bought/u   listed/u  margin      row price
+     1  Force Core(Highest                 x245     288,288    288,288   +0.0%        288,288
+     2  Force Core(Highest                 x130     288,288    288,288   +0.0%        288,288
+     3  Force Core(Highest                 x250     288,288    288,288   +0.0%        288,288
+     4  Force Core(Highest                 x200     288,288    288,288   +0.0%        288,288
+     5  Force Core(Highest                 x250     288,288    288,288   +0.0%        288,288
+     6  Force Core(Highest                 x203     288,288    288,288   +0.0%        288,288
+     7  Force Core(High                    x60      200,200    200,200   +0.0%        200,200
+     8  Force Core (Ultimate               x4             -    444,770       -        444,770
+    the quantity column read 'Membership', which holds no digits; relisting anyway, the panel counts what is there
+    one line read 'eetonaedae 1 133,333,298 OnSale Change'; read as stacked lines it is 'Yekaterina VIP Membership 133,333,298 Change'
+     9  Yekaterina VIP Membership          x1    115,379,996 133,333,298  +13.5%    133,333,298
+    10  Force Core (Ultimate               x200           -    444,764       -        444,764
+    11  Chaos Core Set X 138               x1             -    719,962       -     99,354,893
+    12  Chaos Core Set X 138               x1             -    719,961       -     99,354,755
+    13  Force Core (Ultimate               x52            -    444,773       -        444,773
+    14  Chaos Core Set X 144               x1             -    719,960       -    103,674,383
+    15  Chaos Core Set X 138               x1             -    719,959       -     99,354,479
+    16  Chaos Core Set X 138               x1             -    719,958       -     99,354,341
+    17  Upgrade Core (Ultimate             x180           -    479,967       -        479,967
+    18  Upgrade Core (Ultimate             x8       281,776    479,966  +41.3%        479,966
+    19  Force Core(High                    x9             -    199,982       -        199,982
+    20  Force Core(High                    x128     191,667    199,981   +4.2%        199,981
+  scrolled to the top; row 1 is at position 1
+  seeded 20 of rows 1-21
+  rows 22-30 are NOT reachable at position 1 and were not read
+relisting rows 1-21 for 10000 minute(s)
+
+-- pass 1 --
+
+  resupply order: Yekaterina VIP Membership, Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Force Core (Ultimate)
+
+  Yekaterina VIP Membership: 1 row(s) inside 1-21, 1 wanted; row 9 'Yekaterina VIP Membership'
+    floor 115,379,996: 300/1000 of the 384,599,987 voucher, read at launch
+
+-- Chaos Core Set under our listing: up to 3 row(s) --
+  Chaos Core Set 719,953 - Chaos Core 700,000 = 19,953
+  ours is listed at 719,958 a Set and a Chaos Core sells at 700,000; buying every Set under 695,000, 5,000 a Set below the lower of the two
+  the cheapest Chaos Core Set is 719,953 a Set, not under 695,000; nothing to buy under ours
+
+  counting only rows 1-21; rows outside it are not repriced and do not count; 1 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                6         -         -         -      -   holds the most it can want, 3; not priced
+  Chaos Core                         5         -         -         -      -   holds the most it can want, 5; not priced
+  Force Core (Ultimate)              3         -         -         -      -   holds the most it can want, 3; not priced
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            2   477,475   479,965     2,490      0   
+
+  nothing inside rows 1-21 holds fewer rows than its margin is worth.
+  row 1: 'Force Core(Highest' x245 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 1, "item": "Force Core(Highest", "qty": 245, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 1}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 70,630,560 is 245 x 288,288
+  typed 250; the net sales make it 245
+
+  list 245 at 288,288
+    #         ms   share  step
+    1      609.9    9.4%  read the panel before loading
+    2       18.2    0.3%  wait for slot (1,1) to fill
+    3      811.5   12.5%  ctrl-click (1,1) attempt 1
+    4      470.5    7.2%  read the suggested price
+    5     1444.3   22.2%  type the price 288,288
+    6      945.5   14.5%  type the quantity 250
+    7      327.9    5.0%  take the quantity from the net sales
+    8      310.9    4.8%  click Register
+    9       99.0    1.5%  find Confirmation
+   10       17.1    0.3%  look for the underprice question
+   11      308.3    4.7%  click Confirmation
+   12      250.8    3.9%  park
+   13      278.9    4.3%  confirm the dialog is gone
+   14      605.9    9.3%  wait for the panel to let the item go
+          6498.8  100.0%  TOTAL
+  listed 245 at 288,288; it lands in row 1
+DONE {"kind": "relist", "row": 1, "lands_in": 1, "qty": 245, "price": 288288}
+    relisted 245 at 288,288 in row 1, 1 relist(s) on the floor now
+  row 2: 'Force Core(Highest' x130 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 2, "item": "Force Core(Highest", "qty": 130, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 2}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 37,477,440 is 130 x 288,288
+  typed 250; the net sales make it 130
+
+  list 130 at 288,288
+    #         ms   share  step
+    1      625.1    9.6%  read the panel before loading
+    2       26.3    0.4%  wait for slot (1,1) to fill
+    3      810.0   12.4%  ctrl-click (1,1) attempt 1
+    4      470.7    7.2%  read the suggested price
+    5     1444.1   22.2%  type the price 288,288
+    6      953.1   14.6%  type the quantity 250
+    7      317.4    4.9%  take the quantity from the net sales
+    8      318.1    4.9%  click Register
+    9       98.3    1.5%  find Confirmation
+   10       16.8    0.3%  look for the underprice question
+   11      308.0    4.7%  click Confirmation
+   12      250.6    3.8%  park
+   13      274.6    4.2%  confirm the dialog is gone
+   14      599.3    9.2%  wait for the panel to let the item go
+          6512.4  100.0%  TOTAL
+  listed 130 at 288,288; it lands in row 2
+DONE {"kind": "relist", "row": 2, "lands_in": 2, "qty": 130, "price": 288288}
+    relisted 130 at 288,288 in row 2, 1 relist(s) on the floor now
+  row 3: 'Force Core(Highest' x250 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 3, "item": "Force Core(Highest", "qty": 250, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 3}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 72,072,000 is 250 x 288,288
+  typed 250; the net sales make it 250
+
+  list 250 at 288,288
+    #         ms   share  step
+    1      614.5    9.4%  read the panel before loading
+    2       20.8    0.3%  wait for slot (1,1) to fill
+    3      816.1   12.5%  ctrl-click (1,1) attempt 1
+    4      479.3    7.4%  read the suggested price
+    5     1447.0   22.2%  type the price 288,288
+    6      953.8   14.7%  type the quantity 250
+    7      312.2    4.8%  take the quantity from the net sales
+    8      315.7    4.9%  click Register
+    9       97.0    1.5%  find Confirmation
+   10       17.6    0.3%  look for the underprice question
+   11      308.2    4.7%  click Confirmation
+   12      251.0    3.9%  park
+   13      254.5    3.9%  confirm the dialog is gone
+   14      618.8    9.5%  wait for the panel to let the item go
+          6506.4  100.0%  TOTAL
+  listed 250 at 288,288; it lands in row 3
+DONE {"kind": "relist", "row": 3, "lands_in": 3, "qty": 250, "price": 288288}
+    relisted 250 at 288,288 in row 3, 1 relist(s) on the floor now
+  row 4: 'Force Core(Highest' x200 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 4, "item": "Force Core(Highest", "qty": 200, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 4}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 57,657,600 is 200 x 288,288
+  typed 250; the net sales make it 200
+
+  list 200 at 288,288
+    #         ms   share  step
+    1      634.3    9.7%  read the panel before loading
+    2       22.9    0.4%  wait for slot (1,1) to fill
+    3      820.8   12.6%  ctrl-click (1,1) attempt 1
+    4      483.7    7.4%  read the suggested price
+    5     1441.8   22.0%  type the price 288,288
+    6      946.5   14.5%  type the quantity 250
+    7      318.3    4.9%  take the quantity from the net sales
+    8      312.0    4.8%  click Register
+    9       93.8    1.4%  find Confirmation
+   10       17.7    0.3%  look for the underprice question
+   11      308.5    4.7%  click Confirmation
+   12      250.7    3.8%  park
+   13      286.8    4.4%  confirm the dialog is gone
+   14      602.1    9.2%  wait for the panel to let the item go
+          6539.7  100.0%  TOTAL
+  listed 200 at 288,288; it lands in row 4
+DONE {"kind": "relist", "row": 4, "lands_in": 4, "qty": 200, "price": 288288}
+    relisted 200 at 288,288 in row 4, 1 relist(s) on the floor now
+  row 5: 'Force Core(Highest' x250 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 5, "item": "Force Core(Highest", "qty": 250, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 5}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 72,072,000 is 250 x 288,288
+  typed 250; the net sales make it 250
+
+  list 250 at 288,288
+    #         ms   share  step
+    1      615.3    9.5%  read the panel before loading
+    2       22.4    0.3%  wait for slot (1,1) to fill
+    3      809.3   12.5%  ctrl-click (1,1) attempt 1
+    4      475.8    7.4%  read the suggested price
+    5     1448.8   22.4%  type the price 288,288
+    6      948.5   14.7%  type the quantity 250
+    7      316.8    4.9%  take the quantity from the net sales
+    8      309.7    4.8%  click Register
+    9       98.8    1.5%  find Confirmation
+   10       16.2    0.3%  look for the underprice question
+   11      303.9    4.7%  click Confirmation
+   12      250.9    3.9%  park
+   13      255.0    3.9%  confirm the dialog is gone
+   14      597.3    9.2%  wait for the panel to let the item go
+          6468.9  100.0%  TOTAL
+  listed 250 at 288,288; it lands in row 5
+DONE {"kind": "relist", "row": 5, "lands_in": 5, "qty": 250, "price": 288288}
+    relisted 250 at 288,288 in row 5, 1 relist(s) on the floor now
+  row 6: 'Force Core(Highest' x203 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 6, "item": "Force Core(Highest", "qty": 203, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 6}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 58,522,464 is 203 x 288,288
+  typed 250; the net sales make it 203
+
+  list 203 at 288,288
+    #         ms   share  step
+    1      601.0    9.3%  read the panel before loading
+    2       21.3    0.3%  wait for slot (1,1) to fill
+    3      812.8   12.6%  ctrl-click (1,1) attempt 1
+    4      463.5    7.2%  read the suggested price
+    5     1459.7   22.6%  type the price 288,288
+    6      942.0   14.6%  type the quantity 250
+    7      322.1    5.0%  take the quantity from the net sales
+    8      302.8    4.7%  click Register
+    9       91.2    1.4%  find Confirmation
+   10       17.4    0.3%  look for the underprice question
+   11      302.0    4.7%  click Confirmation
+   12      250.9    3.9%  park
+   13      277.3    4.3%  confirm the dialog is gone
+   14      606.3    9.4%  wait for the panel to let the item go
+          6470.3  100.0%  TOTAL
+  listed 203 at 288,288; it lands in row 6
+DONE {"kind": "relist", "row": 6, "lands_in": 6, "qty": 203, "price": 288288}
+    relisted 203 at 288,288 in row 6, 1 relist(s) on the floor now
+  row 7: 'Force Core(High' x60 at 200,200 -> tab 4 slot (1, 1)
+    floor 200,200 (200,200 x 1) from what it cost; listed at 200,200, above it
+TASK {"kind": "relist", "row": 7, "item": "Force Core(High", "qty": 60, "price": 200200, "tab": 4, "slot": [1, 1], "lands_in": 7}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 199,981, from the row and 3 more
+    market 199,980 is under the 200,200 floor (it cost 200,200 each); listing at the floor
+    net sales 12,012,000 is 60 x 200,200
+  typed 250; the net sales make it 60
+
+  list 60 at 200,200
+    #         ms   share  step
+    1      606.4    9.4%  read the panel before loading
+    2       17.5    0.3%  wait for slot (1,1) to fill
+    3      807.5   12.5%  ctrl-click (1,1) attempt 1
+    4      470.8    7.3%  read the suggested price
+    5     1446.4   22.4%  type the price 200,200
+    6      948.4   14.7%  type the quantity 250
+    7      321.1    5.0%  take the quantity from the net sales
+    8      311.1    4.8%  click Register
+    9       92.5    1.4%  find Confirmation
+   10       17.4    0.3%  look for the underprice question
+   11      303.9    4.7%  click Confirmation
+   12      250.9    3.9%  park
+   13      267.8    4.1%  confirm the dialog is gone
+   14      605.3    9.4%  wait for the panel to let the item go
+          6467.1  100.0%  TOTAL
+  listed 60 at 200,200; it lands in row 7
+DONE {"kind": "relist", "row": 7, "lands_in": 7, "qty": 60, "price": 200200}
+    relisted 60 at 200,200 in row 7, 1 relist(s) on the floor now
+  row 8: 'Force Core (Ultimate' x4 at 444,770 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,770, above it
+TASK {"kind": "relist", "row": 8, "item": "Force Core (Ultimate", "qty": 4, "price": 444770, "tab": 4, "slot": [1, 1], "lands_in": 8}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,762, from the row and 3 more
+    net sales 1,779,044 is 4 x 444,761
+  typed 250; the net sales make it 4
+
+  list 4 at 444,761
+    #         ms   share  step
+    1      608.2    9.4%  read the panel before loading
+    2       14.8    0.2%  wait for slot (1,1) to fill
+    3      808.7   12.5%  ctrl-click (1,1) attempt 1
+    4      466.4    7.2%  read the suggested price
+    5     1440.2   22.3%  type the price 444,761
+    6      954.6   14.8%  type the quantity 250
+    7      308.7    4.8%  take the quantity from the net sales
+    8      308.6    4.8%  click Register
+    9      102.5    1.6%  find Confirmation
+   10       21.4    0.3%  look for the underprice question
+   11      304.5    4.7%  click Confirmation
+   12      250.8    3.9%  park
+   13      278.0    4.3%  confirm the dialog is gone
+   14      597.8    9.2%  wait for the panel to let the item go
+          6465.1  100.0%  TOTAL
+  listed 4 at 444,761; it lands in row 8
+DONE {"kind": "relist", "row": 8, "lands_in": 8, "qty": 4, "price": 444761}
+    relisted 4 at 444,761 in row 8
+    the quantity column read 'Membership', which holds no digits; relisting anyway, the panel counts what is there
+    one line read 'eetonaedae 1 133,333,298 OnSale Change'; read as stacked lines it is 'Yekaterina VIP Membership 133,333,298 Change'
+  row 9: 'Yekaterina VIP Membership' x1 at 133,333,298 -> tab 4 slot (1, 1)
+    floor 115,379,996 from what it cost; listed at 133,333,298, above it
+TASK {"kind": "relist", "row": 9, "item": "Yekaterina VIP Membership", "qty": 1, "price": 133333298, "tab": 4, "slot": [1, 1], "lands_in": 9}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 133,333,296, from the row and 3 more
+    net sales 133,333,295 is 1 x 133,333,295
+  typed 250; the net sales make it 1
+
+  list 1 at 133,333,295
+    #         ms   share  step
+    1      606.3    9.0%  read the panel before loading
+    2       16.8    0.2%  wait for slot (1,1) to fill
+    3      808.1   12.0%  ctrl-click (1,1) attempt 1
+    4      542.1    8.0%  read the suggested price
+    5     1656.6   24.5%  type the price 133,333,295
+    6      946.5   14.0%  type the quantity 250
+    7      318.8    4.7%  take the quantity from the net sales
+    8      313.3    4.6%  click Register
+    9       99.8    1.5%  find Confirmation
+   10       17.4    0.3%  look for the underprice question
+   11      307.4    4.6%  click Confirmation
+   12      251.0    3.7%  park
+   13      257.2    3.8%  confirm the dialog is gone
+   14      612.5    9.1%  wait for the panel to let the item go
+          6753.8  100.0%  TOTAL
+  listed 1 at 133,333,295; it lands in row 9
+DONE {"kind": "relist", "row": 9, "lands_in": 9, "qty": 1, "price": 133333295}
+    relisted 1 at 133,333,295 in row 9
+  row 10: 'Force Core (Ultimate' x200 at 444,764 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,764, above it
+TASK {"kind": "relist", "row": 10, "item": "Force Core (Ultimate", "qty": 200, "price": 444764, "tab": 4, "slot": [1, 1], "lands_in": 10}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,761, from the row and 3 more
+    net sales 88,952,000 is 200 x 444,760
+  typed 250; the net sales make it 200
+
+  list 200 at 444,760
+    #         ms   share  step
+    1      606.1    9.3%  read the panel before loading
+    2       20.7    0.3%  wait for slot (1,1) to fill
+    3      808.0   12.5%  ctrl-click (1,1) attempt 1
+    4      474.8    7.3%  read the suggested price
+    5     1451.3   22.4%  type the price 444,760
+    6      944.2   14.6%  type the quantity 250
+    7      316.2    4.9%  take the quantity from the net sales
+    8      310.8    4.8%  click Register
+    9       97.9    1.5%  find Confirmation
+   10       15.9    0.2%  look for the underprice question
+   11      307.7    4.7%  click Confirmation
+   12      250.9    3.9%  park
+   13      268.3    4.1%  confirm the dialog is gone
+   14      609.7    9.4%  wait for the panel to let the item go
+          6482.3  100.0%  TOTAL
+  listed 200 at 444,760; it lands in row 10
+DONE {"kind": "relist", "row": 10, "lands_in": 10, "qty": 200, "price": 444760}
+    relisted 200 at 444,760 in row 10
+  row 11: 'Chaos Core Set X 138' x1 at 99,354,893 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 99,354,893, above it
+TASK {"kind": "relist", "row": 11, "item": "Chaos Core Set X 138", "qty": 1, "price": 99354893, "tab": 4, "slot": [1, 1], "lands_in": 11}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,669,448, from the row and 3 more
+    net sales 98,669,447 is 1 x 98,669,447
+  typed 250; the net sales make it 1
+
+  list 1 at 98,669,447
+    #         ms   share  step
+    1      634.1    9.4%  read the panel before loading
+    2       25.2    0.4%  wait for slot (1,1) to fill
+    3      813.9   12.0%  ctrl-click (1,1) attempt 1
+    4      554.6    8.2%  read the suggested price
+    5     1593.5   23.5%  type the price 98,669,447
+    6      945.9   14.0%  type the quantity 250
+    7      332.6    4.9%  take the quantity from the net sales
+    8      306.5    4.5%  click Register
+    9       99.5    1.5%  find Confirmation
+   10       20.1    0.3%  look for the underprice question
+   11      325.7    4.8%  click Confirmation
+   12      251.0    3.7%  park
+   13      265.1    3.9%  confirm the dialog is gone
+   14      611.1    9.0%  wait for the panel to let the item go
+          6779.0  100.0%  TOTAL
+  listed 1 at 98,669,447; it lands in row 11
+DONE {"kind": "relist", "row": 11, "lands_in": 11, "qty": 1, "price": 98669447}
+    relisted 1 at 98,669,447 in row 11
+  row 12: 'Chaos Core Set X 138' x1 at 99,354,755 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 99,354,755, above it
+TASK {"kind": "relist", "row": 12, "item": "Chaos Core Set X 138", "qty": 1, "price": 99354755, "tab": 4, "slot": [1, 1], "lands_in": 12}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,669,310, from the row and 3 more
+    net sales 98,669,309 is 1 x 98,669,309
+  typed 250; the net sales make it 1
+
+  list 1 at 98,669,309
+    #         ms   share  step
+    1      621.0    9.3%  read the panel before loading
+    2       17.6    0.3%  wait for slot (1,1) to fill
+    3      813.9   12.2%  ctrl-click (1,1) attempt 1
+    4      478.5    7.2%  read the suggested price
+    5     1587.1   23.8%  type the price 98,669,309
+    6      954.4   14.3%  type the quantity 250
+    7      322.1    4.8%  take the quantity from the net sales
+    8      313.1    4.7%  click Register
+    9      102.4    1.5%  find Confirmation
+   10       19.4    0.3%  look for the underprice question
+   11      315.2    4.7%  click Confirmation
+   12      251.0    3.8%  park
+   13      259.8    3.9%  confirm the dialog is gone
+   14      599.8    9.0%  wait for the panel to let the item go
+          6655.2  100.0%  TOTAL
+  listed 1 at 98,669,309; it lands in row 12
+DONE {"kind": "relist", "row": 12, "lands_in": 12, "qty": 1, "price": 98669309}
+    relisted 1 at 98,669,309 in row 12
+  row 13: 'Force Core (Ultimate' x52 at 444,773 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,773, above it
+TASK {"kind": "relist", "row": 13, "item": "Force Core (Ultimate", "qty": 52, "price": 444773, "tab": 4, "slot": [1, 1], "lands_in": 13}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,760, from the row and 3 more
+    net sales 23,127,468 is 52 x 444,759
+  typed 250; the net sales make it 52
+
+  list 52 at 444,759
+    #         ms   share  step
+    1      602.7    9.3%  read the panel before loading
+    2       21.8    0.3%  wait for slot (1,1) to fill
+    3      810.5   12.5%  ctrl-click (1,1) attempt 1
+    4      475.6    7.3%  read the suggested price
+    5     1450.0   22.4%  type the price 444,759
+    6      947.4   14.6%  type the quantity 250
+    7      309.6    4.8%  take the quantity from the net sales
+    8      312.4    4.8%  click Register
+    9       96.5    1.5%  find Confirmation
+   10       20.2    0.3%  look for the underprice question
+   11      316.3    4.9%  click Confirmation
+   12      250.9    3.9%  park
+   13      261.8    4.0%  confirm the dialog is gone
+   14      606.8    9.4%  wait for the panel to let the item go
+          6482.5  100.0%  TOTAL
+  listed 52 at 444,759; it lands in row 13
+DONE {"kind": "relist", "row": 13, "lands_in": 13, "qty": 52, "price": 444759}
+    relisted 52 at 444,759 in row 13
+  row 14: 'Chaos Core Set X 144' x1 at 103,674,383 -> tab 4 slot (1, 1)
+    floor 100,800,000 (700,000 x 144) from Chaos Core; listed at 103,674,383, above it
+TASK {"kind": "relist", "row": 14, "item": "Chaos Core Set X 144", "qty": 1, "price": 103674383, "tab": 4, "slot": [1, 1], "lands_in": 14}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 102,959,136, from the row and 3 more
+    net sales 102,959,135 is 1 x 102,959,135
+  typed 250; the net sales make it 1
+
+  list 1 at 102,959,135
+    #         ms   share  step
+    1      602.6    9.0%  read the panel before loading
+    2       26.8    0.4%  wait for slot (1,1) to fill
+    3      809.1   12.0%  ctrl-click (1,1) attempt 1
+    4      483.8    7.2%  read the suggested price
+    5     1655.3   24.6%  type the price 102,959,135
+    6      955.6   14.2%  type the quantity 250
+    7      317.1    4.7%  take the quantity from the net sales
+    8      311.7    4.6%  click Register
+    9       98.9    1.5%  find Confirmation
+   10       15.9    0.2%  look for the underprice question
+   11      313.9    4.7%  click Confirmation
+   12      251.0    3.7%  park
+   13      265.6    4.0%  confirm the dialog is gone
+   14      615.6    9.2%  wait for the panel to let the item go
+          6722.8  100.0%  TOTAL
+  listed 1 at 102,959,135; it lands in row 14
+DONE {"kind": "relist", "row": 14, "lands_in": 14, "qty": 1, "price": 102959135}
+    relisted 1 at 102,959,135 in row 14
+  row 15: 'Chaos Core Set X 138' x1 at 99,354,479 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 99,354,479, above it
+TASK {"kind": "relist", "row": 15, "item": "Chaos Core Set X 138", "qty": 1, "price": 99354479, "tab": 4, "slot": [1, 1], "lands_in": 15}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,669,034, from the row and 3 more
+    net sales 98,669,033 is 1 x 98,669,033
+  typed 250; the net sales make it 1
+
+  list 1 at 98,669,033
+    #         ms   share  step
+    1      614.5    9.1%  read the panel before loading
+    2       21.5    0.3%  wait for slot (1,1) to fill
+    3      813.9   12.1%  ctrl-click (1,1) attempt 1
+    4      550.2    8.2%  read the suggested price
+    5     1592.2   23.7%  type the price 98,669,033
+    6      952.6   14.2%  type the quantity 250
+    7      318.3    4.7%  take the quantity from the net sales
+    8      315.7    4.7%  click Register
+    9       96.3    1.4%  find Confirmation
+   10       19.6    0.3%  look for the underprice question
+   11      310.5    4.6%  click Confirmation
+   12      250.9    3.7%  park
+   13      263.5    3.9%  confirm the dialog is gone
+   14      612.3    9.1%  wait for the panel to let the item go
+          6732.3  100.0%  TOTAL
+  listed 1 at 98,669,033; it lands in row 15
+DONE {"kind": "relist", "row": 15, "lands_in": 15, "qty": 1, "price": 98669033}
+    relisted 1 at 98,669,033 in row 15
+  row 16: 'Chaos Core Set X 138' x1 at 99,354,341 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 99,354,341, above it
+TASK {"kind": "relist", "row": 16, "item": "Chaos Core Set X 138", "qty": 1, "price": 99354341, "tab": 4, "slot": [1, 1], "lands_in": 16}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,668,896, from the row and 3 more
+    net sales 98,668,895 is 1 x 98,668,895
+  typed 250; the net sales make it 1
+
+  list 1 at 98,668,895
+    #         ms   share  step
+    1      628.1    9.4%  read the panel before loading
+    2       21.6    0.3%  wait for slot (1,1) to fill
+    3      809.4   12.2%  ctrl-click (1,1) attempt 1
+    4      484.3    7.3%  read the suggested price
+    5     1586.8   23.8%  type the price 98,668,895
+    6      950.3   14.3%  type the quantity 250
+    7      316.8    4.8%  take the quantity from the net sales
+    8      311.2    4.7%  click Register
+    9       99.1    1.5%  find Confirmation
+   10       17.2    0.3%  look for the underprice question
+   11      308.6    4.6%  click Confirmation
+   12      250.7    3.8%  park
+   13      258.3    3.9%  confirm the dialog is gone
+   14      612.9    9.2%  wait for the panel to let the item go
+          6655.3  100.0%  TOTAL
+  listed 1 at 98,668,895; it lands in row 16
+DONE {"kind": "relist", "row": 16, "lands_in": 16, "qty": 1, "price": 98668895}
+    relisted 1 at 98,668,895 in row 16
+  row 17: 'Upgrade Core (Ultimate' x180 at 479,967 -> tab 4 slot (1, 1)
+    floor 477,475 (477,475 x 1) from Upgrade Core Set (Ultimate); listed at 479,967, above it
+TASK {"kind": "relist", "row": 17, "item": "Upgrade Core (Ultimate", "qty": 180, "price": 479967, "tab": 4, "slot": [1, 1], "lands_in": 17}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 479,965, from the row and 3 more
+    net sales 86,393,520 is 180 x 479,964
+  typed 250; the net sales make it 180
+
+  list 180 at 479,964
+    #         ms   share  step
+    1      609.4    9.3%  read the panel before loading
+    2       17.8    0.3%  wait for slot (1,1) to fill
+    3      808.3   12.3%  ctrl-click (1,1) attempt 1
+    4      537.7    8.2%  read the suggested price
+    5     1447.4   22.1%  type the price 479,964
+    6      946.3   14.5%  type the quantity 250
+    7      310.7    4.7%  take the quantity from the net sales
+    8      325.0    5.0%  click Register
+    9      102.0    1.6%  find Confirmation
+   10       15.1    0.2%  look for the underprice question
+   11      309.5    4.7%  click Confirmation
+   12      250.7    3.8%  park
+   13      269.3    4.1%  confirm the dialog is gone
+   14      597.3    9.1%  wait for the panel to let the item go
+          6546.7  100.0%  TOTAL
+  listed 180 at 479,964; it lands in row 17
+DONE {"kind": "relist", "row": 17, "lands_in": 17, "qty": 180, "price": 479964}
+    relisted 180 at 479,964 in row 17
+  row 18: 'Upgrade Core (Ultimate' x8 at 479,966 -> tab 4 slot (1, 1)
+    floor 281,776 (281,776 x 1) from what it cost; listed at 479,966, above it
+TASK {"kind": "relist", "row": 18, "item": "Upgrade Core (Ultimate", "qty": 8, "price": 479966, "tab": 4, "slot": [1, 1], "lands_in": 18}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 479,964, from the row and 3 more
+    net sales 3,839,704 is 8 x 479,963
+  typed 250; the net sales make it 8
+
+  list 8 at 479,963
+    #         ms   share  step
+    1      610.1    9.3%  read the panel before loading
+    2       17.5    0.3%  wait for slot (1,1) to fill
+    3      809.4   12.4%  ctrl-click (1,1) attempt 1
+    4      540.4    8.3%  read the suggested price
+    5     1446.4   22.1%  type the price 479,963
+    6      947.9   14.5%  type the quantity 250
+    7      308.4    4.7%  take the quantity from the net sales
+    8      311.2    4.8%  click Register
+    9       94.6    1.4%  find Confirmation
+   10       20.3    0.3%  look for the underprice question
+   11      307.5    4.7%  click Confirmation
+   12      251.1    3.8%  park
+   13      275.6    4.2%  confirm the dialog is gone
+   14      594.8    9.1%  wait for the panel to let the item go
+          6535.2  100.0%  TOTAL
+  listed 8 at 479,963; it lands in row 18
+DONE {"kind": "relist", "row": 18, "lands_in": 18, "qty": 8, "price": 479963}
+    relisted 8 at 479,963 in row 18
+  row 19: 'Force Core(High' x9 at 199,982 -> tab 4 slot (1, 1)
+    floor 194,999 (194,999 x 1) from Force Core Set (High); listed at 199,982, above it
+TASK {"kind": "relist", "row": 19, "item": "Force Core(High", "qty": 9, "price": 199982, "tab": 4, "slot": [1, 1], "lands_in": 19}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 199,981, from the row and 3 more
+    net sales 1,799,820 is 9 x 199,980
+  typed 250; the net sales make it 9
+
+  list 9 at 199,980
+    #         ms   share  step
+    1      606.2    9.4%  read the panel before loading
+    2       18.8    0.3%  wait for slot (1,1) to fill
+    3      806.5   12.5%  ctrl-click (1,1) attempt 1
+    4      467.4    7.2%  read the suggested price
+    5     1442.2   22.4%  type the price 199,980
+    6      948.4   14.7%  type the quantity 250
+    7      307.8    4.8%  take the quantity from the net sales
+    8      309.7    4.8%  click Register
+    9       94.3    1.5%  find Confirmation
+   10       16.3    0.3%  look for the underprice question
+   11      308.4    4.8%  click Confirmation
+   12      251.1    3.9%  park
+   13      263.9    4.1%  confirm the dialog is gone
+   14      609.1    9.4%  wait for the panel to let the item go
+          6450.1  100.0%  TOTAL
+  listed 9 at 199,980; it lands in row 19
+DONE {"kind": "relist", "row": 19, "lands_in": 19, "qty": 9, "price": 199980}
+    relisted 9 at 199,980 in row 19
+  row 20 has SOLD (partly); collecting
+    collected; 117 left to relist
+  row 20: 'Force Core(High' x117 at 199,981 -> tab 4 slot (1, 1)
+    floor 191,667 (191,667 x 1) from what it cost; listed at 199,981, above it
+TASK {"kind": "relist", "row": 20, "item": "Force Core(High", "qty": 117, "price": 199981, "tab": 4, "slot": [1, 1], "lands_in": 20}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 199,980, from the row and 3 more
+    net sales 23,397,543 is 117 x 199,979
+  typed 250; the net sales make it 117
+
+  list 117 at 199,979
+    #         ms   share  step
+    1      617.8    9.5%  read the panel before loading
+    2       23.2    0.4%  wait for slot (1,1) to fill
+    3      810.0   12.5%  ctrl-click (1,1) attempt 1
+    4      467.6    7.2%  read the suggested price
+    5     1450.8   22.4%  type the price 199,979
+    6      945.8   14.6%  type the quantity 250
+    7      315.0    4.9%  take the quantity from the net sales
+    8      307.4    4.7%  click Register
+    9       99.9    1.5%  find Confirmation
+   10       15.9    0.2%  look for the underprice question
+   11      304.2    4.7%  click Confirmation
+   12      250.6    3.9%  park
+   13      277.9    4.3%  confirm the dialog is gone
+   14      595.0    9.2%  wait for the panel to let the item go
+          6481.3  100.0%  TOTAL
+  listed 117 at 199,979; it lands in row 20
+DONE {"kind": "relist", "row": 20, "lands_in": 20, "qty": 117, "price": 199979}
+    relisted 117 at 199,979 in row 20
+  row 21 is empty; nothing to relist
+
+  relisting rows 1-21: 20 relisted, 1 empty, 0 skipped
+    #          ms   share     n      each  phase
+    1   131,287.1   50.0%    20   6,564.4  list it back
+    2    75,820.3   28.9%    20   3,791.0  cancel the row and take it back
+    3    21,213.7    8.1%    20   1,060.7  select inventory tab 4
+    4    12,116.4    4.6%    20     605.8  check the shop slot is empty
+    5    11,948.4    4.6%    21     569.0  scroll to the row and read it
+    6     7,625.0    2.9%    21     363.1  Refresh the table
+    7     2,330.3    0.9%     1   2,330.3  collect what sold
+    8       209.1    0.1%     1     209.1  read the row again after collecting
+        262,550.4  100.0%
+
+  returning the game to its default state
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the gift box at [284, 994]
+  Receive 1 of 4 at [1214, 327]
+  Receive 2 of 4 at [1214, 425]
+  Receive 3 of 4 at [1214, 524]
+  Receive 4 of 4 at [1214, 622]
+  Close at [1483, 846]
+  took 4 gift(s)
+  the Agent Shop is shut and the vendor is not open either; reopening it
+  Inventory shut: slot grid 0.05, needs 0.33
+
+  board after pass 1:
+                                                   bought/u   listed/u  margin      row price
+     1  Force Core(Highest                 x245     288,288    288,288   +0.0%        288,288
+     2  Force Core(Highest                 x130     288,288    288,288   +0.0%        288,288
+     3  Force Core(Highest                 x250     288,288    288,288   +0.0%        288,288
+     4  Force Core(Highest                 x200     288,288    288,288   +0.0%        288,288
+     5  Force Core(Highest                 x250     288,288    288,288   +0.0%        288,288
+     6  Force Core(Highest                 x203     288,288    288,288   +0.0%        288,288
+     7  Force Core(High                    x60      200,200    200,200   +0.0%        200,200
+     8  Force Core (Ultimate               x4             -    444,761       -        444,761
+     9  Yekaterina VIP Membership          x1    115,379,996 133,333,295  +13.5%    133,333,295
+    10  Force Core (Ultimate               x200           -    444,760       -        444,760
+    11  Chaos Core Set X 138               x1             -    714,995       -     98,669,447
+    12  Chaos Core Set X 138               x1             -    714,994       -     98,669,309
+    13  Force Core (Ultimate               x52            -    444,759       -        444,759
+    14  Chaos Core Set X 144               x1             -    714,993       -    102,959,135
+    15  Chaos Core Set X 138               x1             -    714,992       -     98,669,033
+    16  Chaos Core Set X 138               x1             -    714,991       -     98,668,895
+    17  Upgrade Core (Ultimate             x180           -    479,964       -        479,964
+    18  Upgrade Core (Ultimate             x8       281,776    479,963  +41.3%        479,963
+    19  Force Core(High                    x9             -    199,980       -        199,980
+    20  Force Core(High                    x117     191,667    199,979   +4.2%        199,979
+    item                               rows   units          listed
+    Chaos Core Set                        5     696     497,635,819
+    Force Core (Ultimate                  3     256     113,858,512
+    Force Core(High                       3     186      37,209,363
+    Force Core(Highest                    6   1,278     368,432,064
+    Upgrade Core (Ultimate                2     188      90,233,224
+    Yekaterina VIP Membership             1       1     133,333,295
+    board                                20   2,605   1,240,702,277
+    balance now 450,956,537
+  pass 1: 20 relisted, 1 empty, 0 skipped; 9995.1 minute(s) left
+
+-- pass 2 --
+
+  resupply order: Yekaterina VIP Membership, Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Force Core (Ultimate)
+
+  Yekaterina VIP Membership: 1 row(s) inside 1-21, 1 wanted; row 9 'Yekaterina VIP Membership'
+    floor 115,379,996: 300/1000 of the 384,599,987 voucher, read at launch
+
+-- Chaos Core Set under our listing: up to 3 row(s) --
+  Chaos Core Set 714,991 - Chaos Core 700,000 = 14,991
+  ours is listed at 714,991 a Set and a Chaos Core sells at 700,000; buying every Set under 695,000, 5,000 a Set below the lower of the two
+  the cheapest Chaos Core Set is 714,991 a Set, not under 695,000; nothing to buy under ours
+
+  counting only rows 1-21; rows outside it are not repriced and do not count; 1 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                6         -         -         -      -   holds the most it can want, 3; not priced
+  Chaos Core                         5         -         -         -      -   holds the most it can want, 5; not priced
+  Force Core (Ultimate)              3         -         -         -      -   holds the most it can want, 3; not priced
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            2   477,475   479,963     2,488      0   
+
+  nothing inside rows 1-21 holds fewer rows than its margin is worth.
+  row 1: 'Force Core(Highest' x245 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 1, "item": "Force Core(Highest", "qty": 245, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 1}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 70,630,560 is 245 x 288,288
+  typed 250; the net sales make it 245
+
+  list 245 at 288,288
+    #         ms   share  step
+    1      666.6   10.1%  read the panel before loading
+    2       18.7    0.3%  wait for slot (1,1) to fill
+    3      808.2   12.2%  ctrl-click (1,1) attempt 1
+    4      509.6    7.7%  read the suggested price
+    5     1452.2   21.9%  type the price 288,288
+    6      958.2   14.5%  type the quantity 250
+    7      323.7    4.9%  take the quantity from the net sales
+    8      309.2    4.7%  click Register
+    9       97.9    1.5%  find Confirmation
+   10       17.8    0.3%  look for the underprice question
+   11      308.8    4.7%  click Confirmation
+   12      250.8    3.8%  park
+   13      261.1    3.9%  confirm the dialog is gone
+   14      638.4    9.6%  wait for the panel to let the item go
+          6621.3  100.0%  TOTAL
+  listed 245 at 288,288; it lands in row 1
+DONE {"kind": "relist", "row": 1, "lands_in": 1, "qty": 245, "price": 288288}
+    relisted 245 at 288,288 in row 1, 2 relist(s) on the floor now
+  row 2: 'Force Core(Highest' x130 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 2, "item": "Force Core(Highest", "qty": 130, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 2}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 37,477,440 is 130 x 288,288
+  typed 250; the net sales make it 130
+
+  list 130 at 288,288
+    #         ms   share  step
+    1      616.6    9.5%  read the panel before loading
+    2       23.6    0.4%  wait for slot (1,1) to fill
+    3      814.8   12.5%  ctrl-click (1,1) attempt 1
+    4      476.8    7.3%  read the suggested price
+    5     1448.9   22.3%  type the price 288,288
+    6      947.0   14.6%  type the quantity 250
+    7      315.9    4.9%  take the quantity from the net sales
+    8      323.0    5.0%  click Register
+    9       97.9    1.5%  find Confirmation
+   10       17.3    0.3%  look for the underprice question
+   11      304.8    4.7%  click Confirmation
+   12      250.8    3.9%  park
+   13      269.2    4.1%  confirm the dialog is gone
+   14      601.1    9.2%  wait for the panel to let the item go
+          6507.6  100.0%  TOTAL
+  listed 130 at 288,288; it lands in row 2
+DONE {"kind": "relist", "row": 2, "lands_in": 2, "qty": 130, "price": 288288}
+    relisted 130 at 288,288 in row 2, 2 relist(s) on the floor now
+  row 3: 'Force Core(Highest' x250 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 3, "item": "Force Core(Highest", "qty": 250, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 3}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 72,072,000 is 250 x 288,288
+  typed 250; the net sales make it 250
+
+  list 250 at 288,288
+    #         ms   share  step
+    1      610.1    9.4%  read the panel before loading
+    2       20.8    0.3%  wait for slot (1,1) to fill
+    3      817.8   12.6%  ctrl-click (1,1) attempt 1
+    4      478.5    7.3%  read the suggested price
+    5     1457.6   22.4%  type the price 288,288
+    6      947.8   14.6%  type the quantity 250
+    7      322.2    4.9%  take the quantity from the net sales
+    8      310.1    4.8%  click Register
+    9       94.4    1.5%  find Confirmation
+   10       17.9    0.3%  look for the underprice question
+   11      309.8    4.8%  click Confirmation
+   12      251.0    3.9%  park
+   13      273.0    4.2%  confirm the dialog is gone
+   14      600.2    9.2%  wait for the panel to let the item go
+          6511.3  100.0%  TOTAL
+  listed 250 at 288,288; it lands in row 3
+DONE {"kind": "relist", "row": 3, "lands_in": 3, "qty": 250, "price": 288288}
+    relisted 250 at 288,288 in row 3, 2 relist(s) on the floor now
+  row 4: 'Force Core(Highest' x200 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 4, "item": "Force Core(Highest", "qty": 200, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 4}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 57,657,600 is 200 x 288,288
+  typed 250; the net sales make it 200
+
+  list 200 at 288,288
+    #         ms   share  step
+    1      623.8    9.5%  read the panel before loading
+    2       23.7    0.4%  wait for slot (1,1) to fill
+    3      813.1   12.4%  ctrl-click (1,1) attempt 1
+    4      482.3    7.4%  read the suggested price
+    5     1452.4   22.2%  type the price 288,288
+    6      948.4   14.5%  type the quantity 250
+    7      317.2    4.8%  take the quantity from the net sales
+    8      313.2    4.8%  click Register
+    9      103.5    1.6%  find Confirmation
+   10       17.4    0.3%  look for the underprice question
+   11      308.9    4.7%  click Confirmation
+   12      251.0    3.8%  park
+   13      274.7    4.2%  confirm the dialog is gone
+   14      611.1    9.3%  wait for the panel to let the item go
+          6540.6  100.0%  TOTAL
+  listed 200 at 288,288; it lands in row 4
+DONE {"kind": "relist", "row": 4, "lands_in": 4, "qty": 200, "price": 288288}
+    relisted 200 at 288,288 in row 4, 2 relist(s) on the floor now
+  row 5: 'Force Core(Highest' x250 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 5, "item": "Force Core(Highest", "qty": 250, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 5}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 72,072,000 is 250 x 288,288
+  typed 250; the net sales make it 250
+
+  list 250 at 288,288
+    #         ms   share  step
+    1      619.9    9.5%  read the panel before loading
+    2       19.0    0.3%  wait for slot (1,1) to fill
+    3      816.2   12.6%  ctrl-click (1,1) attempt 1
+    4      466.1    7.2%  read the suggested price
+    5     1454.1   22.4%  type the price 288,288
+    6      947.8   14.6%  type the quantity 250
+    7      315.0    4.8%  take the quantity from the net sales
+    8      315.6    4.9%  click Register
+    9       94.6    1.5%  find Confirmation
+   10       18.5    0.3%  look for the underprice question
+   11      311.3    4.8%  click Confirmation
+   12      251.0    3.9%  park
+   13      275.6    4.2%  confirm the dialog is gone
+   14      591.8    9.1%  wait for the panel to let the item go
+          6496.6  100.0%  TOTAL
+  listed 250 at 288,288; it lands in row 5
+DONE {"kind": "relist", "row": 5, "lands_in": 5, "qty": 250, "price": 288288}
+    relisted 250 at 288,288 in row 5, 2 relist(s) on the floor now
+  row 6: 'Force Core(Highest' x203 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 6, "item": "Force Core(Highest", "qty": 203, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 6}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,919, from the row and 3 more
+    the market asks 265,918, 22,370 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 58,522,464 is 203 x 288,288
+  typed 250; the net sales make it 203
+
+  list 203 at 288,288
+    #         ms   share  step
+    1      623.9    9.6%  read the panel before loading
+    2       19.7    0.3%  wait for slot (1,1) to fill
+    3      809.9   12.4%  ctrl-click (1,1) attempt 1
+    4      477.9    7.3%  read the suggested price
+    5     1451.2   22.3%  type the price 288,288
+    6      952.1   14.6%  type the quantity 250
+    7      316.9    4.9%  take the quantity from the net sales
+    8      309.6    4.8%  click Register
+    9       97.5    1.5%  find Confirmation
+   10       16.5    0.3%  look for the underprice question
+   11      303.4    4.7%  click Confirmation
+   12      251.1    3.9%  park
+   13      271.2    4.2%  confirm the dialog is gone
+   14      612.0    9.4%  wait for the panel to let the item go
+          6513.0  100.0%  TOTAL
+  listed 203 at 288,288; it lands in row 6
+DONE {"kind": "relist", "row": 6, "lands_in": 6, "qty": 203, "price": 288288}
+    relisted 203 at 288,288 in row 6, 2 relist(s) on the floor now
+  row 7: 'Force Core(High' x60 at 200,200 -> tab 4 slot (1, 1)
+    floor 200,200 (200,200 x 1) from what it cost; listed at 200,200, above it
+TASK {"kind": "relist", "row": 7, "item": "Force Core(High", "qty": 60, "price": 200200, "tab": 4, "slot": [1, 1], "lands_in": 7}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 199,979, from the row and 3 more
+    market 199,978 is under the 200,200 floor (it cost 200,200 each); listing at the floor
+    net sales 12,012,000 is 60 x 200,200
+  typed 250; the net sales make it 60
+
+  list 60 at 200,200
+    #         ms   share  step
+    1      615.7    9.5%  read the panel before loading
+    2       15.2    0.2%  wait for slot (1,1) to fill
+    3      808.9   12.5%  ctrl-click (1,1) attempt 1
+    4      466.5    7.2%  read the suggested price
+    5     1445.5   22.4%  type the price 200,200
+    6      948.3   14.7%  type the quantity 250
+    7      317.5    4.9%  take the quantity from the net sales
+    8      307.5    4.8%  click Register
+    9       94.5    1.5%  find Confirmation
+   10       18.1    0.3%  look for the underprice question
+   11      312.8    4.8%  click Confirmation
+   12      250.8    3.9%  park
+   13      246.3    3.8%  confirm the dialog is gone
+   14      614.4    9.5%  wait for the panel to let the item go
+          6462.0  100.0%  TOTAL
+  listed 60 at 200,200; it lands in row 7
+DONE {"kind": "relist", "row": 7, "lands_in": 7, "qty": 60, "price": 200200}
+    relisted 60 at 200,200 in row 7, 2 relist(s) on the floor now
+  row 8: 'Force Core (Ultimate' x4 at 444,761 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,761, above it
+TASK {"kind": "relist", "row": 8, "item": "Force Core (Ultimate", "qty": 4, "price": 444761, "tab": 4, "slot": [1, 1], "lands_in": 8}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,753, from the row and 3 more
+    net sales 1,779,008 is 4 x 444,752
+  typed 250; the net sales make it 4
+
+  list 4 at 444,752
+    #         ms   share  step
+    1      633.3    9.7%  read the panel before loading
+    2       29.4    0.4%  wait for slot (1,1) to fill
+    3      810.1   12.4%  ctrl-click (1,1) attempt 1
+    4      474.7    7.2%  read the suggested price
+    5     1449.6   22.1%  type the price 444,752
+    6      945.3   14.4%  type the quantity 250
+    7      323.7    4.9%  take the quantity from the net sales
+    8      310.7    4.7%  click Register
+    9       99.6    1.5%  find Confirmation
+   10       17.5    0.3%  look for the underprice question
+   11      310.5    4.7%  click Confirmation
+   12      251.1    3.8%  park
+   13      275.5    4.2%  confirm the dialog is gone
+   14      625.6    9.5%  wait for the panel to let the item go
+          6556.6  100.0%  TOTAL
+  listed 4 at 444,752; it lands in row 8
+DONE {"kind": "relist", "row": 8, "lands_in": 8, "qty": 4, "price": 444752}
+    relisted 4 at 444,752 in row 8
+    the quantity column read 'Membership', which holds no digits; relisting anyway, the panel counts what is there
+    one line read 'eetonaedae 1 133,333,295 OnSale Change'; read as stacked lines it is 'Yekaterina VIP Membership 133,333,295 OnSale Change'
+  row 9: 'Yekaterina VIP Membership' x1 at 133,333,295 -> tab 4 slot (1, 1)
+    floor 115,379,996 from what it cost; listed at 133,333,295, above it
+TASK {"kind": "relist", "row": 9, "item": "Yekaterina VIP Membership", "qty": 1, "price": 133333295, "tab": 4, "slot": [1, 1], "lands_in": 9}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 133,333,293, from the row and 3 more
+    net sales 133,333,292 is 1 x 133,333,292
+  typed 250; the net sales make it 1
+
+  list 1 at 133,333,292
+    #         ms   share  step
+    1      644.6    9.4%  read the panel before loading
+    2       17.3    0.3%  wait for slot (1,1) to fill
+    3      812.3   11.9%  ctrl-click (1,1) attempt 1
+    4      549.7    8.0%  read the suggested price
+    5     1660.6   24.3%  type the price 133,333,292
+    6      946.9   13.8%  type the quantity 250
+    7      319.5    4.7%  take the quantity from the net sales
+    8      313.1    4.6%  click Register
+    9      100.1    1.5%  find Confirmation
+   10       18.9    0.3%  look for the underprice question
+   11      312.1    4.6%  click Confirmation
+   12      251.1    3.7%  park
+   13      274.7    4.0%  confirm the dialog is gone
+   14      616.5    9.0%  wait for the panel to let the item go
+          6837.3  100.0%  TOTAL
+  listed 1 at 133,333,292; it lands in row 9
+DONE {"kind": "relist", "row": 9, "lands_in": 9, "qty": 1, "price": 133333292}
+    relisted 1 at 133,333,292 in row 9
+  row 10: 'Force Core (Ultimate' x200 at 444,760 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,760, above it
+TASK {"kind": "relist", "row": 10, "item": "Force Core (Ultimate", "qty": 200, "price": 444760, "tab": 4, "slot": [1, 1], "lands_in": 10}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,752, from the row and 3 more
+    net sales 88,950,200 is 200 x 444,751
+  typed 250; the net sales make it 200
+
+  list 200 at 444,751
+    #         ms   share  step
+    1      607.1    9.3%  read the panel before loading
+    2       15.6    0.2%  wait for slot (1,1) to fill
+    3      812.7   12.5%  ctrl-click (1,1) attempt 1
+    4      481.4    7.4%  read the suggested price
+    5     1447.5   22.2%  type the price 444,751
+    6      952.8   14.6%  type the quantity 250
+    7      321.7    4.9%  take the quantity from the net sales
+    8      317.0    4.9%  click Register
+    9       98.5    1.5%  find Confirmation
+   10       17.2    0.3%  look for the underprice question
+   11      308.7    4.7%  click Confirmation
+   12      250.8    3.8%  park
+   13      278.9    4.3%  confirm the dialog is gone
+   14      607.6    9.3%  wait for the panel to let the item go
+          6517.5  100.0%  TOTAL
+  listed 200 at 444,751; it lands in row 10
+DONE {"kind": "relist", "row": 10, "lands_in": 10, "qty": 200, "price": 444751}
+    relisted 200 at 444,751 in row 10
+  row 11: 'Chaos Core Set X 138' x1 at 98,669,447 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 98,669,447, above it
+TASK {"kind": "relist", "row": 11, "item": "Chaos Core Set X 138", "qty": 1, "price": 98669447, "tab": 4, "slot": [1, 1], "lands_in": 11}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,668,206, from the row and 3 more
+    net sales 98,668,205 is 1 x 98,668,205
+  typed 250; the net sales make it 1
+
+  list 1 at 98,668,205
+    #         ms   share  step
+    1      620.7    9.3%  read the panel before loading
+    2       24.1    0.4%  wait for slot (1,1) to fill
+    3      810.7   12.2%  ctrl-click (1,1) attempt 1
+    4      483.2    7.3%  read the suggested price
+    5     1590.4   23.9%  type the price 98,668,205
+    6      949.6   14.3%  type the quantity 250
+    7      319.2    4.8%  take the quantity from the net sales
+    8      316.1    4.7%  click Register
+    9      101.3    1.5%  find Confirmation
+   10       17.7    0.3%  look for the underprice question
+   11      308.2    4.6%  click Confirmation
+   12      250.8    3.8%  park
+   13      262.3    3.9%  confirm the dialog is gone
+   14      607.6    9.1%  wait for the panel to let the item go
+          6661.8  100.0%  TOTAL
+  listed 1 at 98,668,205; it lands in row 11
+DONE {"kind": "relist", "row": 11, "lands_in": 11, "qty": 1, "price": 98668205}
+    relisted 1 at 98,668,205 in row 11
+  row 12: 'Chaos Core Set X 138' x1 at 98,669,309 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 98,669,309, above it
+TASK {"kind": "relist", "row": 12, "item": "Chaos Core Set X 138", "qty": 1, "price": 98669309, "tab": 4, "slot": [1, 1], "lands_in": 12}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,668,068, from the row and 3 more
+    net sales 98,668,067 is 1 x 98,668,067
+  typed 250; the net sales make it 1
+
+  list 1 at 98,668,067
+    #         ms   share  step
+    1      613.4    9.1%  read the panel before loading
+    2       18.0    0.3%  wait for slot (1,1) to fill
+    3      815.9   12.2%  ctrl-click (1,1) attempt 1
+    4      546.8    8.1%  read the suggested price
+    5     1593.3   23.7%  type the price 98,668,067
+    6      946.0   14.1%  type the quantity 250
+    7      320.9    4.8%  take the quantity from the net sales
+    8      312.1    4.6%  click Register
+    9       97.9    1.5%  find Confirmation
+   10       18.7    0.3%  look for the underprice question
+   11      309.4    4.6%  click Confirmation
+   12      251.0    3.7%  park
+   13      266.1    4.0%  confirm the dialog is gone
+   14      605.3    9.0%  wait for the panel to let the item go
+          6714.7  100.0%  TOTAL
+  listed 1 at 98,668,067; it lands in row 12
+DONE {"kind": "relist", "row": 12, "lands_in": 12, "qty": 1, "price": 98668067}
+    relisted 1 at 98,668,067 in row 12
+  row 13: 'Force Core (Ultimate' x52 at 444,759 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,759, above it
+TASK {"kind": "relist", "row": 13, "item": "Force Core (Ultimate", "qty": 52, "price": 444759, "tab": 4, "slot": [1, 1], "lands_in": 13}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,751, from the row and 3 more
+    net sales 23,127,000 is 52 x 444,750
+  typed 250; the net sales make it 52
+
+  list 52 at 444,750
+    #         ms   share  step
+    1      608.8    9.4%  read the panel before loading
+    2       16.9    0.3%  wait for slot (1,1) to fill
+    3      817.9   12.6%  ctrl-click (1,1) attempt 1
+    4      470.3    7.2%  read the suggested price
+    5     1443.2   22.2%  type the price 444,750
+    6      947.2   14.6%  type the quantity 250
+    7      323.4    5.0%  take the quantity from the net sales
+    8      313.2    4.8%  click Register
+    9      103.3    1.6%  find Confirmation
+   10       17.2    0.3%  look for the underprice question
+   11      308.6    4.7%  click Confirmation
+   12      250.9    3.9%  park
+   13      269.4    4.1%  confirm the dialog is gone
+   14      609.6    9.4%  wait for the panel to let the item go
+          6499.7  100.0%  TOTAL
+  listed 52 at 444,750; it lands in row 13
+DONE {"kind": "relist", "row": 13, "lands_in": 13, "qty": 52, "price": 444750}
+    relisted 52 at 444,750 in row 13
+  row 14: 'Chaos Core Set X 144' x1 at 102,959,135 -> tab 4 slot (1, 1)
+    floor 100,800,000 (700,000 x 144) from Chaos Core; listed at 102,959,135, above it
+TASK {"kind": "relist", "row": 14, "item": "Chaos Core Set X 144", "qty": 1, "price": 102959135, "tab": 4, "slot": [1, 1], "lands_in": 14}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 102,957,840, from the row and 3 more
+    net sales 102,957,839 is 1 x 102,957,839
+  typed 250; the net sales make it 1
+
+  list 1 at 102,957,839
+    #         ms   share  step
+    1      603.0    8.9%  read the panel before loading
+    2       19.9    0.3%  wait for slot (1,1) to fill
+    3      812.8   12.0%  ctrl-click (1,1) attempt 1
+    4      554.5    8.2%  read the suggested price
+    5     1657.1   24.4%  type the price 102,957,839
+    6      948.7   14.0%  type the quantity 250
+    7      317.6    4.7%  take the quantity from the net sales
+    8      312.1    4.6%  click Register
+    9       97.2    1.4%  find Confirmation
+   10       16.9    0.2%  look for the underprice question
+   11      309.7    4.6%  click Confirmation
+   12      250.9    3.7%  park
+   13      270.3    4.0%  confirm the dialog is gone
+   14      612.3    9.0%  wait for the panel to let the item go
+          6783.1  100.0%  TOTAL
+  listed 1 at 102,957,839; it lands in row 14
+DONE {"kind": "relist", "row": 14, "lands_in": 14, "qty": 1, "price": 102957839}
+    relisted 1 at 102,957,839 in row 14
+  row 15: 'Chaos Core Set X 138' x1 at 98,669,033 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 98,669,033, above it
+TASK {"kind": "relist", "row": 15, "item": "Chaos Core Set X 138", "qty": 1, "price": 98669033, "tab": 4, "slot": [1, 1], "lands_in": 15}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,667,792, from the row and 3 more
+    net sales 98,667,791 is 1 x 98,667,791
+  typed 250; the net sales make it 1
+
+  list 1 at 98,667,791
+    #         ms   share  step
+    1      605.4    9.1%  read the panel before loading
+    2       18.3    0.3%  wait for slot (1,1) to fill
+    3      811.1   12.2%  ctrl-click (1,1) attempt 1
+    4      479.8    7.2%  read the suggested price
+    5     1586.0   23.9%  type the price 98,667,791
+    6      943.4   14.2%  type the quantity 250
+    7      316.3    4.8%  take the quantity from the net sales
+    8      314.0    4.7%  click Register
+    9       98.2    1.5%  find Confirmation
+   10       17.7    0.3%  look for the underprice question
+   11      308.6    4.7%  click Confirmation
+   12      251.4    3.8%  park
+   13      273.0    4.1%  confirm the dialog is gone
+   14      601.6    9.1%  wait for the panel to let the item go
+          6624.8  100.0%  TOTAL
+  listed 1 at 98,667,791; it lands in row 15
+DONE {"kind": "relist", "row": 15, "lands_in": 15, "qty": 1, "price": 98667791}
+    relisted 1 at 98,667,791 in row 15
+  row 16: 'Chaos Core Set X 138' x1 at 98,668,895 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 98,668,895, above it
+TASK {"kind": "relist", "row": 16, "item": "Chaos Core Set X 138", "qty": 1, "price": 98668895, "tab": 4, "slot": [1, 1], "lands_in": 16}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,667,654, from the row and 3 more
+    net sales 98,667,653 is 1 x 98,667,653
+  typed 250; the net sales make it 1
+
+  list 1 at 98,667,653
+    #         ms   share  step
+    1      628.3    9.3%  read the panel before loading
+    2       24.4    0.4%  wait for slot (1,1) to fill
+    3      815.3   12.1%  ctrl-click (1,1) attempt 1
+    4      489.2    7.2%  read the suggested price
+    5     1595.9   23.6%  type the price 98,667,653
+    6      953.3   14.1%  type the quantity 250
+    7      330.5    4.9%  take the quantity from the net sales
+    8      316.9    4.7%  click Register
+    9      112.5    1.7%  find Confirmation
+   10       21.8    0.3%  look for the underprice question
+   11      316.7    4.7%  click Confirmation
+   12      251.2    3.7%  park
+   13      272.3    4.0%  confirm the dialog is gone
+   14      622.7    9.2%  wait for the panel to let the item go
+          6751.0  100.0%  TOTAL
+  listed 1 at 98,667,653; it lands in row 16
+DONE {"kind": "relist", "row": 16, "lands_in": 16, "qty": 1, "price": 98667653}
+    relisted 1 at 98,667,653 in row 16
+  row 17: 'Upgrade Core (Ultimate' x180 at 479,964 -> tab 4 slot (1, 1)
+    floor 477,475 (477,475 x 1) from Upgrade Core Set (Ultimate); listed at 479,964, above it
+TASK {"kind": "relist", "row": 17, "item": "Upgrade Core (Ultimate", "qty": 180, "price": 479964, "tab": 4, "slot": [1, 1], "lands_in": 17}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 479,962, from the row and 3 more
+    net sales 86,392,980 is 180 x 479,961
+  typed 250; the net sales make it 180
+
+  list 180 at 479,961
+    #         ms   share  step
+    1      631.3    9.5%  read the panel before loading
+    2       20.5    0.3%  wait for slot (1,1) to fill
+    3      816.8   12.2%  ctrl-click (1,1) attempt 1
+    4      565.0    8.5%  read the suggested price
+    5     1449.7   21.7%  type the price 479,961
+    6      971.2   14.6%  type the quantity 250
+    7      341.3    5.1%  take the quantity from the net sales
+    8      313.5    4.7%  click Register
+    9       94.2    1.4%  find Confirmation
+   10       21.4    0.3%  look for the underprice question
+   11      319.8    4.8%  click Confirmation
+   12      251.4    3.8%  park
+   13      270.0    4.0%  confirm the dialog is gone
+   14      605.1    9.1%  wait for the panel to let the item go
+          6671.2  100.0%  TOTAL
+  listed 180 at 479,961; it lands in row 17
+DONE {"kind": "relist", "row": 17, "lands_in": 17, "qty": 180, "price": 479961}
+    relisted 180 at 479,961 in row 17
+  row 18: 'Upgrade Core (Ultimate' x8 at 479,963 -> tab 4 slot (1, 1)
+    floor 281,776 (281,776 x 1) from what it cost; listed at 479,963, above it
+TASK {"kind": "relist", "row": 18, "item": "Upgrade Core (Ultimate", "qty": 8, "price": 479963, "tab": 4, "slot": [1, 1], "lands_in": 18}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 479,961, from the row and 3 more
+    net sales 3,839,680 is 8 x 479,960
+  typed 250; the net sales make it 8
+
+  list 8 at 479,960
+    #         ms   share  step
+    1      628.0    9.4%  read the panel before loading
+    2       19.3    0.3%  wait for slot (1,1) to fill
+    3      823.8   12.3%  ctrl-click (1,1) attempt 1
+    4      555.3    8.3%  read the suggested price
+    5     1451.9   21.6%  type the price 479,960
+    6      956.1   14.3%  type the quantity 250
+    7      330.4    4.9%  take the quantity from the net sales
+    8      314.1    4.7%  click Register
+    9      104.5    1.6%  find Confirmation
+   10       21.1    0.3%  look for the underprice question
+   11      322.0    4.8%  click Confirmation
+   12      253.4    3.8%  park
+   13      287.8    4.3%  confirm the dialog is gone
+   14      640.5    9.5%  wait for the panel to let the item go
+          6708.2  100.0%  TOTAL
+  listed 8 at 479,960; it lands in row 18
+DONE {"kind": "relist", "row": 18, "lands_in": 18, "qty": 8, "price": 479960}
+    relisted 8 at 479,960 in row 18
+  row 19: 'Force Core(High' x9 at 199,980 -> tab 4 slot (1, 1)
+    floor 194,999 (194,999 x 1) from Force Core Set (High); listed at 199,980, above it
+TASK {"kind": "relist", "row": 19, "item": "Force Core(High", "qty": 9, "price": 199980, "tab": 4, "slot": [1, 1], "lands_in": 19}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 199,979, from the row and 3 more
+    net sales 1,799,802 is 9 x 199,978
+  typed 250; the net sales make it 9
+
+  list 9 at 199,978
+    #         ms   share  step
+    1      640.5    9.8%  read the panel before loading
+    2       20.5    0.3%  wait for slot (1,1) to fill
+    3      839.0   12.8%  ctrl-click (1,1) attempt 1
+    4      473.1    7.2%  read the suggested price
+    5     1446.6   22.1%  type the price 199,978
+    6      948.4   14.5%  type the quantity 250
+    7      314.1    4.8%  take the quantity from the net sales
+    8      314.1    4.8%  click Register
+    9       96.0    1.5%  find Confirmation
+   10       16.2    0.2%  look for the underprice question
+   11      310.5    4.7%  click Confirmation
+   12      250.8    3.8%  park
+   13      276.7    4.2%  confirm the dialog is gone
+   14      607.8    9.3%  wait for the panel to let the item go
+          6554.3  100.0%  TOTAL
+  listed 9 at 199,978; it lands in row 19
+DONE {"kind": "relist", "row": 19, "lands_in": 19, "qty": 9, "price": 199978}
+    relisted 9 at 199,978 in row 19
+  row 20: 'Force Core(High' x117 at 199,979 -> tab 4 slot (1, 1)
+    floor 191,667 (191,667 x 1) from what it cost; listed at 199,979, above it
+TASK {"kind": "relist", "row": 20, "item": "Force Core(High", "qty": 117, "price": 199979, "tab": 4, "slot": [1, 1], "lands_in": 20}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 199,978, from the row and 3 more
+    net sales 23,397,309 is 117 x 199,977
+  typed 250; the net sales make it 117
+
+  list 117 at 199,977
+    #         ms   share  step
+    1      613.4    9.4%  read the panel before loading
+    2       17.4    0.3%  wait for slot (1,1) to fill
+    3      813.5   12.5%  ctrl-click (1,1) attempt 1
+    4      475.2    7.3%  read the suggested price
+    5     1442.6   22.2%  type the price 199,977
+    6      946.5   14.6%  type the quantity 250
+    7      316.0    4.9%  take the quantity from the net sales
+    8      313.4    4.8%  click Register
+    9       99.9    1.5%  find Confirmation
+   10       16.6    0.3%  look for the underprice question
+   11      309.9    4.8%  click Confirmation
+   12      251.0    3.9%  park
+   13      264.4    4.1%  confirm the dialog is gone
+   14      615.1    9.5%  wait for the panel to let the item go
+          6494.8  100.0%  TOTAL
+  listed 117 at 199,977; it lands in row 20
+DONE {"kind": "relist", "row": 20, "lands_in": 20, "qty": 117, "price": 199977}
+    relisted 117 at 199,977 in row 20
+  row 21 is empty; nothing to relist
+
+  relisting rows 1-21: 20 relisted, 1 empty, 0 skipped
+    #          ms   share     n      each  phase
+    1   132,109.3   50.5%    20   6,605.5  list it back
+    2    76,150.0   29.1%    20   3,807.5  cancel the row and take it back
+    3    21,222.4    8.1%    20   1,061.1  select inventory tab 4
+    4    12,239.9    4.7%    20     612.0  check the shop slot is empty
+    5    12,015.4    4.6%    21     572.2  scroll to the row and read it
+    6     7,630.1    2.9%    21     363.3  Refresh the table
+        261,367.1  100.0%
+
+  returning the game to its default state
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the gift box at [284, 994]
+  Receive 1 of 4 at [1214, 327]
+  Receive 2 of 4 at [1214, 425]
+  Receive 3 of 4 at [1214, 524]
+  Receive 4 of 4 at [1214, 622]
+  Close at [1483, 846]
+  took 4 gift(s)
+  the Agent Shop is shut and the vendor is not open either; reopening it
+  Inventory shut: slot grid 0.07, needs 0.33
+
+  board after pass 2:
+                                                   bought/u   listed/u  margin      row price
+     1  Force Core(Highest                 x245     288,288    288,288   +0.0%        288,288
+     2  Force Core(Highest                 x130     288,288    288,288   +0.0%        288,288
+     3  Force Core(Highest                 x250     288,288    288,288   +0.0%        288,288
+     4  Force Core(Highest                 x200     288,288    288,288   +0.0%        288,288
+     5  Force Core(Highest                 x250     288,288    288,288   +0.0%        288,288
+     6  Force Core(Highest                 x203     288,288    288,288   +0.0%        288,288
+     7  Force Core(High                    x60      200,200    200,200   +0.0%        200,200
+     8  Force Core (Ultimate               x4             -    444,752       -        444,752
+     9  Yekaterina VIP Membership          x1    115,379,996 133,333,292  +13.5%    133,333,292
+    10  Force Core (Ultimate               x200           -    444,751       -        444,751
+    11  Chaos Core Set X 138               x1             -    714,986       -     98,668,205
+    12  Chaos Core Set X 138               x1             -    714,985       -     98,668,067
+    13  Force Core (Ultimate               x52            -    444,750       -        444,750
+    14  Chaos Core Set X 144               x1             -    714,984       -    102,957,839
+    15  Chaos Core Set X 138               x1             -    714,983       -     98,667,791
+    16  Chaos Core Set X 138               x1             -    714,982       -     98,667,653
+    17  Upgrade Core (Ultimate             x180           -    479,961       -        479,961
+    18  Upgrade Core (Ultimate             x8       281,776    479,960  +41.3%        479,960
+    19  Force Core(High                    x9             -    199,978       -        199,978
+    20  Force Core(High                    x117     191,667    199,977   +4.2%        199,977
+    item                               rows   units          listed
+    Chaos Core Set                        5     696     497,629,555
+    Force Core (Ultimate                  3     256     113,856,208
+    Force Core(High                       3     186      37,209,111
+    Force Core(Highest                    6   1,278     368,432,064
+    Upgrade Core (Ultimate                2     188      90,232,660
+    Yekaterina VIP Membership             1       1     133,333,292
+    board                                20   2,605   1,240,692,890
+    balance now 450,956,537
+  pass 2: 20 relisted, 1 empty, 0 skipped; 9990.2 minute(s) left
+
+-- pass 3 --
+
+  resupply order: Yekaterina VIP Membership, Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Force Core (Ultimate)
+
+  Yekaterina VIP Membership: 1 row(s) inside 1-21, 1 wanted; row 9 'Yekaterina VIP Membership'
+    floor 115,379,996: 300/1000 of the 384,599,987 voucher, read at launch
+
+-- Chaos Core Set under our listing: up to 3 row(s) --
+  Chaos Core Set 714,983 - Chaos Core 700,000 = 14,983
+  ours is listed at 714,982 a Set and a Chaos Core sells at 700,000; buying every Set under 695,000, 5,000 a Set below the lower of the two
+  the cheapest Chaos Core Set is 714,983 a Set, not under 695,000; nothing to buy under ours
+
+  counting only rows 1-21; rows outside it are not repriced and do not count; 1 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                6         -         -         -      -   holds the most it can want, 3; not priced
+  Chaos Core                         5         -         -         -      -   holds the most it can want, 5; not priced
+  Force Core (Ultimate)              3         -         -         -      -   holds the most it can want, 3; not priced
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            2   477,475   479,960     2,485      0   
+
+  nothing inside rows 1-21 holds fewer rows than its margin is worth.
+  row 1: 'Force Core(Highest' x245 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 1, "item": "Force Core(Highest", "qty": 245, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 1}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,918, from the row and 3 more
+    the market asks 265,917, 22,371 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 70,630,560 is 245 x 288,288
+  typed 250; the net sales make it 245
+
+  list 245 at 288,288
+    #         ms   share  step
+    1      619.5    9.5%  read the panel before loading
+    2       21.3    0.3%  wait for slot (1,1) to fill
+    3      810.8   12.4%  ctrl-click (1,1) attempt 1
+    4      475.4    7.3%  read the suggested price
+    5     1450.2   22.3%  type the price 288,288
+    6      946.3   14.5%  type the quantity 250
+    7      314.8    4.8%  take the quantity from the net sales
+    8      310.3    4.8%  click Register
+    9      101.6    1.6%  find Confirmation
+   10       20.4    0.3%  look for the underprice question
+   11      312.5    4.8%  click Confirmation
+   12      251.1    3.9%  park
+   13      269.9    4.1%  confirm the dialog is gone
+   14      610.6    9.4%  wait for the panel to let the item go
+          6514.8  100.0%  TOTAL
+  listed 245 at 288,288; it lands in row 1
+DONE {"kind": "relist", "row": 1, "lands_in": 1, "qty": 245, "price": 288288}
+    relisted 245 at 288,288 in row 1, 3 relist(s) on the floor now
+  row 2: 'Force Core(Highest' x130 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 2, "item": "Force Core(Highest", "qty": 130, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 2}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,918, from the row and 3 more
+    the market asks 265,917, 22,371 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 37,477,440 is 130 x 288,288
+  typed 250; the net sales make it 130
+
+  list 130 at 288,288
+    #         ms   share  step
+    1      605.5    9.3%  read the panel before loading
+    2       20.8    0.3%  wait for slot (1,1) to fill
+    3      807.4   12.4%  ctrl-click (1,1) attempt 1
+    4      474.8    7.3%  read the suggested price
+    5     1453.2   22.3%  type the price 288,288
+    6      949.9   14.6%  type the quantity 250
+    7      340.5    5.2%  take the quantity from the net sales
+    8      305.7    4.7%  click Register
+    9       97.9    1.5%  find Confirmation
+   10       17.0    0.3%  look for the underprice question
+   11      309.1    4.7%  click Confirmation
+   12      251.0    3.9%  park
+   13      272.5    4.2%  confirm the dialog is gone
+   14      603.4    9.3%  wait for the panel to let the item go
+          6508.8  100.0%  TOTAL
+  listed 130 at 288,288; it lands in row 2
+DONE {"kind": "relist", "row": 2, "lands_in": 2, "qty": 130, "price": 288288}
+    relisted 130 at 288,288 in row 2, 3 relist(s) on the floor now
+  row 3: 'Force Core(Highest' x250 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 3, "item": "Force Core(Highest", "qty": 250, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 3}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,918, from the row and 3 more
+    the market asks 265,917, 22,371 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 72,072,000 is 250 x 288,288
+  typed 250; the net sales make it 250
+
+  list 250 at 288,288
+    #         ms   share  step
+    1      615.3    9.4%  read the panel before loading
+    2       18.2    0.3%  wait for slot (1,1) to fill
+    3      820.0   12.5%  ctrl-click (1,1) attempt 1
+    4      473.8    7.2%  read the suggested price
+    5     1440.9   22.0%  type the price 288,288
+    6      952.1   14.5%  type the quantity 250
+    7      334.1    5.1%  take the quantity from the net sales
+    8      316.3    4.8%  click Register
+    9       98.8    1.5%  find Confirmation
+   10       17.5    0.3%  look for the underprice question
+   11      304.1    4.6%  click Confirmation
+   12      251.1    3.8%  park
+   13      280.4    4.3%  confirm the dialog is gone
+   14      622.4    9.5%  wait for the panel to let the item go
+          6545.0  100.0%  TOTAL
+  listed 250 at 288,288; it lands in row 3
+DONE {"kind": "relist", "row": 3, "lands_in": 3, "qty": 250, "price": 288288}
+    relisted 250 at 288,288 in row 3, 3 relist(s) on the floor now
+  row 4: 'Force Core(Highest' x200 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 4, "item": "Force Core(Highest", "qty": 200, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 4}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,918, from the row and 3 more
+    the market asks 265,917, 22,371 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 57,657,600 is 200 x 288,288
+  typed 250; the net sales make it 200
+
+  list 200 at 288,288
+    #         ms   share  step
+    1      633.2    9.7%  read the panel before loading
+    2       18.4    0.3%  wait for slot (1,1) to fill
+    3      809.0   12.4%  ctrl-click (1,1) attempt 1
+    4      473.5    7.3%  read the suggested price
+    5     1455.3   22.3%  type the price 288,288
+    6      947.0   14.5%  type the quantity 250
+    7      325.0    5.0%  take the quantity from the net sales
+    8      307.6    4.7%  click Register
+    9       92.7    1.4%  find Confirmation
+   10       16.0    0.2%  look for the underprice question
+   11      303.9    4.7%  click Confirmation
+   12      250.9    3.8%  park
+   13      275.0    4.2%  confirm the dialog is gone
+   14      618.9    9.5%  wait for the panel to let the item go
+          6526.4  100.0%  TOTAL
+  listed 200 at 288,288; it lands in row 4
+DONE {"kind": "relist", "row": 4, "lands_in": 4, "qty": 200, "price": 288288}
+    relisted 200 at 288,288 in row 4, 3 relist(s) on the floor now
+  row 5: 'Force Core(Highest' x250 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 5, "item": "Force Core(Highest", "qty": 250, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 5}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,918, from the row and 3 more
+    the market asks 265,917, 22,371 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 72,072,000 is 250 x 288,288
+  typed 250; the net sales make it 250
+
+  list 250 at 288,288
+    #         ms   share  step
+    1      614.7    9.3%  read the panel before loading
+    2       17.5    0.3%  wait for slot (1,1) to fill
+    3      811.8   12.3%  ctrl-click (1,1) attempt 1
+    4      470.9    7.1%  read the suggested price
+    5     1451.7   22.0%  type the price 288,288
+    6      945.7   14.3%  type the quantity 250
+    7      315.7    4.8%  take the quantity from the net sales
+    8      309.9    4.7%  click Register
+    9      201.8    3.1%  find Confirmation
+   10       19.0    0.3%  look for the underprice question
+   11      303.6    4.6%  click Confirmation
+   12      250.9    3.8%  park
+   13      277.9    4.2%  confirm the dialog is gone
+   14      603.5    9.2%  wait for the panel to let the item go
+          6594.5  100.0%  TOTAL
+  listed 250 at 288,288; it lands in row 5
+DONE {"kind": "relist", "row": 5, "lands_in": 5, "qty": 250, "price": 288288}
+    relisted 250 at 288,288 in row 5, 3 relist(s) on the floor now
+  row 6: 'Force Core(Highest' x203 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 6, "item": "Force Core(Highest", "qty": 203, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 6}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,918, from the row and 3 more
+    the market asks 265,917, 22,371 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 58,522,464 is 203 x 288,288
+  typed 250; the net sales make it 203
+
+  list 203 at 288,288
+    #         ms   share  step
+    1      610.8    9.4%  read the panel before loading
+    2       16.4    0.3%  wait for slot (1,1) to fill
+    3      816.2   12.6%  ctrl-click (1,1) attempt 1
+    4      478.1    7.4%  read the suggested price
+    5     1441.8   22.3%  type the price 288,288
+    6      945.2   14.6%  type the quantity 250
+    7      316.7    4.9%  take the quantity from the net sales
+    8      308.3    4.8%  click Register
+    9       95.0    1.5%  find Confirmation
+   10       18.7    0.3%  look for the underprice question
+   11      312.1    4.8%  click Confirmation
+   12      251.0    3.9%  park
+   13      262.9    4.1%  confirm the dialog is gone
+   14      606.1    9.4%  wait for the panel to let the item go
+          6479.1  100.0%  TOTAL
+  listed 203 at 288,288; it lands in row 6
+DONE {"kind": "relist", "row": 6, "lands_in": 6, "qty": 203, "price": 288288}
+    relisted 203 at 288,288 in row 6, 3 relist(s) on the floor now
+  row 7: 'Force Core(High' x60 at 200,200 -> tab 4 slot (1, 1)
+    floor 200,200 (200,200 x 1) from what it cost; listed at 200,200, above it
+TASK {"kind": "relist", "row": 7, "item": "Force Core(High", "qty": 60, "price": 200200, "tab": 4, "slot": [1, 1], "lands_in": 7}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 199,977, from the row and 3 more
+    market 199,976 is under the 200,200 floor (it cost 200,200 each); listing at the floor
+    net sales 12,012,000 is 60 x 200,200
+  typed 250; the net sales make it 60
+
+  list 60 at 200,200
+    #         ms   share  step
+    1      615.6    9.5%  read the panel before loading
+    2       15.4    0.2%  wait for slot (1,1) to fill
+    3      816.1   12.6%  ctrl-click (1,1) attempt 1
+    4      475.4    7.3%  read the suggested price
+    5     1454.6   22.4%  type the price 200,200
+    6      948.3   14.6%  type the quantity 250
+    7      311.0    4.8%  take the quantity from the net sales
+    8      309.7    4.8%  click Register
+    9       98.0    1.5%  find Confirmation
+   10       18.6    0.3%  look for the underprice question
+   11      304.4    4.7%  click Confirmation
+   12      250.8    3.9%  park
+   13      267.7    4.1%  confirm the dialog is gone
+   14      614.7    9.5%  wait for the panel to let the item go
+          6500.5  100.0%  TOTAL
+  listed 60 at 200,200; it lands in row 7
+DONE {"kind": "relist", "row": 7, "lands_in": 7, "qty": 60, "price": 200200}
+    relisted 60 at 200,200 in row 7, 3 relist(s) on the floor now
+  row 8: 'Force Core (Ultimate' x4 at 444,752 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,752, above it
+TASK {"kind": "relist", "row": 8, "item": "Force Core (Ultimate", "qty": 4, "price": 444752, "tab": 4, "slot": [1, 1], "lands_in": 8}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,745, from the row and 3 more
+    net sales 1,778,976 is 4 x 444,744
+  typed 250; the net sales make it 4
+
+  list 4 at 444,744
+    #         ms   share  step
+    1      632.1    9.6%  read the panel before loading
+    2       29.7    0.4%  wait for slot (1,1) to fill
+    3      815.2   12.3%  ctrl-click (1,1) attempt 1
+    4      474.1    7.2%  read the suggested price
+    5     1449.7   21.9%  type the price 444,744
+    6      948.6   14.3%  type the quantity 250
+    7      323.8    4.9%  take the quantity from the net sales
+    8      316.2    4.8%  click Register
+    9      101.0    1.5%  find Confirmation
+   10       29.1    0.4%  look for the underprice question
+   11      322.8    4.9%  click Confirmation
+   12      250.8    3.8%  park
+   13      281.3    4.3%  confirm the dialog is gone
+   14      641.6    9.7%  wait for the panel to let the item go
+          6616.0  100.0%  TOTAL
+  listed 4 at 444,744; it lands in row 8
+DONE {"kind": "relist", "row": 8, "lands_in": 8, "qty": 4, "price": 444744}
+    relisted 4 at 444,744 in row 8
+    the quantity column read 'Membership', which holds no digits; relisting anyway, the panel counts what is there
+    one line read 'eetonaedae 1 133,333,292 OnSale Change'; read as stacked lines it is 'Yekaterina VIP Membership 133,333,292 Change'
+  row 9: 'Yekaterina VIP Membership' x1 at 133,333,292 -> tab 4 slot (1, 1)
+    floor 115,379,996 from what it cost; listed at 133,333,292, above it
+TASK {"kind": "relist", "row": 9, "item": "Yekaterina VIP Membership", "qty": 1, "price": 133333292, "tab": 4, "slot": [1, 1], "lands_in": 9}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 133,333,291, from the row and 3 more
+    net sales 133,333,290 is 1 x 133,333,290
+  typed 250; the net sales make it 1
+
+  list 1 at 133,333,290
+    #         ms   share  step
+    1      636.3    9.2%  read the panel before loading
+    2       24.9    0.4%  wait for slot (1,1) to fill
+    3      815.6   11.8%  ctrl-click (1,1) attempt 1
+    4      572.9    8.3%  read the suggested price
+    5     1670.2   24.2%  type the price 133,333,290
+    6      950.0   13.7%  type the quantity 250
+    7      325.5    4.7%  take the quantity from the net sales
+    8      322.3    4.7%  click Register
+    9      103.8    1.5%  find Confirmation
+   10       21.5    0.3%  look for the underprice question
+   11      316.5    4.6%  click Confirmation
+   12      251.1    3.6%  park
+   13      279.0    4.0%  confirm the dialog is gone
+   14      622.2    9.0%  wait for the panel to let the item go
+          6911.7  100.0%  TOTAL
+  listed 1 at 133,333,290; it lands in row 9
+DONE {"kind": "relist", "row": 9, "lands_in": 9, "qty": 1, "price": 133333290}
+    relisted 1 at 133,333,290 in row 9
+  row 10: 'Force Core (Ultimate' x200 at 444,751 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,751, above it
+TASK {"kind": "relist", "row": 10, "item": "Force Core (Ultimate", "qty": 200, "price": 444751, "tab": 4, "slot": [1, 1], "lands_in": 10}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,744, from the row and 3 more
+    net sales 88,948,600 is 200 x 444,743
+  typed 250; the net sales make it 200
+
+  list 200 at 444,743
+    #         ms   share  step
+    1      636.0    9.7%  read the panel before loading
+    2       19.5    0.3%  wait for slot (1,1) to fill
+    3      824.5   12.5%  ctrl-click (1,1) attempt 1
+    4      513.9    7.8%  read the suggested price
+    5     1452.7   22.1%  type the price 444,743
+    6      949.7   14.4%  type the quantity 250
+    7      317.0    4.8%  take the quantity from the net sales
+    8      315.9    4.8%  click Register
+    9       95.1    1.4%  find Confirmation
+   10       20.8    0.3%  look for the underprice question
+   11      307.5    4.7%  click Confirmation
+   12      250.8    3.8%  park
+   13      268.7    4.1%  confirm the dialog is gone
+   14      610.7    9.3%  wait for the panel to let the item go
+          6582.7  100.0%  TOTAL
+  listed 200 at 444,743; it lands in row 10
+DONE {"kind": "relist", "row": 10, "lands_in": 10, "qty": 200, "price": 444743}
+    relisted 200 at 444,743 in row 10
+  row 11: 'Chaos Core Set X 138' x1 at 98,668,205 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 98,668,205, above it
+TASK {"kind": "relist", "row": 11, "item": "Chaos Core Set X 138", "qty": 1, "price": 98668205, "tab": 4, "slot": [1, 1], "lands_in": 11}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,667,516, from the row and 3 more
+    net sales 98,667,515 is 1 x 98,667,515
+  typed 250; the net sales make it 1
+
+  list 1 at 98,667,515
+    #         ms   share  step
+    1      617.8    9.2%  read the panel before loading
+    2       19.7    0.3%  wait for slot (1,1) to fill
+    3      809.9   12.1%  ctrl-click (1,1) attempt 1
+    4      488.4    7.3%  read the suggested price
+    5     1589.6   23.7%  type the price 98,667,515
+    6      955.0   14.2%  type the quantity 250
+    7      322.2    4.8%  take the quantity from the net sales
+    8      318.5    4.7%  click Register
+    9      104.3    1.6%  find Confirmation
+   10       23.0    0.3%  look for the underprice question
+   11      320.7    4.8%  click Confirmation
+   12      251.4    3.7%  park
+   13      269.8    4.0%  confirm the dialog is gone
+   14      618.3    9.2%  wait for the panel to let the item go
+          6708.5  100.0%  TOTAL
+  listed 1 at 98,667,515; it lands in row 11
+DONE {"kind": "relist", "row": 11, "lands_in": 11, "qty": 1, "price": 98667515}
+    relisted 1 at 98,667,515 in row 11
+  row 12: 'Chaos Core Set X 138' x1 at 98,668,067 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 98,668,067, above it
+TASK {"kind": "relist", "row": 12, "item": "Chaos Core Set X 138", "qty": 1, "price": 98668067, "tab": 4, "slot": [1, 1], "lands_in": 12}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,667,240, from the row and 3 more
+    net sales 98,667,239 is 1 x 98,667,239
+  typed 250; the net sales make it 1
+
+  list 1 at 98,667,239
+    #         ms   share  step
+    1      639.2    9.4%  read the panel before loading
+    2       20.7    0.3%  wait for slot (1,1) to fill
+    3      826.1   12.1%  ctrl-click (1,1) attempt 1
+    4      495.1    7.3%  read the suggested price
+    5     1595.3   23.4%  type the price 98,667,239
+    6      955.4   14.0%  type the quantity 250
+    7      341.2    5.0%  take the quantity from the net sales
+    8      317.1    4.7%  click Register
+    9      101.4    1.5%  find Confirmation
+   10       20.5    0.3%  look for the underprice question
+   11      320.0    4.7%  click Confirmation
+   12      251.4    3.7%  park
+   13      278.8    4.1%  confirm the dialog is gone
+   14      655.4    9.6%  wait for the panel to let the item go
+          6817.6  100.0%  TOTAL
+  listed 1 at 98,667,239; it lands in row 12
+DONE {"kind": "relist", "row": 12, "lands_in": 12, "qty": 1, "price": 98667239}
+    relisted 1 at 98,667,239 in row 12
+  row 13: 'Force Core (Ultimate' x52 at 444,750 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,750, above it
+TASK {"kind": "relist", "row": 13, "item": "Force Core (Ultimate", "qty": 52, "price": 444750, "tab": 4, "slot": [1, 1], "lands_in": 13}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,743, from the row and 3 more
+    net sales 23,126,584 is 52 x 444,742
+  typed 250; the net sales make it 52
+
+  list 52 at 444,742
+    #         ms   share  step
+    1      621.3    9.4%  read the panel before loading
+    2       18.3    0.3%  wait for slot (1,1) to fill
+    3      822.3   12.4%  ctrl-click (1,1) attempt 1
+    4      493.3    7.4%  read the suggested price
+    5     1455.5   21.9%  type the price 444,742
+    6      963.1   14.5%  type the quantity 250
+    7      328.8    5.0%  take the quantity from the net sales
+    8      317.6    4.8%  click Register
+    9      101.5    1.5%  find Confirmation
+   10       18.9    0.3%  look for the underprice question
+   11      319.5    4.8%  click Confirmation
+   12      251.2    3.8%  park
+   13      288.3    4.3%  confirm the dialog is gone
+   14      643.2    9.7%  wait for the panel to let the item go
+          6643.0  100.0%  TOTAL
+  listed 52 at 444,742; it lands in row 13
+DONE {"kind": "relist", "row": 13, "lands_in": 13, "qty": 52, "price": 444742}
+    relisted 52 at 444,742 in row 13
+  row 14: 'Chaos Core Set X 144' x1 at 102,957,839 -> tab 4 slot (1, 1)
+    floor 100,800,000 (700,000 x 144) from Chaos Core; listed at 102,957,839, above it
+TASK {"kind": "relist", "row": 14, "item": "Chaos Core Set X 144", "qty": 1, "price": 102957839, "tab": 4, "slot": [1, 1], "lands_in": 14}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 102,956,976, from the row and 3 more
+    net sales 102,956,975 is 1 x 102,956,975
+  typed 250; the net sales make it 1
+
+  list 1 at 102,956,975
+    #         ms   share  step
+    1      628.8    9.2%  read the panel before loading
+    2       22.5    0.3%  wait for slot (1,1) to fill
+    3      816.5   12.0%  ctrl-click (1,1) attempt 1
+    4      497.1    7.3%  read the suggested price
+    5     1666.4   24.4%  type the price 102,956,975
+    6      979.5   14.4%  type the quantity 250
+    7      316.9    4.6%  take the quantity from the net sales
+    8      310.7    4.6%  click Register
+    9      102.5    1.5%  find Confirmation
+   10       17.4    0.3%  look for the underprice question
+   11      304.1    4.5%  click Confirmation
+   12      251.1    3.7%  park
+   13      292.8    4.3%  confirm the dialog is gone
+   14      611.2    9.0%  wait for the panel to let the item go
+          6817.7  100.0%  TOTAL
+  listed 1 at 102,956,975; it lands in row 14
+DONE {"kind": "relist", "row": 14, "lands_in": 14, "qty": 1, "price": 102956975}
+    relisted 1 at 102,956,975 in row 14
+  row 15: 'Chaos Core Set X 138' x1 at 98,667,791 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 98,667,791, above it
+TASK {"kind": "relist", "row": 15, "item": "Chaos Core Set X 138", "qty": 1, "price": 98667791, "tab": 4, "slot": [1, 1], "lands_in": 15}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,666,964, from the row and 3 more
+    net sales 98,666,963 is 1 x 98,666,963
+  typed 250; the net sales make it 1
+
+  list 1 at 98,666,963
+    #         ms   share  step
+    1      602.3    9.1%  read the panel before loading
+    2       24.7    0.4%  wait for slot (1,1) to fill
+    3      816.6   12.3%  ctrl-click (1,1) attempt 1
+    4      475.2    7.2%  read the suggested price
+    5     1585.1   23.9%  type the price 98,666,963
+    6      946.7   14.3%  type the quantity 250
+    7      309.3    4.7%  take the quantity from the net sales
+    8      311.7    4.7%  click Register
+    9       91.0    1.4%  find Confirmation
+   10       19.8    0.3%  look for the underprice question
+   11      304.5    4.6%  click Confirmation
+   12      250.9    3.8%  park
+   13      256.0    3.9%  confirm the dialog is gone
+   14      636.3    9.6%  wait for the panel to let the item go
+          6630.2  100.0%  TOTAL
+  listed 1 at 98,666,963; it lands in row 15
+DONE {"kind": "relist", "row": 15, "lands_in": 15, "qty": 1, "price": 98666963}
+    relisted 1 at 98,666,963 in row 15
+  row 16 has SOLD (fully); collecting
+    collected; row 16 is empty, nothing to relist
+  a 'Chaos Core Set X 138' row sold and is collected; Chaos Core holds 4 row(s), pricing and resupplying it now, not on the next pass
+  Chaos Core Set 714,979 - Chaos Core 700,000 = 14,979
+  Alz 549,624,190 held covers 785 Chaos Core at 700,000; buying what it covers
+
+-- Chaos Core: 4 row(s) --
+  2 row(s) free inside 1-21
+  Chaos Core Set 714,979 - Chaos Core 700,000 = 14,979
+  a margin of 14,979 is worth 5 row(s) of Chaos Core; 4 held
+  buy_min 150 rolled to 164 (+/-15); buying 165 in whole batches of 3
+  1 stays behind on every row bought; each order prices the favourite afresh, then wheels down past the rows already down to their last 1, up to 30 step(s)
+TASK {"kind": "resupply", "core": "Chaos Core", "set": "Chaos Core Set", "slot": 3, "tab": 4}
+  0/165 Chaos Core held
+  row 1 offers 'Chaos Core' x126 at 700,000 (700,000/unit)
+    row 1 leaves 14,979 a core against the 10,000 wanted
+    balance before 549,624,190
+    row 1 holds 126, 1 stays behind, so at most 125 comes off it
+    dialog: '¢ Chaos Core'  qty 1 of 126  price 700000
+    165 core(s) wanted, 1 to a pack -> 165 pack(s); 126 available, taking 125
+    ordering 125 pack(s) at 87,500,000; the spend will confirm what actually bought
+    balance after  462,124,190; spent 87,500,000 bought 125 pack(s) = 125 core(s) (700,000 a core)
+
+  buy from favourite slot 3: bought 125 core(s) in 125 order(s)
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      107.8    1.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      124.7    2.1%  get_price: purchase_tab_showing
+    4      178.2    3.0%  get_price: read row 1 before the search
+    5      318.2    5.3%  get_price: click favourite slot 3
+    6       87.2    1.5%  get_price: confirm the sort
+    7      376.9    6.3%  get_price: poll row 1 until it answers (2 read(s))
+    8     1220.5   20.3%  get_price: search the favourite and read row 1
+    9       92.8    1.5%  read the balance before buying
+   10      361.8    6.0%  click the row at (500, 258)
+   11      309.5    5.1%  click Buy at (828, 258)
+   12       90.6    1.5%  await the Purchase dialog
+   13      309.3    5.1%  read the dialog (item, price, qty, qty_max)
+   14     1404.7   23.4%  click the quantity field and type 125
+   15       86.4    1.4%  find the Buy button
+   16      304.7    5.1%  click Buy
+   17      251.0    4.2%  park
+   18      100.5    1.7%  confirm the dialog is gone
+   19      289.1    4.8%  read the balance after buying
+          6014.6  100.0%  TOTAL
+  125/165 Chaos Core held
+  row 1 offers 'Chaos Core' x1 at 700,000 (700,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.3    0.0%  get_price: focus the game
+    2      112.9    2.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      116.5    2.4%  get_price: purchase_tab_showing
+    4      165.8    3.4%  get_price: read row 1 before the search
+    5      310.5    6.3%  get_price: click favourite slot 3
+    6       89.2    1.8%  get_price: confirm the sort
+    7     1656.3   33.6%  get_price: poll row 1 until it answers (9 read(s))
+    8     2480.5   50.3%  get_price: search the favourite and read row 1
+          4932.1  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 312)
+  row 1 offers 'Chaos Core' x22 at 700,000 (700,000/unit)
+    row 1 leaves 14,979 a core against the 10,000 wanted
+    balance before 462,124,190
+    row 1 holds 22, 1 stays behind, so at most 21 comes off it
+    dialog: '¢ Chaos Core'  qty 1 of 22  price 700000
+    40 core(s) wanted, 1 to a pack -> 40 pack(s); 22 available, taking 21
+    ordering 21 pack(s) at 14,700,000; the spend will confirm what actually bought
+    balance after  447,424,190; spent 14,700,000 bought 21 pack(s) = 21 core(s) (700,000 a core)
+
+  buy from favourite slot 3: bought 21 core(s) in 21 order(s)
+    #         ms   share  step
+    1        0.7    0.0%  get_price: focus the game
+    2      110.4    2.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      114.8    2.7%  get_price: purchase_tab_showing
+    4      215.4    5.1%  get_price: read row 1 where it stands
+    5      441.3   10.4%  get_price: search the favourite and read row 1
+    6       92.4    2.2%  read the balance before buying
+    7      365.4    8.6%  click the row at (500, 258)
+    8      308.1    7.3%  click Buy at (828, 258)
+    9       93.3    2.2%  await the Purchase dialog
+   10      313.0    7.4%  read the dialog (item, price, qty, qty_max)
+   11     1333.3   31.5%  click the quantity field and type 21
+   12       93.0    2.2%  find the Buy button
+   13      313.4    7.4%  click Buy
+   14      251.0    5.9%  park
+   15       96.3    2.3%  confirm the dialog is gone
+   16       93.2    2.2%  read the balance after buying
+          4234.8  100.0%  TOTAL
+  146/165 Chaos Core held
+  row 1 offers 'Chaos Core' x1 at 700,000 (700,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      111.0    2.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      115.1    2.3%  get_price: purchase_tab_showing
+    4      167.5    3.4%  get_price: read row 1 before the search
+    5      311.6    6.3%  get_price: click favourite slot 3
+    6       92.4    1.9%  get_price: confirm the sort
+    7     1652.7   33.5%  get_price: poll row 1 until it answers (9 read(s))
+    8     2476.5   50.3%  get_price: search the favourite and read row 1
+          4927.3  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 312)
+  row 1 offers 'Chaos Core' x1 at 700,000 (700,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      107.2   10.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      112.6   11.3%  get_price: purchase_tab_showing
+    4      279.0   27.9%  get_price: read row 1 where it stands
+    5      499.4   50.0%  get_price: search the favourite and read row 1
+           998.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 312)
+  row 1 offers 'Chaos Core' x224 at 700,000 (700,000/unit)
+    row 1 leaves 14,979 a core against the 10,000 wanted
+    balance before 447,424,190
+    row 1 holds 224, 1 stays behind, so at most 223 comes off it
+    dialog: '¢ Chaos Core'  qty 1 of 124  price 700000
+    the dialog allows at most 124 of the row's 224
+    19 core(s) wanted, 1 to a pack -> 19 pack(s); 124 available, taking 19
+    ordering 19 pack(s) at 13,300,000; the spend will confirm what actually bought
+    balance after  434,124,190; spent 13,300,000 bought 19 pack(s) = 19 core(s) (700,000 a core)
+
+  buy from favourite slot 3: bought 19 core(s) in 19 order(s)
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      109.0    2.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      115.4    2.7%  get_price: purchase_tab_showing
+    4      215.0    5.1%  get_price: read row 1 where it stands
+    5      439.9   10.4%  get_price: search the favourite and read row 1
+    6       94.2    2.2%  read the balance before buying
+    7      368.0    8.7%  click the row at (500, 258)
+    8      308.3    7.3%  click Buy at (828, 258)
+    9       93.1    2.2%  await the Purchase dialog
+   10      309.0    7.3%  read the dialog (item, price, qty, qty_max)
+   11     1332.3   31.5%  click the quantity field and type 19
+   12       97.4    2.3%  find the Buy button
+   13      309.9    7.3%  click Buy
+   14      251.0    5.9%  park
+   15       95.7    2.3%  confirm the dialog is gone
+   16       94.4    2.2%  read the balance after buying
+          4233.0  100.0%  TOTAL
+  Inventory shut; pressing I (attempt 1)
+  right-clicking the craft key on tab 8 slot (1, 8) at (1871, 236) (attempt 1/3)
+  opening the 2000-2999 tier at [90, 209]
+  choosing Chaos Core Set x3 at [146, 268]
+  165 Chaos Core(s) bought this pass, 3 to a craft
+  Request All at [263, 730]
+  waiting 20s for 165 core(s) (5s per 50, rounded up)
+  Complete All at [872, 729]
+  the Sets land from tab 4 slot (1, 1), the first the run holds nothing in
+  compressing tab 4 slot (1, 1) at (1479, 236)
+  165 Chaos Core(s) went into the queue
+
+  craft from 165 Chaos Core(s)
+    #         ms   share  step
+    1     2407.6    8.5%  open the craft window
+    2     2442.5    8.6%  select the recipe
+    3      309.8    1.1%  Request All
+    4    20000.7   70.7%  wait for the queue
+    5      910.3    3.2%  select inventory tab 4 before completing
+    6      817.1    2.9%  Complete All
+    7     1395.8    4.9%  compress the crafted Sets
+         28283.9  100.0%  TOTAL
+  the Agent Shop is shut and the vendor is not open either; reopening it
+  Inventory shut: slot grid 0.05, needs 0.33
+  listing the Chaos Core Set compressed into (1, 1) from 165 Chaos Core(s)
+  the board's cheapest is 714,979 a Set, and the panel scales that to whatever the bundle holds
+  it cost 700,000 a Core, so no Set goes out under that
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 118,686,182, from the row and 2 more
+  the panel prices the bundle at 118,686,182, 166 x 714,979; the floor is 116,200,000
+    net sales 118,686,181 is 1 x 118,686,181
+  typed 250; the net sales make it 1
+
+  list 1 at 118,686,181
+    #         ms   share  step
+    1      656.5    9.5%  read the panel before loading
+    2      837.0   12.2%  ctrl-click (1,1) attempt 1
+    3      564.3    8.2%  read the suggested price
+    4     1663.0   24.2%  type the price 118,686,181
+    5      946.7   13.8%  type the quantity 250
+    6      325.0    4.7%  take the quantity from the net sales
+    7      311.8    4.5%  click Register
+    8      102.9    1.5%  find Confirmation
+    9       17.9    0.3%  look for the underprice question
+   10      314.2    4.6%  click Confirmation
+   11      251.2    3.7%  park
+   12      277.2    4.0%  confirm the dialog is gone
+   13      608.5    8.8%  wait for the panel to let the item go
+          6876.1  100.0%  TOTAL
+  listed 1 at 118,686,181; it lands in row 16
+DONE {"kind": "resupply", "core": "Chaos Core", "bought": 165, "listed": 1, "rows": [16]}
+
+  resupply Chaos Core: bought 165, 165 into the craft, listed 1 in rows [16]
+    #          ms   share     n      each  phase
+    1    28,885.2   42.9%     1  28,885.2  craft Chaos Core into Chaos Core Set
+    2     6,879.8   10.2%     1   6,879.8  list Chaos Core Set from (1, 1)
+    3     4,841.7    7.2%     1   4,841.7  buy order 1
+    4     3,813.9    5.7%     1   3,813.9  buy order 3
+    5     3,813.1    5.7%     1   3,813.1  buy order 6
+    6     3,591.2    5.3%     1   3,591.2  reopen the Agent Shop
+    7     2,658.3    4.0%     1   2,658.3  price Chaos Core
+    8     2,481.6    3.7%     1   2,481.6  buy order 2
+    9     2,477.4    3.7%     1   2,477.4  buy order 4
+   10     2,287.7    3.4%     1   2,287.7  select the Register tab
+   11     1,272.5    1.9%     1   1,272.5  price Chaos Core Set
+   12       932.0    1.4%     1     932.0  close the Agent Shop
+   13       912.2    1.4%     1     912.2  select inventory tab 4
+   14       800.7    1.2%     1     800.7  close the craft window
+   15       743.7    1.1%     2     371.8  step down to the next offer (1)
+   16       500.3    0.7%     1     500.3  buy order 5
+   17       371.9    0.6%     1     371.9  step down to the next offer (2)
+         67,263.1  100.0%
+  Chaos Core: 5 of 5 row(s) after that one
+  row 17: 'Upgrade Core (Ultimate' x180 at 479,961 -> tab 4 slot (1, 1)
+    floor 477,475 (477,475 x 1) from Upgrade Core Set (Ultimate); listed at 479,961, above it
+TASK {"kind": "relist", "row": 17, "item": "Upgrade Core (Ultimate", "qty": 180, "price": 479961, "tab": 4, "slot": [1, 1], "lands_in": 17}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 479,959, from the row and 3 more
+    net sales 86,392,440 is 180 x 479,958
+  typed 250; the net sales make it 180
+
+  list 180 at 479,958
+    #         ms   share  step
+    1      608.8    9.2%  read the panel before loading
+    2       20.9    0.3%  wait for slot (1,1) to fill
+    3      818.4   12.4%  ctrl-click (1,1) attempt 1
+    4      537.2    8.2%  read the suggested price
+    5     1450.6   22.0%  type the price 479,958
+    6      947.3   14.4%  type the quantity 250
+    7      315.6    4.8%  take the quantity from the net sales
+    8      313.2    4.8%  click Register
+    9       98.2    1.5%  find Confirmation
+   10       15.7    0.2%  look for the underprice question
+   11      314.9    4.8%  click Confirmation
+   12      251.2    3.8%  park
+   13      275.2    4.2%  confirm the dialog is gone
+   14      618.5    9.4%  wait for the panel to let the item go
+          6585.6  100.0%  TOTAL
+  listed 180 at 479,958; it lands in row 17
+DONE {"kind": "relist", "row": 17, "lands_in": 17, "qty": 180, "price": 479958}
+    relisted 180 at 479,958 in row 17
+  row 18: 'Upgrade Core (Ultimate' x8 at 479,960 -> tab 4 slot (1, 1)
+    floor 281,776 (281,776 x 1) from what it cost; listed at 479,960, above it
+TASK {"kind": "relist", "row": 18, "item": "Upgrade Core (Ultimate", "qty": 8, "price": 479960, "tab": 4, "slot": [1, 1], "lands_in": 18}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 479,958, from the row and 3 more
+    net sales 3,839,656 is 8 x 479,957
+  typed 250; the net sales make it 8
+
+  list 8 at 479,957
+    #         ms   share  step
+    1      618.7    9.3%  read the panel before loading
+    2       23.7    0.4%  wait for slot (1,1) to fill
+    3      811.9   12.2%  ctrl-click (1,1) attempt 1
+    4      553.9    8.3%  read the suggested price
+    5     1450.5   21.7%  type the price 479,957
+    6      951.1   14.3%  type the quantity 250
+    7      345.1    5.2%  take the quantity from the net sales
+    8      313.3    4.7%  click Register
+    9       99.6    1.5%  find Confirmation
+   10       22.6    0.3%  look for the underprice question
+   11      315.7    4.7%  click Confirmation
+   12      251.5    3.8%  park
+   13      266.7    4.0%  confirm the dialog is gone
+   14      645.7    9.7%  wait for the panel to let the item go
+          6670.1  100.0%  TOTAL
+  listed 8 at 479,957; it lands in row 18
+DONE {"kind": "relist", "row": 18, "lands_in": 18, "qty": 8, "price": 479957}
+    relisted 8 at 479,957 in row 18
+  row 19: 'Force Core(High' x9 at 199,978 -> tab 4 slot (1, 1)
+    floor 194,999 (194,999 x 1) from Force Core Set (High); listed at 199,978, above it
+TASK {"kind": "relist", "row": 19, "item": "Force Core(High", "qty": 9, "price": 199978, "tab": 4, "slot": [1, 1], "lands_in": 19}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 199,977, from the row and 3 more
+    net sales 1,799,784 is 9 x 199,976
+  typed 250; the net sales make it 9
+
+  list 9 at 199,976
+    #         ms   share  step
+    1      625.3    9.4%  read the panel before loading
+    2       19.2    0.3%  wait for slot (1,1) to fill
+    3      815.7   12.3%  ctrl-click (1,1) attempt 1
+    4      481.0    7.3%  read the suggested price
+    5     1452.3   21.9%  type the price 199,976
+    6      955.6   14.4%  type the quantity 250
+    7      338.1    5.1%  take the quantity from the net sales
+    8      323.9    4.9%  click Register
+    9      103.8    1.6%  find Confirmation
+   10       24.4    0.4%  look for the underprice question
+   11      317.4    4.8%  click Confirmation
+   12      251.0    3.8%  park
+   13      274.0    4.1%  confirm the dialog is gone
+   14      644.4    9.7%  wait for the panel to let the item go
+          6626.1  100.0%  TOTAL
+  listed 9 at 199,976; it lands in row 19
+DONE {"kind": "relist", "row": 19, "lands_in": 19, "qty": 9, "price": 199976}
+    relisted 9 at 199,976 in row 19
+  row 20: 'Force Core(High' x117 at 199,977 -> tab 4 slot (1, 1)
+    floor 191,667 (191,667 x 1) from what it cost; listed at 199,977, above it
+TASK {"kind": "relist", "row": 20, "item": "Force Core(High", "qty": 117, "price": 199977, "tab": 4, "slot": [1, 1], "lands_in": 20}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 199,976, from the row and 3 more
+    net sales 23,397,075 is 117 x 199,975
+  typed 250; the net sales make it 117
+
+  list 117 at 199,975
+    #         ms   share  step
+    1      654.6    9.9%  read the panel before loading
+    2       21.2    0.3%  wait for slot (1,1) to fill
+    3      822.3   12.5%  ctrl-click (1,1) attempt 1
+    4      513.4    7.8%  read the suggested price
+    5     1447.3   21.9%  type the price 199,975
+    6      944.6   14.3%  type the quantity 250
+    7      320.5    4.9%  take the quantity from the net sales
+    8      320.2    4.9%  click Register
+    9       99.3    1.5%  find Confirmation
+   10       18.8    0.3%  look for the underprice question
+   11      305.5    4.6%  click Confirmation
+   12      250.9    3.8%  park
+   13      272.3    4.1%  confirm the dialog is gone
+   14      609.0    9.2%  wait for the panel to let the item go
+          6599.6  100.0%  TOTAL
+  listed 117 at 199,975; it lands in row 20
+DONE {"kind": "relist", "row": 20, "lands_in": 20, "qty": 117, "price": 199975}
+    relisted 117 at 199,975 in row 20
+  row 21 is empty; nothing to relist
+
+  relisting rows 1-21: 19 relisted, 2 empty, 0 skipped
+    #          ms   share     n      each  phase
+    1    28,885.2   24.0%     1  28,885.2  craft Chaos Core into Chaos Core Set
+    2    26,507.9   22.0%     4   6,627.0  list it back
+    3    15,396.3   12.8%     4   3,849.1  cancel the row and take it back
+    4     6,879.8    5.7%     1   6,879.8  list Chaos Core Set from (1, 1)
+    5     5,160.2    4.3%     5   1,032.0  select inventory tab 4
+    6     4,841.7    4.0%     1   4,841.7  buy order 1
+    7     3,813.9    3.2%     1   3,813.9  buy order 3
+    8     3,813.1    3.2%     1   3,813.1  buy order 6
+    9     3,591.2    3.0%     1   3,591.2  reopen the Agent Shop
+   10     2,843.2    2.4%     5     568.6  scroll to the row and read it
+   11     2,658.3    2.2%     1   2,658.3  price Chaos Core
+   12     2,493.0    2.1%     4     623.2  check the shop slot is empty
+   13     2,481.6    2.1%     1   2,481.6  buy order 2
+   14     2,477.4    2.1%     1   2,477.4  buy order 4
+   15     2,287.7    1.9%     1   2,287.7  select the Register tab
+   16     1,820.2    1.5%     5     364.0  Refresh the table
+   17     1,272.5    1.1%     1   1,272.5  price Chaos Core Set
+   18       932.0    0.8%     1     932.0  close the Agent Shop
+   19       800.7    0.7%     1     800.7  close the craft window
+   20       743.7    0.6%     2     371.8  step down to the next offer (1)
+   21       500.3    0.4%     1     500.3  buy order 5
+   22       371.9    0.3%     1     371.9  step down to the next offer (2)
+        120,571.6  100.0%
+
+  returning the game to its default state
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the gift box at [284, 994]
+  Receive 1 of 4 at [1214, 327]
+  Receive 2 of 4 at [1214, 425]
+  Receive 3 of 4 at [1214, 524]
+  Receive 4 of 4 at [1214, 622]
+  Close at [1483, 846]
+  took 4 gift(s)
+  the Agent Shop is shut and the vendor is not open either; reopening it
+  Inventory shut: slot grid 0.05, needs 0.33
+
+  board after pass 3:
+                                                   bought/u   listed/u  margin      row price
+     1  Force Core(Highest                 x245     288,288    288,288   +0.0%        288,288
+     2  Force Core(Highest                 x130     288,288    288,288   +0.0%        288,288
+     3  Force Core(Highest                 x250     288,288    288,288   +0.0%        288,288
+     4  Force Core(Highest                 x200     288,288    288,288   +0.0%        288,288
+     5  Force Core(Highest                 x250     288,288    288,288   +0.0%        288,288
+     6  Force Core(Highest                 x203     288,288    288,288   +0.0%        288,288
+     7  Force Core(High                    x60      200,200    200,200   +0.0%        200,200
+     8  Force Core (Ultimate               x4             -    444,744       -        444,744
+     9  Yekaterina VIP Membership          x1    115,379,996 133,333,290  +13.5%    133,333,290
+    10  Force Core (Ultimate               x200           -    444,743       -        444,743
+    11  Chaos Core Set X 138               x1             -    714,981       -     98,667,515
+    12  Chaos Core Set X 138               x1             -    714,979       -     98,667,239
+    13  Force Core (Ultimate               x52            -    444,742       -        444,742
+    14  Chaos Core Set X 144               x1             -    714,978       -    102,956,975
+    15  Chaos Core Set X 138               x1             -    714,977       -     98,666,963
+    16  Chaos Core Set                     x1       700,000    714,976   +2.1%    118,686,181
+    17  Upgrade Core (Ultimate             x180           -    479,958       -        479,958
+    18  Upgrade Core (Ultimate             x8       281,776    479,957  +41.3%        479,957
+    19  Force Core(High                    x9             -    199,976       -        199,976
+    20  Force Core(High                    x117     191,667    199,975   +4.2%        199,975
+    item                               rows   units          listed
+    Chaos Core Set                        5     724     517,644,873
+    Force Core (Ultimate                  3     256     113,854,160
+    Force Core(High                       3     186      37,208,859
+    Force Core(Highest                    6   1,278     368,432,064
+    Upgrade Core (Ultimate                2     188      90,232,096
+    Yekaterina VIP Membership             1       1     133,333,290
+    board                                20   2,633   1,260,705,342
+    balance now 434,124,190
+  pass 3: 19 relisted, 2 empty, 0 skipped; 9984.3 minute(s) left
+
+-- pass 4 --
+
+  resupply order: Yekaterina VIP Membership, Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Force Core (Ultimate)
+
+  Yekaterina VIP Membership: 1 row(s) inside 1-21, 1 wanted; row 9 'Yekaterina VIP Membership'
+    floor 115,379,996: 300/1000 of the 384,599,987 voucher, read at launch
+
+-- Chaos Core Set under our listing: up to 3 row(s) --
+  Chaos Core Set 714,976 - Chaos Core 700,000 = 14,976
+  ours is listed at 714,976 a Set and a Chaos Core sells at 700,000; buying every Set under 695,000, 5,000 a Set below the lower of the two
+  the cheapest Chaos Core Set is 714,976 a Set, not under 695,000; nothing to buy under ours
+
+  counting only rows 1-21; rows outside it are not repriced and do not count; 1 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                6         -         -         -      -   holds the most it can want, 3; not priced
+  Chaos Core                         5         -         -         -      -   holds the most it can want, 5; not priced
+  Force Core (Ultimate)              3         -         -         -      -   holds the most it can want, 3; not priced
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            2   477,475   479,957     2,482      0   
+
+  nothing inside rows 1-21 holds fewer rows than its margin is worth.
+  row 1: 'Force Core(Highest' x245 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 1, "item": "Force Core(Highest", "qty": 245, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 1}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,915, from the row and 3 more
+    the market asks 265,914, 22,374 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 70,630,560 is 245 x 288,288
+  typed 250; the net sales make it 245
+
+  list 245 at 288,288
+    #         ms   share  step
+    1      612.4    9.3%  read the panel before loading
+    2       18.7    0.3%  wait for slot (1,1) to fill
+    3      808.8   12.3%  ctrl-click (1,1) attempt 1
+    4      489.5    7.5%  read the suggested price
+    5     1444.1   22.0%  type the price 288,288
+    6      948.9   14.5%  type the quantity 250
+    7      344.3    5.3%  take the quantity from the net sales
+    8      323.5    4.9%  click Register
+    9       96.9    1.5%  find Confirmation
+   10       19.8    0.3%  look for the underprice question
+   11      310.1    4.7%  click Confirmation
+   12      251.4    3.8%  park
+   13      265.9    4.1%  confirm the dialog is gone
+   14      616.8    9.4%  wait for the panel to let the item go
+          6551.0  100.0%  TOTAL
+  listed 245 at 288,288; it lands in row 1
+DONE {"kind": "relist", "row": 1, "lands_in": 1, "qty": 245, "price": 288288}
+    relisted 245 at 288,288 in row 1, 4 relist(s) on the floor now
+  row 2: 'Force Core(Highest' x130 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 2, "item": "Force Core(Highest", "qty": 130, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 2}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,915, from the row and 3 more
+    the market asks 265,914, 22,374 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 37,477,440 is 130 x 288,288
+  typed 250; the net sales make it 130
+
+  list 130 at 288,288
+    #         ms   share  step
+    1      650.3    9.8%  read the panel before loading
+    2       26.6    0.4%  wait for slot (1,1) to fill
+    3      822.9   12.4%  ctrl-click (1,1) attempt 1
+    4      488.0    7.4%  read the suggested price
+    5     1457.7   22.0%  type the price 288,288
+    6      955.2   14.4%  type the quantity 250
+    7      329.8    5.0%  take the quantity from the net sales
+    8      313.0    4.7%  click Register
+    9      101.7    1.5%  find Confirmation
+   10       19.5    0.3%  look for the underprice question
+   11      309.2    4.7%  click Confirmation
+   12      250.7    3.8%  park
+   13      264.2    4.0%  confirm the dialog is gone
+   14      625.0    9.4%  wait for the panel to let the item go
+          6613.9  100.0%  TOTAL
+  listed 130 at 288,288; it lands in row 2
+DONE {"kind": "relist", "row": 2, "lands_in": 2, "qty": 130, "price": 288288}
+    relisted 130 at 288,288 in row 2, 4 relist(s) on the floor now
+  row 3: 'Force Core(Highest' x250 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 3, "item": "Force Core(Highest", "qty": 250, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 3}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,915, from the row and 3 more
+    the market asks 265,914, 22,374 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 72,072,000 is 250 x 288,288
+  typed 250; the net sales make it 250
+
+  list 250 at 288,288
+    #         ms   share  step
+    1      611.0    9.3%  read the panel before loading
+    2       18.5    0.3%  wait for slot (1,1) to fill
+    3      812.9   12.4%  ctrl-click (1,1) attempt 1
+    4      477.9    7.3%  read the suggested price
+    5     1445.9   22.1%  type the price 288,288
+    6      954.7   14.6%  type the quantity 250
+    7      331.6    5.1%  take the quantity from the net sales
+    8      311.4    4.8%  click Register
+    9       96.4    1.5%  find Confirmation
+   10       17.6    0.3%  look for the underprice question
+   11      308.1    4.7%  click Confirmation
+   12      251.2    3.8%  park
+   13      287.4    4.4%  confirm the dialog is gone
+   14      620.1    9.5%  wait for the panel to let the item go
+          6544.6  100.0%  TOTAL
+  listed 250 at 288,288; it lands in row 3
+DONE {"kind": "relist", "row": 3, "lands_in": 3, "qty": 250, "price": 288288}
+    relisted 250 at 288,288 in row 3, 4 relist(s) on the floor now
+  row 4: 'Force Core(Highest' x200 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 4, "item": "Force Core(Highest", "qty": 200, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 4}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,915, from the row and 3 more
+    the market asks 265,914, 22,374 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 57,657,600 is 200 x 288,288
+  typed 250; the net sales make it 200
+
+  list 200 at 288,288
+    #         ms   share  step
+    1      616.1    9.5%  read the panel before loading
+    2       25.1    0.4%  wait for slot (1,1) to fill
+    3      813.2   12.5%  ctrl-click (1,1) attempt 1
+    4      477.5    7.3%  read the suggested price
+    5     1450.9   22.3%  type the price 288,288
+    6      949.2   14.6%  type the quantity 250
+    7      311.7    4.8%  take the quantity from the net sales
+    8      310.2    4.8%  click Register
+    9      102.2    1.6%  find Confirmation
+   10       18.6    0.3%  look for the underprice question
+   11      316.8    4.9%  click Confirmation
+   12      251.0    3.9%  park
+   13      260.5    4.0%  confirm the dialog is gone
+   14      601.4    9.2%  wait for the panel to let the item go
+          6504.5  100.0%  TOTAL
+  listed 200 at 288,288; it lands in row 4
+DONE {"kind": "relist", "row": 4, "lands_in": 4, "qty": 200, "price": 288288}
+    relisted 200 at 288,288 in row 4, 4 relist(s) on the floor now
+  row 5: 'Force Core(Highest' x250 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 5, "item": "Force Core(Highest", "qty": 250, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 5}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,915, from the row and 3 more
+    the market asks 265,914, 22,374 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 72,072,000 is 250 x 288,288
+  typed 250; the net sales make it 250
+
+  list 250 at 288,288
+    #         ms   share  step
+    1      614.0    9.3%  read the panel before loading
+    2       21.9    0.3%  wait for slot (1,1) to fill
+    3      810.3   12.3%  ctrl-click (1,1) attempt 1
+    4      471.0    7.1%  read the suggested price
+    5     1449.1   22.0%  type the price 288,288
+    6      949.9   14.4%  type the quantity 250
+    7      333.0    5.0%  take the quantity from the net sales
+    8      313.8    4.8%  click Register
+    9      105.8    1.6%  find Confirmation
+   10       17.7    0.3%  look for the underprice question
+   11      311.7    4.7%  click Confirmation
+   12      250.9    3.8%  park
+   13      294.7    4.5%  confirm the dialog is gone
+   14      654.3    9.9%  wait for the panel to let the item go
+          6598.2  100.0%  TOTAL
+  listed 250 at 288,288; it lands in row 5
+DONE {"kind": "relist", "row": 5, "lands_in": 5, "qty": 250, "price": 288288}
+    relisted 250 at 288,288 in row 5, 4 relist(s) on the floor now
+  row 6: 'Force Core(Highest' x203 at 288,288 -> tab 4 slot (1, 1)
+    floor 288,288 (288,288 x 1) from what it cost; listed at 288,288, above it
+TASK {"kind": "relist", "row": 6, "item": "Force Core(Highest", "qty": 203, "price": 288288, "tab": 4, "slot": [1, 1], "lands_in": 6}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 265,915, from the row and 3 more
+    the market asks 265,914, 22,374 under our 288,288; holding at 278,288, the most this row may fall in one relist
+    market 278,288 is under the 288,288 floor (it cost 288,288 each); listing at the floor
+    net sales 58,522,464 is 203 x 288,288
+  typed 250; the net sales make it 203
+
+  list 203 at 288,288
+    #         ms   share  step
+    1      624.8    9.6%  read the panel before loading
+    2       18.2    0.3%  wait for slot (1,1) to fill
+    3      817.2   12.5%  ctrl-click (1,1) attempt 1
+    4      478.4    7.3%  read the suggested price
+    5     1444.9   22.2%  type the price 288,288
+    6      948.5   14.6%  type the quantity 250
+    7      317.7    4.9%  take the quantity from the net sales
+    8      311.0    4.8%  click Register
+    9      100.0    1.5%  find Confirmation
+   10       16.1    0.2%  look for the underprice question
+   11      315.4    4.8%  click Confirmation
+   12      251.3    3.9%  park
+   13      266.3    4.1%  confirm the dialog is gone
+   14      605.4    9.3%  wait for the panel to let the item go
+          6515.3  100.0%  TOTAL
+  listed 203 at 288,288; it lands in row 6
+DONE {"kind": "relist", "row": 6, "lands_in": 6, "qty": 203, "price": 288288}
+    relisted 203 at 288,288 in row 6, 4 relist(s) on the floor now
+  row 7: 'Force Core(High' x60 at 200,200 -> tab 4 slot (1, 1)
+    floor 200,200 (200,200 x 1) from what it cost; listed at 200,200, above it
+TASK {"kind": "relist", "row": 7, "item": "Force Core(High", "qty": 60, "price": 200200, "tab": 4, "slot": [1, 1], "lands_in": 7}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 199,975, from the row and 3 more
+    market 199,974 is under the 200,200 floor (it cost 200,200 each); listing at the floor
+    net sales 12,012,000 is 60 x 200,200
+  typed 250; the net sales make it 60
+
+  list 60 at 200,200
+    #         ms   share  step
+    1      635.0    9.7%  read the panel before loading
+    2       17.6    0.3%  wait for slot (1,1) to fill
+    3      844.2   12.9%  ctrl-click (1,1) attempt 1
+    4      483.5    7.4%  read the suggested price
+    5     1441.4   22.0%  type the price 200,200
+    6      948.4   14.5%  type the quantity 250
+    7      320.6    4.9%  take the quantity from the net sales
+    8      305.0    4.7%  click Register
+    9       96.3    1.5%  find Confirmation
+   10       19.6    0.3%  look for the underprice question
+   11      306.5    4.7%  click Confirmation
+   12      251.1    3.8%  park
+   13      274.6    4.2%  confirm the dialog is gone
+   14      607.9    9.3%  wait for the panel to let the item go
+          6551.8  100.0%  TOTAL
+  listed 60 at 200,200; it lands in row 7
+DONE {"kind": "relist", "row": 7, "lands_in": 7, "qty": 60, "price": 200200}
+    relisted 60 at 200,200 in row 7, 4 relist(s) on the floor now
+  row 8: 'Force Core (Ultimate' x4 at 444,744 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,744, above it
+TASK {"kind": "relist", "row": 8, "item": "Force Core (Ultimate", "qty": 4, "price": 444744, "tab": 4, "slot": [1, 1], "lands_in": 8}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,736, from the row and 3 more
+    net sales 1,778,940 is 4 x 444,735
+  typed 250; the net sales make it 4
+
+  list 4 at 444,735
+    #         ms   share  step
+    1      609.3    9.4%  read the panel before loading
+    2       16.7    0.3%  wait for slot (1,1) to fill
+    3      812.5   12.5%  ctrl-click (1,1) attempt 1
+    4      474.3    7.3%  read the suggested price
+    5     1448.6   22.3%  type the price 444,735
+    6      946.4   14.6%  type the quantity 250
+    7      308.8    4.8%  take the quantity from the net sales
+    8      312.3    4.8%  click Register
+    9       98.6    1.5%  find Confirmation
+   10       16.5    0.3%  look for the underprice question
+   11      309.9    4.8%  click Confirmation
+   12      251.2    3.9%  park
+   13      272.0    4.2%  confirm the dialog is gone
+   14      606.9    9.4%  wait for the panel to let the item go
+          6484.0  100.0%  TOTAL
+  listed 4 at 444,735; it lands in row 8
+DONE {"kind": "relist", "row": 8, "lands_in": 8, "qty": 4, "price": 444735}
+    relisted 4 at 444,735 in row 8
+    the quantity column read 'Membership', which holds no digits; relisting anyway, the panel counts what is there
+    one line read 'eetonaedae 1 133,333,290 OnSale Change'; read as stacked lines it is 'Yekaterina VIP Membership 133,333,290 OnSale Change'
+  row 9: 'Yekaterina VIP Membership' x1 at 133,333,290 -> tab 4 slot (1, 1)
+    floor 115,379,996 from what it cost; listed at 133,333,290, above it
+TASK {"kind": "relist", "row": 9, "item": "Yekaterina VIP Membership", "qty": 1, "price": 133333290, "tab": 4, "slot": [1, 1], "lands_in": 9}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 133,333,288, from the row and 3 more
+    net sales 133,333,287 is 1 x 133,333,287
+  typed 250; the net sales make it 1
+
+  list 1 at 133,333,287
+    #         ms   share  step
+    1      605.8    8.9%  read the panel before loading
+    2       20.2    0.3%  wait for slot (1,1) to fill
+    3      812.7   12.0%  ctrl-click (1,1) attempt 1
+    4      550.3    8.1%  read the suggested price
+    5     1655.9   24.4%  type the price 133,333,287
+    6      945.4   13.9%  type the quantity 250
+    7      322.7    4.8%  take the quantity from the net sales
+    8      316.5    4.7%  click Register
+    9      110.9    1.6%  find Confirmation
+   10       19.2    0.3%  look for the underprice question
+   11      306.6    4.5%  click Confirmation
+   12      250.8    3.7%  park
+   13      260.4    3.8%  confirm the dialog is gone
+   14      608.5    9.0%  wait for the panel to let the item go
+          6785.9  100.0%  TOTAL
+  listed 1 at 133,333,287; it lands in row 9
+DONE {"kind": "relist", "row": 9, "lands_in": 9, "qty": 1, "price": 133333287}
+    relisted 1 at 133,333,287 in row 9
+  row 10: 'Force Core (Ultimate' x200 at 444,743 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,743, above it
+TASK {"kind": "relist", "row": 10, "item": "Force Core (Ultimate", "qty": 200, "price": 444743, "tab": 4, "slot": [1, 1], "lands_in": 10}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,735, from the row and 3 more
+    net sales 88,946,800 is 200 x 444,734
+  typed 250; the net sales make it 200
+
+  list 200 at 444,734
+    #         ms   share  step
+    1      601.6    9.3%  read the panel before loading
+    2       17.4    0.3%  wait for slot (1,1) to fill
+    3      816.2   12.6%  ctrl-click (1,1) attempt 1
+    4      471.5    7.3%  read the suggested price
+    5     1445.6   22.4%  type the price 444,734
+    6      948.2   14.7%  type the quantity 250
+    7      312.9    4.8%  take the quantity from the net sales
+    8      306.9    4.8%  click Register
+    9       93.4    1.4%  find Confirmation
+   10       19.7    0.3%  look for the underprice question
+   11      308.0    4.8%  click Confirmation
+   12      250.8    3.9%  park
+   13      267.9    4.2%  confirm the dialog is gone
+   14      593.7    9.2%  wait for the panel to let the item go
+          6453.9  100.0%  TOTAL
+  listed 200 at 444,734; it lands in row 10
+DONE {"kind": "relist", "row": 10, "lands_in": 10, "qty": 200, "price": 444734}
+    relisted 200 at 444,734 in row 10
+  row 11: 'Chaos Core Set X 138' x1 at 98,667,515 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 98,667,515, above it
+TASK {"kind": "relist", "row": 11, "item": "Chaos Core Set X 138", "qty": 1, "price": 98667515, "tab": 4, "slot": [1, 1], "lands_in": 11}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,666,412, from the row and 3 more
+    net sales 98,666,411 is 1 x 98,666,411
+  typed 250; the net sales make it 1
+
+  list 1 at 98,666,411
+    #         ms   share  step
+    1      599.3    9.0%  read the panel before loading
+    2       20.2    0.3%  wait for slot (1,1) to fill
+    3      807.6   12.1%  ctrl-click (1,1) attempt 1
+    4      474.5    7.1%  read the suggested price
+    5     1616.8   24.3%  type the price 98,666,411
+    6      955.7   14.3%  type the quantity 250
+    7      329.5    4.9%  take the quantity from the net sales
+    8      312.8    4.7%  click Register
+    9      101.4    1.5%  find Confirmation
+   10       16.5    0.2%  look for the underprice question
+   11      304.6    4.6%  click Confirmation
+   12      250.9    3.8%  park
+   13      270.4    4.1%  confirm the dialog is gone
+   14      604.0    9.1%  wait for the panel to let the item go
+          6664.2  100.0%  TOTAL
+  listed 1 at 98,666,411; it lands in row 11
+DONE {"kind": "relist", "row": 11, "lands_in": 11, "qty": 1, "price": 98666411}
+    relisted 1 at 98,666,411 in row 11
+  row 12: 'Chaos Core Set X 138' x1 at 98,667,239 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 98,667,239, above it
+TASK {"kind": "relist", "row": 12, "item": "Chaos Core Set X 138", "qty": 1, "price": 98667239, "tab": 4, "slot": [1, 1], "lands_in": 12}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,666,274, from the row and 3 more
+    net sales 98,666,273 is 1 x 98,666,273
+  typed 250; the net sales make it 1
+
+  list 1 at 98,666,273
+    #         ms   share  step
+    1      607.9    9.1%  read the panel before loading
+    2       19.5    0.3%  wait for slot (1,1) to fill
+    3      816.9   12.2%  ctrl-click (1,1) attempt 1
+    4      472.6    7.1%  read the suggested price
+    5     1590.7   23.8%  type the price 98,666,273
+    6      947.3   14.2%  type the quantity 250
+    7      327.2    4.9%  take the quantity from the net sales
+    8      309.8    4.6%  click Register
+    9       99.9    1.5%  find Confirmation
+   10       23.7    0.4%  look for the underprice question
+   11      321.0    4.8%  click Confirmation
+   12      251.5    3.8%  park
+   13      283.9    4.2%  confirm the dialog is gone
+   14      615.6    9.2%  wait for the panel to let the item go
+          6687.5  100.0%  TOTAL
+  listed 1 at 98,666,273; it lands in row 12
+DONE {"kind": "relist", "row": 12, "lands_in": 12, "qty": 1, "price": 98666273}
+    relisted 1 at 98,666,273 in row 12
+  row 13: 'Force Core (Ultimate' x52 at 444,742 -> tab 4 slot (1, 1)
+    floor 397,063 (397,063 x 1) from Force Core Set (Ultimate); listed at 444,742, above it
+TASK {"kind": "relist", "row": 13, "item": "Force Core (Ultimate", "qty": 52, "price": 444742, "tab": 4, "slot": [1, 1], "lands_in": 13}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 444,734, from the row and 3 more
+    net sales 23,126,116 is 52 x 444,733
+  typed 250; the net sales make it 52
+
+  list 52 at 444,733
+    #         ms   share  step
+    1      628.4    9.6%  read the panel before loading
+    2       19.8    0.3%  wait for slot (1,1) to fill
+    3      815.9   12.5%  ctrl-click (1,1) attempt 1
+    4      476.0    7.3%  read the suggested price
+    5     1446.2   22.1%  type the price 444,733
+    6      946.3   14.5%  type the quantity 250
+    7      319.9    4.9%  take the quantity from the net sales
+    8      311.0    4.8%  click Register
+    9       97.9    1.5%  find Confirmation
+   10       18.4    0.3%  look for the underprice question
+   11      314.2    4.8%  click Confirmation
+   12      251.0    3.8%  park
+   13      263.8    4.0%  confirm the dialog is gone
+   14      622.7    9.5%  wait for the panel to let the item go
+          6531.7  100.0%  TOTAL
+  listed 52 at 444,733; it lands in row 13
+DONE {"kind": "relist", "row": 13, "lands_in": 13, "qty": 52, "price": 444733}
+    relisted 52 at 444,733 in row 13
+  row 14: 'Chaos Core Set X 144' x1 at 102,956,975 -> tab 4 slot (1, 1)
+    floor 100,800,000 (700,000 x 144) from Chaos Core; listed at 102,956,975, above it
+TASK {"kind": "relist", "row": 14, "item": "Chaos Core Set X 144", "qty": 1, "price": 102956975, "tab": 4, "slot": [1, 1], "lands_in": 14}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 102,955,968, from the row and 3 more
+    net sales 102,955,967 is 1 x 102,955,967
+  typed 250; the net sales make it 1
+
+  list 1 at 102,955,967
+    #         ms   share  step
+    1      620.4    9.1%  read the panel before loading
+    2       21.9    0.3%  wait for slot (1,1) to fill
+    3      821.3   12.1%  ctrl-click (1,1) attempt 1
+    4      476.5    7.0%  read the suggested price
+    5     1657.7   24.4%  type the price 102,955,967
+    6      948.3   14.0%  type the quantity 250
+    7      324.6    4.8%  take the quantity from the net sales
+    8      308.4    4.5%  click Register
+    9      101.2    1.5%  find Confirmation
+   10       30.4    0.4%  look for the underprice question
+   11      310.6    4.6%  click Confirmation
+   12      251.5    3.7%  park
+   13      276.5    4.1%  confirm the dialog is gone
+   14      637.9    9.4%  wait for the panel to let the item go
+          6787.1  100.0%  TOTAL
+  listed 1 at 102,955,967; it lands in row 14
+DONE {"kind": "relist", "row": 14, "lands_in": 14, "qty": 1, "price": 102955967}
+    relisted 1 at 102,955,967 in row 14
+  row 15: 'Chaos Core Set X 138' x1 at 98,666,963 -> tab 4 slot (1, 1)
+    floor 96,600,000 (700,000 x 138) from Chaos Core; listed at 98,666,963, above it
+TASK {"kind": "relist", "row": 15, "item": "Chaos Core Set X 138", "qty": 1, "price": 98666963, "tab": 4, "slot": [1, 1], "lands_in": 15}
+  inventory slot (1,1) at (1479, 236)
+    the lowest listed price is 98,665,998, from the row and 3 more
+    net sales 98,665,997 is 1 x 98,665,997
+  typed 250; the net sales make it 1
+
+  list 1 at 98,665,997
+    #         ms   share  step
+    1      655.2    9.7%  read the panel before loading
+    2       20.6    0.3%  wait for slot (1,1) to fill
+    3      816.1   12.1%  ctrl-click (1,1) attempt 1
+    4      488.0    7.2%  read the suggested price
+    5     1592.5   23.6%  type the price 98,665,997
+    6      956.4   14.2%  type the quantity 250
+    7      322.5    4.8%  take the quantity from the net sales
+    8      336.5    5.0%  click Register
+    9       96.1    1.4%  find Confirmation
+   10       18.8    0.3%  look for the underprice question
+   11      308.3    4.6%  click Confirmation
+   12      250.8    3.7%  park
+   13      276.4    4.1%  confirm the dialog is gone
+   14      614.4    9.1%  wait for the panel to let the item go
+          6752.5  100.0%  TOTAL
+  listed 1 at 98,665,997; it lands in row 15
+DONE {"kind": "relist", "row": 15, "lands_in": 15, "qty": 1, "price": 98665997}
+    relisted 1 at 98,665,997 in row 15

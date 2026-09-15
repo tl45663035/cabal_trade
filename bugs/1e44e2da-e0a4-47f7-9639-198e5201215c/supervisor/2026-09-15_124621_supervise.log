@@ -1,0 +1,95 @@
+2026-09-15_124621  .\tools\supervise.py
+  logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-15_124621_supervise.log
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* attached (pid 26340),12:46:21,alive
+watching pid 26340, 2026-09-15_114904_run.log
+* disconnected (run still up),13:18:24,alive
+  frame 2026-09-15_131824_disconnect_seen.png
+* disconnected 6s on; killing pid 26340,13:18:30,dead
+* ended without a reason line,13:18:30,dead
+  kept 30 png and 1 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-15_114904_run
+  screen: disconnect=[960, 430], failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-15_131835_found.png
+  case: disconnect / login / select screen -> recovery.py
+$ py src_1080p/recovery.py
+     typed; waiting 10s before Login
+     'Channel 11' at [1558, 604]; entering
+     'Jarvan' at [1597, 466]; entering
+     Enter to start
+     keypad reads 0@[843, 577] 1@[1031, 530] 2@[843, 530] 3@[937, 577] 4@[1078, 530] 5@[984, 530] 6@[890, 530] 7@[937, 530] 8@[984, 577] 9@[890
+     the sub password clicked in
+     'ok' at [901, 635]
+     back in the world as Jarvan, the balance reads
+* recovered: back in the world,13:19:17,dead
+  frame 2026-09-15_131923_after_login.png
+  the log shows no task cut short
+  frame 2026-09-15_131928_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-15_131931_reset.png
+   2026-09-15_131932  C:\Users\Trung\Cabal\src_1080p\driver.py
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-15_131932_run.log
+     code 5e44b6d
+     ledger C:\Users\Trung\Cabal\src_1080p\sales.db run 2026-09-15T13:19:32
+* relaunched (pid 25532),13:19:36,alive
+watching pid 25532, 2026-09-15_131932_run.log
+* server lag: not answering,13:54:26,alive
+* server lag: the server stalled,13:55:29,alive
+* server lag: the server stalled,13:55:50,alive
+* ended without a reason line,13:56:11,dead
+  kept 30 png and 1 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-15_131932_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-15_135616_found.png
+  the log shows no task cut short
+  frame 2026-09-15_135621_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-15_135623_reset.png
+   2026-09-15_135624  C:\Users\Trung\Cabal\src_1080p\driver.py
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-15_135624_run.log
+     code 490d91d
+     ledger C:\Users\Trung\Cabal\src_1080p\sales.db run 2026-09-15T13:56:24
+* relaunched (pid 22980),13:56:28,alive
+watching pid 22980, 2026-09-15_135624_run.log
+* ended without a reason line,14:35:06,dead
+  kept 30 png and 1 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-15_135624_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-15_143511_found.png
+  the log shows no task cut short
+  frame 2026-09-15_143516_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-15_143518_reset.png
+   2026-09-15_143519  C:\Users\Trung\Cabal\src_1080p\driver.py
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-15_143519_run.log
+     code 1c94d82
+     ledger C:\Users\Trung\Cabal\src_1080p\sales.db run 2026-09-15T14:35:19
+* relaunched (pid 18156),14:35:22,alive
+watching pid 18156, 2026-09-15_143519_run.log
+* ended without a reason line,14:56:26,dead
+  kept 30 png and 1 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-15_143519_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-15_145630_found.png
+  the log shows no task cut short
+  frame 2026-09-15_145635_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-15_145637_reset.png
+   2026-09-15_145638  C:\Users\Trung\Cabal\src_1080p\driver.py
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-15_145638_run.log
+     code 5e44b6d
+     ledger C:\Users\Trung\Cabal\src_1080p\sales.db run 2026-09-15T14:56:38
+* relaunched (pid 23296),14:56:42,alive
+watching pid 23296, 2026-09-15_145638_run.log
