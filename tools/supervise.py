@@ -655,7 +655,12 @@ def keep_evidence(log):
         if files:
             into.mkdir(parents=True, exist_ok=True)
         for f in files:
-            shutil.move(str(f), str(into / f.name))
+            try:
+                shutil.move(str(f), str(into / f.name))
+            except PermissionError:
+                shutil.copy2(str(f), str(into / f.name))
+                print(f"  {f.name} is held open by another process; copied "
+                      f"rather than moved")
         kept.append(f"{len(files)} {pattern[2:]}")
     print(f"  kept {' and '.join(kept)} from the dead run in {into}")
 
@@ -705,8 +710,9 @@ def launch():
             raise Stop(f"driver.py exited {proc.returncode} {waited}s after "
                        f"launch, before writing a run log")
     else:
+        kill(proc.pid)
         raise Stop(f"no new run log {K['launch_wait']}s after launching "
-                   f"driver.py (pid {proc.pid} still up)")
+                   f"driver.py; pid {proc.pid} killed")
     time.sleep(K["launch_settle"])
     for line in read(log).splitlines()[:K['head_lines']]:
         print("   " + line)
