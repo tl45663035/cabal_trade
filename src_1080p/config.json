@@ -9,6 +9,14 @@
       "Force Core(High)": true,
       "Upgrade Core (Ultimate)": true
     },
+    "cash_shop": {
+      "tabs": {
+        "default": "Useable"
+      },
+      "rows": {
+        "Yekaterina VIP Membership": 1
+      }
+    },
     "rows_by_margin": {
       "step": 5000,
       "default": [
@@ -104,14 +112,6 @@
     },
     "buy_under_gap": {
       "default": 5000
-    },
-    "cash_shop": {
-      "tabs": {
-        "default": "Useable"
-      },
-      "rows": {
-        "Yekaterina VIP Membership": 1
-      }
     },
     "buy_retries": 3,
     "craft_unknown_held": 300,
