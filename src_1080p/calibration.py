@@ -1222,11 +1222,12 @@ def inventory_open(image=None):
     image = image if image is not None else grab()
     if not inventory_grid_shown(image):
         return None
+    boxes = []
+    if (_measured().get("inventory") or {}).get("alz_box"):
+        boxes.append(balance_box())
     found = find_alz(image)
-    boxes = [found] if found is not None else []
-    measured = (_measured().get("inventory") or {}).get("alz_box")
-    if measured:
-        boxes.append(tuple(measured))
+    if found is not None:
+        boxes.append(found)
     for box in boxes:
         digits = re.sub(r"[^0-9]", "", read_line(image, box))
         if len(digits) >= ALZ_MIN_DIGITS:
@@ -2056,14 +2057,22 @@ def pair_slot(slot):
     return slot - 1 if str(slot - 1) in FAVOURITE_ITEMS else None
 
 
+def _grade_word(name):
+    found = re.search(r"\(\s*([A-Za-z]+)", name or "")
+    return found.group(1).lower() if found else None
+
+
 def favourite_slot_of(name):
     want = re.sub(r"[^a-z0-9]", "", (name or "").lower())
     if not want:
         return None
+    grade = _grade_word(name)
     best = None
     for slot, item in FAVOURITE_ITEMS.items():
         key = re.sub(r"[^a-z0-9]", "", item.lower())
         if not key:
+            continue
+        if grade and _grade_word(item) and not _grade_word(item).startswith(grade):
             continue
         shared = 0
         for a, b in zip(want, key):
@@ -2642,6 +2651,18 @@ def rows_by_margin(core_name, margin):
     if tier < 1:
         return 0
     return int(ladder[min(tier, len(ladder)) - 1])
+
+
+def rows_wanted_at_most(core_name):
+    run = load_shared()["resupply"]
+    table = run["rows_by_margin"]
+    if not isinstance(table, dict):
+        return None
+    ladder = _ladder_today(run, core_name) or _per_item_raw(
+        {k: v for k, v in table.items() if k != "step"}, core_name)
+    if not ladder:
+        return None
+    return max(int(v) for v in ladder)
 
 
 def margin_for_rows(core_name, rows):

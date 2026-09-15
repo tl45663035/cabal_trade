@@ -35,7 +35,8 @@ _GROUPING = re.compile(_SHARED["text"]["row_grouping"])
 MIN_PLAUSIBLE_PRICE = _SHARED["detect"]["min_plausible_price"]
 CAPACITY = _SHARED["game_facts"]["shop_capacity"]
 VISIBLE = _SHARED["game_facts"]["shop_visible"]
-USE_CONFIRM_F = tuple(_SHARED["regions"]["use_confirm"])
+USE_LINE_F = tuple(_SHARED["regions"]["use_question_line"])
+USE_YES_F = tuple(_SHARED["regions"]["use_yes"])
 USE_QUESTION = _SHARED["text"]["use_question"]
 YES_WORD = _SHARED["text"]["yes_word"]
 
@@ -244,6 +245,18 @@ def market(slot, verbose=True):
     return out
 
 
+def price_by_voucher(row):
+    if row is None or row.buy_cost:
+        return row
+    if calibration.voucher_floor_ratio(row.name)[1] <= 0:
+        return row
+    floor, _why = calibration.price_floor(row.name)
+    if floor:
+        row.buy_cost = floor
+        row.floor_at = floor
+    return row
+
+
 def seed(verbose=True):
     register_tab(verbose=verbose)
     model = row_model.RowModel().seed({})
@@ -279,6 +292,7 @@ def seed(verbose=True):
                     print(f"    row {index} moved since it was remembered; "
                           f"its bought price comes from another row of the "
                           f"same item")
+        price_by_voucher(row)
         found[index] = row
         if verbose:
             print(board_line(index, row))
@@ -365,7 +379,80 @@ def _after_the_lag(nothing_done, verbose=True):
         raise NotReady(f"{exc} {nothing_done}")
 
 
-def relist_one(model, index, verbose=True):
+def pending_holds_stock():
+    return bool(_PENDING is not None and _PENDING.get("bought")
+                and _PENDING.get("step") != "buy")
+
+
+def cash_item_of(name):
+    for item in cashshop.items():
+        if cashshop.rows_wanted(item) > 0 and cashshop.matches(item, name):
+            return item
+    return None
+
+
+def restock_now(model, name, first, last, verbose=True):
+    if not calibration.load_shared()["resupply"]["enabled"]:
+        return
+    item = cash_item_of(name)
+    if item is not None:
+        restock_cash_now(model, item, first, last, verbose=verbose)
+        return
+    slot = counts_toward().get(calibration.favourite_slot_of(name))
+    if slot is None:
+        return
+    core = calibration.FAVOURITE_ITEMS[str(slot)]
+    if craft_route(core) and buying_enabled(core):
+        restock_core_now(model, slot, name, first, last, verbose=verbose)
+
+
+def restock_cash_now(model, item, first, last, verbose=True):
+    print(f"  {item} sold and is collected; resupplying it now, not on the "
+          f"next pass")
+    done = []
+    try:
+        resupply_cash_rows(model, item, cashshop.rows_wanted(item), first,
+                           last, done, verbose=verbose)
+    finally:
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady(f"the Agent Shop is not open after resupplying "
+                           f"{item}.")
+        register_tab(verbose=verbose)
+
+
+def restock_core_now(model, slot, name, first, last, verbose=True):
+    core = calibration.FAVOURITE_ITEMS[str(slot)]
+    have = rows_by_core(model, first, last).get(slot, 0)
+    most = calibration.rows_wanted_at_most(core)
+    if most is not None and have >= most:
+        return
+    print(f"  a {name!r} row sold and is collected; {core} holds {have} "
+          f"row(s), pricing and resupplying it now, not on the next pass")
+    done = []
+    try:
+        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        core_row, set_row, diff = price_gap(slot)
+        if diff is None:
+            return
+        wants = calibration.rows_by_margin(core, diff)
+        if have >= wants:
+            print(f"  a margin of {diff:,} is worth {wants} row(s) of "
+                  f"{core}; {have} held; not buying.")
+            return
+        resupply_core_rows(model, slot, have, wants, {slot: core_row},
+                           first, last, done, verbose=verbose,
+                           rows=(core_row, set_row))
+    finally:
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady(f"the Agent Shop is not open after resupplying "
+                           f"{core}.")
+        register_tab(verbose=verbose)
+
+
+def relist_one(model, index, verbose=True, first=None, last=None):
+    run = calibration.load_shared()["run"]
+    first = int(run["relist_from"] if first is None else first)
+    last = int(run["relist_to"] if last is None else last)
     with calibration.phase(f"{calibration.REFRESH_WORD} the table"):
         row_model.refresh_table(model, verbose=False)
     with calibration.phase("scroll to the row and read it"):
@@ -384,6 +471,9 @@ def relist_one(model, index, verbose=True):
         if verbose:
             print(f"  row {index} has SOLD "
                   f"({'fully' if complete else 'partly'}); collecting")
+        held = model.get(index)
+        sold = held.name if held is not None else (
+            row.name if row is not None else text)
         with calibration.phase("collect what sold"):
             model.receive(index, verbose=False)
         with calibration.phase("read the row again after collecting"):
@@ -395,6 +485,7 @@ def relist_one(model, index, verbose=True):
             if verbose:
                 print(f"    collected; row {index} is empty, nothing to "
                       f"relist")
+            restock_now(model, sold, first, last, verbose=verbose)
             return None
         if verbose:
             print(f"    collected; {row.qty} left to relist")
@@ -428,6 +519,7 @@ def relist_one(model, index, verbose=True):
     if held is not None and             row_model.item_key(held.name) == row_model.item_key(row.name):
         row.buy_cost = held.buy_cost
         row.floor_at = held.floor_at
+    price_by_voucher(row)
     model._slots[index] = row
     unit_floor, pair = calibration.price_floor(row.name)
     cost = row.floor_at or row.buy_cost
@@ -526,8 +618,10 @@ def relist_one(model, index, verbose=True):
             model.drop(index)
             model.forget_floor(index)
             print(f"    collected; row {index} is empty")
-        else:
-            print(f"    collected; row {index} still reads {seen!r}")
+            task_done("relist", row=index, sold=True)
+            restock_now(model, row.name, first, last, verbose=verbose)
+            return None
+        print(f"    collected; row {index} still reads {seen!r}")
         task_done("relist", row=index, sold=True)
         return None
     task_done("relist", row=index, lands_in=lands_in, qty=out["qty"],
@@ -587,7 +681,8 @@ def relist_pass(model, first, last, passes=0, verbose=True):
     calibration.phases_reset()
     done = skipped = empty = 0
     for index in range(first, last + 1):
-        out = relist_one(model, index, verbose=verbose)
+        out = relist_one(model, index, verbose=verbose, first=first,
+                         last=last)
         if out:
             done += 1
         elif out is False:
@@ -595,6 +690,13 @@ def relist_pass(model, first, last, passes=0, verbose=True):
         else:
             empty += 1
         board_trace(model, passes, index, first, last)
+        if pending_holds_stock():
+            print(f"  tab {row_model.WORK_TAB} holds {_PENDING['bought']} "
+                  f"bought {_PENDING['core']} waiting at "
+                  f"{_PENDING['step']}; rows {index + 1}-{last} are not "
+                  f"cancelled into that tab this pass, the next pass "
+                  f"carries the job on first")
+            break
     if done or skipped:
         calibration.phases_table(
             f"relisting rows {first}-{last}: {done} relisted, {empty} empty, "
@@ -627,8 +729,15 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         try:
             shop_ready(f"pass {passes}", verbose=verbose)
             resupply_pass(model, first, last, verbose=verbose)
-            made, missed, bare = relist_pass(model, first, last, passes,
-                                             verbose=verbose)
+            if pending_holds_stock():
+                print(f"  tab {row_model.WORK_TAB} holds {_PENDING['bought']} "
+                      f"bought {_PENDING['core']} waiting at "
+                      f"{_PENDING['step']}; no row is cancelled into that tab "
+                      f"this pass, the next pass carries the job on first")
+                made = missed = bare = 0
+            else:
+                made, missed, bare = relist_pass(model, first, last, passes,
+                                                 verbose=verbose)
             done += made
             skipped += missed
             empty += bare
@@ -990,15 +1099,18 @@ def rows_by_core(model, first, last):
     return held
 
 
-def price_gap(slot, say=True):
+def price_gap(slot, say=True, rows=None):
     core = calibration.FAVOURITE_ITEMS[str(slot)]
     pair = calibration.pair_slot(slot)
     set_name = calibration.FAVOURITE_ITEMS[str(pair)]
-    calibration.phases_reset()
-    with calibration.phase(f"price {core}"):
-        core_row = get_price.get_price(slot, verbose=False)
-    with calibration.phase(f"price {set_name}"):
-        set_row = get_price.get_price(pair, verbose=False)
+    if rows is not None:
+        core_row, set_row = rows
+    else:
+        calibration.phases_reset()
+        with calibration.phase(f"price {core}"):
+            core_row = get_price.get_price(slot, verbose=False)
+        with calibration.phase(f"price {set_name}"):
+            set_row = get_price.get_price(pair, verbose=False)
     if core_row is None or set_row is None:
         if say:
             print(f"  {core if core_row is None else set_name} would not "
@@ -1039,7 +1151,7 @@ def alz_covers(what, units, unit_price, verbose=True):
     return True
 
 
-def start_resupply(model, slot, held, first, last, verbose=True):
+def start_resupply(model, slot, held, first, last, verbose=True, rows=None):
     core = calibration.FAVOURITE_ITEMS[str(slot)]
     pair = calibration.pair_slot(slot)
     set_name = calibration.FAVOURITE_ITEMS[str(pair)]
@@ -1048,21 +1160,21 @@ def start_resupply(model, slot, held, first, last, verbose=True):
     want_max = calibration.buy_max(core)
     print(f"-- {core}: {held} row(s) --")
 
-    core_row, set_row, diff = price_gap(slot)
-    threshold = None if diff is None else margin_says_buy(core, held, diff)
-    if threshold is None:
-        return None
-
     rounds_needed = max(1, -(-int(want_max) // row_model.MAX_STACK))
     free_rows = [i for i in model.empty() if first <= i <= last]
     if len(free_rows) < rounds_needed:
         print(f"  rows {first}-{last} have {len(free_rows)} free and a "
-              f"resupply can need {rounds_needed}; not buying, because a "
-              f"Core with nowhere to list stays on tab "
+              f"resupply can need {rounds_needed}; not pricing or buying, "
+              f"because a Core with nowhere to list stays on tab "
               f"{calibration.CONVERT_INVENTORY_TAB}.")
         return None
     print(f"  {len(free_rows)} row(s) free inside {first}-{last}; a resupply "
           f"needs up to {rounds_needed}")
+
+    core_row, set_row, diff = price_gap(slot, rows=rows)
+    threshold = None if diff is None else margin_says_buy(core, held, diff)
+    if threshold is None:
+        return None
 
     with calibration.phase(f"find the free slot on tab "
                            f"{calibration.CONVERT_INVENTORY_TAB}"):
@@ -1239,11 +1351,12 @@ def finish_resupply(model, job, first, last, verbose=True):
             "listed": job["listed"], "rows": job["rows"]}
 
 
-def resupply_one(model, slot, held, first, last, verbose=True):
+def resupply_one(model, slot, held, first, last, verbose=True, rows=None):
     global _PENDING
     job = _PENDING if _PENDING and _PENDING["slot"] == slot else None
     if job is None:
-        job = start_resupply(model, slot, held, first, last, verbose=verbose)
+        job = start_resupply(model, slot, held, first, last, verbose=verbose,
+                             rows=rows)
         if job is None:
             return None
     else:
@@ -1283,7 +1396,8 @@ def craft_route(core):
     return bool(calibration.load().get("craft"))
 
 
-def start_craft_resupply(model, slot, held, first, last, verbose=True):
+def start_craft_resupply(model, slot, held, first, last, verbose=True,
+                         rows=None):
     run = calibration.load_shared()["resupply"]
     core = calibration.FAVOURITE_ITEMS[str(slot)]
     pair = calibration.pair_slot(slot)
@@ -1294,18 +1408,18 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True):
     want_max = calibration.buy_max(core)
     print(f"-- {core}: {held} row(s) --")
 
-    core_row, set_row, diff = price_gap(slot)
-    threshold = None if diff is None else margin_says_buy(core, held, diff)
-    if threshold is None:
-        return None
-
     free_rows = [i for i in model.empty() if first <= i <= last]
     if not free_rows:
         print(f"  rows {first}-{last} are full, and a crafted {set_name} with "
               f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
-              f"buying.")
+              f"pricing or buying.")
         return None
     print(f"  {len(free_rows)} row(s) free inside {first}-{last}")
+
+    core_row, set_row, diff = price_gap(slot, rows=rows)
+    threshold = None if diff is None else margin_says_buy(core, held, diff)
+    if threshold is None:
+        return None
 
     jitter = int(run["buy_random_range"])
     rolled = int(want_min)
@@ -1532,12 +1646,12 @@ def finish_craft_resupply(model, job, first, last, verbose=True):
             "listed": job["listed"], "rows": job["rows"]}
 
 
-def resupply_chaos(model, slot, held, first, last, verbose=True):
+def resupply_chaos(model, slot, held, first, last, verbose=True, rows=None):
     global _PENDING
     job = _PENDING if _PENDING and _PENDING["slot"] == slot else None
     if job is None:
         job = start_craft_resupply(model, slot, held, first, last,
-                                   verbose=verbose)
+                                   verbose=verbose, rows=rows)
         if job is None:
             return None
     else:
@@ -1669,6 +1783,7 @@ def _leave_cash_shop():
 
 def cash_buy_step(job, confirm=True, verbose=True):
     item, tab = job["core"], row_model.WORK_TAB
+    answer_pending_use_question(verbose=verbose)
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
     with calibration.phase(f"select inventory tab {tab}"):
@@ -1868,7 +1983,7 @@ def resupply_cash(model, item, held, first, last, confirm=True,
             return None
     else:
         print("")
-        print(f"-- {item}: carrying on at {job['step']} after the stall --")
+        print(f"-- {item}: carrying on at {job['step']} where it stopped --")
         task("resupply", core=item, tab=row_model.WORK_TAB,
              resumed=job["step"])
     _PENDING = job
@@ -1878,6 +1993,13 @@ def resupply_cash(model, item, held, first, last, confirm=True,
     except calibration.ServerStalled:
         print(f"  {item} keeps its place at {job['step']}; the next pass "
               f"carries on there")
+        raise
+    except (NotReady, cashshop.Refused, buy.Refused):
+        if job["voucher_paid"] or job["bought"]:
+            print(f"  {item} keeps its place at {job['step']}; a voucher or "
+                  f"the item is in the bag and the next pass carries on there")
+            raise
+        _PENDING = None
         raise
     except BaseException:
         _PENDING = None
@@ -1948,11 +2070,13 @@ def voucher_buy_flow(confirm=True, verbose=True):
 def use_question(image=None):
     image = image if image is not None else calibration.grab()
     fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
-    words = calibration.ocr(image, calibration._box(USE_CONFIRM_F))
-    if fold(USE_QUESTION) not in fold(" ".join(t for t, _c, _p in words)):
+    line = calibration.read_line(image, calibration._box(USE_LINE_F))
+    if fold(USE_QUESTION) not in fold(line):
         return None
-    yes = [point for text, _c, point in words if fold(text) == fold(YES_WORD)]
-    return yes[0] if yes else None
+    button = calibration.read_line(image, calibration._box(USE_YES_F))
+    if not fold(button).startswith(fold(YES_WORD)):
+        return None
+    return calibration._centre(USE_YES_F)
 
 
 def answer_use_question(point, verbose=True):
@@ -1986,8 +2110,7 @@ def answer_pending_use_question(verbose=True):
 def voucher_use(before, verbose=True):
     tab = row_model.WORK_TAB
     if answer_pending_use_question(verbose=verbose):
-        print(f"  the voucher was used by answering the question; its slot "
-              f"on tab {tab} was not read")
+        print(f"  the question was answered; the voucher is used")
         return None
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
@@ -2005,32 +2128,22 @@ def voucher_use(before, verbose=True):
     with calibration.phase("right-click the voucher"):
         calibration.right_click(*point)
         calibration.park()
-    answered = False
-    with calibration.phase("answer the question and wait for the voucher to go"):
+    with calibration.phase("wait for the question"):
         deadline = time.monotonic() + calibration.DIALOG_TIMEOUT
-        gone = False
-        while time.monotonic() < deadline:
-            image = calibration.grab()
-            gone = calibration.slot_is_empty(image, *slot)
-            if gone:
-                break
-            if not answered:
-                asked = use_question(image)
-                if asked is not None:
-                    answer_use_question(asked, verbose=verbose)
-                    answered = True
-                    deadline = time.monotonic() + calibration.DIALOG_TIMEOUT
-            time.sleep(row_model.POLL_GAP)
-    if not gone:
-        calibration.snap("voucher_not_used")
+        asked = None
+        while asked is None and time.monotonic() < deadline:
+            asked = use_question()
+            if asked is None:
+                time.sleep(row_model.POLL_GAP)
+    if asked is None:
+        calibration.snap("voucher_not_asked")
         raise NotReady(
-            f"the voucher is still in tab {tab} slot {slot} "
-            f"{calibration.DIALOG_TIMEOUT:g}s after "
-            + (f"{YES_WORD} was clicked" if answered else
-               f"the right-click, and no {USE_QUESTION!r} question showed")
-            + ". Nothing more clicked.")
-    print(f"  the voucher is gone from slot {slot}; it was used"
-          + (f" after {YES_WORD}" if answered else ""))
+            f"no {USE_QUESTION!r} question showed "
+            f"{calibration.DIALOG_TIMEOUT:g}s after right-clicking the "
+            f"voucher in tab {tab} slot {slot}. Nothing more clicked.")
+    with calibration.phase("answer the question"):
+        answer_use_question(asked, verbose=verbose)
+    print(f"  {YES_WORD} clicked on slot {slot}; the voucher is used")
     return slot
 
 
@@ -2213,7 +2326,7 @@ def buy_under_lister(model, slot, first, last, verbose=True):
     pair = calibration.pair_slot(slot)
     cap = int(calibration.buy_under_lister(core))
     if cap <= 0 or pair is None or not buying_enabled(core):
-        return []
+        return [], None
     set_name = calibration.FAVOURITE_ITEMS[str(pair)]
     print("")
     print(f"-- {set_name} under our listing: up to {cap} row(s) --")
@@ -2221,10 +2334,11 @@ def buy_under_lister(model, slot, first, last, verbose=True):
     if ours is None:
         print(f"  no {set_name} of ours on the board, so there is no listing "
               f"of ours to buy under; not buying")
-        return []
+        return [], None
     core_row, set_row, diff = price_gap(slot)
     if diff is None:
-        return []
+        return [], None
+    read = (core_row, set_row)
     core_at = core_row["unit_price"]
     gap = int(calibration.buy_under_gap(core))
     under = min(ours, core_at) - gap
@@ -2287,7 +2401,7 @@ def buy_under_lister(model, slot, first, last, verbose=True):
         set_row = None
         if not job["more"]:
             break
-    return rows
+    return rows, (None if rows else read)
 
 
 def gifts_at_the_end(verbose=True):
@@ -2315,6 +2429,7 @@ def rest_the_game(verbose=True):
 
 def back_to_the_shop(verbose=True):
     from open_inventory import VK_ESCAPE, press
+    answer_pending_use_question(verbose=verbose)
     vendor = calibration.vendor_open()
     if vendor:
         press(VK_ESCAPE)
@@ -2345,37 +2460,49 @@ def resupply_order(jobs):
 
 
 def price_table(model, first, last, verbose=True):
+    free = [i for i in model.empty() if first <= i <= last]
+    read = {}
     for slot in core_slots():
-        if not craft_route(calibration.FAVOURITE_ITEMS[str(slot)]):
+        if not free or not craft_route(calibration.FAVOURITE_ITEMS[str(slot)]):
             continue
         war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
         try:
-            buy_under_lister(model, slot, first, last, verbose=verbose)
+            _bought, pair = buy_under_lister(model, slot, first, last,
+                                             verbose=verbose)
+            if pair is not None:
+                read[slot] = pair
         except (craft.Refused, buy.Refused, NotReady) as exc:
             print(f"  buying under our listing stopped: {exc}")
     held = rows_by_core(model, first, last)
     priced, wanted, short = {}, {}, []
     print("")
     print(f"  counting only rows {first}-{last}; rows outside it are not "
-          f"repriced and do not count")
+          f"repriced and do not count; {len(free)} row(s) free")
     print(f"  {'core':<30}{'rows':>6}{'buy/u':>10}{'sell/u':>10}"
           f"{'margin':>10}{'wants':>7}   short?")
     for slot, count in sorted(held.items()):
         core = calibration.FAVOURITE_ITEMS[str(slot)]
         mark, diff, wants = "", None, None
         buy_at = sell_at = None
+        most = calibration.rows_wanted_at_most(core)
         if not convert.cell_for(core) and not craft_route(core):
             mark = "neither convertible nor craftable"
         elif not buying_enabled(core):
             mark = "buying off"
+        elif most is not None and count >= most:
+            mark = f"holds the most it can want, {most}; not priced"
+        elif not free:
+            mark = "no row free; not priced"
         else:
-            core_row, set_row, diff = price_gap(slot, say=False)
+            core_row, set_row, diff = price_gap(slot, say=False,
+                                                rows=read.get(slot))
             if diff is None:
                 mark = "would not price"
             else:
                 buy_at, sell_at = ((core_row, set_row) if craft_route(core)
                                    else (set_row, core_row))
                 priced[slot] = buy_at
+                read[slot] = (core_row, set_row)
                 wants = calibration.rows_by_margin(core, diff)
                 if count < wants:
                     mark = "YES"
@@ -2390,11 +2517,11 @@ def price_table(model, first, last, verbose=True):
         print("")
         print(f"  nothing inside rows {first}-{last} holds fewer rows "
               f"than its margin is worth.")
-    return held, priced, short, wanted
+    return held, priced, short, wanted, read
 
 
 def resupply_core_rows(model, slot, have, wants, priced, first, last, done,
-                       verbose=True):
+                       verbose=True, rows=None):
     core_here = calibration.FAVOURITE_ITEMS[str(slot)]
     route = resupply_chaos if craft_route(core_here) else resupply_one
     bought_name = (core_here if craft_route(core_here)
@@ -2409,11 +2536,13 @@ def resupply_core_rows(model, slot, have, wants, priced, first, last, done,
                 verbose=verbose):
             break
         try:
-            out = route(model, slot, have, first, last, verbose=verbose)
+            out = route(model, slot, have, first, last, verbose=verbose,
+                        rows=rows)
         except (convert.Refused, craft.Refused, buy.Refused,
                 NotReady) as exc:
             print(f"  resupply of {core_here!r} stopped: {exc}")
             out = None
+        rows = None
         if not out or not out.get("rows"):
             break
         done.append(out)
@@ -2481,11 +2610,12 @@ def resupply_pass(model, first, last, verbose=True):
                 continue
             if table is None:
                 table = price_table(model, first, last, verbose=verbose)
-            held, priced, short, wanted = table
+            held, priced, short, wanted, read = table
             if key not in short:
                 continue
             resupply_core_rows(model, key, held[key], wanted[key], priced,
-                               first, last, done, verbose=verbose)
+                               first, last, done, verbose=verbose,
+                               rows=read.get(key))
     finally:
         if not back_to_the_shop(verbose=verbose):
             raise NotReady("the Agent Shop is not open after resupplying.")

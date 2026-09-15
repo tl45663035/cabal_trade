@@ -1030,6 +1030,33 @@ class RowModel:
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
                 f"listing committed is unknown -- check the shop by hand.")
+        with calibration.step("wait for the panel to let the item go"):
+            standing = panel_standing()
+            deadline = time.monotonic() + DIALOG_TIMEOUT
+            stalled = None
+            while standing is not None and time.monotonic() < deadline:
+                if calibration.server_busy():
+                    if stalled is None:
+                        stalled = time.monotonic()
+                        calibration.snap("server_busy_after_confirmation")
+                    if (time.monotonic() - stalled
+                            < calibration.SERVER_LAG_BUDGET):
+                        deadline = time.monotonic() + DIALOG_TIMEOUT
+                time.sleep(PANEL_REREAD_GAP)
+                standing = panel_standing()
+        if standing is not None:
+            calibration.snap("panel_kept_the_item")
+            raise Divergence(
+                f"the panel still holds the item, priced {standing:,}, "
+                f"{DIALOG_TIMEOUT:g}s after {CONFIRM_WORD}"
+                + (f" and {time.monotonic() - stalled:.0f}s of the server "
+                   f"not answering" if stalled is not None else "")
+                + f"; the registration did not go through. Nothing is "
+                  f"listed.")
+        if stalled is not None and verbose:
+            print(f"  the server stopped answering after {CONFIRM_WORD}; the "
+                  f"panel let the item go {time.monotonic() - stalled:.0f}s "
+                  f"later, so the listing registered")
         self.release_work((row, col))
         calibration.steps_table(f"list {qty} at {want:,}")
         if verbose:
