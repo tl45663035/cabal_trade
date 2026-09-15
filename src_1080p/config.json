@@ -360,5 +360,14 @@
     "log_tail_lines": 40,
     "calib_repeats": 100,
     "calib_fail_limit": 3
+  },
+  "bugs": {
+    "folder": "bugs",
+    "remote": "origin",
+    "branch": "main",
+    "push_retries": 3,
+    "max_file_mb": 95,
+    "frames_after_minutes": 20,
+    "live_frames": 60
   }
 }
