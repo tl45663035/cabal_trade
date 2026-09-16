@@ -13,15 +13,20 @@ WAR_MINUTES = _WAR["war_minutes"]
 QUIET_BEFORE_END = _WAR["quiet_before_end"]
 QUIET_SECONDS = _WAR["quiet_seconds"]
 UNCERTAINTY = _WAR["clock_uncertainty"]
-RESYNC = _WAR["clock_resync"]
 CONFIRM_PAUSE = _WAR["clock_confirm_pause"]
-MAX_DRIFT = _WAR["clock_max_drift"]
 LAG_POLL = _SHARED["timing"]["server_lag_poll"]
 _CLOCK = re.compile(_SHARED["text"]["server_clock"])
 EPOCH = datetime.datetime.strptime(
     _SHARED["game_facts"]["clock_epoch"], "%Y-%m-%d")
+DAY = datetime.timedelta(days=1).total_seconds()
+MINUTE = datetime.timedelta(minutes=1).total_seconds()
 
 _SYNC = None
+
+
+def _apart(seconds):
+    gap = abs(seconds) % DAY
+    return min(gap, DAY - gap)
 
 
 def clock_box():
@@ -45,35 +50,27 @@ def read_clock(image=None, verbose=False):
 
 def sync(verbose=False):
     global _SYNC
+    if _SYNC is not None:
+        return True
     reading = read_clock(verbose=verbose)
     if reading is None:
         return False
     stamped = EPOCH + datetime.timedelta(
         hours=reading.hour, minutes=reading.minute, seconds=UNCERTAINTY)
-    if _SYNC is None:
-        time.sleep(CONFIRM_PAUSE)
-        second = read_clock(verbose=False)
-        if second is None:
-            if verbose:
-                print("  the server clock did not read a second time; not "
-                      "anchoring on one reading.")
-            return False
-        gap = abs((second.hour * 60 + second.minute)
-                  - (reading.hour * 60 + reading.minute))
-        if gap > 1:
-            if verbose:
-                print(f"  two readings disagree ({reading:%H:%M} then "
-                      f"{second:%H:%M}); not anchoring on either.")
-            return False
-    running = now(resync=False)
-    if running is not None:
-        drift = abs((stamped - running).total_seconds())
-        if drift > MAX_DRIFT:
-            if verbose:
-                print(f"  the clock read {reading:%H:%M}, {drift / 60:.1f} min "
-                      f"from the running clock ({running:%H:%M:%S}); keeping "
-                      f"the old anchor.")
-            return False
+    time.sleep(CONFIRM_PAUSE)
+    second = read_clock(verbose=False)
+    if second is None:
+        if verbose:
+            print("  the server clock did not read a second time; not "
+                  "anchoring on one reading.")
+        return False
+    gap = _apart(((second.hour * 60 + second.minute)
+                  - (reading.hour * 60 + reading.minute)) * MINUTE)
+    if gap > MINUTE:
+        if verbose:
+            print(f"  two readings disagree ({reading:%H:%M} then "
+                  f"{second:%H:%M}); not anchoring on either.")
+        return False
     _SYNC = (time.monotonic(), stamped)
     if verbose:
         print(f"  server clock {reading:%H:%M} (+{UNCERTAINTY}s for the "
@@ -81,10 +78,8 @@ def sync(verbose=False):
     return True
 
 
-def now(resync=True, verbose=False):
-    global _SYNC
-    stale = _SYNC is None or time.monotonic() - _SYNC[0] > RESYNC
-    if stale and resync:
+def now(verbose=False):
+    if _SYNC is None:
         sync(verbose=verbose)
     if _SYNC is None:
         return None
