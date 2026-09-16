@@ -538,10 +538,6 @@ def relist_one(model, index, verbose=True, first=None, last=None,
             print(f"    floor {whole:,}{carries} from {pair}; listed at "
                   f"{row.price:,}, "
                   f"{'UNDER the floor' if row.price < whole else 'above it'}")
-    if unit_floor is None:
-        print(f"  row {index}: {row.name!r} is floored by a {pair}, which did "
-              f"not price this run; left listed at {row.price:,}.")
-        return False
     with calibration.phase("check the shop slot is empty"):
         standing = row_model.panel_standing()
     if standing is not None:
@@ -761,9 +757,6 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
 
 def list_floor(item, verbose=True):
     unit_floor, pair = calibration.price_floor(item)
-    if unit_floor is None:
-        raise NotReady(f"{item!r} is floored by a {pair}, which has not "
-                       f"priced; not listing it")
     if not unit_floor:
         if verbose:
             print(f"    no floor for {item!r}"

@@ -2163,7 +2163,7 @@ def price_floor(name):
     if ratio:
         voucher = voucher_unit()
         if voucher < MIN_PLAUSIBLE_PRICE:
-            return None, f"{VOUCHER_WORD} voucher"
+            return 0, f"{VOUCHER_WORD} voucher, which did not price"
         return (voucher * ratio) // VOUCHER_FLOOR_PARTS,                f"{ratio}/{VOUCHER_FLOOR_PARTS} of a {VOUCHER_WORD} voucher"
     prices = _read(OUT).get("market", {}).get("unit_price", {})
     slot = favourite_slot_of(name)
@@ -2174,7 +2174,7 @@ def price_floor(name):
         return 0, ""
     floor = int(prices.get(str(pair)) or 0)
     if floor < MIN_PLAUSIBLE_PRICE:
-        return None, FAVOURITE_ITEMS[str(pair)]
+        return 0, f"{FAVOURITE_ITEMS[str(pair)]}, which did not price"
     return floor, FAVOURITE_ITEMS[str(pair)]
 
 
