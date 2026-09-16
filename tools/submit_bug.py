@@ -26,6 +26,9 @@ SCREEN = re.compile(r"calibrated for (\d+x\d+)", re.M)
 STOPPED = re.compile(r"^\s+stopped: (.+)$", re.M)
 
 
+_NEWLINE = chr(10)
+
+
 class Fail(Exception):
     pass
 
@@ -164,6 +167,15 @@ def gather(stem, into):
     return manifest
 
 
+def not_allowed(said):
+    lowered = (said or "").lower()
+    return any(mark in lowered for mark in
+               ("error: 403", "error: 401", "authentication failed",
+                "could not read username", "permission denied", "denied to",
+                "write access", "repository not found",
+                "does not appear to be a git"))
+
+
 def resolve_rebase(work, mine):
     while True:
         conflicted = git("diff", "--name-only", "--diff-filter=U", cwd=work,
@@ -206,8 +218,19 @@ def publish(stem, manifest_of):
             if pushed.returncode == 0:
                 return git("rev-parse", "--short", "HEAD", cwd=work).stdout.strip(), manifest
             said = pushed.stderr.strip().splitlines()
-            print(f"  push attempt {attempt} rejected: "
-                  f"{said[-1] if said else ''}")
+            last = said[-1] if said else ""
+            if not_allowed(pushed.stderr):
+                raise Fail(_NEWLINE.join([
+                    last,
+                    f"  this machine's git credential cannot write to "
+                    f"{remote}; nothing was sent and nothing was changed "
+                    f"here.",
+                    f"  give it one that can, then run this again:",
+                    f"    gh auth login    (then: gh auth setup-git)",
+                    f"  or drop the stored one so git asks on the next push:",
+                    f"    cmdkey /delete:git:https://github.com",
+                ]))
+            print(f"  push attempt {attempt} rejected: {last}")
             git("fetch", "-q", remote, branch)
             rebased = git("rebase", upstream, cwd=work, check=False)
             if rebased.returncode != 0:

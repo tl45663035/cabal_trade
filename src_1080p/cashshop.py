@@ -17,6 +17,8 @@ PRICE_WORD = _TEXT["cash_price_word"]
 BALANCE_WORD = _TEXT["cash_balance_word"]
 ICON_F = tuple(_REG["cash_icon"])
 TABS_F = tuple(_REG["cash_tabs"])
+TITLE_F = tuple(_REG["cash_title"])
+TITLE_WORD = _TEXT["cash_title_word"]
 GRID_F = tuple(_REG["cash_grid"])
 DIALOG_F = tuple(_REG["cash_dialog"])
 BALANCE_F = tuple(_REG["cash_balance"])
@@ -169,8 +171,15 @@ def tab_point(word=None, image=None):
     return seat("tab_" + _fold(word), word, TABS_F, image)
 
 
+def title_shown(image=None):
+    image = image if image is not None else calibration.grab()
+    seen = calibration.read_line(image, calibration._box(TITLE_F))
+    return _fold(TITLE_WORD) in _fold(seen)
+
+
 def is_open(image=None):
-    return tab_point(DEFAULT_TAB, image) is not None
+    image = image if image is not None else calibration.grab()
+    return tab_point(DEFAULT_TAB, image) is not None or title_shown(image)
 
 
 def cell_box(purchase):
@@ -250,8 +259,12 @@ def open_cash_shop(verbose=True):
         raise Refused("the Agent Shop is open and the Cash Shop is not "
                       "opened over it. Nothing clicked.")
     if is_open():
-        say("  the Cash Shop is already open")
-        return True
+        if tab_point(DEFAULT_TAB) is not None:
+            say("  the Cash Shop is already open")
+            return True
+        say(f"  the Cash Shop is open on another view, without its "
+            f"{DEFAULT_TAB} tab; closing it and opening it afresh")
+        close_cash_shop(verbose=verbose)
     icon = icon_point()
     say(f"  the Cash Shop icon at {list(icon)}")
     calibration.click(*icon)

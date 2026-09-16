@@ -303,9 +303,26 @@ def panel_standing():
 
 def _server_came_back(verbose=False):
     try:
-        return bool(calibration.wait_out_server_lag(verbose=verbose))
+        waited = bool(calibration.wait_out_server_lag(verbose=verbose))
     except RuntimeError as exc:
         raise Divergence(f"{exc} Nothing has been listed.")
+    if waited:
+        _back_in_the_shop(verbose=verbose)
+    return waited
+
+
+def _back_in_the_shop(verbose=False):
+    import open_agent_shop_premium as shop
+    if not calibration._trade_window_open():
+        if verbose:
+            print(f"  the shop was shut for the stall; reopening it before "
+                  f"trying again")
+        shop.open_agent_shop(verbose=False)
+        time.sleep(TAB_SETTLE)
+    calibration.click(*calibration.load()["shop"]["register_tab"])
+    time.sleep(TAB_SETTLE)
+    calibration.park()
+    show_work_tab(verbose=verbose)
 
 
 def suggested_price(verbose=False, listed_at=None):

@@ -65,10 +65,28 @@ def collect_gifts(verbose=True):
             f"{DIALOG_TIMEOUT:g}s, so the gift window is not open where it "
             f"was measured. Nothing clicked.")
 
+    found = calibration.gift_buttons()
+    receive_all = found["receive_all"] or (
+        tuple(gifts["receive_all"]) if gifts.get("receive_all") else None)
+    if receive_all is not None:
+        if verbose:
+            print(f"  {RECEIVE_WORD} {calibration.GIFT_ALL_WORD} at "
+                  f"{list(receive_all)}")
+        calibration.click(*receive_all, settle=GIFT_GAP)
+    taking = (calibration.gift_slots(found["column"])[:calibration.GIFT_BOXES]
+              or taking)
+    if not taking and verbose:
+        print(f"  no {RECEIVE_WORD} button in the gift box; nothing to take")
     for n, point in enumerate(taking, 1):
         if verbose:
             print(f"  {RECEIVE_WORD} {n} of {len(taking)} at {list(point)}")
         calibration.click(*point, settle=GIFT_GAP)
+    special = found["special"] or (
+        tuple(gifts["special"]) if gifts.get("special") else None)
+    if special is not None:
+        if verbose:
+            print(f"  the special giftbox's {RECEIVE_WORD} at {list(special)}")
+        calibration.click(*special, settle=GIFT_GAP)
 
     if verbose:
         print(f"  {CLOSE_WORD} at {list(close)}")

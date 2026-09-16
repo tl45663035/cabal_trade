@@ -1405,6 +1405,55 @@ def _gift_reads(word, image=None):
             if text.strip().lower() == want]
 
 
+def gift_buttons(image=None):
+    image = image if image is not None else grab()
+    words = [(text.strip().lower(), point)
+             for text, _conf, point in ocr(image, _box(GIFT_WINDOW_F))
+             if text.strip()]
+    slack = _S["detect"]["word_row_slack"]
+
+    def beside(point, word, to_the_right):
+        for text, other in words:
+            if text != word.lower() or abs(other[1] - point[1]) > slack:
+                continue
+            gap = other[0] - point[0] if to_the_right else point[0] - other[0]
+            if 0 < gap <= GIFT_WORD_REACH:
+                return other
+        return None
+
+    receive_all, singles = None, []
+    for text, point in words:
+        if text != RECEIPT_WORD.strip().lower():
+            continue
+        other = beside(point, GIFT_ALL_WORD, True)
+        if other is not None:
+            receive_all = ((point[0] + other[0]) // 2,
+                           (point[1] + other[1]) // 2)
+            continue
+        if beside(point, GIFT_AUTO_WORD, False) is not None:
+            continue
+        singles.append(point)
+    column = gift_column(singles)
+    others = [p for p in singles if p not in column]
+    return {"column": column, "receive_all": receive_all,
+            "special": others[0] if others else None,
+            "close": _gift_reads(CLOSE_WORD, image)}
+
+
+def gift_slots(column):
+    if len(column) < 2:
+        return list(column)
+    ys = sorted(p[1] for p in column)
+    pitch = min(b - a for a, b in zip(ys, ys[1:]))
+    x = column[0][0]
+    slots = []
+    y = ys[0]
+    while y <= ys[-1] + pitch // 2 and len(slots) < GIFT_BOXES:
+        slots.append((x, y))
+        y += pitch
+    return slots
+
+
 def gift_column(points):
     best = []
     for point in points:
@@ -1416,13 +1465,12 @@ def gift_column(points):
 
 
 def _gift_window(image=None):
-    image = image if image is not None else grab()
-    return (gift_column(_gift_reads(RECEIPT_WORD, image)),
-            _gift_reads(CLOSE_WORD, image))
+    found = gift_buttons(image)
+    return found["column"], found["close"]
 
 
 def _gift_window_shows(listed, shut):
-    return len(listed) >= GIFT_BOXES and bool(shut)
+    return bool(shut)
 
 
 def _await_gift_window():
@@ -1448,32 +1496,39 @@ def calibrate_gifts(verbose=True):
             break
         if attempt > 1:
             snap("gift_window_short")
-            say(f"  the gift box shows {len(listed)} {RECEIPT_WORD} button(s) "
-                f"in one column and {len(shut)} {CLOSE_WORD}, not "
-                f"{GIFT_BOXES} and one; clicking its icon again, "
-                f"{attempt} of {GIFT_OPEN_TRIES}")
+            say(f"  the gift box shows no {CLOSE_WORD}; clicking its icon "
+                f"again, {attempt} of {GIFT_OPEN_TRIES}")
         click(*icon)
         time.sleep(_S["timing"]["action_gap"])
         listed, shut = _await_gift_window()
 
     if not _gift_window_shows(listed, shut):
         snap("gift_window_short")
-        say(f"  the gift box shows {len(listed)} {RECEIPT_WORD} button(s) in "
-            f"one column and {len(shut)} {CLOSE_WORD}, not {GIFT_BOXES} and "
-            f"one; leaving the gift points unmeasured")
-        if shut:
-            click(*shut[0])
-            park()
+        say(f"  the gift box shows no {CLOSE_WORD}; leaving the gift points "
+            f"unmeasured")
         return None
 
-    taking = listed[:GIFT_BOXES]
-    say(f"  {RECEIPT_WORD} at {[list(p) for p in taking]}")
+    found = gift_buttons()
+    taking = gift_slots(found["column"])[:GIFT_BOXES]
+    say(f"  {RECEIPT_WORD} at {[list(p) for p in taking]}; the gifts on "
+        f"offer are read again each time the box is collected")
+    if found["receive_all"] is not None:
+        say(f"  {RECEIPT_WORD} {GIFT_ALL_WORD} at "
+            f"{list(found['receive_all'])}")
+    if found["special"] is not None:
+        say(f"  the special giftbox's {RECEIPT_WORD} at "
+            f"{list(found['special'])}")
     say(f"  {CLOSE_WORD} at {list(shut[0])}")
     click(*shut[0])
     park()
-    return {"icon": list(icon),
-            "receive": [list(p) for p in taking],
-            "close": list(shut[0])}
+    block = {"icon": list(icon),
+             "receive": [list(p) for p in taking],
+             "close": list(shut[0])}
+    if found["receive_all"] is not None:
+        block["receive_all"] = list(found["receive_all"])
+    if found["special"] is not None:
+        block["special"] = list(found["special"])
+    return block
 
 
 def calibrate_shop(verbose=True):
@@ -1879,6 +1934,9 @@ CLOSE_WORD = _S["text"]["close_word"]
 GIFT_BOXES = int(_S["game_facts"]["gift_boxes"])
 GIFT_OPEN_TRIES = int(_S["timing"]["gift_open_tries"])
 GIFT_COLUMN_SPREAD = int(_S["detect"]["gift_column_spread"])
+GIFT_WORD_REACH = int(_S["detect"]["gift_word_reach"])
+GIFT_ALL_WORD = _S["text"]["gift_all_word"]
+GIFT_AUTO_WORD = _S["text"]["gift_auto_word"]
 GIFT_ICON_F = tuple(_S["regions"]["gift_icon"])
 GIFT_WINDOW_F = tuple(_S["regions"]["gift_window"])
 CASH_ICON_F = tuple(_S["regions"]["cash_icon"])
@@ -1929,6 +1987,10 @@ def calibrate_cashshop(verbose=True):
     say = print if verbose else (lambda *a: None)
     icon = cashshop.icon_point()
     say(f"  the Cash Shop icon at {list(icon)}")
+    if cashshop.is_open() and cashshop.tab_point(cashshop.DEFAULT_TAB) is None:
+        say(f"  the Cash Shop is open on another view, without its "
+            f"{cashshop.DEFAULT_TAB} tab; closing it first")
+        cashshop.close_cash_shop(verbose=verbose)
     if cashshop.is_open():
         say("  the Cash Shop was already open; not clicking its icon")
     else:
@@ -2948,6 +3010,23 @@ def calibrate_actions(shop, verbose=True):
                 f"{budget}s after {after} on row 1; that band reads "
                 f"{band_reads()}. Nothing has been withdrawn.")
 
+    def close_dialogs():
+        from open_inventory import VK_ESCAPE, press
+        for _attempt in range(TOGGLE_TRIES):
+            here = buttons_now()
+            if not here:
+                return True
+            dismiss = here.get(_S["text"]["dismiss_word"])
+            if dismiss is not None:
+                say(f"  {_S['text']['dismiss_word']} at {dismiss} to close "
+                    f"the dialog")
+                click(*dismiss)
+            else:
+                say(f"  pressing Escape to close the dialog")
+                press(VK_ESCAPE)
+            park()
+        return not buttons_now()
+
     if buttons_now():
         raise RuntimeError(
             "a dialog is already open over the Register table. Close it and "
@@ -2992,16 +3071,26 @@ def calibrate_actions(shop, verbose=True):
 
     cancel = await_button(_S["text"]["dismiss_word"])
     if cancel is None:
-        raise RuntimeError(missing(_S["text"]["dismiss_word"],
-                                   _S["text"]["change_word"]))
+        say(f"  {missing(_S['text']['dismiss_word'], _S['text']['change_word'])}")
+        say(f"  closing whatever opened and leaving row 1 as it is. Earlier "
+            f"positions stand.")
+        if not close_dialogs():
+            raise RuntimeError("a dialog opened after Change on row 1 and "
+                               "would not close.")
+        return {}
     say(f"  Cancel at {cancel}")
     click(*cancel)
     park(settle=False)
 
     confirm = await_button(_S["text"]["confirm_word"])
     if confirm is None:
-        raise RuntimeError(missing(_S["text"]["confirm_word"],
-                                   _S["text"]["dismiss_word"]))
+        say(f"  {missing(_S['text']['confirm_word'], _S['text']['dismiss_word'])}")
+        say(f"  closing whatever opened; nothing withdrawn. Earlier "
+            f"positions stand.")
+        if not close_dialogs():
+            raise RuntimeError("a dialog opened after Cancel on row 1 and "
+                               "would not close.")
+        return {}
     say(f"  Confirmation at {confirm}")
     click(*confirm)
     park()
@@ -3024,10 +3113,7 @@ def calibrate_actions(shop, verbose=True):
                 break
             time.sleep(POLL_GAP)
         else:
-            from open_inventory import VK_ESCAPE, press
-            press(VK_ESCAPE)
-            park()
-            if buttons_now():
+            if not close_dialogs():
                 raise RuntimeError(
                     "the dialog stayed open after Confirmation on row 1, "
                     "and neither Cancel nor Escape closed it.")
@@ -3380,6 +3466,14 @@ def close_everything(verbose: bool = False) -> None:
             print("  Escape: window closed")
     elif verbose:
         print("  no Trade window or vendor open; not pressing Escape")
+
+    import cashshop
+    if cashshop.is_open():
+        try:
+            cashshop.close_cash_shop(verbose=verbose)
+        except Exception as exc:
+            if verbose:
+                print(f"  the Cash Shop stayed open ({exc})")
 
     park()
     if not inventory_grid_shown(grab()):

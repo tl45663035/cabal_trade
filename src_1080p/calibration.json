@@ -225,6 +225,12 @@
       0.56,
       0.175
     ],
+    "cash_title": [
+      0.4661,
+      0.0832,
+      0.5365,
+      0.1237
+    ],
     "cash_grid": [
       0.2422,
       0.1717,
@@ -449,6 +455,8 @@
     "voucher_search": "voucher",
     "voucher_word": "Gold",
     "close_word": "Close",
+    "gift_all_word": "All",
+    "gift_auto_word": "Auto",
     "register_word": "Register",
     "status_complete": "Complete",
     "cash_purchase_word": "Purchase",
@@ -457,6 +465,7 @@
     "cash_price_word": "Price",
     "cash_balance_word": "Balance",
     "cash_tab_word": "Useable",
+    "cash_title_word": "Cash Shop",
     "vendor_tab_words": "normal|dungeon|repurchase",
     "convert_confirm_word": "OK",
     "convert_cancel_word": "Cancel",
@@ -1834,7 +1843,7 @@
           752,
           166
         ],
-        "purchase_sort_text_seen": "IC y Price:Low to \u00bbEal",
+        "purchase_sort_text_seen": "IC y Price:Low to »Eal",
         "purchase_sort_anchor": [
           662,
           150
@@ -2347,6 +2356,7 @@
     "slot_half": 24,
     "slot_occupied_stdev": 30.0,
     "gift_column_spread": 12,
+    "gift_word_reach": 60,
     "server_lag_pixels": 2000,
     "server_lag_sure": 4000,
     "server_lag_red": 210,

@@ -545,7 +545,7 @@ def first_row(tab):
 
 
 def clear_work_tab(budget):
-    hovered, left_behind = 0, set()
+    hovered, left_behind, collected = 0, set(), False
     while True:
         left = first_row(WORK_TAB)
         if not left:
@@ -556,6 +556,14 @@ def clear_work_tab(budget):
             print(f"  tab {WORK_TAB} holds only what the run leaves behind: "
                   f"{len(left)} slot(s)")
             return budget
+        if not collected:
+            collected = True
+            budget = spend(budget, "collect")
+            try:
+                run_driver("collect")
+            except Stop as exc:
+                event(f"collect failed: {str(exc)[:K['reason_width']]}; "
+                      f"carrying on", "dead")
         found = None
         for row, col in todo:
             if hovered >= K["hover_cap"]:
@@ -633,10 +641,27 @@ def get_in(plan=False):
         if not plan:
             state = close_craft_window(state)
 
-    if row_model.CONFIRM_WORD in state["buttons"]:
-        print("  case: a registration dialog is open -> Confirmation")
-        if not plan:
+    for _attempt in range(K["dialog_tries"]):
+        if row_model.CONFIRM_WORD in state["buttons"]:
+            print("  case: a registration dialog is open -> Confirmation")
+            if plan:
+                break
             state = dismiss_dialog(state)
+        elif row_model.DISMISS_WORD in state["buttons"]:
+            print(f"  case: a dialog with {row_model.DISMISS_WORD} is open "
+                  f"-> {row_model.DISMISS_WORD}")
+            if plan:
+                break
+            point = row_model.find_button(row_model.DISMISS_WORD,
+                                          timeout=K["dialog_settle"])
+            if point is None:
+                break
+            calibration.click(*point)
+            calibration.park()
+            time.sleep(K["dialog_settle"])
+            state = read_state()
+        else:
+            break
 
     if not state["alz"] and not state["trade"] and not plan:
         if calibration.await_inventory() is None:
@@ -680,6 +705,7 @@ def recover(reason, text, plan=False, log=None, watched=True):
         print(f"  then: list, convert or craft whatever row 1 of tab "
               f"{WORK_TAB} holds, close_everything, relaunch")
         return
+    calibration.close_everything(True)
     clear_work_tab(K["task_cap"])
     for kind, info in tasks:
         if kind == "relist":

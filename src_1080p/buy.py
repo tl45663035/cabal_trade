@@ -43,6 +43,10 @@ class TooThin(Refused):
     pass
 
 
+class TooBig(Refused):
+    pass
+
+
 class Broke(Refused):
     pass
 
@@ -187,7 +191,7 @@ def _whole_batches(held, pack, packs, batch):
 
 def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 ceiling=None, sells_at=0, gap=None, leave_behind=0,
-                search=True, batch=1):
+                search=True, batch=1, room=None):
     steps_reset()
     outcome = "REFUSED"
     try:
@@ -195,7 +199,7 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                            floor_qty=floor_qty, ceiling=ceiling,
                            sells_at=sells_at, gap=gap,
                            leave_behind=leave_behind, search=search,
-                           batch=batch)
+                           batch=batch, room=room)
         outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
         return out
     finally:
@@ -205,7 +209,7 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
 def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                  ceiling=None, sells_at=0, gap=None, leave_behind=0,
-                 search=True, batch=1):
+                 search=True, batch=1, room=None):
     say = print if verbose else (lambda *a: None)
     with step("get_price: search the favourite and read row 1"):
         offer = get_price.get_price(int(slot), verbose=False,
@@ -230,6 +234,13 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         say(f"    row 1 leaves {now:,} a core against the {gap:,} wanted")
 
     pack = max(1, row_model.pack_size(offer["name"]))
+    limits = [v for v in (ceiling, room) if v is not None]
+    limit = min(limits) if limits else None
+    if limit is not None and held + pack > limit:
+        raise TooBig(
+            f"row 1 bundles {pack} and only {max(0, limit - held)} more fit "
+            f"under the {limit} limit with {held} held; a bundle cannot be "
+            f"split, so this offer is skipped.")
     want_packs = max(1, -(-int(want) // pack))
     with step("read the balance before buying"):
         before_alz = get_alz.read_balance()
@@ -302,20 +313,11 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         _cancel(f"the dialog allows {cap} and {leave_behind} of the row's "
                 f"{stock} stays behind, so nothing can be taken. Cancelled "
                 f"without buying.")
-    if ceiling is not None and held + pack * asked > ceiling:
-        if held <= 0:
-            say(f"    nothing held yet: taking row 1's bundle of {pack} even "
-                f"though {held + pack * asked} passes the {ceiling} ceiling "
-                f"-- a bundle cannot be split and buying is row 1 only")
-        else:
-            fits = max(0, ceiling - held) // pack
-            if fits < 1:
-                _cancel(f"{held} already held and row 1 bundles {pack}, so "
-                        f"even one would pass the {ceiling} ceiling. "
-                        f"Cancelled without buying.")
-            say(f"    {held} held; trimming this order from {asked} to "
-                f"{fits} pack(s) to stay under the {ceiling} ceiling")
-            asked = fits
+    if limit is not None and held + pack * asked > limit:
+        fits = max(0, limit - held) // pack
+        say(f"    {held} held; trimming this order from {asked} to {fits} "
+            f"pack(s) to stay under the {limit} limit")
+        asked = fits
     if verbose:
         say(f"    {want} core(s) wanted, {pack} to a pack -> {want_packs} "
             f"pack(s); {detail['qty_max']} available, taking {asked}")

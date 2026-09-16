@@ -449,7 +449,8 @@ def restock_core_now(model, slot, name, first, last, verbose=True):
         register_tab(verbose=verbose)
 
 
-def relist_one(model, index, verbose=True, first=None, last=None):
+def relist_one(model, index, verbose=True, first=None, last=None,
+               collect_only=False):
     run = calibration.load_shared()["run"]
     first = int(run["relist_from"] if first is None else first)
     last = int(run["relist_to"] if last is None else last)
@@ -496,6 +497,9 @@ def relist_one(model, index, verbose=True, first=None, last=None):
         if verbose:
             print(f"  row {index} is empty; nothing to relist")
         return None
+
+    if collect_only:
+        return False
 
     if row is None or button != row_model.CHANGE_WORD:
         calibration.snap(f"row_{index}_button_disagrees")
@@ -675,14 +679,15 @@ def shop_ready(why, verbose=True):
     return calibration._trade_window_open()
 
 
-def relist_pass(model, first, last, passes=0, verbose=True):
+def relist_pass(model, first, last, passes=0, verbose=True,
+                collect_only=False):
     shop_ready(f"rows {first}-{last}", verbose=verbose)
     model.home(verbose=False)
     calibration.phases_reset()
     done = skipped = empty = 0
     for index in range(first, last + 1):
         out = relist_one(model, index, verbose=verbose, first=first,
-                         last=last)
+                         last=last, collect_only=collect_only)
         if out:
             done += 1
         elif out is False:
@@ -1045,6 +1050,19 @@ def do_convert(slot, verbose=True):
             "slots": slots_filled, "listed": listed_total, "rows": rows}
 
 
+def do_collect(verbose=True):
+    run = calibration.load_shared()["run"]
+    first, last = int(run["relist_from"]), int(run["relist_to"])
+    initialise(verbose=verbose)
+    register_tab(verbose=verbose)
+    model = seed(verbose=verbose)
+    _done, _skipped, empty = relist_pass(model, first, last, verbose=verbose,
+                                         collect_only=True)
+    print(f"  collected what sold in rows {first}-{last}; {empty} row(s) "
+          f"empty now")
+    return empty
+
+
 def do_cancel(index, verbose=True):
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
@@ -1170,6 +1188,7 @@ def start_resupply(model, slot, held, first, last, verbose=True, rows=None):
         return None
     print(f"  {len(free_rows)} row(s) free inside {first}-{last}; a resupply "
           f"needs up to {rounds_needed}")
+    room = len(free_rows) * row_model.MAX_STACK
 
     core_row, set_row, diff = price_gap(slot, rows=rows)
     threshold = None if diff is None else margin_says_buy(core, held, diff)
@@ -1189,7 +1208,8 @@ def start_resupply(model, slot, held, first, last, verbose=True, rows=None):
          tab=calibration.CONVERT_INVENTORY_TAB, landing=list(landing))
     return {"slot": slot, "core": core, "set": set_name, "pair": pair,
             "diff": diff, "landing": landing, "want_min": want_min,
-            "want_max": want_max, "sells_at": core_row["unit_price"],
+            "want_max": want_max, "room": room,
+            "sells_at": core_row["unit_price"],
             "gap": threshold, "step": "buy", "orders": 0, "bought": 0,
             "paid": 0, "floor": 0, "why": "", "max_rounds": 0, "rounds": 0,
             "slots": [], "filled": 0, "rows": [], "listed": 0}
@@ -1212,7 +1232,8 @@ def buy_sets(job, verbose=True):
                                           floor_qty=want_min,
                                           ceiling=job["want_max"],
                                           sells_at=job["sells_at"],
-                                          gap=job["gap"])
+                                          gap=job["gap"],
+                                          room=job["room"])
                 break
             except buy.Refused as exc:
                 if not getattr(exc, "retryable", False):
@@ -2651,6 +2672,8 @@ def usage():
     print("                                   buy, convert and list it; skips")
     print("                                   the row count and enable_buying")
     print("  RECOVERY -- after a run stopped part way through a resupply")
+    print("  py src/driver.py collect         collect what sold in the rows,")
+    print("                                   cancelling nothing")
     print("  py src/driver.py craft chaos     craft the Chaos Core already")
     print("                                   in the bag into Sets and list")
     print("                                   them")
@@ -2786,6 +2809,8 @@ def _dispatch(args):
     what = args[0].lower()
     if what == "cancel" and len(args) > 1:
         do_cancel(int(args[1]))
+    elif what == "collect":
+        do_collect()
     elif what == "relist":
         do_relist(args[1] if len(args) > 1 else None,
                   args[2] if len(args) > 2 else None,
