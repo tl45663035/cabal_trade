@@ -970,7 +970,7 @@ class RowModel:
             raise Divergence(
                 "no price was given and the panel suggests none, so there is "
                 "nothing to list at. Nothing has been listed.")
-        cap = int(calibration.load_shared()["run"]["max_drop"])
+        cap = calibration.max_drop(expect_item)
         each = count or (pack_size(expect_item) if expect_item else 1)
         held = listed_at - cap * each if cap and listed_at else 0
         if held and want < held:

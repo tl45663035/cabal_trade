@@ -2679,6 +2679,14 @@ def _per_item_raw(table, core_name):
     return table.get("default")
 
 
+def max_drop(name=None):
+    table = load_shared()["run"]["max_drop"]
+    if not isinstance(table, dict):
+        return int(table)
+    value = _per_item_raw(table, name)
+    return int(value or 0)
+
+
 def _per_item(key, core_name):
     run = load_shared()["resupply"]
     table = run.get(key)

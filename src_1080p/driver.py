@@ -1195,6 +1195,9 @@ def start_resupply(model, slot, held, first, last, verbose=True, rows=None):
 def buy_sets(job, verbose=True):
     run = calibration.load_shared()["resupply"]
     core, set_name, want_min = job["core"], job["set"], job["want_min"]
+    rows_max = int(run["core_offer_rows"])
+    considered, searched = 0, False
+    TOO_BIG = object()
     while job["bought"] < want_min:
         print(f"  {job['bought']}/{want_min} {set_name} held")
         job["orders"] += 1
@@ -1210,9 +1213,17 @@ def buy_sets(job, verbose=True):
                                           ceiling=job["want_max"],
                                           sells_at=job["sells_at"],
                                           gap=job["gap"],
-                                          room=job["room"])
+                                          room=job["room"],
+                                          search=not searched)
+                searched = True
+                break
+            except buy.TooBig as exc:
+                searched = True
+                print(f"  {exc}")
+                got = TOO_BIG
                 break
             except buy.Refused as exc:
+                searched = False
                 if not getattr(exc, "retryable", False):
                     print(f"  stopping: {exc}")
                     break
@@ -1223,11 +1234,25 @@ def buy_sets(job, verbose=True):
                           f"{set_name} this cycle.")
         if got is None:
             break
+        considered += 1
+        if got is TOO_BIG:
+            if considered >= rows_max:
+                print(f"  {rows_max} offer(s) considered and no more fit; "
+                      f"leaving {set_name} at {job['bought']} of {want_min}")
+                break
+            with calibration.phase(f"step down to the next offer "
+                                   f"({considered})"):
+                buy.scroll_down(1, verbose=verbose)
+            continue
         if got["bought"] <= 0:
             print(f"  the last order bought nothing; stopping.")
             break
         job["bought"] += got["bought"]
         job["paid"] += got["spent"]
+        if considered >= rows_max and job["bought"] < want_min:
+            print(f"  {rows_max} offer(s) considered; leaving {set_name} at "
+                  f"{job['bought']} of {want_min}")
+            break
     bought, paid = job["bought"], job["paid"]
     if bought <= 0:
         print(f"  nothing bought; not opening the vendor.")
