@@ -7,11 +7,36 @@ import subprocess
 import sys
 import time
 
+def _plain_argv():
+    out, skip = [], False
+    for arg in sys.argv[1:]:
+        if skip:
+            skip = False
+            continue
+        if arg == "--config":
+            skip = True
+            continue
+        if arg.startswith("--config=") or arg == "--frames":
+            continue
+        out.append(arg)
+    return out
+
+
+def _chosen_config():
+    for index, arg in enumerate(sys.argv):
+        if arg == "--config" and index + 1 < len(sys.argv):
+            return sys.argv[index + 1]
+        if arg.startswith("--config="):
+            return arg.split("=", 1)[1]
+    return ""
+
+
+os.environ["CABAL_CONFIG"] = _chosen_config()
+
 import calibration
 
 if __name__ == "__main__":
-    calibration.log_to_file(next((a.lower() for a in sys.argv[1:]
-                                  if a != "--frames"), "run"))
+    calibration.log_to_file(next((a.lower() for a in _plain_argv()), "run"))
 
 import buy
 import cashshop
@@ -2763,7 +2788,7 @@ def main():
     import traceback
     began = datetime.datetime.now()
     started = time.monotonic()
-    args = [a for a in sys.argv[1:] if a != "--frames"]
+    args = _plain_argv()
     calibration.log_to_file(args[0].lower() if args else "run")
     print(f"  code {_git_id()}")
     print(f"  ledger {ledger.DB} run {ledger.start()}")

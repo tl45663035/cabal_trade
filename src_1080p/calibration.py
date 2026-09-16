@@ -16,6 +16,44 @@ from PIL import Image, ImageChops, ImageDraw, ImageOps
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "calibration.json"
 CONFIG = HERE / "config.json"
+CONFIGS = HERE / "configs"
+CONFIG_ENV = "CABAL_CONFIG"
+
+
+def config_names():
+    return sorted(p.stem for p in CONFIGS.glob("*.json"))
+
+
+def config_name():
+    import os
+    name = (os.environ.get(CONFIG_ENV) or "").strip()
+    names = config_names()
+    if name not in names:
+        raise SystemExit(
+            f"no config chosen; pass --config with one of {names}"
+            if not name else
+            f"config {name!r} is not one of {names}")
+    return name
+
+
+def use_config(name):
+    import os
+    names = config_names()
+    if name not in names:
+        raise SystemExit(f"config {name!r} is not one of {names}")
+    os.environ[CONFIG_ENV] = name
+    global _CACHE
+    _CACHE = None
+    return name
+
+
+def _overlay(base, over):
+    for name, value in (over or {}).items():
+        if isinstance(value, dict) and isinstance(base.get(name), dict):
+            _overlay(base[name], value)
+        else:
+            base[name] = value
+    return base
 LOG_DIR = HERE / "logs"
 
 _CACHE = None
@@ -87,7 +125,8 @@ def swapped_for(slot, text):
 
 def load_shared() -> dict:
     out = _sections(_read(OUT))
-    for section, values in _sections(_read(CONFIG)).items():
+    chosen = _read(CONFIGS / f"{config_name()}.json")
+    for section, values in _sections(_overlay(_read(CONFIG), chosen)).items():
         out.setdefault(section, {}).update(values)
     return _resolve_swap(out)
 

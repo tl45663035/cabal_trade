@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -12,7 +13,20 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src_1080p"
 sys.path.insert(0, str(SRC))
 
+
+def _chosen_config():
+    for index, arg in enumerate(sys.argv):
+        if arg == "--config" and index + 1 < len(sys.argv):
+            return sys.argv[index + 1]
+        if arg.startswith("--config="):
+            return arg.split("=", 1)[1]
+    return ""
+
+os.environ["CABAL_CONFIG"] = _chosen_config()
+
 import calibration
+
+CONFIG = calibration.config_name()
 
 SW_MINIMIZE = calibration.load_shared()["input"]["SW_MINIMIZE"]
 
@@ -41,7 +55,7 @@ FRAMES = LOGS / "supervise_frames"
 DEAD = LOGS / "dead_runs"
 REELS = LOGS / "recovery_video"
 DRIVER = SRC / "driver.py"
-K = json.loads(calibration.CONFIG.read_text(encoding="utf-8"))["supervise"]
+K = calibration.load_shared()["supervise"]
 LAG = re.compile(r"not answering|answering again|does not count|"
                  r"starting the pass again|going to the default state|"
                  r"the server stalled")
@@ -275,6 +289,7 @@ def run_child(argv, cwd, timeout):
 
 
 def run_driver(*args):
+    args = ("--config", CONFIG) + tuple(args)
     for attempt in range(1, K["stall_retries"] + 2):
         no_driver_alive()
         print(f"$ py src_1080p/driver.py {' '.join(args)}", flush=True)
@@ -724,7 +739,8 @@ def launch():
     info = subprocess.STARTUPINFO()
     info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     info.wShowWindow = SW_MINIMIZE
-    proc = subprocess.Popen([sys.executable, str(DRIVER)], cwd=ROOT,
+    proc = subprocess.Popen([sys.executable, str(DRIVER),
+                             "--config", CONFIG], cwd=ROOT,
                             creationflags=subprocess.CREATE_NEW_CONSOLE,
                             startupinfo=info)
     for waited in range(1, K["launch_wait"] + 1):
@@ -800,6 +816,7 @@ def main():
     ap.add_argument("--plan", action="store_true")
     ap.add_argument("--log")
     ap.add_argument("--png")
+    ap.add_argument("--config", required=True)
     args = ap.parse_args()
     if args.plan:
         plan(args.log, args.png)
