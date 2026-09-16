@@ -1,0 +1,624 @@
+2026-09-15_203519  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-15_203519_run.log
+  code 9149817
+  ledger C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\sales.db run 2026-09-15T20:35:19
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames
+  cleared 412 frame(s) from earlier runs; this one numbers from 00001
+  recording -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_video (180s a reel, 5 kept)
+  cleared 4 reel(s) from earlier runs; this one numbers from 0001
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  measuring this screen before touching anything
+inventory:
+  Inventory shut; pressing I (attempt 1)
+  Alz box (1782, 692, 1859, 704)   anchor (1859, 692)
+  grid fitted in (1220, 23, 1920, 665): pitch 56.4x56.5 against a shared 73.3x73.4, slot (1,1) at 1471,229, scores 53 and 58
+  tab I [1450, 174]  tab VIII [1825, 174]
+  slot (1,1) [1471, 229]  (1,7) [1810, 229]  (8,8) [1866, 625]
+gift box:
+  the gift box at [284, 1001]
+  Receive at [[1217, 329], [1217, 428], [1217, 527], [1217, 627]]
+  Close at [1487, 852]
+cash shop:
+  the Cash Shop icon at [348, 994]
+  the Cash balance box [1134, 826, 1230, 848] reads 12,700
+  Useable at [844, 168]
+  Yekaterina VIP Membership at 300 Cash; Purchase at [737, 292]
+  the confirmation window [743, 393, 1171, 642], 428x249
+  OK at [963, 611]; Cancel at [1096, 610]
+  Escape to close the Cash Shop (attempt 1)
+  the Inventory closed with the Cash Shop; opening it again
+  Inventory shut; pressing I (attempt 1)
+opening the Agent Shop:
+  tab 8 at [1825, 174]
+  right-clicking slot (1,7) at [1810, 229]
+agent shop:
+  Register (291, 80)
+  Purchase [97, 80]  (mirrored about the boundary at x=194)
+  favourites: 10 found, pitch 42.33px, first [484, 761] last [865, 761]
+  favourite row set on an even 42px grid from 484: [484, 526, 568, 610, 652, 694, 736, 778, 820, 862]
+purchase tab:
+  switching to the Purchase tab at (97, 80)
+  sort reads 'v v pic y Price:High to' -> region [627, 136, 757, 168]
+  running favourite 1 at (484, 761) to fill the table (attempt 1/10)
+  offers arrived after 0.3s
+  row content [234, 232, 876, 288] -> 'Force Core(Highest) 46 208,000 Buy'
+    name      [234, 232, 558, 288]  -> 'Force Core(Highest)'
+    qty       [560, 232, 650, 288]  -> '46'
+    price     [659, 232, 788, 288]  -> '208,000'
+    function  [788, 232, 880, 288]  -> 'Buy'
+  Buy column x=834, 8 row(s), pitch 56px
+  row 1 centre y=260, box [192, 232, 922, 288]
+register table:
+  button column (787, 145, 922, 694)
+  Register table: 9 row(s), pitch 59px, row 1 y=176
+  table_x [192, 922], scroll point [238, 235]
+  Refresh at [839, 758]
+market prices:
+  Force Core(Highest)              208,000
+  Force Core Set (Highest)         202,479
+  Chaos Core                       695,000
+  Chaos Core Set                   714,774
+  Force Core (Ultimate)            443,923
+  Force Core Set (Ultimate)        397,063
+  Force Core(High)                 205,546
+  Force Core Set (High)            195,803
+  Upgrade Core (Ultimate)          467,801
+  Upgrade Core Set (Ultimate)      475,000
+voucher:
+  a Gold voucher costs 384,599,987
+register panel:
+  price field [37, 414, 190, 442] (click [113, 428])
+  quantity box [37, 476, 190, 504] (click [59, 490])
+  2 suggested price row(s) at y [360, 387]
+  net sales box [37, 578, 190, 606]
+  Register button at [132, 760]
+actions:
+  tab 4 slot (1,1) is the first free one; a withdrawal lands there
+  row 1 is 'Force Core (Ultimate) 250 443,943 On Sale Change i'
+  Change at (838, 176)
+  Cancel at (1103, 640)
+  Confirmation at (968, 640)
+  row 1 now reads 'Premium Exclusive Slot Register :'
+  back to inventory tab 4 at (1610, 174); the withdrawal moves the panel to whichever tab it landed on
+  listing it back from tab 4 slot (1, 1) at (1471, 229)
+  panel suggests 443,923; listing at 443,922
+  typed 250; the net sales make it 250
+  listed 250 at 443,922; it lands in the lowest empty row
+  learned button_cancel, button_confirmation, button_register
+conversion vendor:
+  pressing N to open the vendor Shop (attempt 1)
+  Dungeon tab at (145, 158)
+  grid band (163, 776, 413, 953): 5 column(s) at [188, 237, 285, 331, 380], 4 row(s) at [798, 846, 910, 941]
+    Force Core(Low)              <- Force Core Set (Low)           r2c1 at (188, 846)
+    Force Core(Medium)           <- Force Core Set (Medium)        r2c2 at (237, 846)
+    Force Core(High)             <- Force Core Set (High)          r2c3 at (285, 846)
+    Force Core(Highest)          <- Force Core Set (Highest)       r2c4 at (331, 846)
+    Force Core (Ultimate)        <- Force Core Set (Ultimate)      r2c5 at (380, 846)
+    Upgrade Core(Low)            <- Upgrade Core Set (Low)         r4c1 at (188, 941)
+    Upgrade Core(Medium)         <- Upgrade Core Set (Medium)      r4c2 at (237, 941)
+    Upgrade Core(High)           <- Upgrade Core Set (High)        r4c3 at (285, 941)
+    Upgrade Core(Highest)        <- Upgrade Core Set (Highest)     r4c4 at (331, 941)
+    Upgrade Core (Ultimate)      <- Upgrade Core Set (Ultimate)    r4c5 at (380, 941)
+craft window:
+  Inventory shut; pressing I (attempt 1)
+  right-clicking the craft key on tab 8 slot (1, 8) at (1866, 229)
+  recipe Chaos Core Set x3 at [146, 240]
+  tier 2000-2999 at [91, 210]
+  Request All at [265, 736]
+  Complete All at [879, 735]
+  material counter [420, 452, 750, 526]
+
+wrote C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.json  [1920x1080]
+  resolutions in the file: ['1920x1080', '2560x1440']
+  kept 3 value(s) this pass does not measure in shop: button_receive, buy_button_buy, buy_button_cancel
+reopening the Agent Shop the caller was promised:
+  Inventory shut; pressing I (attempt 1)
+  the Agent Shop is open again
+  calibrated for 1920x1080, measured 2026-09-15T20:36:42, shop open
+  server clock 03:36 (+59s for the unshown seconds)
+  server 03:36:59; the next war quiet runs 04:29:00 to 04:34:59, in 52.0 min
+  scrolled to the top; row 1 is at position 1
+                                                   bought/u   listed/u  margin      row price
+    the quantity column read 'Membership', which holds no digits; relisting anyway, the panel counts what is there
+    one line read 'eePanneaedae 2 133,333,224 OnSale Change'; read as stacked lines it is 'Yekaterina VIP Membership 133,333,224 Change'
+     1  Yekaterina VIP Membership          x1    115,379,996 133,333,224  +13.5%    133,333,224
+     2  Force Core (Ultimate               x250     400,000    443,944   +9.9%        443,944
+     3  Force Core(Highest                 x13      288,288    288,288   +0.0%        288,288
+     4  Force Core(Highest                 x57      283,318    283,318   +0.0%        283,318
+     5  Force Core (Ultimate               x250     400,000    443,922   +9.9%        443,922
+     6  Force Core (Ultimate               x250     400,000    443,942   +9.9%        443,942
+     7  Force Core (Ultimate               x240     400,000    443,941   +9.9%        443,941
+     8  Force Core (Ultimate               x131     400,000    443,940   +9.9%        443,940
+    the quantity column read 'Membership', which holds no digits; relisting anyway, the panel counts what is there
+    one line read 'eePanneaedae 1 133,333,222 OnSale | Change'; read as stacked lines it is 'Yekaterina VIP Membership 133,333,222 OnSale Change'
+     9  Yekaterina VIP Membership          x1    112,500,000 133,333,222  +15.6%    133,333,222
+    10  Chaos Core Set X 153               x1       695,000    714,804   +2.8%    109,365,164
+    11  Force Core (Ultimate               x3       400,000    443,938   +9.9%        443,938
+    the quantity column read 'Membership', which holds no digits; relisting anyway, the panel counts what is there
+    one line read 'eePanneaedae 1 133,333,221 OnSale Change'; read as stacked lines it is 'Yekaterina VIP Membership 133,333,221 OnSale Change'
+    12  Yekaterina VIP Membership          x1    112,500,000 133,333,221  +15.6%    133,333,221
+    13  Chaos Core Set X 165               x1       695,000    714,802   +2.8%    117,942,494
+    14  Chaos Core Set X 150               x1       695,000    714,801   +2.8%    107,220,299
+    15  Chaos Core Set X 147               x1       696,293    714,800   +2.6%    105,075,746
+    16  Force Core(Highest                 x1       199,194    207,989   +4.2%        207,989
+    17  Upgrade Core (Ultimate             x19      472,223    472,223   +0.0%        472,223
+    18  Chaos Core Set X 51                x1       695,000    714,799   +2.8%     36,454,799
+  scrolled to the top; row 1 is at position 1
+  seeded 18 of rows 1-21
+  rows 22-30 are NOT reachable at position 1 and were not read
+relisting rows 1-21 for 10000 minute(s)
+
+-- pass 1 --
+
+  resupply order: Yekaterina VIP Membership, Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Force Core (Ultimate)
+
+  Yekaterina VIP Membership: 3 row(s) inside 1-21, 3 wanted; row 1 'Yekaterina VIP Membership', row 9 'Yekaterina VIP Membership', row 12 'Yekaterina VIP Membership'
+    floor 115,379,996: 300/1000 of the 384,599,987 voucher, read at launch
+
+-- Chaos Core Set under our listing: up to 3 row(s) --
+  Chaos Core Set 714,774 - Chaos Core 695,000 = 19,774
+  ours is listed at 714,799 a Set and a Chaos Core sells at 695,000; buying every Set under 690,000, 5,000 a Set below the lower of the two
+  the cheapest Chaos Core Set is 714,774 a Set, not under 690,000; nothing to buy under ours
+
+  counting only rows 1-21; rows outside it are not repriced and do not count; 3 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                3         -         -         -      -   holds the most it can want, 3; not priced
+  Chaos Core                         5         -         -         -      -   holds the most it can want, 5; not priced
+  Force Core (Ultimate)              6         -         -         -      -   holds the most it can want, 3; not priced
+  Force Core(High)                   0   195,803   205,547     9,744      3   YES
+  Upgrade Core (Ultimate)            1   475,000   467,800    -7,200      0   
+  Alz 511,914,190 held covers 2,614 Force Core Set (High) at 195,803; buying what it covers
+
+-- Force Core(High): 0 row(s) --
+  3 row(s) free inside 1-21; a resupply needs up to 2
+  Force Core(High) 205,547 - Force Core Set (High) 195,803 = 9,744
+  a margin of 9,744 is worth 3 row(s) of Force Core(High); 0 held
+  tab 4 is showing and free from (1, 1), so the Force Core Set (High) and the Force Core(High) land there
+TASK {"kind": "resupply", "core": "Force Core(High)", "set": "Force Core Set (High)", "slot": 7, "tab": 4, "landing": [1, 1]}
+  0/200 Force Core Set (High) held
+  row 1 offers 'Force Core Set (High) X 8' x1 at 1,566,424 (195,803/unit)
+    row 1 leaves 9,744 a core against the 5,000 wanted
+    balance before 511,914,190
+    dialog: '* Force Core Set (High) X 8'  qty 1 of 1  price 1566424
+    200 core(s) wanted, 8 to a pack -> 25 pack(s); 1 available, taking 1
+    the quantity field already reads 1; not retyping it
+    ordering 1 pack(s) at 1,566,424; the spend will confirm what actually bought
+    balance after  510,347,766; spent 1,566,424 bought 1 pack(s) = 8 core(s) (195,803 a core)
+
+  buy from favourite slot 8: bought 8 core(s) in 1 order(s)
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      176.1    2.9%  get_price: _trade_window_open (OCR 1300x190)
+    3      163.1    2.7%  get_price: purchase_tab_showing
+    4      283.3    4.7%  get_price: read row 1 before the search
+    5      319.1    5.3%  get_price: click favourite slot 8
+    6      142.9    2.4%  get_price: confirm the sort
+    7      685.7   11.3%  get_price: poll row 1 until it answers (2 read(s))
+    8     1801.2   29.8%  get_price: search the favourite and read row 1
+    9      141.1    2.3%  read the balance before buying
+   10      381.6    6.3%  click the row at (500, 260)
+   11      340.2    5.6%  click Buy at (834, 260)
+   12      137.6    2.3%  await the Purchase dialog
+   13      472.2    7.8%  read the dialog (item, price, qty, qty_max)
+   14      129.8    2.1%  find the Buy button
+   15      329.8    5.4%  click Buy
+   16      252.4    4.2%  park
+   17      146.8    2.4%  confirm the dialog is gone
+   18      150.1    2.5%  read the balance after buying
+          6053.4  100.0%  TOTAL
+  8/200 Force Core Set (High) held
+  row 1 offers 'Force Core Set (High) X 38' x1 at 7,521,682 (197,939/unit)
+    row 1 leaves 7,608 a core against the 5,000 wanted
+    balance before 510,347,766
+    dialog: '* Force Core Set (High) X 38'  qty 1 of 1  price 7521682
+    192 core(s) wanted, 38 to a pack -> 6 pack(s); 1 available, taking 1
+    the quantity field already reads 1; not retyping it
+    ordering 1 pack(s) at 7,521,682; the spend will confirm what actually bought
+    balance after  502,826,084; spent 7,521,682 bought 1 pack(s) = 38 core(s) (197,939 a core)
+
+  buy from favourite slot 8: bought 38 core(s) in 1 order(s)
+    #         ms   share  step
+    1        0.3    0.0%  get_price: focus the game
+    2      178.9    2.2%  get_price: _trade_window_open (OCR 1300x190)
+    3      165.0    2.0%  get_price: purchase_tab_showing
+    4      287.0    3.5%  get_price: read row 1 before the search
+    5      330.0    4.0%  get_price: click favourite slot 8
+    6      131.1    1.6%  get_price: confirm the sort
+    7     1782.8   21.6%  get_price: poll row 1 until it answers (6 read(s))
+    8     2916.4   35.4%  get_price: search the favourite and read row 1
+    9      132.4    1.6%  read the balance before buying
+   10      384.8    4.7%  click the row at (500, 260)
+   11      330.7    4.0%  click Buy at (834, 260)
+   12      132.2    1.6%  await the Purchase dialog
+   13      474.1    5.7%  read the dialog (item, price, qty, qty_max)
+   14      143.2    1.7%  find the Buy button
+   15      319.6    3.9%  click Buy
+   16      251.5    3.0%  park
+   17      144.6    1.8%  confirm the dialog is gone
+   18      141.6    1.7%  read the balance after buying
+          8246.2  100.0%  TOTAL
+  46/200 Force Core Set (High) held
+  row 1 offers 'Force Core Set (High) X 69' x1 at 13,657,791 (197,939/unit)
+    row 1 leaves 7,608 a core against the 5,000 wanted
+    balance before 502,826,084
+    dialog: '* Force Core Set (High) X 69'  qty 1 of 1  price 13657791
+    154 core(s) wanted, 69 to a pack -> 3 pack(s); 1 available, taking 1
+    the quantity field already reads 1; not retyping it
+    ordering 1 pack(s) at 13,657,791; the spend will confirm what actually bought
+    balance after  489,168,293; spent 13,657,791 bought 1 pack(s) = 69 core(s) (197,939 a core)
+
+  buy from favourite slot 8: bought 69 core(s) in 1 order(s)
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      205.4    2.4%  get_price: _trade_window_open (OCR 1300x190)
+    3      166.5    2.0%  get_price: purchase_tab_showing
+    4      284.6    3.4%  get_price: read row 1 before the search
+    5      329.1    3.9%  get_price: click favourite slot 8
+    6      128.8    1.5%  get_price: confirm the sort
+    7     1835.4   21.8%  get_price: poll row 1 until it answers (6 read(s))
+    8     3005.8   35.7%  get_price: search the favourite and read row 1
+    9      147.1    1.7%  read the balance before buying
+   10      377.5    4.5%  click the row at (500, 260)
+   11      325.4    3.9%  click Buy at (834, 260)
+   12      134.7    1.6%  await the Purchase dialog
+   13      473.4    5.6%  read the dialog (item, price, qty, qty_max)
+   14      124.3    1.5%  find the Buy button
+   15      341.3    4.1%  click Buy
+   16      251.7    3.0%  park
+   17      146.9    1.7%  confirm the dialog is gone
+   18      137.6    1.6%  read the balance after buying
+          8415.9  100.0%  TOTAL
+  115/200 Force Core Set (High) held
+  row 1 offers 'Force Core Set (High) X 134' x1 at 26,523,826 (197,939/unit)
+    row 1 leaves 7,608 a core against the 5,000 wanted
+    balance before 489,168,293
+    dialog: '* Force Core Set (High) X 134'  qty 1 of 1  price 26523826
+    85 core(s) wanted, 134 to a pack -> 1 pack(s); 1 available, taking 1
+    the quantity field already reads 1; not retyping it
+    ordering 1 pack(s) at 26,523,826; the spend will confirm what actually bought
+    balance after  462,644,467; spent 26,523,826 bought 1 pack(s) = 134 core(s) (197,939 a core)
+
+  buy from favourite slot 8: bought 134 core(s) in 1 order(s)
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      177.0    2.1%  get_price: _trade_window_open (OCR 1300x190)
+    3      165.7    2.0%  get_price: purchase_tab_showing
+    4      287.8    3.4%  get_price: read row 1 before the search
+    5      326.9    3.9%  get_price: click favourite slot 8
+    6      129.7    1.5%  get_price: confirm the sort
+    7     1856.9   22.1%  get_price: poll row 1 until it answers (6 read(s))
+    8     2986.7   35.5%  get_price: search the favourite and read row 1
+    9      138.5    1.6%  read the balance before buying
+   10      385.9    4.6%  click the row at (500, 260)
+   11      334.2    4.0%  click Buy at (834, 260)
+   12      138.7    1.6%  await the Purchase dialog
+   13      470.9    5.6%  read the dialog (item, price, qty, qty_max)
+   14      140.8    1.7%  find the Buy button
+   15      325.1    3.9%  click Buy
+   16      251.7    3.0%  park
+   17      153.2    1.8%  confirm the dialog is gone
+   18      140.3    1.7%  read the balance after buying
+          8410.4  100.0%  TOTAL
+
+  -- round 1: convert up to 250, then list -- 249 of 249 left --
+  pressing N to open the vendor Shop (attempt 1)
+  2x3 at (285, 846): Force Core Set (High) -> Force Core(High)
+    dialog offers '* Force Core(High)'
+    typed 250; the dialog clamps it to what is held
+    inventory tab 4 holds 1 slot(s) and is showing, so the Force Core(High) lands there
+
+  convert into Force Core(High)
+    #         ms   share  step
+    1      812.0   21.9%  alt-click the cell at (285, 846)
+    2      134.5    3.6%  await the Purchase Item dialog
+    3      139.3    3.8%  read what the dialog offers
+    4      722.6   19.5%  type the quantity 250
+    5      929.4   25.0%  select inventory tab 4
+    6       35.7    1.0%  read tab 4 before converting
+    7      326.8    8.8%  click OK
+    8      251.9    6.8%  park
+    9      361.2    9.7%  read tab 4 after converting
+          3713.5  100.0%  TOTAL
+    Force Core(High) arrived in 57 slot(s), landing in (1, 2) to (8, 2)
+  the Agent Shop is shut after the vendor; reopening it
+  Inventory shut: slot grid 0.04, needs 0.33
+  listing Force Core(High) from 57 slot(s), (1, 2) to (8, 2)
+  inventory slot (1,2) at (1528, 229)
+    the lowest listed price is 205,547, from the row and 2 more
+    net sales 51,180,954 is 249 x 205,546
+  typed 250; the net sales make it 249
+
+  list 249 at 205,546
+    #         ms   share  step
+    1      906.6   11.9%  read the panel before loading
+    2       21.9    0.3%  wait for slot (1,2) to fill
+    3      825.9   10.8%  ctrl-click (1,2) attempt 1
+    4      541.9    7.1%  read the suggested price
+    5     1482.7   19.4%  type the price 205,546
+    6      967.7   12.7%  type the quantity 250
+    7      480.9    6.3%  take the quantity from the net sales
+    8      337.9    4.4%  click Register
+    9      140.3    1.8%  find Confirmation
+   10       29.6    0.4%  look for the underprice question
+   11      335.5    4.4%  click Confirmation
+   12      251.6    3.3%  park
+   13      395.2    5.2%  confirm the dialog is gone
+   14      907.9   11.9%  wait for the panel to let the item go
+          7625.6  100.0%  TOTAL
+  listed 249 at 205,546; it lands in row 19
+DONE {"kind": "resupply", "core": "Force Core(High)", "bought": 249, "listed": 249, "rows": [19]}
+
+  resupply Force Core(High): bought 249, 57 slot(s) filled, listed 249 in rows [19]
+    #          ms   share     n      each  phase
+    1     7,630.9   15.9%     1   7,630.9  round 1: list Force Core(High) from (1, 2)
+    2     5,484.3   11.4%     1   5,484.3  buy order 4
+    3     5,484.3   11.4%     1   5,484.3  buy order 3
+    4     5,387.5   11.2%     1   5,387.5  buy order 2
+    5     4,617.7    9.6%     1   4,617.7  round 1: reopen the Agent Shop
+    6     4,302.3    9.0%     1   4,302.3  buy order 1
+    7     4,137.2    8.6%     1   4,137.2  round 1: convert into Force Core(High)
+    8     2,355.4    4.9%     1   2,355.4  round 1: select the Register tab
+    9     2,260.4    4.7%     1   2,260.4  round 1: open the vendor
+   10     1,708.5    3.6%     1   1,708.5  price Upgrade Core (Ultimate)
+   11     1,631.6    3.4%     1   1,631.6  price Upgrade Core Set (Ultimate)
+   12     1,103.2    2.3%     1   1,103.2  find the free slot on tab 4
+   13     1,022.0    2.1%     1   1,022.0  round 1: close the Agent Shop
+   14       928.1    1.9%     1     928.1  round 1: select inventory tab 4
+         48,053.4  100.0%
+  Force Core(High): 1 of 3 row(s) after that one
+  Alz 462,644,467 held covers 2,362 Force Core Set (High) at 195,803; buying what it covers
+
+-- Force Core(High): 1 row(s) --
+  2 row(s) free inside 1-21; a resupply needs up to 2
+  Force Core(High) 205,547 - Force Core Set (High) 197,939 = 7,608
+  a margin of 7,608 is worth 3 row(s) of Force Core(High); 1 held
+  tab 4 is showing and free from (1, 1), so the Force Core Set (High) and the Force Core(High) land there
+TASK {"kind": "resupply", "core": "Force Core(High)", "set": "Force Core Set (High)", "slot": 7, "tab": 4, "landing": [1, 1]}
+  0/200 Force Core Set (High) held
+  row 1 offers 'Force Core Set (High) X 999' x1 at 197,741,061 (197,939/unit)
+    row 1 leaves 7,608 a core against the 5,000 wanted
+    balance before 462,644,467
+    dialog: '* Force Core Set (High) X 999'  qty 1 of 1  price 197741061
+    nothing held yet: taking row 1's bundle of 999 even though 999 passes the 500 ceiling -- a bundle cannot be split and buying is row 1 only
+    200 core(s) wanted, 999 to a pack -> 1 pack(s); 1 available, taking 1
+    the quantity field already reads 1; not retyping it
+    ordering 1 pack(s) at 197,741,061; the spend will confirm what actually bought
+    balance after  264,903,406; spent 197,741,061 bought 1 pack(s) = 999 core(s) (197,939 a core)
+
+  buy from favourite slot 8: bought 999 core(s) in 1 order(s)
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      177.6    2.1%  get_price: _trade_window_open (OCR 1300x190)
+    3      165.1    2.0%  get_price: purchase_tab_showing
+    4      301.5    3.6%  get_price: read row 1 before the search
+    5      327.4    3.9%  get_price: click favourite slot 8
+    6      131.8    1.6%  get_price: confirm the sort
+    7     1799.4   21.6%  get_price: poll row 1 until it answers (6 read(s))
+    8     2944.9   35.4%  get_price: search the favourite and read row 1
+    9      141.7    1.7%  read the balance before buying
+   10      385.7    4.6%  click the row at (500, 260)
+   11      323.9    3.9%  click Buy at (834, 260)
+   12      134.7    1.6%  await the Purchase dialog
+   13      470.3    5.7%  read the dialog (item, price, qty, qty_max)
+   14      133.1    1.6%  find the Buy button
+   15      345.5    4.2%  click Buy
+   16      252.1    3.0%  park
+   17      143.1    1.7%  confirm the dialog is gone
+   18      133.1    1.6%  read the balance after buying
+          8311.5  100.0%  TOTAL
+
+  -- round 1: convert up to 250, then list -- 999 of 999 left --
+  pressing N to open the vendor Shop (attempt 1)
+  2x3 at (285, 846): Force Core Set (High) -> Force Core(High)
+    dialog offers '* Force Core(High)'
+    typed 250; the dialog clamps it to what is held
+    inventory tab 4 holds 1 slot(s) and is showing, so the Force Core(High) lands there
+
+  convert into Force Core(High)
+    #         ms   share  step
+    1      799.3   21.8%  alt-click the cell at (285, 846)
+    2      142.0    3.9%  await the Purchase Item dialog
+    3      139.2    3.8%  read what the dialog offers
+    4      725.7   19.8%  type the quantity 250
+    5      930.2   25.4%  select inventory tab 4
+    6       35.9    1.0%  read tab 4 before converting
+    7      332.7    9.1%  click OK
+    8      252.8    6.9%  park
+    9      304.0    8.3%  read tab 4 after converting
+          3661.7  100.0%  TOTAL
+    Force Core(High) arrived in 58 slot(s), landing in (1, 2) to (8, 3)
+  the Agent Shop is shut after the vendor; reopening it
+  Inventory shut: slot grid 0.04, needs 0.33
+  listing Force Core(High) from 58 slot(s), (1, 2) to (8, 3)
+  inventory slot (1,2) at (1528, 229)
+    the lowest listed price is 205,548, from the row and 2 more
+    net sales 51,386,750 is 250 x 205,547
+  typed 250; the net sales make it 250
+
+  list 250 at 205,547
+    #         ms   share  step
+    1      917.8   12.1%  read the panel before loading
+    2       23.8    0.3%  wait for slot (1,2) to fill
+    3      834.3   11.0%  ctrl-click (1,2) attempt 1
+    4      539.2    7.1%  read the suggested price
+    5     1466.7   19.4%  type the price 205,547
+    6      961.5   12.7%  type the quantity 250
+    7      469.2    6.2%  take the quantity from the net sales
+    8      322.9    4.3%  click Register
+    9      140.1    1.8%  find Confirmation
+   10       26.9    0.4%  look for the underprice question
+   11      319.4    4.2%  click Confirmation
+   12      251.8    3.3%  park
+   13      371.5    4.9%  confirm the dialog is gone
+   14      931.2   12.3%  wait for the panel to let the item go
+          7576.3  100.0%  TOTAL
+  listed 250 at 205,547; it lands in row 20
+
+  -- round 2: convert up to 250, then list -- 749 of 999 left --
+  pressing N to open the vendor Shop (attempt 1)
+  2x3 at (285, 846): Force Core Set (High) -> Force Core(High)
+    dialog offers '* Force Core(High)'
+    typed 250; the dialog clamps it to what is held
+    inventory tab 4 holds 1 slot(s) and is showing, so the Force Core(High) lands there
+
+  convert into Force Core(High)
+    #         ms   share  step
+    1      806.9   21.9%  alt-click the cell at (285, 846)
+    2      140.3    3.8%  await the Purchase Item dialog
+    3      140.4    3.8%  read what the dialog offers
+    4      719.2   19.5%  type the quantity 250
+    5      959.0   26.0%  select inventory tab 4
+    6       45.3    1.2%  read tab 4 before converting
+    7      330.7    9.0%  click OK
+    8      252.2    6.8%  park
+    9      295.0    8.0%  read tab 4 after converting
+          3688.9  100.0%  TOTAL
+    Force Core(High) arrived in 58 slot(s), landing in (1, 2) to (8, 3)
+  the Agent Shop is shut after the vendor; reopening it
+  Inventory shut: slot grid 0.04, needs 0.33
+  listing Force Core(High) from 58 slot(s), (1, 2) to (8, 3)
+  1 slot(s) emptied while listing; the Force Core(High) in them went out with an earlier row
+  inventory slot (1,2) at (1528, 229)
+    the lowest listed price is 205,547, from the row and 2 more
+    net sales 51,386,500 is 250 x 205,546
+  typed 250; the net sales make it 250
+
+  list 250 at 205,546
+    #         ms   share  step
+    1      904.6   11.9%  read the panel before loading
+    2       27.5    0.4%  wait for slot (1,2) to fill
+    3      823.2   10.8%  ctrl-click (1,2) attempt 1
+    4      557.3    7.3%  read the suggested price
+    5     1474.6   19.4%  type the price 205,546
+    6      969.2   12.7%  type the quantity 250
+    7      480.2    6.3%  take the quantity from the net sales
+    8      330.7    4.3%  click Register
+    9      137.6    1.8%  find Confirmation
+   10       28.1    0.4%  look for the underprice question
+   11      340.1    4.5%  click Confirmation
+   12      251.9    3.3%  park
+   13      382.4    5.0%  confirm the dialog is gone
+   14      911.4   12.0%  wait for the panel to let the item go
+          7618.9  100.0%  TOTAL
+  listed 250 at 205,546; it lands in row 21
+
+  -- round 3: convert up to 250, then list -- 499 of 999 left --
+  pressing N to open the vendor Shop (attempt 1)
+  2x3 at (285, 846): Force Core Set (High) -> Force Core(High)
+    dialog offers '* Force Core(High)'
+    typed 250; the dialog clamps it to what is held
+    inventory tab 4 holds 1 slot(s) and is showing, so the Force Core(High) lands there
+
+  convert into Force Core(High)
+    #         ms   share  step
+    1      799.3   21.7%  alt-click the cell at (285, 846)
+    2      144.4    3.9%  await the Purchase Item dialog
+    3      137.8    3.7%  read what the dialog offers
+    4      728.9   19.8%  type the quantity 250
+    5      924.2   25.1%  select inventory tab 4
+    6       33.3    0.9%  read tab 4 before converting
+    7      332.3    9.0%  click OK
+    8      251.9    6.8%  park
+    9      331.7    9.0%  read tab 4 after converting
+          3683.9  100.0%  TOTAL
+    Force Core(High) arrived in 58 slot(s), landing in (1, 2) to (8, 3)
+  the Agent Shop is shut after the vendor; reopening it
+  Inventory shut: slot grid 0.04, needs 0.33
+  listing Force Core(High) from 58 slot(s), (1, 2) to (8, 3)
+  rows 1-21 are full; 58 slot(s) of Force Core(High) stay on tab 4.
+DONE {"kind": "resupply", "core": "Force Core(High)", "bought": 999, "listed": 500, "rows": [20, 21]}
+
+  resupply Force Core(High): bought 999, 174 slot(s) filled, listed 500 in rows [20, 21]
+    #          ms   share     n      each  phase
+    1     7,624.1   10.7%     1   7,624.1  round 2: list Force Core(High) from (1, 2)
+    2     7,582.4   10.6%     1   7,582.4  round 1: list Force Core(High) from (1, 2)
+    3     5,426.0    7.6%     1   5,426.0  buy order 1
+    4     4,567.0    6.4%     1   4,567.0  round 3: reopen the Agent Shop
+    5     4,540.4    6.4%     1   4,540.4  round 1: reopen the Agent Shop
+    6     4,510.9    6.3%     1   4,510.9  round 2: reopen the Agent Shop
+    7     4,114.8    5.8%     1   4,114.8  round 3: convert into Force Core(High)
+    8     4,112.8    5.8%     1   4,112.8  round 2: convert into Force Core(High)
+    9     4,074.5    5.7%     1   4,074.5  round 1: convert into Force Core(High)
+   10     2,759.6    3.9%     1   2,759.6  price Force Core(High)
+   11     2,358.0    3.3%     1   2,358.0  round 1: select the Register tab
+   12     2,330.3    3.3%     1   2,330.3  round 3: select the Register tab
+   13     2,319.1    3.2%     1   2,319.1  round 2: select the Register tab
+   14     2,234.7    3.1%     1   2,234.7  round 2: open the vendor
+   15     2,227.5    3.1%     1   2,227.5  round 3: open the vendor
+   16     2,220.8    3.1%     1   2,220.8  round 1: open the vendor
+   17     1,605.7    2.2%     1   1,605.7  price Force Core Set (High)
+   18     1,111.8    1.6%     1   1,111.8  find the free slot on tab 4
+   19     1,020.5    1.4%     1   1,020.5  round 1: close the Agent Shop
+   20       977.6    1.4%     1     977.6  round 3: close the Agent Shop
+   21       976.1    1.4%     1     976.1  round 2: close the Agent Shop
+   22       934.2    1.3%     1     934.2  round 2: select inventory tab 4
+   23       929.1    1.3%     1     929.1  round 3: select inventory tab 4
+   24       926.4    1.3%     1     926.4  round 1: select inventory tab 4
+         71,484.5  100.0%
+  Force Core(High): 3 of 3 row(s) after that one
+    the quantity column read 'Membership', which holds no digits; relisting anyway, the panel counts what is there
+    one line read 'eePanneaedae 2 133,333,224 OnSale Change'; read as stacked lines it is 'Yekaterina VIP Membership 133,333,224 Change'
+  row 1: 'Yekaterina VIP Membership' x1 at 133,333,224 -> tab 4 slot (1, 1)
+    floor 115,379,996 from what it cost; listed at 133,333,224, above it
+TASK {"kind": "relist", "row": 1, "item": "Yekaterina VIP Membership", "qty": 1, "price": 133333224, "tab": 4, "slot": [1, 1], "lands_in": 1}
+  inventory slot (1,1) at (1471, 229)
+    the lowest listed price is 42,422,130, from the row and 3 more
+    the market asks 42,422,129, 90,911,095 under our 133,333,224; holding at 133,323,224, the most this row may fall in one relist
+    net sales 133,323,224 is 1 x 133,323,224
+  typed 250; the net sales make it 1
+
+  list 1 at 133,323,224
+    #         ms   share  step
+    1      920.3   11.8%  read the panel before loading
+    2       29.3    0.4%  wait for slot (1,1) to fill
+    3      825.8   10.6%  ctrl-click (1,1) attempt 1
+    4      540.4    6.9%  read the suggested price
+    5     1694.4   21.7%  type the price 133,323,224
+    6      972.7   12.4%  type the quantity 250
+    7      471.3    6.0%  take the quantity from the net sales
+    8      332.7    4.3%  click Register
+    9      138.3    1.8%  find Confirmation
+   10       32.3    0.4%  look for the underprice question
+   11      329.9    4.2%  click Confirmation
+   12      251.8    3.2%  park
+   13      376.0    4.8%  confirm the dialog is gone
+   14      909.6   11.6%  wait for the panel to let the item go
+          7824.7  100.0%  TOTAL
+  listed 1 at 133,323,224; it lands in row 1
+DONE {"kind": "relist", "row": 1, "lands_in": 1, "qty": 1, "price": 133323224}
+    relisted 1 at 133,323,224 in row 1
+  row 2: 'Force Core (Ultimate' x250 at 443,944 -> tab 4 slot (1, 1)
+    floor 400,000 (400,000 x 1) from what it cost; listed at 443,944, above it
+TASK {"kind": "relist", "row": 2, "item": "Force Core (Ultimate", "qty": 250, "price": 443944, "tab": 4, "slot": [1, 1], "lands_in": 2}
+  STOPPED: the dialog stayed open after Confirmation on row 2. Whether the cancel committed is unknown -- check by hand.
+
+1 pass(es), 0 relisted, 0 empty, 0 skipped in 164s
+
+PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+  nothing this run bought has sold yet.
+  bought this run and still unsold, taken as sold at the price each lot was bought against:
+    forcecorehigh                  1,248 core(s)     247,010,784 Alz paid    +9,511,872
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                     9,511,872   (0 realised, +9,511,872 assumed)
+  started 20:35:19, ended 20:39:59, ran for 4m 40s
+
+##################################################################################
+
+  ########  ##########    ######    ########    ########    ##########  ########  
+  ########  ##########    ######    ########    ########    ##########  ########  
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+  ######        ##      ##      ##  ########    ########    ########    ##      ##
+  ######        ##      ##      ##  ########    ########    ########    ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+########        ##        ######    ##          ##          ##########  ########  
+########        ##        ######    ##          ##          ##########  ########  
+
+##################################################################################
+  stopped: the dialog stayed open after Confirmation on row 2. Whether the cancel committed is unknown -- check by hand.
+

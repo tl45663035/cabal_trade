@@ -1,0 +1,373 @@
+{
+  "resupply": {
+    "enabled": true,
+    "enable_buying": {
+      "Force Core(Highest)": true,
+      "Chaos Core": true,
+      "Divine Stone": false,
+      "Force Core (Ultimate)": true,
+      "Force Core(High)": true,
+      "Upgrade Core (Ultimate)": true
+    },
+    "cash_shop": {
+      "tabs": {
+        "default": "Useable"
+      },
+      "rows": {
+        "Yekaterina VIP Membership": 1
+      }
+    },
+    "rows_by_margin": {
+      "step": 5000,
+      "default": [
+        3
+      ],
+      "Force Core (Ultimate)": [
+        3
+      ],
+      "Upgrade Core (Ultimate)": [
+        3
+      ],
+      "Force Core(High)": [
+        3
+      ],
+      "Force Core(Highest)": [
+        3
+      ],
+      "Chaos Core": [
+        3,
+        5
+      ],
+      "Divine Stone": [
+        3
+      ]
+    },
+    "rows_by_margin_on": {
+      "days": [
+        "Fri",
+        "Sat",
+        "Sun"
+      ],
+      "Chaos Core": [
+        3,
+        5
+      ]
+    },
+    "buy_min": {
+      "default": 200,
+      "Yekaterina VIP Membership": 1,
+      "Chaos Core": 150,
+      "Divine Stone": 150
+    },
+    "buy_max": {
+      "default": 500,
+      "Chaos Core": 1000
+    },
+    "buy_random_range": 15,
+    "buy_scroll_limit": 30,
+    "buy_leave_behind": {
+      "default": 0,
+      "Chaos Core": 1,
+      "Divine Stone": 1
+    },
+    "buy_under_lister": {
+      "default": 0,
+      "Chaos Core": 3
+    },
+    "buy_under_gap": {
+      "default": 5000
+    },
+    "buy_retries": 3,
+    "craft_unknown_held": 300,
+    "order": [
+      "Yekaterina VIP Membership",
+      "Chaos Core",
+      "Force Core(High)",
+      "Force Core(Highest)",
+      "Upgrade Core (Ultimate)",
+      "Force Core (Ultimate)"
+    ]
+  },
+  "run": {
+    "relist_from": 1,
+    "relist_to": 21,
+    "undercut_by": 1,
+    "max_drop": 10000,
+    "home_notches": 30,
+    "for_minutes": 10000,
+    "price_check_factor": 5.0,
+    "stop_key_presses": 4,
+    "stop_key_window": 1.5,
+    "stop_key_hold": 0.12,
+    "floor_break_after": 10,
+    "voucher_default": 380000000,
+    "voucher_floor": {
+      "Yekaterina VIP Membership": {
+        "ratio": 300,
+        "any": [
+          "Yekaterina",
+          "Membership",
+          [
+            "Yekaterina",
+            "VIP"
+          ],
+          [
+            "VIP",
+            "Membership"
+          ],
+          [
+            "Yekaterina",
+            "Membership"
+          ]
+        ]
+      },
+      "Force Gem Package": {
+        "ratio": 500,
+        "any": [
+          "Force Gem",
+          "Gem Package",
+          [
+            "Force",
+            "Gem"
+          ],
+          [
+            "Gem",
+            "Package"
+          ],
+          [
+            "Force",
+            "Package"
+          ]
+        ]
+      },
+      "Epic Booster": {
+        "ratio": 125,
+        "any": [
+          "Epic Booster",
+          [
+            "Epic",
+            "Booster"
+          ],
+          [
+            "Epic",
+            "Highest"
+          ],
+          [
+            "Booster",
+            "Highest"
+          ]
+        ]
+      }
+    }
+  },
+  "debug": {
+    "frames": true,
+    "board_trace": true,
+    "keep_frames": 500,
+    "frames_queued": 64,
+    "video_fps": 15,
+    "video_seconds": 180,
+    "keep_videos": 5,
+    "video_scale": 0.5,
+    "prune_every": 50,
+    "banner_scale": 2,
+    "banner_colours": {
+      "FINISHED": "32",
+      "STOPPED": "33",
+      "CRASHED": "31"
+    }
+  },
+  "timing": {
+    "action_gap": 0.5,
+    "key_hold": 0.02,
+    "key_gap": 0.05,
+    "focus_settle": 0.35,
+    "wheel_gap": 0.12,
+    "park_settle": 0.25,
+    "withdraw_settle": 0.5,
+    "tab_settle": 0.6,
+    "poll_gap": 0.0,
+    "search_timeout": 8.0,
+    "search_retries": 10,
+    "dialog_timeout": 8.0,
+    "retry_gap": 1.0,
+    "hover_settle": 0.15,
+    "modifier_settle": 0.25,
+    "click_hold": 0.12,
+    "panel_reread_gap": 1.0,
+    "shop_check_gap": 1.0,
+    "field_settle": 0.05,
+    "clear_gap": 0.02,
+    "server_lag_idle": 60.0,
+    "server_lag_budget": 600.0,
+    "server_lag_poll": 5.0,
+    "craft_settle_per_block": 5.0,
+    "craft_settle_block": 50,
+    "craft_settle_max": 300.0,
+    "stop_key_poll": 0.03,
+    "gift_gap": 0.5,
+    "gift_open_tries": 2,
+    "search_settle": 1.5,
+    "convert_grid_settle": 2.0,
+    "refresh_settle": 0.05,
+    "stale_sweep": 1.0,
+    "git_timeout": 5,
+    "toggle_tries": 2
+  },
+  "war": {
+    "enabled": true,
+    "start_hours": [
+      1,
+      4,
+      7,
+      10,
+      13,
+      16,
+      19,
+      22
+    ],
+    "war_minutes": 30,
+    "quiet_before_end": 60,
+    "quiet_seconds": 300,
+    "clock_uncertainty": 59,
+    "clock_resync": 1800.0,
+    "clock_confirm_pause": 1.0,
+    "clock_max_drift": 150.0
+  },
+  "recovery": {
+    "screen_timeout": 25.0,
+    "world_timeout": 120.0,
+    "sub_password_wait": 12.0,
+    "after_typing_wait": 10.0,
+    "failed_retry_wait": 5.0,
+    "reconnect_settle": 60.0,
+    "character_wait": 90.0,
+    "login_tries": 6,
+    "reconnect_tries": 4,
+    "notice_tries": 3,
+    "clear_keys": 32,
+    "double_gap": 0.08,
+    "phrase_gap_x": 260,
+    "phrase_gap_y": 16,
+    "password_above_login": 86,
+    "username_above_login": 127,
+    "panel_reach": 0.16,
+    "near_above": 10,
+    "keypad_columns": 6,
+    "keypad_rows": 2,
+    "notice_ok_wait": 2.0,
+    "disconnect_ok_wait": 10.0,
+    "dual_yes_wait": 2.0,
+    "failed_confirm_wait": 2.0,
+    "disconnect_words": [
+      "disconnect",
+      "disconnected",
+      "log-out",
+      "logged"
+    ],
+    "failed_words": [
+      "failed to connect",
+      "try later"
+    ],
+    "dual_words": [
+      "dual login",
+      "already in use",
+      "like to reconnect"
+    ],
+    "login_word": "login",
+    "ok_word": "ok",
+    "confirm_word": "confirmation",
+    "yes_word": "yes",
+    "enter_word": "enter server",
+    "menu_word": "select character",
+    "menu_tries": 3,
+    "menu_wait": 3.0,
+    "logout_yes_wait": 5.0,
+    "logout_wait": 30.0
+  },
+  "supervise": {
+    "poll": 20,
+    "quiet_after": 150,
+    "screen_gap": 60,
+    "disconnect_kill": 5,
+    "command_timeout": 1800,
+    "login_timeout": 900,
+    "tool_timeout": 30,
+    "launch_wait": 40,
+    "launch_settle": 3,
+    "short_run": 300,
+    "short_runs": 3,
+    "relog_tries": 1,
+    "task_cap": 8,
+    "dialog_settle": 5,
+    "dialog_tries": 3,
+    "tooltip_settle": 1.2,
+    "hover_cap": 40,
+    "slot_reads": 3,
+    "slot_read_gap": 1.0,
+    "keep_frames": 30,
+    "keep_reels": 1,
+    "escape_settle": 1,
+    "stall_wait": 60,
+    "stall_retries": 2,
+    "held_reasons": [
+      "ServerStalled",
+      "the dialog stayed open"
+    ],
+    "held_wait": 180,
+    "held_retries": 20,
+    "recover_wait": 60,
+    "recover_retries": 2,
+    "record": {
+      "fps": 4,
+      "pre": 45,
+      "tail": 45,
+      "abandon": 240,
+      "cap": 1800,
+      "scale": 0.5,
+      "quality": 80,
+      "codec": [
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "26",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart"
+      ],
+      "on": [
+        "disconnect"
+      ],
+      "done": [
+        "relaunched",
+        "supervisor stopped",
+        "supervisor crashed",
+        "supervisor cancelled"
+      ]
+    },
+    "launch_poll": 1,
+    "tail_lines": 8,
+    "head_lines": 4,
+    "line_width": 140,
+    "reason_width": 150
+  },
+  "tools": {
+    "profit_days_back": 7,
+    "live_within": 600,
+    "log_tail_lines": 40,
+    "calib_repeats": 100,
+    "calib_fail_limit": 3
+  },
+  "bugs": {
+    "folder": "bugs",
+    "remote": "origin",
+    "branch": "main",
+    "push_retries": 3,
+    "max_file_mb": 95,
+    "frames_after_minutes": 20,
+    "live_frames": 60
+  }
+}
