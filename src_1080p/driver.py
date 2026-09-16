@@ -262,7 +262,6 @@ def seed(verbose=True):
     model = row_model.RowModel().seed({})
     model.home(verbose=verbose)
     found = {}
-    remembered = ledger.board_costs()
     if verbose:
         print(board_header())
     for index in range(1, row_model.MAX_TOP + 1):
@@ -277,21 +276,6 @@ def seed(verbose=True):
             if verbose:
                 print(f"    {index:2}  UNREAD {text!r}")
             continue
-        known = remembered.get(index)
-        if known is not None and                 row_model.item_key(known[0]) == row_model.item_key(row.name):
-            row.buy_cost = known[1]
-            row.floor_at = known[2]
-        else:
-            same = [(cost, floor_at) for item, cost, floor_at
-                    in remembered.values()
-                    if row_model.item_key(item) == row_model.item_key(row.name)
-                    and cost]
-            if same:
-                row.buy_cost, row.floor_at = max(same)
-                if verbose:
-                    print(f"    row {index} moved since it was remembered; "
-                          f"its bought price comes from another row of the "
-                          f"same item")
         price_by_voucher(row)
         found[index] = row
         if verbose:
