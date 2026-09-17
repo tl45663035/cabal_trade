@@ -62,7 +62,9 @@ CAPACITY = _SHARED["game_facts"]["shop_capacity"]
 VISIBLE = _SHARED["game_facts"]["shop_visible"]
 USE_LINE_F = tuple(_SHARED["regions"]["use_question_line"])
 USE_YES_F = tuple(_SHARED["regions"]["use_yes"])
-USE_QUESTION = _SHARED["text"]["use_question"]
+USE_QUESTIONS = _SHARED["text"]["use_question"]
+if isinstance(USE_QUESTIONS, str):
+    USE_QUESTIONS = [USE_QUESTIONS]
 YES_WORD = _SHARED["text"]["yes_word"]
 
 
@@ -519,6 +521,10 @@ def relist_one(model, index, verbose=True, first=None, last=None,
               f"{row_model.row_button_text()!r}")
         return False
 
+    if model.work_slots():
+        print(f"    the run still holds tab {row_model.WORK_TAB} slot(s) "
+              f"{model.work_slots()} from earlier work, so a withdrawal "
+              f"lands past them")
     landing = model.next_work_slot()
     if landing is None:
         raise NotReady(
@@ -529,9 +535,20 @@ def relist_one(model, index, verbose=True, first=None, last=None,
         print(f"  row {index}: {row.name!r} x{row.qty} at {row.price:,} "
               f"-> tab {row_model.WORK_TAB} slot {landing}")
     held = model.get(index)
-    if held is not None and             row_model.item_key(held.name) == row_model.item_key(row.name):
-        row.buy_cost = held.buy_cost
-        row.floor_at = held.floor_at
+    if held is not None:
+        same = row_model.item_key(held.name) == row_model.item_key(row.name)
+        if same:
+            row.buy_cost = held.buy_cost
+            row.floor_at = held.floor_at
+        if held.price and (not same or row.price != held.price):
+            calibration.snap(f"row_{index}_disagrees")
+            print(f"    the row reads {row.name!r} at {row.price:,}, and "
+                  f"this run listed {held.name!r} at {held.price:,} there; "
+                  f"nothing but this run changes a row, so the reading is "
+                  f"wrong and what was listed stands")
+            row = row_model.Row(held.name, qty=row.qty, price=held.price,
+                                buy_cost=held.buy_cost,
+                                floor_at=held.floor_at)
     price_by_voucher(row)
     model._slots[index] = row
     unit_floor, pair = calibration.price_floor(row.name)
@@ -1801,7 +1818,8 @@ def start_cash(model, item, held, first, last, verbose=True):
             "count": count, "bought": 0, "price": 0, "cc_seen": None,
             "cc_before_voucher": None, "voucher_paid": 0,
             "voucher_before": [], "voucher_slot": None, "before": [],
-            "work": [], "rows": [], "listed": 0}
+            "after_voucher": None, "gem_before": [], "gem_paid": 0,
+            "gem_slot": None, "work": [], "rows": [], "listed": 0}
 
 
 def cash_floor(job, verbose=True):
@@ -1809,6 +1827,14 @@ def cash_floor(job, verbose=True):
     if price <= 0:
         raise NotReady(f"the Cash price of {item!r} is unknown, so its floor "
                        f"cannot be set; not buying.")
+    funds = cashshop.currency_of(item)
+    if funds:
+        each = int(job.get("gem_paid") or 0) or int(
+            calibration.voucher_floor_ratio(funds["from"])[1])
+        if each <= 0:
+            raise NotReady(f"the Cash a {funds['from']} costs is unknown, so "
+                           f"{item!r} cannot be floored; not buying.")
+        price = price * each // int(funds["per"])
     paid = int(job.get("voucher_paid") or 0)
     voucher = paid or calibration.voucher_unit()
     if voucher < calibration.MIN_PLAUSIBLE_PRICE:
@@ -1845,20 +1871,32 @@ def cash_buy_step(job, confirm=True, verbose=True):
         word = cashshop.tab_for(item)
         with calibration.phase(f"select the {word} tab"):
             cashshop.select_tab(word, verbose=verbose)
-        with calibration.phase("read the price and the Cash"):
+        funds = cashshop.currency_of(item)
+        with calibration.phase("read the price and what pays for it"):
             cell = cashshop.cell_for(item, verbose=verbose)
             cc = cashshop.cc_now(verbose=verbose)
-        if cc is None:
-            raise NotReady("the Cash balance would not read; not buying "
-                           "blind.")
+            held = cashshop.gems_now(verbose=verbose) if funds else cc
+        if cc is None or held is None:
+            raise NotReady("the balance would not read; not buying blind.")
         job["price"] = int(cell["price"])
         if job["cc_before_voucher"] is not None:
             print(f"  Cash {job['cc_before_voucher']:,} before the voucher, "
                   f"{cc:,} after, up {cc - job['cc_before_voucher']:,}")
             job["cc_before_voucher"] = None
         job["cc_seen"] = cc
-        print(f"  {item} costs {job['price']:,} Cash; {cc:,} Cash held")
-        if cc < job["price"]:
+        coin = f"gem(s) from a {funds['from']}" if funds else "Cash"
+        print(f"  {item} costs {job['price']:,} {coin}; {held:,} held")
+        if held < job["price"]:
+            if funds:
+                if job["gem_paid"]:
+                    raise NotReady(
+                        f"{held:,} is still under the {job['price']:,} a "
+                        f"{item} costs after a {funds['from']} was bought "
+                        f"and used; not buying another blind.")
+                print(f"  {held:,} is under the {job['price']:,} a {item} "
+                      f"costs; buying a {funds['from']} and using it first")
+                job["step"] = "gem"
+                return
             if job["voucher_paid"]:
                 raise NotReady(
                     f"{cc:,} Cash is still under the {job['price']:,} a "
@@ -1871,12 +1909,13 @@ def cash_buy_step(job, confirm=True, verbose=True):
             return
         floor, why = cash_floor(job, verbose=verbose)
         with calibration.phase("buy at the Cash Shop"):
-            got = cashshop.purchase(item, confirm=confirm, verbose=verbose)
+            got = cashshop.purchase(item, confirm=confirm, verbose=verbose,
+                                    count=int(job["count"]) - job["bought"])
     except BaseException:
         _leave_cash_shop()
         raise
     finally:
-        if job["step"] == "voucher":
+        if job["step"] in ("voucher", "gem"):
             with calibration.phase("close the Cash Shop"):
                 cashshop.close_cash_shop(verbose=verbose)
     with calibration.phase("close the Cash Shop"):
@@ -1886,11 +1925,13 @@ def cash_buy_step(job, confirm=True, verbose=True):
               f"nothing to list")
         job["step"] = "cancelled"
         return
-    job["bought"] += 1
-    ledger.bought(item, floor, floor, 1)
-    job["work"].append({"slot": None, "floor": floor, "why": why})
-    print(f"  bought 1 {item} for {got['price']:,} Cash, "
-          f"{got['balance'] - got['price']:,} Cash left; its floor is "
+    took = max(1, int(got["bought"]))
+    job["bought"] += took
+    ledger.bought(item, floor, floor, took)
+    for _ in range(took):
+        job["work"].append({"slot": None, "floor": floor, "why": why})
+    print(f"  bought {took} {item} for {got['price']:,}, "
+          f"{got['balance'] - got['price']:,} left; the floor on each is "
           f"{floor:,}")
     job["step"] = "land"
 
@@ -1925,6 +1966,79 @@ def cash_use_step(job, verbose=True):
     slot = voucher_use({tuple(s) for s in job["voucher_before"]},
                        verbose=verbose)
     job["voucher_slot"] = list(slot) if slot else None
+    job["step"] = job.get("after_voucher") or "buy"
+    job["after_voucher"] = None
+
+
+def cash_gem_step(job, confirm=True, verbose=True):
+    item, tab = job["core"], row_model.WORK_TAB
+    funds = cashshop.currency_of(item)
+    pack = funds["from"]
+    answer_pending_use_question(verbose=verbose)
+    with calibration.phase("close the Agent Shop"):
+        calibration.close_everything()
+    with calibration.phase(f"select inventory tab {tab}"):
+        before = work_tab_slots(verbose=verbose)
+    job["gem_before"] = sorted(before)
+    print(f"  tab {tab} holds {len(before)} slot(s) and is showing, so the "
+          f"{pack} lands there")
+    with calibration.phase("open the Cash Shop"):
+        cashshop.open_cash_shop(verbose=verbose)
+    try:
+        word = cashshop.tab_for(pack)
+        with calibration.phase(f"select the {word} tab"):
+            cashshop.select_tab(word, verbose=verbose)
+        with calibration.phase("read the price and the Cash"):
+            cell = cashshop.cell_for(pack, verbose=verbose)
+            cc = cashshop.cc_now(verbose=verbose)
+        if cc is None:
+            raise NotReady("the Cash balance would not read; not buying "
+                           "blind.")
+        cost = int(cell["price"])
+        if job["cc_before_voucher"] is not None:
+            print(f"  Cash {job['cc_before_voucher']:,} before the voucher, "
+                  f"{cc:,} after, up {cc - job['cc_before_voucher']:,}")
+            job["cc_before_voucher"] = None
+        job["cc_seen"] = cc
+        print(f"  a {pack} costs {cost:,} Cash; {cc:,} Cash held")
+        if cc < cost:
+            if job["voucher_paid"]:
+                raise NotReady(
+                    f"{cc:,} Cash is still under the {cost:,} a {pack} costs "
+                    f"after a voucher was bought and used; not buying "
+                    f"another voucher blind.")
+            print(f"  {cc:,} Cash is under the {cost:,} a {pack} costs; "
+                  f"buying a Gold voucher and using it first")
+            job["cc_before_voucher"] = cc
+            job["after_voucher"] = "gem"
+            job["step"] = "voucher"
+            return
+        with calibration.phase("buy at the Cash Shop"):
+            got = cashshop.purchase(pack, confirm=confirm, verbose=verbose)
+    except BaseException:
+        _leave_cash_shop()
+        raise
+    finally:
+        if job["step"] == "voucher":
+            with calibration.phase("close the Cash Shop"):
+                cashshop.close_cash_shop(verbose=verbose)
+    with calibration.phase("close the Cash Shop"):
+        cashshop.close_cash_shop(verbose=verbose)
+    if not got["bought"]:
+        print(f"  cancelled at the confirmation as asked; no {pack} bought")
+        job["step"] = "cancelled"
+        return
+    job["gem_paid"] = int(got["price"])
+    print(f"  bought 1 {pack} for {got['price']:,} Cash, "
+          f"{got['balance'] - got['price']:,} Cash left")
+    job["step"] = "usegem"
+
+
+def cash_usegem_step(job, verbose=True):
+    pack = cashshop.currency_of(job["core"])["from"]
+    slot = voucher_use({tuple(s) for s in job["gem_before"]},
+                       verbose=verbose, what=pack)
+    job["gem_slot"] = list(slot) if slot else None
     job["step"] = "buy"
 
 
@@ -1938,12 +2052,12 @@ def cash_land_step(job, verbose=True):
         raise NotReady(
             f"no slot on tab {tab} filled after the purchase; the {item} is "
             f"not where it was expected. Nothing listed.")
-    landed = min(arrived)
-    for entry in job["work"]:
-        if entry["slot"] is None:
-            entry["slot"] = list(landed)
-            break
-    print(f"  the {item} landed in tab {tab} slot {landed}")
+    landed = sorted(arrived)
+    waiting = [entry for entry in job["work"] if entry["slot"] is None]
+    for entry, slot in zip(waiting, landed):
+        entry["slot"] = list(slot)
+    print(f"  the {item} landed in tab {tab} slot(s) "
+          + ", ".join(str(s) for s in landed))
     job["step"] = "buy" if job["bought"] < job["count"] else "list"
 
 
@@ -1964,10 +2078,27 @@ def cash_list_step(model, job, first, last, verbose=True):
             continue
         slot = tuple(entry["slot"])
         if slot not in calibration.occupied_slots():
-            print(f"  tab {tab} slot {slot} is empty; the {item} there went "
-                  f"out already")
-            entry["listed"] = True
-            continue
+            if job["listed"]:
+                print(f"  tab {tab} slot {slot} is empty; the {item} there "
+                      f"went out with the {job['listed']} already listed")
+                entry["listed"] = True
+                continue
+            again = 0
+            while again < row_model.PANEL_REREADS:
+                again += 1
+                time.sleep(row_model.PANEL_REREAD_GAP)
+                if slot in calibration.occupied_slots():
+                    print(f"  tab {tab} slot {slot} read empty and holds the "
+                          f"{item} on read {again + 1}; listing it")
+                    break
+            else:
+                calibration.snap(f"cash_slot_empty_{slot[0]}x{slot[1]}")
+                print(f"  tab {tab} slot {slot} reads empty in "
+                      f"{again + 1} read(s) and nothing has been listed, so "
+                      f"the {item} bought for it is not where it landed; the "
+                      f"frame is kept")
+                entry["listed"] = True
+                continue
         empty = [i for i in model.empty() if first <= i <= last]
         if not empty:
             print(f"  rows {first}-{last} are full; the {item} stays on "
@@ -1997,6 +2128,10 @@ def finish_cash(model, job, first, last, confirm=True, verbose=True):
             cash_buy_step(job, confirm=confirm, verbose=verbose)
         elif job["step"] == "voucher":
             cash_voucher_step(job, confirm=confirm, verbose=verbose)
+        elif job["step"] == "gem":
+            cash_gem_step(job, confirm=confirm, verbose=verbose)
+        elif job["step"] == "usegem":
+            cash_usegem_step(job, verbose=verbose)
         elif job["step"] == "use":
             cash_use_step(job, verbose=verbose)
         elif job["step"] == "land":
@@ -2011,8 +2146,11 @@ def finish_cash(model, job, first, last, confirm=True, verbose=True):
     if not full:
         task_done("resupply", core=item, bought=job["bought"],
                   listed=job["listed"], rows=job["rows"])
+    funds = cashshop.currency_of(item)
     calibration.phases_table(
-        f"resupply {item}: bought {job['bought']} at {job['price']:,} Cash"
+        f"resupply {item}: bought {job['bought']} at {job['price']:,} "
+        + (f"gem(s) from a {funds['from']}" if funds else "Cash")
+        + (f" bought for {job['gem_paid']:,} Cash" if job["gem_paid"] else "")
         + (f" after a {job['voucher_paid']:,} voucher" if job["voucher_paid"]
            else "")
         + f", listed {job['listed']} in rows {job['rows']}")
@@ -2119,7 +2257,7 @@ def use_question(image=None):
     image = image if image is not None else calibration.grab()
     fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
     line = calibration.read_line(image, calibration._box(USE_LINE_F))
-    if fold(USE_QUESTION) not in fold(line):
+    if not any(fold(word) in fold(line) for word in USE_QUESTIONS):
         return None
     button = calibration.read_line(image, calibration._box(USE_YES_F))
     if not fold(button).startswith(fold(YES_WORD)):
@@ -2129,8 +2267,8 @@ def use_question(image=None):
 
 def answer_use_question(point, verbose=True):
     if verbose:
-        print(f"  the game asks {USE_QUESTION!r}; clicking {YES_WORD} at "
-              f"{list(point)}")
+        print(f"  the game asks whether to use it; clicking {YES_WORD} "
+              f"at {list(point)}")
     calibration.snap("use_question")
     calibration.click(*point)
     calibration.park()
@@ -2140,7 +2278,7 @@ def answer_pending_use_question(verbose=True):
     asked = use_question()
     if asked is None:
         return False
-    print(f"  the game is already asking {USE_QUESTION!r}; answering that "
+    print(f"  the game is already asking whether to use it; answering that "
           f"before anything else")
     answer_use_question(asked, verbose=verbose)
     with calibration.phase("wait for the question to go"):
@@ -2150,30 +2288,31 @@ def answer_pending_use_question(verbose=True):
                 return True
             time.sleep(row_model.POLL_GAP)
     calibration.snap("use_question_stayed")
-    raise NotReady(f"the {USE_QUESTION!r} question stayed on screen "
+    raise NotReady(f"the question about using it stayed on screen "
                    f"{calibration.DIALOG_TIMEOUT:g}s after {YES_WORD}. "
                    f"Nothing more clicked.")
 
 
-def voucher_use(before, verbose=True):
+def voucher_use(before, verbose=True, what=None):
     tab = row_model.WORK_TAB
+    what = what or "voucher"
     if answer_pending_use_question(verbose=verbose):
-        print(f"  the question was answered; the voucher is used")
+        print(f"  the question was answered; the {what} is used")
         return None
     with calibration.phase("close the Agent Shop"):
         calibration.close_everything()
-    with calibration.phase(f"find the voucher on tab {tab}"):
+    with calibration.phase(f"find the {what} on tab {tab}"):
         arrived = await_arrival(set(before), verbose=verbose)
     if not arrived:
         calibration.snap("voucher_never_landed")
         raise NotReady(
-            f"no slot on tab {tab} filled after buying the voucher; it is "
+            f"no slot on tab {tab} filled after buying the {what}; it is "
             f"not where it was expected. Nothing used.")
     slot = min(arrived)
     point = calibration.inventory_slot_point(*slot)
-    print(f"  the voucher landed in tab {tab} slot {slot}; right-clicking "
+    print(f"  the {what} landed in tab {tab} slot {slot}; right-clicking "
           f"it at {point} to use it")
-    with calibration.phase("right-click the voucher"):
+    with calibration.phase(f"right-click the {what}"):
         calibration.right_click(*point)
         calibration.park()
     with calibration.phase("wait for the question"):
@@ -2186,12 +2325,12 @@ def voucher_use(before, verbose=True):
     if asked is None:
         calibration.snap("voucher_not_asked")
         raise NotReady(
-            f"no {USE_QUESTION!r} question showed "
+            f"no question about using it showed "
             f"{calibration.DIALOG_TIMEOUT:g}s after right-clicking the "
-            f"voucher in tab {tab} slot {slot}. Nothing more clicked.")
+            f"{what} in tab {tab} slot {slot}. Nothing more clicked.")
     with calibration.phase("answer the question"):
         answer_use_question(asked, verbose=verbose)
-    print(f"  {YES_WORD} clicked on slot {slot}; the voucher is used")
+    print(f"  {YES_WORD} clicked on slot {slot}; the {what} is used")
     return slot
 
 

@@ -1,3 +1,4 @@
+import ctypes
 import re
 import time
 
@@ -21,7 +22,10 @@ TITLE_F = tuple(_REG["cash_title"])
 TITLE_WORD = _TEXT["cash_title_word"]
 GRID_F = tuple(_REG["cash_grid"])
 DIALOG_F = tuple(_REG["cash_dialog"])
+QTY_F = tuple(_REG["cash_dialog_qty"])
+QTY_MAX_F = tuple(_REG["cash_dialog_qty_max"])
 BALANCE_F = tuple(_REG["cash_balance"])
+GEMS_F = tuple(_REG["cash_gems"])
 CELL_REACH_F = tuple(_DET["cash_cell_reach"])
 REREADS = _DET["panel_rereads"]
 REREAD_GAP = _T["panel_reread_gap"]
@@ -32,6 +36,11 @@ DIALOG_TIMEOUT = _T["dialog_timeout"]
 TOGGLE_TRIES = int(_T["toggle_tries"])
 LINE_SLACK = _DET["word_row_slack"]
 BUTTON_HALF = tuple(_DET["dialog_button_half"])
+CLEAR_PRESSES = int(_DET["clear_presses_qty"])
+SCROLL_LIMIT = int(CASH["scroll_limit"])
+
+_AT = None
+_TAB = None
 
 
 class Refused(Exception):
@@ -44,6 +53,18 @@ def _fold(text):
 
 def items():
     return [str(name) for name in CASH["rows"]]
+
+
+def in_reading_order():
+    known = _cal()
+    wanted = [name for name in items() if rows_wanted(name) > 0]
+    for name in list(wanted):
+        rule = currency_of(name) or {}
+        pays = rule.get("from")
+        if pays and pays not in wanted:
+            wanted.append(pays)
+    return sorted(wanted, key=lambda name: (
+        known.get("scroll_" + _fold(name), SCROLL_LIMIT + 1), name))
 
 
 def rows_wanted(item):
@@ -138,6 +159,21 @@ def read_cc(image=None):
     return calibration.read_money(image, balance_box())
 
 
+def gems_box():
+    known = _cal().get("gems")
+    return tuple(known) if known else calibration._box(GEMS_F)
+
+
+def read_gems(image=None):
+    image = image if image is not None else calibration.grab()
+    return calibration.read_money(image, gems_box())
+
+
+def currency_of(item):
+    rule = calibration._per_item_raw(CASH.get("currency") or {}, item)
+    return rule if isinstance(rule, dict) else None
+
+
 def cc_now(verbose=True):
     say = print if verbose else (lambda *a: None)
     value = None
@@ -152,6 +188,23 @@ def cc_now(verbose=True):
             f"in {REREADS + 1} read(s)")
     else:
         say(f"  the Cash balance box {list(balance_box())} reads {value:,}")
+    return value
+
+
+def gems_now(verbose=True):
+    say = print if verbose else (lambda *a: None)
+    value = None
+    for attempt in range(1, REREADS + 2):
+        value = read_gems()
+        if value is not None:
+            break
+        time.sleep(REREAD_GAP)
+    if value is None:
+        calibration.snap("cash_gems_unread")
+        say(f"  the gem box {list(gems_box())} would not read in "
+            f"{REREADS + 1} read(s)")
+    else:
+        say(f"  the gem box {list(gems_box())} reads {value:,}")
     return value
 
 
@@ -229,7 +282,10 @@ def dialog(image=None):
     words = _ocr(window_box(), image)
     return {"ok": ok, "cancel": cancel, "text": _text(words),
             "price": _figure_after(words, PRICE_WORD),
-            "balance": _figure_after(words, BALANCE_WORD)}
+            "balance": _figure_after(words, BALANCE_WORD),
+            "qty": calibration.read_money(image, calibration._box(QTY_F)),
+            "qty_max": calibration.read_money(
+                image, calibration._box(QTY_MAX_F))}
 
 
 def _await(read, timeout=None):
@@ -261,6 +317,8 @@ def open_cash_shop(verbose=True):
     if is_open():
         if tab_point(DEFAULT_TAB) is not None:
             say("  the Cash Shop is already open")
+            global _AT
+            _AT = None
             return True
         say(f"  the Cash Shop is open on another view, without its "
             f"{DEFAULT_TAB} tab; closing it and opening it afresh")
@@ -274,6 +332,9 @@ def open_cash_shop(verbose=True):
             f"no {DEFAULT_TAB!r} tab within {DIALOG_TIMEOUT:g}s of clicking "
             f"the Cash Shop icon at {list(icon)}; the Cash Shop is not open "
             f"where it was expected.")
+    global _TAB
+    _TAB = None
+    at_top()
     return True
 
 
@@ -283,20 +344,105 @@ def select_tab(word=None, verbose=True):
     point = tab_point(word)
     if point is None:
         raise Refused(f"no {word!r} tab on the Cash Shop; nothing clicked.")
+    global _TAB, _AT
+    if word == _TAB:
+        say(f"  the {word} tab is already showing; not clicking it")
+        return point
     say(f"  {word} at {list(point)}")
     calibration.click(*point)
     time.sleep(TAB_SETTLE)
     calibration.park()
+    at_top()
+    _TAB = word
     return point
+
+
+def grid_point():
+    box = calibration._box(GRID_F)
+    return (box[0] + box[2]) // 2, (box[1] + box[3]) // 2
+
+
+def scroll(notches):
+    import row_model
+    global _AT
+    if not notches:
+        return
+    x, y = grid_point()
+    row_model.inv._user32.SetCursorPos(int(x), int(y))
+    event = row_model._wheel_event(-1 if notches > 0 else 1)
+    for _ in range(abs(int(notches))):
+        row_model.inv._user32.SendInput(
+            1, ctypes.byref(event), ctypes.sizeof(row_model.inv._Input))
+        time.sleep(row_model.WHEEL_GAP)
+    calibration.park()
+    if _AT is not None:
+        _AT = max(0, _AT + int(notches))
+
+
+def at_top():
+    global _AT
+    _AT = 0
+
+
+def goto(notch):
+    global _AT
+    if _AT is None:
+        scroll(-SCROLL_LIMIT)
+        _AT = 0
+    scroll(int(notch) - _AT)
+
+
+def cell_at(item, purchase, image=None):
+    image = image if image is not None else calibration.grab()
+    words = _ocr(cell_box(purchase), image)
+    text = _text(words)
+    if not matches(item, text):
+        return None
+    price = None
+    for t, _c, p in sorted(words, key=lambda w: w[2][0]):
+        if abs(p[1] - purchase[1]) <= LINE_SLACK and p[0] < purchase[0]:
+            digits = re.sub(r"[^0-9]", "", t)
+            if digits:
+                price = int(digits)
+    if price is None:
+        return None
+    return {"item": item, "text": text, "purchase": tuple(purchase),
+            "price": price}
+
+
+def seek_cell(item, verbose=False):
+    say = print if verbose else (lambda *a: None)
+    key, seat_key = "scroll_" + _fold(item), "purchase_" + _fold(item)
+    known, seat = _cal().get(key), _cal().get(seat_key)
+    if known is not None and seat:
+        goto(int(known))
+        cell = cell_at(item, tuple(seat))
+        if cell is not None:
+            say(f"    {item!r} is where it was measured, {known} notch(es) "
+                f"down the {tab_for(item)} tab")
+            return cell
+    scroll(-SCROLL_LIMIT)
+    at_top()
+    for down in range(SCROLL_LIMIT + 1):
+        cell = find_cell(item)
+        if cell is not None:
+            if _cal().get(key) != down:
+                calibration.remember("cashshop", {key: down})
+            say(f"    {item!r} is {down} notch(es) down the "
+                f"{tab_for(item)} tab")
+            return cell
+        scroll(1)
+    return None
 
 
 def cell_for(item, verbose=True):
     say = print if verbose else (lambda *a: None)
-    cell = _await(lambda: find_cell(item))
+    cell = seek_cell(item, verbose=verbose)
     if cell is None:
         calibration.snap("cash_cell_not_found_" + _fold(item))
         raise Refused(
-            f"{item!r} is not on the {tab_for(item)} tab's first page with a "
+            f"{item!r} is not on the {tab_for(item)} tab within "
+            f"{SCROLL_LIMIT} notch(es) of scrolling with a "
             f"{PURCHASE_WORD} button; nothing clicked.")
     if cell["price"] is None:
         calibration.snap("cash_cell_no_price_" + _fold(item))
@@ -336,7 +482,8 @@ def close_cash_shop(verbose=True):
     raise Refused("the Cash Shop stayed open after two Escapes.")
 
 
-def purchase(item, confirm=True, verbose=True):
+def purchase(item, confirm=True, verbose=True, count=1):
+    import row_model
     say = print if verbose else (lambda *a: None)
     calibration.steps_reset()
     with calibration.step(f"{PURCHASE_WORD} on {item}"):
@@ -352,6 +499,16 @@ def purchase(item, confirm=True, verbose=True):
     if not matches(item, seen["text"]):
         _dismiss(seen, f"the confirmation names something other than "
                        f"{item!r}. Cancelled without buying.")
+    want, top = max(1, int(count)), int(seen.get("qty_max") or 0)
+    if top and want > top:
+        say(f"    {want} wanted and the dialog offers {top}; taking {top}")
+        want = top
+    if want > 1:
+        with calibration.step(f"type the quantity {want}"):
+            calibration.click(*calibration._centre(QTY_F))
+            row_model.type_number(want, CLEAR_PRESSES)
+            calibration.park()
+        seen = _await(dialog) or seen
     if seen["price"] is None or seen["balance"] is None:
         _dismiss(seen, f"the confirmation's {PRICE_WORD} or {BALANCE_WORD} "
                        f"would not read. Cancelled without buying.")
@@ -371,9 +528,10 @@ def purchase(item, confirm=True, verbose=True):
         raise Refused(
             f"the confirmation stayed open after {word}. Whether anything "
             f"was bought is unknown; look before running again.")
-    outcome = f"bought 1 {item}" if confirm else "cancelled at the confirmation"
+    outcome = (f"bought {want} {item}" if confirm
+               else "cancelled at the confirmation")
     calibration.steps_table(f"Cash Shop: {outcome}")
-    return {"item": item, "bought": 1 if confirm else 0,
+    return {"item": item, "bought": want if confirm else 0,
             "price": seen["price"], "balance": seen["balance"],
             "cancelled": not confirm}
 

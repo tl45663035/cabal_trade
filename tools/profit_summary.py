@@ -9,8 +9,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 LEDGER = ROOT / "src_1080p" / "sales.db"
 LOGS = ROOT / "src_1080p" / "logs"
 PACK = re.compile(r"\bX\s*[\d,]+", re.I)
-KNOBS = json.loads((ROOT / "src_1080p" / "config.json")
-                   .read_text(encoding="utf-8"))["tools"]
+SETTINGS = json.loads((ROOT / "src_1080p" / "config.json")
+                      .read_text(encoding="utf-8"))
+KNOBS = SETTINGS["tools"]
 DAYS_BACK = int(KNOBS["profit_days_back"])
 ENDED = re.compile(r"ended (\d\d):(\d\d):(\d\d), ran for")
 LOG_STAMP = "%Y-%m-%d_%H%M%S"
@@ -19,6 +20,10 @@ LOG_STAMP = "%Y-%m-%d_%H%M%S"
 def key(name):
     stripped = PACK.sub(" ", name or "")
     return re.sub(r"[^a-z]", "", stripped.lower()).replace("set", "")
+
+
+CASH = {key(name) for name
+        in SETTINGS["resupply"]["cash_shop"]["rows"]}
 
 
 def pack(name):
@@ -36,6 +41,8 @@ def units_sold(item, qty):
 
 
 def bucket(name):
+    if key(name) in CASH:
+        return "Cash"
     return "Chaos" if "chaos" in (name or "").lower() else "Cores"
 
 
@@ -266,7 +273,7 @@ def match_log(run, logs):
     return near[0][1] if near and near[0][0] <= LAUNCH_SLACK else None
 
 
-LAUNCH_SLACK = 90
+LAUNCH_SLACK = int(KNOBS["launch_slack"])
 
 
 def close_runs(since):
@@ -343,6 +350,14 @@ def sold_totals(sales):
 
 def gain(t):
     return t["revenue"] - t["cost"]
+
+
+BUCKETS = ("Cores", "Chaos", "Cash")
+DAY_WIDTH = 117
+
+
+def per_unit(t, field):
+    return f"{t[field] / t['units']:,.0f}" if t["units"] else "-"
 
 
 def rate(t):
@@ -429,33 +444,35 @@ def report_day(book):
         acc["units"] += s["units"]
         acc["revenue"] += s["revenue"]
         acc["cost"] += s["cost"]
-        acc["bucket"] = 0
         rows[s["k"]] = acc
-        rows[s["k"]]["is_chaos"] = 1 if s["bucket"] == "Chaos" else 0
+        rows[s["k"]]["where"] = s["bucket"]
 
-    print(f"{'item':<26}{'profit':>15}{'revenue':>15}{'cost':>15}"
-          f"{'units':>8}{'margin':>8}")
-    line(width=87)
-    groups = {"Cores": collections.Counter(), "Chaos": collections.Counter()}
+    print(f"{'item':<30}{'profit':>15}{'revenue':>15}{'cost':>15}"
+          f"{'units':>8}{'bought/u':>13}{'sold/u':>13}{'margin':>8}")
+    line(width=DAY_WIDTH)
+    groups = {name: collections.Counter() for name in BUCKETS}
     for k, r in sorted(rows.items(), key=lambda kv: -gain(kv[1])):
-        print(f"{k[:25]:<26}{gain(r):>15,.0f}{r['revenue']:>15,.0f}"
-              f"{r['cost']:>15,.0f}{r['units']:>8,}{rate(r)}")
-        label = "Chaos" if r["is_chaos"] else "Cores"
+        print(f"{k[:29]:<30}{gain(r):>15,.0f}{r['revenue']:>15,.0f}"
+              f"{r['cost']:>15,.0f}{r['units']:>8,}{per_unit(r, 'cost'):>13}"
+              f"{per_unit(r, 'revenue'):>13}{rate(r)}")
         for field in ("units", "revenue", "cost"):
-            groups[label][field] += r[field]
-    line(width=87)
+            groups[r["where"]][field] += r[field]
+    line(width=DAY_WIDTH)
     total = collections.Counter()
-    for label in ("Cores", "Chaos"):
+    for label in BUCKETS:
         g = groups[label]
         for field in ("units", "revenue", "cost"):
             total[field] += g[field]
         if not g["units"]:
             continue
-        print(f"{label:<26}{gain(g):>15,.0f}{g['revenue']:>15,.0f}"
-              f"{g['cost']:>15,.0f}{g['units']:>8,}{rate(g)}")
-    line("=", width=87)
-    print(f"{'TOTAL':<26}{gain(total):>15,.0f}{total['revenue']:>15,.0f}"
-          f"{total['cost']:>15,.0f}{total['units']:>8,}{rate(total)}")
+        print(f"{label:<30}{gain(g):>15,.0f}{g['revenue']:>15,.0f}"
+              f"{g['cost']:>15,.0f}{g['units']:>8,}{per_unit(g, 'cost'):>13}"
+              f"{per_unit(g, 'revenue'):>13}{rate(g)}")
+    line("=", width=DAY_WIDTH)
+    print(f"{'TOTAL':<30}{gain(total):>15,.0f}{total['revenue']:>15,.0f}"
+          f"{total['cost']:>15,.0f}{total['units']:>8,}"
+          f"{per_unit(total, 'cost'):>13}{per_unit(total, 'revenue'):>13}"
+          f"{rate(total)}")
 
     print("")
     print("by run, on what each run sold:")

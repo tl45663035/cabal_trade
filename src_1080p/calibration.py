@@ -716,7 +716,8 @@ def watch_for_stop(verbose=True):
             if _OWN_CTRL:
                 seen, held = [], False
                 continue
-            down = bool(_user32.GetAsyncKeyState(vk) & 0x8000)
+            down = bool(_user32.GetAsyncKeyState(vk)
+                        & _S["input"]["KEY_STATE_DOWN"])
             if down and not held:
                 at = time.monotonic()
                 seen = [t for t in seen if at - t <= window] + [at]
@@ -2050,23 +2051,34 @@ def calibrate_cashshop(verbose=True):
         say(f"  the Cash balance box {list(cashshop.balance_box())} reads "
             f"{balance:,}")
         block["balance"] = list(cashshop.balance_box())
+    gems = _await_cash(cashshop.read_gems)
+    if gems is None:
+        snap("cash_gems_unread")
+        say(f"  the gem box {list(cashshop.gems_box())} would not read; not "
+            f"recorded")
+    else:
+        say(f"  the gem box {list(cashshop.gems_box())} reads {gems:,}")
+        block["gems"] = list(cashshop.gems_box())
     if not cashshop.items():
         say("  no items under resupply.cash_shop.rows; only the icon and "
             "the balance are measured")
-    confirmed = False
-    for item in cashshop.items():
+    showing = None
+    for item in cashshop.in_reading_order():
         word = cashshop.tab_for(item)
         tab = cashshop.tab_point(word)
         if tab is None:
             snap("cash_no_tab_" + cashshop._fold(word))
             say(f"  no {word!r} tab for {item!r}; not measured")
             continue
-        say(f"  {word} at {list(tab)}")
-        click(*tab)
-        time.sleep(TAB_SETTLE)
-        park()
+        if word != showing:
+            say(f"  {word} at {list(tab)}")
+            click(*tab)
+            time.sleep(TAB_SETTLE)
+            park()
+            cashshop.at_top()
+            showing = word
         block["tab_" + cashshop._fold(word)] = list(tab)
-        cell = _await_cash(lambda: cashshop.find_cell(item))
+        cell = _await_cash(lambda: cashshop.seek_cell(item, verbose=True))
         if cell is None:
             snap("cash_cell_not_found_" + cashshop._fold(item))
             say(f"  {item!r} is not on the {word} tab's first page with a "
@@ -2075,8 +2087,6 @@ def calibrate_cashshop(verbose=True):
         say(f"  {item} at {cell['price']} Cash; {cashshop.PURCHASE_WORD} at "
             f"{list(cell['purchase'])}")
         block["purchase_" + cashshop._fold(item)] = list(cell["purchase"])
-        if confirmed:
-            continue
         if balance is not None and cell["price"] is not None \
                 and balance < cell["price"]:
             say(f"  {balance:,} Cash held and {item} costs {cell['price']}; "
@@ -2094,22 +2104,32 @@ def calibrate_cashshop(verbose=True):
             continue
         snap("cash_confirmation")
         ok, cancel = seen["ok"], seen["cancel"]
-        window = frame_box(grab(), _box(CASH_DIALOG_F))
-        if window is not None and not (window[0] < ok[0] < cancel[0] < window[2]
-                                       and window[1] < ok[1] < window[3]):
-            say(f"  the frame lines read {list(window)}, which do not "
-                f"enclose {cashshop.OK_WORD} and {cashshop.CANCEL_WORD}; the "
-                f"window is not recorded")
-            window = None
-        if window is None:
-            say("  the confirmation window was not found by its frame lines")
+        say(f"  the confirmation reads {seen['text']!r}")
+        if not cashshop.matches(item, seen["text"]):
+            snap("cash_confirmation_names_another_" + cashshop._fold(item))
+            say(f"  it names something other than {item!r}, so the cell that "
+                f"was found is not this item; cancelling and recording "
+                f"neither the cell nor the window")
+            block.pop("purchase_" + cashshop._fold(item), None)
         else:
-            say(f"  the confirmation window {list(window)}, "
-                f"{window[2] - window[0]}x{window[3] - window[1]}")
-            block["window"] = list(window)
-        say(f"  {cashshop.OK_WORD} at {list(ok)}; {cashshop.CANCEL_WORD} at "
-            f"{list(cancel)}")
-        block["ok"], block["cancel"] = list(ok), list(cancel)
+            window = frame_box(grab(), _box(CASH_DIALOG_F))
+            if window is not None and not (
+                    window[0] < ok[0] < cancel[0] < window[2]
+                    and window[1] < ok[1] < window[3]):
+                say(f"  the frame lines read {list(window)}, which do not "
+                    f"enclose {cashshop.OK_WORD} and {cashshop.CANCEL_WORD}; "
+                    f"the window is not recorded")
+                window = None
+            if window is None:
+                say("  the confirmation window was not found by its frame "
+                    "lines")
+            else:
+                say(f"  the confirmation window {list(window)}, "
+                    f"{window[2] - window[0]}x{window[3] - window[1]}")
+                block["window"] = list(window)
+            say(f"  {cashshop.OK_WORD} at {list(ok)}; {cashshop.CANCEL_WORD} "
+                f"at {list(cancel)}")
+            block["ok"], block["cancel"] = list(ok), list(cancel)
         click(*cancel)
         park()
         if _await_cash(lambda: cashshop.dialog() is None) is None:
@@ -2117,7 +2137,6 @@ def calibrate_cashshop(verbose=True):
                 f"clicking it again")
             click(*cancel)
             park()
-        confirmed = True
     for attempt in range(1, TOGGLE_TRIES + 1):
         if not cashshop.is_open():
             break
@@ -2863,6 +2882,7 @@ def voucher_unit():
 def voucher_floor_ratio(name):
     table = load_shared()["run"]["voucher_floor"]
     want = re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    best, named, found = 0, None, 0
     for item, rule in table.items():
         if isinstance(rule, dict):
             ratio, words = int(rule["ratio"]), rule.get("any") or [item]
@@ -2871,9 +2891,12 @@ def voucher_floor_ratio(name):
         for word in words:
             parts = word if isinstance(word, (list, tuple)) else [word]
             folded = [re.sub(r"[^a-z0-9]", "", str(p).lower()) for p in parts]
-            if folded and all(p and p in want for p in folded):
-                return item, ratio
-    return None, 0
+            if not folded or not all(p and p in want for p in folded):
+                continue
+            weight = sum(len(p) for p in folded)
+            if weight > best:
+                best, named, found = weight, item, ratio
+    return named, found
 
 
 def calibrate_panel(verbose=True):

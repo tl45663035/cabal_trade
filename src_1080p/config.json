@@ -14,7 +14,19 @@
         "default": "Useable"
       },
       "rows": {
-        "Yekaterina VIP Membership": 1
+        "Yekaterina VIP Membership": 1,
+        "Force Gem Package": 1,
+        "Epic Booster (Highest)": 1,
+        "Armor Account bind Unseal Stone": 1,
+        "Armor Account bind Seal Stone": 1,
+        "Siena's Unbinding Stone": 1
+      },
+      "scroll_limit": 45,
+      "currency": {
+        "Epic Booster (Highest)": {
+          "from": "Force Gem Package",
+          "per": 400
+        }
       }
     },
     "rows_by_margin": {
@@ -23,16 +35,16 @@
         3
       ],
       "Force Core (Ultimate)": [
-        3
+        2
       ],
       "Upgrade Core (Ultimate)": [
-        3
+        2
       ],
       "Force Core(High)": [
-        3
+        2
       ],
       "Force Core(Highest)": [
-        3
+        2
       ],
       "Chaos Core": [
         3,
@@ -55,14 +67,17 @@
     },
     "buy_min": {
       "default": 200,
-      "Force Core(High)": 500,
       "Yekaterina VIP Membership": 1,
       "Chaos Core": 150,
-      "Divine Stone": 150
+      "Divine Stone": 150,
+      "Force Gem Package": 1,
+      "Epic Booster (Highest)": 4,
+      "Armor Account bind Unseal Stone": 1,
+      "Armor Account bind Seal Stone": 1,
+      "Siena's Unbinding Stone": 1
     },
     "buy_max": {
       "default": 500,
-      "Force Core(High)": 750,
       "Chaos Core": 1000,
       "Divine Stone": 1000
     },
@@ -99,7 +114,12 @@
     "undercut_by": 1,
     "max_drop": {
       "default": 10000,
-      "Yekaterina VIP Membership": 1000000
+      "Yekaterina VIP Membership": 1000000,
+      "Force Gem Package": 1000000,
+      "Epic Booster (Highest)": 1000000,
+      "Armor Account bind Unseal Stone": 1000000,
+      "Armor Account bind Seal Stone": 1000000,
+      "Siena's Unbinding Stone": 1000000
     },
     "home_notches": 30,
     "for_minutes": 10000,
@@ -148,16 +168,12 @@
           ]
         ]
       },
-      "Epic Booster": {
+      "Epic Booster (Highest)": {
         "ratio": 125,
         "any": [
-          "Epic Booster",
           [
             "Epic",
-            "Booster"
-          ],
-          [
-            "Epic",
+            "Booster",
             "Highest"
           ],
           [
@@ -165,8 +181,37 @@
             "Highest"
           ]
         ]
+      },
+      "Armor Account bind Unseal Stone": {
+        "ratio": 500,
+        "any": [
+          [
+            "Armor",
+            "Unseal"
+          ]
+        ]
+      },
+      "Armor Account bind Seal Stone": {
+        "ratio": 500,
+        "any": [
+          [
+            "Armor",
+            "Seal"
+          ]
+        ]
+      },
+      "Siena's Unbinding Stone": {
+        "ratio": 200,
+        "any": [
+          [
+            "Siena",
+            "Unbinding"
+          ],
+          "Siena"
+        ]
       }
-    }
+    },
+    "price_trust_multiple": 10
   },
   "debug": {
     "frames": true,
@@ -365,7 +410,8 @@
     "live_within": 600,
     "log_tail_lines": 40,
     "calib_repeats": 100,
-    "calib_fail_limit": 3
+    "calib_fail_limit": 3,
+    "launch_slack": 90
   },
   "bugs": {
     "folder": "bugs",

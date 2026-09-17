@@ -54,6 +54,7 @@ FIELD_SETTLE = _T["field_settle"]
 SUGGESTION_RADIO_DX = _SHARED["detect"]["suggestion_radio_dx"]
 PRICE_CHECK_FACTOR = _SHARED["run"]["price_check_factor"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
+PRICE_TRUST = int(_SHARED["run"]["price_trust_multiple"])
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
 NET_SALES_NUDGES = _SHARED["detect"]["net_sales_nudges"]
 STALE_SWEEP = _T["stale_sweep"]
@@ -728,7 +729,11 @@ class RowModel:
         return sorted(self._work)
 
     def hold_work(self, slot, what=None):
-        self._work[tuple(int(n) for n in slot)] = what
+        slot = tuple(int(n) for n in slot)
+        if slot not in self._work:
+            print(f"    tab {WORK_TAB} slot {slot} is held for "
+                  f"{what!r}; it frees when something is listed from it")
+        self._work[slot] = what
 
     def release_work(self, slot):
         self._work.pop(tuple(int(n) for n in slot), None)
@@ -973,6 +978,13 @@ class RowModel:
         cap = calibration.max_drop(expect_item)
         each = count or (pack_size(expect_item) if expect_item else 1)
         held = listed_at - cap * each if cap and listed_at else 0
+        if held and want and listed_at > want * PRICE_TRUST:
+            if verbose:
+                print(f"    our {listed_at:,} is over {PRICE_TRUST} times "
+                      f"the {want:,} the market asks, so it is not a price "
+                      f"this row can really be listed at; the fall limit "
+                      f"does not hold it there")
+            held = 0
         if held and want < held:
             if verbose:
                 print(f"    the market asks {want:,}, {listed_at - want:,} "
@@ -989,6 +1001,16 @@ class RowModel:
             raise Divergence(
                 f"refusing to list at {want:,}, under the "
                 f"{MIN_PLAUSIBLE_PRICE:,} plausibility floor.")
+
+        if verbose:
+            if suggested is None:
+                print(f"    no market price was read; typing {want:,}")
+            else:
+                apart = want - suggested
+                print(f"    market {suggested:,}, typing {want:,}"
+                      + (f", {abs(apart):,} "
+                         f"{'over' if apart > 0 else 'under'} the market"
+                         if apart else ", the market itself"))
 
         with calibration.step(f"type the price {want:,}"):
             calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
