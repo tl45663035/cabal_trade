@@ -17,13 +17,18 @@
         "Yekaterina VIP Membership": 1,
         "Force Gem Package": 1,
         "Epic Booster (Highest)": 1,
-        "Armor Account bind Unseal Stone": 1,
-        "Armor Account bind Seal Stone": 1,
-        "Siena's Unbinding Stone": 1
+        "Armor Account bind Unseal Stone": 0,
+        "Armor Account bind Seal Stone": 0,
+        "Siena's Unbinding Stone": 1,
+        "Blessing Bead - Superior": 1
       },
       "scroll_limit": 45,
       "currency": {
         "Epic Booster (Highest)": {
+          "from": "Force Gem Package",
+          "per": 400
+        },
+        "Blessing Bead - Superior": {
           "from": "Force Gem Package",
           "per": 400
         }
@@ -74,7 +79,8 @@
       "Epic Booster (Highest)": 4,
       "Armor Account bind Unseal Stone": 1,
       "Armor Account bind Seal Stone": 1,
-      "Siena's Unbinding Stone": 1
+      "Siena's Unbinding Stone": 1,
+      "Blessing Bead - Superior": 1
     },
     "buy_max": {
       "default": 500,
@@ -119,7 +125,8 @@
       "Epic Booster (Highest)": 1000000,
       "Armor Account bind Unseal Stone": 1000000,
       "Armor Account bind Seal Stone": 1000000,
-      "Siena's Unbinding Stone": 1000000
+      "Siena's Unbinding Stone": 1000000,
+      "Blessing Bead - Superior": 1000000
     },
     "home_notches": 30,
     "for_minutes": 10000,
@@ -127,7 +134,7 @@
     "stop_key_presses": 4,
     "stop_key_window": 1.5,
     "stop_key_hold": 0.12,
-    "floor_break_after": 5,
+    "floor_break_after": 10,
     "voucher_default": 380000000,
     "voucher_floor": {
       "Yekaterina VIP Membership": {
@@ -208,6 +215,15 @@
             "Unbinding"
           ],
           "Siena"
+        ]
+      },
+      "Blessing Bead - Superior": {
+        "ratio": 437,
+        "any": [
+          [
+            "Blessing",
+            "Superior"
+          ]
         ]
       }
     },
@@ -411,7 +427,17 @@
     "log_tail_lines": 40,
     "calib_repeats": 100,
     "calib_fail_limit": 3,
-    "launch_slack": 90
+    "launch_slack": 90,
+    "short_b": 1000000000,
+    "short_m": 1000000,
+    "short_k": 1000,
+    "short_gap": 2,
+    "short_field": 10,
+    "short_head": 32,
+    "short_board_fields": 6,
+    "short_item_fields": 4,
+    "short_indent": 7,
+    "short_places": 2
   },
   "bugs": {
     "folder": "bugs",

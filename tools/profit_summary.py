@@ -1,8 +1,10 @@
 import collections
 import datetime
+import io
 import json
 import pathlib
 import re
+import sys
 import sqlite3
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -173,15 +175,19 @@ def is_set(name):
 
 def voucher_ratio(name):
     folded = re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    best, found = 0, 0
     for item, rule in VOUCHER_FLOORS.items():
-        if re.sub(r"[^a-z0-9]", "", item.lower()) in folded:
-            return int(rule["ratio"])
-        for want in rule.get("any", []):
-            parts = [want] if isinstance(want, str) else want
-            if all(re.sub(r"[^a-z0-9]", "", p.lower()) in folded
-                   for p in parts):
-                return int(rule["ratio"])
-    return 0
+        whole = re.sub(r"[^a-z0-9]", "", item.lower())
+        tries = [[whole]] + [[want] if isinstance(want, str) else list(want)
+                             for want in rule.get("any", [])]
+        for parts in tries:
+            folds = [re.sub(r"[^a-z0-9]", "", str(p).lower()) for p in parts]
+            if not folds or not all(f and f in folded for f in folds):
+                continue
+            weight = sum(len(f) for f in folds)
+            if weight > best:
+                best, found = weight, int(rule["ratio"])
+    return found
 
 
 def launch_floors(text):
@@ -780,18 +786,180 @@ def report_market():
               "last time it priced that core (its last resupply, else launch)")
 
 
+SIZES = tuple((int(KNOBS[f"short_{mark.lower()}"]), mark)
+              for mark in ("B", "M", "K"))
+SHORT_PLACES = int(KNOBS["short_places"])
+SHORT_GAP = int(KNOBS["short_gap"])
+GROUPED = re.compile(r"(?<![\w.,])(-?\d{1,3}(?:,\d{3})+)(?!\d)(?!,\d)")
+RULE = re.compile(r"^\s*([-=])\1{4,}\s*$")
+
+
+def short(value):
+    size = abs(value)
+    for cut, mark in SIZES:
+        if size < cut:
+            continue
+        body = f"{size / cut:.{SHORT_PLACES}f}"
+        if float(body) >= SIZES[-1][0]:
+            over = [step for step in SIZES if step[0] > cut]
+            if over:
+                cut, mark = min(over)
+                body = f"{size / cut:.{SHORT_PLACES}f}"
+        return f"{'-' if value < 0 else ''}{body}{mark}"
+    return f"{value:,}"
+
+
+def shorten(line, pad=True):
+    def swap(found):
+        text = found.group(1)
+        small = short(int(text.replace(",", "")))
+        return f"{small:>{len(text)}}" if pad else small
+    return GROUPED.sub(swap, line)
+
+
+def tabular(line):
+    return "  " in line.strip() or RULE.match(line) is not None
+
+
+def squeeze(block):
+    body = [line for line in block if RULE.match(line) is None]
+    if not body:
+        return block
+    width = max(len(line) for line in body)
+    padded = [line.ljust(width) for line in body]
+    keep, run = [], 0
+    for column in range(width):
+        if all(line[column] == " " for line in padded):
+            run += 1
+            if run > SHORT_GAP:
+                continue
+        else:
+            run = 0
+        keep.append(column)
+    done = ["".join(line[c] for c in keep).rstrip() for line in padded]
+    edge = max(len(line) for line in done)
+    out, taken = [], iter(done)
+    for line in block:
+        found = RULE.match(line)
+        out.append(found.group(1) * edge if found else next(taken))
+    return out
+
+
+def tighten(text, close=True):
+    if not close:
+        return "\n".join(shorten(line, pad=False)
+                         for line in text.splitlines())
+    lines = [shorten(line) for line in text.splitlines()]
+    out, block = [], []
+    for line in lines + [None]:
+        if line is not None and line.strip() and tabular(line):
+            block.append(line)
+            continue
+        if len(block) > 1:
+            out.extend(squeeze(block))
+        else:
+            out.extend(block)
+        block = []
+        if line is not None:
+            out.append(line)
+    return "\n".join(out)
+
+
+HERE = " <- here"
+INDENT = int(KNOBS["short_indent"])
+FIELD = int(KNOBS["short_field"])
+HEAD = int(KNOBS["short_head"])
+BOARD_WIDE = int(KNOBS["short_board_fields"])
+ITEM_WIDE = int(KNOBS["short_item_fields"])
+ROW_AT = re.compile(r"^\s{2,}(\d+)\s{2,}(\S.*)$")
+SUM_AT = re.compile(r"^\s{2,}(\S.*?)\s{2,}(\d+\s+[\d,]+\s+\S+\s+\S+)$")
+BOARD_HEADS = ("qty", "bought/u", "listed/u", "margin", "price", "profit")
+ITEM_HEADS = ("rows", "units", "listed", "profit")
+
+
+def columns(name, parts, room):
+    return (f"{'':<{INDENT}}{name:<{room}}"
+            + "".join(f"{one:>{FIELD}}" for one in parts))
+
+
+def board_row(line):
+    mark = HERE if line.endswith(HERE) else ""
+    found = ROW_AT.match(line[:len(line) - len(mark)].rstrip())
+    if found is None:
+        return None
+    parts = found.group(2).split()
+    if len(parts) <= BOARD_WIDE:
+        return None
+    name = " ".join(parts[:len(parts) - BOARD_WIDE])
+    return (f"{found.group(1):>{INDENT - 2}}  "
+            + f"{name:<{HEAD}}"
+            + "".join(f"{one:>{FIELD}}"
+                      for one in parts[len(parts) - BOARD_WIDE:]) + mark)
+
+
+def item_row(line):
+    found = SUM_AT.match(line.rstrip())
+    if found is None:
+        return None
+    return columns(found.group(1), found.group(2).split(),
+                   HEAD + FIELD * (BOARD_WIDE - ITEM_WIDE))
+
+
+TOTAL = re.compile(r"^\s{2,}(\S.*?)\s{2,}(-|[\d.]+[KMB]?)$")
+FULL = INDENT + HEAD + FIELD * BOARD_WIDE
+
+
+def total_row(line):
+    found = TOTAL.match(line.rstrip())
+    if found is None:
+        return None
+    return (f"{'':<{INDENT}}{found.group(1):<{FULL - INDENT - FIELD}}"
+            f"{found.group(2):>{FIELD}}")
+
+
+def aligned(text):
+    out = []
+    for line in text.splitlines():
+        if "bought/u" in line and "row price" in line:
+            out.append(columns("", BOARD_HEADS, HEAD))
+            continue
+        if line.strip().startswith("item ") and "rows" in line:
+            out.append(columns("item", ITEM_HEADS,
+                               HEAD + FIELD * (BOARD_WIDE - ITEM_WIDE)))
+            continue
+        done = board_row(line)
+        if done is None:
+            done = item_row(line)
+        if done is None:
+            done = total_row(line)
+        out.append(done if done is not None else line)
+    return "\n".join(out)
+
+
+def caught(work):
+    held = io.StringIO()
+    keep = sys.stdout
+    sys.stdout = held
+    try:
+        work()
+    finally:
+        sys.stdout = keep
+    return held.getvalue()
+
+
 def main():
     book = open_book()
-    by_day(book)
+    days = caught(lambda: (by_day(book), print(""), print(""),
+                           report_day(book)))
+    board = caught(report_board)
+    market = caught(report_market)
+    print(tighten(days))
     print("")
     print("")
-    report_day(book)
+    print(aligned(tighten(board, close=False)))
     print("")
     print("")
-    report_board()
-    print("")
-    print("")
-    report_market()
+    print(tighten(market))
 
 
 if __name__ == "__main__":

@@ -154,13 +154,25 @@ def war_open(text):
     return text.count("WAR LAG: a war") > text.count("WAR LAG: done")
 
 
-def death_reason(text):
+_CHILD = None
+
+
+def exit_code(pid):
+    if _CHILD is None or _CHILD.pid != pid:
+        return None
+    return _CHILD.poll()
+
+
+def death_reason(text, code=None):
     for pattern in (r"^\s*stopped: (.*)$", r"^\s*crashed: (.*)$",
                     r"^\s*STOPPED: (.*)$"):
         found = re.findall(pattern, text, flags=re.MULTILINE)
         if found:
             return found[-1].strip()
-    return "ended without a reason line"
+    if code is None:
+        return "ended without a reason line"
+    return (f"ended without a reason line, exit code {code}; nothing in "
+            f"driver.py exits without one, so it was stopped from outside")
 
 
 def prune_before_today():
@@ -237,7 +249,7 @@ def watch(pid, log):
             told_quiet = False
 
         if not alive(pid):
-            reason = death_reason(read(log))
+            reason = death_reason(read(log), exit_code(pid))
             event(reason[:K['reason_width']], "dead")
             return reason
         if f"{datetime.date.today():%Y-%m-%d}" != day:
@@ -759,6 +771,8 @@ def launch():
     for line in read(log).splitlines()[:K['head_lines']]:
         print("   " + line)
     event(f"relaunched (pid {proc.pid})", "alive")
+    global _CHILD
+    _CHILD = proc
     return proc.pid, log
 
 

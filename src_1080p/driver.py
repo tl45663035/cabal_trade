@@ -323,16 +323,19 @@ def _parsed_row(text):
     if found is None:
         return None
     seen = re.sub(r"[^0-9]", "", found.group("qty"))
+    name = found.group("name")
     if not seen:
+        name = f"{name} {found.group('qty')}"
         print(f"    the quantity column read {found.group('qty')!r}, which "
-              f"holds no digits; relisting anyway, the panel counts what is "
-              f"there")
+              f"holds no digits, so it is the end of the name and not a "
+              f"count; reading the row as {name.strip(' |-)(')!r} and letting "
+              f"the panel count what is there")
     qty = int(seen) if seen else 1
     price = int(re.sub(r"[^0-9]", "", found.group("price")))
     if price < MIN_PLAUSIBLE_PRICE:
         return None
     return row_model.Row(
-        row_model.canonical(found.group("name").strip(" |-)(")),
+        row_model.canonical(name.strip(" |-)(")),
         qty=qty if qty >= 1 else 1,
         price=price)
 
@@ -647,7 +650,16 @@ def relist_one(model, index, verbose=True, first=None, last=None,
             task_done("relist", row=index, sold=True)
             restock_now(model, row.name, first, last, verbose=verbose)
             return None
-        print(f"    collected; row {index} still reads {seen!r}")
+        left = _row_from(seen)
+        if left is not None:
+            model.place(index, row_model.Row(left.name, qty=left.qty,
+                                             price=left.price,
+                                             buy_cost=row.buy_cost,
+                                             floor_at=row.floor_at))
+        print(f"    collected; row {index} still reads {seen!r}, so the row is "
+              f"put back as {'unreadable' if left is None else str(left.qty)}"
+              f"{'' if left is None else ' at ' + format(left.price, ',')}; "
+              f"the cancel did not take and the row is not empty")
         task_done("relist", row=index, sold=True)
         return None
     task_done("relist", row=index, lands_in=lands_in, qty=out["qty"],
@@ -1886,27 +1898,33 @@ def cash_buy_step(job, confirm=True, verbose=True):
         job["cc_seen"] = cc
         coin = f"gem(s) from a {funds['from']}" if funds else "Cash"
         print(f"  {item} costs {job['price']:,} {coin}; {held:,} held")
-        if held < job["price"]:
+        want = max(1, int(job["count"]) - job["bought"])
+        need = job["price"] * want
+        paid = job["gem_paid"] if funds else job["voucher_paid"]
+        if held < need and not paid:
+            whole = (f"the {need:,} that {want} of them cost" if want > 1
+                     else f"the {job['price']:,} it costs")
             if funds:
-                if job["gem_paid"]:
-                    raise NotReady(
-                        f"{held:,} is still under the {job['price']:,} a "
-                        f"{item} costs after a {funds['from']} was bought "
-                        f"and used; not buying another blind.")
-                print(f"  {held:,} is under the {job['price']:,} a {item} "
-                      f"costs; buying a {funds['from']} and using it first")
+                print(f"  {held:,} is under {whole}; buying a "
+                      f"{funds['from']} and using it first, so the row goes "
+                      f"out in one purchase")
                 job["step"] = "gem"
                 return
-            if job["voucher_paid"]:
-                raise NotReady(
-                    f"{cc:,} Cash is still under the {job['price']:,} a "
-                    f"{item} costs after a voucher was bought and used; not "
-                    f"buying another voucher blind.")
-            print(f"  {cc:,} Cash is under the {job['price']:,} a {item} "
-                  f"costs; buying a Gold voucher and using it first")
+            print(f"  {cc:,} Cash is under {whole}; buying a Gold voucher "
+                  f"and using it first, so the row goes out in one purchase")
             job["cc_before_voucher"] = cc
             job["step"] = "voucher"
             return
+        if held < job["price"]:
+            if funds:
+                raise NotReady(
+                    f"{held:,} is still under the {job['price']:,} a "
+                    f"{item} costs after a {funds['from']} was bought "
+                    f"and used; not buying another blind.")
+            raise NotReady(
+                f"{cc:,} Cash is still under the {job['price']:,} a "
+                f"{item} costs after a voucher was bought and used; not "
+                f"buying another voucher blind.")
         floor, why = cash_floor(job, verbose=verbose)
         with calibration.phase("buy at the Cash Shop"):
             got = cashshop.purchase(item, confirm=confirm, verbose=verbose,
