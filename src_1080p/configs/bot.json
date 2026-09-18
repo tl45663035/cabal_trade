@@ -1,5 +1,32 @@
 {
   "run": {
     "screen": "1920x1080"
+  },
+  "resupply": {
+    "rows_by_margin": {
+      "Force Core (Ultimate)": [
+        3
+      ],
+      "Upgrade Core (Ultimate)": [
+        3
+      ],
+      "Force Core(High)": [
+        3
+      ],
+      "Force Core(Highest)": [
+        3
+      ],
+      "Chaos Core": [
+        6
+      ]
+    },
+    "rows_by_margin_on": {
+      "Chaos Core": [
+        6
+      ]
+    },
+    "buy_min": {
+      "default": 180
+    }
   }
 }
