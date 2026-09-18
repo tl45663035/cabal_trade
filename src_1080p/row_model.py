@@ -26,6 +26,8 @@ GRID = _FACTS["grid_size"]
 
 MAX_TOP = CAPACITY - VISIBLE + 1
 HOME_NOTCHES = _SHARED["run"]["home_notches"]
+FIRST_SEAT = "row_one_y"
+LAST_SEAT = "row_last_y"
 
 EMPTY_MARKER = _SHARED["text"]["empty_row"]
 _TEXT = _SHARED["text"]
@@ -50,6 +52,7 @@ CLEAR_PRESSES_PRICE = _SHARED["detect"]["clear_presses_price"]
 KEY_GAP = _T["key_gap"]
 CLEAR_GAP = _T["clear_gap"]
 LOAD_ATTEMPTS = _SHARED["detect"]["load_attempts"]
+PRICE_ATTEMPTS = _SHARED["detect"]["price_attempts"]
 FIELD_SETTLE = _T["field_settle"]
 SUGGESTION_RADIO_DX = _SHARED["detect"]["suggestion_radio_dx"]
 PRICE_CHECK_FACTOR = _SHARED["run"]["price_check_factor"]
@@ -100,16 +103,23 @@ def rows_per_notch():
     return _need("rows_per_notch")
 
 
-def row_one_box():
-    shop = _shop()
+def seat_position(seat):
+    return 1 if seat == FIRST_SEAT else VISIBLE
+
+
+def last_seat_placed():
+    return bool(_shop().get(LAST_SEAT))
+
+
+def row_box(seat=FIRST_SEAT):
     x0, x1 = _need("table_x")
-    y = _need("row_one_y")
+    y = _need(seat)
     half = max(1, _need("row_pitch") // 2 - ROW_INSET)
     return (x0, y - half, x1, y + half)
 
 
-def button_point():
-    return (_need("button_x"), _need("row_one_y"))
+def button_point(seat=FIRST_SEAT):
+    return (_need("button_x"), _need(seat))
 
 
 def popup_words(image=None):
@@ -393,33 +403,33 @@ def type_number(value, clear):
         time.sleep(KEY_GAP)
 
 
-def row_button_box():
-    shop = _shop()
+def row_button_box(seat=FIRST_SEAT):
     half_x = BUTTON_HALF[0]
-    half_y = max(1, int(shop["row_pitch"]) // 2)
-    x, y = int(shop["button_x"]), int(shop["row_one_y"])
+    half_y = max(1, int(_need("row_pitch")) // 2)
+    x, y = int(_need("button_x")), int(_need(seat))
     return (x - half_x, y - half_y, x + half_x, y + half_y)
 
 
-def row_button(image=None):
+def row_button(image=None, seat=FIRST_SEAT):
     image = image if image is not None else calibration.grab()
-    for text, _conf, _point in calibration.ocr(image, row_button_box()):
+    for text, _conf, _point in calibration.ocr(image, row_button_box(seat)):
         for word in (RECEIPT_WORD, CHANGE_WORD, REGISTER_WORD):
             if calibration.button_word_matches(text, word):
                 return word
     return None
 
 
-def row_button_text(image=None):
+def row_button_text(image=None, seat=FIRST_SEAT):
     image = image if image is not None else calibration.grab()
-    return " ".join(t for t, _c, _p in calibration.ocr(image, row_button_box()))
+    return " ".join(t for t, _c, _p in
+                    calibration.ocr(image, row_button_box(seat)))
 
 
-def row_function(text=None):
-    seen = row_button()
+def row_function(text=None, seat=FIRST_SEAT):
+    seen = row_button(seat=seat)
     if seen is not None:
         return seen
-    text = read_row_one() if text is None else text
+    text = read_row(seat) if text is None else text
     key = _key(text)
     for word in (RECEIPT_WORD, CHANGE_WORD, REGISTER_WORD):
         if _key(word) in key:
@@ -427,8 +437,8 @@ def row_function(text=None):
     return None
 
 
-def row_complete(text=None):
-    text = read_row_one() if text is None else text
+def row_complete(text=None, seat=FIRST_SEAT):
+    text = read_row(seat) if text is None else text
     return _key(STATUS_COMPLETE) in _key(text)
 
 
@@ -476,11 +486,11 @@ def trim_borders(text):
     return " ".join(parts)
 
 
-def read_row_one():
+def read_row(seat=FIRST_SEAT):
     text = ""
     for attempt in range(PANEL_REREADS + 1):
         image = calibration.grab()
-        box = row_one_box()
+        box = row_box(seat)
         text = trim_borders(calibration.read_line(image, box))
         if text.strip():
             return text
@@ -519,12 +529,12 @@ def _row_words(image, box):
     return " ".join(out)
 
 
-def read_row_one_stacked():
-    return trim_borders(_row_words(calibration.grab(), row_one_box()))
+def read_row_stacked(seat=FIRST_SEAT):
+    return trim_borders(_row_words(calibration.grab(), row_box(seat)))
 
 
-def row_one_is_empty(text=None):
-    text = read_row_one() if text is None else text
+def row_is_empty(text=None, seat=FIRST_SEAT):
+    text = read_row(seat) if text is None else text
     key = _key(text)
     return (not key) or EMPTY_MARKER in key
 
@@ -647,6 +657,7 @@ class RowModel:
         self._floored = {}
         self._broken = set()
         self._top = None
+        self._seat = FIRST_SEAT
         self.ready = False
         self.tracked = False
         self.enforce = enforce
@@ -761,7 +772,7 @@ class RowModel:
         import get_alz
         listed = self._slots.get(index)
         before_alz = get_alz.read_balance()
-        point = button_point()
+        point = button_point(self._seat)
         if verbose:
             print(f"  {RECEIPT_WORD} at {point}")
         calibration.click(*point)
@@ -815,43 +826,45 @@ class RowModel:
         if self.scroll_to(index, verbose=verbose):
             time.sleep(TAB_SETTLE)
 
-        seen = read_row_one()
-        action = row_function(seen)
+        seat = self._seat
+        position = seat_position(seat)
+        seen = read_row(seat)
+        action = row_function(seen, seat)
         if action == RECEIPT_WORD:
-            complete = row_complete(seen)
+            complete = row_complete(seen, seat)
             if verbose:
                 print(f"  row {index} has SOLD "
                       f"({'fully' if complete else 'partially'}); collecting "
                       f"before anything else")
             self.receive(index, verbose=verbose)
             time.sleep(TAB_SETTLE)
-            seen = read_row_one()
-            if complete or row_function(seen) == REGISTER_WORD:
+            seen = read_row(seat)
+            if complete or row_function(seen, seat) == REGISTER_WORD:
                 if verbose:
                     print(f"  row {index} is empty after the collection; "
                           f"nothing left to cancel")
                 return self.note_cancel(index)
-            action = row_function(seen)
+            action = row_function(seen, seat)
         if action == REGISTER_WORD:
             raise Divergence(
                 f"row {index} is empty on screen; nothing to cancel.")
         if not expected.key or not same_item(expected.name, seen):
-            stacked = read_row_one_stacked()
+            stacked = read_row_stacked(seat)
             if not expected.key or not same_item(expected.name, stacked):
                 raise Divergence(
                     f"row {index} should hold {expected.name!r} but position "
-                    f"1 reads {seen!r} on one line, and {stacked!r} read as "
-                    f"stacked lines. Not cancelling a row that is not the one "
-                    f"the model names.")
+                    f"{position} reads {seen!r} on one line, and {stacked!r} "
+                    f"read as stacked lines. Not cancelling a row that is not "
+                    f"the one the model names.")
             if verbose:
-                print(f"  position 1 read {seen!r} on one line; read as "
-                      f"stacked lines it is {expected.name!r}")
+                print(f"  position {position} read {seen!r} on one line; "
+                      f"read as stacked lines it is {expected.name!r}")
         if verbose:
-            print(f"  row {index} at position 1: {seen!r}")
+            print(f"  row {index} at position {position}: {seen!r}")
 
         show_work_tab(verbose=verbose, already=tab_ready)
 
-        point = button_point()
+        point = button_point(seat)
         if verbose:
             print(f"  {CHANGE_WORD} at {point}")
         inv._user32.SetCursorPos(*point)
@@ -932,7 +945,7 @@ class RowModel:
 
         suggested = None
         attempt = lagged = 0
-        while attempt < LOAD_ATTEMPTS:
+        while attempt < PRICE_ATTEMPTS:
             attempt += 1
             with calibration.step(f"ctrl-click ({row},{col}) attempt {attempt}"):
                 calibration.ctrl_click(*point)
@@ -946,15 +959,22 @@ class RowModel:
                 attempt -= 1
                 if verbose:
                     print(f"  the server was not answering, so that ctrl-click "
-                          f"does not count against the {LOAD_ATTEMPTS} tries")
+                          f"does not count against the {PRICE_ATTEMPTS} tries")
                 continue
             if verbose:
-                print(f"  ctrl-click {attempt}/{LOAD_ATTEMPTS} loaded nothing "
+                print(f"  ctrl-click {attempt}/{PRICE_ATTEMPTS} loaded nothing "
                       f"from ({row},{col})")
+        if suggested is None and listed_at:
+            suggested = int(listed_at)
+            price = suggested
+            if verbose:
+                print(f"  the market would not price it after "
+                      f"{PRICE_ATTEMPTS} ctrl-click(s); listing at the "
+                      f"{suggested:,} it came out of the row at")
         if suggested is None:
             raise NothingLoaded(
                 f"nothing loaded into the shop slot from ({row},{col}) after "
-                f"{LOAD_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
+                f"{PRICE_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
         count = None
         if unit_market:
             count = max(1, round(suggested / unit_market))
@@ -1130,6 +1150,10 @@ class RowModel:
     def top(self):
         return self._top
 
+    @property
+    def seat(self):
+        return self._seat
+
     def visible(self, top=None):
         top = self._top if top is None else int(top)
         if top is None:
@@ -1139,21 +1163,31 @@ class RowModel:
     def can_top(self, index):
         return 1 <= int(index) <= MAX_TOP
 
-    def scroll_plan(self, index):
+    def seat_of(self, index):
         index = int(index)
         if not 1 <= index <= CAPACITY:
             raise ValueError(f"row {index} is outside 1..{CAPACITY}")
+        if index <= MAX_TOP:
+            return FIRST_SEAT, index
+        return LAST_SEAT, index - VISIBLE + 1
+
+    def row_at_seat(self):
+        if self._top is None:
+            return None
+        return self._top + seat_position(self._seat) - 1
+
+    def scroll_plan(self, index):
+        seat, want = self.seat_of(index)
         if self._top is None:
             raise Divergence(
                 "the top visible row is unknown, so a scroll cannot be "
                 "counted. Seed the model from a read first.")
-        want = min(index, MAX_TOP)
         return {
             "from_top": self._top,
             "to_top": want,
             "notches": want - self._top,
-            "clamped": want != index,
-            "reachable_at_row": index - want + 1,
+            "seat": seat,
+            "position": seat_position(seat),
         }
 
     def note_scrolled(self, to_top):
@@ -1164,41 +1198,74 @@ class RowModel:
         wheel(-HOME_NOTCHES, verbose=False)
         time.sleep(ACTION_GAP)
         self._top = 1
+        self._seat = FIRST_SEAT
         if verbose:
             print(f"  scrolled to the top; row 1 is at position 1")
         return 1
 
+    def bottom(self, verbose=True):
+        wheel(HOME_NOTCHES, verbose=False)
+        time.sleep(ACTION_GAP)
+        self._top = MAX_TOP
+        self._seat = LAST_SEAT
+        if verbose:
+            print(f"  scrolled to the bottom; row {CAPACITY} is at position "
+                  f"{VISIBLE}")
+        return MAX_TOP
+
     def scroll_to(self, index, verbose=True):
-        if self._top is None:
+        seat, _want = self.seat_of(index)
+        if seat == LAST_SEAT and (self._seat != LAST_SEAT
+                                  or self._top is None):
+            self.bottom(verbose=verbose)
+        elif self._top is None:
             self.home(verbose=verbose)
         plan = self.scroll_plan(index)
-        if plan["clamped"]:
-            raise Divergence(
-                f"row {index} cannot reach position 1: {CAPACITY} rows, "
-                f"{VISIBLE} visible, top reaches {MAX_TOP}; it sits at "
-                f"{plan['reachable_at_row']}.")
         if plan["notches"]:
             wheel(plan["notches"], verbose=verbose)
         self.note_scrolled(plan["to_top"])
+        self._seat = seat
         if verbose:
-            print(f"  row {index} is now at position 1")
+            print(f"  row {index} is now at position {plan['position']}")
         return plan
+
+    def read(self):
+        return read_row(self._seat)
+
+    def read_stacked(self):
+        return read_row_stacked(self._seat)
+
+    def button(self, image=None):
+        return row_button(image, self._seat)
+
+    def button_text(self, image=None):
+        return row_button_text(image, self._seat)
+
+    def is_empty(self, text=None):
+        return row_is_empty(text, self._seat)
+
+    def function(self, text=None):
+        return row_function(text, self._seat)
+
+    def complete(self, text=None):
+        return row_complete(text, self._seat)
 
     def at(self, index, verbose=False):
         self.scroll_to(index, verbose=verbose)
-        return read_row_one()
+        return self.read()
 
     def verify(self, text=None, index=None):
         if self._top is None:
             raise Divergence("the top visible row is unknown; nothing to verify")
-        index = self._top if index is None else int(index)
-        if index != self._top:
+        here = self.row_at_seat()
+        index = here if index is None else int(index)
+        if index != here:
             raise Divergence(
-                f"row {index} is not at position 1 (row {self._top} is). "
-                f"Scroll to it first.")
-        text = read_row_one() if text is None else text
+                f"row {index} is not at position {seat_position(self._seat)} "
+                f"(row {here} is). Scroll to it first.")
+        text = self.read() if text is None else text
         mine = self._slots.get(index)
-        read_empty = row_one_is_empty(text)
+        read_empty = self.is_empty(text)
         if mine is None:
             agrees = read_empty
         else:
@@ -1207,7 +1274,8 @@ class RowModel:
             self.divergences += 1
             if self.enforce:
                 raise Divergence(
-                    f"row {index}: the model holds {mine!r} but position 1 "
+                    f"row {index}: the model holds {mine!r} but position "
+                    f"{seat_position(self._seat)} "
                     f"reads {text!r}")
         return {"row": index, "agrees": agrees, "model": mine, "read": text}
 

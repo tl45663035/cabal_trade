@@ -286,19 +286,20 @@ def price_by_voucher(row):
 
 def seed(verbose=True):
     register_tab(verbose=verbose)
+    last = CAPACITY if row_model.last_seat_placed() else row_model.MAX_TOP
     model = row_model.RowModel().seed({})
     model.home(verbose=verbose)
     found = {}
     if verbose:
         print(board_header())
-    for index in range(1, row_model.MAX_TOP + 1):
+    for index in range(1, last + 1):
         model.scroll_to(index, verbose=False)
-        if row_model.row_button() == row_model.REGISTER_WORD:
+        if model.button() == row_model.REGISTER_WORD:
             continue
-        text = row_model.read_row_one()
-        if row_model.row_one_is_empty(text):
+        text = model.read()
+        if model.is_empty(text):
             continue
-        text, row = row_from_screen(text)
+        text, row = row_from_screen(text, model)
         if row is None:
             if verbose:
                 print(f"    {index:2}  UNREAD {text!r}")
@@ -307,14 +308,16 @@ def seed(verbose=True):
         found[index] = row
         if verbose:
             print(board_line(index, row))
-    model.seed(found, top=row_model.MAX_TOP)
+    model.seed(found, top=model.top)
     model.tracked = True
     model.save()
     model.home(verbose=verbose)
     if verbose:
-        print(f"  seeded {len(found)} of rows 1-{row_model.MAX_TOP}")
-        print(f"  rows {row_model.MAX_TOP + 1}-{CAPACITY} are NOT reachable at "
-              f"position 1 and were not read")
+        print(f"  seeded {len(found)} of rows 1-{last}")
+        if last < CAPACITY:
+            print(f"  rows {last + 1}-{CAPACITY} were not read; the last "
+                  f"row is not placed in calibration.json, so position "
+                  f"{VISIBLE} cannot be read")
     return model
 
 
@@ -355,15 +358,15 @@ def known_item(name):
             or any(cashshop.matches(item, name) for item in cashshop.items()))
 
 
-def row_from_screen(text):
+def row_from_screen(text, model):
     row = _row_from(text)
     if row is not None and known_item(row.name):
         return text, row
-    if row is None and row_model.row_one_is_empty(text):
+    if row is None and model.is_empty(text):
         return text, None
     tries = 1 if row is not None else row_model.PANEL_REREADS + 1
     for attempt in range(1, tries + 1):
-        stacked = row_model.read_row_one_stacked()
+        stacked = model.read_stacked()
         again = _row_from(stacked)
         if again is not None and known_item(again.name):
             print(f"    one line read {text!r}; read as stacked lines it is "
@@ -472,17 +475,16 @@ def relist_one(model, index, verbose=True, first=None, last=None,
         row_model.refresh_table(model, verbose=False)
     with calibration.phase("scroll to the row and read it"):
         model.scroll_to(index, verbose=False)
-        button = (row_model.row_button() if model.get(index) is None
-                  else None)
+        button = model.button() if model.get(index) is None else None
         if button == row_model.REGISTER_WORD:
             text, row = "", None
         else:
-            text = row_model.read_row_one()
-            text, row = row_from_screen(text)
-            button = row_model.row_button()
+            text = model.read()
+            text, row = row_from_screen(text, model)
+            button = model.button()
 
     if button == row_model.RECEIPT_WORD:
-        complete = row_model.row_complete(text)
+        complete = model.complete(text)
         if verbose:
             print(f"  row {index} has SOLD "
                   f"({'fully' if complete else 'partly'}); collecting")
@@ -493,7 +495,7 @@ def relist_one(model, index, verbose=True, first=None, last=None,
             model.receive(index, verbose=False)
         with calibration.phase("read the row again after collecting"):
             text, row = row_at(model, index, verbose=False)
-            button = row_model.row_button()
+            button = model.button()
         if complete or button == row_model.REGISTER_WORD or row is None:
             model.drop(index)
             model.forget_floor(index)
@@ -505,7 +507,7 @@ def relist_one(model, index, verbose=True, first=None, last=None,
         if verbose:
             print(f"    collected; {row.qty} left to relist")
 
-    if row_model.row_one_is_empty(text) or button == row_model.REGISTER_WORD:
+    if model.is_empty(text) or button == row_model.REGISTER_WORD:
         model.drop(index)
         model.forget_floor(index)
         if verbose:
@@ -521,7 +523,7 @@ def relist_one(model, index, verbose=True, first=None, last=None,
               f"reads {text!r}")
         print(f"    parsed  {'nothing' if row is None else str(row.qty) + ' at ' + format(row.price, ',')}")
         print(f"    button  {button!r}, box reads "
-              f"{row_model.row_button_text()!r}")
+              f"{model.button_text()!r}")
         return False
 
     if model.work_slots():
@@ -559,7 +561,7 @@ def relist_one(model, index, verbose=True, first=None, last=None,
     if cost:
         unit_floor, pair = cost, "what it cost"
     if not unit_floor:
-        stacked = row_model.read_row_one_stacked()
+        stacked = model.read_stacked()
         again = _row_from(stacked)
         if again is not None and again.name != row.name:
             floor_again, pair_again = calibration.price_floor(again.name)
@@ -635,15 +637,15 @@ def relist_one(model, index, verbose=True, first=None, last=None,
                                   verbose=verbose, lands_in=lands_in,
                                   expect_item=row.name, listed_at=row.price)
     except row_model.SlotNeverFilled:
-        seen = row_model.read_row_one()
-        if row_model.row_function(seen) != row_model.RECEIPT_WORD:
+        seen = model.read()
+        if model.function(seen) != row_model.RECEIPT_WORD:
             raise
         print(f"  row {index} sold while it was being cancelled, so nothing "
               f"came back to tab {row_model.WORK_TAB}; collecting it instead")
         model.release_work(landing)
         model.receive(index, verbose=False)
-        seen = row_model.read_row_one()
-        if row_model.row_one_is_empty(seen):
+        seen = model.read()
+        if model.is_empty(seen):
             model.drop(index)
             model.forget_floor(index)
             print(f"    collected; row {index} is empty")
@@ -856,12 +858,12 @@ def report(model):
 
 def row_at(model, index, verbose=True):
     model.scroll_to(index, verbose=False)
-    text = row_model.read_row_one()
-    text, row = row_from_screen(text)
+    text = model.read()
+    text, row = row_from_screen(text, model)
     if verbose:
         print(f"  row {index}: {text!r}")
-        print(f"    function {row_model.row_function(text)!r}  "
-              f"complete {row_model.row_complete(text)}")
+        print(f"    function {model.function(text)!r}  "
+              f"complete {model.complete(text)}")
     return text, row
 
 
@@ -2948,11 +2950,12 @@ def main():
     args = _plain_argv()
     calibration.log_to_file(args[0].lower() if args else "run")
     print(f"  code {_git_id()}")
-    print(f"  ledger {ledger.DB} run {ledger.start()}")
-    calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
-    calibration.watch_for_stop()
     outcome, note = "FINISHED", ""
     try:
+        print(f"  screen {calibration.require_screen()}")
+        print(f"  ledger {ledger.DB} run {ledger.start()}")
+        calibration.frames_on(True if "--frames" in sys.argv[1:] else None)
+        calibration.watch_for_stop()
         _dispatch(args)
     except KeyboardInterrupt:
         outcome, note = "STOPPED", "interrupted from the keyboard"

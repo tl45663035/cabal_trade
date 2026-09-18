@@ -837,6 +837,11 @@ def main():
         return 0
 
     calibration.log_to_file("supervise")
+    try:
+        print(f"  screen {calibration.require_screen()}")
+    except RuntimeError as exc:
+        event(f"supervisor stopped: {exc}", "dead")
+        return 1
     calibration.watch_for_stop()
     try:
         pids = driver_pids()

@@ -72,6 +72,16 @@ def resolution_key(size=None) -> str:
     return f"{w}x{h}"
 
 
+def require_screen() -> str:
+    want = str(load_shared()["run"].get("screen") or "")
+    seen = resolution_key()
+    if want and seen != want:
+        raise RuntimeError(
+            f"the screen is {seen}, and run.screen for {config_name()} "
+            f"requires {want}; nothing started.")
+    return seen if want else f"{seen}, not pinned"
+
+
 def _read(path) -> dict:
     if not path.exists():
         raise RuntimeError(f"{path.name} is missing; nothing is built in.")
@@ -332,6 +342,8 @@ ACTION_GAP = _S["timing"]["action_gap"]
 PARK_SETTLE = _S["timing"]["park_settle"]
 TAB_SETTLE = _S["timing"]["tab_settle"]
 DIALOG_TIMEOUT = _S["timing"]["dialog_timeout"]
+CASH_MEASURE_TIMEOUT = _S["timing"]["cash_measure_timeout"]
+PANEL_LOAD_TIMEOUT = _S["timing"]["panel_load_timeout"]
 SEARCH_TIMEOUT = _S["timing"]["search_timeout"]
 SEARCH_RETRIES = _S["timing"]["search_retries"]
 ALZ_SEARCH = None
@@ -1901,6 +1913,18 @@ def calibrate_register_table(shop, verbose=True):
         top -= pitch
         say(f"  a row sits at y={top} with no button that read; counting it")
     ys = [top] + [y for y in ys if y > top]
+    bottom = int(ys[-1])
+    while (round((bottom - top) / pitch) + 1 < SHOP_VISIBLE
+           and bottom + pitch <= band[3]):
+        bottom += pitch
+        say(f"  a row sits at y={bottom} with no button that read; counting it")
+    rows = round((bottom - top) / pitch) + 1
+    placed = rows == SHOP_VISIBLE
+    if not placed:
+        say(f"  the Register table shows {rows} row(s) from y={top} to "
+            f"y={bottom} at {pitch}px, and game_facts.shop_visible says "
+            f"{SHOP_VISIBLE}; the last row is not placed, so rows past "
+            f"{SHOP_CAPACITY - SHOP_VISIBLE + 1} cannot be read this run")
     footer = _box(REGISTER_FOOTER_BAND_F)
     want = re.sub(r"[^a-z]", "", REFRESH_WORD.lower())
     deadline = time.monotonic() + DIALOG_TIMEOUT
@@ -1924,6 +1948,10 @@ def calibrate_register_table(shop, verbose=True):
         "row_pitch": int(pitch),
         "row_one_box": [band[0], int(ys[0]) - pitch // 2,
                         band[2], int(ys[0]) + pitch // 2],
+        "row_last_y": int(bottom) if placed else None,
+        "row_last_box": ([band[0], int(bottom) - pitch // 2,
+                          band[2], int(bottom) + pitch // 2]
+                         if placed else None),
         "button_x": int(xs[len(xs) // 2]),
         "table_point": [int(xs[len(xs) // 2]) - SCROLL_POINT_INSET, int(ys[0]) + pitch],
         "rows_per_notch": 1,
@@ -1931,7 +1959,8 @@ def calibrate_register_table(shop, verbose=True):
     }
     say(f"  button column {buttons}")
     say(f"  Register table: {len(marks)} row(s), pitch {pitch}px, "
-        f"row 1 y={out['row_one_y']}")
+        f"row 1 y={out['row_one_y']}"
+        + (f", row {SHOP_VISIBLE} y={out['row_last_y']}" if placed else ""))
     if refresh is not None:
         out["refresh_point"] = refresh
     say(f"  table_x {out['table_x']}, scroll point {out['table_point']}")
@@ -1940,6 +1969,8 @@ def calibrate_register_table(shop, verbose=True):
     return out
 
 
+SHOP_VISIBLE = int(_S["game_facts"]["shop_visible"])
+SHOP_CAPACITY = int(_S["game_facts"]["shop_capacity"])
 WORK_TAB = _S["game_facts"]["work_tab"]
 WORK_SLOT = tuple(int(n) for n in
              _S["game_facts"]["work_slot"].split(","))
@@ -1970,6 +2001,20 @@ ACTION_BUTTON_WORDS = (_S["text"]["confirm_word"], _S["text"]["dismiss_word"],
                        _S["text"]["receipt_word"], _S["text"]["register_word"])
 
 RECEIPT_WORD = _S["text"]["receipt_word"]
+_ROW_TEXT = re.compile(_S["text"]["purchase_row"])
+_ROW_GROUPING = re.compile(_S["text"]["row_grouping"])
+
+
+def row_price(text):
+    cleaned = (text or "").strip()
+    for candidate in (cleaned, _ROW_GROUPING.sub(",", cleaned)):
+        found = _ROW_TEXT.match(candidate)
+        if found is None:
+            continue
+        digits = re.sub(r"[^0-9]", "", found.group("price"))
+        if digits:
+            return int(digits)
+    return None
 CLOSE_WORD = _S["text"]["close_word"]
 GIFT_BOXES = int(_S["game_facts"]["gift_boxes"])
 GIFT_OPEN_TRIES = int(_S["timing"]["gift_open_tries"])
@@ -2087,19 +2132,21 @@ def calibrate_cashshop(verbose=True):
         say(f"  {item} at {cell['price']} Cash; {cashshop.PURCHASE_WORD} at "
             f"{list(cell['purchase'])}")
         block["purchase_" + cashshop._fold(item)] = list(cell["purchase"])
-        if balance is not None and cell["price"] is not None \
-                and balance < cell["price"]:
-            say(f"  {balance:,} Cash held and {item} costs {cell['price']}; "
+        funds = cashshop.currency_of(item)
+        held, coin = (gems, "gem(s)") if funds else (balance, "Cash")
+        if held is not None and cell["price"] is not None \
+                and held < cell["price"]:
+            say(f"  {held:,} {coin} held and {item} costs {cell['price']}; "
                 f"the game opens no confirmation for that, so it is not "
                 f"measured this launch")
             continue
         click(*cell["purchase"], settle=0.0)
-        seen = _await_cash(cashshop.dialog)
+        seen = _await_cash(cashshop.dialog, timeout=CASH_MEASURE_TIMEOUT)
         if seen is None:
             snap("cash_no_confirmation")
             say(f"  no {cashshop.OK_WORD} and {cashshop.CANCEL_WORD} within "
-                f"{DIALOG_TIMEOUT:g}s of {cashshop.PURCHASE_WORD}; nothing "
-                f"pressed")
+                f"{CASH_MEASURE_TIMEOUT:g}s of {cashshop.PURCHASE_WORD}; "
+                f"nothing pressed")
             park()
             continue
         snap("cash_confirmation")
@@ -3041,7 +3088,7 @@ def inventory_slot_point(row, col):
     return tuple(slots[key])
 
 
-def calibrate_actions(shop, verbose=True):
+def calibrate_actions(shop, verbose=True, seat="row_one", position=1):
     say = print if verbose else (lambda *a: None)
     panel = shop.get("panel")
     if not panel:
@@ -3050,6 +3097,11 @@ def calibrate_actions(shop, verbose=True):
     budget = timing["dialog_timeout"]
     dialog = _box(DIALOG_BUTTONS_F)
     learned = {}
+
+    import row_model
+    row_model.wheel(-int(load_shared()["run"]["home_notches"]), verbose=False)
+    time.sleep(TAB_SETTLE)
+    say(f"  scrolled to the top, so position {position} is row {position}")
 
     def buttons_now():
         found = {}
@@ -3077,7 +3129,7 @@ def calibrate_actions(shop, verbose=True):
     def missing(word, after):
         snap(f"no_{word.lower()}_after_{after.lower()}")
         return (f"no {word} button appeared in {dialog} within "
-                f"{budget}s after {after} on row 1; that band reads "
+                f"{budget}s after {after} on row {position}; that band reads "
                 f"{band_reads()}. Nothing has been withdrawn.")
 
     def close_dialogs():
@@ -3102,13 +3154,13 @@ def calibrate_actions(shop, verbose=True):
             "a dialog is already open over the Register table. Close it and "
             "calibrate again; nothing was clicked.")
 
-    row_one = tuple(shop["row_one_box"])
-    before = read_line(grab(), row_one)
+    row_seat = tuple(shop[seat + "_box"])
+    before = read_line(grab(), row_seat)
     lowered = before.lower()
     listed = re.search(r"\d[\d,]{2,}", before) is not None
     if listed and RECEIPT_WORD.lower() in lowered:
-        receipt = (shop["button_x"], shop["row_one_y"])
-        say(f"  row 1 has SOLD: {before!r}")
+        receipt = (shop["button_x"], shop[seat + "_y"])
+        say(f"  row {position} has SOLD: {before!r}")
         say(f"  {RECEIPT_WORD} at {receipt}")
         click(*receipt)
         park(settle=False)
@@ -3118,13 +3170,19 @@ def calibrate_actions(shop, verbose=True):
         say(f"  Confirm Receipt at {accept}")
         click(*accept)
         park(settle=False)
-        before = read_line(grab(), row_one)
+        before = read_line(grab(), row_seat)
         lowered = before.lower()
         listed = re.search(r"\d[\d,]{2,}", before) is not None
-        say(f"  collected; row 1 now reads {before!r}")
+        say(f"  collected; row {position} now reads {before!r}")
     if not listed or RECEIPT_WORD.lower() in lowered:
-        say(f"  row 1 reads {before!r}; it is not a live listing this "
+        say(f"  row {position} reads {before!r}; it is not a live listing this "
             f"pass can withdraw. Earlier positions stand.")
+        return {}
+    was = row_price(before)
+    if was is None:
+        say(f"  row {position} reads {before!r} and its price would not read, so it "
+            f"is not withdrawn; it could not be put back at the same price. "
+            f"Earlier positions stand.")
         return {}
 
     landing = first_free_slot(WORK_TAB, verbose=verbose)
@@ -3133,8 +3191,8 @@ def calibrate_actions(shop, verbose=True):
             f"Earlier positions stand.")
         return {}
 
-    change = (shop["button_x"], shop["row_one_y"])
-    say(f"  row 1 is {before!r}")
+    change = (shop["button_x"], shop[seat + "_y"])
+    say(f"  row {position} is {before!r}")
     say(f"  Change at {change}")
     click(*change)
     park(settle=False)
@@ -3142,10 +3200,10 @@ def calibrate_actions(shop, verbose=True):
     cancel = await_button(_S["text"]["dismiss_word"])
     if cancel is None:
         say(f"  {missing(_S['text']['dismiss_word'], _S['text']['change_word'])}")
-        say(f"  closing whatever opened and leaving row 1 as it is. Earlier "
+        say(f"  closing whatever opened and leaving row {position} as it is. Earlier "
             f"positions stand.")
         if not close_dialogs():
-            raise RuntimeError("a dialog opened after Change on row 1 and "
+            raise RuntimeError(f"a dialog opened after Change on row {position} and "
                                "would not close.")
         return {}
     say(f"  Cancel at {cancel}")
@@ -3158,7 +3216,7 @@ def calibrate_actions(shop, verbose=True):
         say(f"  closing whatever opened; nothing withdrawn. Earlier "
             f"positions stand.")
         if not close_dialogs():
-            raise RuntimeError("a dialog opened after Cancel on row 1 and "
+            raise RuntimeError(f"a dialog opened after Cancel on row {position} and "
                                "would not close.")
         return {}
     say(f"  Confirmation at {confirm}")
@@ -3170,11 +3228,11 @@ def calibrate_actions(shop, verbose=True):
         if not buttons_now():
             break
     else:
-        snap("row_one_cancel_refused")
-        say(f"  the dialog stayed open after Confirmation on row 1; the game "
+        snap(f"{seat}_cancel_refused")
+        say(f"  the dialog stayed open after Confirmation on row {position}; the game "
             f"is refusing to withdraw it (it says so when the bag has no "
             f"room for what would come back). Dismissing the dialog and "
-            f"leaving row 1 listed. Earlier positions stand.")
+            f"leaving row {position} listed. Earlier positions stand.")
         click(*cancel)
         park()
         deadline = time.monotonic() + budget
@@ -3185,12 +3243,12 @@ def calibrate_actions(shop, verbose=True):
         else:
             if not close_dialogs():
                 raise RuntimeError(
-                    "the dialog stayed open after Confirmation on row 1, "
+                    f"the dialog stayed open after Confirmation on row {position}, "
                     "and neither Cancel nor Escape closed it.")
         return learned
 
-    after = read_line(grab(), row_one)
-    say(f"  row 1 now reads {after!r}")
+    after = read_line(grab(), row_seat)
+    say(f"  row {position} now reads {after!r}")
 
     tab = inventory_tab_point(WORK_TAB)
     say(f"  back to inventory tab {WORK_TAB} at {tab}; the withdrawal moves "
@@ -3198,16 +3256,16 @@ def calibrate_actions(shop, verbose=True):
     click(*tab)
     slot = inventory_slot_point(*landing)
     if slot_is_empty(grab(), *landing):
-        recheck = read_line(grab(), row_one)
-        say(f"  nothing landed in tab {WORK_TAB} slot {landing}; row 1 now "
-            f"reads {recheck!r}. A sale on row 1 during the cancel left the "
+        recheck = read_line(grab(), row_seat)
+        say(f"  nothing landed in tab {WORK_TAB} slot {landing}; row {position} now "
+            f"reads {recheck!r}. A sale on row {position} during the cancel left the "
             f"listing in place rather than withdrawing it. Keeping the "
             f"buttons measured so far and letting the relist pass take it.")
         return learned
     say(f"  listing it back from tab {WORK_TAB} slot {landing} at {slot}")
     ctrl_click(*slot)
     suggested = None
-    deadline = time.monotonic() + budget
+    deadline = time.monotonic() + PANEL_LOAD_TIMEOUT
     while time.monotonic() < deadline:
         suggested = panel_suggestion(panel)
         if suggested is not None:
@@ -3216,22 +3274,19 @@ def calibrate_actions(shop, verbose=True):
     if suggested is None:
         say(f"  nothing loaded on the first ctrl-click; trying once more")
         ctrl_click(*slot)
-        deadline = time.monotonic() + budget
+        deadline = time.monotonic() + PANEL_LOAD_TIMEOUT
         while time.monotonic() < deadline:
             suggested = panel_suggestion(panel)
             if suggested is not None:
                 break
             time.sleep(POLL_GAP)
+    price = was
     if suggested is None:
-        raise RuntimeError(
-            f"nothing loaded from tab {WORK_TAB} slot {landing} after two "
-            f"ctrl-clicks.")
-    price = undercut(suggested)
-    if price is None:
-        raise RuntimeError(
-            f"the panel suggests no price for what was withdrawn, so there "
-            f"is nothing to list at. The item is in the bag.")
-    say(f"  panel suggests {suggested:,}; listing at {price:,}")
+        say(f"  the market would not price it after two ctrl-clicks; listing "
+            f"at the {price:,} row {position} was withdrawn at")
+    else:
+        say(f"  panel suggests {suggested:,}; listing at {price:,}, the price "
+            f"row {position} was withdrawn at")
 
     click(*panel["price_point"])
     type_number(price, CLEAR_PRESSES_PRICE)
@@ -3410,6 +3465,14 @@ def _measure(close: bool) -> None:
 
     print("actions:")
     shop.update(calibrate_actions(shop))
+
+    if shop.get("row_last_box"):
+        print(f"actions at position {SHOP_VISIBLE}:")
+        shop.update(calibrate_actions(shop, seat="row_last",
+                                      position=SHOP_VISIBLE))
+    else:
+        print(f"actions at position {SHOP_VISIBLE}: the last row is not "
+              f"placed, so it was not walked")
 
     convert_block = None
     vendor_visited = False
