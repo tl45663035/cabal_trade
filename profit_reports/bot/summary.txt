@@ -1,6 +1,4 @@
 LAST 7 DAYS -- 2026-09-13 to 2026-09-19, each day midnight to midnight
-a run keeps its own book: what it sells, against what it paid, or against the floor its launch measured for stock it inherited
-what a run does not sell is carried to the next run at that launch's floor, so nothing is counted as profit before it sells
 
 day                       hours   profit  revenue     cost  units  margin  an hour
 ----------------------------------------------------------------------------------
@@ -10,47 +8,47 @@ Tue 2026-09-15            1.76h        0        0        0      0      --       
 Wed 2026-09-16            0.11h        0        0        0      0      --        0
 Thu 2026-09-17            0.00h        0        0        0      0      --        0
 Fri 2026-09-18            5.53h   17.79M  769.03M  751.24M    870    2.3%    3.22M
-Sat 2026-09-19 (so far)   8.35h  142.01M    5.47B    5.33B  7.65K    2.6%   17.01M
+Sat 2026-09-19 (so far)   8.67h  152.78M    5.61B    5.46B  7.70K    2.7%   17.63M
 ==================================================================================
-7 DAYS                   22.42h  159.80M    6.24B    6.08B  8.52K    2.6%    7.13M
+7 DAYS                   22.74h  170.58M    6.38B    6.21B  8.57K    2.7%    7.50M
 
 
-PROFIT SUMMARY -- sold since 2026-09-19 00:00 (as of 12:59)
-every unit is counted when it sells: what the collection paid, less what the run paid for it, or less the floor its launch measured for stock it inherited
+PROFIT SUMMARY -- sold since 2026-09-19 00:00 (as of 14:34)
 
-item                   profit  revenue     cost  units  bought/u   sold/u  margin
----------------------------------------------------------------------------------
-chaoscore              74.51M    3.55B    3.47B  4.85K   716.15K  731.51K    2.1%
-blessingbeadsuperior   19.87M  185.00M  165.13M      1   165.13M  185.00M   10.7%
-upgradecoreultimate    15.36M   84.04M   68.68M    156   440.29K  538.74K   18.3%
-forcecorehigh          13.13M  275.94M  262.81M  1.36K   193.67K  203.34K    4.8%
-epicboosterhighest     11.15M  482.56M  471.40M     10    47.14M   48.26M    2.3%
-forcecorehighest        3.65M  204.18M  200.53M    975   205.67K  209.41K    1.8%
-forcegempackage         3.63M  570.00M  566.37M      3   188.79M  190.00M    0.6%
-forcecoreultimate     704.77K  118.68M  117.98M    297   397.22K  399.60K    0.6%
----------------------------------------------------------------------------------
-Cores                  32.85M  682.84M  649.99M  2.79K   233.39K  245.19K    4.8%
-Chaos                  74.51M    3.55B    3.47B  4.85K   716.15K  731.51K    2.1%
-Cash                   34.65M    1.24B    1.20B     14    85.92M   88.40M    2.8%
-=================================================================================
-TOTAL                 142.01M    5.47B    5.33B  7.65K   696.33K  714.89K    2.6%
+item                      profit  revenue     cost  units  bought/u   sold/u  margin
+------------------------------------------------------------------------------------
+chaoscore                 74.51M    3.55B    3.47B  4.85K   716.15K  731.51K    2.1%
+blessingbeadsuperior      19.87M  185.00M  165.13M      1   165.13M  185.00M   10.7%
+upgradecoreultimate       15.36M   84.04M   68.68M    156   440.29K  538.74K   18.3%
+forcecorehigh             13.48M  285.44M  271.96M  1.41K   193.29K  202.87K    4.7%
+epicboosterhighest        11.15M  482.56M  471.40M     10    47.14M   48.26M    2.3%
+yekaterinavipmembership   10.43M  130.43M  120.00M      1   120.00M  130.43M    8.0%
+forcecorehighest           3.65M  204.18M  200.53M    975   205.67K  209.41K    1.8%
+forcegempackage            3.63M  570.00M  566.37M      3   188.79M  190.00M    0.6%
+forcecoreultimate        704.77K  118.68M  117.98M    297   397.22K  399.60K    0.6%
+------------------------------------------------------------------------------------
+Cores                     33.20M  692.34M  659.15M  2.83K   232.50K  244.21K    4.8%
+Chaos                     74.51M    3.55B    3.47B  4.85K   716.15K  731.51K    2.1%
+Cash                      45.08M    1.37B    1.32B     15    88.19M   91.20M    3.3%
+====================================================================================
+TOTAL                    152.78M    5.61B    5.46B  7.70K   708.49K  728.33K    2.7%
 
 by run, on what each run sold:
-  launched               units        revenue     cost   profit  hours       an hour
-  2026-09-18T21:52:49    2.53K          1.37B    1.34B   29.58M   4.77         6.20M
-  2026-09-19T02:43:03      254         77.47M   68.75M    8.72M   1.00         8.71M
-  2026-09-19T07:21:31      150        109.44M  107.43M    2.01M   0.36         5.59M
-  2026-09-19T07:46:42        0              0        0        0   0.14             0
-  2026-09-19T07:59:56        0              0        0        0   0.21             0
-  2026-09-19T08:13:39        0              0        0        0   0.10             0
-  2026-09-19T08:24:39    4.72K          3.92B    3.81B  101.71M   3.83        26.53M
-  2026-09-19T12:36:51        0              0        0        0   0.08             0
-  2026-09-19T12:44:38        0              0        0        0   0.08             0
---------------------------------------------------------------------------------------
-  9 run(s) trading for 10.56 hour(s)                                    13.45M an hour
-  hours are launch to last trade, so a run still going is short by whatever it has not traded in yet
+  launched               units        revenue     cost   profit  hours      an hour
+  2026-09-18T21:52:49    2.53K          1.37B    1.34B   29.58M   4.77        6.20M
+  2026-09-19T02:43:03      254         77.47M   68.75M    8.72M   1.00        8.71M
+  2026-09-19T07:21:31      150        109.44M  107.43M    2.01M   0.36        5.59M
+  2026-09-19T07:46:42        0              0        0        0   0.14            0
+  2026-09-19T07:59:56        0              0        0        0   0.21            0
+  2026-09-19T08:13:39        0              0        0        0   0.10            0
+  2026-09-19T08:24:39    4.72K          3.92B    3.81B  101.71M   3.83       26.53M
+  2026-09-19T12:36:51        0              0        0        0   0.08            0
+  2026-09-19T12:44:38        0              0        0        0   0.08            0
+  2026-09-19T14:20:59       51        139.93M  129.15M   10.77M   0.21       51.37M  live
+-----------------------------------------------------------------------------------------
+  10 run(s) trading for 10.77 hour(s)                                   14.18M an hour
 
-sold with no stock left in the run's book, so counted at the full price the collection paid:
+sold with no lot to match, left out of the totals:
   chaoscore           606 units
   forcecoreultimate   241 units
   forcecorehighest    100 units
@@ -58,62 +56,71 @@ sold with no stock left in the run's book, so counted at the full price the coll
   epicboosterhighest    8 units
   forcegempackage       1 units
 
-revenue is what the collections actually paid; the shop's sales fee is 0.0%, so that is the full sale price
+held by the live run, to be counted when it sells or carried to the next run at that launch's floor:
+  chaoscore             882 units  basis  635.04M
+  forcecoreultimate     554 units  basis  222.20M
+  forcecorehighest      509 units  basis  105.37M
+  upgradecoreultimate   453 units  basis  199.20M
+  forcecorehigh         353 units  basis   64.62M
+  epicboosterhighest      2 units  basis  100.00M
+  forcegempackage         1 units  basis  200.00M
+  sienasunbindingstone    1 units  basis   80.00M
+  blessingbeadsuperior    1 units  basis  174.80M
 
 
-ROWS -- 2026-09-19_124437_run_board.log, board during pass 1 at row 30, read 2026-09-19T12:59:07 (live)
+
+ROWS -- 2026-09-19_142059_run_board.log, board during pass 1 at row 30, read 2026-09-19T14:34:02 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Upgrade Core (Ultimate                x192         -   536.90K         -   536.90K         -
-    2  Yekaterina VIP Membership               x1   113.10M   122.50M    +9.40M   122.50M     9.40M
-    3  Upgrade Core (Ultimate                 x21         -   536.90K         -   536.90K         -
-    4  Force Gem Package                       x1   188.50M   190.00M    +1.50M   190.00M     1.50M
-    5  Epic Booster (Highest)                  x2    47.12M    47.30M  +175.00K    47.30M   350.00K
-    6  Siena's Unbinding Stone                 x1    75.40M    99.00M   +23.60M    99.00M    23.60M
-    7  Blessing Bead - Superior                x2   164.75M   184.00M   +19.25M   184.00M    38.50M
-    8  Force Core (Ultimate                  x180         -   458.33K         -   458.33K         -
-    9  Upgrade Core (Ultimate                x240         -   536.89K         -   536.89K         -
-   10  Force Core(High                         x8         -   189.99K         -   189.99K         -
-   11  Chaos Core Set X 159                    x1         -   740.59K         -   117.75M         -
-   12  Chaos Core Set X 147                    x1         -   740.59K         -   108.87M         -
-   13  Chaos Core Set X 144                    x1         -   740.58K         -   106.64M         -
-   14  Chaos Core Set X 138                    x1         -   740.58K         -   102.20M         -
-   15  Chaos Core Set X 153                    x1         -   740.58K         -   113.31M         -
-   16  Chaos Core Set X 141                    x1         -   740.58K         -   104.42M         -
-   17  Force Core (Ultimate                  x181         -   458.33K         -   458.33K         -
-   18  Force Core(High                       x196   181.41K   189.99K    +8.57K   189.99K     1.68M
-   19  Force Core (Ultimate                  x193         -   458.33K         -   458.33K         -
-   20  Force Core(Highest                    x206         -   249.95K         -   249.95K         -
-   21  Force Core(Highest                     x65         -   249.95K         -   249.95K         -
-   22  Force Core(Highest                    x248         -   249.95K         -   249.95K         -
-   23  Force Core(High                       x138         -   189.99K         -   189.99K         -
+    1  Upgrade Core (Ultimate                x192         -   536.88K         -   536.88K         -
+    2  Yekaterina VIP Membership               x2   120.00M   130.43M   +10.43M   130.43M    20.86M
+    3  Upgrade Core (Ultimate                 x21         -   536.88K         -   536.88K         -
+    4  Force Gem Package                       x1   200.00M   200.00M        +0   200.00M         0
+    5  Epic Booster (Highest)                  x2    50.00M    50.00M        +0    50.00M         0
+    6  Siena's Unbinding Stone                 x1    80.00M    99.00M   +19.00M    99.00M    19.00M
+    7  Blessing Bead - Superior                x2   174.80M   194.02M   +19.22M   194.02M    38.44M
+    8  Force Core (Ultimate                  x180         -   458.32K         -   458.32K         -
+    9  Upgrade Core (Ultimate                x240         -   536.88K         -   536.88K         -
+   10  Force Core(High                       x119   182.98K   188.00K    +5.02K   188.00K   597.50K
+   11  Chaos Core Set X 159                    x1         -   740.55K         -   117.75M         -
+   12  Chaos Core Set X 147                    x1         -   740.55K         -   108.86M         -
+   13  Chaos Core Set X 144                    x1         -   740.55K         -   106.64M         -
+   14  Chaos Core Set X 138                    x1         -   740.55K         -   102.20M         -
+   15  Chaos Core Set X 153                    x1         -   740.55K         -   113.30M         -
+   16  Chaos Core Set X 141                    x1         -   740.54K         -   104.42M         -
+   17  Force Core (Ultimate                  x181         -   458.32K         -   458.32K         -
+   18  Force Core(High                       x196         -   188.00K         -   188.00K         -
+   19  Force Core (Ultimate                  x193         -   458.32K         -   458.32K         -
+   20  Force Core(Highest                    x206         -   240.00K         -   240.00K         -
+   21  Force Core(Highest                     x55         -   239.99K         -   239.99K         -
+   22  Force Core(Highest                    x248         -   239.99K         -   239.99K         -
+   23  Force Core(High                        x88         -   188.00K         -   188.00K         -
     30  (empty)                                           -          -       -              -               - <- here
        item                                                      rows     units    listed    profit
-       Blessing Bead - Superior                                     1         2   368.00M    38.50M
-       Chaos Core Set                                               6       882   653.20M         -
-       Epic Booster (Highest)                                       1         2    94.60M   350.00K
+       Blessing Bead - Superior                                     1         2   388.04M    38.44M
+       Chaos Core Set                                               6       882   653.16M         -
+       Epic Booster (Highest)                                       1         2   100.00M         0
        Force Core (Ultimate                                         3       554   253.91M         -
-       Force Core(High                                              3       342    64.98M     1.68M
-       Force Core(Highest                                           3       519   129.73M         -
-       Force Gem Package                                            1         1   190.00M     1.50M
-       Siena's Unbinding Stone                                      1         1    99.00M    23.60M
+       Force Core(High                                              3       403    75.76M   597.50K
+       Force Core(Highest                                           3       509   122.16M         -
+       Force Gem Package                                            1         1   200.00M         0
+       Siena's Unbinding Stone                                      1         1    99.00M    19.00M
        Upgrade Core (Ultimate                                       3       453   243.21M         -
-       Yekaterina VIP Membership                                    1         1   122.50M     9.40M
-       board                                23   2.76K   2.22B                               75.03M
-    balance now 1.58B, read 2026-09-19T12:49:25
-       stock at its listed price                                                              2.22B
-       Alz, latest balance line                                                               1.58B
-       NET WORTH                                                                              3.80B
-       PROFIT IF SOLD, every row at its listed price                                         75.03M
+       Yekaterina VIP Membership                                    1         2   260.86M    20.86M
+       board                                23   2.81K   2.40B                               78.90M
+    balance now 1.70B, read 2026-09-19T14:33:34
+       stock at its listed price                                                              2.40B
+       Alz, latest balance line                                                               1.70B
+       NET WORTH                                                                              4.10B
+       PROFIT IF SOLD, every row at its listed price                                         78.90M
     17 row(s) show no bought price and are not counted
 
 
-MARKET -- 2026-09-19_124437_run.log, pass 1, log last written 12:59 (live)
-buy/u is what a unit costs on the Purchase tab, sell/u what the other side of the pair lists for; margin is sell minus buy, wants the rows that margin is worth
+MARKET -- 2026-09-19_142059_run.log, pass 1, log last written 14:34 (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
 Chaos Core                  6        -        -       -         -      -  holds the most it can want, 6; not priced
 Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
-Force Core(High)            2  181.41K  190.00K   8.58K      4.5%      3  YES
+Force Core(High)            2  181.82K  189.90K   8.08K      4.3%      3  YES
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
