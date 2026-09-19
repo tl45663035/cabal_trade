@@ -1,0 +1,131 @@
+2026-09-19_024240  tools/supervise.py --config bot
+  logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-19_024240_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-18_215249_run.log ended: interrupted from the keyboard,02:42:41,dead
+  kept 30 png and 1 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-18_215249_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-19_024251_found.png
+  interrupted: relist row 2: 'Yekaterina VIP Membership' x1 at 127,999,998 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-19_024258_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 2: 'Yekaterina VIP Membership' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-19_024301_reset.png
+   2026-09-19_024303  C:\Users\tl456\Desktop\cabal_trade\src_1080p\driver.py --config bot
+     logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-19_024303_run.log
+     code 57c6d0f
+     screen 1920x1080
+* relaunched (pid 2852),02:43:06,alive
+watching pid 2852, 2026-09-19_024303_run.log
+* pushed the profit report for bot,02:52:52,alive
+* pushed the profit report for bot,03:22:54,alive
+* server lag: not answering,03:32:53,alive
+* server lag: the server stalled,03:33:57,alive
+* server lag: not answering,03:41:46,alive
+* server lag: the server stalled,03:42:50,alive
+* server lag: the server stalled,03:43:11,alive
+* server lag: not answering,03:43:55,alive
+* server lag: the server stalled,03:44:59,alive
+* server lag: the server stalled,03:45:21,dead
+* NotReady: the Agent Shop is not open after resupplying.,03:45:23,dead
+  kept 30 png and 1 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-19_024303_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-19_034529_found.png
+  interrupted: relist row 14: 'Upgrade Core (Ultimate' x240 at 539,564 withdrawn to tab 4 slot (1, 1), never listed back
+  interrupted: resupply of Chaos Core: bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-19_034535_tab4_1slots.png
+$ py src_1080p/driver.py --config bot collect
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:45:37, ended 03:46:12, ran for 35s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.
+* collect failed: driver.py --config bot collect exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.; carrying on,03:46:12,dead
+  tab 4 slot (1,2) reads no favourite
+* tab 4 slot (1,2) has no tooltip name; listing it at the panel's price and the full quantity,03:46:14,dead
+$ py src_1080p/driver.py --config bot list 1 2 0 4
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:46:15, ended 03:46:52, ran for 36s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.
+* recovery attempt 1 failed: driver.py --config bot list 1 2 0 4 exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing writ; attempt 2 in 60s,03:46:52,dead
+  kept 10 png and 1 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-19_024303_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-19_034757_found.png
+  interrupted: relist row 14: 'Upgrade Core (Ultimate' x240 at 539,564 withdrawn to tab 4 slot (1, 1), never listed back
+  interrupted: resupply of Chaos Core: bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-19_034804_tab4_1slots.png
+$ py src_1080p/driver.py --config bot collect
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:48:05, ended 03:48:42, ran for 36s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.
+* collect failed: driver.py --config bot collect exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.; carrying on,03:48:42,dead
+  tab 4 slot (1,2) reads no favourite
+* tab 4 slot (1,2) has no tooltip name; listing it at the panel's price and the full quantity,03:48:44,dead
+$ py src_1080p/driver.py --config bot list 1 2 0 4
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:48:45, ended 03:49:22, ran for 36s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.
+* recovery attempt 2 failed: driver.py --config bot list 1 2 0 4 exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing writ; attempt 3 in 60s,03:49:22,dead
+  kept 10 png and 1 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-19_024303_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-19_035027_found.png
+  interrupted: relist row 14: 'Upgrade Core (Ultimate' x240 at 539,564 withdrawn to tab 4 slot (1, 1), never listed back
+  interrupted: resupply of Chaos Core: bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-19_035034_tab4_2slots.png
+$ py src_1080p/driver.py --config bot collect
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:50:36, ended 03:51:13, ran for 37s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.
+* collect failed: driver.py --config bot collect exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.; carrying on,03:51:13,dead
+  tab 4 slot (1,1) reads no favourite
+  tab 4 slot (1,2) reads no favourite
+* tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,03:51:17,dead
+$ py src_1080p/driver.py --config bot list 1 1 0 4
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:51:18, ended 03:51:55, ran for 37s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.
+* supervisor stopped: driver.py --config bot list 1 1 0 4 exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,03:51:55,dead
