@@ -254,7 +254,7 @@ def watch(pid, log):
             return reason
         if f"{datetime.date.today():%Y-%m-%d}" != day:
             day = prune_before_today()
-        report_due()
+        report_due(log)
         time.sleep(K["poll"])
 
 
@@ -890,9 +890,18 @@ def push_report(path):
     return "gave up"
 
 
-def report_due(force=False):
+REPORT_READY = re.compile(K["report_ready"])
+
+
+def board_walked(log):
+    return log is not None and REPORT_READY.search(read(log)) is not None
+
+
+def report_due(log, force=False):
     global _REPORTED
     if not force and time.time() - _REPORTED < K["report_every"]:
+        return
+    if not board_walked(log):
         return
     _REPORTED = time.time()
     try:
