@@ -1947,7 +1947,7 @@ def cash_buy_step(job, confirm=True, verbose=True):
         return
     took = max(1, int(got["bought"]))
     job["bought"] += took
-    ledger.bought(item, floor, floor, took)
+    ledger.bought(item, floor, floor * took, took)
     for _ in range(took):
         job["work"].append({"slot": None, "floor": floor, "why": why})
     print(f"  bought {took} {item} for {got['price']:,}, "
