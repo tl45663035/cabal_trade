@@ -800,7 +800,7 @@ def plan(log_path=None, png=None):
 
 
 def recover_and_launch(reason, log, watched=True, relog_first=False):
-    held = failed = 0
+    held = failed = relogged = 0
     while True:
         try:
             recover(reason, read(log), log=log, watched=watched)
@@ -819,7 +819,15 @@ def recover_and_launch(reason, log, watched=True, relog_first=False):
         except Stop as exc:
             failed += 1
             if failed > K["recover_retries"]:
-                raise
+                if relogged >= K["relog_tries"]:
+                    raise
+                relogged += 1
+                failed = 0
+                event(f"recovery failed {K['recover_retries'] + 1} times: "
+                      f"{str(exc)[:K['reason_width']]}; relogging "
+                      f"({relogged} of {K['relog_tries']})", "dead")
+                relog()
+                continue
             event(f"recovery attempt {failed} failed: {str(exc)[:K['reason_width']]}; "
                   f"attempt {failed + 1} in {K['recover_wait']}s", "dead")
             time.sleep(K["recover_wait"])

@@ -73,13 +73,13 @@ def resolution_key(size=None) -> str:
 
 
 def require_screen() -> str:
-    want = str(load_shared()["run"].get("screen") or "")
+    want = str(load_shared()["run"]["screen"])
     seen = resolution_key()
-    if want and seen != want:
+    if seen != want:
         raise RuntimeError(
-            f"the screen is {seen}, and run.screen for {config_name()} "
-            f"requires {want}; nothing started.")
-    return seen if want else f"{seen}, not pinned"
+            f"the screen is {seen} and run.screen requires {want}; "
+            f"nothing started.")
+    return seen
 
 
 def _read(path) -> dict:

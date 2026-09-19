@@ -397,10 +397,6 @@ def by_day(book):
     first, today = book["first"], book["today"]
     print(f"LAST {count} DAYS -- {first:%Y-%m-%d} to {today:%Y-%m-%d}, each "
           f"day midnight to midnight")
-    print("a run keeps its own book: what it sells, against what it paid, or "
-          "against the floor its launch measured for stock it inherited")
-    print("what a run does not sell is carried to the next run at that "
-          "launch's floor, so nothing is counted as profit before it sells")
     print("")
     print(f"{'day':<26}{'hours':>8}{'profit':>15}{'revenue':>15}"
           f"{'cost':>15}{'units':>8}{'margin':>8}{'an hour':>14}")
@@ -435,9 +431,6 @@ def report_day(book):
     now = datetime.datetime.now().strftime("%H:%M")
     print(f"PROFIT SUMMARY -- sold since {start:%Y-%m-%d} 00:00 "
           f"(as of {now})")
-    print("every unit is counted when it sells: what the collection paid, "
-          "less what the run paid for it, or less the floor its launch "
-          "measured for stock it inherited")
     print("")
     sales = all_sales(book["runs"], start)
     if not sales:
@@ -501,8 +494,6 @@ def report_day(book):
     line(width=103)
     print(f"  {shown} run(s) trading for {all_hours:.2f} hour(s)"
           f"{'':>40}{gain(total) / all_hours if all_hours else 0:>15,.0f} an hour")
-    print("  hours are launch to last trade, so a run still going is short by "
-          "whatever it has not traded in yet")
 
     unmatched = collections.Counter()
     for r in book["runs"]:
@@ -511,8 +502,7 @@ def report_day(book):
             unmatched.update(r["unmatched"])
     if unmatched:
         print("")
-        print("sold with no stock left in the run's book, so counted at the "
-              "full price the collection paid:")
+        print("sold with no lot to match, left out of the totals:")
         for k, n in unmatched.most_common():
             print(f"  {k:<26}{n:>8,} units")
 
@@ -529,8 +519,6 @@ def report_day(book):
                 print(f"  {k:<26}{n:>8,} units  basis {basis:>15,.0f}")
 
     print("")
-    print("revenue is what the collections actually paid; the shop's sales "
-          "fee is 0.0%, so that is the full sale price")
 
 
 BOARD_HEAD = re.compile(r"^  board after pass (\d+):$", re.M)
@@ -745,8 +733,6 @@ def report_market():
                  f"yet, so this is the last table it printed")
     print(f"MARKET -- {log.name}, pass {number_of_pass}, log last written {written:%H:%M}"
           f"{'' if any('ran for' in l for l in lines[-KNOBS["log_tail_lines"]:]) else ' (live)'}{stale}")
-    print("buy/u is what a unit costs on the Purchase tab, sell/u what the other side of the "
-          "pair lists for; margin is sell minus buy, wants the rows that margin is worth")
     print("")
     print(f"{'core':<30}{'rows':>6}{'buy/u':>12}{'sell/u':>12}{'margin':>10}{'margin %':>10}"
           f"{'wants':>7}   short?{'' if columns else '  priced'}")
@@ -782,8 +768,6 @@ def report_market():
               f"{mark:<6}{'' if columns else '  ' + when}")
     if not columns:
         print("")
-        print("this run prints only the margin each pass; buy/u and sell/u are from the "
-              "last time it priced that core (its last resupply, else launch)")
 
 
 SIZES = tuple((int(KNOBS[f"short_{mark.lower()}"]), mark)
