@@ -1,0 +1,45 @@
+LAST 7 DAYS -- 2026-09-12 to 2026-09-18, each day midnight to midnight
+a run keeps its own book: what it sells, against what it paid, or against the floor its launch measured for stock it inherited
+what a run does not sell is carried to the next run at that launch's floor, so nothing is counted as profit before it sells
+
+day                       hours   profit  revenue     cost   units  margin  an hour
+-----------------------------------------------------------------------------------
+Sat 2026-09-12           11.19h  201.34M    5.29B    5.08B   8.98K    3.8%   18.00M
+Sun 2026-09-13            6.67h   86.77M    2.87B    2.79B   4.73K    3.0%   13.00M
+Mon 2026-09-14            0.00h        0        0        0       0      --        0
+Tue 2026-09-15            1.76h   21.56M  965.52M  943.96M   1.41K    2.2%   12.28M
+Wed 2026-09-16            0.11h    4.01M  123.27M  119.26M     183    3.3%   37.97M
+Thu 2026-09-17            0.00h        0        0        0       0      --        0
+Fri 2026-09-18 (so far)   1.63h   10.80M  560.32M  549.52M     781    1.9%    6.61M
+===================================================================================
+7 DAYS                   21.36h  324.48M    9.81B    9.48B  16.08K    3.3%   15.19M
+
+
+PROFIT SUMMARY -- sold since 2026-09-18 00:00 (as of 20:03)
+every unit is counted when it sells: what the collection paid, less what the run paid for it, or less the floor its launch measured for stock it inherited
+
+item           profit  revenue     cost  units  bought/u   sold/u  margin
+-------------------------------------------------------------------------
+chaoscore      10.71M  556.52M  545.82M    762   716.29K  730.35K    1.9%
+forcecorehigh  95.72K    3.80M    3.70M     19   194.94K  199.98K    2.5%
+-------------------------------------------------------------------------
+Cores          95.72K    3.80M    3.70M     19   194.94K  199.98K    2.5%
+Chaos          10.71M  556.52M  545.82M    762   716.29K  730.35K    1.9%
+=========================================================================
+TOTAL          10.80M  560.32M  549.52M    781   703.61K  717.44K    1.9%
+
+by run, on what each run sold:
+  launched               units       revenue     cost  profit  hours       an hour
+  2026-09-18T18:22:16        0             0        0       0   0.38             0
+  2026-09-18T18:47:22      781       560.32M  549.52M  10.80M   0.92        11.75M
+-----------------------------------------------------------------------------------
+  2 run(s) trading for 1.30 hour(s)                                   8.29M an hour
+  hours are launch to last trade, so a run still going is short by whatever it has not traded in yet
+
+revenue is what the collections actually paid; the shop's sales fee is 0.0%, so that is the full sale price
+
+
+ROWS -- 2026-09-18_200258_run.log: no board printed yet
+
+
+MARKET -- 2026-09-18_200258_run.log: no pass finished yet
