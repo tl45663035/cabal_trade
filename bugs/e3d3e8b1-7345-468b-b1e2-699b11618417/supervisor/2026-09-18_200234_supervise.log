@@ -1,0 +1,27 @@
+2026-09-18_200234  tools/supervise.py --config bot
+  logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-18_200234_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-18_184722_run.log ended: interrupted from the keyboard,20:02:35,dead
+  kept 30 png and 1 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-18_184722_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-18_200245_found.png
+  interrupted: relist row 16: "Siena's Unbinding Stone" x1 at 98,998,964 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-18_200253_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 16: "Siena's Unbinding Stone" is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-18_200256_reset.png
+   2026-09-18_200258  C:\Users\tl456\Desktop\cabal_trade\src_1080p\driver.py --config bot
+     logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-18_200258_run.log
+     code 49a0e6a
+     screen 1920x1080
+* relaunched (pid 17796),20:03:01,alive
+watching pid 17796, 2026-09-18_200258_run.log
+* pushed the profit report for bot,20:03:09,alive
