@@ -254,6 +254,7 @@ def watch(pid, log):
             return reason
         if f"{datetime.date.today():%Y-%m-%d}" != day:
             day = prune_before_today()
+        report_due()
         time.sleep(K["poll"])
 
 
@@ -822,6 +823,90 @@ def recover_and_launch(reason, log, watched=True, relog_first=False):
             event(f"recovery attempt {failed} failed: {str(exc)[:K['reason_width']]}; "
                   f"attempt {failed + 1} in {K['recover_wait']}s", "dead")
             time.sleep(K["recover_wait"])
+
+
+_REPORTED = 0.0
+
+
+def git(*args, env=None):
+    return subprocess.run(["git", *args], cwd=str(ROOT), text=True,
+                          capture_output=True, timeout=K["tool_timeout"],
+                          env=env)
+
+
+def report_path():
+    return ROOT / K["report_dir"] / CONFIG / K["report_name"]
+
+
+def write_report():
+    out = subprocess.run([sys.executable, str(ROOT / K["report_tool"])],
+                         cwd=str(ROOT), text=True, capture_output=True,
+                         timeout=K["report_timeout"])
+    if out.returncode != 0 or not out.stdout.strip():
+        raise Stop(f"{K['report_tool']} exited {out.returncode}: "
+                   f"{(out.stderr or out.stdout).strip()[:K['reason_width']]}")
+    path = report_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(out.stdout, encoding="utf-8")
+    return path
+
+
+def push_report(path):
+    rel = path.relative_to(ROOT).as_posix()
+    branch = K["report_branch"]
+    index = LOGS / K["report_index"]
+    for attempt in range(1, K["report_tries"] + 1):
+        if git("fetch", "origin", branch).returncode:
+            return "fetch failed"
+        blob = git("hash-object", "-w", str(path))
+        if blob.returncode:
+            return "the report would not hash"
+        index.unlink(missing_ok=True)
+        env = dict(os.environ, GIT_INDEX_FILE=str(index))
+        if git("read-tree", f"origin/{branch}", env=env).returncode:
+            return f"origin/{branch} would not read"
+        added = git("update-index", "--add", "--cacheinfo",
+                    f"{K['report_mode']},{blob.stdout.strip()},{rel}", env=env)
+        if added.returncode:
+            return added.stderr.strip()[:K["reason_width"]]
+        tree = git("write-tree", env=env)
+        index.unlink(missing_ok=True)
+        if tree.returncode:
+            return "the tree would not write"
+        head = git("rev-parse", f"origin/{branch}")
+        if tree.stdout.strip() == git("rev-parse",
+                                      f"origin/{branch}^{{tree}}").stdout.strip():
+            return "no change"
+        made = git("commit-tree", tree.stdout.strip(), "-p",
+                   head.stdout.strip(), "-m",
+                   K["report_message"].format(config=CONFIG, at=now()))
+        if made.returncode:
+            return "the commit would not build"
+        sent = git("push", "origin", f"{made.stdout.strip()}:{branch}")
+        if not sent.returncode:
+            return None
+        if attempt == K["report_tries"]:
+            return sent.stderr.strip()[:K["reason_width"]]
+    return "gave up"
+
+
+def report_due(force=False):
+    global _REPORTED
+    if not force and time.time() - _REPORTED < K["report_every"]:
+        return
+    _REPORTED = time.time()
+    try:
+        path = write_report()
+    except Exception as exc:
+        event(f"the profit report was not written: {type(exc).__name__}: "
+              f"{exc}"[:K["reason_width"]], "alive")
+        return
+    failed = push_report(path)
+    if failed:
+        event(f"the profit report was written but not pushed: {failed}",
+              "alive")
+    else:
+        event(f"pushed the profit report for {CONFIG}", "alive")
 
 
 def main():
