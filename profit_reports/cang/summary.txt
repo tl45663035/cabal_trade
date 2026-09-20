@@ -8,12 +8,12 @@ Wed 2026-09-16           15.62h  210.00M    8.34B   8.13B  13.78K    2.5%   13.4
 Thu 2026-09-17           12.08h  401.01M    7.46B   7.05B  11.73K    5.4%   33.19M
 Fri 2026-09-18           12.61h  207.75M   10.12B   9.91B  14.76K    2.1%   16.47M
 Sat 2026-09-19           11.34h  215.00M    7.20B   6.98B  11.46K    3.0%   18.97M
-Sun 2026-09-20 (so far)   5.90h  101.71M    3.70B   3.60B   5.90K    2.7%   17.24M
+Sun 2026-09-20 (so far)   6.40h  101.71M    3.70B   3.60B   5.90K    2.7%   15.88M
 ==================================================================================
-7 DAYS                   74.36h    1.59B   46.52B  44.93B  74.08K    3.4%   21.36M
+7 DAYS                   74.86h    1.59B   46.52B  44.93B  74.08K    3.4%   21.21M
 
 
-PROFIT SUMMARY -- sold since 2026-09-20 00:00 (as of 06:47)
+PROFIT SUMMARY -- sold since 2026-09-20 00:00 (as of 07:17)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
@@ -31,9 +31,9 @@ TOTAL                101.71M    3.70B    3.60B  5.90K   610.97K  628.22K    2.7%
 by run, on what each run sold:
   launched               units       revenue   cost  profit  hours        an hour
   2026-09-20T00:42:01    3.05K         1.87B  1.81B  57.09M   1.73         32.95M
-  2026-09-20T02:38:46    2.85K         1.83B  1.79B  44.62M   3.38         13.20M  live
+  2026-09-20T02:38:46    2.85K         1.83B  1.79B  44.62M   4.64          9.62M  live
 ---------------------------------------------------------------------------------------
-  2 run(s) trading for 5.11 hour(s)                                 19.89M an hour
+  2 run(s) trading for 6.37 hour(s)                                 15.97M an hour
 
 sold with no lot to match, left out of the totals:
   forcecorehighest     74 units
@@ -45,13 +45,14 @@ held by the live run, to be counted when it sells or carried to the next run at 
   divinestone           611 units  basis  430.51M
   forcecorehighest      553 units  basis  146.52M
   upgradecoreultimate   362 units  basis  159.93M
+  forcecorehigh          94 units  basis   17.00M
   sienasunbindingstone    2 units  basis  149.91M
   demonitekatanalua       1 units  basis    3.90M
   bemonvecnstetet         1 units  basis   30.00M
 
 
 
-ROWS -- 2026-09-20_023846_run_board.log, board during pass 78 at row 1, read 2026-09-20T06:45:44 (live)
+ROWS -- 2026-09-20_023846_run_board.log, board during pass 112 at row 1, read 2026-09-20T07:16:25 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Divine Stone Set X 162                  x1         -   721.59K         -   116.90M         - <- here
     2  Siena's Unbinding Stone                 x1    74.96M    99.00M   +24.04M    99.00M    24.04M
@@ -80,7 +81,7 @@ ROWS -- 2026-09-20_023846_run_board.log, board during pass 78 at row 1, read 202
        Siena's Unbinding Stone                                      2         2     1.05B   899.09M
        Upgrade Core (Ultimate                                       3       362   173.44M     3.78M
        board                                18   2.15K   2.31B                              937.48M
-    balance now 1.26B, read 2026-09-20T06:45:44
+    balance now 1.26B, read 2026-09-20T07:16:25
     held on tab 4, bought and not listed yet:
     Chaos Core Set                     slot (1, 1)         - unit(s)            - a unit
        stock at its listed price                                                              2.31B
@@ -90,12 +91,12 @@ ROWS -- 2026-09-20_023846_run_board.log, board during pass 78 at row 1, read 202
     7 row(s) show no bought price and are not counted
 
 
-MARKET -- 2026-09-20_023846_run.log, pass 77, log last written 06:47 (live); pass 78 is under way and has not priced the cores yet, so this is the last table it printed
+MARKET -- 2026-09-20_023846_run.log, pass 112, log last written 07:17 (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  4  705.00K  729.48K  24.48K      3.4%      5  YES
+Chaos Core                  4  711.00K  729.43K  18.43K      2.5%      5  YES
 Divine Stone                4        -        -       -         -      -  holds the most it can want, 4; not priced
-Force Core(High)            0  189.19K  189.30K     111      0.1%      0
+Force Core(High)            0  180.85K  189.99K   9.14K      4.8%      3  YES
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
