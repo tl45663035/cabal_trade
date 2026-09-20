@@ -826,7 +826,12 @@ def recover_and_launch(reason, log, watched=True, relog_first=False):
                 event(f"recovery failed {K['recover_retries'] + 1} times: "
                       f"{str(exc)[:K['reason_width']]}; relogging "
                       f"({relogged} of {K['relog_tries']})", "dead")
-                relog()
+                try:
+                    relog()
+                except Stop as refused:
+                    event(f"the relog was refused too: "
+                          f"{str(refused)[:K['reason_width']]}", "dead")
+                    raise exc from refused
                 continue
             event(f"recovery attempt {failed} failed: {str(exc)[:K['reason_width']]}; "
                   f"attempt {failed + 1} in {K['recover_wait']}s", "dead")

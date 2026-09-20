@@ -250,6 +250,7 @@ FAVOURITE_ITEMS = _S["favourite_items"]
 MIN_NAME_OVERLAP = _S["detect"]["min_name_overlap"]
 ALZ_MIN_DIGITS = _S["detect"]["alz_min_digits"]
 SLOT_HALF = _S["detect"]["slot_half"]
+SLOT_INSET = _S["detect"]["slot_inset"]
 SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
 POLL_GAP = _S["timing"]["poll_gap"]
 
@@ -1397,7 +1398,7 @@ def calibrate_inventory(verbose=True):
     if FRAMES_ON:
         marked = image.copy()
         pen = ImageDraw.Draw(marked)
-        half = round(SLOT_HALF * scale)
+        half = round((SLOT_HALF - SLOT_INSET) * scale)
         for point in slots.values():
             pen.rectangle((point[0] - half, point[1] - half,
                            point[0] + half, point[1] + half), outline="red")
@@ -2784,6 +2785,13 @@ def _per_item_raw(table, core_name):
     return table.get("default")
 
 
+def first_list_price(name=None):
+    table = load_shared()["run"]["first_list_price"]
+    if not isinstance(table, dict):
+        return int(table or 0)
+    return int(_per_item_raw(table, name) or 0)
+
+
 def max_drop(name=None):
     table = load_shared()["run"]["max_drop"]
     if not isinstance(table, dict):
@@ -3042,7 +3050,8 @@ def calibrate_panel(verbose=True):
 
 
 def slot_half():
-    return round(SLOT_HALF * load()["inventory"]["panel_scale"])
+    return round((SLOT_HALF - SLOT_INSET)
+                 * load()["inventory"]["panel_scale"])
 
 
 def slot_is_empty(image, row, col):
