@@ -8,26 +8,26 @@ Wed 2026-09-16            17.61h  265.49M    8.84B   8.57B  17.76K    3.0%   15.
 Thu 2026-09-17            20.07h  487.00M   13.79B  13.30B  16.90K    3.5%   24.26M
 Fri 2026-09-18            15.80h  442.54M   10.83B  10.39B  15.13K    4.1%   28.01M
 Sat 2026-09-19             4.93h  401.29M    6.39B   5.99B   7.71K    6.3%   81.42M
-Sun 2026-09-20 (so far)    6.10h   70.49M    1.72B   1.65B   2.94K    4.1%   11.56M
+Sun 2026-09-20 (so far)    6.34h   84.94M    2.17B   2.09B   3.66K    3.9%   13.40M
 ===================================================================================
-7 DAYS                   113.30h    2.28B   55.13B  52.86B  85.26K    4.1%   20.09M
+7 DAYS                   113.54h    2.29B   55.58B  53.29B  85.98K    4.1%   20.17M
 
 
-PROFIT SUMMARY -- sold since 2026-09-20 00:00 (as of 06:52)
+PROFIT SUMMARY -- sold since 2026-09-20 00:00 (as of 08:57)
 
 item                 profit  revenue     cost  units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------
-chaoscore            31.69M    1.30B    1.27B  1.79K   710.00K  727.70K    2.4%
-forcecorehighest     14.27M  117.38M  103.11M    457   225.63K  256.86K   12.2%
-forcecoreultimate    10.50M   84.99M   74.49M    191   390.00K  444.98K   12.4%
-upgradecoreultimate   7.48M   91.03M   83.55M    190   439.74K  479.09K    8.2%
+chaoscore            33.62M    1.64B    1.60B  2.25K   711.34K  726.27K    2.1%
+forcecoreultimate    18.99M  154.70M  135.71M    348   389.96K  444.54K   12.3%
+forcecorehighest     14.38M  119.06M  104.68M    463   226.09K  257.15K   12.1%
+upgradecoreultimate  11.39M  138.91M  127.53M    290   439.74K  479.01K    8.2%
 forcecorehigh         6.55M   63.27M   56.72M    310   182.96K  204.10K   10.4%
 wexpsaver                -1   63.00M   63.00M      1    63.00M   63.00M   -0.0%
 -------------------------------------------------------------------------------
-Cores                38.80M  419.67M  380.87M  1.15K   331.48K  365.25K    9.2%
-Chaos                31.69M    1.30B    1.27B  1.79K   710.00K  727.70K    2.4%
+Cores                51.32M  538.94M  487.63M  1.41K   345.35K  381.69K    9.5%
+Chaos                33.62M    1.64B    1.60B  2.25K   711.34K  726.27K    2.1%
 ===============================================================================
-TOTAL                70.49M    1.72B    1.65B  2.94K   562.02K  586.00K    4.1%
+TOTAL                84.94M    2.17B    2.09B  3.66K   570.30K  593.48K    3.9%
 
 by run, on what each run sold:
   launched               units       revenue     cost   profit  hours        an hour
@@ -38,79 +38,80 @@ by run, on what each run sold:
   2026-09-20T05:33:24      137        60.94M   53.43M    7.51M   0.15         48.72M
   2026-09-20T05:44:47       40         8.20M    7.63M  572.56K   0.36          1.59M
   2026-09-20T06:15:13        5         1.02M  909.09K  110.89K   0.10          1.09M
-  2026-09-20T06:25:37      310        73.92M   65.55M    8.37M   0.43         19.39M  live
+  2026-09-20T06:25:37      510       166.21M  148.52M   17.68M   0.55         31.95M
+  2026-09-20T08:50:29      525       359.96M  354.82M    5.14M   0.09         54.73M  live
 ------------------------------------------------------------------------------------------
-  8 run(s) trading for 5.68 hour(s)                                    12.42M an hour
+  9 run(s) trading for 5.89 hour(s)                                    14.41M an hour
 
 sold with no lot to match, left out of the totals:
-  forcecorehighest               367 units
+  forcecorehighest               801 units
 
 held by the live run, to be counted when it sells or carried to the next run at that launch's floor:
-  lifecapsulespecialtypea     1.20K units  basis   38.66M
-  astralcorepalladium           889 units  basis    1.32M
-  chaoscore                     753 units  basis  535.38M
-  forcecorehighest              445 units  basis   92.80M
-  forcecoreultimate             253 units  basis   98.67M
-  forcecorehigh                 253 units  basis   46.00M
-  upgradecoreultimate           179 units  basis   78.71M
-  naaseonronet                    2 units  basis  279.79K
-  arionell                        1 units  basis  285.00M
-  palladiumepauletofguardian      1 units  basis    1.57M
+  lifecapsulespecialtypea  1.20K units  basis   38.66M
+  astralcorepalladium        889 units  basis    1.32M
+  chaoscore                  423 units  basis  303.09M
+  forcecorehigh              423 units  basis   73.12M
+  upgradecoreultimate        196 units  basis   86.51M
+  forcecoreultimate           40 units  basis   15.59M
+  arionell                     1 units  basis  284.25M
+  forcecorehightap             1 units  basis  203.94K
+  palladiumshoesdmlalla        1 units  basis    1.22M
+  palladiumsuitwanalanal       1 units  basis    1.30M
 
 
 
-ROWS -- 2026-09-20_062537_run_board.log, board during pass 5 at row 25, read 2026-09-20T06:51:54 (live)
+ROWS -- 2026-09-20_085029_run_board.log, board during pass 1 at row 25, read 2026-09-20T08:57:33 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Upgrade Core (Ultimate                  x1         -   478.86K         -   478.86K         -
-    2  Chaos Core Set X 144                    x1         -   729.23K         -   105.01M         -
-    3  Chaos Core Set X 147                    x1         -   729.23K         -   107.20M         -
-    4  Chaos Core Set X 162                    x1         -   729.23K         -   118.13M         -
-    5  Chaos Core Set X 147                    x1         -   729.23K         -   107.20M         -
-    6  Chaos Core Set X 153                    x1         -   729.22K         -   111.57M         -
-    7  Force Core (Ultimate                  x157         -   444.76K         -   444.76K         -
-    8  Upgrade Core (Ultimate                x100         -   478.86K         -   478.86K         -
-    9  Upgrade Core (Ultimate                 x78         -   478.86K         -   478.86K         -
-   10  Force Core (Ultimate                    x4         -   444.76K         -   444.76K         -
-   11  Arionell                                x1   285.00M   340.00M   +55.00M   340.00M    55.00M
-   12  Force Core (Ultimate                   x92         -   444.76K         -   444.76K         -
-   13  naa Seon ron) eT                        x2         -    99.89K         -    99.89K         -
-   14  Force Core(Highest                    x152         -   289.74K         -   289.74K         -
-   15  Force Core(Highest                    x210         -   289.74K         -   289.74K         -
-   16  Force Core(Highest                     x83         -   289.73K         -   289.73K         -
-   17  Force Core(High                        x77         -   203.95K         -   203.95K         -
-   18  Force Core(High                       x105         -   203.95K         -   203.95K         -
-   19  Force Core(High                        x71         -   203.95K         -   203.95K         -
+    1  Upgrade Core (Ultimate                  x1         -   478.83K         -   478.83K         -
+    2  Chaos Core Set X 144                    x1         -   716.53K         -   103.18M         -
+    3  Chaos Core Set X 147                    x1         -   716.53K         -   105.33M         -
+    4  Upgrade Core (Ultimate                 x78         -   478.83K         -   478.83K         -
+    5  Force Core (Ultimate                    x4         -   443.98K         -   443.98K         -
+    6  Chaos Core Set X 132                    x1         -   716.53K         -    94.58M         -
+    7  Arionell                                x1   284.25M   340.00M   +55.75M   340.00M    55.75M
+    8  Force Core (Ultimate                   x92         -   443.98K         -   443.98K         -
+    9  Force Core(Highest                      x2         -   279.72K         -   279.72K         -
+   10  Force Core(Highest                      x3         -   279.72K         -   279.72K         -
+   11  Force Core(High) TAP                   x77         -   260.77K         -   260.77K         -
+   12  Force Core(High                       x105         -   199.00K         -   199.00K         -
+   13  Upgrade Core (Ultimate)               x117   441.37K   478.83K   +37.46K   478.83K     4.38M
+   14  Force Core(High                        x71         -   199.00K         -   199.00K         -
+   15  Force Core(High                       x247         -   199.00K         -   199.00K         -
+   16  Upgrade Core (Ultimate                x117         -   478.83K         -   478.83K         -
     25  (empty)                                           -          -       -              -               - <- here
-   27  Palladium Epaulet of Guardian           x1         -     1.57M         -     1.57M         -
+   26  Palladium Shoes (DM) Lalla              x1         -     1.22M         -     1.22M         -
+   27  Palladium Suit(W1) (anal (anal          x1         -     1.30M         -     1.30M         -
    28  Life Capsule(Special) Type A X 50        x4         -    32.22K         -     1.61M         -
    29  Life Capsule(Special) Type A X 100       x10         -    32.22K         -     3.22M         -
    30  Astral Core(Palladium) X 127            x7         -     1.49K         -   188.85K         -
        item                                                      rows     units    listed    profit
-       Arionell                                                     1         1   340.00M    55.00M
+       Arionell                                                     1         1   340.00M    55.75M
        Astral Core(Palladium)                                       1       889     1.32M         -
-       Chaos Core Set                                               5       753   549.11M         -
-       Force Core (Ultimate                                         3       253   112.52M         -
-       Force Core(High                                              3       253    51.60M         -
-       Force Core(Highest                                           3       445   128.93M         -
+       Chaos Core Set                                               3       423   303.09M         -
+       Force Core (Ultimate                                         2        96    42.62M         -
+       Force Core(High                                              3       423    84.18M         -
+       Force Core(High) TAP                                         1        77    20.08M         -
+       Force Core(Highest                                           2         5     1.40M         -
        Life Capsule(Special) Type A          2   1.20K      38.66M                                -
-       Palladium Epaulet of Guardian                                1         1     1.57M         -
-       Upgrade Core (Ultimate                                       3       179    85.72M         -
-       naa Seon ron) eT                                             1         2   199.79K         -
-       board                                23   3.98K   1.31B                               55.00M
-    balance now 1.01B, read 2026-09-20T06:51:31
-       stock at its listed price                                                              1.27B
-       Alz, latest balance line                                                               1.01B
-       NET WORTH                                                                              2.29B
-       PROFIT IF SOLD, every row at its listed price                                         55.00M
-    22 row(s) show no bought price and are not counted
+       Palladium Shoes (DM) Lalla                                   1         1     1.22M         -
+       Palladium Suit(W1) (anal (anal                               1         1     1.30M         -
+       Upgrade Core (Ultimate                                       3       196    93.85M         -
+       Upgrade Core (Ultimate)                                      1       117    56.02M     4.38M
+       board                                21   3.43K     983.75M                           60.13M
+    balance now 505.59M, read 2026-09-20T08:56:07
+       stock at its listed price                                                            948.79M
+       Alz, latest balance line                                                             505.59M
+       NET WORTH                                                                              1.45B
+       PROFIT IF SOLD, every row at its listed price                                         60.13M
+    19 row(s) show no bought price and are not counted
 
 
-MARKET -- 2026-09-20_062537_run.log, pass 5, log last written 06:52 (live)
+MARKET -- 2026-09-20_085029_run.log, pass 1, log last written 08:57 (live)
 
-core                     rows  buy/u  sell/u  margin  margin %  wants  short?
-----------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         3      -       -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  5      -       -       -         -      -  holds the most it can want, 5; not priced
-Force Core (Ultimate)       3      -       -       -         -      -  holds the most it can want, 3; not priced
-Force Core(High)            3      -       -       -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     3      -       -       -         -      -  holds the most it can want, 3; not priced
+core                     rows    buy/u   sell/u  margin  margin %  wants  short?
+-------------------------------------------------------------------------------------------------------------------
+Force Core(Highest)         4        -        -       -         -      -  holds the most it can want, 3; not priced
+Chaos Core                  6        -        -       -         -      -  holds the most it can want, 5; not priced
+Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
+Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
+Upgrade Core (Ultimate)     2  441.37K  478.83K  37.46K      7.8%      3  YES
