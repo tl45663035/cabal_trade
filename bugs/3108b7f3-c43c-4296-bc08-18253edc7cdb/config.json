@@ -14,7 +14,25 @@
         "default": "Useable"
       },
       "rows": {
-        "Yekaterina VIP Membership": 1
+        "Yekaterina VIP Membership": 1,
+        "Force Gem Package": 1,
+        "Epic Booster (Highest)": 1,
+        "Armor Account bind Unseal Stone": 0,
+        "Armor Account bind Seal Stone": 0,
+        "Siena's Unbinding Stone": 1,
+        "Blessing Bead - Superior": 1,
+        "Arionell": 0
+      },
+      "scroll_limit": 45,
+      "currency": {
+        "Epic Booster (Highest)": {
+          "from": "Force Gem Package",
+          "per": 400
+        },
+        "Blessing Bead - Superior": {
+          "from": "Force Gem Package",
+          "per": 400
+        }
       }
     },
     "rows_by_margin": {
@@ -23,16 +41,16 @@
         3
       ],
       "Force Core (Ultimate)": [
-        3
+        2
       ],
       "Upgrade Core (Ultimate)": [
-        3
+        2
       ],
       "Force Core(High)": [
-        3
+        2
       ],
       "Force Core(Highest)": [
-        3
+        2
       ],
       "Chaos Core": [
         3,
@@ -57,14 +75,23 @@
       "default": 200,
       "Yekaterina VIP Membership": 1,
       "Chaos Core": 150,
-      "Divine Stone": 150
+      "Divine Stone": 150,
+      "Force Gem Package": 1,
+      "Epic Booster (Highest)": 4,
+      "Armor Account bind Unseal Stone": 1,
+      "Armor Account bind Seal Stone": 1,
+      "Siena's Unbinding Stone": 1,
+      "Blessing Bead - Superior": 1,
+      "Arionell": 1
     },
     "buy_max": {
       "default": 500,
-      "Chaos Core": 1000
+      "Chaos Core": 1000,
+      "Divine Stone": 1000
     },
     "buy_random_range": 15,
     "buy_scroll_limit": 30,
+    "core_offer_rows": 5,
     "buy_leave_behind": {
       "default": 0,
       "Chaos Core": 1,
@@ -72,7 +99,8 @@
     },
     "buy_under_lister": {
       "default": 0,
-      "Chaos Core": 3
+      "Chaos Core": 3,
+      "Divine Stone": 3
     },
     "buy_under_gap": {
       "default": 5000
@@ -90,9 +118,19 @@
   },
   "run": {
     "relist_from": 1,
-    "relist_to": 21,
+    "relist_to": 30,
     "undercut_by": 1,
-    "max_drop": 10000,
+    "max_drop": {
+      "default": 10000,
+      "Yekaterina VIP Membership": 1000000,
+      "Force Gem Package": 1000000,
+      "Epic Booster (Highest)": 1000000,
+      "Armor Account bind Unseal Stone": 1000000,
+      "Armor Account bind Seal Stone": 1000000,
+      "Siena's Unbinding Stone": 1000000,
+      "Blessing Bead - Superior": 1000000,
+      "Arionell": 1000000
+    },
     "home_notches": 30,
     "for_minutes": 10000,
     "price_check_factor": 5.0,
@@ -140,16 +178,12 @@
           ]
         ]
       },
-      "Epic Booster": {
+      "Epic Booster (Highest)": {
         "ratio": 125,
         "any": [
-          "Epic Booster",
           [
             "Epic",
-            "Booster"
-          ],
-          [
-            "Epic",
+            "Booster",
             "Highest"
           ],
           [
@@ -157,8 +191,53 @@
             "Highest"
           ]
         ]
+      },
+      "Armor Account bind Unseal Stone": {
+        "ratio": 500,
+        "any": [
+          [
+            "Armor",
+            "Unseal"
+          ]
+        ]
+      },
+      "Armor Account bind Seal Stone": {
+        "ratio": 500,
+        "any": [
+          [
+            "Armor",
+            "Seal"
+          ]
+        ]
+      },
+      "Siena's Unbinding Stone": {
+        "ratio": 200,
+        "any": [
+          [
+            "Siena",
+            "Unbinding"
+          ],
+          "Siena"
+        ]
+      },
+      "Blessing Bead - Superior": {
+        "ratio": 437,
+        "any": [
+          [
+            "Blessing",
+            "Superior"
+          ]
+        ]
+      },
+      "Arionell": {
+        "ratio": 750,
+        "any": [
+          "Arionell"
+        ]
       }
-    }
+    },
+    "price_trust_multiple": 10,
+    "screen": "1920x1080"
   },
   "debug": {
     "frames": true,
@@ -212,7 +291,9 @@
     "refresh_settle": 0.05,
     "stale_sweep": 1.0,
     "git_timeout": 5,
-    "toggle_tries": 2
+    "toggle_tries": 2,
+    "cash_measure_timeout": 2.0,
+    "panel_load_timeout": 2.0
   },
   "war": {
     "enabled": true,
@@ -230,9 +311,7 @@
     "quiet_before_end": 60,
     "quiet_seconds": 300,
     "clock_uncertainty": 59,
-    "clock_resync": 1800.0,
-    "clock_confirm_pause": 1.0,
-    "clock_max_drift": 150.0
+    "clock_confirm_pause": 1.0
   },
   "recovery": {
     "screen_timeout": 25.0,
@@ -352,14 +431,36 @@
     "tail_lines": 8,
     "head_lines": 4,
     "line_width": 140,
-    "reason_width": 150
+    "reason_width": 150,
+    "report_every": 1800,
+    "report_dir": "profit_reports",
+    "report_name": "summary.txt",
+    "report_tool": "tools/profit_summary.py",
+    "report_branch": "main",
+    "report_index": "report_index",
+    "report_mode": "100644",
+    "report_tries": 3,
+    "report_timeout": 300,
+    "report_message": "profit report for {config} at {at}",
+    "report_ready": "relisting rows \\d+-\\d+: \\d+ relisted"
   },
   "tools": {
     "profit_days_back": 7,
     "live_within": 600,
     "log_tail_lines": 40,
     "calib_repeats": 100,
-    "calib_fail_limit": 3
+    "calib_fail_limit": 3,
+    "launch_slack": 90,
+    "short_b": 1000000000,
+    "short_m": 1000000,
+    "short_k": 1000,
+    "short_gap": 2,
+    "short_field": 10,
+    "short_head": 32,
+    "short_board_fields": 6,
+    "short_item_fields": 4,
+    "short_indent": 7,
+    "short_places": 2
   },
   "bugs": {
     "folder": "bugs",

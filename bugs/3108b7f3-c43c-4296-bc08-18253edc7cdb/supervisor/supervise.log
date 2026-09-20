@@ -138,3 +138,614 @@ stop condition: the dialog stayed open after Confirmation on row 2. Whether the 
 the dialog stayed open after Confirmation on row 2. Whether the cancel committed is unknown -- check by hand.,20:40:19,dead
 the server took the run down: the dialog stayed open after Confirmation on row 2. Whether the cancel committed is unknown -- check by hand.; not counted as a short run,20:40:19,dead
 supervisor cancelled with Ctrl x4,20:41:02,dead
+no run alive; 2026-09-15_203519_run.log ended: the dialog stayed open after Confirmation on row 2. Whether the cancel committed is unknown -- check by hand.,00:34:35,dead
+relaunched (pid 8680),00:35:07,alive
+server lag: not answering,00:44:40,alive
+server lag: the server stalled,00:45:43,alive
+supervisor cancelled with Ctrl x4,02:23:07,dead
+no run alive; 2026-09-16_003503_run.log ended: interrupted from the keyboard,02:41:58,dead
+relaunched (pid 1876),02:42:28,alive
+server lag: not answering,03:22:45,alive
+server lag: the server stalled,03:23:50,alive
+war window, log quiet 156s,03:32:17,alive
+server lag: not answering,04:59:07,alive
+server lag: the server stalled,04:59:52,alive
+server lag: the server stalled,05:00:12,alive
+server lag: not answering,05:09:40,alive
+server lag: the server stalled,05:10:43,alive
+server lag: not answering,05:25:25,alive
+server lag: the server stalled,05:26:28,alive
+server lag: not answering,06:28:10,alive
+disconnected (run still up),06:28:32,alive
+disconnected 7s on; killing pid 1876,06:28:39,dead
+ended without a reason line,06:28:40,dead
+recovered: back in the world,06:29:39,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,06:41:08,dead
+finished: list 1 1 0 4 (whatever is there); 0 slot(s) left,06:42:43,dead
+relaunched (pid 19572),06:42:57,alive
+supervisor cancelled with Ctrl x4,07:19:47,dead
+no run alive; 2026-09-16_064253_run.log ended: interrupted from the keyboard,07:50:44,dead
+relaunched (pid 10608),07:51:21,alive
+server lag: not answering,07:52:07,alive
+server lag: the server stalled,07:53:12,alive
+server lag: not answering,07:54:20,alive
+server lag: the server stalled,07:55:26,alive
+RuntimeError: no Receive button appeared in (900, 562, 1275, 744) within 8.0s after Receive on row 1; that band reads ['..', '106,410,506', '23°', '<',07:56:30,dead
+supervisor cancelled with Ctrl x4,07:56:36,dead
+no run alive; 2026-09-16_075117_run.log ended: RuntimeError: no Receive button appeared in (900, 562, 1275, 744) within 8.0s after Receive on row 1; that band reads ['..', '106,410,506', '23°', '<',08:14:17,dead
+relaunched (pid 10476),08:14:45,alive
+server lag: not answering,08:16:54,alive
+server lag: the server stalled,08:17:57,alive
+disconnected (run still up),08:50:32,alive
+disconnected 7s on; killing pid 10476,08:50:39,dead
+RuntimeError: pressed I 2 times; the Inventory panel is not open where calibration.json says it is.,08:50:39,dead
+recovered: back in the world,08:51:24,dead
+finished: craft chaos (Chaos Core); 0 slot(s) left,08:57:36,dead
+relaunched (pid 19068),08:57:49,alive
+war window, log quiet 173s,09:34:02,alive
+stop condition: the dialog stayed open after Confirmation on row 3. Whether the cancel committed is unknown -- check by hand.,10:27:19,dead
+the dialog stayed open after Confirmation on row 3. Whether the cancel committed is unknown -- check by hand.,10:27:21,dead
+the server took the run down: the dialog stayed open after Confirmation on row 3. Whether the cancel committed is unknown -- check by hand.; not counted as a short run,10:27:21,dead
+relaunched (pid 18664),10:28:40,alive
+stop condition: the dialog stayed open after Confirmation on row 3. Whether the cancel committed is unknown -- check by hand.,10:32:33,dead
+the dialog stayed open after Confirmation on row 3. Whether the cancel committed is unknown -- check by hand.,10:32:33,dead
+the server took the run down: the dialog stayed open after Confirmation on row 3. Whether the cancel committed is unknown -- check by hand.; not counted as a short run,10:32:33,dead
+relaunched (pid 17772),10:33:52,alive
+stop condition: nothing loaded into the shop slot from (1,2) after 3 ctrl-click(s). Nothing has been listed.,10:37:25,dead
+nothing loaded into the shop slot from (1,2) after 3 ctrl-click(s). Nothing has been listed.,10:37:25,dead
+recovery attempt 1 failed: driver.py craft chaos exited 1: RuntimeError: found 0 row button(s) in the Register button column (787, 145, 922, 694); need at least two to measure t; attempt 2 in 60s,10:42:24,dead
+collect failed: driver.py collect exited 1: RuntimeError: found 0 row button(s) in the Register button column (787, 145, 922, 694); need at least two to measure the r; carrying on,10:44:29,dead
+recovery attempt 2 failed: driver.py craft chaos exited 1: RuntimeError: found 0 row button(s) in the Register button column (787, 145, 922, 694); need at least two to measure t; attempt 3 in 60s,10:45:16,dead
+collect failed: driver.py collect exited 1: RuntimeError: found 0 row button(s) in the Register button column (787, 145, 922, 694); need at least two to measure the r; carrying on,10:47:21,dead
+supervisor stopped: driver.py craft chaos exited 1: RuntimeError: found 0 row button(s) in the Register button column (787, 145, 922, 694); need at least two to measure the row pitch.,10:48:08,dead
+no run alive; 2026-09-16_103348_run.log ended: nothing loaded into the shop slot from (1,2) after 3 ctrl-click(s). Nothing has been listed.,11:25:48,dead
+finished: craft chaos (Chaos Core); 7 slot(s) left,11:31:17,dead
+recovery attempt 1 failed: driver.py list 1 2 0 4 Force Core(Highest) exited 1: RuntimeError: the Agent Shop would not close, and the vendor will not open on top of it. Nothing ; attempt 2 in 60s,11:32:36,dead
+recovery attempt 2 failed: driver.py craft chaos exited 1: NotReady: nothing loaded into the shop slot from (1,1) after 3 ctrl-click(s). Nothing has been listed. Tab 4 slot (1, ; attempt 3 in 60s,11:40:13,dead
+supervisor stopped: driver.py craft chaos exited 1: NotReady: nothing loaded into the shop slot from (1,1) after 3 ctrl-click(s). Nothing has been listed. Tab 4 slot (1, 1) is left to the Chaos Core Set,11:46:46,dead
+no run alive; 2026-09-16_103348_run.log ended: nothing loaded into the shop slot from (1,2) after 3 ctrl-click(s). Nothing has been listed.,12:14:42,dead
+relaunched (pid 17676),12:15:08,alive
+war window, log quiet 164s,12:33:30,alive
+supervisor cancelled with Ctrl x4,14:05:21,dead
+no run alive; 2026-09-16_121505_run.log ended: interrupted from the keyboard,15:39:24,dead
+relaunched (pid 7540),15:39:53,alive
+server lag: not answering,17:45:45,alive
+server lag: the server stalled,17:46:49,alive
+server lag: the server stalled,17:47:12,alive
+supervisor cancelled with Ctrl x4,17:59:47,dead
+no run alive; 2026-09-16_153949_run.log ended: interrupted from the keyboard,18:37:55,dead
+relaunched (pid 8320),18:38:24,alive
+server lag: not answering,18:40:32,alive
+server lag: the server stalled,18:41:35,alive
+server lag: the server stalled,18:41:58,alive
+supervisor cancelled with Ctrl x4,19:02:16,dead
+no run alive; 2026-09-16_183820_run.log ended: interrupted from the keyboard,19:30:54,dead
+relaunched (pid 9208),19:31:26,alive
+server lag: not answering,19:48:36,alive
+server lag: the server stalled,19:49:17,alive
+server lag: the server stalled,19:49:41,alive
+server lag: not answering,19:57:42,alive
+server lag: the server stalled,19:58:46,alive
+war window, log quiet 166s,21:33:37,alive
+supervisor cancelled with Ctrl x4,22:07:53,dead
+no run alive; 2026-09-16_193122_run.log ended: interrupted from the keyboard,00:47:18,dead
+relaunched (pid 11960),00:47:49,alive
+RuntimeError: the Agent Shop would not reopen after the vendor. calibration.json is written.,00:49:16,dead
+relaunched (pid 2672),00:49:46,alive
+supervisor cancelled with Ctrl x4,02:28:06,dead
+no run alive; 2026-09-17_004942_run.log ended: interrupted from the keyboard,02:42:00,dead
+relaunched (pid 16216),02:42:31,alive
+server lag: not answering,03:17:50,alive
+server lag: the server stalled,03:18:53,alive
+war window, log quiet 151s,03:32:13,alive
+war window, log quiet 170s,06:31:13,alive
+supervisor cancelled with Ctrl x4,06:56:08,dead
+no run alive; 2026-09-17_024227_run.log ended: interrupted from the keyboard,08:14:33,dead
+relaunched (pid 19516),08:15:04,alive
+server lag: not answering,08:28:44,dead
+stop condition: the panel still holds the item, priced 107,249,249, 8s after Confirmation and 26s of the server not answering; the registration did not go through. No,08:28:44,dead
+disconnected (run still up),08:28:46,alive
+disconnected 7s on; killing pid 19516,08:28:53,dead
+the panel still holds the item, priced 107,249,249, 8s after Confirmation and 26s of the server not answering; the registration did not go through. No,08:28:53,dead
+recovery attempt 1 failed: recovery refused: Refused: the server refused the login 6 times; it is not taking connections. Nothing more to try now.; attempt 2 in 60s,08:33:16,dead
+recovery attempt 2 failed: could not bring the game to the foreground; nothing read, nothing sent; attempt 3 in 60s,08:34:17,dead
+supervisor stopped: could not bring the game to the foreground; nothing read, nothing sent,08:35:18,dead
+no run alive; 2026-09-17_081501_run.log ended: the panel still holds the item, priced 107,249,249, 8s after Confirmation and 26s of the server not answering; the registration did not go through. No,12:01:56,dead
+recovery attempt 1 failed: nothing recognisable on screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], ; attempt 2 in 60s,12:02:24,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,12:17:20,dead
+finished: list 1 1 0 4 (whatever is there); 0 slot(s) left,12:18:52,dead
+relaunched (pid 19528),12:19:05,alive
+stop condition: the panel will not price 121,159,924 against its net sales after typing 250. Nothing has been listed.,12:27:10,dead
+the panel will not price 121,159,924 against its net sales after typing 250. Nothing has been listed.,12:27:11,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,12:35:37,dead
+finished: list 1 1 0 4 (whatever is there); 0 slot(s) left,12:37:10,dead
+relaunched (pid 8844),12:37:23,alive
+server lag: not answering,13:28:53,alive
+server lag: the server stalled,13:29:57,alive
+server lag: the server stalled,13:30:19,alive
+supervisor cancelled with Ctrl x4,14:00:48,dead
+no run alive; 2026-09-17_123719_run.log ended: interrupted from the keyboard,14:36:41,dead
+relaunched (pid 15572),14:37:12,alive
+war window, log quiet 166s,15:33:46,alive
+server lag: not answering,15:54:53,alive
+server lag: the server stalled,15:55:58,alive
+supervisor cancelled with Ctrl x4,16:24:49,dead
+no run alive; 2026-09-17_143708_run.log ended: interrupted from the keyboard,18:43:06,dead
+relaunched (pid 9776),18:43:37,alive
+supervisor cancelled with Ctrl x4,19:44:55,dead
+no run alive; 2026-09-17_184333_run.log ended: interrupted from the keyboard,19:48:20,dead
+relaunched (pid 18780),19:48:51,alive
+row 1 should hold 'Yekaterina VIP Membership' but position 1 reads 'Force Core(High) 48 111,000,000 OnSale Change' on one line, and 'Force Core(High) ,19:57:19,dead
+relaunched (pid 20324),19:57:45,alive
+server lag: not answering,20:36:18,alive
+server lag: the server stalled,20:37:22,alive
+supervisor cancelled with Ctrl x4,20:57:43,dead
+no run alive; 2026-09-17_195741_run.log ended: interrupted from the keyboard,21:29:18,dead
+relaunched (pid 16068),21:29:47,alive
+SystemExit: favourite slot 5 holds 'Force Core (Ultimate)' but config.json asks for 'Divine Stone'. They share the slot, so one of the two is wrong: e,21:32:59,dead
+relaunched (pid 8924),21:33:24,alive
+SystemExit: favourite slot 5 holds 'Force Core (Ultimate)' but config.json asks for 'Divine Stone'. They share the slot, so one of the two is wrong: e,21:36:36,dead
+relaunched (pid 15624),21:37:02,alive
+SystemExit: favourite slot 5 holds 'Force Core (Ultimate)' but config.json asks for 'Divine Stone'. They share the slot, so one of the two is wrong: e,21:40:14,dead
+3 runs in a row died within 300s of launch; relogging (1 of 1),21:40:14,dead
+relogged: back in the world,21:41:05,dead
+relaunched (pid 18368),21:41:09,alive
+SystemExit: favourite slot 5 holds 'Force Core (Ultimate)' but config.json asks for 'Divine Stone'. They share the slot, so one of the two is wrong: e,21:44:21,dead
+relaunched (pid 18880),21:44:47,alive
+SystemExit: favourite slot 5 holds 'Force Core (Ultimate)' but config.json asks for 'Divine Stone'. They share the slot, so one of the two is wrong: e,21:47:59,dead
+relaunched (pid 17416),21:48:25,alive
+SystemExit: favourite slot 5 holds 'Force Core (Ultimate)' but config.json asks for 'Divine Stone'. They share the slot, so one of the two is wrong: e,21:51:37,dead
+supervisor stopped: 3 runs in a row died within 300s of launch after 1 relog(s); last: SystemExit: favourite slot 5 holds 'Force Core (Ultimate)' but config.json asks for 'Divine Stone'. They share the slot, so one of the two is wrong: e,21:51:37,dead
+no run alive; 2026-09-17_214821_run.log ended: SystemExit: favourite slot 5 holds 'Force Core (Ultimate)' but config.json asks for 'Divine Stone'. They share the slot, so one of the two is wrong: e,23:16:22,dead
+relaunched (pid 4644),23:16:52,alive
+supervisor cancelled with Ctrl x4,23:27:24,dead
+no run alive; 2026-09-17_231648_run.log ended: interrupted from the keyboard,00:59:18,dead
+relaunched (pid 6284),00:59:48,alive
+server lag: not answering,01:09:40,alive
+server lag: the server stalled,01:10:45,alive
+server lag: not answering,01:36:40,alive
+server lag: the server stalled,01:37:43,alive
+server lag: the server stalled,01:38:06,alive
+server lag: not answering,01:51:05,alive
+server lag: the server stalled,01:51:49,alive
+server lag: not answering,01:52:09,alive
+server lag: the server stalled,01:53:14,alive
+server lag: the server stalled,01:53:35,alive
+supervisor cancelled with Ctrl x4,02:17:07,dead
+no run alive; 2026-09-18_005945_run.log ended: interrupted from the keyboard,02:41:06,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,02:47:57,dead
+recovery attempt 1 failed: driver.py --config cang list 1 1 0 4 exited 1: RuntimeError: the Agent Shop would not close, and the vendor will not open on top of it. Nothing writte; attempt 2 in 60s,02:49:07,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,02:53:19,dead
+finished: list 1 1 0 4 (whatever is there); 0 slot(s) left,02:54:52,dead
+relaunched (pid 17776),02:55:05,alive
+disconnected (run still up),03:18:13,alive
+disconnected 7s on; killing pid 17776,03:18:20,dead
+ended without a reason line, exit code 1; nothing in driver.py exits without one, so it was stopped from outside,03:18:21,dead
+recovered: back in the world,03:19:13,dead
+relaunched (pid 400),03:19:42,alive
+war window, log quiet 159s,03:30:18,alive
+supervisor cancelled with Ctrl x4,05:57:05,dead
+no run alive; 2026-09-18_031939_run.log ended: interrupted from the keyboard,06:37:22,dead
+recovery attempt 1 failed: nothing recognisable on screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], ; attempt 2 in 60s,06:37:53,dead
+relaunched (pid 4176),06:39:26,alive
+server lag: not answering,07:51:52,alive
+disconnected (run still up),07:52:14,alive
+disconnected 7s on; killing pid 4176,07:52:21,dead
+ended without a reason line, exit code 1; nothing in driver.py exits without one, so it was stopped from outside,07:52:21,dead
+recovered: back in the world,07:53:06,dead
+relaunched (pid 17468),07:53:33,alive
+RuntimeError: the Agent Shop would not close, and the vendor will not open on top of it. Nothing written.,08:11:26,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,08:41:28,dead
+recovery attempt 1 failed: driver.py --config cang list 1 1 0 4 exited 1: RuntimeError: could not bring the 'PlayCabal' window to the foreground. Nothing measured.; attempt 2 in 60s,08:50:35,dead
+recovery attempt 2 failed: could not bring the game to the foreground; nothing read, nothing sent; attempt 3 in 60s,08:51:36,dead
+supervisor stopped: could not bring the game to the foreground; nothing read, nothing sent,08:52:37,dead
+no run alive; 2026-09-18_075329_run.log ended: RuntimeError: the Agent Shop would not close, and the vendor will not open on top of it. Nothing written.,12:39:51,dead
+relaunched (pid 16128),12:40:20,alive
+supervisor cancelled with Ctrl x4,14:22:53,dead
+no run alive; 2026-09-18_124016_run.log ended: interrupted from the keyboard,15:36:11,dead
+relaunched (pid 12344),15:36:42,alive
+server lag: not answering,15:45:06,alive
+server lag: the server stalled,15:46:11,alive
+supervisor cancelled with Ctrl x4,17:08:34,dead
+no run alive; 2026-09-18_153638_run.log ended: interrupted from the keyboard,17:22:05,dead
+relaunched (pid 10380),17:22:40,alive
+supervisor cancelled with Ctrl x4,17:59:36,dead
+no run alive; 2026-09-18_172237_run.log ended: interrupted from the keyboard,18:41:26,dead
+relaunched (pid 5136),18:41:59,alive
+RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,18:44:30,dead
+relaunched (pid 13204),18:45:00,alive
+RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,18:45:45,dead
+relaunched (pid 17996),18:46:15,alive
+RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,18:46:59,dead
+3 runs in a row died within 300s of launch; relogging (1 of 1),18:46:59,dead
+relogged: back in the world,18:47:57,dead
+relaunched (pid 12272),18:48:01,alive
+RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,18:48:45,dead
+relaunched (pid 10252),18:49:11,alive
+RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,18:49:54,dead
+relaunched (pid 12140),18:50:20,alive
+RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,18:51:04,dead
+supervisor stopped: 3 runs in a row died within 300s of launch after 1 relog(s); last: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,18:51:04,dead
+no run alive; 2026-09-18_185016_run.log ended: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,18:59:03,dead
+relaunched (pid 10256),18:59:35,alive
+RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,19:00:19,dead
+supervisor cancelled with Ctrl x4,19:00:20,dead
+no run alive; 2026-09-18_185931_run.log ended: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,19:00:29,dead
+relaunched (pid 17692),19:00:58,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:07:17,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:07:19,dead
+relaunched (pid 2596),19:07:44,alive
+server lag: not answering,19:08:49,alive
+server lag: the server stalled,19:09:52,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:16:09,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:16:11,dead
+relaunched (pid 10860),19:16:36,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:22:55,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:22:57,dead
+relaunched (pid 9020),19:23:22,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:29:41,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:29:44,dead
+relaunched (pid 2596),19:30:09,alive
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:39:38,dead
+relaunched (pid 16984),19:40:03,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:46:45,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:46:45,dead
+relaunched (pid 4668),19:47:10,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:53:29,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:53:31,dead
+relaunched (pid 3264),19:53:56,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:59:35,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:59:35,dead
+relaunched (pid 11828),20:00:00,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:05:39,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:05:39,dead
+relaunched (pid 2008),20:06:04,alive
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:11:22,dead
+relaunched (pid 4432),20:11:47,alive
+server lag: not answering,20:14:16,alive
+server lag: the server stalled,20:15:21,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:18:50,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:18:51,dead
+relaunched (pid 12156),20:19:15,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:24:54,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:24:54,dead
+relaunched (pid 4904),20:25:19,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:30:35,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:30:38,dead
+relaunched (pid 12464),20:31:03,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:37:02,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:37:02,dead
+relaunched (pid 11444),20:37:27,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:43:26,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:43:26,dead
+relaunched (pid 2388),20:43:51,alive
+supervisor cancelled with Ctrl x4,20:44:15,dead
+no run alive; 2026-09-18_204347_run.log ended: interrupted from the keyboard,21:33:20,dead
+relaunched (pid 4560),21:33:51,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,21:49:39,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,21:49:41,dead
+relaunched (pid 18944),21:50:07,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,21:56:49,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,21:56:50,dead
+relaunched (pid 7904),21:57:16,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,22:03:58,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,22:03:58,dead
+relaunched (pid 17024),22:04:24,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,22:11:48,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,22:11:51,dead
+relaunched (pid 2704),22:12:17,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,22:18:59,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,22:18:59,dead
+relaunched (pid 17988),22:19:26,alive
+server lag: not answering,22:20:30,alive
+server lag: the server stalled,22:21:33,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,22:28:58,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,22:29:00,dead
+relaunched (pid 1504),22:29:26,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,22:38:36,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,22:38:37,dead
+relaunched (pid 8632),22:39:03,alive
+RuntimeError: the Agent Shop would not close, and the vendor will not open on top of it. Nothing written.,22:40:30,dead
+supervisor cancelled with Ctrl x4,22:42:58,dead
+no run alive; 2026-09-18_223859_run.log ended: RuntimeError: the Agent Shop would not close, and the vendor will not open on top of it. Nothing written.,23:44:34,dead
+relaunched (pid 14136),23:45:08,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,23:53:32,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,23:53:35,dead
+relaunched (pid 18124),23:54:00,alive
+supervisor cancelled with Ctrl x4,23:59:17,dead
+no run alive; 2026-09-18_235357_run.log ended: interrupted from the keyboard,00:37:27,dead
+relaunched (pid 8312),00:37:58,alive
+server lag: not answering,00:40:48,alive
+server lag: the server stalled,00:41:52,alive
+server lag: the server stalled,00:42:13,alive
+server lag: not answering,00:43:16,alive
+server lag: the server stalled,00:44:20,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,00:54:09,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,00:54:09,dead
+relaunched (pid 8776),00:54:34,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:05:25,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:05:25,dead
+relaunched (pid 19412),01:05:50,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:13:33,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:13:33,dead
+relaunched (pid 2484),01:13:58,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:21:41,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:21:42,dead
+relaunched (pid 18384),01:22:07,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:30:10,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:30:11,dead
+relaunched (pid 7108),01:30:35,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:38:19,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:38:19,dead
+relaunched (pid 16332),01:38:44,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:47:08,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:47:10,dead
+relaunched (pid 13124),01:47:36,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:54:37,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,01:54:37,dead
+relaunched (pid 19072),01:55:01,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,02:03:05,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,02:03:05,dead
+relaunched (pid 9140),02:03:30,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,02:11:35,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,02:11:35,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,02:14:46,dead
+finished: list 1 1 0 4 (whatever is there); 0 slot(s) left,02:18:31,dead
+relaunched (pid 16028),02:18:45,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,02:24:43,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,02:24:44,dead
+relaunched (pid 19064),02:25:08,alive
+supervisor cancelled with Ctrl x4,02:29:21,dead
+no run alive; 2026-09-19_022505_run.log ended: interrupted from the keyboard,02:38:59,dead
+relaunched (pid 1672),02:39:31,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,02:46:53,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,02:46:55,dead
+relaunched (pid 17096),02:47:19,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,02:59:55,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,02:59:58,dead
+relaunched (pid 18892),03:00:23,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,03:07:24,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,03:07:24,dead
+relaunched (pid 4060),03:07:49,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,03:14:50,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,03:14:51,dead
+relaunched (pid 16048),03:15:16,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,03:22:17,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,03:22:17,dead
+relaunched (pid 17056),03:22:42,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,03:29:43,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,03:29:44,dead
+relaunched (pid 19132),03:30:09,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,03:40:43,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,03:40:45,dead
+relaunched (pid 12400),03:41:10,alive
+server lag: not answering,03:44:00,alive
+server lag: the server stalled,03:45:05,alive
+server lag: the server stalled,03:45:25,dead
+NotReady: the Agent Shop is not open after resupplying.,03:45:29,dead
+collect failed: driver.py --config cang collect exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.; carrying on,03:46:20,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,03:46:44,dead
+recovery attempt 1 failed: driver.py --config cang list 1 1 0 4 exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing wri; attempt 2 in 60s,03:47:17,dead
+collect failed: driver.py --config cang collect exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.; carrying on,03:49:08,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,03:49:32,dead
+recovery attempt 2 failed: driver.py --config cang list 1 1 0 4 exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing wri; attempt 3 in 60s,03:50:05,dead
+collect failed: driver.py --config cang collect exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.; carrying on,03:51:55,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,03:52:19,dead
+supervisor stopped: driver.py --config cang list 1 1 0 4 exited 1: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,03:52:52,dead
+no run alive; 2026-09-19_034107_run.log ended: NotReady: the Agent Shop is not open after resupplying.,07:26:49,dead
+driver.py --config held up: ServerStalled: the server stalled for 60s; nothing was clicked and the shop is shut. The pass starts again.; waiting 60s, then attempt 2,07:31:41,dead
+supervisor cancelled with Ctrl x4,07:42:05,dead
+no run alive; 2026-09-19_034107_run.log ended: NotReady: the Agent Shop is not open after resupplying.,07:48:46,dead
+relaunched (pid 18524),07:49:16,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:02:36,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:02:36,dead
+relaunched (pid 17016),08:03:01,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:09:42,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:09:42,dead
+relaunched (pid 3256),08:10:06,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:17:28,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:17:30,dead
+relaunched (pid 2396),08:17:54,alive
+server lag: not answering,08:26:19,alive
+server lag: the server stalled,08:27:24,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:35:06,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:35:07,dead
+relaunched (pid 18676),08:35:31,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:41:09,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:41:09,dead
+relaunched (pid 16604),08:41:34,alive
+server lag: not answering,08:42:18,alive
+server lag: the server stalled,08:43:22,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:48:38,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:48:38,dead
+relaunched (pid 3972),08:49:02,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:54:18,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,08:54:20,dead
+relaunched (pid 836),08:54:45,alive
+server lag: not answering,08:57:14,alive
+server lag: the server stalled,08:58:18,alive
+supervisor cancelled with Ctrl x4,08:58:58,dead
+no run alive; 2026-09-19_085441_run.log ended: interrupted from the keyboard,11:30:25,dead
+relaunched (pid 13016),11:31:07,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,11:46:16,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,11:46:16,dead
+relaunched (pid 4736),11:46:42,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,11:53:46,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,11:53:46,dead
+relaunched (pid 2584),11:54:11,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:03:01,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:03:01,dead
+relaunched (pid 8708),12:03:27,alive
+server lag: not answering,12:05:58,alive
+server lag: the server stalled,12:07:02,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:13:23,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:13:23,dead
+relaunched (pid 1696),12:13:49,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:21:56,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:21:56,dead
+relaunched (pid 11256),12:22:23,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:29:47,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:29:50,dead
+relaunched (pid 14876),12:30:16,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:42:39,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:42:40,dead
+relaunched (pid 10736),12:43:06,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:51:56,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,12:51:56,dead
+relaunched (pid 16120),12:52:23,alive
+server lag: not answering,12:53:27,alive
+server lag: the server stalled,12:54:32,alive
+stop condition: nothing loaded into the shop slot from (1,2) after 1 ctrl-click(s). Nothing has been listed.,12:57:41,dead
+nothing loaded into the shop slot from (1,2) after 1 ctrl-click(s). Nothing has been listed.,12:57:43,dead
+tab 4 slot (1,1) has no tooltip name; listing it at the panel's price and the full quantity,13:00:38,dead
+recovery attempt 1 failed: driver.py --config cang list 1 1 0 4 exited 1: RuntimeError: no readable Alz balance after pressing I twice and sweeping the screen; the Inventory pan; attempt 2 in 60s,13:01:15,dead
+recovery attempt 2 failed: recovery refused: Refused: no 'Channel 12' in the server list within 60s. Nothing entered.; attempt 3 in 60s,13:04:12,dead
+supervisor cancelled with Ctrl x4,13:04:38,dead
+no run alive; 2026-09-19_125219_run.log ended: nothing loaded into the shop slot from (1,2) after 1 ctrl-click(s). Nothing has been listed.,14:06:57,dead
+relaunched (pid 10608),14:07:28,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,14:15:54,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,14:15:57,dead
+relaunched (pid 17760),14:16:22,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,14:23:44,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,14:23:47,dead
+relaunched (pid 5860),14:24:12,alive
+supervisor cancelled with Ctrl x4,14:25:39,dead
+no run alive; 2026-09-19_142409_run.log ended: interrupted from the keyboard,14:44:16,dead
+relaunched (pid 16636),14:44:48,alive
+server lag: not answering,14:46:14,alive
+server lag: the server stalled,14:46:55,alive
+server lag: the server stalled,14:47:19,alive
+supervisor cancelled with Ctrl x4,14:53:47,dead
+no run alive; 2026-09-19_144444_run.log ended: interrupted from the keyboard,14:53:48,dead
+relaunched (pid 6824),14:54:13,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:04:45,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:04:47,dead
+relaunched (pid 16076),15:05:13,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:12:35,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:12:38,dead
+relaunched (pid 2672),15:13:03,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:20:49,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:20:49,dead
+relaunched (pid 13004),15:21:14,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:28:37,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:28:39,dead
+relaunched (pid 6072),15:29:04,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:42:04,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:42:04,dead
+relaunched (pid 7892),15:42:29,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:49:52,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:49:54,dead
+relaunched (pid 7940),15:50:20,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:57:42,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,15:57:45,dead
+relaunched (pid 11048),15:58:10,alive
+server lag: not answering,16:00:40,alive
+server lag: the server stalled,16:01:21,alive
+server lag: the server stalled,16:01:45,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,16:07:01,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,16:07:01,dead
+relaunched (pid 18624),16:07:26,alive
+server lag: not answering,16:08:11,alive
+server lag: the server stalled,16:09:15,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,16:20:51,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,16:20:51,dead
+relaunched (pid 17436),16:21:17,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,16:29:42,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,16:29:44,dead
+relaunched (pid 6656),16:30:10,alive
+RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.,16:30:34,dead
+relaunched (pid 18184),16:31:04,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,16:38:27,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,16:38:30,dead
+relaunched (pid 18044),16:38:55,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,16:52:37,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,16:52:39,dead
+relaunched (pid 16936),16:53:05,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:01:31,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:01:33,dead
+relaunched (pid 16764),17:01:58,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:09:44,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:09:44,dead
+relaunched (pid 12284),17:10:09,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:19:18,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:19:18,dead
+relaunched (pid 13280),17:19:43,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:27:05,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:27:07,dead
+relaunched (pid 1696),17:27:32,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:34:54,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:34:56,dead
+relaunched (pid 15996),17:35:21,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:47:57,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,17:47:59,dead
+relaunched (pid 8888),17:48:24,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:00:40,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:00:40,dead
+relaunched (pid 5712),18:01:05,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:08:27,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:08:29,dead
+relaunched (pid 10716),18:08:54,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:16:16,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:16:18,dead
+relaunched (pid 10684),18:16:43,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:24:05,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:24:07,dead
+relaunched (pid 2360),18:24:32,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:31:54,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:31:57,dead
+relaunched (pid 9116),18:32:21,alive
+server lag: not answering,18:33:06,alive
+server lag: the server stalled,18:34:08,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:41:29,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:41:29,dead
+relaunched (pid 19396),18:41:55,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:49:18,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:49:20,dead
+relaunched (pid 1052),18:49:45,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:57:07,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,18:57:09,dead
+relaunched (pid 8036),18:57:35,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:04:57,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:04:59,dead
+relaunched (pid 8204),19:05:24,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:12:46,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:12:48,dead
+relaunched (pid 18684),19:13:13,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:22:01,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:22:01,dead
+relaunched (pid 1652),19:22:26,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:30:11,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:30:11,dead
+relaunched (pid 17680),19:30:36,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:40:26,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:40:26,dead
+relaunched (pid 16476),19:40:51,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:48:13,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:48:15,dead
+relaunched (pid 2352),19:48:41,alive
+server lag: not answering,19:51:10,alive
+server lag: the server stalled,19:52:14,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:58:53,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,19:58:54,dead
+relaunched (pid 17736),19:59:19,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:11:16,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:11:16,dead
+relaunched (pid 7080),20:11:41,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:20:49,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:20:49,dead
+relaunched (pid 9200),20:21:15,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:28:58,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:28:59,dead
+relaunched (pid 6236),20:29:24,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:37:08,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:37:09,dead
+relaunched (pid 5664),20:37:34,alive
+server lag: not answering,20:38:38,alive
+server lag: the server stalled,20:39:22,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:47:03,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:47:05,dead
+relaunched (pid 18972),20:47:31,alive
+stop condition: shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:55:15,dead
+shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.,20:55:15,dead
+relaunched (pid 12592),20:55:41,alive
+supervisor cancelled with Ctrl x4,21:00:16,dead

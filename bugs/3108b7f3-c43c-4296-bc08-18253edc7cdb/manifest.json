@@ -1,403 +1,167 @@
 {
-  "run": "2026-09-15_203519",
+  "run": "2026-09-19_204727",
   "machine": "DESKTOP-5CFR0IQ",
   "machine_id": "3108b7f3-c43c-4296-bc08-18253edc7cdb",
-  "submitted_at": "2026-09-15T21:00:12",
-  "code": "9149817",
+  "submitted_at": "2026-09-19T21:05:46",
+  "code": "d08b55e",
   "screen": "1920x1080",
-  "reason": "the dialog stayed open after Confirmation on row 2. Whether the cancel committed is unknown -- check by hand.",
+  "reason": "shop.row_last_y is not in calibration.json. Re-run py src/calibration.py once it measures the listing table.",
   "window": [
-    "2026-09-15T20:35:19",
-    "2026-09-15T21:20:12"
+    "2026-09-19T20:47:27",
+    "2026-09-19T21:15:37"
   ],
   "files": [
     {
       "file": "run.log",
-      "mb": 0.03
+      "mb": 0.04
     },
     {
       "file": "board.log",
-      "mb": 0.01
-    },
-    {
-      "file": "frames/0002_203819.mp4",
-      "mb": 27.75
-    },
-    {
-      "file": "frames/00145_click_968_640.png",
-      "mb": 1.87
-    },
-    {
-      "file": "frames/00146_press_escape.png",
-      "mb": 3.17
-    },
-    {
-      "file": "frames/00147_vendor_open_attempt_1.png",
-      "mb": 2.52
-    },
-    {
-      "file": "frames/00148_click_145_158.png",
-      "mb": 2.53
-    },
-    {
-      "file": "frames/00149_altclick_285_846.png",
-      "mb": 2.26
-    },
-    {
-      "file": "frames/00150_click_905_460.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00151_click_1610_174.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00152_click_965_682.png",
-      "mb": 2.28
-    },
-    {
-      "file": "frames/00153_click_1825_174.png",
-      "mb": 2.89
-    },
-    {
-      "file": "frames/00154_rightclick_1810_229.png",
-      "mb": 1.87
-    },
-    {
-      "file": "frames/00155_click_291_80.png",
-      "mb": 1.9
-    },
-    {
-      "file": "frames/00156_click_1610_174.png",
-      "mb": 1.97
-    },
-    {
-      "file": "frames/00157_click_291_80.png",
-      "mb": 1.94
-    },
-    {
-      "file": "frames/00158_click_839_758.png",
-      "mb": 1.99
-    },
-    {
-      "file": "frames/00159_click_1610_174.png",
-      "mb": 1.93
-    },
-    {
-      "file": "frames/00160_click_838_176.png",
-      "mb": 1.95
-    },
-    {
-      "file": "frames/00161_click_1103_640.png",
-      "mb": 1.89
-    },
-    {
-      "file": "frames/00162_click_968_640.png",
-      "mb": 1.95
-    },
-    {
-      "file": "frames/00163_click_1610_174.png",
-      "mb": 1.96
-    },
-    {
-      "file": "frames/00164_ctrlclick_1471_229.png",
-      "mb": 1.95
-    },
-    {
-      "file": "frames/00165_click_36_387.png",
-      "mb": 1.97
-    },
-    {
-      "file": "frames/00166_click_113_428.png",
-      "mb": 2.0
-    },
-    {
-      "file": "frames/00167_click_59_490.png",
-      "mb": 1.96
-    },
-    {
-      "file": "frames/00168_click_132_760.png",
-      "mb": 1.98
-    },
-    {
-      "file": "frames/00169_click_968_640.png",
-      "mb": 1.98
-    },
-    {
-      "file": "frames/00170_click_839_758.png",
-      "mb": 1.97
-    },
-    {
-      "file": "frames/00171_click_1610_174.png",
-      "mb": 1.94
-    },
-    {
-      "file": "frames/00172_click_838_176.png",
-      "mb": 1.95
-    },
-    {
-      "file": "frames/00173_click_1103_640.png",
-      "mb": 1.84
-    },
-    {
-      "file": "frames/00174_click_968_640.png",
-      "mb": 1.88
-    },
-    {
-      "file": "frames/00085_click_834_260.png",
-      "mb": 1.77
-    },
-    {
-      "file": "frames/00086_click_968_636.png",
-      "mb": 1.67
-    },
-    {
-      "file": "frames/00087_press_escape.png",
-      "mb": 3.17
-    },
-    {
-      "file": "frames/00088_vendor_open_attempt_1.png",
-      "mb": 2.53
-    },
-    {
-      "file": "frames/00089_click_145_158.png",
-      "mb": 2.53
-    },
-    {
-      "file": "frames/00090_altclick_285_846.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00091_click_905_460.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00092_click_1610_174.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00093_click_965_682.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00094_click_1825_174.png",
-      "mb": 2.89
-    },
-    {
-      "file": "frames/00095_rightclick_1810_229.png",
-      "mb": 1.87
-    },
-    {
-      "file": "frames/00096_click_291_80.png",
-      "mb": 1.9
-    },
-    {
-      "file": "frames/00097_click_1610_174.png",
-      "mb": 1.96
-    },
-    {
-      "file": "frames/00098_ctrlclick_1528_229.png",
-      "mb": 1.94
-    },
-    {
-      "file": "frames/00099_click_36_387.png",
-      "mb": 1.96
-    },
-    {
-      "file": "frames/00100_click_113_428.png",
-      "mb": 1.97
-    },
-    {
-      "file": "frames/00101_click_59_490.png",
-      "mb": 1.97
-    },
-    {
-      "file": "frames/00102_click_132_760.png",
-      "mb": 1.88
-    },
-    {
-      "file": "frames/00103_click_968_640.png",
-      "mb": 1.85
-    },
-    {
-      "file": "frames/00104_click_97_80.png",
-      "mb": 1.7
-    },
-    {
-      "file": "frames/00105_click_736_761.png",
-      "mb": 1.7
-    },
-    {
-      "file": "frames/00106_click_778_761.png",
-      "mb": 1.76
-    },
-    {
-      "file": "frames/00107_click_1610_174.png",
-      "mb": 1.76
-    },
-    {
-      "file": "frames/00108_click_778_761.png",
-      "mb": 1.77
-    },
-    {
-      "file": "frames/00109_click_500_260.png",
-      "mb": 1.75
-    },
-    {
-      "file": "frames/00110_click_834_260.png",
-      "mb": 1.66
-    },
-    {
-      "file": "frames/00111_click_968_636.png",
-      "mb": 1.76
-    },
-    {
-      "file": "frames/00112_press_escape.png",
-      "mb": 3.17
-    },
-    {
-      "file": "frames/00113_vendor_open_attempt_1.png",
-      "mb": 2.53
-    },
-    {
-      "file": "frames/00114_click_145_158.png",
-      "mb": 2.53
-    },
-    {
-      "file": "frames/00115_altclick_285_846.png",
-      "mb": 2.26
-    },
-    {
-      "file": "frames/00116_click_905_460.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00117_click_1610_174.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00118_click_965_682.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00119_click_1825_174.png",
-      "mb": 2.89
-    },
-    {
-      "file": "frames/00120_rightclick_1810_229.png",
-      "mb": 1.87
-    },
-    {
-      "file": "frames/00121_click_291_80.png",
-      "mb": 1.9
-    },
-    {
-      "file": "frames/00122_click_1610_174.png",
-      "mb": 1.99
-    },
-    {
-      "file": "frames/00123_ctrlclick_1528_229.png",
-      "mb": 1.92
-    },
-    {
-      "file": "frames/00124_click_36_387.png",
-      "mb": 1.94
-    },
-    {
-      "file": "frames/00125_click_113_428.png",
-      "mb": 1.98
-    },
-    {
-      "file": "frames/00126_click_59_490.png",
-      "mb": 1.98
-    },
-    {
-      "file": "frames/00127_click_132_760.png",
-      "mb": 1.96
-    },
-    {
-      "file": "frames/00128_click_968_640.png",
-      "mb": 1.88
-    },
-    {
-      "file": "frames/00129_press_escape.png",
-      "mb": 3.16
-    },
-    {
-      "file": "frames/00130_vendor_open_attempt_1.png",
-      "mb": 2.52
-    },
-    {
-      "file": "frames/00131_click_145_158.png",
-      "mb": 2.53
-    },
-    {
-      "file": "frames/00132_altclick_285_846.png",
-      "mb": 2.26
-    },
-    {
-      "file": "frames/00133_click_905_460.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00134_click_1610_174.png",
-      "mb": 2.27
-    },
-    {
-      "file": "frames/00135_click_965_682.png",
-      "mb": 2.28
-    },
-    {
-      "file": "frames/00136_click_1825_174.png",
-      "mb": 2.89
-    },
-    {
-      "file": "frames/00137_rightclick_1810_229.png",
-      "mb": 1.86
-    },
-    {
-      "file": "frames/00138_click_291_80.png",
-      "mb": 1.91
-    },
-    {
-      "file": "frames/00139_click_1610_174.png",
-      "mb": 1.96
-    },
-    {
-      "file": "frames/00140_ctrlclick_1528_229.png",
-      "mb": 1.91
-    },
-    {
-      "file": "frames/00141_click_36_387.png",
-      "mb": 1.95
-    },
-    {
-      "file": "frames/00142_click_113_428.png",
-      "mb": 1.95
-    },
-    {
-      "file": "frames/00143_click_59_490.png",
-      "mb": 1.96
-    },
-    {
-      "file": "frames/00144_click_132_760.png",
-      "mb": 1.91
-    },
-    {
-      "file": "frames/0001_203519.mp4",
-      "mb": 44.33
-    },
-    {
-      "file": "supervisor/2026-09-15_203455_supervise.log",
       "mb": 0.0
     },
     {
-      "file": "supervisor/supervise.log",
-      "mb": 0.01
+      "file": "frames/0003_205327.mp4",
+      "mb": 24.74
     },
     {
-      "file": "supervisor/supervise_frames/2026-09-15_204027_found.png",
+      "file": "frames/00290_click_36_387.png",
+      "mb": 2.02
+    },
+    {
+      "file": "frames/00291_click_113_428.png",
+      "mb": 2.03
+    },
+    {
+      "file": "frames/00292_click_59_490.png",
+      "mb": 2.04
+    },
+    {
+      "file": "frames/00293_click_132_760.png",
+      "mb": 2.01
+    },
+    {
+      "file": "frames/00294_click_968_640.png",
+      "mb": 2.03
+    },
+    {
+      "file": "frames/00295_click_839_758.png",
+      "mb": 1.77
+    },
+    {
+      "file": "frames/00296_click_1610_174.png",
+      "mb": 1.77
+    },
+    {
+      "file": "frames/00297_click_838_176.png",
+      "mb": 1.78
+    },
+    {
+      "file": "frames/00298_click_1103_640.png",
+      "mb": 1.67
+    },
+    {
+      "file": "frames/00299_click_968_640.png",
+      "mb": 1.66
+    },
+    {
+      "file": "frames/00300_click_1610_174.png",
+      "mb": 1.87
+    },
+    {
+      "file": "frames/00301_ctrlclick_1471_229.png",
+      "mb": 1.81
+    },
+    {
+      "file": "frames/00302_click_36_387.png",
+      "mb": 1.86
+    },
+    {
+      "file": "frames/00303_click_113_428.png",
+      "mb": 1.86
+    },
+    {
+      "file": "frames/00304_click_59_490.png",
       "mb": 1.85
+    },
+    {
+      "file": "frames/00305_click_132_760.png",
+      "mb": 1.78
+    },
+    {
+      "file": "frames/00306_click_968_640.png",
+      "mb": 1.77
+    },
+    {
+      "file": "frames/00307_click_839_758.png",
+      "mb": 1.78
+    },
+    {
+      "file": "frames/00308_click_1610_174.png",
+      "mb": 1.78
+    },
+    {
+      "file": "frames/00309_click_838_176.png",
+      "mb": 1.76
+    },
+    {
+      "file": "frames/00310_click_1103_640.png",
+      "mb": 1.68
+    },
+    {
+      "file": "frames/00311_click_968_640.png",
+      "mb": 1.67
+    },
+    {
+      "file": "frames/00312_click_1610_174.png",
+      "mb": 1.77
+    },
+    {
+      "file": "frames/00313_ctrlclick_1471_229.png",
+      "mb": 1.75
+    },
+    {
+      "file": "frames/00314_click_36_387.png",
+      "mb": 1.78
+    },
+    {
+      "file": "frames/00315_click_113_428.png",
+      "mb": 1.78
+    },
+    {
+      "file": "frames/00316_click_59_490.png",
+      "mb": 1.79
+    },
+    {
+      "file": "frames/00317_click_132_760.png",
+      "mb": 1.78
+    },
+    {
+      "file": "frames/00318_click_968_640.png",
+      "mb": 1.69
+    },
+    {
+      "file": "frames/00319_click_839_758.png",
+      "mb": 1.78
+    },
+    {
+      "file": "supervisor/2026-09-19_145348_supervise.log",
+      "mb": 0.05
+    },
+    {
+      "file": "supervisor/supervise.log",
+      "mb": 0.06
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-19_205523_found.png",
+      "mb": 1.79
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-19_205530_tab4_0slots.png",
+      "mb": 2.83
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-19_205536_reset.png",
+      "mb": 3.31
     },
     {
       "file": "config.json",
