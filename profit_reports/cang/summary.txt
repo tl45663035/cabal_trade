@@ -8,12 +8,12 @@ Wed 2026-09-16           15.62h  210.00M    8.34B   8.13B  13.78K    2.5%   13.4
 Thu 2026-09-17           12.08h  401.01M    7.46B   7.05B  11.73K    5.4%   33.19M
 Fri 2026-09-18           12.61h  207.75M   10.12B   9.91B  14.76K    2.1%   16.47M
 Sat 2026-09-19           11.34h  215.00M    7.20B   6.98B  11.46K    3.0%   18.97M
-Sun 2026-09-20 (so far)   4.39h   99.17M    3.59B   3.49B   5.74K    2.8%   22.59M
+Sun 2026-09-20 (so far)   4.89h   99.17M    3.59B   3.49B   5.74K    2.8%   20.26M
 ==================================================================================
-7 DAYS                   72.85h    1.59B   46.41B  44.82B  73.92K    3.4%   21.76M
+7 DAYS                   73.35h    1.59B   46.41B  44.82B  73.92K    3.4%   21.61M
 
 
-PROFIT SUMMARY -- sold since 2026-09-20 00:00 (as of 05:16)
+PROFIT SUMMARY -- sold since 2026-09-20 00:00 (as of 05:46)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
@@ -31,9 +31,9 @@ TOTAL                 99.17M    3.59B    3.49B  5.74K   608.25K  625.52K    2.8%
 by run, on what each run sold:
   launched               units       revenue   cost  profit  hours        an hour
   2026-09-20T00:42:01    3.05K         1.87B  1.81B  57.09M   1.73         32.95M
-  2026-09-20T02:38:46    2.69K         1.72B  1.68B  42.08M   2.53         16.62M  live
+  2026-09-20T02:38:46    2.69K         1.72B  1.68B  42.08M   2.66         15.80M  live
 ---------------------------------------------------------------------------------------
-  2 run(s) trading for 4.26 hour(s)                                 23.25M an hour
+  2 run(s) trading for 4.40 hour(s)                                 22.56M an hour
 
 sold with no lot to match, left out of the totals:
   forcecorehighest     74 units
@@ -43,6 +43,7 @@ sold with no lot to match, left out of the totals:
 held by the live run, to be counted when it sells or carried to the next run at that launch's floor:
   chaoscore             772 units  basis  550.44M
   divinestone           611 units  basis  430.51M
+  forcecorehighest      553 units  basis  146.52M
   upgradecoreultimate   362 units  basis  159.93M
   sienasunbindingstone    2 units  basis  149.91M
   demonitekatanalua       1 units  basis    3.90M
@@ -50,46 +51,50 @@ held by the live run, to be counted when it sells or carried to the next run at 
 
 
 
-ROWS -- 2026-09-20_023846_run_board.log, board during pass 28 at row 12, read 2026-09-20T05:16:26 (live)
+ROWS -- 2026-09-20_023846_run_board.log, board during pass 34 at row 8, read 2026-09-20T05:46:47 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Divine Stone Set X 162                  x1         -   721.62K         -   116.90M         -
+    1  Divine Stone Set X 162                  x1         -   721.60K         -   116.90M         -
     2  Siena's Unbinding Stone                 x1    74.96M    99.00M   +24.04M    99.00M    24.04M
-    3  Upgrade Core (Ultimate                 x79         -   479.19K         -   479.19K         -
-    4  Divine Stone Set X 147                  x1         -   721.62K         -   106.08M         -
-    5  Chaos Core Set X 153                    x1   713.00K   729.67K   +16.67K   111.64M     2.55M
-    6  Chaos Core Set X 150                    x1   713.00K   729.67K   +16.67K   109.45M     2.50M
-    7  Chaos Core Set X 147                    x1   713.00K   729.67K   +16.67K   107.26M     2.45M
-    8  Divine Stone Set X 153                  x1         -   721.62K         -   110.41M         -
-    9  Chaos Core Set X 159                    x1   713.00K   729.67K   +16.67K   116.02M     2.65M
-   10  Chaos Core Set X 162                    x1   713.00K   729.67K   +16.67K   118.21M     2.70M
-   11  Upgrade Core (Ultimate                x168         -   479.19K         -   479.19K         -
-   12  Upgrade Core (Ultimate                x115   446.23K   479.19K   +32.96K   479.19K     3.79M <- here
-   13  Divine Stone Set X 149                  x1   687.83K   721.62K   +33.79K   107.52M     5.04M
+    3  Upgrade Core (Ultimate                 x79         -   479.15K         -   479.15K         -
+    4  Divine Stone Set X 147                  x1         -   721.60K         -   106.08M         -
+    5  Chaos Core Set X 153                    x1   713.00K   729.60K   +16.59K   111.63M     2.54M
+    6  Chaos Core Set X 150                    x1   713.00K   729.59K   +16.59K   109.44M     2.49M
+    7  Chaos Core Set X 147                    x1   713.00K   729.59K   +16.59K   107.25M     2.44M
+    8  Divine Stone Set X 153                  x1         -   721.60K         -   110.40M         - <- here
+    9  Chaos Core Set X 159                    x1   713.00K   729.60K   +16.60K   116.01M     2.64M
+   10  Chaos Core Set X 162                    x1   713.00K   729.60K   +16.60K   118.20M     2.69M
+   11  Upgrade Core (Ultimate                x168         -   479.15K         -   479.15K         -
+   12  Upgrade Core (Ultimate                x115   446.23K   479.15K   +32.92K   479.15K     3.79M
+   13  Divine Stone Set X 149                  x1   687.83K   721.60K   +33.77K   107.52M     5.03M
+   14  Force Core(Highest                    x163   264.95K   299.96K   +35.01K   299.96K     5.71M
+   15  Force Core(Highest                    x250   264.95K   299.96K   +35.01K   299.96K     8.75M
+   16  Force Core(Highest                    x140   264.95K   299.95K   +35.01K   299.95K     4.90M
    28  Demonite Katana | Lua                   x1         -     3.90M         -     3.90M         -
    29  Bemonvecnste' TE, t__                   x1         -    30.00M         -    30.00M         -
    30  Siena's Unbinding Stone                 x1    74.96M   950.00M  +875.04M   950.00M   875.04M
        item                                                      rows     units    listed    profit
        Bemonvecnste' TE, t__                                        1         1    30.00M         -
-       Chaos Core Set                                               5       771   562.58M    12.85M
+       Chaos Core Set                                               5       771   562.52M    12.80M
        Demonite Katana | Lua                                        1         1     3.90M         -
-       Divine Stone Set                                             4       611   440.91M     5.04M
+       Divine Stone Set                                             4       611   440.90M     5.03M
+       Force Core(Highest                                           3       553   165.88M    19.36M
        Siena's Unbinding Stone                                      2         2     1.05B   899.09M
-       Upgrade Core (Ultimate                                       3       362   173.47M     3.79M
-       board                                16   1.75K   2.26B                              920.76M
-    balance now 1.40B, read 2026-09-20T05:12:58
-       stock at its listed price                                                              2.26B
-       Alz, latest balance line                                                               1.40B
-       NET WORTH                                                                              3.66B
-       PROFIT IF SOLD, every row at its listed price                                        920.76M
+       Upgrade Core (Ultimate                                       3       362   173.45M     3.79M
+       board                                19   2.30K   2.43B                              940.06M
+    balance now 1.26B, read 2026-09-20T05:44:25
+       stock at its listed price                                                              2.43B
+       Alz, latest balance line                                                               1.26B
+       NET WORTH                                                                              3.68B
+       PROFIT IF SOLD, every row at its listed price                                        940.06M
     7 row(s) show no bought price and are not counted
 
 
-MARKET -- 2026-09-20_023846_run.log, pass 28, log last written 05:16 (live)
+MARKET -- 2026-09-20_023846_run.log, pass 34, log last written 05:46 (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  264.95K  269.87K   4.92K      1.8%      0
+Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
 Chaos Core                  5        -        -       -         -      -  holds the most it can want, 5; not priced
 Divine Stone                4        -        -       -         -      -  holds the most it can want, 4; not priced
-Force Core(High)            0  190.69K  189.00K  -1.69K     -0.9%      0
+Force Core(High)            0  190.68K  189.30K  -1.38K     -0.7%      0
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
