@@ -1560,12 +1560,11 @@ def finish_special(model, job, first, last, verbose=True):
         with calibration.phase(f"read tab {row_model.WORK_TAB} before buying"):
             before = work_tab_slots(verbose=False)
         with calibration.phase(f"buy {want} {core}"):
-            out = buy.buy_row_one(slot, want, verbose=verbose, batch=1,
-                                  leave_behind=0)
-        bought = int((out or {}).get("bought") or 0)
-        if bought <= 0:
+            taken = take_offers(job, want, 1, on_margin=False,
+                                verbose=verbose)
+        bought = int(job["bought"])
+        if not taken or bought <= 0:
             raise buy.Refused(f"nothing was bought for the {core} special row.")
-        job["bought"], job["paid"] = bought, int((out or {}).get("spent") or 0)
         job["step"] = "list"
         model.hold_work(job["landing"], core)
         with calibration.phase(f"wait for the {core} to land on tab "
@@ -1610,11 +1609,21 @@ def resupply_special(model, first, last, verbose=True):
             return None
         print("")
         ordinal = len(special_seats(model, first, last).get(core, []))
+        run = calibration.load_shared()["resupply"]
+        leave = int(calibration.buy_leave_behind(core))
+        steps_max = int(run["buy_scroll_limit"])
+        take_all = int(run["buy_take_all_after"])
         print(f"-- {core} special row {ordinal + 1} of "
               f"{special_rows(core)}: {special_qty()} at "
               f"{special_under(core, ordinal):,} to "
               f"{special_under(core, ordinal) + special_spread():,} under "
               f"the market --")
+        if leave:
+            print(f"  {leave} stays behind on every row bought until an "
+                  f"order is {take_all} step(s) down with nothing spare, and "
+                  f"from there every row is taken whole; each order prices "
+                  f"the favourite afresh, then wheels down, up to "
+                  f"{steps_max} step(s)")
         if not shop_ready(f"the {core} special row", verbose=verbose):
             return None
         war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
@@ -1627,7 +1636,10 @@ def resupply_special(model, first, last, verbose=True):
              landing=list(landing), special=True)
         job = {"kind": "special", "core": core, "slot": slot,
                "landing": landing, "step": "buy", "bought": 0, "paid": 0,
-               "listed": 0, "rows": [], "ordinal": ordinal}
+               "listed": 0, "rows": [], "ordinal": ordinal,
+               "target": special_qty(), "want_max": None, "sells_at": 0,
+               "gap": None, "leave": leave, "steps_max": steps_max,
+               "take_all": take_all, "take_all_on": False, "orders": 0}
     else:
         print("")
         print(f"-- {job['core']} special row: carrying on at {job['step']} "
@@ -2060,10 +2072,9 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True,
             "rows": [], "listed": 0}
 
 
-def buy_cores(job, verbose=True):
+def take_offers(job, want, batch, on_margin=True, verbose=True):
     run = calibration.load_shared()["resupply"]
     core, slot, target = job["core"], job["slot"], job["target"]
-    batch = calibration.CRAFT_CORES_PER_SET
     take_all = int(job.get("take_all", run["buy_take_all_after"]))
     job.setdefault("take_all_on", False)
     steps = 0
@@ -2125,25 +2136,27 @@ def buy_cores(job, verbose=True):
             buy.scroll_down(1, verbose=verbose)
         return True
 
-    def take(want, on_margin=True):
-        nonlocal steps, searched
-        steps = 0
-        searched = False
-        while True:
-            got = order(want, on_margin=on_margin)
-            if got is THIN:
-                if not step_down():
-                    return False
-                continue
-            if got is None or got["bought"] <= 0:
+    while True:
+        got = order(want, on_margin=on_margin)
+        if got is THIN:
+            if not step_down():
                 return False
-            job["bought"] += got["bought"]
-            job["paid"] += got["spent"]
-            return True
+            continue
+        if got is None or got["bought"] <= 0:
+            return False
+        job["bought"] += got["bought"]
+        job["paid"] += got["spent"]
+        return True
+
+
+def buy_cores(job, verbose=True):
+    core, target = job["core"], job["target"]
+    batch = calibration.CRAFT_CORES_PER_SET
 
     while job["bought"] < target:
         print(f"  {job['bought']}/{target} {core} held")
-        if not take(target - job["bought"]):
+        if not take_offers(job, target - job["bought"], batch,
+                           verbose=verbose):
             break
 
     while job["bought"] % batch and not job.get("broke"):
@@ -2151,7 +2164,8 @@ def buy_cores(job, verbose=True):
         print(f"  {job['bought']} {core} is {short} short of a whole batch "
               f"of {batch}; topping up whatever the margin says, because a "
               f"remainder crafts into nothing")
-        if not take(short, on_margin=False):
+        if not take_offers(job, short, batch, on_margin=False,
+                           verbose=verbose):
             break
 
     bought = job["bought"]
