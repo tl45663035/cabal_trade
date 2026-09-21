@@ -91,6 +91,7 @@
     },
     "buy_random_range": 15,
     "buy_scroll_limit": 30,
+    "buy_take_all_after": 10,
     "core_offer_rows": 5,
     "buy_leave_behind": {
       "default": 0,
@@ -134,6 +135,7 @@
     "home_notches": 30,
     "for_minutes": 10000,
     "price_check_factor": 5.0,
+    "item_check_factor": 0.3,
     "stop_key_presses": 4,
     "stop_key_window": 1.5,
     "stop_key_hold": 0.12,
@@ -237,10 +239,14 @@
       }
     },
     "price_trust_multiple": 10,
-    "screen": "1920x1080"
+    "screen": "1920x1080",
+    "first_list_price": {
+      "Arionell": 340000000
+    }
   },
   "debug": {
     "frames": true,
+    "video": false,
     "board_trace": true,
     "keep_frames": 500,
     "frames_queued": 64,
@@ -293,7 +299,8 @@
     "git_timeout": 5,
     "toggle_tries": 2,
     "cash_measure_timeout": 2.0,
-    "panel_load_timeout": 2.0
+    "panel_load_timeout": 2.0,
+    "panel_poll_gap": 0.1
   },
   "war": {
     "enabled": true,
@@ -470,5 +477,10 @@
     "max_file_mb": 95,
     "frames_after_minutes": 20,
     "live_frames": 60
+  },
+  "detect": {
+    "slot_inset": 6,
+    "panel_item_half": 24,
+    "panel_diff_threshold": 40
   }
 }

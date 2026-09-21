@@ -1,0 +1,46 @@
+2026-09-21_024733  .\supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-21_024733_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-21_021507_run.log ended: interrupted from the keyboard,02:47:33,dead
+  kept 30 png and 1 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-21_021507_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-21_024744_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  Inventory already closed
+  frame 2026-09-21_024751_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-21_024757_reset.png
+   2026-09-21_024758  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-21_024758_run.log
+     code cc7d82a
+     screen 1920x1080
+* relaunched (pid 12068),02:48:02,alive
+watching pid 12068, 2026-09-21_024758_run.log
+* pushed the profit report for cang,02:55:30,alive
+* pushed the profit report for cang,03:25:40,alive
+* war window, log quiet 170s,03:33:29,alive
+* pushed the profit report for cang,03:55:57,alive
+* server lag: not answering,04:11:00,alive
+* server lag: the server stalled,04:12:05,alive
+* pushed the profit report for cang,04:26:11,alive
+* server lag: not answering,04:27:53,alive
+* server lag: the server stalled,04:28:37,alive
+* server lag: the server stalled,04:28:58,alive
+* server lag: not answering,04:29:19,alive
+* server lag: the server stalled,04:30:22,alive
+* pushed the profit report for cang,04:56:20,alive
+* pushed the profit report for cang,05:26:30,alive
+* pushed the profit report for cang,05:56:45,alive
+* pushed the profit report for cang,06:26:58,alive
+* pushed the profit report for cang,06:57:14,alive
+* pushed the profit report for cang,07:27:29,alive
+
+  Ctrl 4 times: stopping the run the way Ctrl+C would.
+* supervisor cancelled with Ctrl x4,07:29:34,dead

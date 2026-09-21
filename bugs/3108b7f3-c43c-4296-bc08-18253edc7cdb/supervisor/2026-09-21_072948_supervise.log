@@ -1,0 +1,28 @@
+2026-09-21_072948  .\supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-21_072948_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-21_024758_run.log ended: interrupted from the keyboard,07:29:48,dead
+  kept 30 png and 1 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-21_024758_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-21_072959_found.png
+  interrupted: resupply of Force Core(Highest): bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core(Highest)' it was making from; nothing on screen is read to name it
+  frame 2026-09-21_073007_tab4_1slots.png
+$ py src_1080p/driver.py --config cang collect
+     relisting rows 1-25: 0 relisted, 15 empty, 10 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 15 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 07:30:08, ended 07:32:59, ran for 2m 51s
+* the log says tab 4 holds 'Force Core(Highest)', which is converted and never listed; converting it,07:32:59,dead
+$ py src_1080p/driver.py --config cang convert 1
+
+  Ctrl 4 times: stopping the run the way Ctrl+C would.
+* supervisor cancelled with Ctrl x4,07:34:21,dead
