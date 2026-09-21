@@ -413,8 +413,8 @@ def by_day(book):
           f"day midnight to midnight Central")
     print("")
     print(f"{'day':<26}{'trading':>9}{'elapsed':>9}{'profit':>15}"
-          f"{'revenue':>15}{'cost':>15}{'units':>8}{'margin':>8}"
-          f"{'an hour':>14}")
+          f"{'an hour':>14}{'revenue':>15}{'cost':>15}{'units':>8}"
+          f"{'margin':>8}")
     line(width=128)
     grand = collections.Counter()
     spans = run_spans(from_central(datetime.datetime.combine(
@@ -435,15 +435,15 @@ def by_day(book):
         all_gone += gone
         label = f"{day:%a %Y-%m-%d}" + (" (so far)" if not back else "")
         print(f"{label:<26}{up:>8.2f}h{gone:>8.2f}h{gain(t):>15,.0f}"
+              f"{gain(t) / up if up else 0:>14,.0f}"
               f"{t['revenue']:>15,.0f}{t['cost']:>15,.0f}"
-              f"{t['units']:>8,}{rate(t)}"
-              f"{gain(t) / up if up else 0:>14,.0f}")
+              f"{t['units']:>8,}{rate(t)}")
     line("=", width=128)
     print(f"{f'{count} DAYS':<26}{all_up:>8.2f}h{all_gone:>8.2f}h"
           f"{gain(grand):>15,.0f}"
+          f"{gain(grand) / all_up if all_up else 0:>14,.0f}"
           f"{grand['revenue']:>15,.0f}{grand['cost']:>15,.0f}"
-          f"{grand['units']:>8,}{rate(grand)}"
-          f"{gain(grand) / all_up if all_up else 0:>14,.0f}")
+          f"{grand['units']:>8,}{rate(grand)}")
 
 
 def report_day(book):
