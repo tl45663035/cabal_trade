@@ -826,10 +826,8 @@ def relist_one(model, index, verbose=True, first=None, last=None,
     special = special_of(row)
     under = None
     if special:
-        mine = special_seats(model, first, last).get(special, [])
-        under = special_undercut(special, mine.index(index)
-                                 if index in mine else 0)
-    if special:
+        under = special_undercut(special, special_ordinal(model, special, index,
+                                                          first, last))
         floor, why = 0, ""
         print(f"    row {index} is the {special} special row; listing at "
               f"{under:,} under the market, no floor")
@@ -1485,6 +1483,12 @@ def special_seats(model, first, last):
         if name is not None:
             seats.setdefault(name, []).append(index)
     return seats
+
+
+def special_ordinal(model, name, index, first, last):
+    mine = sorted(set(special_seats(model, first, last).get(name, []))
+                  | {int(index)})
+    return mine.index(int(index))
 
 
 def special_wanted(model, first, last):
