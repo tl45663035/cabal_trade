@@ -495,51 +495,6 @@ def report_day(book):
           f"{rate(total)}")
 
     print("")
-    print("by run, on what each run sold:")
-    print(f"  {'launched':<21}{'units':>7}{'revenue':>15}{'cost':>15}"
-          f"{'profit':>15}{'hours':>7}{'an hour':>15}")
-    all_hours = 0.0
-    shown = 0
-    for r in book["runs"]:
-        today_sales = [s for s in r["sold"] if s["at"] >= stamp(start)]
-        if not today_sales and r["run"][:10] != stamp(start)[:10]:
-            continue
-        t = sold_totals(today_sales)
-        ran = run_hours(r["run"])
-        all_hours += ran
-        shown += 1
-        each = f"{gain(t) / ran:>15,.0f}" if ran else f"{'--':>15}"
-        tag = "  live" if run_is_live(r["run"]) else ""
-        print(f"  {r['run']:<21}{t['units']:>7,}{t['revenue']:>15,.0f}"
-              f"{t['cost']:>15,.0f}{gain(t):>15,.0f}{ran:>7.2f}{each}{tag}")
-    line(width=103)
-    print(f"  {shown} run(s) trading for {all_hours:.2f} hour(s)"
-          f"{'':>40}{gain(total) / all_hours if all_hours else 0:>15,.0f} an hour")
-
-    unmatched = collections.Counter()
-    for r in book["runs"]:
-        if r["run"] >= stamp(start) or any(s["at"] >= stamp(start)
-                                           for s in r["sold"]):
-            unmatched.update(r["unmatched"])
-    if unmatched:
-        print("")
-        print("sold with no lot to match, left out of the totals:")
-        for k, n in unmatched.most_common():
-            print(f"  {k:<26}{n:>8,} units")
-
-    live = [r for r in book["runs"] if run_is_live(r["run"])]
-    if live:
-        r = live[-1]
-        held = {k: n for k, n in r["carried"].items() if n}
-        if held:
-            print("")
-            print("held by the live run, to be counted when it sells or "
-                  "carried to the next run at that launch's floor:")
-            for k, n in sorted(held.items(), key=lambda kv: -kv[1]):
-                basis = r["carried_cost"].get(k, 0)
-                print(f"  {k:<26}{n:>8,} units  basis {basis:>15,.0f}")
-
-    print("")
 
 
 BOARD_HEAD = re.compile(r"^  board after pass (\d+):$", re.M)
@@ -548,6 +503,7 @@ BOARD_LINE = re.compile(r"^(\s{4,}\d+\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+|-)\s+([\d
                         r"\s+(?:[-+]?[\d,.]+%?|-)\s+)([\d,]+)(\s*)$")
 BOARD_COLUMNS = re.compile(r"^(\s+bought/u\s+listed/u\s+margin\s+row price)\s*$")
 ITEM_COLUMNS = re.compile(r"^(\s{4}item\s+rows\s+units\s+listed)\s*$")
+ITEM_HEAD = re.compile(r"^\s+item\s+rows\s+units\s+listed")
 ITEM_LINE = re.compile(r"^(\s{4}(\S.*?)\s{2,}\d+\s+[\d,]+\s+[\d,]+)\s*$")
 PROFIT_WIDTH = 16
 MARGIN_WIDTH = 10
@@ -629,11 +585,17 @@ def report_trace(log, text):
     print(f"ROWS -- {trace.name}, board during pass {found.group(1)} at row "
           f"{found.group(2)}, read {found.group(5)}"
           f"{'' if 'ran for' in text else ' (live)'}")
+    skip = False
     for line in body.splitlines()[1:]:
-        print(raw_margin(line))
+        if ITEM_HEAD.match(line):
+            skip = True
+        if line.lstrip().startswith("balance now"):
+            skip = False
+        if not skip:
+            print(raw_margin(line))
     import networth
     networth.summary(log, BOARD_INDENT, BOARD_LABEL, BOARD_NUMBER,
-                     PROFIT_WIDTH, board_text=body)
+                     board_text=body)
     return True
 
 
@@ -660,13 +622,18 @@ def report_board():
     print(f"ROWS -- {log.name}, {title}"
           f"{'' if 'ran for' in text else ' (live)'}")
     gains = {}
+    skip = False
     for row in text[start:].splitlines():
         if row.startswith("-- pass") or row.startswith("  server clock"):
             break
-        if row.strip():
+        if ITEM_HEAD.match(row):
+            skip = True
+        if row.lstrip().startswith("balance now"):
+            skip = False
+        if row.strip() and not skip:
             print(row_total(row, gains))
     import networth
-    networth.summary(log, BOARD_INDENT, BOARD_LABEL, BOARD_NUMBER, PROFIT_WIDTH)
+    networth.summary(log, BOARD_INDENT, BOARD_LABEL, BOARD_NUMBER)
 
 
 PASS_HEAD = re.compile(r"^-- pass (\d+) --$", re.M)

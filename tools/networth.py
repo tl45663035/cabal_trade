@@ -176,15 +176,13 @@ def bought_worth(market, bought):
     return out
 
 
-def summary(log, indent="    ", width=40, number=18, extra=0,
-            board_text=None):
+def summary(log, indent="    ", width=40, number=18, board_text=None):
     market, board, unread, balance, bought = read(log, board_text)
     if not board:
         return
     stock = sum(row_worth(qty, each, listed)
                 for _, _, qty, each, listed, _ in board)
     held = sum(worth for *_, worth in bought_worth(market, bought))
-    _, total, unknown = profit_if_sold(board)
     print(f"{indent}{'stock at its listed price':<{width}}{stock:>{number},}")
     if held:
         print(f"{indent}{'bought since that board, not on it yet':<{width}}"
@@ -195,10 +193,6 @@ def summary(log, indent="    ", width=40, number=18, extra=0,
     print(f"{indent}{'Alz, latest balance line':<{width}}"
           f"{(f'{balance:,}' if balance is not None else 'unread'):>{number}}")
     print(f"{indent}{'NET WORTH':<{width}}{stock + held + (balance or 0):>{number},}")
-    print(f"{indent}{'PROFIT IF SOLD, every row at its listed price':<{width}}"
-          f"{'':>{number}}{total:>{extra},}")
-    if unknown:
-        print(f"{indent}{unknown} row(s) show no bought price and are not counted")
 
 
 def report(log, market, board, unread, balance, bought):
