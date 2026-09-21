@@ -412,7 +412,7 @@ def by_day(book):
     print(f"LAST {count} DAYS -- {first:%Y-%m-%d} to {today:%Y-%m-%d}, each "
           f"day midnight to midnight Central")
     print("")
-    print(f"{'day':<26}{'trading':>9}{'elapsed':>9}{'profit':>15}"
+    print(f"{'day':<26}{'up time':>9}{'elapsed':>9}{'profit':>15}"
           f"{'an hour':>14}{'revenue':>15}{'cost':>15}{'units':>8}"
           f"{'margin':>8}")
     line(width=128)
