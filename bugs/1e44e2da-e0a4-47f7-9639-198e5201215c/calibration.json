@@ -33,7 +33,8 @@
     "VK_8": 56,
     "VK_9": 57,
     "VK_BACK": 8,
-    "VK_N": 78
+    "VK_N": 78,
+    "KEY_STATE_DOWN": 32768
   },
   "game": {
     "title_hint": "PlayCabal"
@@ -201,9 +202,9 @@
     ],
     "dialog_buttons": [
       0.4688,
-      0.5296,
-      0.6641,
-      0.7085
+      0.5768,
+      0.6125,
+      0.6313
     ],
     "gift_icon": [
       0.148,
@@ -225,6 +226,12 @@
       0.56,
       0.175
     ],
+    "cash_title": [
+      0.4661,
+      0.0832,
+      0.5365,
+      0.1237
+    ],
     "cash_grid": [
       0.2422,
       0.1717,
@@ -237,17 +244,35 @@
       0.6406,
       0.63
     ],
+    "cash_dialog_qty": [
+      0.4557,
+      0.4757,
+      0.5104,
+      0.4985
+    ],
+    "cash_dialog_qty_max": [
+      0.5104,
+      0.4757,
+      0.5417,
+      0.4985
+    ],
     "cash_balance": [
       0.5906,
       0.7962,
       0.6406,
       0.8174
     ],
+    "cash_gems": [
+      0.4844,
+      0.7962,
+      0.5521,
+      0.8174
+    ],
     "register_table_band": [
       0.1,
       0.12,
-      0.48,
-      0.66
+      0.4583,
+      0.693
     ],
     "register_footer_band": [
       0.1,
@@ -256,10 +281,10 @@
       0.73
     ],
     "register_button_band": [
-      0.41,
+      0.4094,
       0.12,
-      0.48,
-      0.66
+      0.4604,
+      0.693
     ],
     "purchase_button_band": [
       0.41,
@@ -300,7 +325,7 @@
     "vendor_tab_band": [
       0.0,
       0.116,
-      0.224,
+      0.1979,
       0.1556
     ],
     "convert_grid_band": [
@@ -440,7 +465,7 @@
     "empty_row": "premiumexclusiveslot",
     "sort_direction": "(low|high)\\s*to",
     "purchase_row": "^(?P<name>.*?)\\s+(?P<qty>\\S+)\\s+(?P<price>\\d[\\d,]*)\\s*\\D*$",
-    "pack_marker": "\\bX\\s*(\\d+)\\s*$",
+    "pack_marker": "(?<=\\s)X\\s*(\\d+)\\s*$",
     "row_grouping": "(?<=\\d)[.\\s](?=\\d{3}(?!\\d)(?!,))",
     "change_word": "Change",
     "dismiss_word": "Cancel",
@@ -449,6 +474,8 @@
     "voucher_search": "voucher",
     "voucher_word": "Gold",
     "close_word": "Close",
+    "gift_all_word": "All",
+    "gift_auto_word": "Auto",
     "register_word": "Register",
     "status_complete": "Complete",
     "cash_purchase_word": "Purchase",
@@ -457,6 +484,7 @@
     "cash_price_word": "Price",
     "cash_balance_word": "Balance",
     "cash_tab_word": "Useable",
+    "cash_title_word": "Cash Shop",
     "vendor_tab_words": "normal|dungeon|repurchase",
     "convert_confirm_word": "OK",
     "convert_cancel_word": "Cancel",
@@ -509,14 +537,17 @@
       "T": "7",
       "A": "4"
     },
-    "use_question": "Use [CABAL Gift Voucher",
+    "use_question": [
+      "Use [CABAL Gift Voucher",
+      "Use item"
+    ],
     "yes_word": "Yes",
     "no_word": "No"
   },
   "game_facts": {
     "favourite_count": 10,
     "vendor_tabs": "Normal|Dungeon|Repurchase",
-    "craft_tab": 8,
+    "craft_tab": 6,
     "craft_key_slot": [
       1,
       8
@@ -536,7 +567,7 @@
     "craft_material_word": "Material",
     "craft_cores_per_set": 3,
     "grid_size": 8,
-    "agent_shop_tab": 8,
+    "agent_shop_tab": 6,
     "agent_shop_slot": [
       1,
       7
@@ -585,7 +616,7 @@
         2560,
         1440
       ],
-      "measured_at": "2026-09-15T01:43:45",
+      "measured_at": "2026-09-18T10:45:03",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -611,11 +642,11 @@
         "alz_box": [
           2249,
           890,
-          2482,
+          2481,
           909
         ],
         "anchor": [
-          2482,
+          2481,
           890
         ],
         "tabs": {
@@ -1047,17 +1078,17 @@
           1229
         ],
         "row_one_y": 230,
-        "row_pitch": 79,
+        "row_pitch": 80,
         "row_one_box": [
           256,
-          191,
+          190,
           1229,
-          269
+          270
         ],
         "button_x": 1126,
         "table_point": [
           526,
-          309
+          310
         ],
         "rows_per_notch": 1,
         "register_rows_seen": 9,
@@ -1142,7 +1173,7 @@
             1066
           ],
           "1x2": [
-            318,
+            319,
             1066
           ],
           "1x3": [
@@ -1154,7 +1185,7 @@
             1066
           ],
           "1x5": [
-            512,
+            511,
             1066
           ],
           "2x1": [
@@ -1162,7 +1193,7 @@
             1129
           ],
           "2x2": [
-            318,
+            319,
             1129
           ],
           "2x3": [
@@ -1174,48 +1205,48 @@
             1129
           ],
           "2x5": [
-            512,
+            511,
             1129
           ],
           "3x1": [
             252,
-            1189
+            1216
           ],
           "3x2": [
-            318,
-            1189
+            319,
+            1216
           ],
           "3x3": [
             384,
-            1189
+            1216
           ],
           "3x4": [
             446,
-            1189
+            1216
           ],
           "3x5": [
-            512,
-            1189
+            511,
+            1216
           ],
           "4x1": [
             252,
-            1254
+            1259
           ],
           "4x2": [
-            318,
-            1254
+            319,
+            1259
           ],
           "4x3": [
             384,
-            1254
+            1259
           ],
           "4x4": [
             446,
-            1254
+            1259
           ],
           "4x5": [
-            512,
-            1254
+            511,
+            1259
           ]
         },
         "set_to_core": {
@@ -1230,7 +1261,7 @@
           "Force Core(Medium)": {
             "cell": "2x2",
             "point": [
-              318,
+              319,
               1129
             ],
             "costs": "Force Core Set (Medium)"
@@ -1254,7 +1285,7 @@
           "Force Core (Ultimate)": {
             "cell": "2x5",
             "point": [
-              512,
+              511,
               1129
             ],
             "costs": "Force Core Set (Ultimate)"
@@ -1263,15 +1294,15 @@
             "cell": "4x1",
             "point": [
               252,
-              1254
+              1259
             ],
             "costs": "Upgrade Core Set (Low)"
           },
           "Upgrade Core(Medium)": {
             "cell": "4x2",
             "point": [
-              318,
-              1254
+              319,
+              1259
             ],
             "costs": "Upgrade Core Set (Medium)"
           },
@@ -1279,7 +1310,7 @@
             "cell": "4x3",
             "point": [
               384,
-              1254
+              1259
             ],
             "costs": "Upgrade Core Set (High)"
           },
@@ -1287,31 +1318,31 @@
             "cell": "4x4",
             "point": [
               446,
-              1254
+              1259
             ],
             "costs": "Upgrade Core Set (Highest)"
           },
           "Upgrade Core (Ultimate)": {
             "cell": "4x5",
             "point": [
-              512,
-              1254
+              511,
+              1259
             ],
             "costs": "Upgrade Core Set (Ultimate)"
           }
         },
         "columns": [
           252,
-          318,
+          319,
           384,
           446,
-          512
+          511
         ],
         "rows": [
           1066,
           1129,
-          1189,
-          1254
+          1216,
+          1259
         ]
       },
       "craft": {
@@ -1360,19 +1391,43 @@
           ],
           [
             1624,
-            702
+            701
           ],
           [
             1624,
-            836
+            834
           ]
         ],
         "close": [
           1989,
           1138
+        ],
+        "receive_all": [
+          1619,
+          1058
+        ],
+        "special": [
+          1928,
+          659
         ]
       },
       "cashshop": {
+        "purchase_armoraccountbindsealstone": [
+          978,
+          1010
+        ],
+        "scroll_armoraccountbindsealstone": 13,
+        "purchase_armoraccountbindunsealstone": [
+          1400,
+          1010
+        ],
+        "scroll_armoraccountbindunsealstone": 13,
+        "scroll_epicboosterhighest": 23,
+        "scroll_blessingbeadsuperior": 0,
+        "scroll_forcegempackage": 0,
+        "scroll_sienasunbindingstone": 30,
+        "scroll_yekaterinavipmembership": 0,
+        "scroll_arionell": 10,
         "icon": [
           464,
           1340
@@ -1383,13 +1438,23 @@
           1640,
           1142
         ],
+        "gems": [
+          1240,
+          1113,
+          1413,
+          1142
+        ],
         "tab_useable": [
           1120,
           218
         ],
-        "purchase_yekaterinavipmembership": [
+        "purchase_blessingbeadsuperior": [
           978,
-          386
+          698
+        ],
+        "purchase_forcegempackage": [
+          978,
+          1010
         ],
         "window": [
           987,
@@ -1404,6 +1469,22 @@
         "cancel": [
           1465,
           820
+        ],
+        "purchase_yekaterinavipmembership": [
+          978,
+          386
+        ],
+        "purchase_arionell": [
+          978,
+          1010
+        ],
+        "purchase_epicboosterhighest": [
+          1400,
+          1010
+        ],
+        "purchase_sienasunbindingstone": [
+          1826,
+          1010
         ]
       }
     },
@@ -1412,7 +1493,7 @@
         1920,
         1080
       ],
-      "measured_at": "2026-09-15T14:58:06",
+      "measured_at": "2026-09-21T15:25:43",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -1436,7 +1517,7 @@
       },
       "inventory": {
         "alz_box": [
-          1782,
+          1783,
           688,
           1860,
           700
@@ -1447,294 +1528,294 @@
         ],
         "tabs": {
           "1": [
-            1458,
+            1454,
             181
           ],
           "2": [
-            1511,
+            1507,
             181
           ],
           "3": [
-            1564,
+            1560,
             181
           ],
           "4": [
-            1617,
+            1613,
             181
           ],
           "5": [
-            1670,
+            1666,
             181
           ],
           "6": [
-            1723,
+            1719,
             181
           ],
           "7": [
-            1777,
+            1773,
             181
           ],
           "8": [
-            1830,
+            1826,
             181
           ]
         },
         "tab_pitch": 53.17439999999995,
         "slots": {
           "1x1": [
-            1479,
+            1475,
             236
           ],
           "1x2": [
-            1535,
+            1531,
             236
           ],
           "1x3": [
-            1591,
+            1587,
             236
           ],
           "1x4": [
-            1647,
+            1643,
             236
           ],
           "1x5": [
-            1703,
+            1699,
             236
           ],
           "1x6": [
-            1759,
+            1755,
             236
           ],
           "1x7": [
-            1815,
+            1811,
             236
           ],
           "1x8": [
-            1871,
+            1867,
             236
           ],
           "2x1": [
-            1479,
+            1475,
             292
           ],
           "2x2": [
-            1535,
+            1531,
             292
           ],
           "2x3": [
-            1591,
+            1587,
             292
           ],
           "2x4": [
-            1647,
+            1643,
             292
           ],
           "2x5": [
-            1703,
+            1699,
             292
           ],
           "2x6": [
-            1759,
+            1755,
             292
           ],
           "2x7": [
-            1815,
+            1811,
             292
           ],
           "2x8": [
-            1871,
+            1867,
             292
           ],
           "3x1": [
-            1479,
+            1475,
             348
           ],
           "3x2": [
-            1535,
+            1531,
             348
           ],
           "3x3": [
-            1591,
+            1587,
             348
           ],
           "3x4": [
-            1647,
+            1643,
             348
           ],
           "3x5": [
-            1703,
+            1699,
             348
           ],
           "3x6": [
-            1759,
+            1755,
             348
           ],
           "3x7": [
-            1815,
+            1811,
             348
           ],
           "3x8": [
-            1871,
+            1867,
             348
           ],
           "4x1": [
-            1479,
+            1475,
             404
           ],
           "4x2": [
-            1535,
+            1531,
             404
           ],
           "4x3": [
-            1591,
+            1587,
             404
           ],
           "4x4": [
-            1647,
+            1643,
             404
           ],
           "4x5": [
-            1703,
+            1699,
             404
           ],
           "4x6": [
-            1759,
+            1755,
             404
           ],
           "4x7": [
-            1815,
+            1811,
             404
           ],
           "4x8": [
-            1871,
+            1867,
             404
           ],
           "5x1": [
-            1479,
+            1475,
             460
           ],
           "5x2": [
-            1535,
+            1531,
             460
           ],
           "5x3": [
-            1591,
+            1587,
             460
           ],
           "5x4": [
-            1647,
+            1643,
             460
           ],
           "5x5": [
-            1703,
+            1699,
             460
           ],
           "5x6": [
-            1759,
+            1755,
             460
           ],
           "5x7": [
-            1815,
+            1811,
             460
           ],
           "5x8": [
-            1871,
+            1867,
             460
           ],
           "6x1": [
-            1479,
+            1475,
             516
           ],
           "6x2": [
-            1535,
+            1531,
             516
           ],
           "6x3": [
-            1591,
+            1587,
             516
           ],
           "6x4": [
-            1647,
+            1643,
             516
           ],
           "6x5": [
-            1703,
+            1699,
             516
           ],
           "6x6": [
-            1759,
+            1755,
             516
           ],
           "6x7": [
-            1815,
+            1811,
             516
           ],
           "6x8": [
-            1871,
+            1867,
             516
           ],
           "7x1": [
-            1479,
+            1475,
             573
           ],
           "7x2": [
-            1535,
+            1531,
             573
           ],
           "7x3": [
-            1591,
+            1587,
             573
           ],
           "7x4": [
-            1647,
+            1643,
             573
           ],
           "7x5": [
-            1703,
+            1699,
             573
           ],
           "7x6": [
-            1759,
+            1755,
             573
           ],
           "7x7": [
-            1815,
+            1811,
             573
           ],
           "7x8": [
-            1871,
+            1867,
             573
           ],
           "8x1": [
-            1479,
+            1475,
             629
           ],
           "8x2": [
-            1535,
+            1531,
             629
           ],
           "8x3": [
-            1591,
+            1587,
             629
           ],
           "8x4": [
-            1647,
+            1643,
             629
           ],
           "8x5": [
-            1703,
+            1699,
             629
           ],
           "8x6": [
-            1759,
+            1755,
             629
           ],
           "8x7": [
-            1815,
+            1811,
             629
           ],
           "8x8": [
-            1871,
+            1867,
             629
           ]
         },
@@ -1828,58 +1909,65 @@
           150
         ],
         "purchase_buy_x": 828,
-        "purchase_row_pitch": 54,
-        "purchase_row_one_y": 258,
+        "purchase_row_pitch": 55,
+        "purchase_row_one_y": 257,
         "purchase_row_one": [
           192,
-          231,
+          230,
           922,
-          285
+          284
         ],
         "purchase_rows_seen": 8,
         "purchase_row_content": [
           232,
-          231,
+          230,
           870,
-          285
+          284
         ],
         "purchase_columns": {
           "name": [
             232,
-            231,
+            230,
             554,
-            285
+            284
           ],
           "qty": [
             556,
-            231,
+            230,
             646,
-            285
+            284
           ],
           "price": [
             654,
-            231,
+            230,
             782,
-            285
+            284
           ],
           "function": [
             782,
-            231,
+            230,
             874,
-            285
+            284
           ]
         },
         "table_x": [
           192,
-          922
+          880
         ],
         "row_one_y": 175,
         "row_pitch": 58,
         "row_one_box": [
           192,
           146,
-          922,
+          880,
           204
+        ],
+        "row_last_y": 697,
+        "row_last_box": [
+          192,
+          668,
+          880,
+          726
         ],
         "button_x": 831,
         "table_point": [
@@ -1887,7 +1975,7 @@
           233
         ],
         "rows_per_notch": 1,
-        "register_rows_seen": 9,
+        "register_rows_seen": 10,
         "refresh_point": [
           833,
           752
@@ -1949,12 +2037,16 @@
           754
         ],
         "button_cancel": [
-          1102,
-          635
+          1101,
+          634
         ],
         "button_confirmation": [
           968,
           634
+        ],
+        "item_point": [
+          102,
+          220
         ]
       },
       "regions": {
@@ -1973,7 +2065,7 @@
         ],
         "cells": {
           "1x1": [
-            186,
+            187,
             792
           ],
           "1x2": [
@@ -1989,11 +2081,11 @@
             792
           ],
           "1x5": [
-            381,
+            377,
             792
           ],
           "2x1": [
-            186,
+            187,
             839
           ],
           "2x2": [
@@ -2009,55 +2101,55 @@
             839
           ],
           "2x5": [
-            381,
+            377,
             839
           ],
           "3x1": [
-            186,
-            883
+            187,
+            890
           ],
           "3x2": [
             235,
-            883
+            890
           ],
           "3x3": [
             283,
-            883
+            890
           ],
           "3x4": [
             328,
-            883
+            890
           ],
           "3x5": [
-            381,
-            883
+            377,
+            890
           ],
           "4x1": [
-            186,
-            934
+            187,
+            931
           ],
           "4x2": [
             235,
-            934
+            931
           ],
           "4x3": [
             283,
-            934
+            931
           ],
           "4x4": [
             328,
-            934
+            931
           ],
           "4x5": [
-            381,
-            934
+            377,
+            931
           ]
         },
         "set_to_core": {
           "Force Core(Low)": {
             "cell": "2x1",
             "point": [
-              186,
+              187,
               839
             ],
             "costs": "Force Core Set (Low)"
@@ -2089,7 +2181,7 @@
           "Force Core (Ultimate)": {
             "cell": "2x5",
             "point": [
-              381,
+              377,
               839
             ],
             "costs": "Force Core Set (Ultimate)"
@@ -2097,8 +2189,8 @@
           "Upgrade Core(Low)": {
             "cell": "4x1",
             "point": [
-              186,
-              934
+              187,
+              931
             ],
             "costs": "Upgrade Core Set (Low)"
           },
@@ -2106,7 +2198,7 @@
             "cell": "4x2",
             "point": [
               235,
-              934
+              931
             ],
             "costs": "Upgrade Core Set (Medium)"
           },
@@ -2114,7 +2206,7 @@
             "cell": "4x3",
             "point": [
               283,
-              934
+              931
             ],
             "costs": "Upgrade Core Set (High)"
           },
@@ -2122,31 +2214,31 @@
             "cell": "4x4",
             "point": [
               328,
-              934
+              931
             ],
             "costs": "Upgrade Core Set (Highest)"
           },
           "Upgrade Core (Ultimate)": {
             "cell": "4x5",
             "point": [
-              381,
-              934
+              377,
+              931
             ],
             "costs": "Upgrade Core Set (Ultimate)"
           }
         },
         "columns": [
-          186,
+          187,
           235,
           283,
           328,
-          381
+          377
         ],
         "rows": [
           792,
           839,
-          883,
-          934
+          890,
+          931
         ]
       },
       "craft": {
@@ -2179,24 +2271,74 @@
           522
         ]
       },
-      "cashshop": {
+      "gifts": {
         "icon": [
-          348,
+          284,
           994
         ],
-        "balance": [
-          1134,
-          826,
-          1230,
-          848
+        "receive": [
+          [
+            1214,
+            327
+          ],
+          [
+            1214,
+            425
+          ],
+          [
+            1214,
+            523
+          ],
+          [
+            1214,
+            621
+          ]
+        ],
+        "close": [
+          1483,
+          846
+        ],
+        "receive_all": [
+          1209,
+          786
+        ],
+        "special": [
+          1438,
+          492
+        ]
+      },
+      "cashshop": {
+        "scroll_yekaterinavipmembership": 0,
+        "scroll_epicboosterhighest": 23,
+        "scroll_armoraccountbindunsealstone": 13,
+        "scroll_sienasunbindingstone": 30,
+        "scroll_forcegempackage": 0,
+        "scroll_armoraccountbindsealstone": 13,
+        "scroll_blessingbeadsuperior": 0,
+        "purchase_armoraccountbindsealstone": [
+          739,
+          750
+        ],
+        "purchase_armoraccountbindunsealstone": [
+          1050,
+          750
+        ],
+        "scroll_arionell": 10,
+        "purchase_arionell": [
+          739,
+          750
+        ],
+        "purchase_blessingbeadsuperior": [
+          739,
+          520
         ],
         "tab_useable": [
           844,
           168
         ],
-        "purchase_yekaterinavipmembership": [
+        "purchase_forcegempackage": [
           739,
-          290
+          750
         ],
         "window": [
           744,
@@ -2211,6 +2353,34 @@
         "cancel": [
           1096,
           610
+        ],
+        "purchase_yekaterinavipmembership": [
+          739,
+          290
+        ],
+        "purchase_epicboosterhighest": [
+          1050,
+          750
+        ],
+        "purchase_sienasunbindingstone": [
+          1364,
+          750
+        ],
+        "icon": [
+          348,
+          994
+        ],
+        "balance": [
+          1134,
+          826,
+          1230,
+          848
+        ],
+        "gems": [
+          930,
+          826,
+          1060,
+          848
         ]
       }
     }
@@ -2228,18 +2398,18 @@
     "10": "Upgrade Core Set (Ultimate)"
   },
   "market": {
-    "measured_at": "2026-09-15T14:58:06",
+    "measured_at": "2026-09-21T15:25:43",
     "unit_price": {
-      "1": 265914,
-      "2": 198999,
-      "3": 700000,
-      "4": 714969,
-      "5": 444733,
-      "6": 397063,
-      "7": 199975,
-      "8": 194999,
-      "9": 479956,
-      "10": 477475
+      "1": 205000,
+      "2": 211427,
+      "3": 710867,
+      "4": 719925,
+      "5": 399648,
+      "6": 368785,
+      "7": 203669,
+      "8": 184999,
+      "9": 449833,
+      "10": 440440
     }
   },
   "detect": {
@@ -2317,8 +2487,9 @@
     "min_name_overlap": 6,
     "alz_min_digits": 4,
     "slot_half": 24,
-    "slot_occupied_stdev": 30.0,
+    "slot_occupied_stdev": 8.0,
     "gift_column_spread": 12,
+    "gift_word_reach": 60,
     "server_lag_pixels": 2000,
     "server_lag_sure": 4000,
     "server_lag_red": 210,
@@ -2350,10 +2521,11 @@
     "button_prefix_min": 4,
     "button_missing_max": 2,
     "fav_count_short": 1,
-    "fav_count_extra": 2
+    "fav_count_extra": 2,
+    "price_attempts": 1
   },
   "voucher": {
-    "measured_at": "2026-09-15T14:58:06",
-    "unit_price": 384599987
+    "measured_at": "2026-09-21T15:25:43",
+    "unit_price": 369999999
   }
 }
