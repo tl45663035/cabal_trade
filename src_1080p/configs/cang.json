@@ -16,7 +16,14 @@
       "Divine Stone": true,
       "Force Core (Ultimate)": false
     },
+    "buy_min": {
+      "Chaos Core": 180
+    },
     "special_row": {
+      "rows": {
+        "default": 1,
+        "Chaos Core": 2
+      },
       "under_market": {
         "default": 1000,
         "Divine Stone": 5000

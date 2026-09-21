@@ -824,16 +824,21 @@ def relist_one(model, index, verbose=True, first=None, last=None,
                   f"sells")
         floor, why = 0, ""
     special = special_of(row)
+    under = None
+    if special:
+        mine = special_seats(model, first, last).get(special, [])
+        under = special_undercut(special, mine.index(index)
+                                 if index in mine else 0)
     if special:
         floor, why = 0, ""
         print(f"    row {index} is the {special} special row; listing at "
-              f"{special_under(special):,} under the market, no floor")
+              f"{under:,} under the market, no floor")
     try:
         with calibration.phase("list it back"):
             expect = dict(floor=floor, why=why, expect_item=row.name,
                           listed_at=None if special else row.price,
                           expect_qty=row.qty,
-                          under=special_under(special) if special else None,
+                          under=under,
                           expect_market=(row_model.market_anchor(row.name)
                                          * row.pack) or None)
             out = model.list_slot(*landing, verbose=verbose,
@@ -1400,15 +1405,38 @@ def special_qty():
     return int(special_conf().get("qty") or 1)
 
 
-def special_rows():
-    return int(special_conf().get("rows") or 1)
-
-
-def special_under(core=None):
+def special_amounts(core=None):
     table = special_conf().get("under_market") or 0
+    value = (calibration._per_item_raw(table, core) if isinstance(table, dict)
+             else table)
+    if isinstance(value, list):
+        return [int(v) for v in value] or [0]
+    return [int(value or 0)]
+
+
+def special_rows(core=None):
+    amounts = special_amounts(core)
+    if len(amounts) > 1:
+        return len(amounts)
+    table = special_conf().get("rows") or 1
     if isinstance(table, dict):
-        return int(calibration._per_item_raw(table, core) or 0)
+        return int(calibration._per_item_raw(table, core) or 1)
     return int(table)
+
+
+def special_under(core=None, ordinal=0):
+    amounts = special_amounts(core)
+    return amounts[min(max(int(ordinal), 0), len(amounts) - 1)]
+
+
+def special_spread():
+    return int(special_conf().get("under_random_range") or 0)
+
+
+def special_undercut(core=None, ordinal=0):
+    spread = special_spread()
+    return special_under(core, ordinal) + (random.randint(0, spread)
+                                           if spread > 0 else 0)
 
 
 def special_names():
@@ -1465,7 +1493,7 @@ def special_wanted(model, first, last):
     for name in special_names().values():
         if calibration.favourite_slot_of(name) is None:
             continue
-        missing = special_rows() - len(seats.get(name, []))
+        missing = special_rows(name) - len(seats.get(name, []))
         short.extend([name] * max(0, missing))
     return short
 
@@ -1488,7 +1516,8 @@ def rows_by_core(model, first, last):
     return held
 
 
-def special_list(model, landing, core, first, last, verbose=True, cost=0):
+def special_list(model, landing, core, first, last, verbose=True, cost=0,
+                 ordinal=0):
     with calibration.phase("reopen the Agent Shop"):
         if not back_to_the_shop(verbose=verbose):
             raise NotReady(f"the Agent Shop would not reopen for the {core} "
@@ -1508,7 +1537,7 @@ def special_list(model, landing, core, first, last, verbose=True, cost=0):
         with calibration.phase(f"list {core} from {landing}"):
             listed = model.list_slot(*landing, verbose=verbose,
                                      lands_in=lands_in,
-                                     under=special_under(core),
+                                     under=special_undercut(core, ordinal),
                                      floor=0, why="", wait_fill=False,
                                      expect_item=core,
                                      expect_market=row_model.market_anchor(
@@ -1555,7 +1584,8 @@ def finish_special(model, job, first, last, verbose=True):
     if job["step"] == "list":
         cost = -(-job["paid"] // job["bought"]) if job["paid"] else 0
         lands_in = special_list(model, job["landing"], core, first, last,
-                                verbose=verbose, cost=cost)
+                                verbose=verbose, cost=cost,
+                                ordinal=job.get("ordinal", 0))
         job["rows"], job["listed"], job["step"] = [lands_in], 1, "listed"
     task_done("resupply", core=core, bought=job["bought"],
               listed=job["listed"], rows=job["rows"], special=True)
@@ -1579,8 +1609,12 @@ def resupply_special(model, first, last, verbose=True):
                   f"row waits for one to free")
             return None
         print("")
-        print(f"-- {core} special row: {special_qty()} at "
-              f"{special_under(core):,} under the market --")
+        ordinal = len(special_seats(model, first, last).get(core, []))
+        print(f"-- {core} special row {ordinal + 1} of "
+              f"{special_rows(core)}: {special_qty()} at "
+              f"{special_under(core, ordinal):,} to "
+              f"{special_under(core, ordinal) + special_spread():,} under "
+              f"the market --")
         if not shop_ready(f"the {core} special row", verbose=verbose):
             return None
         war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
@@ -1593,7 +1627,7 @@ def resupply_special(model, first, last, verbose=True):
              landing=list(landing), special=True)
         job = {"kind": "special", "core": core, "slot": slot,
                "landing": landing, "step": "buy", "bought": 0, "paid": 0,
-               "listed": 0, "rows": []}
+               "listed": 0, "rows": [], "ordinal": ordinal}
     else:
         print("")
         print(f"-- {job['core']} special row: carrying on at {job['step']} "
