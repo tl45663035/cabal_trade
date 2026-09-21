@@ -8,12 +8,12 @@ Thu 2026-09-17           19.86h  462.64M   12.32B  11.86B  14.85K    3.8%   23.3
 Fri 2026-09-18           15.59h  459.04M   11.86B  11.40B  16.31K    3.9%   29.45M
 Sat 2026-09-19            4.56h  274.54M    4.40B   4.13B   5.60K    6.2%   60.18M
 Sun 2026-09-20           10.07h  245.41M    5.64B   5.40B   8.83K    4.3%   24.36M
-Mon 2026-09-21 (so far)   5.78h   37.57M    3.49B   3.45B   5.29K    1.1%    6.50M
+Mon 2026-09-21 (so far)   6.29h   37.57M    3.49B   3.45B   5.29K    1.1%    5.98M
 ==================================================================================
-7 DAYS                   98.12h    2.07B   53.88B  51.81B  83.48K    3.8%   21.10M
+7 DAYS                   98.62h    2.07B   53.88B  51.81B  83.48K    3.8%   20.99M
 
 
-PROFIT SUMMARY -- sold since 2026-09-21 00:00 Central (as of 06:51 Central)
+PROFIT SUMMARY -- sold since 2026-09-21 00:00 Central (as of 07:21 Central)
 
 item                 profit  revenue     cost  units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ held by the live run, to be counted when it sells or carried to the next run at 
 
 
 
-ROWS -- 2026-09-21_004303_run_board.log, board during pass 162 at row 1, read 2026-09-21T04:51:18 (live)
+ROWS -- 2026-09-21_004303_run_board.log, board during pass 208 at row 1, read 2026-09-21T05:21:49 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Upgrade Core (Ultimate                 x30         -   457.56K         -   457.56K         - <- here
     2  Arionell                                x1   281.25M   340.00M   +58.75M   340.00M    58.75M
@@ -100,7 +100,7 @@ ROWS -- 2026-09-21_004303_run_board.log, board during pass 162 at row 1, read 20
        Palladium Hands(BL) Lalla                                    1         1     2.96M         -
        Upgrade Core (Ultimate                                       3       222   101.58M     2.10M
        board                                20   5.04K     979.86M                           66.89M
-    balance now 689.79M, read 2026-09-21T04:51:18
+    balance now 689.79M, read 2026-09-21T05:21:49
     held on tab 4, bought and not listed yet:
     Chaos Core Set                     slot (1, 1)         - unit(s)            - a unit
        stock at its listed price                                                            922.04M
@@ -110,12 +110,12 @@ ROWS -- 2026-09-21_004303_run_board.log, board during pass 162 at row 1, read 20
     8 row(s) show no bought price and are not counted
 
 
-MARKET -- 2026-09-21_004303_run.log, pass 162, log last written 06:51 Central (live)
+MARKET -- 2026-09-21_004303_run.log, pass 207, log last written 07:21 Central (live); pass 208 is under way and has not priced the cores yet, so this is the last table it printed
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  2  720.00K  728.97K   8.97K      1.2%      3  YES
+Chaos Core                  2  717.64K  728.96K  11.32K      1.6%      5  YES
 Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
