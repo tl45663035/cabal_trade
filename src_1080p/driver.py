@@ -2119,11 +2119,13 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
                 print(f"  stopping: {exc}")
                 return None
             except buy.Refused as exc:
-                searched = False
+                searched = True
                 if not getattr(exc, "retryable", False):
                     print(f"  stopping: {exc}")
                     return None
                 print(f"  attempt {attempt}/{run['buy_retries']}: {exc}")
+                if not step_down():
+                    return None
         print(f"  the board kept moving through {run['buy_retries']} "
               f"attempt(s); giving up on {core} this cycle.")
         return None

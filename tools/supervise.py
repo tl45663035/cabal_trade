@@ -882,6 +882,14 @@ def write_report():
 
 
 def push_report(path):
+    try:
+        return _push_report(path)
+    except subprocess.TimeoutExpired as exc:
+        return (f"{' '.join(str(a) for a in exc.cmd)} gave no answer in "
+                f"{K['tool_timeout']}s")
+
+
+def _push_report(path):
     rel = path.relative_to(ROOT).as_posix()
     branch = K["report_branch"]
     index = LOGS / K["report_index"]
