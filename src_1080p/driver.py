@@ -423,6 +423,15 @@ def restock_now(model, name, first, last, verbose=True):
     if item is not None:
         restock_cash_now(model, item, first, last, verbose=verbose)
         return
+    if row_model.item_key(name) in special_names():
+        print(f"  the {name} special row sold; buying it back now, not on "
+              f"the next pass")
+        special_pass(model, first, last, verbose=verbose)
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady(f"the Agent Shop is not open after the {name} "
+                           f"special row.")
+        register_tab(verbose=verbose)
+        return
     slot = counts_toward().get(calibration.favourite_slot_of(name))
     if slot is None:
         return
@@ -814,10 +823,17 @@ def relist_one(model, index, verbose=True, first=None, last=None,
                   f"{parked} relist(s); letting it go at the market until it "
                   f"sells")
         floor, why = 0, ""
+    special = special_of(row)
+    if special:
+        floor, why = 0, ""
+        print(f"    row {index} is the {special} special row; listing at "
+              f"{special_under(special):,} under the market, no floor")
     try:
         with calibration.phase("list it back"):
             expect = dict(floor=floor, why=why, expect_item=row.name,
-                          listed_at=row.price, expect_qty=row.qty,
+                          listed_at=None if special else row.price,
+                          expect_qty=row.qty,
+                          under=special_under(special) if special else None,
                           expect_market=(row_model.market_anchor(row.name)
                                          * row.pack) or None)
             out = model.list_slot(*landing, verbose=verbose,
@@ -944,6 +960,8 @@ def relist_pass(model, first, last, passes=0, verbose=True,
                   f"cancelled into that tab this pass, the next pass "
                   f"carries the job on first")
             break
+    if not collect_only:
+        special_pass(model, first, last, verbose=verbose)
     if done or skipped:
         calibration.phases_table(
             f"relisting rows {first}-{last}: {done} relisted, {empty} empty, "
@@ -961,6 +979,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
     model = seed(verbose=verbose)
+    special_pass(model, first, last, verbose=verbose)
 
     deadline = time.monotonic() + minutes * 60
     print(f"relisting rows {first}-{last} for {minutes:g} minute(s)")
@@ -1373,16 +1392,250 @@ def counts_toward():
     return where
 
 
+def special_conf():
+    return calibration.load_shared()["resupply"].get("special_row") or {}
+
+
+def special_qty():
+    return int(special_conf().get("qty") or 1)
+
+
+def special_rows():
+    return int(special_conf().get("rows") or 1)
+
+
+def special_under(core=None):
+    table = special_conf().get("under_market") or 0
+    if isinstance(table, dict):
+        return int(calibration._per_item_raw(table, core) or 0)
+    return int(table)
+
+
+def special_names():
+    conf = special_conf()
+    if not conf.get("enabled"):
+        return {}
+    out = {}
+    for name in conf.get("cores") or []:
+        if not buying_enabled(name):
+            continue
+        out[row_model.item_key(name)] = name
+    return out
+
+
+def special_slots():
+    out = []
+    for name in special_names().values():
+        slot = calibration.favourite_slot_of(name)
+        if slot is not None and slot not in out:
+            out.append(slot)
+    return out
+
+
+def special_of(row):
+    if row is None or row.pack != 1:
+        return None
+    name = special_names().get(row_model.item_key(row.name))
+    if name is None:
+        return None
+    anchor = row_model.market_anchor(name)
+    if anchor and row.price and row.price > anchor * row_model.PRICE_CHECK_FACTOR:
+        return None
+    return name
+
+
+def is_special(row):
+    return special_of(row) is not None
+
+
+def special_seats(model, first, last):
+    seats = {}
+    for index, row in sorted((model._slots or {}).items()):
+        if row is None or not first <= index <= last:
+            continue
+        name = special_of(row)
+        if name is not None:
+            seats.setdefault(name, []).append(index)
+    return seats
+
+
+def special_wanted(model, first, last):
+    seats = special_seats(model, first, last)
+    short = []
+    for name in special_names().values():
+        if calibration.favourite_slot_of(name) is None:
+            continue
+        missing = special_rows() - len(seats.get(name, []))
+        short.extend([name] * max(0, missing))
+    return short
+
+
+def buying_rows(model, first, last):
+    free = [i for i in model.empty() if first <= i <= last]
+    keep = len(special_wanted(model, first, last))
+    return free[keep:] if keep else free
+
+
 def rows_by_core(model, first, last):
     held = {slot: 0 for slot in core_slots()}
     where = counts_toward()
     for index, row in (model._slots or {}).items():
-        if row is None or not first <= index <= last:
+        if row is None or not first <= index <= last or is_special(row):
             continue
         slot = where.get(calibration.favourite_slot_of(row.name))
         if slot in held:
             held[slot] += 1
     return held
+
+
+def special_list(model, landing, core, first, last, verbose=True, cost=0):
+    with calibration.phase("reopen the Agent Shop"):
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady(f"the Agent Shop would not reopen for the {core} "
+                           f"special row.")
+    with calibration.phase("select the Register tab"):
+        register_tab(verbose=verbose)
+    with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
+                          settle=0.0)
+        time.sleep(row_model.TAB_SETTLE)
+    empty = [i for i in model.empty() if first <= i <= last]
+    if not empty:
+        raise NotReady(f"rows {first}-{last} are full; the {core} stays on "
+                       f"tab {row_model.WORK_TAB}.")
+    lands_in = min(empty)
+    try:
+        with calibration.phase(f"list {core} from {landing}"):
+            listed = model.list_slot(*landing, verbose=verbose,
+                                     lands_in=lands_in,
+                                     under=special_under(core),
+                                     floor=0, why="", wait_fill=False,
+                                     expect_item=core,
+                                     expect_market=row_model.market_anchor(
+                                         core) or None, resolve=False)
+    except row_model.Divergence as exc:
+        raise NotReady(f"{exc} The {core} stays on tab "
+                       f"{row_model.WORK_TAB}.") from exc
+    model.release_work(landing)
+    model.place(lands_in, row_model.Row(
+        core, qty=listed["qty"], price=listed["price"],
+        buy_cost=cost or None, units=listed.get("units")))
+    print(f"  the {core} special row is listed at {listed['price']:,} in row "
+          f"{lands_in}")
+    return lands_in
+
+
+def finish_special(model, job, first, last, verbose=True):
+    core, slot, want = job["core"], job["slot"], special_qty()
+    if job["step"] == "buy":
+        with calibration.phase(f"read tab {row_model.WORK_TAB} before buying"):
+            before = work_tab_slots(verbose=False)
+        with calibration.phase(f"buy {want} {core}"):
+            out = buy.buy_row_one(slot, want, verbose=verbose, batch=1,
+                                  leave_behind=0)
+        bought = int((out or {}).get("bought") or 0)
+        if bought <= 0:
+            raise buy.Refused(f"nothing was bought for the {core} special row.")
+        job["bought"], job["paid"] = bought, int((out or {}).get("spent") or 0)
+        job["step"] = "list"
+        model.hold_work(job["landing"], core)
+        with calibration.phase(f"wait for the {core} to land on tab "
+                               f"{row_model.WORK_TAB}"):
+            arrived = await_arrival(before, verbose=False)
+        if arrived:
+            landed = sorted(arrived)[0]
+            if landed != tuple(job["landing"]):
+                model.move_work(job["landing"], landed)
+                job["landing"] = landed
+        print(f"  the {core} landed in tab {row_model.WORK_TAB} slot "
+              f"{tuple(job['landing'])}")
+        task("resupply", core=core, slot=slot, tab=row_model.WORK_TAB,
+             landing=list(job["landing"]), step="list", holding=core,
+             qty=bought, special=True)
+    if job["step"] == "list":
+        cost = -(-job["paid"] // job["bought"]) if job["paid"] else 0
+        lands_in = special_list(model, job["landing"], core, first, last,
+                                verbose=verbose, cost=cost)
+        job["rows"], job["listed"], job["step"] = [lands_in], 1, "listed"
+    task_done("resupply", core=core, bought=job["bought"],
+              listed=job["listed"], rows=job["rows"], special=True)
+    return {"item": core, "bought": job["bought"], "listed": job["listed"],
+            "rows": job["rows"]}
+
+
+def resupply_special(model, first, last, verbose=True):
+    global _PENDING
+    if _PENDING is not None and _PENDING.get("kind") != "special":
+        return None
+    job = _PENDING
+    if job is None:
+        wanted = special_wanted(model, first, last)
+        if not wanted:
+            return None
+        core = wanted[0]
+        slot = calibration.favourite_slot_of(core)
+        if not [i for i in model.empty() if first <= i <= last]:
+            print(f"  rows {first}-{last} are full, so the {core} special "
+                  f"row waits for one to free")
+            return None
+        print("")
+        print(f"-- {core} special row: {special_qty()} at "
+              f"{special_under(core):,} under the market --")
+        if not shop_ready(f"the {core} special row", verbose=verbose):
+            return None
+        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        landing = model.next_work_slot()
+        if landing is None:
+            raise NotReady(
+                f"the run holds every slot of tab {row_model.WORK_TAB}; "
+                f"nowhere for the {core} special row to land.")
+        task("resupply", core=core, slot=slot, tab=row_model.WORK_TAB,
+             landing=list(landing), special=True)
+        job = {"kind": "special", "core": core, "slot": slot,
+               "landing": landing, "step": "buy", "bought": 0, "paid": 0,
+               "listed": 0, "rows": []}
+    else:
+        print("")
+        print(f"-- {job['core']} special row: carrying on at {job['step']} "
+              f"where it stopped; {job['bought']} bought --")
+        task("resupply", core=job["core"], slot=job["slot"],
+             tab=row_model.WORK_TAB, landing=list(job["landing"]),
+             resumed=job["step"], special=True)
+    _PENDING = job
+    calibration.phases_reset()
+    try:
+        out = finish_special(model, job, first, last, verbose=verbose)
+    except calibration.ServerStalled:
+        print(f"  the {job['core']} special row keeps its place at "
+              f"{job['step']}; the next pass carries on there")
+        raise
+    except (NotReady, buy.Refused, buy.TooThin, buy.Broke,
+            row_model.Divergence):
+        if job["step"] != "buy" and job["bought"] > 0:
+            print(f"  the {job['core']} special row keeps its place at "
+                  f"{job['step']}; the core is in the bag and the next pass "
+                  f"carries on there")
+            raise
+        _PENDING = None
+        raise
+    except BaseException:
+        _PENDING = None
+        raise
+    _PENDING = None
+    return out
+
+
+def special_pass(model, first, last, verbose=True):
+    try:
+        return resupply_special(model, first, last, verbose=verbose)
+    except (NotReady, buy.Refused, buy.TooThin, buy.Broke,
+            row_model.Divergence) as exc:
+        print(f"  the special row stopped: {exc}")
+        return None
+    finally:
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady("the Agent Shop is not open after the special row.")
+        register_tab(verbose=verbose)
 
 
 def price_gap(slot, say=True, rows=None):
@@ -1447,7 +1700,7 @@ def start_resupply(model, slot, held, first, last, verbose=True, rows=None):
     print(f"-- {core}: {held} row(s) --")
 
     rounds_needed = max(1, -(-int(want_max) // row_model.MAX_STACK))
-    free_rows = [i for i in model.empty() if first <= i <= last]
+    free_rows = buying_rows(model, first, last)
     if len(free_rows) < rounds_needed:
         print(f"  rows {first}-{last} have {len(free_rows)} free and a "
               f"resupply can need {rounds_needed}; not pricing or buying, "
@@ -1728,7 +1981,7 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True,
     want_max = calibration.buy_max(core)
     print(f"-- {core}: {held} row(s) --")
 
-    free_rows = [i for i in model.empty() if first <= i <= last]
+    free_rows = buying_rows(model, first, last)
     if not free_rows:
         print(f"  rows {first}-{last} are full, and a crafted {set_name} with "
               f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
@@ -2954,7 +3207,7 @@ def resupply_order(jobs):
 
 
 def price_table(model, first, last, verbose=True):
-    free = [i for i in model.empty() if first <= i <= last]
+    free = buying_rows(model, first, last)
     read = {}
     for slot in core_slots():
         if not free or not craft_route(calibration.FAVOURITE_ITEMS[str(slot)]):
@@ -3075,6 +3328,9 @@ def resupply_pass(model, first, last, verbose=True):
                 if _PENDING.get("kind") == "cash":
                     out = resupply_cash(model, _PENDING["core"], 0, first,
                                         last, verbose=verbose)
+                elif _PENDING.get("kind") == "special":
+                    out = resupply_special(model, first, last,
+                                           verbose=verbose)
                 else:
                     route = (resupply_chaos if craft_route(core_here)
                              else resupply_one)

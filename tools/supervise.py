@@ -528,14 +528,26 @@ def first_row(tab):
 def named_by_log(tasks):
     for kind, info in tasks:
         if info.get("holding"):
-            return "holding", str(info["holding"])
+            return ("holding", str(info["holding"]), info.get("qty"),
+                    bool(info.get("special")))
     for kind, info in tasks:
         if kind == "relist" and info.get("item"):
-            return kind, str(info["item"])
+            return kind, str(info["item"]), info.get("qty"), False
     for kind, info in tasks:
         if kind == "resupply" and info.get("core"):
-            return kind, str(info["core"])
-    return None, None
+            return (kind, str(info["core"]), info.get("qty"),
+                    bool(info.get("special")))
+    return None, None, None, False
+
+
+def special_qty_for(name):
+    conf = calibration.load_shared()["resupply"].get("special_row") or {}
+    if not conf.get("enabled"):
+        return None
+    for item in conf.get("cores") or []:
+        if row_model.item_key(item) == row_model.item_key(name):
+            return int(conf.get("qty") or 1)
+    return None
 
 
 def slot_of(name):
@@ -548,11 +560,14 @@ def convertible(slot):
     return bool(convert.cell_for(calibration.FAVOURITE_ITEMS[str(slot)]))
 
 
-def step_for(kind, name):
-    if name is None:
+def step_for(kind, name, qty=None, special=False):
+    if name is None or special:
         return None
     slot = slot_of(name)
     if slot is None:
+        return None
+    want = special_qty_for(name)
+    if want is not None and qty is not None and int(qty) == want:
         return None
     if slot == calibration._craft_slots()[0]:
         return ("craft", "chaos")
@@ -575,7 +590,7 @@ def step_for(kind, name):
 
 def clear_work_tab(budget, tasks=()):
     left_behind, collected = set(), False
-    kind, name = named_by_log(tasks)
+    kind, name, qty, special = named_by_log(tasks)
     if name:
         holds = (f"the {name!r} it was making from" if kind == "resupply"
                  else f"the {name!r} it recorded holding" if kind == "holding"
@@ -601,7 +616,7 @@ def clear_work_tab(budget, tasks=()):
                 event(f"collect failed: {str(exc)[:K['reason_width']]}; "
                       f"carrying on", "dead")
         row, col = todo[0]
-        step = step_for(kind, name)
+        step = step_for(kind, name, qty, special)
         if step is not None:
             args = step
             event(f"the log says tab {WORK_TAB} holds {name!r}, which is "

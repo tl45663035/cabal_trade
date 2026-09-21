@@ -89,6 +89,16 @@
       "Chaos Core": 1000,
       "Divine Stone": 1000
     },
+    "special_row": {
+      "enabled": true,
+      "cores": [
+        "Chaos Core",
+        "Divine Stone"
+      ],
+      "under_market": 1000,
+      "rows": 1,
+      "qty": 1
+    },
     "buy_random_range": 15,
     "buy_scroll_limit": 30,
     "buy_take_all_after": 10,

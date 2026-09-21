@@ -1038,7 +1038,8 @@ class RowModel:
                   lands_in=None, expect_item=None,
                   expect_price=None, unit_market=None, floor_each=0,
                   listed_at=None, wait_fill=True, price_each=None,
-                  expect_qty=None, expect_market=None, resolve=True):
+                  expect_qty=None, expect_market=None, resolve=True,
+                  under=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -1153,7 +1154,8 @@ class RowModel:
                     print(f"  asking {price_each:,} each, {price:,} for the "
                           f"{count}")
 
-        want = price if price is not None else calibration.undercut(suggested)
+        want = (price if price is not None
+                else calibration.undercut(suggested, under))
         if want is None:
             raise Divergence(
                 "no price was given and the panel suggests none, so there is "

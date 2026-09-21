@@ -916,8 +916,8 @@ def read_balance_from(image):
     return read_money(image, box)
 
 
-def undercut(price):
-    by = int(load_shared()["run"]["undercut_by"])
+def undercut(price, by=None):
+    by = int(load_shared()["run"]["undercut_by"] if by is None else by)
     if by <= 0 or price is None:
         return price
     lowered = price - by
