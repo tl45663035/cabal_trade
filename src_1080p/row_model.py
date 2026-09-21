@@ -58,7 +58,10 @@ SUGGESTION_RADIO_DX = _SHARED["detect"]["suggestion_radio_dx"]
 PRICE_CHECK_FACTOR = _SHARED["run"]["price_check_factor"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 PRICE_TRUST = int(_SHARED["run"]["price_trust_multiple"])
+ITEM_CHECK = float(_SHARED["run"]["item_check_factor"])
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
+PANEL_POLL_GAP = _T["panel_poll_gap"]
+PANEL_ITEM_HALF = int(_SHARED["detect"]["panel_item_half"])
 NET_SALES_NUDGES = _SHARED["detect"]["net_sales_nudges"]
 STALE_SWEEP = _T["stale_sweep"]
 POLL_GAP = _T["poll_gap"]
@@ -76,6 +79,52 @@ class SlotNeverFilled(Divergence):
 
 class NothingLoaded(Divergence):
     pass
+
+
+class WrongItem(Divergence):
+    pass
+
+
+LAST_MARKET = {}
+WORK_TAB_STALE = False
+
+
+def note_market(name, unit):
+    if name and unit and int(unit) >= MIN_PLAUSIBLE_PRICE:
+        LAST_MARKET[item_key(name)] = int(unit)
+
+
+def market_anchor(name):
+    if not name:
+        return 0
+    known = LAST_MARKET.get(item_key(name))
+    return int(known or calibration.market_unit(name) or 0)
+
+
+def within(seen, expected):
+    return bool(seen and expected
+                and abs(int(seen) - int(expected))
+                <= ITEM_CHECK * int(expected))
+
+
+def identify_by_market(unit, names=None):
+    names = (list(calibration.FAVOURITE_ITEMS.values()) if names is None
+             else list(names))
+    near = sorted((abs(market_anchor(n) - int(unit)), n) for n in names
+                  if within(unit, market_anchor(n)))
+    if not near:
+        return None, False
+    return near[0][1], len(near) == 1
+
+
+def bundle_of(unit, name):
+    anchor = market_anchor(name)
+    if not anchor or not unit:
+        return 0
+    count = round(int(unit) / anchor)
+    if count < 1:
+        return 0
+    return count if within(int(unit) // count, anchor) else 0
 
 
 def _key(text):
@@ -310,6 +359,28 @@ def panel_standing():
         if value and value >= MIN_PLAUSIBLE_PRICE:
             return value
     return None
+
+
+def panel_item_point():
+    measured = _shop().get("item_point")
+    if measured:
+        return (int(measured[0]), int(measured[1]))
+    panel = _panel()
+    x0, _y0, x1, _y1 = panel["price_field"]
+    top = panel["panel_box"][1]
+    first = panel["suggestion_boxes"][0][1]
+    return ((x0 + x1) // 2, (top + first) // 2)
+
+
+def panel_holds_item(image=None):
+    image = image if image is not None else calibration.grab()
+    x, y = panel_item_point()
+    half = PANEL_ITEM_HALF
+    crop = image.crop((x - half, y - half, x + half, y + half)).convert("L")
+    data = list(crop.getdata())
+    mean = sum(data) / len(data)
+    stdev = (sum((v - mean) ** 2 for v in data) / len(data)) ** 0.5
+    return stdev >= calibration.SLOT_OCCUPIED_STDEV
 
 
 def _server_came_back(verbose=False):
@@ -654,6 +725,7 @@ class RowModel:
     def __init__(self, enforce=False):
         self._slots = {}
         self._work = {}
+        self.work_seen = None
         self._floored = {}
         self._broken = set()
         self._top = None
@@ -729,6 +801,63 @@ class RowModel:
         self._slots[index] = row
         return index
 
+    def reconcile_work_tab(self, held):
+        held = {tuple(int(n) for n in slot) for slot in held}
+        gone = sorted(slot for slot in self._work if slot not in held)
+        for slot in gone:
+            del self._work[slot]
+        new = sorted(slot for slot in held if slot not in self._work)
+        for slot in new:
+            self._work[slot] = None
+        return new, gone
+
+    def _resolve_loaded(self, market, expect_item, qty_seen, seen, verbose):
+        say = print if verbose else (lambda *a: None)
+        say(f"    {seen}; this is not {expect_item!r}")
+        for slot, what in sorted(self._work.items()):
+            if not isinstance(what, Row):
+                continue
+            if qty_seen is not None and what.qty != qty_seen:
+                continue
+            if qty_seen is None and not within(
+                    market, market_anchor(what.name) * what.pack):
+                continue
+            cost = what.floor_at or what.buy_cost
+            floor = (cost or calibration.price_floor(what.name)[0]) * what.pack
+            price = (max(calibration.undercut(market), floor) if market
+                     else max(what.price, floor))
+            del self._work[slot]
+            say(f"    it is the {what.name!r} x{what.qty} the run set down in "
+                f"tab {WORK_TAB} slot {slot} and never listed back; listing "
+                f"it as that at {price:,}")
+            return {"item": what.name, "price": price, "floor": floor,
+                    "why": "it is what the run set down", "slot": slot}
+        held = bundle_of(market, expect_item)
+        if held > 1:
+            floor = calibration.price_floor(expect_item)[0] * held
+            price = max(calibration.undercut(market), floor)
+            say(f"    at {market // held:,} a unit it is {expect_item!r} "
+                f"after all, {held} of them and not the {qty_seen or 1} "
+                f"the run put down; listing it at {price:,}"
+                + (f", no lower than the {floor:,} they cost" if floor
+                   else ""))
+            return {"item": expect_item, "price": price, "floor": floor,
+                    "why": "the market counts it", "slot": None}
+        if market:
+            named, sure = identify_by_market(market)
+            floor = calibration.price_floor(named)[0] if named and sure else 0
+            price = max(calibration.undercut(market), floor)
+            label = repr(named) if named else "nothing the run trades"
+            say(f"    the market {market:,} says {label}"
+                + ("" if sure else ", or something priced like it")
+                + f"; listing it at {price:,}, its own market")
+            return {"item": named, "price": price, "floor": floor,
+                    "why": "the market says so", "slot": None}
+        raise Divergence(
+            f"{seen}, the market would not price it, and nothing the run set "
+            f"down in tab {WORK_TAB} matches; it is left loaded in the "
+            f"panel. Nothing has been listed.")
+
     def next_work_slot(self):
         for row in range(1, GRID + 1):
             for col in range(1, GRID + 1):
@@ -748,6 +877,11 @@ class RowModel:
 
     def release_work(self, slot):
         self._work.pop(tuple(int(n) for n in slot), None)
+
+    def move_work(self, old, new):
+        old = tuple(int(n) for n in old)
+        new = tuple(int(n) for n in new)
+        self._work[new] = self._work.pop(old, None)
 
     def note_cancel(self, index):
         index = int(index)
@@ -903,7 +1037,8 @@ class RowModel:
     def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
                   lands_in=None, expect_item=None,
                   expect_price=None, unit_market=None, floor_each=0,
-                  listed_at=None, wait_fill=True, price_each=None):
+                  listed_at=None, wait_fill=True, price_each=None,
+                  expect_qty=None, expect_market=None, resolve=True):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -916,7 +1051,7 @@ class RowModel:
         if verbose:
             print(f"  inventory slot ({row},{col}) at {point}")
         with calibration.step("read the panel before loading"):
-            standing = panel_standing()
+            standing = panel_standing() if panel_holds_item() else None
         if standing is not None:
             raise Divergence(
                 f"the shop slot already holds something the panel prices at "
@@ -964,6 +1099,7 @@ class RowModel:
             if verbose:
                 print(f"  ctrl-click {attempt}/{PRICE_ATTEMPTS} loaded nothing "
                       f"from ({row},{col})")
+        market = suggested
         if suggested is None and listed_at:
             suggested = int(listed_at)
             price = suggested
@@ -975,6 +1111,33 @@ class RowModel:
             raise NothingLoaded(
                 f"nothing loaded into the shop slot from ({row},{col}) after "
                 f"{PRICE_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
+        resolved = None
+        if market and expect_market and not within(market, expect_market):
+            seen = (f"the panel prices what loaded from ({row},{col}) at "
+                    f"{market:,}, and {expect_item!r} sells near "
+                    f"{int(expect_market):,}")
+            if not resolve:
+                raise WrongItem(f"{seen}. Nothing has been listed.")
+            resolved = self._resolve_loaded(market, expect_item, None, seen,
+                                            verbose)
+            price, floor, why = (resolved["price"], resolved["floor"],
+                                 resolved["why"])
+            expect_item, unit_market, price_each, listed_at = (
+                resolved["item"], None, None, None)
+        elif (expect_item is None and price is None and price_each is None
+              and market and resolve):
+            named, sure = identify_by_market(market)
+            if named:
+                expect_item = named
+                if sure:
+                    floor = max(int(floor or 0),
+                                calibration.price_floor(named)[0])
+                    why = why or f"the market names it {named}"
+                if verbose:
+                    print(f"    the market {market:,} says {named!r}"
+                          + ("" if sure else ", or something priced like it")
+                          + (f"; its floor is {floor:,}" if sure and floor
+                             else ""))
         count = None
         if unit_market:
             count = max(1, round(suggested / unit_market))
@@ -1048,6 +1211,29 @@ class RowModel:
                 f"after typing {MAX_STACK}. Nothing has been listed.")
         if verbose:
             print(f"  typed {MAX_STACK}; the net sales make it {qty}")
+        if expect_qty and qty < int(expect_qty) and resolved is None:
+            seen = (f"the panel offers {qty} from ({row},{col}) and "
+                    f"{int(expect_qty)} of {expect_item!r} came off the row")
+            if not resolve:
+                raise WrongItem(f"{seen}. Nothing has been listed.")
+            resolved = self._resolve_loaded(market, expect_item, qty, seen,
+                                            verbose)
+            want, floor, expect_item = (resolved["price"], resolved["floor"],
+                                        resolved["item"])
+            with calibration.step(f"type the price {want:,} instead"):
+                calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
+                type_number(want, CLEAR_PRESSES_PRICE)
+                calibration.park()
+            with calibration.step("take the quantity from the net sales "
+                                  "again"):
+                qty = panel_quantity(want, verbose)
+            if qty is None:
+                calibration.snap("panel_will_not_confirm")
+                raise Divergence(
+                    f"the panel will not price {want:,} against its net "
+                    f"sales for what loaded from ({row},{col}). Nothing "
+                    f"has been listed.")
+            floored = bool(floor) and want <= floor
         with calibration.step("click Register"):
             calibration.click(*panel["register_button"], settle=0.0)
         with calibration.step(f"find {CONFIRM_WORD}"):
@@ -1090,10 +1276,10 @@ class RowModel:
                 f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
                 f"listing committed is unknown -- check the shop by hand.")
         with calibration.step("wait for the panel to let the item go"):
-            standing = panel_standing()
+            held = panel_holds_item()
             deadline = time.monotonic() + DIALOG_TIMEOUT
             stalled = None
-            while standing is not None and time.monotonic() < deadline:
+            while held and time.monotonic() < deadline:
                 if calibration.server_busy():
                     if stalled is None:
                         stalled = time.monotonic()
@@ -1101,8 +1287,9 @@ class RowModel:
                     if (time.monotonic() - stalled
                             < calibration.SERVER_LAG_BUDGET):
                         deadline = time.monotonic() + DIALOG_TIMEOUT
-                time.sleep(PANEL_REREAD_GAP)
-                standing = panel_standing()
+                time.sleep(PANEL_POLL_GAP)
+                held = panel_holds_item()
+            standing = panel_standing() if held else None
         if standing is not None:
             calibration.snap("panel_kept_the_item")
             raise Divergence(
@@ -1117,12 +1304,23 @@ class RowModel:
                   f"panel let the item go {time.monotonic() - stalled:.0f}s "
                   f"later, so the listing registered")
         self.release_work((row, col))
+        with calibration.step(f"read tab {WORK_TAB} after the listing"):
+            began = time.perf_counter()
+            self.work_seen = calibration.occupied_slots()
+            took = (time.perf_counter() - began) * 1000
+        if verbose:
+            print(f"  tab {WORK_TAB} read in {took:.0f} ms after the listing: "
+                  f"{len(self.work_seen)} slot(s) held")
+        if market:
+            note_market(expect_item,
+                        market if resolved else market // max(1, each))
         calibration.steps_table(f"list {qty} at {want:,}")
         if verbose:
             print(f"  listed {qty} at {want:,}"
                   + (f"; it lands in row {int(lands_in)}"
                      if lands_in is not None else ""))
-        return {"slot": (int(row), int(col)), "qty": qty,
+        return {"item": expect_item, "resolved": resolved is not None,
+                "slot": (int(row), int(col)), "qty": qty,
                 "price": want, "row": lands_in, "floored": floored,
                 "units": count}
 

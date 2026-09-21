@@ -202,9 +202,9 @@
     ],
     "dialog_buttons": [
       0.4688,
-      0.5296,
-      0.6641,
-      0.7085
+      0.5768,
+      0.6125,
+      0.6313
     ],
     "gift_icon": [
       0.148,
@@ -1493,7 +1493,7 @@
         1920,
         1080
       ],
-      "measured_at": "2026-09-18T16:36:49",
+      "measured_at": "2026-09-20T22:31:43",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -1517,7 +1517,7 @@
       },
       "inventory": {
         "alz_box": [
-          1771,
+          1782,
           688,
           1860,
           700
@@ -1909,7 +1909,7 @@
           150
         ],
         "purchase_buy_x": 828,
-        "purchase_row_pitch": 54,
+        "purchase_row_pitch": 55,
         "purchase_row_one_y": 258,
         "purchase_row_one": [
           192,
@@ -1954,13 +1954,13 @@
           192,
           880
         ],
-        "row_one_y": 174,
+        "row_one_y": 175,
         "row_pitch": 58,
         "row_one_box": [
           192,
-          145,
+          146,
           880,
-          203
+          204
         ],
         "row_last_y": 697,
         "row_last_box": [
@@ -1972,10 +1972,10 @@
         "button_x": 831,
         "table_point": [
           231,
-          232
+          233
         ],
         "rows_per_notch": 1,
-        "register_rows_seen": 9,
+        "register_rows_seen": 10,
         "refresh_point": [
           833,
           752
@@ -1989,13 +1989,13 @@
           ],
           "price_field": [
             37,
-            411,
+            410,
             188,
-            439
+            438
           ],
           "price_point": [
             112,
-            425
+            424
           ],
           "qty_point": [
             59,
@@ -2037,12 +2037,16 @@
           754
         ],
         "button_cancel": [
-          1102,
-          635
+          1101,
+          634
         ],
         "button_confirmation": [
           968,
           634
+        ],
+        "item_point": [
+          102,
+          220
         ]
       },
       "regions": {
@@ -2077,7 +2081,7 @@
             792
           ],
           "1x5": [
-            377,
+            381,
             792
           ],
           "2x1": [
@@ -2097,7 +2101,7 @@
             839
           ],
           "2x5": [
-            377,
+            381,
             839
           ],
           "3x1": [
@@ -2117,28 +2121,28 @@
             890
           ],
           "3x5": [
-            377,
+            381,
             890
           ],
           "4x1": [
             187,
-            931
+            934
           ],
           "4x2": [
             235,
-            931
+            934
           ],
           "4x3": [
             283,
-            931
+            934
           ],
           "4x4": [
             328,
-            931
+            934
           ],
           "4x5": [
-            377,
-            931
+            381,
+            934
           ]
         },
         "set_to_core": {
@@ -2177,7 +2181,7 @@
           "Force Core (Ultimate)": {
             "cell": "2x5",
             "point": [
-              377,
+              381,
               839
             ],
             "costs": "Force Core Set (Ultimate)"
@@ -2186,7 +2190,7 @@
             "cell": "4x1",
             "point": [
               187,
-              931
+              934
             ],
             "costs": "Upgrade Core Set (Low)"
           },
@@ -2194,7 +2198,7 @@
             "cell": "4x2",
             "point": [
               235,
-              931
+              934
             ],
             "costs": "Upgrade Core Set (Medium)"
           },
@@ -2202,7 +2206,7 @@
             "cell": "4x3",
             "point": [
               283,
-              931
+              934
             ],
             "costs": "Upgrade Core Set (High)"
           },
@@ -2210,15 +2214,15 @@
             "cell": "4x4",
             "point": [
               328,
-              931
+              934
             ],
             "costs": "Upgrade Core Set (Highest)"
           },
           "Upgrade Core (Ultimate)": {
             "cell": "4x5",
             "point": [
-              377,
-              931
+              381,
+              934
             ],
             "costs": "Upgrade Core Set (Ultimate)"
           }
@@ -2228,13 +2232,13 @@
           235,
           283,
           328,
-          377
+          381
         ],
         "rows": [
           792,
           839,
           890,
-          931
+          934
         ]
       },
       "craft": {
@@ -2320,13 +2324,13 @@
           750
         ],
         "scroll_arionell": 10,
-        "purchase_epicboosterhighest": [
-          1050,
+        "purchase_arionell": [
+          739,
           750
         ],
-        "purchase_sienasunbindingstone": [
-          1364,
-          750
+        "purchase_blessingbeadsuperior": [
+          739,
+          520
         ],
         "icon": [
           348,
@@ -2347,10 +2351,6 @@
         "tab_useable": [
           844,
           168
-        ],
-        "purchase_blessingbeadsuperior": [
-          739,
-          520
         ],
         "purchase_forcegempackage": [
           739,
@@ -2374,8 +2374,12 @@
           739,
           290
         ],
-        "purchase_arionell": [
-          739,
+        "purchase_epicboosterhighest": [
+          1050,
+          750
+        ],
+        "purchase_sienasunbindingstone": [
+          1364,
           750
         ]
       }
@@ -2394,18 +2398,18 @@
     "10": "Upgrade Core Set (Ultimate)"
   },
   "market": {
-    "measured_at": "2026-09-18T16:36:49",
+    "measured_at": "2026-09-20T22:31:43",
     "unit_price": {
-      "1": 196000,
-      "2": 182608,
-      "3": 712000,
-      "4": 730404,
-      "5": 570000,
-      "6": 365000,
-      "7": 200000,
-      "8": 194938,
-      "9": 500000,
-      "10": 440375
+      "1": 220563,
+      "2": 212526,
+      "3": 716500,
+      "4": 729421,
+      "5": 421959,
+      "6": 387001,
+      "7": 198961,
+      "8": 193600,
+      "9": 458276,
+      "10": 408333
     }
   },
   "detect": {
@@ -2521,7 +2525,7 @@
     "price_attempts": 1
   },
   "voucher": {
-    "measured_at": "2026-09-18T16:36:49",
-    "unit_price": 377872907
+    "measured_at": "2026-09-20T22:31:43",
+    "unit_price": 374999997
   }
 }

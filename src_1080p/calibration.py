@@ -234,6 +234,8 @@ TRADE_TABS_BAND_F = _S["regions"]["trade_tabs_band"]
 REGISTER_PANEL_F = _S["regions"]["register_panel"]
 PANEL_FIELD_INSET = _S["detect"]["panel_field_inset"]
 PANEL_FIELD_HALF = _S["detect"]["panel_field_half"]
+PANEL_DIFF_THRESHOLD = _S["detect"]["panel_diff_threshold"]
+PANEL_ITEM_HALF = int(_S["detect"]["panel_item_half"])
 PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
 PANEL_LABEL_PAD = _S["detect"]["panel_label_pad"]
 CLEAR_PRESSES_QTY = _S["detect"]["clear_presses_qty"]
@@ -487,6 +489,7 @@ def frames_on(enabled: "bool | None" = None) -> bool:
             if gone:
                 print(f"  cleared {gone} frame(s) from earlier runs; this one "
                       f"numbers from 00001")
+    if FRAMES_ON and bool(load_shared()["debug"]["video"]):
         recording_on()
     else:
         recording_off()
@@ -3097,6 +3100,23 @@ def inventory_slot_point(row, col):
     return tuple(slots[key])
 
 
+def _item_centre(before, after, panel):
+    from PIL import ImageChops
+    x0, x1 = int(panel["price_field"][0]), int(panel["price_field"][2])
+    y0 = int(panel["panel_box"][1])
+    y1 = int(panel["suggestion_boxes"][0][1]) - 2 * PANEL_FIELD_HALF
+    box = (x0, y0, x1, y1)
+    diff = ImageChops.difference(before.crop(box), after.crop(box))
+    diff = diff.convert("L").point(
+        lambda v: 255 if v > PANEL_DIFF_THRESHOLD else 0)
+    changed = [(x, y) for y in range(diff.height) for x in range(diff.width)
+               if diff.getpixel((x, y))]
+    if len(changed) < PANEL_ITEM_HALF:
+        return None
+    return (sum(x for x, _y in changed) // len(changed) + x0,
+            sum(y for _x, y in changed) // len(changed) + y0)
+
+
 def calibrate_actions(shop, verbose=True, seat="row_one", position=1):
     say = print if verbose else (lambda *a: None)
     panel = shop.get("panel")
@@ -3272,6 +3292,7 @@ def calibrate_actions(shop, verbose=True, seat="row_one", position=1):
             f"buttons measured so far and letting the relist pass take it.")
         return learned
     say(f"  listing it back from tab {WORK_TAB} slot {landing} at {slot}")
+    before = grab()
     ctrl_click(*slot)
     suggested = None
     deadline = time.monotonic() + PANEL_LOAD_TIMEOUT
@@ -3289,6 +3310,12 @@ def calibrate_actions(shop, verbose=True, seat="row_one", position=1):
             if suggested is not None:
                 break
             time.sleep(POLL_GAP)
+    if suggested is not None:
+        centre = _item_centre(before, grab(), panel)
+        if centre is not None:
+            learned["item_point"] = list(centre)
+            say(f"  the loaded item shows at {centre} in the Register Item "
+                f"box")
     price = was
     if suggested is None:
         say(f"  the market would not price it after two ctrl-clicks; listing "

@@ -2,12 +2,12 @@
   "resupply": {
     "cash_shop": {
       "rows": {
-        "Yekaterina VIP Membership": 0,
+        "Yekaterina VIP Membership": 1,
         "Force Gem Package": 0,
-        "Epic Booster (Highest)": 0,
+        "Epic Booster (Highest)": 1,
         "Armor Account bind Unseal Stone": 0,
         "Armor Account bind Seal Stone": 0,
-        "Siena's Unbinding Stone": 0,
+        "Siena's Unbinding Stone": 1,
         "Blessing Bead - Superior": 0,
         "Arionell": 0
       }
@@ -35,7 +35,8 @@
       ]
     },
     "buy_min": {
-      "default": 180
+      "default": 180,
+      "Chaos Core": 180
     }
   }
 }

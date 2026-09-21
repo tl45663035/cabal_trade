@@ -17,6 +17,7 @@ FIELD_SETTLE = _SHARED["timing"]["field_settle"]
 INVENTORY_TAB = calibration.CONVERT_INVENTORY_TAB
 MAX_STACK = _SHARED["game_facts"]["max_stack"]
 ARRIVAL_SETTLE = _SHARED["detect"]["panel_rereads"]
+GRID = _SHARED["game_facts"]["grid_size"]
 
 
 class Refused(Exception):
@@ -98,6 +99,14 @@ def _await_arrivals(before, timeout=None):
     return arrived
 
 
+def _first_free(held):
+    for row in range(1, GRID + 1):
+        for col in range(1, GRID + 1):
+            if (row, col) not in held:
+                return (row, col)
+    return None
+
+
 def _cancel(why):
     point = dialog_button(CANCEL_WORD)
     if point is not None:
@@ -175,9 +184,13 @@ def convert(core_name, verbose=True):
             f"no slot on tab {INVENTORY_TAB} filled after {CONFIRM_WORD}. "
             f"Nothing converted.")
     calibration.steps_table(f"convert into {core_name}")
-    where = sorted(arrived)
-    say(f"    {core_name} arrived in {len(where)} slot(s), "
-        f"landing in {where[0]} to {where[-1]}")
+    landed = _first_free(before)
+    if landed is None:
+        raise Refused(
+            f"tab {INVENTORY_TAB} was full before {CONFIRM_WORD}, so the "
+            f"{core_name} has nowhere of its own to land.")
+    say(f"    {core_name} arrived; one convert is one stack of at most "
+        f"{MAX_STACK}, so it is in {landed}, the slot free before it")
     return {"core": core_name, "costs": entry["costs"],
-            "slots": where,
+            "slots": [landed],
             "cell": entry["cell"]}

@@ -6,10 +6,24 @@ import pathlib
 import re
 import sys
 import sqlite3
+import zoneinfo
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LEDGER = ROOT / "src_1080p" / "sales.db"
 LOGS = ROOT / "src_1080p" / "logs"
+CLOCK = zoneinfo.ZoneInfo("America/Chicago")
+
+
+def central(when):
+    return when.astimezone(CLOCK).replace(tzinfo=None)
+
+
+def from_central(when):
+    return when.replace(tzinfo=CLOCK).astimezone().replace(tzinfo=None)
+
+
+def central_now():
+    return central(datetime.datetime.now())
 PACK = re.compile(r"\bX\s*[\d,]+", re.I)
 SETTINGS = json.loads((ROOT / "src_1080p" / "config.json")
                       .read_text(encoding="utf-8"))
@@ -385,9 +399,9 @@ def all_sales(runs, begin=None, end=None):
 
 
 def open_book(count=DAYS_BACK):
-    today = datetime.date.today()
+    today = central_now().date()
     first = today - datetime.timedelta(days=count - 1)
-    since = datetime.datetime.combine(first, datetime.time.min)
+    since = from_central(datetime.datetime.combine(first, datetime.time.min))
     runs = close_runs(since)
     return {"first": first, "today": today, "runs": runs}
 
@@ -396,19 +410,21 @@ def by_day(book):
     count = DAYS_BACK
     first, today = book["first"], book["today"]
     print(f"LAST {count} DAYS -- {first:%Y-%m-%d} to {today:%Y-%m-%d}, each "
-          f"day midnight to midnight")
+          f"day midnight to midnight Central")
     print("")
     print(f"{'day':<26}{'hours':>8}{'profit':>15}{'revenue':>15}"
           f"{'cost':>15}{'units':>8}{'margin':>8}{'an hour':>14}")
     line(width=118)
     grand = collections.Counter()
-    spans = run_spans(datetime.datetime.combine(first, datetime.time.min)
-                      - datetime.timedelta(days=1))
+    spans = run_spans(from_central(datetime.datetime.combine(
+        first, datetime.time.min)) - datetime.timedelta(days=1))
     all_up = 0.0
     for back in range(count - 1, -1, -1):
         day = today - datetime.timedelta(days=back)
-        begin = datetime.datetime.combine(day, datetime.time.min)
-        end = begin + datetime.timedelta(days=1)
+        begin = from_central(datetime.datetime.combine(day,
+                                                       datetime.time.min))
+        end = from_central(datetime.datetime.combine(
+            day + datetime.timedelta(days=1), datetime.time.min))
         t = sold_totals(all_sales(book["runs"], begin, end))
         grand.update(t)
         up = up_hours(spans, begin, end)
@@ -426,11 +442,11 @@ def by_day(book):
 
 
 def report_day(book):
-    start = datetime.datetime.now().replace(hour=0, minute=0, second=0,
-                                            microsecond=0)
-    now = datetime.datetime.now().strftime("%H:%M")
-    print(f"PROFIT SUMMARY -- sold since {start:%Y-%m-%d} 00:00 "
-          f"(as of {now})")
+    start = from_central(central_now().replace(hour=0, minute=0, second=0,
+                                               microsecond=0))
+    now = central_now().strftime("%H:%M")
+    print(f"PROFIT SUMMARY -- sold since {central(start):%Y-%m-%d} 00:00 "
+          f"Central (as of {now} Central)")
     print("")
     sales = all_sales(book["runs"], start)
     if not sales:
@@ -731,7 +747,8 @@ def report_market():
         newest = PASS_HEAD.match(lines[heads[-1]]).group(1)
         stale = (f"; pass {newest} is under way and has not priced the cores "
                  f"yet, so this is the last table it printed")
-    print(f"MARKET -- {log.name}, pass {number_of_pass}, log last written {written:%H:%M}"
+    print(f"MARKET -- {log.name}, pass {number_of_pass}, log last written "
+          f"{central(written):%H:%M} Central"
           f"{'' if any('ran for' in l for l in lines[-KNOBS["log_tail_lines"]:]) else ' (live)'}{stale}")
     print("")
     print(f"{'core':<30}{'rows':>6}{'buy/u':>12}{'sell/u':>12}{'margin':>10}{'margin %':>10}"

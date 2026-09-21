@@ -1,3 +1,4 @@
+import json
 import re
 import sys
 from pathlib import Path
@@ -13,12 +14,27 @@ def key(name):
     return re.sub(r"[^a-z0-9]", "", PACK.sub(" ", name or "").lower())
 
 
+def counted_rows(text):
+    found = COUNTED.findall(text or "")
+    if found:
+        first, last = found[-1]
+        return int(first), int(last)
+    run = json.loads((TREE / "config.json").read_text(encoding="utf-8"))["run"]
+    return int(run["relist_from"]), int(run["relist_to"])
+
+
+def inside(rows, span):
+    first, last = span
+    return [r for r in rows if first <= r[0] <= last]
+
+
 MARKET_HEAD = re.compile(r"^market prices:\s*$")
 MARKET_ROW = re.compile(r"^\s{2}(\S.*?)\s{2,}([\d,]+)\s*$")
 BOARD_ROW = re.compile(r"^\s{4,}(\d+)\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+|-)"
                        r"\s+([\d,]+)\s+(?:[-+]?[\d.]+%|-)\s+([\d,]+)"
                        r"(?:\s+(?:[\d,]+|-))?(?:\s+<- here)?\s*$")
 BOARD_UNREAD = re.compile(r"^\s{4,}(\d+)\s+UNREAD\s+(.*)$")
+COUNTED = re.compile(r"counting only rows (\d+)-(\d+)")
 BOARD_HEAD = re.compile(r"^\s+board (?:after pass \d+:|during pass \d+, at row )")
 HELD_HEAD = re.compile(r"^\s+held on tab \d+, bought and not listed yet:")
 AFTER_HEAD = re.compile(r"^\s+board after pass (\d+):", re.M)
@@ -66,7 +82,8 @@ def read(log, board_text=None):
     market, board, unread, balance = {}, [], [], None
     bought, core = [], None
     in_market = False
-    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+    text = log.read_text(encoding="utf-8", errors="replace")
+    for line in text.splitlines():
         if MARKET_HEAD.match(line):
             in_market, market = True, {}
             continue
@@ -110,6 +127,8 @@ def read(log, board_text=None):
             if found:
                 bought.append((core, number(found.group(2)),
                                number(found.group(1))))
+    span = counted_rows(text)
+    board, unread = inside(board, span), inside(unread, span)
     if board_text is not None:
         fresh, held = [], []
         for line in board_text.splitlines():
@@ -128,7 +147,8 @@ def read(log, board_text=None):
             if found:
                 balance = number(found.group(1))
         if fresh:
-            board, unread, bought = fresh, held, []
+            board, unread, bought = (inside(fresh, span), inside(held, span),
+                                     [])
     return market, board, unread, balance, bought
 
 
@@ -182,9 +202,12 @@ def summary(log, indent="    ", width=40, number=18, extra=0,
 
 
 def report(log, market, board, unread, balance, bought):
-    print(f"NET WORTH -- from {log.name}")
+    first, last = counted_rows(log.read_text(encoding="utf-8",
+                                             errors="replace"))
+    print(f"NET WORTH -- from {log.name}, rows {first}-{last} only")
     print("stock is valued at what each row is listed for; the market column "
-          "is the price the run read at launch, for reference")
+          "is the price the run read at launch, for reference; anything "
+          f"listed outside rows {first}-{last} is not counted")
     print("")
     head = (f"{'row':>4}  {'item':<28}{'units':>8}{'bought/u':>12}{'listed/u':>12}"
             f"{'market':>12}{'value':>18}{'profit if sold':>16}")
