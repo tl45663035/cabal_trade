@@ -181,6 +181,15 @@ def await_balance(differs_from=None, timeout=None):
     return seen
 
 
+def show_work_tab():
+    try:
+        row_model.show_work_tab()
+    except row_model.Divergence:
+        raise Refused(f"the Inventory panel would not open, so tab "
+                      f"{row_model.WORK_TAB} could not be selected for the "
+                      f"purchase to land in. Nothing clicked.") from None
+
+
 def _whole_batches(held, pack, packs, batch):
     if batch <= 1:
         return packs
@@ -243,6 +252,8 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
             f"under the {limit} limit with {held} held; a bundle cannot be "
             f"split, so this offer is skipped.")
     want_packs = max(1, -(-int(want) // pack))
+    with step(f"select inventory tab {row_model.WORK_TAB}"):
+        show_work_tab()
     with step("read the balance before buying"):
         before_alz = get_alz.read_balance()
     if before_alz is None:
@@ -447,6 +458,8 @@ def _buy_voucher(confirm=True, verbose=True):
     say(f"  row 1 offers {offer['name']!r} x{offer['qty']} at "
         f"{offer['price']:,}")
 
+    with step(f"select inventory tab {row_model.WORK_TAB}"):
+        show_work_tab()
     with step(f"click the row at {row_point()}"):
         calibration.click(*row_point(), settle=FIELD_SETTLE)
     with step(f"click Buy at {buy_point()}"):

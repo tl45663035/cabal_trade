@@ -8,6 +8,7 @@ CAL = calibration.load_shared()
 
 _FACTS = CAL["game_facts"]
 AGENT_SHOP_TAB = _FACTS["agent_shop_tab"]
+WORK_TAB = _FACTS["work_tab"]
 AGENT_SHOP_SLOT = tuple(_FACTS["agent_shop_slot"])
 
 ACTION_GAP = CAL["timing"]["action_gap"]
@@ -142,6 +143,10 @@ def open_agent_shop(verbose: bool = True) -> None:
         deadline = time.monotonic() + DIALOG_TIMEOUT
         while time.monotonic() < deadline:
             if calibration._trade_window_open():
+                if verbose:
+                    print(f"  tab {WORK_TAB} at {tab_point(WORK_TAB)}, so "
+                          f"whatever is bought or withdrawn lands there")
+                click(*tab_point(WORK_TAB))
                 return
             time.sleep(POLL_GAP)
         calibration.snap(f"no_trade_window_{attempt}")
