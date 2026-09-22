@@ -19,6 +19,7 @@ ACTION_GAP = _SHARED["timing"]["action_gap"]
 TAB_SETTLE = _SHARED["timing"]["tab_settle"]
 POLL_GAP = _SHARED["timing"]["poll_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
+BUY_DIALOG_TIMEOUT = _SHARED["timing"]["buy_dialog_timeout"]
 CLEAR_PRESSES_QTY = _SHARED["detect"]["clear_presses_qty"]
 FIELD_SETTLE = _SHARED["timing"]["field_settle"]
 REREADS = _SHARED["detect"]["panel_rereads"]
@@ -137,7 +138,7 @@ def dialog_button(word, image=None):
 
 
 def await_dialog(timeout=None):
-    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+    deadline = time.monotonic() + (BUY_DIALOG_TIMEOUT if timeout is None
                                    else timeout)
     while time.monotonic() < deadline:
         if dialog_open():

@@ -8,6 +8,7 @@ TAB_SETTLE = _SHARED["timing"]["tab_settle"]
 ACTION_GAP = _SHARED["timing"]["action_gap"]
 POLL_GAP = _SHARED["timing"]["poll_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
+CRAFT_WINDOW_TIMEOUT = _SHARED["timing"]["craft_window_timeout"]
 LOAD_ATTEMPTS = _SHARED["detect"]["load_attempts"]
 SETTLE_PER_BLOCK = _SHARED["timing"]["craft_settle_per_block"]
 SETTLE_BLOCK = _SHARED["timing"]["craft_settle_block"]
@@ -52,7 +53,7 @@ def open_craft(verbose=True):
             f"slot {calibration.CRAFT_KEY_SLOT} at {point} "
             f"(attempt {attempt}/{LOAD_ATTEMPTS})")
         calibration.right_click(*point)
-        deadline = time.monotonic() + DIALOG_TIMEOUT
+        deadline = time.monotonic() + CRAFT_WINDOW_TIMEOUT
         while time.monotonic() < deadline:
             if calibration.craft_window_open():
                 return True

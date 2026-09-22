@@ -86,8 +86,13 @@
     },
     "buy_max": {
       "default": 500,
-      "Chaos Core": 1000,
-      "Divine Stone": 1000
+      "Chaos Core": 999,
+      "Divine Stone": 999
+    },
+    "buy_whole_row": {
+      "default": false,
+      "Chaos Core": true,
+      "Divine Stone": false
     },
     "special_row": {
       "enabled": true,
@@ -285,7 +290,10 @@
     "poll_gap": 0.0,
     "search_timeout": 8.0,
     "search_retries": 10,
-    "dialog_timeout": 8.0,
+    "dialog_timeout": 3.0,
+    "buy_dialog_timeout": 3.0,
+    "craft_window_timeout": 8.0,
+    "cash_confirm_timeout": 8.0,
     "retry_gap": 1.0,
     "hover_settle": 0.15,
     "modifier_settle": 0.25,

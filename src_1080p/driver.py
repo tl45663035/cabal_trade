@@ -73,14 +73,23 @@ class NotReady(Exception):
 
 
 _MEASURED = False
+REPAIR = False
 _PENDING = None
+
+
+def repair_command(args):
+    return bool(args) and args[0].lower() != "relist"
 
 
 def initialise(verbose=True):
     global _MEASURED
     if not inv.focus_game():
         raise NotReady("could not bring the game to the foreground.")
-    if not _MEASURED:
+    if REPAIR:
+        if verbose:
+            print("  a repair: not measuring the screen, using the "
+                  "calibration on file")
+    elif not _MEASURED:
         if verbose:
             print("  measuring this screen before touching anything")
         calibration.main(close=False)
@@ -90,7 +99,8 @@ def initialise(verbose=True):
     cal = calibration.load(force=True)
     if verbose:
         print(f"  calibrated for {cal['resolution']}, measured "
-              f"{cal.get('measured_at')}, shop open")
+              f"{cal.get('measured_at')}"
+              + ("" if REPAIR else ", shop open"))
     if war.ENABLED:
         if war.sync(verbose=verbose):
             at = war.now()
@@ -2064,6 +2074,10 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True,
               f"every row is taken whole until {core} is done; each order "
               f"prices the favourite afresh, then wheels down, up to "
               f"{steps_max} step(s)")
+    if calibration.buy_whole_row(core) and want_max:
+        print(f"  every order takes all of the row it lands on, up to "
+              f"{int(want_max)} held, and the orders stop once {target} is "
+              f"held")
     task("resupply", core=core, set=set_name, slot=slot,
          tab=row_model.WORK_TAB)
     return {"slot": slot, "core": core, "set": set_name, "diff": diff,
@@ -2158,11 +2172,14 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
 def buy_cores(job, verbose=True):
     core, target = job["core"], job["target"]
     batch = calibration.CRAFT_CORES_PER_SET
+    whole = calibration.buy_whole_row(core) and job.get("want_max")
 
     while job["bought"] < target:
         print(f"  {job['bought']}/{target} {core} held")
-        if not take_offers(job, target - job["bought"], batch,
-                           verbose=verbose):
+        want = ((int(job["want_max"]) if whole else target) - job["bought"])
+        if want <= 0:
+            break
+        if not take_offers(job, want, batch, verbose=verbose):
             break
 
     while job["bought"] % batch and not job.get("broke"):
@@ -3587,6 +3604,8 @@ def main():
 
 
 def _dispatch(args):
+    global REPAIR
+    REPAIR = repair_command(args)
     if not args:
         do_relist()
         return

@@ -33,6 +33,7 @@ ACTION_GAP = _T["action_gap"]
 TAB_SETTLE = _T["tab_settle"]
 POLL_GAP = _T["poll_gap"]
 DIALOG_TIMEOUT = _T["dialog_timeout"]
+CASH_CONFIRM_TIMEOUT = _T["cash_confirm_timeout"]
 TOGGLE_TRIES = int(_T["toggle_tries"])
 LINE_SLACK = _DET["word_row_slack"]
 BUTTON_HALF = tuple(_DET["dialog_button_half"])
@@ -489,12 +490,12 @@ def purchase(item, confirm=True, verbose=True, count=1):
     with calibration.step(f"{PURCHASE_WORD} on {item}"):
         purchase_cell(item, verbose=verbose)
     with calibration.step("await the confirmation"):
-        seen = _await(dialog)
+        seen = _await(dialog, CASH_CONFIRM_TIMEOUT)
     if seen is None:
         calibration.snap("cash_no_confirmation")
         raise Refused(
-            f"no {OK_WORD} and {CANCEL_WORD} within {DIALOG_TIMEOUT:g}s of "
-            f"{PURCHASE_WORD}. Nothing confirmed.")
+            f"no {OK_WORD} and {CANCEL_WORD} within {CASH_CONFIRM_TIMEOUT:g}s "
+            f"of {PURCHASE_WORD}. Nothing confirmed.")
     say(f"    the confirmation reads {seen['text']!r}")
     if not matches(item, seen["text"]):
         _dismiss(seen, f"the confirmation names something other than "
