@@ -89,6 +89,17 @@
       "Chaos Core": 1000,
       "Divine Stone": 1000
     },
+    "special_row": {
+      "enabled": true,
+      "cores": [
+        "Chaos Core",
+        "Divine Stone"
+      ],
+      "under_market": 500,
+      "under_random_range": 200,
+      "rows": 1,
+      "qty": 1
+    },
     "buy_random_range": 15,
     "buy_scroll_limit": 30,
     "buy_take_all_after": 10,
@@ -439,7 +450,7 @@
     "head_lines": 4,
     "line_width": 140,
     "reason_width": 150,
-    "report_every": 1800,
+    "report_every": 900,
     "report_dir": "profit_reports",
     "report_name": "summary.txt",
     "report_tool": "tools/profit_summary.py",

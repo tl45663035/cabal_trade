@@ -1,0 +1,31 @@
+2026-09-21_215622  .\supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-21_215622_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-21_183629_run.log ended: interrupted from the keyboard,21:56:23,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-21_183629_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-21_215635_found.png
+  interrupted: resupply of Chaos Core: bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Chaos Core' it was making from; nothing on screen is read to name it
+  frame 2026-09-21_215644_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-21_215650_reset.png
+   2026-09-21_215652  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-21_215652_run.log
+     code 7149cda
+     screen 1920x1080
+* relaunched (pid 2712),21:56:55,alive
+watching pid 2712, 2026-09-21_215652_run.log
+* server lag: not answering,21:58:23,alive
+* server lag: the server stalled,21:59:27,alive
+
+  Ctrl 4 times: stopping the run the way Ctrl+C would.
+* supervisor cancelled with Ctrl x4,22:01:34,dead
