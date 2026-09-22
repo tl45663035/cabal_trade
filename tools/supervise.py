@@ -881,32 +881,52 @@ def write_report():
     return path
 
 
-def push_report(path):
+def together_path():
+    return ROOT / K["report_dir"] / K["together_dir"] / K["report_name"]
+
+
+def write_together():
+    git("fetch", "origin", K["report_branch"])
+    out = subprocess.run([sys.executable, str(ROOT / K["together_tool"]),
+                          CONFIG], cwd=str(ROOT), text=True,
+                         capture_output=True, timeout=K["report_timeout"])
+    if out.returncode != 0 or not out.stdout.strip():
+        raise Stop(f"{K['together_tool']} exited {out.returncode}: "
+                   f"{(out.stderr or out.stdout).strip()[:K['reason_width']]}")
+    path = together_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(out.stdout, encoding="utf-8")
+    return path
+
+
+def push_report(paths):
     try:
-        return _push_report(path)
+        return _push_report(paths)
     except subprocess.TimeoutExpired as exc:
         return (f"{' '.join(str(a) for a in exc.cmd)} gave no answer in "
                 f"{K['tool_timeout']}s")
 
 
-def _push_report(path):
-    rel = path.relative_to(ROOT).as_posix()
+def _push_report(paths):
+    rels = [p.relative_to(ROOT).as_posix() for p in paths]
     branch = K["report_branch"]
     index = LOGS / K["report_index"]
     for attempt in range(1, K["report_tries"] + 1):
         if git("fetch", "origin", branch).returncode:
             return "fetch failed"
-        blob = git("hash-object", "-w", str(path))
-        if blob.returncode:
-            return "the report would not hash"
         index.unlink(missing_ok=True)
         env = dict(os.environ, GIT_INDEX_FILE=str(index))
         if git("read-tree", f"origin/{branch}", env=env).returncode:
             return f"origin/{branch} would not read"
-        added = git("update-index", "--add", "--cacheinfo",
-                    f"{K['report_mode']},{blob.stdout.strip()},{rel}", env=env)
-        if added.returncode:
-            return added.stderr.strip()[:K["reason_width"]]
+        for path, rel in zip(paths, rels):
+            blob = git("hash-object", "-w", str(path))
+            if blob.returncode:
+                return f"{rel} would not hash"
+            added = git("update-index", "--add", "--cacheinfo",
+                        f"{K['report_mode']},{blob.stdout.strip()},{rel}",
+                        env=env)
+            if added.returncode:
+                return added.stderr.strip()[:K["reason_width"]]
         tree = git("write-tree", env=env)
         index.unlink(missing_ok=True)
         if tree.returncode:
@@ -948,12 +968,21 @@ def report_due(log, force=False):
         event(f"the profit report was not written: {type(exc).__name__}: "
               f"{exc}"[:K["reason_width"]], "alive")
         return
-    failed = push_report(path)
+    paths = [path]
+    if CONFIG == K["together_for"]:
+        try:
+            paths.append(write_together())
+        except Exception as exc:
+            event(f"the {K['together_dir']} report was not written: "
+                  f"{type(exc).__name__}: {exc}"[:K["reason_width"]], "alive")
+    failed = push_report(paths)
     if failed:
         event(f"the profit report was written but not pushed: {failed}",
               "alive")
     else:
-        event(f"pushed the profit report for {CONFIG}", "alive")
+        event(f"pushed the profit report for {CONFIG}"
+              + (f" and {K['together_dir']}" if len(paths) > 1 else ""),
+              "alive")
 
 
 def main():

@@ -471,6 +471,14 @@
     "report_tries": 3,
     "report_timeout": 300,
     "report_message": "profit report for {config} at {at}",
+    "together_dir": "together",
+    "together_configs": [
+      "bot",
+      "cang",
+      "trung"
+    ],
+    "together_tool": "tools/profit_together.py",
+    "together_for": "bot",
     "report_ready": "relisting rows \\d+-\\d+: \\d+ relisted"
   },
   "tools": {
