@@ -8,12 +8,12 @@ Fri 2026-09-18             5.53h   24.00h   17.79M    3.22M  769.03M  751.24M   
 Sat 2026-09-19            17.20h   24.00h  363.35M   21.13M   12.72B   12.36B  18.51K    2.9%
 Sun 2026-09-20            20.73h   24.00h  429.79M   20.73M   15.95B   15.52B  24.57K    2.7%
 Mon 2026-09-21            22.74h   24.00h  725.86M   31.91M   19.02B   18.29B  27.48K    3.8%
-Tue 2026-09-22 (so far)    6.22h    6.22h  219.44M   35.28M    4.59B    4.37B   5.88K    4.8%
+Tue 2026-09-22 (so far)    6.47h    6.47h  219.44M   33.91M    4.59B    4.37B   5.88K    4.8%
 =============================================================================================
-7 DAYS                    72.53h  150.22h    1.76B   24.21M   53.05B   51.29B  77.32K    3.3%
+7 DAYS                    72.78h  150.47h    1.76B   24.13M   53.05B   51.29B  77.32K    3.3%
 
 
-PROFIT SUMMARY -- sold since 2026-09-22 00:00 Central (as of 06:13 Central)
+PROFIT SUMMARY -- sold since 2026-09-22 00:00 Central (as of 06:28 Central)
 
 item                       profit  revenue     cost  units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ TOTAL                     219.44M    4.59B    4.37B  5.88K   743.99K  781.31K   
 
 
 
-ROWS -- 2026-09-21_201602_run_board.log, board during pass 68 at row 1, read 2026-09-22T06:07:17 (live)
+ROWS -- 2026-09-21_201602_run_board.log, board during pass 70 at row 1, read 2026-09-22T06:21:11 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Epic Booster (Highest)                  x2    46.25M    47.00M  +750.00K    47.00M     1.50M <- here
     2  Chaos Core                              x1   736.00K   727.65K    -8.35K   727.65K    -8.35K
@@ -53,18 +53,23 @@ ROWS -- 2026-09-21_201602_run_board.log, board during pass 68 at row 1, read 202
    16  Force Core(High                       x240   192.19K   196.98K    +4.79K   196.98K     1.15M
    17  Force Core(High                       x250   192.31K   196.98K    +4.68K   196.98K     1.17M
    18  Force Core(High                        x35   192.31K   196.98K    +4.67K   196.98K   163.62K
-    balance now 1.80B, read 2026-09-22T06:07:17
-       stock at its listed price                                                            881.45M
-       Alz, latest balance line                                                               1.80B
-       NET WORTH                                                                              2.68B
+   19  Chaos Core Set                          x1   727.45K   747.00K   +19.55K   190.48M     4.98M
+   20  Chaos Core Set                          x1   725.29K   747.00K   +21.71K   150.15M     4.36M
+   21  Chaos Core Set                          x1   730.34K   747.00K   +16.66K   181.52M     4.05M
+   22  Chaos Core Set                          x1   737.34K   746.99K    +9.66K   161.35M     2.09M
+   23  Chaos Core Set                          x1   737.50K   746.99K    +9.49K   118.77M     1.51M
+    balance now 1.00B, read 2026-09-22T06:20:00
+       stock at its listed price                                                              1.68B
+       Alz, latest balance line                                                               1.00B
+       NET WORTH                                                                              2.69B
 
 
-MARKET -- 2026-09-21_201602_run.log, pass 68, log last written 06:13 Central (live)
+MARKET -- 2026-09-21_201602_run.log, pass 70, log last written 06:28 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  0  725.96K  747.00K  21.04K      2.8%     10  YES
+Chaos Core                  6  737.50K  746.99K   9.49K      1.3%     10  YES
 Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            4        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
