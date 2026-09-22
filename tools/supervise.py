@@ -890,19 +890,19 @@ def write_report():
     return path
 
 
-def together_path():
-    return ROOT / K["report_dir"] / K["together_dir"] / K["report_name"]
+def all_path():
+    return ROOT / K["report_dir"] / K["all_dir"] / K["report_name"]
 
 
-def write_together():
+def write_all():
     git("fetch", "origin", K["report_branch"])
-    out = subprocess.run([sys.executable, str(ROOT / K["together_tool"]),
+    out = subprocess.run([sys.executable, str(ROOT / K["all_tool"]),
                           CONFIG], cwd=str(ROOT), text=True,
                          capture_output=True, timeout=K["report_timeout"])
     if out.returncode != 0 or not out.stdout.strip():
-        raise Stop(f"{K['together_tool']} exited {out.returncode}: "
+        raise Stop(f"{K['all_tool']} exited {out.returncode}: "
                    f"{(out.stderr or out.stdout).strip()[:K['reason_width']]}")
-    path = together_path()
+    path = all_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(out.stdout, encoding="utf-8")
     return path
@@ -978,11 +978,11 @@ def report_due(log, force=False):
               f"{exc}"[:K["reason_width"]], "alive")
         return
     paths = [path]
-    if CONFIG == K["together_for"]:
+    if CONFIG == K["all_for"]:
         try:
-            paths.append(write_together())
+            paths.append(write_all())
         except Exception as exc:
-            event(f"the {K['together_dir']} report was not written: "
+            event(f"the {K['all_dir']} report was not written: "
                   f"{type(exc).__name__}: {exc}"[:K["reason_width"]], "alive")
     failed = push_report(paths)
     if failed:
@@ -990,7 +990,7 @@ def report_due(log, force=False):
               "alive")
     else:
         event(f"pushed the profit report for {CONFIG}"
-              + (f" and {K['together_dir']}" if len(paths) > 1 else ""),
+              + (f" and {K['all_dir']}" if len(paths) > 1 else ""),
               "alive")
 
 

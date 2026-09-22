@@ -15,8 +15,7 @@ PLACES = KNOBS["short_places"]
 DIR = ROOT / SUP["report_dir"]
 NAME = SUP["report_name"]
 BRANCH = SUP["report_branch"]
-TOGETHER = SUP["together_dir"]
-ACCOUNTS = SUP["together_configs"]
+ACCOUNTS = SUP["all_configs"]
 GIT_TIMEOUT = SUP["report_timeout"]
 
 DAY = re.compile(r"^(\w{3} \d{4}-\d{2}-\d{2})( \(so far\))?\s+([\d.]+)h\s+"
@@ -100,7 +99,7 @@ def main(argv):
     labels = sorted({d for b in books.values() for d in b["days"]},
                     key=lambda d: d.split()[1])
     now = datetime.datetime.now()
-    print(f"TOGETHER -- {', '.join(ACCOUNTS)}, compiled {now:%Y-%m-%d %H:%M} "
+    print(f"ALL -- {', '.join(ACCOUNTS)}, compiled {now:%Y-%m-%d %H:%M} "
           f"from each account's own profit summary")
     print("")
     for account in ACCOUNTS:
@@ -168,7 +167,7 @@ def main(argv):
               f"{short(worth.get(parts[2], 0.0)):>16}"
               f"{short(worth.get(parts[3], 0.0)):>16}")
     line("=", width=len(head))
-    print(f"{'TOGETHER':<26}{short(sums[parts[0]]):>26}{short(sums[parts[1]]):>16}"
+    print(f"{'ALL':<26}{short(sums[parts[0]]):>26}{short(sums[parts[1]]):>16}"
           f"{short(sums[parts[2]]):>16}{short(sums[parts[3]]):>16}")
 
 
