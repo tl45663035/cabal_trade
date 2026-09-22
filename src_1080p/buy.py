@@ -182,12 +182,8 @@ def await_balance(differs_from=None, timeout=None):
 
 
 def show_work_tab():
-    try:
-        row_model.show_work_tab()
-    except row_model.Divergence:
-        raise Refused(f"the Inventory panel would not open, so tab "
-                      f"{row_model.WORK_TAB} could not be selected for the "
-                      f"purchase to land in. Nothing clicked.") from None
+    calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
+                      settle=0.0)
 
 
 def _whole_batches(held, pack, packs, batch):
