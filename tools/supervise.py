@@ -589,7 +589,7 @@ def step_for(kind, name, qty=None, special=False):
 
 
 def clear_work_tab(budget, tasks=()):
-    left_behind, collected = set(), False
+    left_behind, collected, stepped = set(), False, False
     kind, name, qty, special = named_by_log(tasks)
     if name:
         holds = (f"the {name!r} it was making from" if kind == "resupply"
@@ -616,8 +616,9 @@ def clear_work_tab(budget, tasks=()):
                 event(f"collect failed: {str(exc)[:K['reason_width']]}; "
                       f"carrying on", "dead")
         row, col = todo[0]
-        step = step_for(kind, name, qty, special)
+        step = None if stepped else step_for(kind, name, qty, special)
         if step is not None:
+            stepped = True
             args = step
             event(f"the log says tab {WORK_TAB} holds {name!r}, which is "
                   f"converted and never listed; converting it", "dead")
@@ -636,6 +637,11 @@ def clear_work_tab(budget, tasks=()):
                 event(f"left {name} on tab {WORK_TAB} ({row},{col}); under a "
                       f"whole batch, as the run leaves it", "dead")
                 left_behind.add((row, col))
+                continue
+            if args[0] != "list":
+                event(f"{what} changed nothing on tab {WORK_TAB}; "
+                      f"{name or 'the slot'} is already what it makes, so it "
+                      f"is listed instead", "dead")
                 continue
             raise Stop(f"{what} changed nothing on tab {WORK_TAB}; "
                        f"{name or 'the slot'} is still there")
