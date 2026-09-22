@@ -1,0 +1,91 @@
+2026-09-22_023844  .\supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-22_023844_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-22_004138_run.log ended: interrupted from the keyboard,02:38:44,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-22_004138_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-22_023856_found.png
+  interrupted: relist row 14: 'Force Core(High' x250 at 198,849 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core(High'; nothing on screen is read to name it
+  frame 2026-09-22_023903_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 14: 'Force Core(High' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-22_023910_reset.png
+   2026-09-22_023911  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-22_023911_run.log
+     code b2cfbd9
+     screen 1920x1080
+* relaunched (pid 8852),02:39:15,alive
+watching pid 8852, 2026-09-22_023911_run.log
+* server lag: not answering,02:48:21,alive
+* server lag: the server stalled,02:49:26,alive
+* server lag: the server stalled,02:49:46,alive
+* server lag: not answering,02:50:09,alive
+* server lag: the server stalled,02:51:13,alive
+* pushed the profit report for cang,03:00:21,alive
+* pushed the profit report for cang,03:15:23,alive
+* pushed the profit report for cang,03:30:28,alive
+* war window, log quiet 155s,03:31:32,alive
+* pushed the profit report for cang,03:45:42,alive
+* pushed the profit report for cang,04:00:47,alive
+* pushed the profit report for cang,04:15:57,alive
+* pushed the profit report for cang,04:31:04,alive
+* pushed the profit report for cang,04:46:11,alive
+* pushed the profit report for cang,05:01:20,alive
+* pushed the profit report for cang,05:16:30,alive
+* pushed the profit report for cang,05:31:37,alive
+* pushed the profit report for cang,05:46:46,alive
+* NotReady: the Agent Shop would not reopen after resting.,05:47:08,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-22_023911_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-22_054716_found.png
+  interrupted: resupply of Divine Stone: bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Divine Stone' it was making from; nothing on screen is read to name it
+  frame 2026-09-22_054724_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-22_054728_reset.png
+   2026-09-22_054729  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-22_054729_run.log
+     code b2cfbd9
+     screen 1920x1080
+* relaunched (pid 8304),05:47:33,alive
+watching pid 8304, 2026-09-22_054729_run.log
+* pushed the profit report for cang,06:01:58,alive
+* pushed the profit report for cang,06:17:04,alive
+* war window, log quiet 165s,06:30:24,alive
+* pushed the profit report for cang,06:32:15,alive
+* server lag: not answering,06:42:46,alive
+* server lag: the server stalled,06:43:50,alive
+* pushed the profit report for cang,06:47:24,alive
+* server lag: not answering,06:54:25,alive
+* server lag: the server stalled,06:55:29,alive
+* server lag: not answering,06:55:50,alive
+* server lag: the server stalled,06:56:54,alive
+* pushed the profit report for cang,07:02:33,alive
+* server lag: not answering,07:02:53,alive
+* server lag: the server stalled,07:03:57,alive
+* server lag: not answering,07:08:09,alive
+* server lag: the server stalled,07:09:14,alive
+* pushed the profit report for cang,07:17:40,alive
+* server lag: not answering,07:22:13,alive
+* server lag: the server stalled,07:22:57,alive
+* server lag: the server stalled,07:23:18,alive
+* pushed the profit report for cang,07:32:48,alive
+
+  Ctrl 4 times: stopping the run the way Ctrl+C would.
+* supervisor cancelled with Ctrl x4,07:35:23,dead
