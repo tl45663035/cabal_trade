@@ -412,6 +412,12 @@
       0.3984,
       0.4178
     ],
+    "game_wait_band": [
+      0.2813,
+      0.0505,
+      0.3854,
+      0.0763
+    ],
     "recovery_login_panel": [
       0.4557291666666667,
       0.655,
@@ -493,6 +499,7 @@
     "buy_dialog_marker": "Purchase",
     "server_clock": "^([01]\\d|2[0-3])[:.]([0-5]\\d)",
     "server_lag": "server\\W*respon|waiting\\W*for\\W*the\\W*server",
+    "game_wait": "please\\W*wait\\W*and\\W*try\\W*again",
     "letter_digits": {
       "l": "1",
       "I": "1",
@@ -2498,6 +2505,10 @@
       200
     ],
     "server_lag_blue": 80,
+    "game_wait_pixels": 100,
+    "game_wait_red": 180,
+    "game_wait_green": 90,
+    "game_wait_blue": 90,
     "panel_moved_slack": 30,
     "clear_presses_qty": 3,
     "clear_presses_price": 16,

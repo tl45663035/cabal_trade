@@ -65,6 +65,7 @@ PANEL_ITEM_HALF = int(_SHARED["detect"]["panel_item_half"])
 NET_SALES_NUDGES = _SHARED["detect"]["net_sales_nudges"]
 STALE_SWEEP = _T["stale_sweep"]
 POLL_GAP = _T["poll_gap"]
+GAME_WAIT_RETRIES = int(_SHARED["run"]["game_wait_retries"])
 
 _NOT_ALNUM = re.compile(r"[^a-z0-9]")
 
@@ -74,6 +75,10 @@ class Divergence(Exception):
 
 
 class SlotNeverFilled(Divergence):
+    pass
+
+
+class GameSaysWait(Divergence):
     pass
 
 
@@ -538,6 +543,19 @@ def underprice_warning_gone(timeout=None):
     return calibration.underprice_warning_gone(timeout)
 
 
+def game_refused(done, timeout=None):
+    deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
+                                   else timeout)
+    while time.monotonic() < deadline:
+        image = calibration.grab()
+        if done(image):
+            return False
+        if calibration.game_says_wait(image):
+            return True
+        time.sleep(POLL_GAP)
+    return False
+
+
 def dialog_gone(timeout=None):
     deadline = time.monotonic() + (DIALOG_TIMEOUT if timeout is None
                                    else timeout)
@@ -951,7 +969,44 @@ class RowModel:
                   f"{listed.name!r} at {price:,}"
                   + (f", {held} to a listing" if held > 1 else ""))
 
+    def reopen_after_wait(self, verbose=True):
+        import open_agent_shop_premium as shop
+        calibration.close_everything()
+        shop.open_agent_shop(verbose=False)
+        time.sleep(TAB_SETTLE)
+        calibration.click(*_shop()["register_tab"])
+        time.sleep(TAB_SETTLE)
+        calibration.park()
+        self._top = None
+        self._seat = FIRST_SEAT
+        if verbose:
+            print(f"  the Agent Shop is closed and open again on the Register "
+                  f"tab")
+
+    def again_after_wait(self, what, attempt, verbose=True):
+        calibration.snap("game_says_wait")
+        if attempt >= GAME_WAIT_RETRIES:
+            raise GameSaysWait(
+                f"the game answered 'please wait and try again' to {what} "
+                f"{attempt + 1} time(s); nothing more is tried.")
+        if verbose:
+            print(f"  the game answered 'please wait and try again' to {what}; "
+                  f"closing the Agent Shop and doing it again "
+                  f"({attempt + 1} of {GAME_WAIT_RETRIES})")
+        self.reopen_after_wait(verbose=verbose)
+
     def cancel(self, index, verbose=True, tab_ready=False):
+        attempt = 0
+        while True:
+            try:
+                return self._cancel(index, verbose=verbose,
+                                    tab_ready=tab_ready and not attempt)
+            except GameSaysWait:
+                self.again_after_wait(f"cancelling row {index}", attempt,
+                                      verbose=verbose)
+                attempt += 1
+
+    def _cancel(self, index, verbose=True, tab_ready=False):
         index = int(index)
         expected = self._slots.get(index)
         if expected is None:
@@ -1028,18 +1083,32 @@ class RowModel:
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD} on row {index}. "
                 f"Whether the cancel committed is unknown -- check by hand.")
+        landing = self.next_work_slot()
+        if landing is not None and game_refused(
+                lambda image: not calibration.slot_is_empty(image, *landing)):
+            raise GameSaysWait(f"cancelling row {index}")
         result = self.note_cancel(index)
         if verbose:
             print(f"  row {index} cancelled; {expected.name!r} lands in tab "
                   f"{result['lands_in_tab']} slot {result['lands_in_slot']}")
         return result
 
-    def list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
-                  lands_in=None, expect_item=None,
-                  expect_price=None, unit_market=None, floor_each=0,
-                  listed_at=None, wait_fill=True, price_each=None,
-                  expect_qty=None, expect_market=None, resolve=True,
-                  under=None):
+    def list_slot(self, row, col, verbose=True, **kw):
+        attempt = 0
+        while True:
+            try:
+                return self._list_slot(row, col, verbose=verbose, **kw)
+            except GameSaysWait:
+                self.again_after_wait(f"listing from ({row},{col})", attempt,
+                                      verbose=verbose)
+                attempt += 1
+
+    def _list_slot(self, row, col, price=None, floor=0, why="", verbose=True,
+                   lands_in=None, expect_item=None,
+                   expect_price=None, unit_market=None, floor_each=0,
+                   listed_at=None, wait_fill=True, price_each=None,
+                   expect_qty=None, expect_market=None, resolve=True,
+                   under=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -1282,6 +1351,8 @@ class RowModel:
             deadline = time.monotonic() + DIALOG_TIMEOUT
             stalled = None
             while held and time.monotonic() < deadline:
+                if calibration.game_says_wait():
+                    raise GameSaysWait(f"listing from ({row},{col})")
                 if calibration.server_busy():
                     if stalled is None:
                         stalled = time.monotonic()

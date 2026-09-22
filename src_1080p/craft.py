@@ -191,9 +191,11 @@ def craft_sets(core=None, verbose=True, held=None, slot=None):
             landed = arrived[0]
             say(f"  the Sets arrived in {[tuple(a) for a in arrived]}")
         else:
-            landed = tuple(calibration.WORK_SLOT)
+            landed = (tuple(sorted(pre)[0]) if pre
+                      else tuple(calibration.WORK_SLOT))
             say(f"  no new slot filled, so the Sets can only have stacked "
-                f"into {landed}")
+                f"onto what tab {calibration.WORK_TAB} already held, in "
+                f"{landed}")
     with calibration.step("compress the crafted Sets"):
         compress(landed, verbose=verbose)
     say(f"  {used if used is not None else 'an unknown number of'} "

@@ -462,7 +462,10 @@ def marked(text):
                                "tab": info["tab"],
                                "slot": tuple(info["slot"])})
         elif kind == "resupply":
-            task = ("resupply", {"core": info["core"]})
+            task = ("resupply", {"core": info["core"],
+                                 **{k: info[k] for k in ("holding", "qty",
+                                                         "special")
+                                    if info.get(k) is not None}})
         else:
             continue
         mark = (task[0], tuple(sorted(task[1].items())))

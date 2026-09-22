@@ -335,6 +335,12 @@ SERVER_LAG_SURE = _S["detect"]["server_lag_sure"]
 SERVER_LAG_RED = _S["detect"]["server_lag_red"]
 SERVER_LAG_GREEN = tuple(_S["detect"]["server_lag_green"])
 SERVER_LAG_BLUE = _S["detect"]["server_lag_blue"]
+GAME_WAIT_BAND_F = tuple(_REG["game_wait_band"])
+GAME_WAIT_TEXT = re.compile(_S["text"]["game_wait"], re.IGNORECASE)
+GAME_WAIT_PIXELS = _S["detect"]["game_wait_pixels"]
+GAME_WAIT_RED = _S["detect"]["game_wait_red"]
+GAME_WAIT_GREEN = _S["detect"]["game_wait_green"]
+GAME_WAIT_BLUE = _S["detect"]["game_wait_blue"]
 SERVER_LAG_BUDGET = _S["timing"]["server_lag_budget"]
 VENDOR_TAB_WORDS = {w.strip().lower() for w in
                     _S["text"]["vendor_tab_words"].split("|")}
@@ -2334,6 +2340,22 @@ def server_busy(image=None) -> bool:
     except Exception:
         return False
     return SERVER_LAG_TEXT.search(seen) is not None
+
+
+def game_says_wait(image=None) -> bool:
+    image = image if image is not None else grab()
+    box = _box(GAME_WAIT_BAND_F)
+    try:
+        patch = np.asarray(image.crop(box).convert("RGB"), dtype=int)
+        ink = int(((patch[..., 0] > GAME_WAIT_RED)
+                   & (patch[..., 1] < GAME_WAIT_GREEN)
+                   & (patch[..., 2] < GAME_WAIT_BLUE)).sum())
+        if ink < GAME_WAIT_PIXELS:
+            return False
+        seen = read_line(image, box)
+    except Exception:
+        return False
+    return GAME_WAIT_TEXT.search(seen) is not None
 
 
 class ServerStalled(Exception):

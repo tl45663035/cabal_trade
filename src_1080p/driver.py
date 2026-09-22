@@ -695,7 +695,8 @@ def relist_one(model, index, verbose=True, first=None, last=None,
             if verbose:
                 print(f"    collected; row {index} is empty, nothing to "
                       f"relist")
-            restock_now(model, sold, first, last, verbose=verbose)
+            if not collect_only:
+                restock_now(model, sold, first, last, verbose=verbose)
             return None
         if verbose:
             print(f"    collected; {row.qty} left to relist")
