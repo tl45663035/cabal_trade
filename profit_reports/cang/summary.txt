@@ -8,12 +8,12 @@ Fri 2026-09-18            12.61h   24.00h  207.75M   16.47M   10.12B   9.91B  14
 Sat 2026-09-19            11.34h   24.00h  215.00M   18.97M    7.20B   6.98B  11.46K    3.0%
 Sun 2026-09-20            18.19h   24.00h  332.24M   18.27M   14.35B  14.02B  21.88K    2.3%
 Mon 2026-09-21            14.14h   24.00h  174.22M   12.32M    6.59B   6.42B  11.84K    2.6%
-Tue 2026-09-22 (so far)    5.90h    6.79h   17.62M    2.99M    3.79B   3.78B   4.87K    0.5%
+Tue 2026-09-22 (so far)    6.15h    7.04h   17.62M    2.86M    3.79B   3.78B   4.87K    0.5%
 ============================================================================================
-7 DAYS                    89.88h  150.79h    1.56B   17.33M   57.85B  56.29B  90.32K    2.7%
+7 DAYS                    90.13h  151.04h    1.56B   17.28M   57.85B  56.29B  90.32K    2.7%
 
 
-PROFIT SUMMARY -- sold since 2026-09-22 00:00 Central (as of 06:47 Central)
+PROFIT SUMMARY -- sold since 2026-09-22 00:00 Central (as of 07:02 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ TOTAL                 17.62M    3.79B    3.78B  4.87K   775.80K  779.42K    0.5%
 
 
 
-ROWS -- 2026-09-22_054729_run_board.log, board during pass 37 at row 1, read 2026-09-22T06:46:49 (live)
+ROWS -- 2026-09-22_054729_run_board.log, board during pass 55 at row 1, read 2026-09-22T07:02:15 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Upgrade Core (Ultimate                 x31         -   440.44K         -   440.44K         - <- here
     2  Upgrade Core (Ultimate                 x40         -   440.44K         -   440.44K         -
@@ -56,7 +56,7 @@ ROWS -- 2026-09-22_054729_run_board.log, board during pass 37 at row 1, read 202
    28  Demonite Katana | Lua                   x1         -     3.90M         -     3.90M         -
    29  Bemonrecnte" Tt                         x1         -    20.00M         -    20.00M         -
    30  Life Capsule(Special) Type A X 100        x2         -    31.97K         -     3.20M         -
-    balance now 1.92B, read 2026-09-22T06:46:49
+    balance now 1.92B, read 2026-09-22T07:02:15
     held on tab 4, bought and not listed yet:
     Chaos Core Set                     slot (1, 1)         - unit(s)            - a unit
        stock at its listed price                                                            845.70M
@@ -64,12 +64,12 @@ ROWS -- 2026-09-22_054729_run_board.log, board during pass 37 at row 1, read 202
        NET WORTH                                                                              2.77B
 
 
-MARKET -- 2026-09-22_054729_run.log, pass 37, log last written 06:47 Central (live)
+MARKET -- 2026-09-22_054729_run.log, pass 54, log last written 07:02 Central (live); pass 55 is under way and has not priced the cores yet, so this is the last table it printed
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  2  738.29K  746.97K   8.68K      1.2%      8  YES
+Chaos Core                  2  717.30K  746.93K  29.63K      4.0%      8  YES
 Divine Stone                4        -        -       -         -      -  holds the most it can want, 4; not priced
 Force Core(High)            4        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
