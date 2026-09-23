@@ -1477,6 +1477,10 @@ class RowModel:
                     raise Divergence(
                         f"the underprice question stayed open after "
                         f"{CONFIRM_WORD}. Nothing committed.")
+            with calibration.step("park before the dialog takes another "
+                                  "click at the same point"):
+                calibration.park()
+                time.sleep(ACTION_GAP)
             with calibration.step(f"find {CONFIRM_WORD} on the real dialog"):
                 confirm = find_button(CONFIRM_WORD)
             if confirm is None:
@@ -1491,6 +1495,7 @@ class RowModel:
         with calibration.step("confirm the dialog is gone"):
             gone = dialog_gone()
         if not gone:
+            calibration.snap("dialog_stays_after_confirmation")
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD}. Whether the "
                 f"listing committed is unknown -- check the shop by hand.")
