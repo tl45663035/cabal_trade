@@ -8,12 +8,12 @@ Sat 2026-09-19            11.34h   24.00h  215.00M   18.97M    7.20B   6.98B  11
 Sun 2026-09-20            18.19h   24.00h  332.24M   18.27M   14.35B  14.02B  21.88K    2.3%
 Mon 2026-09-21            14.14h   24.00h  174.22M   12.32M    6.59B   6.42B  11.84K    2.6%
 Tue 2026-09-22            15.79h   24.00h  170.84M   10.82M   11.87B  11.70B  17.54K    1.4%
-Wed 2026-09-23 (so far)    7.95h    8.97h   68.60M    8.63M    3.93B   3.86B   7.11K    1.7%
+Wed 2026-09-23 (so far)    8.20h    9.22h   68.60M    8.36M    3.93B   3.86B   7.11K    1.7%
 ============================================================================================
-7 DAYS                    92.10h  152.97h    1.57B   17.04M   61.52B  59.95B  96.32K    2.6%
+7 DAYS                    92.35h  153.22h    1.57B   17.00M   61.52B  59.95B  96.32K    2.6%
 
 
-PROFIT SUMMARY -- sold since 2026-09-23 00:00 Central (as of 08:58 Central)
+PROFIT SUMMARY -- sold since 2026-09-23 00:00 Central (as of 09:13 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
@@ -30,7 +30,7 @@ TOTAL                 68.60M    3.93B    3.86B  7.11K   543.13K  552.78K    1.7%
 
 
 
-ROWS -- 2026-09-23_024318_run_board.log, board during pass 193 at row 1, read 2026-09-23T08:58:19 (live)
+ROWS -- 2026-09-23_024318_run_board.log, board during pass 210 at row 1, read 2026-09-23T09:12:40 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Divine Stone Set X 138                  x1         -   715.00K         -    98.67M         - <- here
     2  Force Core(Highest                      x4         -   190.00K         -   190.00K         -
@@ -51,7 +51,7 @@ ROWS -- 2026-09-23_024318_run_board.log, board during pass 193 at row 1, read 20
    28  Heroic Holy Water (15 min.) X 1         x2         -     9.28M         -     9.28M         -
    29  Bemonrecnte" Tt                         x1         -    20.00M         -    20.00M         -
    30  Life Capsule(Special) Type A X 100        x5         -    31.97K         -     3.20M         -
-    balance now 618.03M, read 2026-09-23T08:58:19
+    balance now 618.03M, read 2026-09-23T09:12:40
     held on tab 4, bought and not listed yet:
     Chaos Core Set                     slot (1, 1)         - unit(s)            - a unit
        stock at its listed price                                                            775.70M
@@ -59,12 +59,12 @@ ROWS -- 2026-09-23_024318_run_board.log, board during pass 193 at row 1, read 20
        NET WORTH                                                                              1.39B
 
 
-MARKET -- 2026-09-23_024318_run.log, pass 192, log last written 08:58 Central (live); pass 193 is under way and has not priced the cores yet, so this is the last table it printed
+MARKET -- 2026-09-23_024318_run.log, pass 210, log last written 09:13 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         1  185.89K  190.00K   4.10K      2.2%      0
-Chaos Core                  2  694.18K  705.50K  11.32K      1.6%      5  YES
+Force Core(Highest)         1  196.77K  190.00K  -6.77K     -3.6%      0
+Chaos Core                  2  691.00K  705.48K  14.48K      2.1%      5  YES
 Divine Stone                4        -        -       -         -      -  holds the most it can want, 4; not priced
 Force Core(High)            4        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
