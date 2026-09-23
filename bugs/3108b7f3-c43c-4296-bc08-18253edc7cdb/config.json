@@ -156,6 +156,7 @@
     "stop_key_window": 1.5,
     "stop_key_hold": 0.12,
     "floor_break_after": 10,
+    "game_wait_retries": 3,
     "voucher_default": 380000000,
     "voucher_floor": {
       "Yekaterina VIP Membership": {
@@ -257,7 +258,10 @@
     "price_trust_multiple": 10,
     "screen": "1920x1080",
     "first_list_price": {
-      "Arionell": 340000000
+      "Arionell": 340000000,
+      "Blessing Bead - Superior": 194000000,
+      "Armor Account bind Seal Stone": 200000000,
+      "Armor Account bind Unseal Stone": 200000000
     }
   },
   "debug": {
@@ -468,6 +472,14 @@
     "report_tries": 3,
     "report_timeout": 300,
     "report_message": "profit report for {config} at {at}",
+    "all_dir": "all",
+    "all_configs": [
+      "bot",
+      "cang",
+      "trung"
+    ],
+    "all_tool": "tools/profit_all.py",
+    "all_for": "bot",
     "report_ready": "relisting rows \\d+-\\d+: \\d+ relisted"
   },
   "tools": {

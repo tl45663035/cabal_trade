@@ -1,0 +1,393 @@
+2026-09-23_024250  .\supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-23_024250_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-23_005835_run.log ended: interrupted from the keyboard,02:42:51,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_005835_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_024303_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-23_024311_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-23_024317_reset.png
+   2026-09-23_024318  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-23_024318_run.log
+     code 24cf069
+     screen 1920x1080
+* relaunched (pid 3236),02:43:22,alive
+watching pid 3236, 2026-09-23_024318_run.log
+* pushed the profit report for cang,02:55:22,alive
+* pushed the profit report for cang,03:10:26,alive
+* server lag: not answering,03:12:11,alive
+* server lag: the server stalled,03:13:16,alive
+* server lag: not answering,03:21:59,alive
+* server lag: the server stalled,03:23:02,alive
+* pushed the profit report for cang,03:25:34,alive
+* war window, log quiet 158s,03:31:54,alive
+* pushed the profit report for cang,03:40:45,alive
+* server lag: not answering,03:41:48,alive
+* server lag: the server stalled,03:42:29,alive
+* server lag: the server stalled,03:42:52,alive
+* server lag: not answering,03:43:56,alive
+* server lag: the server stalled,03:45:00,alive
+* pushed the profit report for cang,03:55:52,alive
+* server lag: not answering,04:01:26,alive
+* server lag: the server stalled,04:02:29,alive
+* server lag: the server stalled,04:02:52,alive
+* pushed the profit report for cang,04:10:57,alive
+* pushed the profit report for cang,04:26:01,alive
+* pushed the profit report for cang,04:41:04,alive
+* pushed the profit report for cang,04:56:10,alive
+* server lag: not answering,05:10:07,alive
+* server lag: the server stalled,05:11:11,alive
+* pushed the profit report for cang,05:11:15,alive
+* server lag: not answering,05:12:17,alive
+* server lag: the server stalled,05:13:22,alive
+* pushed the profit report for cang,05:26:21,alive
+* pushed the profit report for cang,05:41:28,alive
+* pushed the profit report for cang,05:56:37,alive
+* pushed the profit report for cang,06:11:47,alive
+* pushed the profit report for cang,06:27:01,alive
+* war window, log quiet 151s,06:30:14,alive
+* pushed the profit report for cang,06:42:17,alive
+* pushed the profit report for cang,06:57:29,alive
+* pushed the profit report for cang,07:12:35,alive
+* server lag: not answering,07:22:02,alive
+* server lag: the server stalled,07:23:06,alive
+* pushed the profit report for cang,07:27:43,alive
+* server lag: not answering,07:41:40,alive
+* server lag: the server stalled,07:42:24,alive
+* server lag: the server stalled,07:42:45,alive
+* pushed the profit report for cang,07:42:48,alive
+* pushed the profit report for cang,07:57:54,alive
+* server lag: not answering,08:03:07,alive
+* server lag: the server stalled,08:04:10,alive
+* server lag: the server stalled,08:04:32,alive
+* pushed the profit report for cang,08:12:59,alive
+* pushed the profit report for cang,08:28:02,alive
+* server lag: not answering,08:43:03,alive
+* pushed the profit report for cang,08:43:10,alive
+* server lag: the server stalled,08:43:50,alive
+* server lag: the server stalled,08:44:11,alive
+* server lag: not answering,08:45:36,alive
+* server lag: the server stalled,08:46:17,alive
+* server lag: the server stalled,08:46:40,alive
+* pushed the profit report for cang,08:58:22,alive
+* pushed the profit report for cang,09:13:30,alive
+* pushed the profit report for cang,09:28:42,alive
+* disconnected (run still up),09:29:44,alive
+  frame 2026-09-23_092944_disconnect_seen.png
+* disconnected 7s on; killing pid 3236,09:29:51,dead
+* war window, log quiet 152s,09:29:51,alive
+* ended without a reason line, exit code 1; nothing in driver.py exits without one, so it was stopped from outside,09:29:51,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_024318_run
+  screen: disconnect=[935, 496], failed=None, login=[962, 729], select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_092955_found.png
+  case: disconnect / login / select screen -> recovery.py
+$ py src_1080p/recovery.py
+     the password field at [962, 643]
+     typed; waiting 10s before Login
+     the ID is still connected; clicking yes to reconnect (1/4) at [900, 594]
+     'Channel 12' at [1558, 631]; entering
+     'SoloCabalLevelin' at [1626, 470]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as SoloCabalLevelin, the balance reads
+* recovered: back in the world,09:30:55,dead
+  frame 2026-09-23_093106_after_login.png
+  interrupted: resupply of Divine Stone Set: bought stock may be on tab 4
+  interrupted: resupply of Chaos Core: bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Divine Stone Set' it was making from; nothing on screen is read to name it
+  frame 2026-09-23_093113_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-23_093119_reset.png
+   2026-09-23_093120  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-23_093120_run.log
+     code 24cf069
+     screen 1920x1080
+* relaunched (pid 15916),09:31:24,alive
+watching pid 15916, 2026-09-23_093120_run.log
+* server lag: not answering,09:33:11,alive
+* server lag: the server stalled,09:34:15,dead
+* ServerStalled: the server stalled for 60s; nothing was clicked and the shop is shut. The pass starts again.,09:34:15,dead
+* the server took the run down: ServerStalled: the server stalled for 60s; nothing was clicked and the shop is shut. The pass starts again.; not counted as a short run,09:34:15,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_093120_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_093426_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-23_093434_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-23_093440_reset.png
+   2026-09-23_093441  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-23_093441_run.log
+     code 24cf069
+     screen 1920x1080
+* relaunched (pid 12284),09:34:45,alive
+watching pid 12284, 2026-09-23_093441_run.log
+* RuntimeError: pressed I 2 times; the Inventory panel is not open where calibration.json says it is.,09:37:14,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_093441_run
+  screen: disconnect=[935, 496], failed=None, login=[962, 729], select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_093718_found.png
+  case: disconnect / login / select screen -> recovery.py
+$ py src_1080p/recovery.py
+     the username field at [962, 602]
+     the password field at [962, 643]
+     typed; waiting 10s before Login
+     'Channel 12' at [1558, 631]; entering
+     'SoloCabalLevelin' at [1626, 470]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as SoloCabalLevelin, the balance reads
+* recovered: back in the world,09:37:58,dead
+  frame 2026-09-23_093809_after_login.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-23_093816_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-23_093822_reset.png
+   2026-09-23_093823  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-23_093823_run.log
+     code 24cf069
+     screen 1920x1080
+* relaunched (pid 4928),09:38:27,alive
+watching pid 4928, 2026-09-23_093823_run.log
+* server lag: not answering,09:50:22,alive
+* server lag: the server stalled,09:51:27,alive
+* pushed the profit report for cang,09:56:44,alive
+* pushed the profit report for cang,10:11:51,alive
+* pushed the profit report for cang,10:26:56,alive
+* pushed the profit report for cang,10:42:01,alive
+* server lag: not answering,10:42:42,alive
+* server lag: the server stalled,10:43:45,alive
+* RuntimeError: pressed I 2 times; the Inventory panel is not open where calibration.json says it is.,10:56:23,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_093823_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_105636_found.png
+* recovery attempt 1 failed: nothing recognisable on screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], ; attempt 2 in 60s,10:56:43,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_093823_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_105757_found.png
+* recovery attempt 2 failed: nothing recognisable on screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], ; attempt 3 in 60s,10:58:03,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_093823_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_105917_found.png
+* recovery failed 3 times: nothing recognisable on screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], ; relogging (1 of 1),10:59:24,dead
+$ py src_1080p/recovery.py --relog
+     the character list is up
+     Inventory shut; pressing I (attempt 1)
+     Inventory shut; pressing I (attempt 2)
+     no login screen; the character list is already up
+     'SoloCabalLevelin' at [1626, 470]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as SoloCabalLevelin, the balance reads
+* relogged: back in the world,10:59:57,dead
+  kept 14 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_093823_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_110007_found.png
+  interrupted: resupply of Divine Stone: bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Divine Stone' it recorded holding; nothing on screen is read to name it
+  frame 2026-09-23_110015_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 16 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     item                              profit   units  margin        revenue           cost
+     ------------------------------------------------------------------------------------
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 11:00:16, ended 11:01:51, ran for 1m 35s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Divine Stone' the log says is there,11:01:51,dead
+$ py src_1080p/driver.py --config cang list 1 1 0 4
+     listed 144 at 674,054
+   DONE {"kind": "list", "tab": 4, "slot": [1, 1], "qty": 144, "price": 674054}
+     done in 6861 ms
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 11:01:52, ended 11:02:01, ran for 9s
+  frame 2026-09-23_110206_tab4_0slots.png
+* finished: list 1 1 0 4 (Divine Stone); 0 slot(s) left,11:02:06,dead
+  frame 2026-09-23_110211_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-23_110215_reset.png
+   2026-09-23_110216  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-23_110216_run.log
+     code 24cf069
+     screen 1920x1080
+* relaunched (pid 17368),11:02:20,alive
+watching pid 17368, 2026-09-23_110216_run.log
+* server lag: not answering,11:05:29,alive
+* server lag: the server stalled,11:06:32,alive
+* pushed the profit report for cang,11:12:32,alive
+* pushed the profit report for cang,11:27:40,alive
+* pushed the profit report for cang,11:42:43,alive
+* pushed the profit report for cang,11:57:45,alive
+* pushed the profit report for cang,12:12:51,alive
+* pushed the profit report for cang,12:27:55,alive
+* war window, log quiet 168s,12:31:06,alive
+* pushed the profit report for cang,12:43:04,alive
+* pushed the profit report for cang,12:58:11,alive
+* pushed the profit report for cang,13:13:16,alive
+* server lag: not answering,13:13:57,alive
+* server lag: the server stalled,13:14:40,alive
+* server lag: the server stalled,13:15:01,alive
+* server lag: not answering,13:20:16,alive
+* server lag: the server stalled,13:21:19,alive
+* server lag: not answering,13:24:50,alive
+* server lag: the server stalled,13:25:54,alive
+* server lag: the server stalled,13:26:15,alive
+* server lag: not answering,13:28:21,alive
+* pushed the profit report for cang,13:28:25,alive
+* server lag: the server stalled,13:29:28,alive
+* pushed the profit report for cang,13:43:34,alive
+* pushed the profit report for cang,13:58:40,alive
+* pushed the profit report for cang,14:13:43,alive
+* pushed the profit report for cang,14:28:50,alive
+* pushed the profit report for cang,14:43:56,alive
+* RuntimeError: pressed I 2 times; the Inventory panel is not open where calibration.json says it is.,14:55:09,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_110216_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_145519_found.png
+  interrupted: resupply of Force Core(Highest): bought stock may be on tab 4
+  interrupted: resupply of Divine Stone: bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Divine Stone Set' it recorded holding; nothing on screen is read to name it
+  frame 2026-09-23_145527_tab4_1slots.png
+$ py src_1080p/driver.py --config cang collect
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 13 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     item                              profit   units  margin        revenue           cost
+     ------------------------------------------------------------------------------------
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 14:55:29, ended 14:57:10, ran for 1m 41s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Divine Stone Set' the log says is there,14:57:10,dead
+$ py src_1080p/driver.py --config cang list 1 1 0 4
+     listed 1 at 6,310,466
+   DONE {"kind": "list", "tab": 4, "slot": [1, 1], "qty": 1, "price": 6310466}
+     done in 6856 ms
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 14:57:10, ended 14:57:21, ran for 10s
+  frame 2026-09-23_145726_tab4_0slots.png
+* finished: list 1 1 0 4 (Divine Stone Set); 0 slot(s) left,14:57:26,dead
+  frame 2026-09-23_145730_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-23_145735_reset.png
+   2026-09-23_145736  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-23_145736_run.log
+     code 24cf069
+     screen 1920x1080
+* relaunched (pid 14356),14:57:40,alive
+watching pid 14356, 2026-09-23_145736_run.log
+* NotReady: the Inventory panel would not open, so tab 4 cannot be read.,15:00:51,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_145736_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_150059_found.png
+  the log shows no task cut short
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+* recovery attempt 1 failed: the Inventory panel would not open; no Alz readable; attempt 2 in 60s,15:01:07,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_145736_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_150217_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-23_150225_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-23_150231_reset.png
+   2026-09-23_150232  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-23_150232_run.log
+     code 24cf069
+     screen 1920x1080
+* relaunched (pid 4304),15:02:36,alive
+watching pid 4304, 2026-09-23_150232_run.log
+* pushed the profit report for cang,15:11:26,alive
+* pushed the profit report for cang,15:26:30,alive
+* war window, log quiet 156s,15:30:23,alive
+* pushed the profit report for cang,15:41:42,alive
+* RuntimeError: pressed I 2 times; the Inventory panel is not open where calibration.json says it is.,15:50:26,dead
+  kept 30 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-23_150232_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-23_155036_found.png
+  interrupted: resupply of Force Core(High): bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core(High)' it was making from; nothing on screen is read to name it
+  frame 2026-09-23_155044_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-23_155050_reset.png
+   2026-09-23_155051  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-23_155051_run.log
+     code 24cf069
+     screen 1920x1080
+* relaunched (pid 584),15:50:55,alive
+watching pid 584, 2026-09-23_155051_run.log
+* pushed the profit report for cang,15:56:56,alive
+* pushed the profit report for cang,16:12:04,alive
+* pushed the profit report for cang,16:27:07,alive
+* pushed the profit report for cang,16:42:11,alive
+* pushed the profit report for cang,16:57:16,alive
+* pushed the profit report for cang,17:12:20,alive
+* pushed the profit report for cang,17:27:21,alive
+
+  Ctrl 4 times: stopping the run the way Ctrl+C would.
+* supervisor cancelled with Ctrl x4,17:37:06,dead

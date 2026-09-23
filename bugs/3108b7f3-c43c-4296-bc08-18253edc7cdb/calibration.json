@@ -412,6 +412,12 @@
       0.3984,
       0.4178
     ],
+    "game_wait_band": [
+      0.2813,
+      0.0505,
+      0.3854,
+      0.0763
+    ],
     "recovery_login_panel": [
       0.4557291666666667,
       0.655,
@@ -493,6 +499,7 @@
     "buy_dialog_marker": "Purchase",
     "server_clock": "^([01]\\d|2[0-3])[:.]([0-5]\\d)",
     "server_lag": "server\\W*respon|waiting\\W*for\\W*the\\W*server",
+    "game_wait": "please\\W*wait\\W*and\\W*try\\W*again",
     "letter_digits": {
       "l": "1",
       "I": "1",
@@ -1493,7 +1500,7 @@
         1920,
         1080
       ],
-      "measured_at": "2026-09-22T05:49:08",
+      "measured_at": "2026-09-23T15:52:30",
       "game": {
         "title_seen": "PlayCabal EP36",
         "client_rect": [
@@ -1517,7 +1524,7 @@
       },
       "inventory": {
         "alz_box": [
-          1767,
+          1778,
           692,
           1859,
           704
@@ -1955,24 +1962,24 @@
           880
         ],
         "row_one_y": 176,
-        "row_pitch": 59,
+        "row_pitch": 60,
         "row_one_box": [
           192,
-          147,
+          146,
           880,
-          205
+          206
         ],
-        "row_last_y": 707,
+        "row_last_y": 708,
         "row_last_box": [
           192,
           678,
           880,
-          736
+          738
         ],
         "button_x": 838,
         "table_point": [
           238,
-          235
+          236
         ],
         "rows_per_notch": 1,
         "register_rows_seen": 10,
@@ -1990,11 +1997,11 @@
           "price_field": [
             37,
             414,
-            191,
+            190,
             442
           ],
           "price_point": [
-            114,
+            113,
             428
           ],
           "qty_point": [
@@ -2004,7 +2011,7 @@
           "qty_box": [
             37,
             476,
-            191,
+            190,
             504
           ],
           "suggestion_boxes": [
@@ -2046,7 +2053,7 @@
         ],
         "item_point": [
           103,
-          220
+          222
         ]
       },
       "regions": {
@@ -2066,23 +2073,23 @@
         "cells": {
           "1x1": [
             188,
-            797
+            798
           ],
           "1x2": [
             237,
-            797
+            798
           ],
           "1x3": [
             285,
-            797
+            798
           ],
           "1x4": [
             331,
-            797
+            798
           ],
           "1x5": [
-            380,
-            797
+            384,
+            798
           ],
           "2x1": [
             188,
@@ -2101,48 +2108,48 @@
             846
           ],
           "2x5": [
-            380,
+            384,
             846
           ],
           "3x1": [
             188,
-            894
+            904
           ],
           "3x2": [
             237,
-            894
+            904
           ],
           "3x3": [
             285,
-            894
+            904
           ],
           "3x4": [
             331,
-            894
+            904
           ],
           "3x5": [
-            380,
-            894
+            384,
+            904
           ],
           "4x1": [
             188,
-            941
+            937
           ],
           "4x2": [
             237,
-            941
+            937
           ],
           "4x3": [
             285,
-            941
+            937
           ],
           "4x4": [
             331,
-            941
+            937
           ],
           "4x5": [
-            380,
-            941
+            384,
+            937
           ]
         },
         "set_to_core": {
@@ -2181,7 +2188,7 @@
           "Force Core (Ultimate)": {
             "cell": "2x5",
             "point": [
-              380,
+              384,
               846
             ],
             "costs": "Force Core Set (Ultimate)"
@@ -2190,7 +2197,7 @@
             "cell": "4x1",
             "point": [
               188,
-              941
+              937
             ],
             "costs": "Upgrade Core Set (Low)"
           },
@@ -2198,7 +2205,7 @@
             "cell": "4x2",
             "point": [
               237,
-              941
+              937
             ],
             "costs": "Upgrade Core Set (Medium)"
           },
@@ -2206,7 +2213,7 @@
             "cell": "4x3",
             "point": [
               285,
-              941
+              937
             ],
             "costs": "Upgrade Core Set (High)"
           },
@@ -2214,15 +2221,15 @@
             "cell": "4x4",
             "point": [
               331,
-              941
+              937
             ],
             "costs": "Upgrade Core Set (Highest)"
           },
           "Upgrade Core (Ultimate)": {
             "cell": "4x5",
             "point": [
-              380,
-              941
+              384,
+              937
             ],
             "costs": "Upgrade Core Set (Ultimate)"
           }
@@ -2232,13 +2239,13 @@
           237,
           285,
           331,
-          380
+          384
         ],
         "rows": [
-          797,
+          798,
           846,
-          894,
-          941
+          904,
+          937
         ]
       },
       "craft": {
@@ -2402,18 +2409,18 @@
     "10": "Upgrade Core Set (Ultimate)"
   },
   "market": {
-    "measured_at": "2026-09-22T05:49:08",
+    "measured_at": "2026-09-23T15:52:30",
     "unit_price": {
-      "1": 209971,
-      "2": 209994,
-      "3": 734705,
-      "4": 719614,
-      "5": 707865,
-      "6": 721000,
-      "7": 198630,
-      "8": 192307,
-      "9": 434681,
-      "10": 440436
+      "1": 204897,
+      "2": 200160,
+      "3": 712978,
+      "4": 721249,
+      "5": 689755,
+      "6": 700133,
+      "7": 196826,
+      "8": 190088,
+      "9": 450951,
+      "10": 438131
     }
   },
   "detect": {
@@ -2502,6 +2509,10 @@
       200
     ],
     "server_lag_blue": 80,
+    "game_wait_pixels": 100,
+    "game_wait_red": 180,
+    "game_wait_green": 90,
+    "game_wait_blue": 90,
     "panel_moved_slack": 30,
     "clear_presses_qty": 3,
     "clear_presses_price": 16,
@@ -2529,7 +2540,7 @@
     "price_attempts": 1
   },
   "voucher": {
-    "measured_at": "2026-09-22T05:49:08",
+    "measured_at": "2026-09-23T15:52:30",
     "unit_price": 370000000
   }
 }
