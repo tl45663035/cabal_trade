@@ -8,59 +8,64 @@ Sat 2026-09-19            17.20h   24.00h  363.35M   21.13M   12.72B   12.36B  1
 Sun 2026-09-20            20.73h   24.00h  429.79M   20.73M   15.95B   15.52B  24.57K    2.7%
 Mon 2026-09-21            22.74h   24.00h  725.86M   31.91M   19.02B   18.29B  27.48K    3.8%
 Tue 2026-09-22            22.89h   24.00h  527.25M   23.04M   13.57B   13.04B  20.32K    3.9%
-Wed 2026-09-23 (so far)    3.30h    3.30h  155.09M   47.01M    4.85B    4.69B   7.60K    3.2%
+Wed 2026-09-23 (so far)    3.47h    3.56h  158.91M   45.75M    4.89B    4.73B   7.73K    3.2%
 =============================================================================================
-7 DAYS                    92.39h  147.30h    2.22B   24.02M   66.87B   64.65B  99.36K    3.3%
+7 DAYS                    92.57h  147.56h    2.22B   24.01M   66.91B   64.69B  99.49K    3.3%
 
 
-PROFIT SUMMARY -- sold since 2026-09-23 00:00 Central (as of 03:18 Central)
+PROFIT SUMMARY -- sold since 2026-09-23 00:00 Central (as of 03:33 Central)
 
 item                      profit  revenue     cost  units  bought/u   sold/u  margin
 ------------------------------------------------------------------------------------
-chaoscore                 83.22M    3.50B    3.41B  4.82K   707.92K  725.19K    2.4%
-forcecoreultimate         28.85M  233.80M  204.95M    608   337.09K  384.54K   12.3%
+chaoscore                 83.20M    3.50B    3.41B  4.82K   707.93K  725.18K    2.4%
+forcecoreultimate         32.51M  275.27M  242.75M    716   339.04K  384.45K   11.8%
 yekaterinavipmembership   24.00M  135.00M  111.00M      1   111.00M  135.00M   17.8%
 upgradecoreultimate       12.08M  320.23M  308.15M    700   440.21K  457.47K    3.8%
-forcecorehigh              8.55M  211.85M  203.30M  1.07K   189.82K  197.81K    4.0%
+forcecorehigh              8.72M  215.81M  207.09M  1.09K   189.82K  197.81K    4.0%
 epicboosterhighest         3.60M  373.60M  370.00M      8    46.25M   46.70M    1.0%
 forcecorehighest          -5.21M   74.61M   79.82M    393   203.11K  189.84K   -7.0%
 ------------------------------------------------------------------------------------
-Cores                     44.27M  840.49M  796.22M  2.77K   287.24K  303.21K    5.3%
-Chaos                     83.22M    3.50B    3.41B  4.82K   707.92K  725.19K    2.4%
+Cores                     48.10M  885.91M  837.81M  2.90K   288.90K  305.49K    5.4%
+Chaos                     83.20M    3.50B    3.41B  4.82K   707.93K  725.18K    2.4%
 Cash                      27.60M  508.60M  481.00M      9    53.44M   56.51M    5.4%
 ====================================================================================
-TOTAL                    155.09M    4.85B    4.69B  7.60K   616.96K  637.36K    3.2%
+TOTAL                    158.91M    4.89B    4.73B  7.73K   612.15K  632.70K    3.2%
 
 
 
-ROWS -- 2026-09-22_215925_run_board.log, board during pass 37 at row 30, read 2026-09-23T03:17:37 (live)
+ROWS -- 2026-09-22_215925_run.log, board after pass 39 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Epic Booster (Highest)                  x4    46.87M    46.87M        +0    46.87M         0
+    1  Epic Booster (Highest)                  x4    46.87M    46.87M        +0   187.50M         0
     2  Yekaterina VIP Membership               x1   112.50M   135.00M   +22.50M   135.00M    22.50M
     3  Siena's Unbinding Stone                 x1    74.00M    99.00M   +25.00M    99.00M    25.00M
-    4  Chaos Core                              x1   720.00K   709.40K   -10.59K   709.40K   -10.59K
-    5  Chaos Core                              x1   720.00K   708.83K   -11.17K   708.83K   -11.17K
-    6  Upgrade Core (Ultimate                  x8         -   457.39K         -   457.39K         -
-    7  Force Core (Ultimate                    x8   349.83K   383.96K   +34.14K   383.96K   273.09K
-    8  Force Core (Ultimate                   x10   349.83K   383.96K   +34.13K   383.96K   341.34K
-    9  Force Core(High                       x157   189.87K   197.75K    +7.88K   197.75K     1.24M
-   10  Upgrade Core (Ultimate                x214   440.43K   457.39K   +16.96K   457.39K     3.63M
-   11  Force Core (Ultimate                  x120   350.00K   383.96K   +33.96K   383.96K     4.08M
-   12  Force Core(High                        x96   189.51K   197.75K    +8.24K   197.75K   791.42K
-   13  Force Core(High                         x8   189.51K   197.75K    +8.24K   197.75K    65.94K
-    30  (empty)                                           -          -       -              -               - <- here
-    balance now 2.23B, read 2026-09-23T03:16:59
-       stock at its listed price                                                            627.64M
+    4  Chaos Core                              x1   720.00K   716.44K    -3.56K   716.44K    -3.56K
+    5  Chaos Core                              x1   717.54K   715.84K    -1.71K   715.84K    -1.71K
+    6  Upgrade Core (Ultimate                  x8         -   457.38K         -     3.66M         -
+    7  Force Core (Ultimate                    x8   349.83K   383.96K   +34.13K     3.07M   273.06K
+    8  Force Core (Ultimate                   x10   349.83K   383.96K   +34.13K     3.84M   341.31K
+    9  Force Core(High                       x157   189.87K   197.75K    +7.88K    31.05M     1.24M
+   10  Upgrade Core (Ultimate                x214   440.43K   457.38K   +16.95K    97.88M     3.63M
+   11  Force Core (Ultimate                   x12   350.00K   383.96K   +33.96K     4.61M   407.51K
+   12  Force Core(High                        x76   189.51K   197.74K    +8.24K    15.03M   626.09K
+   13  Force Core(High                         x8   189.51K   197.74K    +8.24K     1.58M    65.90K
+   14  Upgrade Core (Ultimate                 x97   440.43K   457.37K   +16.95K    44.37M     1.64M
+    balance now 2.23B
+  pass 39: 14 relisted, 16 empty, 0 skipped; 9674.7 minute(s) left
+WAR LAG: a war has just ended (server 10:29:14). Going to the default state and waiting 5.7 min, until server 10:34:59.
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+       stock at its listed price                                                            628.01M
        Alz, latest balance line                                                               2.23B
        NET WORTH                                                                              2.86B
 
 
-MARKET -- 2026-09-22_215925_run.log, pass 37, log last written 03:17 Central (live)
+MARKET -- 2026-09-22_215925_run.log, pass 39, log last written 03:28 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  199.13K  199.97K     832      0.4%      0
-Chaos Core                  2  709.98K  723.94K  13.96K      1.9%      6  YES
+Force Core(Highest)         0  199.13K  199.96K     821      0.4%      0
+Chaos Core                  0  717.00K  723.93K   6.94K      1.0%      6  YES
 Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
