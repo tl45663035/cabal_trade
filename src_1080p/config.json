@@ -512,6 +512,11 @@
   "detect": {
     "slot_inset": 6,
     "panel_item_half": 24,
-    "panel_diff_threshold": 40
+    "panel_diff_threshold": 40,
+    "price_rechecks": 2,
+    "panel_price_inset": 25,
+    "panel_price_lift": 3,
+    "price_agree_slack": 2,
+    "price_witnesses": 3
   }
 }

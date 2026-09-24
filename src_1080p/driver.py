@@ -1720,6 +1720,8 @@ def price_gap(slot, say=True, rows=None):
         high, low = (set_name, set_row), (core, core_row)
     else:
         high, low = (core, core_row), (set_name, set_row)
+    row_model.note_market(core, core_row["unit_price"], sure=True)
+    row_model.note_market(set_name, set_row["unit_price"], sure=True)
     diff = high[1]["unit_price"] - low[1]["unit_price"]
     if say:
         print(f"  {high[0]} {high[1]['unit_price']:,} - {low[0]} "

@@ -57,6 +57,9 @@ FIELD_SETTLE = _T["field_settle"]
 SUGGESTION_RADIO_DX = _SHARED["detect"]["suggestion_radio_dx"]
 PRICE_CHECK_FACTOR = _SHARED["run"]["price_check_factor"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
+PRICE_RECHECKS = int(_SHARED["detect"]["price_rechecks"])
+PRICE_SLACK = int(_SHARED["detect"]["price_agree_slack"])
+PRICE_WITNESSES = int(_SHARED["detect"]["price_witnesses"])
 PRICE_TRUST = int(_SHARED["run"]["price_trust_multiple"])
 ITEM_CHECK = float(_SHARED["run"]["item_check_factor"])
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
@@ -94,9 +97,12 @@ LAST_MARKET = {}
 WORK_TAB_STALE = False
 
 
-def note_market(name, unit):
-    if name and unit and int(unit) >= MIN_PLAUSIBLE_PRICE:
-        LAST_MARKET[item_key(name)] = int(unit)
+def note_market(name, unit, sure=False):
+    if not name or not unit or int(unit) < MIN_PLAUSIBLE_PRICE:
+        return
+    if not sure and calibration.favourite_slot_of(name) is not None:
+        return
+    LAST_MARKET[item_key(name)] = int(unit)
 
 
 def market_anchor(name):
@@ -292,26 +298,52 @@ def _panel():
     return part
 
 
+_LETTER = re.compile(r"[A-Za-z]")
+_UNIT = re.compile(calibration._ALZ_WORD, re.IGNORECASE)
+
+
 def _in_band(spans, box):
-    here = sorted((span for span in spans if box[1] <= span[2][1] <= box[3]),
+    here = sorted((span for span in spans
+                   if box[1] <= span[2][1] <= box[3]
+                   and box[0] <= span[2][0] <= box[2]),
                   key=lambda span: span[2][0])
-    return calibration._digits(" ".join(text for text, _c, _p, _r in here))
+    text = " ".join(text for text, _c, _p, _r in here)
+    if _LETTER.search(_UNIT.sub("", text)):
+        return None, text
+    return calibration._digits(text), None
+
+
+def warm_money(image, box):
+    prepared = calibration.isolate_digits(image, tuple(box))
+    if prepared is None:
+        return None
+    return calibration._digits(calibration._tesseract(
+        prepared, calibration.ROW_PSM, calibration.DIGIT_WHITELIST))
 
 
 def _asking(image, panel):
     rows = panel["suggestion_boxes"]
-    wanted = [tuple(rows[-1]), tuple(panel["price_field"]),
-              tuple(rows[0]) if len(rows) > 1 else None]
-    live = [box for box in wanted if box]
+    field = tuple(panel["price_field"])
+    wanted = [(tuple(rows[-1]), False), (field, True),
+              (tuple(panel["net_sales_box"]) if panel.get("net_sales_box")
+               else None, False),
+              (tuple(rows[0]) if len(rows) > 1 else None, False)]
+    live = [box for box, _warm in wanted if box]
     band = (min(b[0] for b in live), min(b[1] for b in live),
             max(b[2] for b in live), max(b[3] for b in live))
     spans = calibration.ocr_spans(image, band)
     out = []
-    for box in wanted:
+    for box, warm in wanted:
         if box is None:
             out.append(None)
             continue
-        value = _in_band(spans, box)
+        if warm:
+            out.append(warm_money(image, box))
+            continue
+        value, mixed = _in_band(spans, box)
+        if mixed is not None:
+            out.append(None)
+            continue
         if value is None or value < MIN_PLAUSIBLE_PRICE:
             value = calibration.read_money(image, box)
         out.append(value)
@@ -322,8 +354,43 @@ def _near(a, b):
     return a and b and (a / PRICE_CHECK_FACTOR <= b <= a * PRICE_CHECK_FACTOR)
 
 
-def _agreed(asked, filled, average, listed_at, verbose):
+def _same_price(a, b):
+    if not a or not b:
+        return False
+    if abs(a - b) <= PRICE_SLACK:
+        return True
+    high, low = (a, b) if a > b else (b, a)
+    return bool(low) and high % low == 0
+
+
+def _places_agree(asked, filled, net, say):
+    core = [(v, w) for v, w in ((asked, "current min"),
+                                (filled, "price field"),
+                                (net, "net sales"))
+            if v and v >= MIN_PLAUSIBLE_PRICE]
+    if len(core) < PRICE_WITNESSES:
+        say(f"    only {len(core)} of the three price places read; "
+            f"{PRICE_WITNESSES} must agree before anything is typed")
+        return False
+    base = core[0][0]
+    for value, where in core[1:]:
+        if _same_price(base, value):
+            continue
+        say(f"    {core[0][1]} says {base:,} but {where} says {value:,}; "
+            f"the price places must agree before anything is typed")
+        return False
+    return True
+
+
+def _agreed(asked, filled, average, listed_at, verbose, net=None):
     say = print if verbose else (lambda *a: None)
+    say("    read: " + ", ".join(
+        f"{w} {v:,}" if v else f"{w} unread"
+        for v, w in ((asked, "current min"), (filled, "price field"),
+                     (net, "net sales"), (average, "week average"),
+                     (listed_at, "listed at"))))
+    if not _places_agree(asked, filled, net, say):
+        return None
     seen = [(v, w, exact) for v, w, exact in
             ((asked, "the row", True), (filled, "the price field", True),
              (average, "the week's average", False),
@@ -348,6 +415,11 @@ def _agreed(asked, filled, average, listed_at, verbose):
             f"{with_it[0][0]:,}, and none of them carries the asking price")
         return None
     value, where, _ = carries[0]
+    if average and average >= MIN_PLAUSIBLE_PRICE and not _near(value,
+                                                               average):
+        say(f"    the week's average says {average:,} against the {value:,} "
+            f"being asked; they are too far apart for the read to be trusted")
+        return None
     odd = [o for o in seen if o not in with_it]
     if odd:
         say(f"    {', '.join(f'{o[1]} says {o[0]:,}' for o in odd)}, against "
@@ -359,7 +431,7 @@ def _agreed(asked, filled, average, listed_at, verbose):
 
 
 def panel_standing():
-    asked, filled, _average = _asking(calibration.grab(), _panel())
+    asked, filled, _net, _average = _asking(calibration.grab(), _panel())
     for value in (filled, asked):
         if value and value >= MIN_PLAUSIBLE_PRICE:
             return value
@@ -416,11 +488,14 @@ def suggested_price(verbose=False, listed_at=None):
     panel = _panel()
     box = tuple(panel["suggestion_boxes"][-1])
     radio = (box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
-    value = _agreed(*_asking(calibration.grab(), panel), listed_at, verbose)
-    calibration.click(*radio, settle=FIELD_SETTLE)
+    asked, filled, net, average = _asking(calibration.grab(), panel)
+    value = _agreed(asked, filled, average, listed_at, verbose, net)
+    calibration.click(*radio, settle=0.0)
+    calibration.park(settle=False)
+    time.sleep(FIELD_SETTLE)
     if value is None:
-        value = _agreed(*_asking(calibration.grab(), panel), listed_at,
-                        verbose)
+        asked, filled, net, average = _asking(calibration.grab(), panel)
+        value = _agreed(asked, filled, average, listed_at, verbose, net)
     if value is None and verbose:
         print(f"    the lowest listed price would not read")
     return value
@@ -829,7 +904,21 @@ class RowModel:
             self._work[slot] = None
         return new, gone
 
-    def _resolve_loaded(self, market, expect_item, qty_seen, seen, verbose):
+    def _price_again(self, market, expect_market, listed_at, verbose):
+        for look in range(PRICE_RECHECKS):
+            again = suggested_price(False, listed_at)
+            if again is None:
+                continue
+            if verbose:
+                print(f"    the panel said {market:,} where "
+                      f"{int(expect_market):,} was expected; look "
+                      f"{look + 2} reads {again:,}")
+            if within(again, expect_market):
+                return again
+        return market
+
+    def _resolve_loaded(self, market, expect_item, qty_seen, seen, verbose,
+                        cost=0):
         say = print if verbose else (lambda *a: None)
         say(f"    {seen}; this is not {expect_item!r}")
         for slot, what in sorted(self._work.items()):
@@ -865,6 +954,16 @@ class RowModel:
             named, sure = identify_by_market(market)
             floor = calibration.price_floor(named)[0] if named and sure else 0
             price = max(calibration.undercut(market), floor)
+            if cost and price < cost:
+                raise WrongItem(
+                    f"{seen}, and nothing it resolves to would go out above "
+                    f"{price:,}, under the {cost:,} the stock in tab "
+                    f"{WORK_TAB} cost. Nothing has been listed.")
+            if named is None and expect_item:
+                raise WrongItem(
+                    f"{seen}, and {market:,} is the price of nothing the run "
+                    f"trades, so it is a bad read of a known item rather "
+                    f"than an unknown one. Nothing has been listed.")
             label = repr(named) if named else "nothing the run trades"
             say(f"    the market {market:,} says {label}"
                 + ("" if sure else ", or something priced like it")
@@ -1181,6 +1280,24 @@ class RowModel:
             raise NothingLoaded(
                 f"nothing loaded into the shop slot from ({row},{col}) after "
                 f"{PRICE_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
+        meant = expect_item
+        if not expect_market and expect_item:
+            anchor = market_anchor(expect_item)
+            if anchor:
+                expect_market = anchor * pack_size(expect_item)
+                if verbose:
+                    print(f"    nothing said what {expect_item!r} should "
+                          f"fetch; its own market says {expect_market:,}")
+        cost_guard = 0
+        if floor_each and expect_market and unit_market:
+            cost_guard = int(floor_each) * max(
+                1, round(int(expect_market) / int(unit_market)))
+        if market and expect_market and not within(market, expect_market):
+            with calibration.step("read the price again against what was "
+                                  "expected"):
+                market = self._price_again(market, expect_market, listed_at,
+                                           verbose)
+            suggested = market
         resolved = None
         if market and expect_market and not within(market, expect_market):
             seen = (f"the panel prices what loaded from ({row},{col}) at "
@@ -1189,7 +1306,7 @@ class RowModel:
             if not resolve:
                 raise WrongItem(f"{seen}. Nothing has been listed.")
             resolved = self._resolve_loaded(market, expect_item, None, seen,
-                                            verbose)
+                                            verbose, cost_guard)
             price, floor, why = (resolved["price"], resolved["floor"],
                                  resolved["why"])
             expect_item, unit_market, price_each, listed_at = (
@@ -1251,6 +1368,11 @@ class RowModel:
                 print(f"    market {want:,} is under the {floor:,} floor"
                       + (f" ({why})" if why else "") + f"; listing at the floor")
             want = floor
+        if (cost_guard and want < cost_guard
+                and (resolved is None or resolved["item"] in (None, meant))):
+            raise WrongItem(
+                f"refusing to list {meant!r} at {want:,}: what went into it "
+                f"cost {cost_guard:,}. Nothing has been listed.")
         if want < MIN_PLAUSIBLE_PRICE:
             raise Divergence(
                 f"refusing to list at {want:,}, under the "
@@ -1288,7 +1410,7 @@ class RowModel:
             if not resolve:
                 raise WrongItem(f"{seen}. Nothing has been listed.")
             resolved = self._resolve_loaded(market, expect_item, qty, seen,
-                                            verbose)
+                                            verbose, cost_guard)
             want, floor, expect_item = (resolved["price"], resolved["floor"],
                                         resolved["item"])
             with calibration.step(f"type the price {want:,} instead"):
@@ -1305,6 +1427,19 @@ class RowModel:
                     f"sales for what loaded from ({row},{col}). Nothing "
                     f"has been listed.")
             floored = bool(floor) and want <= floor
+        with calibration.step("read the price back before Register"):
+            shown = warm_money(calibration.grab(),
+                               tuple(panel["price_field"]))
+        if verbose:
+            print(f"    the panel holds {shown:,} against the {want:,} typed"
+                  if shown is not None else
+                  f"    the panel price would not read back")
+        if shown is not None and shown != want:
+            calibration.snap("price_field_disagrees")
+            raise WrongItem(
+                f"{want:,} was typed but the panel shows {shown:,}; the two "
+                f"must match before anything is registered. Nothing has been "
+                f"listed.")
         with calibration.step("click Register"):
             calibration.click(*panel["register_button"], settle=0.0)
         with calibration.step(f"find {CONFIRM_WORD}"):
@@ -1318,6 +1453,19 @@ class RowModel:
             warned = underprice_warning()
         if warned:
             calibration.snap("underprice_warning")
+            if (expect_market and not within(want, expect_market)
+                    and (resolved is None
+                         or resolved["item"] in (None, meant))):
+                with calibration.step(f"click {DISMISS_WORD} on the question"):
+                    refuse = find_button(DISMISS_WORD)
+                    if refuse is not None:
+                        calibration.click(*refuse, settle=0.0)
+                        calibration.park()
+                raise WrongItem(
+                    f"the game says {want:,} is far under its own average, "
+                    f"and {meant!r} was expected to sell near "
+                    f"{int(expect_market):,}; the question was declined. "
+                    f"Nothing has been listed.")
             if verbose:
                 print(f"    the game asks again because {want:,} is at least "
                       f"25% under its average for this item; accepting")

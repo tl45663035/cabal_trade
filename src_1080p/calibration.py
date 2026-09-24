@@ -234,6 +234,8 @@ TRADE_TABS_BAND_F = _S["regions"]["trade_tabs_band"]
 REGISTER_PANEL_F = _S["regions"]["register_panel"]
 PANEL_FIELD_INSET = _S["detect"]["panel_field_inset"]
 PANEL_FIELD_HALF = _S["detect"]["panel_field_half"]
+PANEL_PRICE_INSET = _S["detect"]["panel_price_inset"]
+PANEL_PRICE_LIFT = _S["detect"]["panel_price_lift"]
 PANEL_DIFF_THRESHOLD = _S["detect"]["panel_diff_threshold"]
 PANEL_ITEM_HALF = int(_S["detect"]["panel_item_half"])
 PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
@@ -3055,8 +3057,9 @@ def calibrate_panel(verbose=True):
 
     out = {
         "panel_box": list(box),
-        "price_field": [left, alz[1] - PANEL_FIELD_HALF,
-                        right, alz[1] + PANEL_FIELD_HALF],
+        "price_field": [box[0] + PANEL_PRICE_INSET,
+                        alz[1] - PANEL_FIELD_HALF - PANEL_PRICE_LIFT,
+                        right, alz[1] + PANEL_FIELD_HALF - PANEL_PRICE_LIFT],
         "price_point": [(left + right) // 2, alz[1]],
         "qty_point": [qty[0], qty[1]],
         "qty_box": [left, qty[1] - PANEL_FIELD_HALF,
