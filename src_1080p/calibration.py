@@ -15,6 +15,8 @@ from PIL import Image, ImageChops, ImageDraw, ImageOps
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "calibration.json"
+VERIFIED = HERE / "verified_costs.json"
+_VERIFIED = None
 CONFIG = HERE / "config.json"
 CONFIGS = HERE / "configs"
 CONFIG_ENV = "CABAL_CONFIG"
@@ -2318,6 +2320,36 @@ def market_unit(name):
     return int(prices.get(str(slot)) or 0)
 
 
+def _verified_book():
+    global _VERIFIED
+    if _VERIFIED is None:
+        try:
+            _VERIFIED = json.loads(VERIFIED.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            _VERIFIED = {}
+    return _VERIFIED
+
+
+def verified_cost(name):
+    slot = favourite_slot_of(name)
+    entry = _verified_book().get(str(slot)) if slot is not None else None
+    return int(entry["each"]) if entry else 0
+
+
+def note_verified_cost(name, each):
+    slot = favourite_slot_of(name)
+    if slot is None or not each:
+        return False
+    book = _verified_book()
+    book[str(slot)] = {
+        "item": FAVOURITE_ITEMS[str(slot)], "each": int(each),
+        "at": datetime.datetime.now().isoformat(timespec="seconds")}
+    spare = VERIFIED.with_name(VERIFIED.name + ".tmp")
+    spare.write_text(json.dumps(book, indent=2), encoding="utf-8")
+    spare.replace(VERIFIED)
+    return True
+
+
 def price_floor(name):
     item, ratio = voucher_floor_ratio(name)
     if ratio:
@@ -2332,6 +2364,9 @@ def price_floor(name):
     pair = pair_slot(slot)
     if pair is None:
         return 0, ""
+    paid = verified_cost(name)
+    if paid:
+        return paid, f"{FAVOURITE_ITEMS[str(pair)]} as last bought"
     floor = int(prices.get(str(pair)) or 0)
     if floor < MIN_PLAUSIBLE_PRICE:
         return 0, f"{FAVOURITE_ITEMS[str(pair)]}, which did not price"

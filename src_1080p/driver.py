@@ -1634,11 +1634,11 @@ def resupply_special(model, first, last, verbose=True):
               f"{special_under(core, ordinal) + special_spread():,} under "
               f"the market --")
         if leave:
-            print(f"  {leave} stays behind on every row bought until an "
-                  f"order is {take_all} step(s) down with nothing spare, and "
-                  f"from there every row is taken whole; each order prices "
-                  f"the favourite afresh, then wheels down, up to "
-                  f"{steps_max} step(s)")
+            print(f"  {leave} stays behind on every row bought; an order "
+                  f"{take_all} step(s) down with nothing spare takes the row "
+                  f"it is on whole, and the next order leaves {leave} behind "
+                  f"again; each order prices the favourite afresh, then "
+                  f"wheels down, up to {steps_max} step(s)")
         if not shop_ready(f"the {core} special row", verbose=verbose):
             return None
         war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
@@ -1654,7 +1654,7 @@ def resupply_special(model, first, last, verbose=True):
                "listed": 0, "rows": [], "ordinal": ordinal,
                "target": special_qty(), "want_max": None, "sells_at": 0,
                "gap": None, "leave": leave, "steps_max": steps_max,
-               "take_all": take_all, "take_all_on": False, "orders": 0}
+               "take_all": take_all, "orders": 0}
     else:
         print("")
         print(f"-- {job['core']} special row: carrying on at {job['step']} "
@@ -1939,7 +1939,10 @@ def list_round(model, job, first, last, verbose=True):
                                    f"{came_from}"):
                 listed = model.list_slot(*came_from, floor=floor, why=why,
                                          verbose=verbose, lands_in=lands_in,
-                                         expect_item=core)
+                                         expect_item=core,
+                                         resupply_cost=(
+                                             floor if job["bought"]
+                                             and job["paid"] else 0))
         except (row_model.SlotNeverFilled, row_model.NothingLoaded) as exc:
             print(f"  nothing came out of tab {tab} slot {came_from} "
                   f"({exc}); the next slot is tried instead")
@@ -2072,11 +2075,11 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True,
     steps_max = int(run["buy_scroll_limit"])
     take_all = int(run["buy_take_all_after"])
     if leave:
-        print(f"  {leave} stays behind on every row bought until an order is "
-              f"{take_all} step(s) down with nothing spare, and from there "
-              f"every row is taken whole until {core} is done; each order "
-              f"prices the favourite afresh, then wheels down, up to "
-              f"{steps_max} step(s)")
+        print(f"  {leave} stays behind on every row bought; an order "
+              f"{take_all} step(s) down with nothing spare takes the row it "
+              f"is on whole, and the next order leaves {leave} behind again; "
+              f"each order prices the favourite afresh, then wheels down, up "
+              f"to {steps_max} step(s)")
     if calibration.buy_whole_row(core) and want_max:
         print(f"  every order takes all of the row it lands on, up to "
               f"{int(want_max)} held, and the orders stop once {target} is "
@@ -2088,7 +2091,7 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True,
             "sells_at": set_row["unit_price"],
             "core_price": core_row["unit_price"], "gap": threshold,
             "leave": leave, "steps_max": steps_max, "take_all": take_all,
-            "take_all_on": False, "step": "buy",
+            "step": "buy",
             "orders": 0, "bought": 0, "paid": 0, "crafted": 0, "work": None,
             "rows": [], "listed": 0}
 
@@ -2097,18 +2100,19 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
     run = calibration.load_shared()["resupply"]
     core, slot, target = job["core"], job["slot"], job["target"]
     take_all = int(job.get("take_all", run["buy_take_all_after"]))
-    job.setdefault("take_all_on", False)
     steps = 0
+    whole = False
     searched = False
     THIN = object()
 
     def order(want, on_margin=True):
-        nonlocal searched
+        nonlocal searched, whole
         job["orders"] += 1
-        if steps >= take_all and not job["take_all_on"]:
-            job["take_all_on"] = True
-            print(f"  {steps} step(s) down with nothing spare; taking rows "
-                  f"whole from here until {core} is done")
+        if steps >= take_all and not whole:
+            whole = True
+            print(f"  {steps} step(s) down with nothing spare; this order "
+                  f"takes the row it is on whole, and the next one leaves "
+                  f"{job['leave']} behind again")
         for attempt in range(1, int(run["buy_retries"]) + 1):
             try:
                 with calibration.phase(f"buy order {job['orders']}"):
@@ -2120,7 +2124,7 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
                                           gap=job["gap"] if on_margin
                                           else None,
                                           leave_behind=(
-                                              0 if job["take_all_on"]
+                                              0 if whole
                                               else job["leave"]),
                                           search=not searched,
                                           batch=batch)
@@ -2276,7 +2280,10 @@ def list_sets(model, job, first, last, verbose=True):
                                          expect_market=(
                                              int(job["sells_at"])
                                              * int(job.get("crafted") or 0))
-                                         or None)
+                                         or None,
+                                         resupply_cost=(unit_cost
+                                                        if bought and paid
+                                                        else 0))
         except row_model.NothingLoaded as exc:
             if job["rows"]:
                 break
@@ -3127,7 +3134,10 @@ def list_sets_under(model, job, first, last, verbose=True):
                                      floor_each=unit_cost,
                                      price_each=job["ours"], wait_fill=False,
                                      floor_item=set_name,
-                                     floor_units=bought)
+                                     floor_units=bought,
+                                     resupply_cost=(unit_cost
+                                                    if bought and paid
+                                                    else 0))
     except row_model.NothingLoaded as exc:
         model.hold_work(work, set_name)
         raise NotReady(

@@ -921,6 +921,18 @@ class RowModel:
             self._work[slot] = None
         return new, gone
 
+    def _keep_verified_cost(self, name, paid, market_each, verbose):
+        if not within(paid, market_each):
+            if verbose:
+                print(f"    the {paid:,} a unit this resupply paid is not "
+                      f"near the {market_each:,} the panel verified, so it "
+                      f"is not kept as the floor for {name!r}")
+            return
+        if calibration.note_verified_cost(name, paid) and verbose:
+            print(f"    {name!r} was bought at {paid:,} a unit and listed "
+                  f"against a verified {market_each:,}; a row of it with no "
+                  f"cost of its own is floored at {paid:,} from now on")
+
     def _hold_core_floor(self, want, each, whole, name, verbose):
         if not each or whole or want >= each:
             return want
@@ -1232,7 +1244,8 @@ class RowModel:
                    expect_price=None, unit_market=None, floor_each=0,
                    listed_at=None, wait_fill=True, price_each=None,
                    expect_qty=None, expect_market=None, resolve=True,
-                   under=None, floor_item=None, floor_units=0):
+                   under=None, floor_item=None, floor_units=0,
+                   resupply_cost=0):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -1602,6 +1615,12 @@ class RowModel:
             print(f"  listed {qty} at {want:,}"
                   + (f"; it lands in row {int(lands_in)}"
                      if lands_in is not None else ""))
+        if (resupply_cost and market and hard_name
+                and (resolved is None or resolved["item"] == meant)):
+            self._keep_verified_cost(hard_name, int(resupply_cost),
+                                     (market * qty // hard_total
+                                      if hard_set and hard_total > 1
+                                      else market), verbose)
         return {"item": expect_item, "resolved": resolved is not None,
                 "slot": (int(row), int(col)), "qty": qty,
                 "price": want, "row": lands_in, "floored": floored,
