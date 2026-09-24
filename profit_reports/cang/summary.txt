@@ -1,63 +1,58 @@
 LAST 7 DAYS -- 2026-09-18 to 2026-09-24, each day midnight to midnight Central
 
-day                      up time  elapsed   profit  an hour  revenue    cost  units  margin
--------------------------------------------------------------------------------------------
-Fri 2026-09-18            12.61h   24.00h        0        0        0       0      0      --
-Sat 2026-09-19            11.34h   24.00h        0        0        0       0      0      --
-Sun 2026-09-20            18.19h   24.00h        0        0        0       0      0      --
-Mon 2026-09-21            14.14h   24.00h        0        0        0       0      0      --
-Tue 2026-09-22            15.79h   24.00h        0        0        0       0      0      --
-Wed 2026-09-23            19.99h   24.00h  137.97K    6.90K    6.92M   6.79M     25    2.0%
-Thu 2026-09-24 (so far)    0.42h    1.04h    1.29M    3.11M   73.90M  72.60M    153    1.8%
-===========================================================================================
-7 DAYS                    92.47h  145.04h    1.43M   15.49K   80.82M  79.39M    178    1.8%
+day                      up time  elapsed   profit  an hour  revenue     cost  units  margin
+--------------------------------------------------------------------------------------------
+Fri 2026-09-18            12.61h   24.00h        0        0        0        0      0      --
+Sat 2026-09-19            11.34h   24.00h        0        0        0        0      0      --
+Sun 2026-09-20            18.19h   24.00h        0        0        0        0      0      --
+Mon 2026-09-21            14.14h   24.00h        0        0        0        0      0      --
+Tue 2026-09-22            15.79h   24.00h        0        0        0        0      0      --
+Wed 2026-09-23            19.99h   24.00h  137.97K    6.90K    6.92M    6.79M     25    2.0%
+Thu 2026-09-24 (so far)    0.67h    1.30h   10.08M   15.11M  614.04M  603.96M    896    1.6%
+============================================================================================
+7 DAYS                    92.72h  145.30h   10.22M  110.23K  620.97M  610.75M    921    1.6%
 
 
-PROFIT SUMMARY -- sold since 2026-09-24 00:00 Central (as of 01:02 Central)
+PROFIT SUMMARY -- sold since 2026-09-24 00:00 Central (as of 01:17 Central)
 
-item            profit  revenue    cost  units  bought/u   sold/u  margin
--------------------------------------------------------------------------
-chaoscore      905.60K   57.41M  56.50M     79   715.20K  726.67K    1.6%
-forcecorehigh  408.74K   13.71M  13.30M     70   190.07K  195.91K    3.0%
-divinestone    -20.39K    2.78M   2.80M      4   698.88K  693.79K   -0.7%
--------------------------------------------------------------------------
-Cores          388.36K   16.49M  16.10M     74   217.57K  222.82K    2.4%
-Chaos          905.60K   57.41M  56.50M     79   715.20K  726.67K    1.6%
-=========================================================================
-TOTAL            1.29M   73.90M  72.60M    153   474.52K  482.98K    1.8%
+item            profit  revenue     cost  units  bought/u   sold/u  margin
+--------------------------------------------------------------------------
+chaoscore        9.71M  595.47M  585.76M    819   715.22K  727.07K    1.6%
+forcecorehigh  408.74K   13.71M   13.30M     70   190.07K  195.91K    3.0%
+divinestone    -35.83K    4.86M    4.89M      7   698.88K  693.77K   -0.7%
+--------------------------------------------------------------------------
+Cores          372.92K   18.57M   18.20M     77   236.32K  241.16K    2.0%
+Chaos            9.71M  595.47M  585.76M    819   715.22K  727.07K    1.6%
+==========================================================================
+TOTAL           10.08M  614.04M  603.96M    896   674.06K  685.32K    1.6%
 
 
 
-ROWS -- 2026-09-24_003743_run_board.log, board during pass 4 at row 25, read 2026-09-24T01:02:35 (live)
+ROWS -- 2026-09-24_003743_run_board.log, board during pass 9 at row 1, read 2026-09-24T01:17:24 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Chaos Core Set X 200                    x4         -   727.12K         -   145.42M         -
-    2  Chaos Core                              x1   724.59K   724.08K      -514   724.08K      -514
-    3  Divine Stone                            x1   698.88K   693.71K    -5.18K   693.71K    -5.18K
-    4  Force Core(High                         x6         -   195.89K         -   195.89K         -
-    5  Force Core(High                       x220   190.07K   195.88K    +5.82K   195.88K     1.28M
-    6  Chaos Core Set X 123                    x1   715.09K   727.12K   +12.03K    89.44M     1.48M
-    7  Chaos Core Set X 147                    x1         -   727.12K         -   106.89M         -
-    8  Force Core(High                        x57   190.07K   195.88K    +5.82K   195.88K   331.63K
-    9  Upgrade Core (Ultimate                 x37   440.44K   452.19K   +11.75K   452.19K   434.79K
-   10  Chaos Core Set X 69                     x1   715.90K   727.12K   +11.21K    50.17M   773.77K
-   11  Upgrade Core (Ultimate                x240   440.44K   452.19K   +11.75K   452.19K     2.82M
-   12  Upgrade Core (Ultimate                  x3   440.43K   452.19K   +11.76K   452.19K    35.27K
-    25  (empty)                                           -          -       -              -               - <- here
+    1  Chaos Core                              x1   723.48K   720.63K    -2.85K   720.63K    -2.85K <- here
+    2  Divine Stone                            x1   698.88K   693.85K    -5.03K   693.85K    -5.03K
+    3  Force Core(High                         x6         -   190.07K         -   190.07K         -
+    4  Force Core(High                       x220   190.07K   190.07K        +0   190.07K         0
+    5  Force Core(High                        x57   190.07K   190.07K        +0   190.07K         0
+    6  Upgrade Core (Ultimate                 x37   440.44K   452.18K   +11.74K   452.18K   434.31K
+    7  Upgrade Core (Ultimate                x240   440.44K   452.18K   +11.74K   452.18K     2.82M
+    8  Upgrade Core (Ultimate                  x3   440.43K   452.18K   +11.74K   452.18K    35.23K
    28  Heroic Holy Water (15 min.) X 1         x2         -     9.28M         -     9.28M         -
    29  Bemonrecnte" Tt                         x1         -    20.00M         -    20.00M         -
    30  Life Capsule(Special) Type A X 100        x6         -    31.97K         -     3.20M         -
-    balance now 955.69M, read 2026-09-24T01:00:08
-       stock at its listed price                                                            573.97M
-       Alz, latest balance line                                                             955.69M
-       NET WORTH                                                                              1.53B
+    balance now 1.78B, read 2026-09-24T01:17:24
+       stock at its listed price                                                            180.40M
+       Alz, latest balance line                                                               1.78B
+       NET WORTH                                                                              1.96B
 
 
-MARKET -- 2026-09-24_003743_run.log, pass 4, log last written 01:02 Central (live)
+MARKET -- 2026-09-24_003743_run.log, pass 9, log last written 01:17 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         0  195.55K  190.00K  -5.55K     -2.9%      0
-Chaos Core                  4  724.59K  727.12K   2.53K      0.3%      0
+Chaos Core                  0  720.63K  727.12K   6.48K      0.9%      5  YES
 Divine Stone                0  698.88K  700.00K   1.11K      0.2%      0
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     2  440.43K  452.19K  11.76K      2.6%      3  YES
+Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
