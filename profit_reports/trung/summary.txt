@@ -8,12 +8,12 @@ Sun 2026-09-20            10.07h   24.00h  245.41M   24.36M    5.64B   5.40B   8
 Mon 2026-09-21            15.04h   24.00h  128.47M    8.54M    7.73B   7.60B  12.49K    1.7%
 Tue 2026-09-22            18.43h   24.00h  325.00M   17.64M   12.70B  12.37B  18.88K    2.6%
 Wed 2026-09-23             8.79h   24.00h  -17.79M   -2.02M    3.82B   3.84B   6.58K   -0.5%
-Thu 2026-09-24 (so far)   11.57h   15.76h  158.12M   13.67M   10.87B  10.71B  18.99K    1.5%
+Thu 2026-09-24 (so far)   11.82h   16.01h  158.12M   13.38M   10.87B  10.71B  18.99K    1.5%
 ============================================================================================
-7 DAYS                    84.05h  159.76h    1.57B   18.71M   57.03B  55.45B  87.67K    2.8%
+7 DAYS                    84.30h  160.01h    1.57B   18.66M   57.03B  55.45B  87.67K    2.8%
 
 
-PROFIT SUMMARY -- sold since 2026-09-24 00:00 Central (as of 15:45 Central)
+PROFIT SUMMARY -- sold since 2026-09-24 00:00 Central (as of 16:00 Central)
 
 item                          profit  revenue     cost   units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------------
@@ -38,34 +38,36 @@ TOTAL                        158.12M   10.87B   10.71B  18.99K   564.00K  572.33
 
 
 
-ROWS -- 2026-09-24_080153_run_board.log, board during pass 65 at row 9, read 2026-09-24T13:45:29 (live)
+ROWS -- 2026-09-24_080153_run_board.log, board during pass 69 at row 7, read 2026-09-24T14:00:34 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Blessing Bead - Superior                x1   165.19M   170.00M    +4.81M   170.00M     4.81M
     2  Armor Account bind Unseal Stone         x2   189.00M   189.00M        +0   189.00M         0
     3  Armor Account bind Seal Stone           x2   189.00M   189.00M        +0   189.00M         0
-    4  Force Core (Ultimate                  x250         -   369.26K         -   369.26K         -
-    5  Upgrade Core (Ultimate                  x1         -   444.94K         -   444.94K         -
-    6  Chaos Core                              x1   749.39K   748.71K      -681   748.71K      -681
-    7  Force Core (Ultimate                  x189   348.50K   369.26K   +20.77K   369.26K     3.92M
-    8  Force Core(Highest                     x24   166.67K   179.99K   +13.32K   179.99K   319.80K
-    9  Force Core (Ultimate                  x145   346.67K   369.26K   +22.59K   369.26K     3.28M <- here
-   10  Upgrade Core (Ultimate                 x91   444.69K   444.94K      +244   444.94K    22.20K
-   11  Upgrade Core (Ultimate                x203   444.69K   444.94K      +244   444.94K    49.53K
-   12  Force Core(Highest                     x16   156.25K   179.99K   +23.74K   179.99K   379.89K
+    4  Force Core (Ultimate                  x250         -   369.24K         -   369.24K         -
+    5  Upgrade Core (Ultimate                  x1         -   444.91K         -   444.91K         -
+    6  Chaos Core                              x1   749.39K   742.48K    -6.91K   742.48K    -6.91K
+    7  Force Core (Ultimate                  x189   348.50K   369.24K   +20.75K   369.24K     3.92M <- here
+    8  Force Core(Highest                     x24   166.67K   179.99K   +13.32K   179.99K   319.66K
+    9  Force Core (Ultimate                  x145   346.67K   369.25K   +22.58K   369.25K     3.27M
+   10  Upgrade Core (Ultimate                 x91   444.69K   444.92K      +222   444.92K    20.20K
+   11  Upgrade Core (Ultimate                x203   444.69K   444.92K      +222   444.92K    45.07K
+   12  Force Core(Highest                     x16   156.25K   179.99K   +23.73K   179.99K   379.76K
+   13  Chaos Core Set                          x1   744.23K   750.75K    +6.52K   168.92M     1.47M
+   14  Chaos Core Set                          x1   743.73K   750.75K    +7.02K   101.35M   947.70K
    29  Chaos Core Set X 978                    x1         -   727.07K         -   711.08M         -
    30  Chaos Core Set X 999                    x1         -   727.07K         -   726.35M         -
-    balance now 1.08B, read 2026-09-24T13:44:40
-       stock at its listed price                                                              1.28B
-       Alz, latest balance line                                                               1.08B
+    balance now 814.28M, read 2026-09-24T13:58:56
+       stock at its listed price                                                              1.55B
+       Alz, latest balance line                                                             814.28M
        NET WORTH                                                                              2.36B
 
 
-MARKET -- 2026-09-24_080153_run.log, pass 65, log last written 15:45 Central (live)
+MARKET -- 2026-09-24_080153_run.log, pass 69, log last written 16:00 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         2  181.90K  179.99K  -1.91K     -1.1%      0
-Chaos Core                  0  749.39K  750.75K   1.36K      0.2%      0
+Force Core(Highest)         2  181.90K  179.99K  -1.92K     -1.1%      0
+Chaos Core                  0  744.21K  750.75K   6.54K      0.9%      5  YES
 Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            0  186.04K  189.86K   3.82K      2.0%      0
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
