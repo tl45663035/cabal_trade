@@ -8,51 +8,54 @@ Sun 2026-09-20            18.19h   24.00h        0        0        0        0   
 Mon 2026-09-21            14.14h   24.00h        0        0        0        0      0      --
 Tue 2026-09-22            15.79h   24.00h        0        0        0        0      0      --
 Wed 2026-09-23            19.99h   24.00h  137.97K    6.90K    6.92M    6.79M     25    2.0%
-Thu 2026-09-24 (so far)    0.67h    1.30h   10.08M   15.11M  614.04M  603.96M    896    1.6%
+Thu 2026-09-24 (so far)    0.92h    1.55h   10.09M   11.00M  616.18M  606.09M    899    1.6%
 ============================================================================================
-7 DAYS                    92.72h  145.30h   10.22M  110.23K  620.97M  610.75M    921    1.6%
+7 DAYS                    92.97h  145.55h   10.23M  109.99K  623.10M  612.88M    924    1.6%
 
 
-PROFIT SUMMARY -- sold since 2026-09-24 00:00 Central (as of 01:17 Central)
+PROFIT SUMMARY -- sold since 2026-09-24 00:00 Central (as of 01:32 Central)
 
 item            profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------
-chaoscore        9.71M  595.47M  585.76M    819   715.22K  727.07K    1.6%
+chaoscore        9.72M  596.91M  587.19M    821   715.22K  727.06K    1.6%
 forcecorehigh  408.74K   13.71M   13.30M     70   190.07K  195.91K    3.0%
-divinestone    -35.83K    4.86M    4.89M      7   698.88K  693.77K   -0.7%
+divinestone    -40.86K    5.55M    5.59M      8   698.88K  693.78K   -0.7%
 --------------------------------------------------------------------------
-Cores          372.92K   18.57M   18.20M     77   236.32K  241.16K    2.0%
-Chaos            9.71M  595.47M  585.76M    819   715.22K  727.07K    1.6%
+Cores          367.88K   19.26M   18.90M     78   242.25K  246.97K    1.9%
+Chaos            9.72M  596.91M  587.19M    821   715.22K  727.06K    1.6%
 ==========================================================================
-TOTAL           10.08M  614.04M  603.96M    896   674.06K  685.32K    1.6%
+TOTAL           10.09M  616.18M  606.09M    899   674.18K  685.40K    1.6%
 
 
 
-ROWS -- 2026-09-24_003743_run_board.log, board during pass 9 at row 1, read 2026-09-24T01:17:24 (live)
+ROWS -- 2026-09-24_003743_run_board.log, board during pass 12 at row 1, read 2026-09-24T01:30:34 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Chaos Core                              x1   723.48K   720.63K    -2.85K   720.63K    -2.85K <- here
-    2  Divine Stone                            x1   698.88K   693.85K    -5.03K   693.85K    -5.03K
+    1  Chaos Core                              x1   723.48K   718.40K    -5.08K   718.40K    -5.08K <- here
+    2  Divine Stone                            x1   698.88K   693.82K    -5.06K   693.82K    -5.06K
     3  Force Core(High                         x6         -   190.07K         -   190.07K         -
     4  Force Core(High                       x220   190.07K   190.07K        +0   190.07K         0
     5  Force Core(High                        x57   190.07K   190.07K        +0   190.07K         0
-    6  Upgrade Core (Ultimate                 x37   440.44K   452.18K   +11.74K   452.18K   434.31K
-    7  Upgrade Core (Ultimate                x240   440.44K   452.18K   +11.74K   452.18K     2.82M
-    8  Upgrade Core (Ultimate                  x3   440.43K   452.18K   +11.74K   452.18K    35.23K
+    6  Upgrade Core (Ultimate                 x37   440.44K   452.17K   +11.73K   452.17K   433.97K
+    7  Upgrade Core (Ultimate                x240   440.44K   452.17K   +11.73K   452.17K     2.81M
+    8  Upgrade Core (Ultimate                  x3   440.43K   452.17K   +11.73K   452.17K    35.20K
+    9  Chaos Core Set X 234                    x1   720.63K   727.10K    +6.47K   170.14M     1.51M
+   10  Chaos Core Set X 75                     x1   720.63K   727.10K    +6.46K    54.53M   484.88K
+   11  Chaos Core Set X 117                    x1   720.66K   727.10K    +6.44K    85.07M   753.36K
    28  Heroic Holy Water (15 min.) X 1         x2         -     9.28M         -     9.28M         -
    29  Bemonrecnte" Tt                         x1         -    20.00M         -    20.00M         -
    30  Life Capsule(Special) Type A X 100        x6         -    31.97K         -     3.20M         -
-    balance now 1.78B, read 2026-09-24T01:17:24
-       stock at its listed price                                                            180.40M
-       Alz, latest balance line                                                               1.78B
-       NET WORTH                                                                              1.96B
+    balance now 1.48B, read 2026-09-24T01:30:34
+       stock at its listed price                                                            490.14M
+       Alz, latest balance line                                                               1.48B
+       NET WORTH                                                                              1.97B
 
 
-MARKET -- 2026-09-24_003743_run.log, pass 9, log last written 01:17 Central (live)
+MARKET -- 2026-09-24_003743_run.log, pass 12, log last written 01:32 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  195.55K  190.00K  -5.55K     -2.9%      0
-Chaos Core                  0  720.63K  727.12K   6.48K      0.9%      5  YES
-Divine Stone                0  698.88K  700.00K   1.11K      0.2%      0
+Force Core(Highest)         0  195.56K  190.00K  -5.55K     -2.9%      0
+Chaos Core                  3  718.40K  727.10K   8.70K      1.2%      5  YES
+Divine Stone                0  693.82K  700.00K   6.18K      0.9%      3  YES
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
