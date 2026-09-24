@@ -280,7 +280,8 @@
       "FINISHED": "32",
       "STOPPED": "33",
       "CRASHED": "31"
-    }
+    },
+    "frame_index": "frames.jsonl"
   },
   "timing": {
     "action_gap": 0.5,
@@ -506,8 +507,25 @@
     "branch": "main",
     "push_retries": 3,
     "max_file_mb": 95,
-    "frames_after_minutes": 20,
-    "live_frames": 60
+    "frames_before": 8,
+    "frames_after": 8,
+    "events_per_pattern": 4,
+    "max_frames": 120,
+    "keep_reports": 6,
+    "event_patterns": [
+      "Traceback",
+      "crashed:",
+      "the price places must agree",
+      "too far apart for the read",
+      "was typed but the panel shows",
+      "refusing to list",
+      "is the price of nothing",
+      "the question was declined",
+      "under the hard minimum",
+      "this is not '",
+      "nothing came out of tab",
+      "would not read"
+    ]
   },
   "detect": {
     "slot_inset": 6,

@@ -726,8 +726,13 @@ def get_in(plan=False):
 def keep_evidence(log):
     into = DEAD / log.stem
     kept = []
-    for folder, pattern, count in ((calibration.FRAME_DIR, "*.png",
-                                    K["keep_frames"]),
+    own = calibration.FRAME_DIR / log.stem
+    frames = own if own.is_dir() else calibration.FRAME_DIR
+    index = frames / calibration.FRAME_INDEX
+    if index.exists():
+        into.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(index), str(into / index.name))
+    for folder, pattern, count in ((frames, "*.png", K["keep_frames"]),
                                    (calibration.VIDEO_DIR, "*.mp4",
                                     K["keep_reels"])):
         files = sorted(folder.glob(pattern), key=lambda f: f.name)[-count:]

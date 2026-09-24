@@ -362,14 +362,18 @@ _NOT_DIGIT = re.compile("[^0-9]")
 
 
 _STEPS = []
+_NOW = {"phase": "", "step": ""}
 
 
 @contextlib.contextmanager
 def step(label):
     started = time.perf_counter()
+    before = _NOW["step"]
+    _NOW["step"] = label
     try:
         yield
     finally:
+        _NOW["step"] = before
         _STEPS.append((label, (time.perf_counter() - started) * 1000))
 
 
@@ -379,9 +383,12 @@ _PHASES = []
 @contextlib.contextmanager
 def phase(label):
     started = time.perf_counter()
+    before = _NOW["phase"]
+    _NOW["phase"] = label
     try:
         yield
     finally:
+        _NOW["phase"] = before
         _PHASES.append((label, (time.perf_counter() - started) * 1000))
 
 
@@ -464,39 +471,44 @@ def park(settle: bool = True) -> None:
 
 
 FRAME_DIR = Path(__file__).resolve().parent / "debug_frames"
+FRAME_INDEX = _S["debug"]["frame_index"]
 FRAMES_ON = False
+RUN_FRAMES = None
 _FRAME_N = 0
 
 
-def clear_frames() -> int:
-    if not FRAME_DIR.exists():
-        return 0
-    gone = 0
-    for old in FRAME_DIR.glob("*.png"):
-        try:
-            old.unlink()
-            gone += 1
-        except OSError:
-            pass
-    return gone
+def _run_name():
+    import sys
+    name = getattr(getattr(sys.stdout, "handle", None), "name", None)
+    return (Path(name).stem if name
+            else datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+
+
+def _log_offset():
+    import sys
+    handle = getattr(sys.stdout, "handle", None)
+    try:
+        return handle.tell() if handle is not None else None
+    except (OSError, ValueError):
+        return None
 
 
 PRUNE_EVERY = int(_S["debug"]["prune_every"])
 
 
 def frames_on(enabled: "bool | None" = None) -> bool:
-    global FRAMES_ON
+    global FRAMES_ON, RUN_FRAMES
     if enabled is None:
         enabled = bool(load_shared()["debug"]["frames"])
     FRAMES_ON = bool(enabled)
     if FRAMES_ON:
-        FRAME_DIR.mkdir(parents=True, exist_ok=True)
-        print(f"  debug frames -> {FRAME_DIR}")
-        if _FRAME_N == 0:
-            gone = clear_frames()
-            if gone:
-                print(f"  cleared {gone} frame(s) from earlier runs; this one "
-                      f"numbers from 00001")
+        if RUN_FRAMES is None:
+            RUN_FRAMES = FRAME_DIR / _run_name()
+        RUN_FRAMES.mkdir(parents=True, exist_ok=True)
+        print(f"  debug frames -> {RUN_FRAMES}, indexed in {FRAME_INDEX}; "
+              f"earlier runs' frames are kept until the "
+              f"{int(load_shared()['debug']['keep_frames']):,}-frame budget "
+              f"needs the room")
     if FRAMES_ON and bool(load_shared()["debug"]["video"]):
         recording_on()
     else:
@@ -616,14 +628,30 @@ def recording_off() -> None:
     _TAPE = None
 
 
+def _frame_age(frame):
+    try:
+        return frame.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 def prune_frames() -> None:
     keep = int(load_shared()["debug"]["keep_frames"])
     if keep <= 0 or not FRAME_DIR.exists():
         return
-    shots = sorted(FRAME_DIR.glob("*.png"), key=lambda f: f.stat().st_mtime)
+    shots = sorted(FRAME_DIR.rglob("*.png"), key=_frame_age)
     for old_frame in shots[:max(0, len(shots) - keep)]:
         try:
             old_frame.unlink()
+        except OSError:
+            pass
+    for folder in [p for p in FRAME_DIR.iterdir() if p.is_dir()]:
+        if folder == RUN_FRAMES or any(folder.glob("*.png")):
+            continue
+        try:
+            for leftover in folder.iterdir():
+                leftover.unlink()
+            folder.rmdir()
         except OSError:
             pass
 
@@ -639,10 +667,17 @@ def _scribe():
         try:
             if job is None:
                 return
-            out, image = job
+            if job[0] == "prune":
+                prune_frames()
+                continue
+            _kind, out, image, meta = job
             image.save(out)
+            with open(out.parent / FRAME_INDEX, "a",
+                      encoding="utf-8") as index:
+                index.write(json.dumps(meta) + chr(10))
         except Exception as exc:
-            print(f"  could not write {job[0].name}: {exc}")
+            print(f"  the frame writer failed on {job[0]!r}: "
+                  f"{type(exc).__name__}: {exc}")
         finally:
             _FRAME_QUEUE.task_done()
 
@@ -674,20 +709,28 @@ def snap(label: str, image=None) -> "Path | None":
     if not FRAMES_ON:
         return None
     _FRAME_N += 1
-    if _FRAME_N % PRUNE_EVERY == 0:
-        prune_frames()
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", label).strip("_") or "frame"
-    out = FRAME_DIR / f"{_FRAME_N:05d}_{safe}.png"
+    out = (RUN_FRAMES or FRAME_DIR) / f"{_FRAME_N:05d}_{safe}.png"
+    meta = {"n": _FRAME_N, "file": out.name,
+            "at": datetime.datetime.now().isoformat(timespec="milliseconds"),
+            "log": _log_offset(), "phase": _NOW["phase"],
+            "step": _NOW["step"]}
     try:
         waiting = _frames_waiting()
     except Exception as exc:
         print(f"  no frame writer: {type(exc).__name__}: {exc}")
         return None
     try:
-        waiting.put_nowait((out, grab() if image is None else image))
+        waiting.put_nowait(("frame", out, grab() if image is None else image,
+                            meta))
     except Exception:
         _FRAMES_DROPPED += 1
         return None
+    if _FRAME_N % PRUNE_EVERY == 0:
+        try:
+            waiting.put_nowait(("prune",))
+        except Exception:
+            pass
     return out
 
 
