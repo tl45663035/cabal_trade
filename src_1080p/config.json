@@ -255,6 +255,14 @@
         ]
       }
     },
+    "hard_min_per_unit": {
+      "Chaos Core Set": 650000,
+      "Divine Stone Set": 650000,
+      "Upgrade Core (Ultimate)": 410000,
+      "Force Core (Ultimate)": 320000,
+      "Force Core(Highest)": 180000,
+      "Force Core(High)": 165000
+    },
     "price_trust_multiple": 10,
     "screen": "1920x1080",
     "first_list_price": {
@@ -268,7 +276,7 @@
     "frames": true,
     "video": false,
     "board_trace": true,
-    "keep_frames": 500,
+    "keep_frames": 5000,
     "frames_queued": 64,
     "video_fps": 15,
     "video_seconds": 180,

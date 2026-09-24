@@ -1088,7 +1088,7 @@ def do_list(row, col, price=None, verbose=True, tab=None, item=None):
     out = model.list_slot(row, col, price=price, floor=floor, why=why,
                           unit_market=unit_market,
                           floor_each=floor if unit_market else 0,
-                          verbose=verbose)
+                          floor_item=item, verbose=verbose)
     task_done("list", tab=tab, slot=[int(row), int(col)], qty=out["qty"],
               price=out["price"])
     print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
@@ -3125,7 +3125,9 @@ def list_sets_under(model, job, first, last, verbose=True):
                                          f"this pass",
                                      lands_in=lands_in, unit_market=market,
                                      floor_each=unit_cost,
-                                     price_each=job["ours"], wait_fill=False)
+                                     price_each=job["ours"], wait_fill=False,
+                                     floor_item=set_name,
+                                     floor_units=bought)
     except row_model.NothingLoaded as exc:
         model.hold_work(work, set_name)
         raise NotReady(

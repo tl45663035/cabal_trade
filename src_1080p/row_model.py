@@ -748,6 +748,23 @@ def item_key(name):
     return _key(_PACK.sub("", name or ""))
 
 
+SET_WORD = re.compile(r"\b%s\b" % re.escape(_FACTS["set_word"]),
+                      re.IGNORECASE)
+
+
+def is_set(name):
+    return bool(name and SET_WORD.search(name))
+
+
+def hard_floor_each(name):
+    if not name:
+        return 0
+    table = calibration.load_shared()["run"].get("hard_min_per_unit") or {}
+    key = item_key(name)
+    return next((int(each) for item, each in table.items()
+                 if item_key(item) == key), 0)
+
+
 def canonical(name):
     named = calibration.voucher_floor_ratio(name or "")[0]
     return named or (name or "")
@@ -903,6 +920,14 @@ class RowModel:
         for slot in new:
             self._work[slot] = None
         return new, gone
+
+    def _hold_core_floor(self, want, each, whole, name, verbose):
+        if not each or whole or want >= each:
+            return want
+        if verbose:
+            print(f"    {want:,} is under the hard minimum of {each:,} a core "
+                  f"for {name!r}; listing at {each:,} instead")
+        return each
 
     def _price_again(self, market, expect_market, listed_at, verbose):
         for look in range(PRICE_RECHECKS):
@@ -1207,7 +1232,7 @@ class RowModel:
                    expect_price=None, unit_market=None, floor_each=0,
                    listed_at=None, wait_fill=True, price_each=None,
                    expect_qty=None, expect_market=None, resolve=True,
-                   under=None):
+                   under=None, floor_item=None, floor_units=0):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -1288,10 +1313,15 @@ class RowModel:
                 if verbose:
                     print(f"    nothing said what {expect_item!r} should "
                           f"fetch; its own market says {expect_market:,}")
-        cost_guard = 0
-        if floor_each and expect_market and unit_market:
-            cost_guard = int(floor_each) * max(
-                1, round(int(expect_market) / int(unit_market)))
+        hard_name = meant or floor_item
+        hard_each = hard_floor_each(hard_name)
+        hard_set = is_set(hard_name)
+        crafted = (round(int(expect_market) / int(unit_market))
+                   if expect_market and unit_market else 0)
+        hard_total = max(pack_size(hard_name) if hard_name else 0, crafted,
+                         int(floor_units or 0))
+        cost_each = int(floor_each or 0) if crafted else 0
+        cost_guard = cost_each * max(1, crafted)
         if market and expect_market and not within(market, expect_market):
             with calibration.step("read the price again against what was "
                                   "expected"):
@@ -1368,11 +1398,8 @@ class RowModel:
                 print(f"    market {want:,} is under the {floor:,} floor"
                       + (f" ({why})" if why else "") + f"; listing at the floor")
             want = floor
-        if (cost_guard and want < cost_guard
-                and (resolved is None or resolved["item"] in (None, meant))):
-            raise WrongItem(
-                f"refusing to list {meant!r} at {want:,}: what went into it "
-                f"cost {cost_guard:,}. Nothing has been listed.")
+        want = self._hold_core_floor(want, hard_each, hard_set, hard_name,
+                                     verbose)
         if want < MIN_PLAUSIBLE_PRICE:
             raise Divergence(
                 f"refusing to list at {want:,}, under the "
@@ -1413,6 +1440,8 @@ class RowModel:
                                             verbose, cost_guard)
             want, floor, expect_item = (resolved["price"], resolved["floor"],
                                         resolved["item"])
+            want = self._hold_core_floor(want, hard_each, hard_set,
+                                         hard_name, verbose)
             with calibration.step(f"type the price {want:,} instead"):
                 calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
                 type_number(want, CLEAR_PRESSES_PRICE)
@@ -1427,6 +1456,34 @@ class RowModel:
                     f"sales for what loaded from ({row},{col}). Nothing "
                     f"has been listed.")
             floored = bool(floor) and want <= floor
+        if (cost_guard and want * qty < cost_guard
+                and (resolved is None or resolved["item"] in (None, meant))):
+            raise WrongItem(
+                f"refusing to list {meant!r}: {qty} x {want:,} is "
+                f"{want * qty:,}, under the {cost_guard:,} that went into "
+                f"it. Nothing has been listed.")
+        set_floor = (hard_each * hard_total
+                     if hard_set and hard_total > 1 else 0)
+        if set_floor and want * qty < set_floor:
+            need = -(-set_floor // qty)
+            if verbose:
+                print(f"    {qty} x {want:,} is {want * qty:,}, under the "
+                      f"hard minimum of {hard_each:,} a unit x {hard_total} "
+                      f"= {set_floor:,}; listing at {need:,} each instead")
+            with calibration.step(f"type the price {need:,} for the floor"):
+                calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
+                type_number(need, CLEAR_PRESSES_PRICE)
+                calibration.park()
+            with calibration.step("take the quantity from the net sales "
+                                  "again"):
+                qty = panel_quantity(need, verbose)
+            if qty is None:
+                calibration.snap("panel_will_not_confirm")
+                raise Divergence(
+                    f"the panel will not price {need:,} against its net sales "
+                    f"after raising it to the hard minimum. Nothing has been "
+                    f"listed.")
+            want = need
         with calibration.step("read the price back before Register"):
             shown = warm_money(calibration.grab(),
                                tuple(panel["price_field"]))
