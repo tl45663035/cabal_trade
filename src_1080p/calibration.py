@@ -3383,6 +3383,8 @@ def calibrate_actions(shop, verbose=True, seat="row_one", position=1):
             raise RuntimeError(
                 "the underprice question stayed open after Confirmation. "
                 "Nothing committed; the item is in the bag.")
+        park()
+        time.sleep(ACTION_GAP)
         confirm = await_button(_S["text"]["confirm_word"])
         if confirm is None:
             snap("no_confirm_after_warning")
