@@ -1,0 +1,35 @@
+2026-09-25_143630  .\tools\supervise.py --config trung
+  logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-25_143630_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-25_135637_run.log ended: 383,844 was typed but the panel shows 383,894; the two must match before anything is registered. Nothing has been listed.,14:36:30,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-25_135637_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_143637_found.png
+  interrupted: relist row 7: 'Force Core (Ultimate' x64 at 383,849 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_143644_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 7: 'Force Core (Ultimate' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-25_143647_reset.png
+   2026-09-25_143648  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-25_143648_run.log
+     code 4881c7c
+     screen 1920x1080
+* relaunched (pid 18956),14:36:52,alive
+watching pid 18956, 2026-09-25_143648_run.log
+* pushed the profit report for trung,14:46:14,alive
+* pushed the profit report for trung,15:01:25,alive
+* pushed the profit report for trung,15:16:40,alive
+* pushed the profit report for trung,15:31:53,alive
+* pushed the profit report for trung,15:47:06,alive
+
+  Ctrl 4 times: stopping the run the way Ctrl+C would.
+* supervisor cancelled with Ctrl x4,15:52:37,dead
