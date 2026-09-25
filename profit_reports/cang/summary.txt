@@ -8,12 +8,12 @@ Mon 2026-09-21            14.14h   24.00h        0        0        0       0    
 Tue 2026-09-22            15.79h   24.00h        0        0        0       0       0      --
 Wed 2026-09-23            19.99h   24.00h  137.97K    6.90K    6.92M   6.79M      25    2.0%
 Thu 2026-09-24            18.07h   24.00h  111.91M    6.19M    7.79B   7.68B  12.44K    1.4%
-Fri 2026-09-25 (so far)    8.69h   11.64h  212.49M   24.45M    6.42B   6.21B  10.70K    3.3%
+Fri 2026-09-25 (so far)    8.94h   11.89h  212.49M   23.76M    6.42B   6.21B  10.70K    3.3%
 ============================================================================================
-7 DAYS                   106.20h  155.64h  324.54M    3.06M   14.22B  13.90B  23.16K    2.3%
+7 DAYS                   106.45h  155.89h  324.54M    3.05M   14.22B  13.90B  23.16K    2.3%
 
 
-PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 11:38 Central)
+PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 11:53 Central)
 
 item                    profit  revenue     cost   units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ TOTAL                  212.49M    6.42B    6.21B  10.70K   580.24K  600.10K    3
 
 
 
-ROWS -- 2026-09-25_103805_run_board.log, board during pass 20 at row 1, read 2026-09-25T11:38:02 (live)
+ROWS -- 2026-09-25_103805_run_board.log, board during pass 40 at row 1, read 2026-09-25T11:53:13 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Honor Medal Chest                       x2         -   219.10M         -   219.10M         - <- here
     2  Divine Stone Set X 9                    x1         -   714.98K         -     6.43M         -
@@ -54,7 +54,7 @@ ROWS -- 2026-09-25_103805_run_board.log, board during pass 20 at row 1, read 202
    28  Palladium Headpiece (DM) | Lua          x1         -     6.41M         -     6.41M         -
    29  Palladium Gloves (FG) + 1 i             x1         -     1.44M         -     1.44M         -
    30  Life Capsule(Special) Type A X 100        x9         -    30.00K         -     3.00M         -
-    balance now 1.30B, read 2026-09-25T11:38:02
+    balance now 1.30B, read 2026-09-25T11:53:13
     held on tab 4, bought and not listed yet:
     Chaos Core Set                     slot (1, 1)         - unit(s)            - a unit
        stock at its listed price                                                              1.57B
@@ -62,12 +62,12 @@ ROWS -- 2026-09-25_103805_run_board.log, board during pass 20 at row 1, read 202
        NET WORTH                                                                              2.86B
 
 
-MARKET -- 2026-09-25_103805_run.log, pass 20, log last written 11:38 Central (live)
+MARKET -- 2026-09-25_103805_run.log, pass 40, log last written 11:53 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  195.38K  196.96K   1.58K      0.8%      0
-Chaos Core                  2  721.73K  728.03K   6.30K      0.9%      3  YES
+Force Core(Highest)         0  193.52K  196.96K   3.44K      1.7%      0
+Chaos Core                  2  710.00K  728.07K  18.07K      2.5%      6  YES
 Divine Stone                5        -        -       -         -      -  holds the most it can want, 5; not priced
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
