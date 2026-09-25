@@ -1,0 +1,2467 @@
+2026-09-25_012227  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-25_012227_run.log
+  code 828e17a
+  screen 1920x1080
+  ledger C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\sales.db run 2026-09-25T01:22:27
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-09-25_012227_run, indexed in frames.jsonl; earlier runs' frames are kept until the 5,000-frame budget needs the room
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  measuring this screen before touching anything
+inventory:
+  Inventory shut; pressing I (attempt 1)
+  Alz box (1778, 692, 1859, 704)   anchor (1859, 692)
+  grid fitted in (1220, 23, 1920, 665): pitch 56.4x56.5 against a shared 73.3x73.4, slot (1,1) at 1471,237, scores 47 and 46
+  tab I [1450, 182]  tab VIII [1825, 182]
+  slot (1,1) [1471, 237]  (1,7) [1810, 237]  (8,8) [1866, 633]
+gift box:
+  the gift box at [284, 1001]
+  Receive at [[1217, 329], [1217, 428], [1217, 527], [1217, 626]]; the gifts on offer are read again each time the box is collected
+  Receive All at [1211, 792]
+  the special giftbox's Receive at [1442, 496]
+  Close at [1487, 852]
+cash shop:
+  the Cash Shop icon at [348, 994]
+  the Cash balance box [1134, 826, 1230, 848] reads 200
+  the gem box [930, 826, 1060, 848] reads 20
+  Escape to close the Cash Shop (attempt 1)
+  the Inventory closed with the Cash Shop; opening it again
+  Inventory shut; pressing I (attempt 1)
+opening the Agent Shop:
+  tab 6 at [1718, 182]
+  right-clicking slot (1,7) at [1810, 237]
+agent shop:
+  Register (291, 80)
+  Purchase [97, 80]  (mirrored about the boundary at x=194)
+  favourites: 10 found, pitch 42.33px, first [484, 761] last [865, 761]
+  favourite row set on an even 42px grid from 484: [484, 526, 568, 610, 652, 694, 736, 778, 820, 862]
+purchase tab:
+  switching to the Purchase tab at (97, 80)
+  sort reads 'pic y Price:Low to' -> region [627, 135, 757, 167]
+  running favourite 1 at (484, 761) to fill the table (attempt 1/10)
+  offers arrived after 0.2s
+  row content [234, 232, 876, 288] -> 'Force Core(Highest) 44 199,727 Buy'
+    name      [234, 232, 557, 288]  -> 'Force Core(Highest)'
+    qty       [559, 232, 649, 288]  -> '44'
+    price     [659, 232, 788, 288]  -> '199,727'
+    function  [788, 232, 880, 288]  -> 'Buy'
+  Buy column x=834, 8 row(s), pitch 56px
+  row 1 centre y=260, box [192, 232, 922, 288]
+register table:
+  button column (786, 145, 884, 728)
+  Register table: 10 row(s), pitch 59px, row 1 y=176, row 10 y=708
+  table_x [192, 880], scroll point [238, 235]
+  Refresh at [839, 757]
+market prices:
+  Force Core(Highest)              199,727
+  Force Core Set (Highest)         195,098
+  Chaos Core                       679,999
+  Chaos Core Set                   728,034
+  Divine Stone                     702,500
+  Divine Stone Set                 715,387
+  Force Core(High)                 195,111
+  Force Core Set (High)            180,000
+  Upgrade Core (Ultimate)          449,804
+  Upgrade Core Set (Ultimate)      444,000
+voucher:
+  a Gold voucher costs 372,500,000
+register panel:
+  price field [32, 411, 190, 439] (click [113, 428])
+  quantity box [37, 476, 190, 504] (click [59, 490])
+  2 suggested price row(s) at y [360, 387]
+  net sales box [37, 578, 190, 606]
+  Register button at [132, 760]
+actions:
+  scrolled to the top, so position 1 is row 1
+  tab 4 slot (1,1) is the first free one; a withdrawal lands there
+  row 1 is 'Force Core(Highest) 102 199,733 OnSale Change'
+  Change at (838, 176)
+  Cancel at (1103, 640)
+  Confirmation at (968, 640)
+  row 1 now reads ''
+  back to inventory tab 4 at (1610, 182); the withdrawal moves the panel to whichever tab it landed on
+  listing it back from tab 4 slot (1, 1) at (1471, 237)
+  the loaded item shows at (103, 221) in the Register Item box
+  panel suggests 199,727; listing at 199,733, the price row 1 was withdrawn at
+  typed 250; the net sales make it 102
+  listed 102 at 199,733; it lands in the lowest empty row
+  learned button_cancel, button_confirmation, button_register, item_point
+actions at position 10:
+  scrolled to the top, so position 10 is row 10
+  tab 4 slot (1,1) is the first free one; a withdrawal lands there
+  row 10 is 'Force Core(Highest) 30 199,732 OnSale Change'
+  Change at (838, 708)
+  Cancel at (1103, 640)
+  Confirmation at (968, 640)
+  row 10 now reads 'Premium Exclusive Slot Register'
+  back to inventory tab 4 at (1610, 182); the withdrawal moves the panel to whichever tab it landed on
+  listing it back from tab 4 slot (1, 1) at (1471, 237)
+  the loaded item shows at (89, 184) in the Register Item box
+  panel suggests 199,727; listing at 199,732, the price row 10 was withdrawn at
+  typed 250; the net sales make it 30
+  listed 30 at 199,732; it lands in the lowest empty row
+  learned button_cancel, button_confirmation, button_register, item_point
+conversion vendor:
+  pressing N to open the vendor Shop (attempt 1)
+  Dungeon tab at (145, 158)
+  the grid took 3 look(s) to draw all 4 rows
+  grid band (163, 776, 413, 953): 5 column(s) at [188, 237, 285, 330, 380], 4 row(s) at [798, 846, 894, 941]
+    Force Core(Low)              <- Force Core Set (Low)           r2c1 at (188, 846)
+    Force Core(Medium)           <- Force Core Set (Medium)        r2c2 at (237, 846)
+    Force Core(High)             <- Force Core Set (High)          r2c3 at (285, 846)
+    Force Core(Highest)          <- Force Core Set (Highest)       r2c4 at (330, 846)
+    Force Core (Ultimate)        <- Force Core Set (Ultimate)      r2c5 at (380, 846)
+    Upgrade Core(Low)            <- Upgrade Core Set (Low)         r4c1 at (188, 941)
+    Upgrade Core(Medium)         <- Upgrade Core Set (Medium)      r4c2 at (237, 941)
+    Upgrade Core(High)           <- Upgrade Core Set (High)        r4c3 at (285, 941)
+    Upgrade Core(Highest)        <- Upgrade Core Set (Highest)     r4c4 at (330, 941)
+    Upgrade Core (Ultimate)      <- Upgrade Core Set (Ultimate)    r4c5 at (380, 941)
+craft window:
+  Inventory shut; pressing I (attempt 1)
+  right-clicking the craft key on tab 6 slot (1, 8) at (1866, 237)
+  recipe Chaos Core Set x3 at [146, 240]
+  recipe Divine Stone Set x3 at [150, 269]
+  tier 2000-2999 at [91, 210]
+  Request All at [265, 736]
+  Complete All at [879, 735]
+  material counter [420, 452, 750, 526]
+
+wrote C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.json  [1920x1080]
+  resolutions in the file: ['1920x1080', '2560x1440']
+  kept 3 value(s) this pass does not measure in shop: button_receive, buy_button_buy, buy_button_cancel
+  kept 20 value(s) this pass does not measure in cashshop: cancel, ok, purchase_arionell, purchase_armoraccountbindsealstone, purchase_armoraccountbindunsealstone, purchase_blessingbeadsuperior, purchase_epicboosterhighest, purchase_forcegempackage, purchase_sienasunbindingstone, purchase_yekaterinavipmembership, scroll_arionell, scroll_armoraccountbindsealstone, scroll_armoraccountbindunsealstone, scroll_blessingbeadsuperior, scroll_epicboosterhighest, scroll_forcegempackage, scroll_sienasunbindingstone, scroll_yekaterinavipmembership, tab_useable, window
+reopening the Agent Shop the caller was promised:
+  Inventory shut; pressing I (attempt 1)
+  the Agent Shop is open again
+  calibrated for 1920x1080, measured 2026-09-25T01:24:08, shop open
+  server clock 08:24 (+59s for the unshown seconds)
+  server 08:24:59; the next war quiet runs 10:29:00 to 10:34:59, in 124.0 min
+  scrolled to the top; row 1 is at position 1
+                                                   bought/u   listed/u  margin      row price
+     1  Force Core(Highest                 x102           -    199,733       -        199,733
+     2  Chaos Core                         x1             -    679,998       -        679,998
+    the quantity column read 'Chest', which holds no digits, so it is the end of the name and not a count; reading the row as 'Honor Medal Chest' and letting the panel count what is there
+     3  Honor Medal Chest                  x2             - 219,779,999       -    219,779,999
+     4  Upgrade Core (Ultimate             x250           -    449,810       -        449,810
+     5  Divine Stone Set X 141             x1             -    715,390       -    100,870,130
+     6  Force Core(Highest                 x30            -    199,732       -        199,732
+     7  Divine Stone Set X 138             x1             -    715,389       -     98,723,819
+     8  Divine Stone Set X 156             x1             -    715,388       -    111,600,683
+     9  Upgrade Core (Ultimate             x232           -    449,809       -        449,809
+    11  Force Core(Highest                 x14            -    199,731       -        199,731
+    13  Upgrade Core (Ultimate             x136           -    449,808       -        449,808
+    14  Divine Stone Set X 162             x1             -    715,387       -    115,892,855
+    15  Force Core(High                    x240           -    195,115       -        195,115
+    16  Force Core(High                    x1             -    195,114       -        195,114
+    17  Force Core(High                    x56            -    195,113       -        195,113
+    26  Siena's Unbinding Stone            x1    74,500,000 950,000,000  +92.2%    950,000,000
+    the quantity column read ';', which holds no digits, so it is the end of the name and not a count; reading the row as 'Tempus sndead - Immortal Etherno Calligo ;' and letting the panel count what is there
+    the quantity column read 'Calligo', which holds no digits, so it is the end of the name and not a count; reading the row as 'Seal of Undead - Immortal Etherno Calligo' and letting the panel count what is there
+    27  Tempus sndead - Immortal Etherno C x1             -  4,000,000       -      4,000,000
+    the quantity column read 't__', which holds no digits, so it is the end of the name and not a count; reading the row as 'ee TUE = t__' and letting the panel count what is there
+    the quantity column read '=', which holds no digits, so it is the end of the name and not a count; reading the row as 'Demonite Crystal of =' and letting the panel count what is there
+    29  ee TUE = t__                       x1             - 10,000,000       -     10,000,000
+    30  Life Capsule(Special) Type A X 100 x6             -     29,999       -      2,999,900
+  scrolled to the top; row 1 is at position 1
+  seeded 19 of rows 1-30
+
+-- Divine Stone special row 1 of 1: 1 at 5,000 to 5,200 under the market --
+  1 stays behind on every row bought; an order 10 step(s) down with nothing spare takes the row it is on whole, and the next order leaves 1 behind again; each order prices the favourite afresh, then wheels down, up to 30 step(s)
+TASK {"kind": "resupply", "core": "Divine Stone", "slot": 5, "tab": 4, "landing": [1, 1], "special": true}
+  row 1 offers 'Divine Stone' x58 at 702,500 (702,500/unit)
+    balance before 626,577,421
+    row 1 holds 58, 1 stays behind, so at most 57 comes off it
+    dialog: '* Divine Stone'  qty 1 of 58  price 702500
+    1 core(s) wanted, 1 to a pack -> 1 pack(s); 58 available, taking 1
+    the quantity field already reads 1; not retyping it
+    ordering 1 pack(s) at 702,500; the spend will confirm what actually bought
+    balance after  625,874,921; spent 702,500 bought 1 pack(s) = 1 core(s) (702,500 a core)
+
+  buy from favourite slot 5: bought 1 core(s) in 1 order(s)
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      147.3    1.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      147.8    1.8%  get_price: purchase_tab_showing
+    4     1422.6   17.5%  get_price: click the Purchase tab + settle
+    5       24.2    0.3%  get_price: read row 1 before the search
+    6      325.2    4.0%  get_price: click favourite slot 5
+    7      142.8    1.8%  get_price: confirm the sort
+    8      463.9    5.7%  get_price: poll row 1 until it answers (7 read(s))
+    9     2699.4   33.3%  get_price: search the favourite and read row 1
+   10      321.4    4.0%  select inventory tab 4
+   11      139.8    1.7%  read the balance before buying
+   12      381.2    4.7%  click the row at (500, 260)
+   13      324.4    4.0%  click Buy at (834, 260)
+   14      135.1    1.7%  await the Purchase dialog
+   15      436.8    5.4%  read the dialog (item, price, qty, qty_max)
+   16      127.3    1.6%  find the Buy button
+   17      322.6    4.0%  click Buy
+   18      251.3    3.1%  park
+   19      162.1    2.0%  confirm the dialog is gone
+   20      135.6    1.7%  read the balance after buying
+          8111.3  100.0%  TOTAL
+    tab 4 slot (1, 1) is held for 'Divine Stone'; it frees when something is listed from it
+  the Divine Stone landed in tab 4 slot (1, 1)
+TASK {"kind": "resupply", "core": "Divine Stone", "slot": 5, "tab": 4, "landing": [1, 1], "step": "list", "holding": "Divine Stone", "qty": 1, "special": true}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 702,500, price field 702,500, net sales 702,500, week average 708,921, listed at unread
+    the lowest listed price is 702,500, from the row and 2 more
+    market 702,500, typing 697,350, 5,150 under the market
+    net sales 697,350 is 1 x 697,350
+  typed 250; the net sales make it 1
+    the panel holds 697,350 against the 697,350 typed
+  tab 4 read in 32 ms after the listing: 0 slot(s) held
+
+  list 1 at 697,350
+    #         ms   share  step
+    1       28.9    0.5%  read the panel before loading
+    2      833.4   13.5%  ctrl-click (1,1) attempt 1
+    3      711.1   11.5%  read the suggested price
+    4     1479.0   24.0%  type the price 697,350
+    5      966.3   15.7%  type the quantity 250
+    6      453.1    7.4%  take the quantity from the net sales
+    7      138.5    2.2%  read the price back before Register
+    8      324.5    5.3%  click Register
+    9      136.5    2.2%  find Confirmation
+   10       23.3    0.4%  look for the underprice question
+   11      326.4    5.3%  click Confirmation
+   12      250.9    4.1%  park
+   13      431.3    7.0%  confirm the dialog is gone
+   14       26.5    0.4%  wait for the panel to let the item go
+   15       31.5    0.5%  read tab 4 after the listing
+          6161.2  100.0%  TOTAL
+  listed 1 at 697,350; it lands in row 10
+  the Divine Stone special row is listed at 697,350 in row 10
+DONE {"kind": "resupply", "core": "Divine Stone", "bought": 1, "listed": 1, "rows": [10], "special": true}
+relisting rows 1-25 for 10000 minute(s)
+
+-- pass 1 --
+
+  resupply order: Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Divine Stone
+
+-- Chaos Core Set under our listing: up to 3 row(s) --
+  no Chaos Core Set of ours on the board, so there is no listing of ours to buy under; not buying
+
+-- Divine Stone Set under our listing: up to 3 row(s) --
+  Divine Stone Set 715,387 - Divine Stone 697,350 = 18,037
+  ours is listed at 715,387 a Set and a Divine Stone sells at 697,350; buying every Set under 692,350, 5,000 a Set below the lower of the two
+  the cheapest Divine Stone Set is 715,387 a Set, not under 692,350; nothing to buy under ours
+
+  counting only rows 1-25; rows outside it are not repriced and do not count; 9 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                3         -         -         -      -   holds the most it can want, 3; not priced
+  Chaos Core                         0   649,999   728,035    78,036      5   YES
+  Divine Stone                       4         -         -         -      -   holds the most it can want, 4; not priced
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            3         -         -         -      -   holds the most it can want, 3; not priced
+  Alz 625,874,921 held covers 962 Chaos Core at 649,999; buying what it covers
+
+-- Chaos Core: 0 row(s) --
+  9 row(s) free inside 1-25
+  Chaos Core Set 728,035 - Chaos Core 649,999 = 78,036
+  a margin of 78,036 is worth 5 row(s) of Chaos Core; 0 held
+  buy_min 150 rolled to 157 (+/-15); buying 159 in whole batches of 3
+  1 stays behind on every row bought; an order 10 step(s) down with nothing spare takes the row it is on whole, and the next order leaves 1 behind again; each order prices the favourite afresh, then wheels down, up to 30 step(s)
+  every order takes all of the row it lands on, up to 999 held, and the orders stop once 159 is held
+TASK {"kind": "resupply", "core": "Chaos Core", "set": "Chaos Core Set", "slot": 3, "tab": 4}
+  0/159 Chaos Core held
+  row 1 offers 'Chaos Core' x1 at 649,999 (649,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      160.3    4.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.5    4.8%  get_price: purchase_tab_showing
+    4      262.3    7.5%  get_price: read row 1 before the search
+    5      328.6    9.4%  get_price: click favourite slot 3
+    6      133.3    3.8%  get_price: confirm the sort
+    7      675.7   19.4%  get_price: poll row 1 until it answers (2 read(s))
+    8     1763.8   50.5%  get_price: search the favourite and read row 1
+          3491.9  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x20 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.9    0.1%  get_price: focus the game
+    2      148.6   11.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      173.3   13.6%  get_price: purchase_tab_showing
+    4      313.4   24.6%  get_price: read row 1 where it stands
+    5      636.3   50.0%  get_price: search the favourite and read row 1
+          1272.6  100.0%  TOTAL
+  stopping: row 1 asks 725,000 and the core sells at 728,035, a gap of 3,035 against the 5,000 wanted. Nothing bought.
+  nothing bought; not opening the craft window.
+  tab 4 read from the screen in 1603 ms: 0 slot(s) held
+  row 1: 'Force Core(Highest' x102 at 199,733 -> tab 4 slot (1, 1)
+    floor 181,900 (181,900 x 1) from Force Core Set (Highest) as last bought; listed at 199,733, above it
+TASK {"kind": "relist", "row": 1, "item": "Force Core(Highest", "qty": 102, "price": 199733, "tab": 4, "slot": [1, 1], "lands_in": 1}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 199,727, price field 199,727, net sales 199,727, week average 213,123, listed at 199,733
+    the lowest listed price is 199,727, from the row and 3 more
+    market 199,727, typing 199,726, 1 under the market
+    net sales 20,372,052 is 102 x 199,726
+  typed 250; the net sales make it 102
+    the panel holds 199,726 against the 199,726 typed
+  tab 4 read in 31 ms after the listing: 0 slot(s) held
+
+  list 102 at 199,726
+    #         ms   share  step
+    1       27.2    0.4%  read the panel before loading
+    2       20.5    0.3%  wait for slot (1,1) to fill
+    3      828.1   13.4%  ctrl-click (1,1) attempt 1
+    4      705.7   11.4%  read the suggested price
+    5     1475.8   23.9%  type the price 199,726
+    6      969.4   15.7%  type the quantity 250
+    7      473.2    7.7%  take the quantity from the net sales
+    8      152.8    2.5%  read the price back before Register
+    9      331.0    5.4%  click Register
+   10      135.0    2.2%  find Confirmation
+   11       24.1    0.4%  look for the underprice question
+   12      326.2    5.3%  click Confirmation
+   13      251.5    4.1%  park
+   14      404.9    6.5%  confirm the dialog is gone
+   15       25.2    0.4%  wait for the panel to let the item go
+   16       31.1    0.5%  read tab 4 after the listing
+          6181.6  100.0%  TOTAL
+  listed 102 at 199,726; it lands in row 1
+DONE {"kind": "relist", "row": 1, "lands_in": 1, "qty": 102, "price": 199726, "item": "Force Core(Highest"}
+    relisted 102 at 199,726 in row 1
+  row 2 has SOLD (fully); collecting
+    collected; row 2 is empty, nothing to relist
+  the Chaos Core special row sold; buying it back now, not on the next pass
+
+-- Chaos Core special row 1 of 1: 1 at 500 to 700 under the market --
+  1 stays behind on every row bought; an order 10 step(s) down with nothing spare takes the row it is on whole, and the next order leaves 1 behind again; each order prices the favourite afresh, then wheels down, up to 30 step(s)
+TASK {"kind": "resupply", "core": "Chaos Core", "slot": 3, "tab": 4, "landing": [1, 1], "special": true}
+  row 1 offers 'Chaos Core' x1 at 649,999 (649,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      181.7    3.0%  get_price: _trade_window_open (OCR 1300x190)
+    3      170.2    2.8%  get_price: purchase_tab_showing
+    4     1428.8   23.8%  get_price: click the Purchase tab + settle
+    5      155.7    2.6%  get_price: read row 1 before the search
+    6      326.6    5.4%  get_price: click favourite slot 3
+    7      146.4    2.4%  get_price: confirm the sort
+    8      575.5    9.6%  get_price: poll row 1 until it answers (2 read(s))
+    9     3008.8   50.2%  get_price: search the favourite and read row 1
+          5994.2  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x47 at 725,000 (725,000/unit)
+    balance before 795,874,421
+    row 1 holds 47, 1 stays behind, so at most 46 comes off it
+    dialog: '* Chaos Core'  qty 1 of 47  price 725000
+    1 core(s) wanted, 1 to a pack -> 1 pack(s); 47 available, taking 1
+    the quantity field already reads 1; not retyping it
+    ordering 1 pack(s) at 725,000; the spend will confirm what actually bought
+    balance after  795,149,421; spent 725,000 bought 1 pack(s) = 1 core(s) (725,000 a core)
+
+  buy from favourite slot 3: bought 1 core(s) in 1 order(s)
+    #         ms   share  step
+    1        1.4    0.0%  get_price: focus the game
+    2      158.3    3.9%  get_price: _trade_window_open (OCR 1300x190)
+    3      175.5    4.3%  get_price: purchase_tab_showing
+    4      323.1    8.0%  get_price: read row 1 where it stands
+    5      658.3   16.2%  get_price: search the favourite and read row 1
+    6      321.3    7.9%  select inventory tab 4
+    7      137.6    3.4%  read the balance before buying
+    8      377.1    9.3%  click the row at (500, 260)
+    9      326.3    8.1%  click Buy at (834, 260)
+   10      128.3    3.2%  await the Purchase dialog
+   11      440.6   10.9%  read the dialog (item, price, qty, qty_max)
+   12      131.7    3.2%  find the Buy button
+   13      325.3    8.0%  click Buy
+   14      251.6    6.2%  park
+   15      162.0    4.0%  confirm the dialog is gone
+   16      135.3    3.3%  read the balance after buying
+          4053.5  100.0%  TOTAL
+    tab 4 slot (1, 1) is held for 'Chaos Core'; it frees when something is listed from it
+  the Chaos Core landed in tab 4 slot (1, 1)
+TASK {"kind": "resupply", "core": "Chaos Core", "slot": 3, "tab": 4, "landing": [1, 1], "step": "list", "holding": "Chaos Core", "qty": 1, "special": true}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 649,999, price field 649,999, net sales 649,999, week average 717,087, listed at unread
+    the lowest listed price is 649,999, from the row and 2 more
+    market 649,999, typing 649,499, 500 under the market
+    net sales 29,227,455 is 45 x 649,499
+  typed 250; the net sales make it 45
+    the panel holds 649,499 against the 649,499 typed
+  tab 4 read in 32 ms after the listing: 0 slot(s) held
+
+  list 45 at 649,499
+    #         ms   share  step
+    1       30.4    0.5%  read the panel before loading
+    2      824.6   13.5%  ctrl-click (1,1) attempt 1
+    3      697.7   11.4%  read the suggested price
+    4     1469.3   24.1%  type the price 649,499
+    5      962.2   15.8%  type the quantity 250
+    6      465.4    7.6%  take the quantity from the net sales
+    7      140.5    2.3%  read the price back before Register
+    8      331.5    5.4%  click Register
+    9      133.9    2.2%  find Confirmation
+   10       26.9    0.4%  look for the underprice question
+   11      325.4    5.3%  click Confirmation
+   12      251.5    4.1%  park
+   13      393.1    6.4%  confirm the dialog is gone
+   14       22.6    0.4%  wait for the panel to let the item go
+   15       32.3    0.5%  read tab 4 after the listing
+          6107.2  100.0%  TOTAL
+  listed 45 at 649,499; it lands in row 2
+  the Chaos Core special row is listed at 649,499 in row 2
+DONE {"kind": "resupply", "core": "Chaos Core", "bought": 1, "listed": 1, "rows": [2], "special": true}
+    the quantity column read 'Chest', which holds no digits, so it is the end of the name and not a count; reading the row as 'Honor Medal Chest' and letting the panel count what is there
+  tab 4 known from the last listing: 0 slot(s) held
+  row 3: 'Honor Medal Chest' x2 at 219,779,999 -> tab 4 slot (1, 1)
+    the quantity column read 'Chest', which holds no digits, so it is the end of the name and not a count; reading the row as 'Honor Medal Chest' and letting the panel count what is there
+    no floor for 'Honor Medal Chest'
+TASK {"kind": "relist", "row": 3, "item": "Honor Medal Chest", "qty": 2, "price": 219779999, "tab": 4, "slot": [1, 1], "lands_in": 3}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 187,500,000, price field 187,500,000, net sales 187,500,000, week average 220,000,000, listed at 219,779,999
+    the lowest listed price is 187,500,000, from the row and 3 more
+    the market asks 187,499,999, 32,280,000 under our 219,779,999; holding at 219,769,999, the most this row may fall in one relist
+    market 187,500,000, typing 219,769,999, 32,269,999 over the market
+    net sales 439,539,998 is 2 x 219,769,999
+  typed 250; the net sales make it 2
+    the panel holds 219,769,999 against the 219,769,999 typed
+  tab 4 read in 31 ms after the listing: 0 slot(s) held
+
+  list 2 at 219,769,999
+    #         ms   share  step
+    1       27.9    0.4%  read the panel before loading
+    2       27.2    0.4%  wait for slot (1,1) to fill
+    3      834.6   13.1%  ctrl-click (1,1) attempt 1
+    4      709.9   11.2%  read the suggested price
+    5     1682.1   26.4%  type the price 219,769,999
+    6      963.2   15.1%  type the quantity 250
+    7      459.8    7.2%  take the quantity from the net sales
+    8      146.3    2.3%  read the price back before Register
+    9      324.3    5.1%  click Register
+   10      135.1    2.1%  find Confirmation
+   11       24.5    0.4%  look for the underprice question
+   12      326.0    5.1%  click Confirmation
+   13      251.0    3.9%  park
+   14      400.4    6.3%  confirm the dialog is gone
+   15       22.9    0.4%  wait for the panel to let the item go
+   16       31.5    0.5%  read tab 4 after the listing
+          6366.6  100.0%  TOTAL
+  listed 2 at 219,769,999; it lands in row 3
+DONE {"kind": "relist", "row": 3, "lands_in": 3, "qty": 2, "price": 219769999, "item": "Honor Medal Chest"}
+    relisted 2 at 219,769,999 in row 3
+  tab 4 known from the last listing: 0 slot(s) held
+  row 4: 'Upgrade Core (Ultimate' x250 at 449,810 -> tab 4 slot (1, 1)
+    floor 442,381 (442,381 x 1) from Upgrade Core Set (Ultimate) as last bought; listed at 449,810, above it
+TASK {"kind": "relist", "row": 4, "item": "Upgrade Core (Ultimate", "qty": 250, "price": 449810, "tab": 4, "slot": [1, 1], "lands_in": 4}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 449,804, price field 449,804, net sales 449,804, week average 466,479, listed at 449,810
+    the lowest listed price is 449,804, from the row and 3 more
+    market 449,804, typing 449,803, 1 under the market
+    net sales 112,450,750 is 250 x 449,803
+  typed 250; the net sales make it 250
+    the panel holds 449,803 against the 449,803 typed
+  tab 4 read in 31 ms after the listing: 0 slot(s) held
+
+  list 250 at 449,803
+    #         ms   share  step
+    1       27.4    0.4%  read the panel before loading
+    2       26.9    0.4%  wait for slot (1,1) to fill
+    3      833.7   13.5%  ctrl-click (1,1) attempt 1
+    4      697.6   11.3%  read the suggested price
+    5     1479.0   24.0%  type the price 449,803
+    6      959.8   15.5%  type the quantity 250
+    7      468.6    7.6%  take the quantity from the net sales
+    8      137.7    2.2%  read the price back before Register
+    9      323.9    5.2%  click Register
+   10      137.1    2.2%  find Confirmation
+   11       23.5    0.4%  look for the underprice question
+   12      334.4    5.4%  click Confirmation
+   13      251.5    4.1%  park
+   14      414.1    6.7%  confirm the dialog is gone
+   15       28.3    0.5%  wait for the panel to let the item go
+   16       30.6    0.5%  read tab 4 after the listing
+          6174.1  100.0%  TOTAL
+  listed 250 at 449,803; it lands in row 4
+DONE {"kind": "relist", "row": 4, "lands_in": 4, "qty": 250, "price": 449803, "item": "Upgrade Core (Ultimate"}
+    relisted 250 at 449,803 in row 4
+  tab 4 known from the last listing: 0 slot(s) held
+  row 5: 'Divine Stone Set X 141' x1 at 100,870,130 -> tab 4 slot (1, 1)
+    floor 99,052,500 (702,500 x 141) from Divine Stone as last bought; listed at 100,870,130, above it
+TASK {"kind": "relist", "row": 5, "item": "Divine Stone Set X 141", "qty": 1, "price": 100870130, "tab": 4, "slot": [1, 1], "lands_in": 5}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 100,869,567, price field 100,869,567, net sales 100,869,567, week average 101,485,596, listed at 100,870,130
+    the lowest listed price is 100,869,567, from the row and 3 more
+    market 100,869,567, typing 100,869,566, 1 under the market
+    net sales 100,869,566 is 1 x 100,869,566
+  typed 250; the net sales make it 1
+    the panel holds 100,869,566 against the 100,869,566 typed
+  tab 4 read in 31 ms after the listing: 0 slot(s) held
+
+  list 1 at 100,869,566
+    #         ms   share  step
+    1       24.4    0.4%  read the panel before loading
+    2       27.9    0.4%  wait for slot (1,1) to fill
+    3      826.2   12.9%  ctrl-click (1,1) attempt 1
+    4      713.7   11.2%  read the suggested price
+    5     1686.4   26.4%  type the price 100,869,566
+    6      966.2   15.1%  type the quantity 250
+    7      472.9    7.4%  take the quantity from the net sales
+    8      138.6    2.2%  read the price back before Register
+    9      331.4    5.2%  click Register
+   10      138.7    2.2%  find Confirmation
+   11       30.9    0.5%  look for the underprice question
+   12      322.5    5.0%  click Confirmation
+   13      251.1    3.9%  park
+   14      411.2    6.4%  confirm the dialog is gone
+   15       27.0    0.4%  wait for the panel to let the item go
+   16       30.7    0.5%  read tab 4 after the listing
+          6399.8  100.0%  TOTAL
+  listed 1 at 100,869,566; it lands in row 5
+DONE {"kind": "relist", "row": 5, "lands_in": 5, "qty": 1, "price": 100869566, "item": "Divine Stone Set X 141"}
+    relisted 1 at 100,869,566 in row 5
+  tab 4 known from the last listing: 0 slot(s) held
+  row 6: 'Force Core(Highest' x30 at 199,732 -> tab 4 slot (1, 1)
+    floor 181,900 (181,900 x 1) from Force Core Set (Highest) as last bought; listed at 199,732, above it
+TASK {"kind": "relist", "row": 6, "item": "Force Core(Highest", "qty": 30, "price": 199732, "tab": 4, "slot": [1, 1], "lands_in": 6}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 199,723, price field 199,723, net sales 199,723, week average 213,123, listed at 199,732
+    the lowest listed price is 199,723, from the row and 3 more
+    market 199,723, typing 199,722, 1 under the market
+    net sales 5,991,660 is 30 x 199,722
+  typed 250; the net sales make it 30
+    the panel holds 199,722 against the 199,722 typed
+  tab 4 read in 33 ms after the listing: 0 slot(s) held
+
+  list 30 at 199,722
+    #         ms   share  step
+    1       27.7    0.4%  read the panel before loading
+    2       28.5    0.5%  wait for slot (1,1) to fill
+    3      826.7   13.4%  ctrl-click (1,1) attempt 1
+    4      704.7   11.4%  read the suggested price
+    5     1475.0   24.0%  type the price 199,722
+    6      968.8   15.7%  type the quantity 250
+    7      456.0    7.4%  take the quantity from the net sales
+    8      135.3    2.2%  read the price back before Register
+    9      324.9    5.3%  click Register
+   10      141.6    2.3%  find Confirmation
+   11       25.3    0.4%  look for the underprice question
+   12      326.7    5.3%  click Confirmation
+   13      251.0    4.1%  park
+   14      403.0    6.5%  confirm the dialog is gone
+   15       28.2    0.5%  wait for the panel to let the item go
+   16       33.1    0.5%  read tab 4 after the listing
+          6156.7  100.0%  TOTAL
+  listed 30 at 199,722; it lands in row 6
+DONE {"kind": "relist", "row": 6, "lands_in": 6, "qty": 30, "price": 199722, "item": "Force Core(Highest"}
+    relisted 30 at 199,722 in row 6
+  tab 4 known from the last listing: 0 slot(s) held
+  row 7: 'Divine Stone Set X 138' x1 at 98,723,819 -> tab 4 slot (1, 1)
+    floor 96,945,000 (702,500 x 138) from Divine Stone as last bought; listed at 98,723,819, above it
+TASK {"kind": "relist", "row": 7, "item": "Divine Stone Set X 138", "qty": 1, "price": 98723819, "tab": 4, "slot": [1, 1], "lands_in": 7}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 98,723,268, price field 98,723,268, net sales 98,723,268, week average 99,326,328, listed at 98,723,819
+    the lowest listed price is 98,723,268, from the row and 3 more
+    market 98,723,268, typing 98,723,267, 1 under the market
+    net sales 98,723,267 is 1 x 98,723,267
+  typed 250; the net sales make it 1
+    the panel holds 98,723,267 against the 98,723,267 typed
+  tab 4 read in 31 ms after the listing: 0 slot(s) held
+
+  list 1 at 98,723,267
+    #         ms   share  step
+    1       26.1    0.4%  read the panel before loading
+    2       27.0    0.4%  wait for slot (1,1) to fill
+    3      832.8   13.2%  ctrl-click (1,1) attempt 1
+    4      704.5   11.2%  read the suggested price
+    5     1620.3   25.7%  type the price 98,723,267
+    6      964.7   15.3%  type the quantity 250
+    7      459.9    7.3%  take the quantity from the net sales
+    8      138.7    2.2%  read the price back before Register
+    9      324.0    5.1%  click Register
+   10      136.1    2.2%  find Confirmation
+   11       23.9    0.4%  look for the underprice question
+   12      328.6    5.2%  click Confirmation
+   13      251.8    4.0%  park
+   14      408.3    6.5%  confirm the dialog is gone
+   15       24.6    0.4%  wait for the panel to let the item go
+   16       31.3    0.5%  read tab 4 after the listing
+          6302.8  100.0%  TOTAL
+  listed 1 at 98,723,267; it lands in row 7
+DONE {"kind": "relist", "row": 7, "lands_in": 7, "qty": 1, "price": 98723267, "item": "Divine Stone Set X 138"}
+    relisted 1 at 98,723,267 in row 7
+  tab 4 known from the last listing: 0 slot(s) held
+  row 8: 'Divine Stone Set X 156' x1 at 111,600,683 -> tab 4 slot (1, 1)
+    floor 109,590,000 (702,500 x 156) from Divine Stone as last bought; listed at 111,600,683, above it
+TASK {"kind": "relist", "row": 8, "item": "Divine Stone Set X 156", "qty": 1, "price": 111600683, "tab": 4, "slot": [1, 1], "lands_in": 8}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 111,600,060, price field 111,600,060, net sales 111,600,060, week average 112,281,936, listed at 111,600,683
+    the lowest listed price is 111,600,060, from the row and 3 more
+    market 111,600,060, typing 111,600,059, 1 under the market
+    net sales 111,600,059 is 1 x 111,600,059
+  typed 250; the net sales make it 1
+    the panel holds 111,600,059 against the 111,600,059 typed
+  tab 4 read in 30 ms after the listing: 0 slot(s) held
+
+  list 1 at 111,600,059
+    #         ms   share  step
+    1       23.4    0.4%  read the panel before loading
+    2       27.6    0.4%  wait for slot (1,1) to fill
+    3      822.2   12.9%  ctrl-click (1,1) attempt 1
+    4      711.0   11.2%  read the suggested price
+    5     1688.8   26.6%  type the price 111,600,059
+    6      969.5   15.2%  type the quantity 250
+    7      461.2    7.3%  take the quantity from the net sales
+    8      139.6    2.2%  read the price back before Register
+    9      323.2    5.1%  click Register
+   10      137.3    2.2%  find Confirmation
+   11       23.6    0.4%  look for the underprice question
+   12      325.3    5.1%  click Confirmation
+   13      251.7    4.0%  park
+   14      400.3    6.3%  confirm the dialog is gone
+   15       23.3    0.4%  wait for the panel to let the item go
+   16       30.0    0.5%  read tab 4 after the listing
+          6357.9  100.0%  TOTAL
+  listed 1 at 111,600,059; it lands in row 8
+DONE {"kind": "relist", "row": 8, "lands_in": 8, "qty": 1, "price": 111600059, "item": "Divine Stone Set X 156"}
+    relisted 1 at 111,600,059 in row 8
+  tab 4 known from the last listing: 0 slot(s) held
+  row 9: 'Upgrade Core (Ultimate' x232 at 449,809 -> tab 4 slot (1, 1)
+    floor 442,381 (442,381 x 1) from Upgrade Core Set (Ultimate) as last bought; listed at 449,809, above it
+TASK {"kind": "relist", "row": 9, "item": "Upgrade Core (Ultimate", "qty": 232, "price": 449809, "tab": 4, "slot": [1, 1], "lands_in": 9}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 449,803, price field 449,803, net sales 449,803, week average 466,479, listed at 449,809
+    the lowest listed price is 449,803, from the row and 3 more
+    market 449,803, typing 449,802, 1 under the market
+    net sales 104,354,064 is 232 x 449,802
+  typed 250; the net sales make it 232
+    the panel holds 449,802 against the 449,802 typed
+  tab 4 read in 29 ms after the listing: 0 slot(s) held
+
+  list 232 at 449,802
+    #         ms   share  step
+    1       28.5    0.5%  read the panel before loading
+    2       27.0    0.4%  wait for slot (1,1) to fill
+    3      825.7   13.4%  ctrl-click (1,1) attempt 1
+    4      705.6   11.4%  read the suggested price
+    5     1476.9   23.9%  type the price 449,802
+    6      961.5   15.6%  type the quantity 250
+    7      460.2    7.4%  take the quantity from the net sales
+    8      145.2    2.3%  read the price back before Register
+    9      326.5    5.3%  click Register
+   10      139.6    2.3%  find Confirmation
+   11       25.9    0.4%  look for the underprice question
+   12      332.4    5.4%  click Confirmation
+   13      251.4    4.1%  park
+   14      418.7    6.8%  confirm the dialog is gone
+   15       28.0    0.5%  wait for the panel to let the item go
+   16       29.0    0.5%  read tab 4 after the listing
+          6182.0  100.0%  TOTAL
+  listed 232 at 449,802; it lands in row 9
+DONE {"kind": "relist", "row": 9, "lands_in": 9, "qty": 232, "price": 449802, "item": "Upgrade Core (Ultimate"}
+    relisted 232 at 449,802 in row 9
+  row 10 has SOLD (fully); collecting
+    collected; row 10 is empty, nothing to relist
+  the Divine Stone special row sold; buying it back now, not on the next pass
+
+-- Divine Stone special row 1 of 1: 1 at 5,000 to 5,200 under the market --
+  1 stays behind on every row bought; an order 10 step(s) down with nothing spare takes the row it is on whole, and the next order leaves 1 behind again; each order prices the favourite afresh, then wheels down, up to 30 step(s)
+TASK {"kind": "resupply", "core": "Divine Stone", "slot": 5, "tab": 4, "landing": [1, 1], "special": true}
+  row 1 offers 'Divine Stone' x109 at 697,000 (697,000/unit)
+    balance before 795,846,771
+    row 1 holds 109, 1 stays behind, so at most 108 comes off it
+    dialog: '* Divine Stone'  qty 1 of 109  price 697000
+    1 core(s) wanted, 1 to a pack -> 1 pack(s); 109 available, taking 1
+    the quantity field already reads 1; not retyping it
+    ordering 1 pack(s) at 697,000; the spend will confirm what actually bought
+    balance after  795,149,771; spent 697,000 bought 1 pack(s) = 1 core(s) (697,000 a core)
+
+  buy from favourite slot 5: bought 1 core(s) in 1 order(s)
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      177.4    2.0%  get_price: _trade_window_open (OCR 1300x190)
+    3      151.1    1.7%  get_price: purchase_tab_showing
+    4     1424.2   16.1%  get_price: click the Purchase tab + settle
+    5      250.3    2.8%  get_price: read row 1 before the search
+    6      331.1    3.8%  get_price: click favourite slot 5
+    7      130.2    1.5%  get_price: confirm the sort
+    8      543.6    6.2%  get_price: poll row 1 until it answers (2 read(s))
+    9     3050.5   34.6%  get_price: search the favourite and read row 1
+   10      330.5    3.7%  select inventory tab 4
+   11      137.1    1.6%  read the balance before buying
+   12      377.0    4.3%  click the row at (500, 260)
+   13      333.8    3.8%  click Buy at (834, 260)
+   14      134.7    1.5%  await the Purchase dialog
+   15      442.2    5.0%  read the dialog (item, price, qty, qty_max)
+   16      132.9    1.5%  find the Buy button
+   17      324.7    3.7%  click Buy
+   18      251.1    2.8%  park
+   19      160.8    1.8%  confirm the dialog is gone
+   20      137.5    1.6%  read the balance after buying
+          8821.3  100.0%  TOTAL
+    tab 4 slot (1, 1) is held for 'Divine Stone'; it frees when something is listed from it
+  the Divine Stone landed in tab 4 slot (1, 1)
+TASK {"kind": "resupply", "core": "Divine Stone", "slot": 5, "tab": 4, "landing": [1, 1], "step": "list", "holding": "Divine Stone", "qty": 1, "special": true}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 697,000, price field 697,000, net sales 697,000, week average 708,921, listed at unread
+    the lowest listed price is 697,000, from the row and 2 more
+    market 697,000, typing 691,855, 5,145 under the market
+    net sales 691,855 is 1 x 691,855
+  typed 250; the net sales make it 1
+    the panel holds 691,855 against the 691,855 typed
+  tab 4 read in 30 ms after the listing: 0 slot(s) held
+
+  list 1 at 691,855
+    #         ms   share  step
+    1       22.6    0.4%  read the panel before loading
+    2      832.1   13.6%  ctrl-click (1,1) attempt 1
+    3      692.0   11.3%  read the suggested price
+    4     1470.6   24.1%  type the price 691,855
+    5      960.7   15.7%  type the quantity 250
+    6      458.1    7.5%  take the quantity from the net sales
+    7      141.5    2.3%  read the price back before Register
+    8      324.1    5.3%  click Register
+    9      135.7    2.2%  find Confirmation
+   10       29.7    0.5%  look for the underprice question
+   11      334.3    5.5%  click Confirmation
+   12      250.9    4.1%  park
+   13      389.5    6.4%  confirm the dialog is gone
+   14       27.8    0.5%  wait for the panel to let the item go
+   15       30.2    0.5%  read tab 4 after the listing
+          6099.7  100.0%  TOTAL
+  listed 1 at 691,855; it lands in row 10
+  the Divine Stone special row is listed at 691,855 in row 10
+DONE {"kind": "resupply", "core": "Divine Stone", "bought": 1, "listed": 1, "rows": [10], "special": true}
+  tab 4 known from the last listing: 0 slot(s) held
+  row 11: 'Force Core(Highest' x14 at 199,731 -> tab 4 slot (1, 1)
+    floor 181,900 (181,900 x 1) from Force Core Set (Highest) as last bought; listed at 199,731, above it
+TASK {"kind": "relist", "row": 11, "item": "Force Core(Highest", "qty": 14, "price": 199731, "tab": 4, "slot": [1, 1], "lands_in": 11}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 199,722, price field 199,722, net sales 199,722, week average 213,123, listed at 199,731
+    the lowest listed price is 199,722, from the row and 3 more
+    market 199,722, typing 199,721, 1 under the market
+    net sales 2,796,094 is 14 x 199,721
+  typed 250; the net sales make it 14
+    the panel holds 199,721 against the 199,721 typed
+  tab 4 read in 32 ms after the listing: 0 slot(s) held
+
+  list 14 at 199,721
+    #         ms   share  step
+    1       27.7    0.5%  read the panel before loading
+    2       29.2    0.5%  wait for slot (1,1) to fill
+    3      826.5   13.4%  ctrl-click (1,1) attempt 1
+    4      699.2   11.3%  read the suggested price
+    5     1479.3   24.0%  type the price 199,721
+    6      963.3   15.6%  type the quantity 250
+    7      464.9    7.5%  take the quantity from the net sales
+    8      139.8    2.3%  read the price back before Register
+    9      326.1    5.3%  click Register
+   10      137.9    2.2%  find Confirmation
+   11       28.3    0.5%  look for the underprice question
+   12      327.4    5.3%  click Confirmation
+   13      251.3    4.1%  park
+   14      405.4    6.6%  confirm the dialog is gone
+   15       22.8    0.4%  wait for the panel to let the item go
+   16       31.7    0.5%  read tab 4 after the listing
+          6160.8  100.0%  TOTAL
+  listed 14 at 199,721; it lands in row 11
+DONE {"kind": "relist", "row": 11, "lands_in": 11, "qty": 14, "price": 199721, "item": "Force Core(Highest"}
+    relisted 14 at 199,721 in row 11
+  row 12 is empty; nothing to relist
+  tab 4 known from the last listing: 0 slot(s) held
+  row 13: 'Upgrade Core (Ultimate' x136 at 449,808 -> tab 4 slot (1, 1)
+    floor 442,381 (442,381 x 1) from Upgrade Core Set (Ultimate) as last bought; listed at 449,808, above it
+    rows [12] are empty, so it will come back in row 12
+TASK {"kind": "relist", "row": 13, "item": "Upgrade Core (Ultimate", "qty": 136, "price": 449808, "tab": 4, "slot": [1, 1], "lands_in": 12}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 449,802, price field 449,802, net sales 449,802, week average 466,479, listed at 449,808
+    the lowest listed price is 449,802, from the row and 3 more
+    market 449,802, typing 449,801, 1 under the market
+    net sales 61,172,936 is 136 x 449,801
+  typed 250; the net sales make it 136
+    the panel holds 449,801 against the 449,801 typed
+  tab 4 read in 32 ms after the listing: 0 slot(s) held
+
+  list 136 at 449,801
+    #         ms   share  step
+    1       28.0    0.4%  read the panel before loading
+    2       27.0    0.4%  wait for slot (1,1) to fill
+    3      826.2   13.2%  ctrl-click (1,1) attempt 1
+    4      823.2   13.1%  read the suggested price
+    5     1472.2   23.5%  type the price 449,801
+    6      959.5   15.3%  type the quantity 250
+    7      458.8    7.3%  take the quantity from the net sales
+    8      138.9    2.2%  read the price back before Register
+    9      325.4    5.2%  click Register
+   10      134.4    2.1%  find Confirmation
+   11       27.0    0.4%  look for the underprice question
+   12      324.5    5.2%  click Confirmation
+   13      251.1    4.0%  park
+   14      410.5    6.6%  confirm the dialog is gone
+   15       27.8    0.4%  wait for the panel to let the item go
+   16       31.8    0.5%  read tab 4 after the listing
+          6266.2  100.0%  TOTAL
+  listed 136 at 449,801; it lands in row 12
+DONE {"kind": "relist", "row": 13, "lands_in": 12, "qty": 136, "price": 449801, "item": "Upgrade Core (Ultimate"}
+    relisted 136 at 449,801 in row 12
+  tab 4 known from the last listing: 0 slot(s) held
+  row 14: 'Divine Stone Set X 162' x1 at 115,892,855 -> tab 4 slot (1, 1)
+    floor 113,805,000 (702,500 x 162) from Divine Stone as last bought; listed at 115,892,855, above it
+    rows [13] are empty, so it will come back in row 13
+TASK {"kind": "relist", "row": 14, "item": "Divine Stone Set X 162", "qty": 1, "price": 115892855, "tab": 4, "slot": [1, 1], "lands_in": 13}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 115,892,208, price field 115,892,208, net sales 115,892,208, week average 116,600,472, listed at 115,892,855
+    the lowest listed price is 115,892,208, from the row and 3 more
+    market 115,892,208, typing 115,892,207, 1 under the market
+    net sales 115,892,207 is 1 x 115,892,207
+  typed 250; the net sales make it 1
+    the panel holds 115,892,207 against the 115,892,207 typed
+  tab 4 read in 39 ms after the listing: 0 slot(s) held
+
+  list 1 at 115,892,207
+    #         ms   share  step
+    1       24.4    0.4%  read the panel before loading
+    2       25.8    0.4%  wait for slot (1,1) to fill
+    3      833.6   13.0%  ctrl-click (1,1) attempt 1
+    4      719.6   11.2%  read the suggested price
+    5     1691.5   26.3%  type the price 115,892,207
+    6      968.3   15.0%  type the quantity 250
+    7      475.3    7.4%  take the quantity from the net sales
+    8      138.8    2.2%  read the price back before Register
+    9      322.3    5.0%  click Register
+   10      142.2    2.2%  find Confirmation
+   11       25.1    0.4%  look for the underprice question
+   12      326.5    5.1%  click Confirmation
+   13      251.9    3.9%  park
+   14      421.3    6.5%  confirm the dialog is gone
+   15       29.4    0.5%  wait for the panel to let the item go
+   16       39.1    0.6%  read tab 4 after the listing
+          6434.9  100.0%  TOTAL
+  listed 1 at 115,892,207; it lands in row 13
+DONE {"kind": "relist", "row": 14, "lands_in": 13, "qty": 1, "price": 115892207, "item": "Divine Stone Set X 162"}
+    relisted 1 at 115,892,207 in row 13
+  tab 4 known from the last listing: 0 slot(s) held
+  row 15: 'Force Core(High' x240 at 195,115 -> tab 4 slot (1, 1)
+    floor 176,470 (176,470 x 1) from Force Core Set (High) as last bought; listed at 195,115, above it
+    rows [14] are empty, so it will come back in row 14
+TASK {"kind": "relist", "row": 15, "item": "Force Core(High", "qty": 240, "price": 195115, "tab": 4, "slot": [1, 1], "lands_in": 14}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 195,107, price field 195,107, net sales 195,107, week average 199,396, listed at 195,115
+    the lowest listed price is 195,107, from the row and 3 more
+    market 195,107, typing 195,106, 1 under the market
+    net sales 46,825,440 is 240 x 195,106
+  typed 250; the net sales make it 240
+    the panel holds 195,106 against the 195,106 typed
+  tab 4 read in 31 ms after the listing: 0 slot(s) held
+
+  list 240 at 195,106
+    #         ms   share  step
+    1       30.9    0.5%  read the panel before loading
+    2       24.0    0.4%  wait for slot (1,1) to fill
+    3      820.5   13.3%  ctrl-click (1,1) attempt 1
+    4      697.3   11.3%  read the suggested price
+    5     1475.2   23.9%  type the price 195,106
+    6      962.7   15.6%  type the quantity 250
+    7      470.7    7.6%  take the quantity from the net sales
+    8      142.6    2.3%  read the price back before Register
+    9      324.6    5.3%  click Register
+   10      136.6    2.2%  find Confirmation
+   11       23.1    0.4%  look for the underprice question
+   12      326.7    5.3%  click Confirmation
+   13      251.0    4.1%  park
+   14      432.8    7.0%  confirm the dialog is gone
+   15       24.7    0.4%  wait for the panel to let the item go
+   16       31.4    0.5%  read tab 4 after the listing
+          6174.8  100.0%  TOTAL
+  listed 240 at 195,106; it lands in row 14
+DONE {"kind": "relist", "row": 15, "lands_in": 14, "qty": 240, "price": 195106, "item": "Force Core(High"}
+    relisted 240 at 195,106 in row 14
+  tab 4 known from the last listing: 0 slot(s) held
+  row 16: 'Force Core(High' x1 at 195,114 -> tab 4 slot (1, 1)
+    floor 176,470 (176,470 x 1) from Force Core Set (High) as last bought; listed at 195,114, above it
+    rows [15] are empty, so it will come back in row 15
+TASK {"kind": "relist", "row": 16, "item": "Force Core(High", "qty": 1, "price": 195114, "tab": 4, "slot": [1, 1], "lands_in": 15}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 195,106, price field 195,106, net sales 195,106, week average 199,396, listed at 195,114
+    the lowest listed price is 195,106, from the row and 3 more
+    market 195,106, typing 195,105, 1 under the market
+    net sales 195,105 is 1 x 195,105
+  typed 250; the net sales make it 1
+    the panel holds 195,105 against the 195,105 typed
+  tab 4 read in 32 ms after the listing: 0 slot(s) held
+
+  list 1 at 195,105
+    #         ms   share  step
+    1       26.6    0.4%  read the panel before loading
+    2       27.9    0.5%  wait for slot (1,1) to fill
+    3      832.9   13.5%  ctrl-click (1,1) attempt 1
+    4      705.0   11.5%  read the suggested price
+    5     1466.0   23.8%  type the price 195,105
+    6      962.7   15.6%  type the quantity 250
+    7      445.4    7.2%  take the quantity from the net sales
+    8      143.2    2.3%  read the price back before Register
+    9      322.6    5.2%  click Register
+   10      140.1    2.3%  find Confirmation
+   11       26.7    0.4%  look for the underprice question
+   12      326.1    5.3%  click Confirmation
+   13      250.9    4.1%  park
+   14      417.6    6.8%  confirm the dialog is gone
+   15       27.3    0.4%  wait for the panel to let the item go
+   16       32.4    0.5%  read tab 4 after the listing
+          6153.6  100.0%  TOTAL
+  listed 1 at 195,105; it lands in row 15
+DONE {"kind": "relist", "row": 16, "lands_in": 15, "qty": 1, "price": 195105, "item": "Force Core(High"}
+    relisted 1 at 195,105 in row 15
+  tab 4 known from the last listing: 0 slot(s) held
+  row 17: 'Force Core(High' x56 at 195,113 -> tab 4 slot (1, 1)
+    floor 176,470 (176,470 x 1) from Force Core Set (High) as last bought; listed at 195,113, above it
+    rows [16] are empty, so it will come back in row 16
+TASK {"kind": "relist", "row": 17, "item": "Force Core(High", "qty": 56, "price": 195113, "tab": 4, "slot": [1, 1], "lands_in": 16}
+  inventory slot (1,1) at (1471, 237)
+    read: current min 195,105, price field 195,105, net sales 195,105, week average 199,396, listed at 195,113
+    the lowest listed price is 195,105, from the row and 3 more
+    market 195,105, typing 195,104, 1 under the market
+    net sales 10,925,824 is 56 x 195,104
+  typed 250; the net sales make it 56
+    the panel holds 195,104 against the 195,104 typed
+  tab 4 read in 32 ms after the listing: 0 slot(s) held
+
+  list 56 at 195,104
+    #         ms   share  step
+    1       28.2    0.5%  read the panel before loading
+    2       27.2    0.4%  wait for slot (1,1) to fill
+    3      826.4   13.4%  ctrl-click (1,1) attempt 1
+    4      698.3   11.4%  read the suggested price
+    5     1483.4   24.1%  type the price 195,104
+    6      960.2   15.6%  type the quantity 250
+    7      453.5    7.4%  take the quantity from the net sales
+    8      147.1    2.4%  read the price back before Register
+    9      323.6    5.3%  click Register
+   10      141.3    2.3%  find Confirmation
+   11       25.1    0.4%  look for the underprice question
+   12      327.0    5.3%  click Confirmation
+   13      250.9    4.1%  park
+   14      400.3    6.5%  confirm the dialog is gone
+   15       22.3    0.4%  wait for the panel to let the item go
+   16       31.5    0.5%  read tab 4 after the listing
+          6146.4  100.0%  TOTAL
+  listed 56 at 195,104; it lands in row 16
+DONE {"kind": "relist", "row": 17, "lands_in": 16, "qty": 56, "price": 195104, "item": "Force Core(High"}
+    relisted 56 at 195,104 in row 16
+  row 18 is empty; nothing to relist
+  row 19 is empty; nothing to relist
+  row 20 is empty; nothing to relist
+  row 21 is empty; nothing to relist
+  row 22 is empty; nothing to relist
+  row 23 is empty; nothing to relist
+  row 24 is empty; nothing to relist
+  row 25 is empty; nothing to relist
+
+  relisting rows 1-25: 14 relisted, 11 empty, 0 skipped
+    #          ms   share     n      each  phase
+    1    37,382.1   33.0%     6   6,230.4  list it back
+    2    25,103.1   22.2%     6   4,183.9  cancel the row and take it back
+    3    13,823.0   12.2%    15     921.5  scroll to the row and read it
+    4     7,375.5    6.5%     7   1,053.6  select inventory tab 4
+    5     6,108.1    5.4%     1   6,108.1  list Divine Stone from (1, 1)
+    6     5,830.2    5.1%     1   5,830.2  buy 1 Divine Stone
+    7     5,828.9    5.1%     1   5,828.9  buy order 1
+    8     5,644.2    5.0%    15     376.3  Refresh the table
+    9     2,323.6    2.1%     1   2,323.6  select the Register tab
+   10     1,615.1    1.4%     1   1,615.1  read tab 4 before buying
+   11     1,606.5    1.4%     1   1,606.5  wait for the Divine Stone to land on tab 4
+   12       465.8    0.4%     1     465.8  reopen the Agent Shop
+   13       165.2    0.1%     6      27.5  check the shop slot is empty
+        113,271.2  100.0%
+
+  returning the game to its default state
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the gift box at [284, 1001]
+  Receive All at [1211, 792]
+  Receive 1 of 4 at [1217, 329]
+  Receive 2 of 4 at [1217, 428]
+  Receive 3 of 4 at [1217, 527]
+  Receive 4 of 4 at [1217, 626]
+  the special giftbox's Receive at [1442, 496]
+  Close at [1487, 852]
+  took 4 gift(s)
+  the Agent Shop is shut and the vendor is not open either; reopening it
+  Inventory shut: slot grid 0.11, needs 0.33
+
+  board after pass 1:
+                                                   bought/u   listed/u  margin      row price
+     1  Force Core(Highest                 x102           -    199,726       -        199,726
+     2  Chaos Core                         x45      725,000    649,499  -11.6%        649,499
+     3  Honor Medal Chest                  x2             - 219,769,999       -    219,769,999
+     4  Upgrade Core (Ultimate             x250           -    449,803       -        449,803
+     5  Divine Stone Set X 141             x1             -    715,386       -    100,869,566
+     6  Force Core(Highest                 x30            -    199,722       -        199,722
+     7  Divine Stone Set X 138             x1             -    715,385       -     98,723,267
+     8  Divine Stone Set X 156             x1             -    715,384       -    111,600,059
+     9  Upgrade Core (Ultimate             x232           -    449,802       -        449,802
+    10  Divine Stone                       x1       697,000    691,855   -0.7%        691,855
+    11  Force Core(Highest                 x14            -    199,721       -        199,721
+    12  Upgrade Core (Ultimate             x136           -    449,801       -        449,801
+    13  Divine Stone Set X 162             x1             -    715,383       -    115,892,207
+    14  Force Core(High                    x240           -    195,106       -        195,106
+    15  Force Core(High                    x1             -    195,105       -        195,105
+    16  Force Core(High                    x56            -    195,104       -        195,104
+    26  Siena's Unbinding Stone            x1    74,500,000 950,000,000  +92.2%    950,000,000
+    27  Tempus sndead - Immortal Etherno C x1             -  4,000,000       -      4,000,000
+    29  ee TUE = t__                       x1             - 10,000,000       -     10,000,000
+    30  Life Capsule(Special) Type A X 100 x6             -     29,999       -      2,999,900
+    item                               rows   units          listed
+    Chaos Core                            1      45      29,227,455
+    Divine Stone                          1       1         691,855
+    Divine Stone Set                      4     597     427,085,099
+    Force Core(High                       3     297      57,946,369
+    Force Core(Highest                    3     146      29,159,806
+    Honor Medal Chest                     1       2     439,539,998
+    Life Capsule(Special) Type A          1     600      17,999,400
+    Siena's Unbinding Stone               1       1     950,000,000
+    Tempus sndead - Immortal Etherno C    1       1       4,000,000
+    Upgrade Core (Ultimate                3     618     277,977,750
+    ee TUE = t__                          1       1      10,000,000
+    board                                20   2,309   2,243,627,732
+    balance now 795,149,771
+  pass 1: 14 relisted, 11 empty, 0 skipped; 9995.0 minute(s) left
+
+-- pass 2 --
+
+  resupply order: Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Divine Stone
+
+-- Chaos Core Set under our listing: up to 3 row(s) --
+  no Chaos Core Set of ours on the board, so there is no listing of ours to buy under; not buying
+
+-- Divine Stone Set under our listing: up to 3 row(s) --
+  Divine Stone Set 715,383 - Divine Stone 691,855 = 23,528
+  ours is listed at 715,383 a Set and a Divine Stone sells at 691,855; buying every Set under 686,855, 5,000 a Set below the lower of the two
+  the cheapest Divine Stone Set is 715,383 a Set, not under 686,855; nothing to buy under ours
+
+  counting only rows 1-25; rows outside it are not repriced and do not count; 9 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                3         -         -         -      -   holds the most it can want, 3; not priced
+  Chaos Core                         0   649,999   749,962    99,963      5   YES
+  Divine Stone                       4         -         -         -      -   holds the most it can want, 4; not priced
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            3         -         -         -      -   holds the most it can want, 3; not priced
+  Alz 795,149,771 held covers 1,223 Chaos Core at 649,999; buying what it covers
+
+-- Chaos Core: 0 row(s) --
+  9 row(s) free inside 1-25
+  Chaos Core Set 749,962 - Chaos Core 649,999 = 99,963
+  a margin of 99,963 is worth 5 row(s) of Chaos Core; 0 held
+  buy_min 150 rolled to 137 (+/-15); buying 138 in whole batches of 3
+  1 stays behind on every row bought; an order 10 step(s) down with nothing spare takes the row it is on whole, and the next order leaves 1 behind again; each order prices the favourite afresh, then wheels down, up to 30 step(s)
+  every order takes all of the row it lands on, up to 999 held, and the orders stop once 138 is held
+TASK {"kind": "resupply", "core": "Chaos Core", "set": "Chaos Core Set", "slot": 3, "tab": 4}
+  0/138 Chaos Core held
+  slot 3: attempt 1/10 timed out after 8s; row 1 reads 'Chaos Core Set X 249', expected 'Chaos Core'
+  slot 3: attempt 2/10 timed out after 8s; row 1 reads 'Chaos Core Set X 249', expected 'Chaos Core'
+  slot 3: attempt 3/10 -- the shop closed mid-search; the row band read '7A rs ais are 4'
+  row 1 offers 'Chaos Core' x1 at 649,999 (649,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.3    0.0%  get_price: focus the game
+    2      147.2    0.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      170.5    0.3%  get_price: purchase_tab_showing
+    4      255.9    0.5%  get_price: read row 1 before the search
+    5      321.7    0.6%  get_price: click favourite slot 3
+    6     8346.5   15.7%  get_price: poll row 1 until it answers (28 read(s))
+    7      262.0    0.5%  get_price: read row 1 before the search
+    8      456.8    0.9%  get_price: click favourite slot 3
+    9     8309.0   15.6%  get_price: poll row 1 until it answers (28 read(s))
+   10      262.1    0.5%  get_price: read row 1 before the search
+   11      452.9    0.9%  get_price: click favourite slot 3
+   12     2099.4    4.0%  get_price: poll row 1 until it answers (2 read(s))
+   13       24.4    0.0%  get_price: read row 1 before the search
+   14      325.9    0.6%  get_price: click favourite slot 3
+   15      130.1    0.2%  get_price: confirm the sort
+   16      523.5    1.0%  get_price: poll row 1 until it answers (6 read(s))
+   17    31048.9   58.4%  get_price: search the favourite and read row 1
+         53137.2  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.3    0.1%  get_price: focus the game
+    2      177.6   11.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      174.0   11.5%  get_price: purchase_tab_showing
+    4      405.7   26.7%  get_price: read row 1 where it stands
+    5      758.7   50.0%  get_price: search the favourite and read row 1
+          1517.4  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.5    0.1%  get_price: focus the game
+    2      154.2   10.5%  get_price: _trade_window_open (OCR 1300x190)
+    3      168.3   11.5%  get_price: purchase_tab_showing
+    4      407.4   27.9%  get_price: read row 1 where it stands
+    5      731.4   50.0%  get_price: search the favourite and read row 1
+          1462.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x11 at 727,999 (727,999/unit)
+    row 1 leaves 21,963 a core against the 5,000 wanted
+    balance before 795,149,771
+    row 1 holds 11, 1 stays behind, so at most 10 comes off it
+    dialog: '* Chaos Core'  qty 1 of 11  price 727999
+    999 core(s) wanted, 1 to a pack -> 999 pack(s); 11 available, taking 10
+    ordering 10 pack(s) at 7,279,990; the spend will confirm what actually bought
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.8    0.0%  get_price: focus the game
+    2      156.6    1.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      176.4    2.1%  get_price: purchase_tab_showing
+    4      314.9    3.7%  get_price: read row 1 where it stands
+    5      648.7    7.6%  get_price: search the favourite and read row 1
+    6      320.8    3.8%  select inventory tab 4
+    7      146.1    1.7%  read the balance before buying
+    8      388.2    4.5%  click the row at (500, 260)
+    9      335.0    3.9%  click Buy at (834, 260)
+   10      130.8    1.5%  await the Purchase dialog
+   11      555.3    6.5%  read the dialog (item, price, qty, qty_max)
+   12     1344.5   15.7%  click the quantity field and type 10
+   13      125.5    1.5%  find the Buy button
+   14      321.3    3.8%  click Buy
+   15      251.7    2.9%  park
+   16      162.8    1.9%  confirm the dialog is gone
+   17     3027.4   35.4%  read the balance after buying
+   18      142.2    1.7%  read the balance once more before calling it unbought
+          8549.0  100.0%  TOTAL
+  attempt 1/3: the balance never moved from 795,149,771, on two reads, so nothing was bought: row 1 went while the order was being placed. Trying the board again.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x46 at 730,000 (730,000/unit)
+    row 1 leaves 19,962 a core against the 5,000 wanted
+    balance before 795,149,771
+    row 1 holds 46, 1 stays behind, so at most 45 comes off it
+    dialog: '* Chaos Core'  qty 1 of 46  price 730000
+    999 core(s) wanted, 1 to a pack -> 999 pack(s); 46 available, taking 45
+    ordering 45 pack(s) at 32,850,000; the spend will confirm what actually bought
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      153.1    1.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      170.6    2.0%  get_price: purchase_tab_showing
+    4      330.7    3.9%  get_price: read row 1 where it stands
+    5      655.0    7.7%  get_price: search the favourite and read row 1
+    6      324.3    3.8%  select inventory tab 4
+    7      140.9    1.7%  read the balance before buying
+    8      382.8    4.5%  click the row at (500, 260)
+    9      322.6    3.8%  click Buy at (834, 260)
+   10      129.5    1.5%  await the Purchase dialog
+   11      434.6    5.1%  read the dialog (item, price, qty, qty_max)
+   12     1344.0   15.8%  click the quantity field and type 45
+   13      122.7    1.4%  find the Buy button
+   14      323.4    3.8%  click Buy
+   15      251.2    3.0%  park
+   16      168.6    2.0%  confirm the dialog is gone
+   17     3105.2   36.6%  read the balance after buying
+   18      132.8    1.6%  read the balance once more before calling it unbought
+          8492.7  100.0%  TOTAL
+  attempt 2/3: the balance never moved from 795,149,771, on two reads, so nothing was bought: row 1 went while the order was being placed. Trying the board again.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x15 at 730,000 (730,000/unit)
+    row 1 leaves 19,962 a core against the 5,000 wanted
+    balance before 795,149,771
+    row 1 holds 15, 1 stays behind, so at most 14 comes off it
+    dialog: '* Chaos Core'  qty 1 of 15  price 730000
+    999 core(s) wanted, 1 to a pack -> 999 pack(s); 15 available, taking 14
+    ordering 14 pack(s) at 10,220,000; the spend will confirm what actually bought
+    balance after  784,929,771; spent 10,220,000 bought 14 pack(s) = 14 core(s) (730,000 a core)
+
+  buy from favourite slot 3: bought 14 core(s) in 14 order(s)
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      149.4    2.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      182.7    3.4%  get_price: purchase_tab_showing
+    4      310.4    5.8%  get_price: read row 1 where it stands
+    5      642.9   12.0%  get_price: search the favourite and read row 1
+    6      324.9    6.0%  select inventory tab 4
+    7      137.3    2.6%  read the balance before buying
+    8      381.9    7.1%  click the row at (500, 260)
+    9      326.2    6.1%  click Buy at (834, 260)
+   10      133.1    2.5%  await the Purchase dialog
+   11      443.2    8.2%  read the dialog (item, price, qty, qty_max)
+   12     1346.4   25.0%  click the quantity field and type 14
+   13      123.8    2.3%  find the Buy button
+   14      320.8    6.0%  click Buy
+   15      251.3    4.7%  park
+   16      169.7    3.2%  confirm the dialog is gone
+   17      133.9    2.5%  read the balance after buying
+          5378.2  100.0%  TOTAL
+  14/138 Chaos Core held
+  row 1 offers 'Chaos Core' x1 at 649,999 (649,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.2    0.0%  get_price: focus the game
+    2      148.0    2.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      169.7    3.1%  get_price: purchase_tab_showing
+    4      258.7    4.8%  get_price: read row 1 before the search
+    5      331.5    6.2%  get_price: click favourite slot 3
+    6      130.5    2.4%  get_price: confirm the sort
+    7     1632.7   30.3%  get_price: poll row 1 until it answers (6 read(s))
+    8     2716.6   50.4%  get_price: search the favourite and read row 1
+          5388.0  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.4    0.1%  get_price: focus the game
+    2      167.7   11.4%  get_price: _trade_window_open (OCR 1300x190)
+    3      165.4   11.2%  get_price: purchase_tab_showing
+    4      400.7   27.3%  get_price: read row 1 where it stands
+    5      735.2   50.0%  get_price: search the favourite and read row 1
+          1470.3  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.8    0.1%  get_price: focus the game
+    2      172.9   11.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      165.5   11.2%  get_price: purchase_tab_showing
+    4      400.6   27.1%  get_price: read row 1 where it stands
+    5      739.8   50.0%  get_price: search the favourite and read row 1
+          1479.6  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x11 at 727,999 (727,999/unit)
+    row 1 leaves 21,963 a core against the 5,000 wanted
+  the server is not answering; idling 60s rather than reading a screen it cannot serve
+  the server is answering again after 60s
+  the server stalled; closing the shop rather than trusting what is on screen
+  whatever the stall left in tab 4 is read from the screen before the next withdrawal
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.0    0.0%  get_price: focus the game
+    2      164.8    0.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      172.9    0.3%  get_price: purchase_tab_showing
+    4      302.9    0.5%  get_price: read row 1 where it stands
+    5      641.6    1.0%  get_price: search the favourite and read row 1
+    6    62478.7   98.0%  select inventory tab 4
+         63761.8  100.0%  TOTAL
+  Chaos Core keeps its place at buy; the next pass carries on there
+  the Agent Shop is shut and the vendor is not open either; reopening it
+  Inventory shut: slot grid 0.11, needs 0.33
+  the server stalled for 60s; nothing was clicked and the shop is shut. The pass starts again.
+
+-- pass 3 --
+  tab 4 read from the screen after the stall: 14 slot(s) held, [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (2, 1), (2, 2), (2, 3), (2, 4), (2, 5), (2, 6)] new to the run
+
+-- Chaos Core: carrying on at buy where it stopped; 14 bought, 0 listed --
+TASK {"kind": "resupply", "core": "Chaos Core", "set": "Chaos Core Set", "slot": 3, "tab": 4, "resumed": "buy"}
+  14/138 Chaos Core held
+  row 1 offers 'Chaos Core' x1 at 649,999 (649,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      175.3    3.1%  get_price: _trade_window_open (OCR 1300x190)
+    3      194.1    3.4%  get_price: purchase_tab_showing
+    4     1421.6   25.1%  get_price: click the Purchase tab + settle
+    5       25.0    0.4%  get_price: read row 1 before the search
+    6      325.9    5.8%  get_price: click favourite slot 3
+    7      139.6    2.5%  get_price: confirm the sort
+    8      529.9    9.4%  get_price: poll row 1 until it answers (6 read(s))
+    9     2846.3   50.3%  get_price: search the favourite and read row 1
+          5658.1  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.3    0.1%  get_price: focus the game
+    2      143.0   10.0%  get_price: _trade_window_open (OCR 1300x190)
+    3      170.3   11.9%  get_price: purchase_tab_showing
+    4      402.2   28.1%  get_price: read row 1 where it stands
+    5      716.9   50.0%  get_price: search the favourite and read row 1
+          1433.8  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 727,999 (727,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      150.5   10.4%  get_price: _trade_window_open (OCR 1300x190)
+    3      172.7   11.9%  get_price: purchase_tab_showing
+    4      400.9   27.7%  get_price: read row 1 where it stands
+    5      724.7   50.0%  get_price: search the favourite and read row 1
+          1449.4  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.0    0.1%  get_price: focus the game
+    2      144.0   10.0%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.7   11.6%  get_price: purchase_tab_showing
+    4      407.2   28.3%  get_price: read row 1 where it stands
+    5      719.9   50.0%  get_price: search the favourite and read row 1
+          1439.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      142.6   10.0%  get_price: _trade_window_open (OCR 1300x190)
+    3      166.7   11.7%  get_price: purchase_tab_showing
+    4      401.3   28.2%  get_price: read row 1 where it stands
+    5      711.0   50.0%  get_price: search the favourite and read row 1
+          1422.0  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      153.6   10.0%  get_price: _trade_window_open (OCR 1300x190)
+    3      201.2   13.1%  get_price: purchase_tab_showing
+    4      413.7   26.9%  get_price: read row 1 where it stands
+    5      769.0   50.0%  get_price: search the favourite and read row 1
+          1537.8  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.1    0.1%  get_price: focus the game
+    2      171.0   11.1%  get_price: _trade_window_open (OCR 1300x190)
+    3      191.9   12.4%  get_price: purchase_tab_showing
+    4      407.3   26.4%  get_price: read row 1 where it stands
+    5      771.4   50.0%  get_price: search the favourite and read row 1
+          1542.6  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 735,000 (735,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.2    0.1%  get_price: focus the game
+    2      147.9   10.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      164.6   11.5%  get_price: purchase_tab_showing
+    4      404.7   28.2%  get_price: read row 1 where it stands
+    5      718.4   50.0%  get_price: search the favourite and read row 1
+          1436.8  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x43 at 740,000 (740,000/unit)
+    row 1 leaves 9,962 a core against the 5,000 wanted
+    balance before 784,929,771
+    row 1 holds 43, 1 stays behind, so at most 42 comes off it
+    dialog: '* Chaos Core'  qty 1 of 43  price 740000
+    985 core(s) wanted, 1 to a pack -> 985 pack(s); 43 available, taking 42
+    ordering 42 pack(s) at 31,080,000; the spend will confirm what actually bought
+    balance after  753,849,771; spent 31,080,000 bought 42 pack(s) = 42 core(s) (740,000 a core)
+
+  buy from favourite slot 3: bought 42 core(s) in 42 order(s)
+    #         ms   share  step
+    1        1.2    0.0%  get_price: focus the game
+    2      146.4    2.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      166.1    3.1%  get_price: purchase_tab_showing
+    4      304.7    5.7%  get_price: read row 1 where it stands
+    5      618.5   11.6%  get_price: search the favourite and read row 1
+    6      329.7    6.2%  select inventory tab 4
+    7      142.1    2.7%  read the balance before buying
+    8      377.9    7.1%  click the row at (500, 260)
+    9      326.9    6.1%  click Buy at (834, 260)
+   10      129.5    2.4%  await the Purchase dialog
+   11      439.4    8.2%  read the dialog (item, price, qty, qty_max)
+   12     1346.3   25.3%  click the quantity field and type 42
+   13      130.2    2.4%  find the Buy button
+   14      321.4    6.0%  click Buy
+   15      251.3    4.7%  park
+   16      161.5    3.0%  confirm the dialog is gone
+   17      135.8    2.5%  read the balance after buying
+          5329.0  100.0%  TOTAL
+  56/138 Chaos Core held
+  row 1 offers 'Chaos Core' x1 at 649,999 (649,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.3    0.0%  get_price: focus the game
+    2      154.8    2.9%  get_price: _trade_window_open (OCR 1300x190)
+    3      172.9    3.2%  get_price: purchase_tab_showing
+    4      246.6    4.6%  get_price: read row 1 before the search
+    5      320.6    5.9%  get_price: click favourite slot 3
+    6      128.9    2.4%  get_price: confirm the sort
+    7     1655.7   30.7%  get_price: poll row 1 until it answers (6 read(s))
+    8     2718.0   50.4%  get_price: search the favourite and read row 1
+          5397.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.5    0.1%  get_price: focus the game
+    2      171.1   11.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      166.5   11.2%  get_price: purchase_tab_showing
+    4      401.2   27.1%  get_price: read row 1 where it stands
+    5      740.3   50.0%  get_price: search the favourite and read row 1
+          1480.5  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 727,999 (727,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.8    0.1%  get_price: focus the game
+    2      154.9   10.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      173.5   11.9%  get_price: purchase_tab_showing
+    4      400.3   27.4%  get_price: read row 1 where it stands
+    5      729.6   50.0%  get_price: search the favourite and read row 1
+          1459.2  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      170.1   11.5%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.0   11.3%  get_price: purchase_tab_showing
+    4      403.1   27.2%  get_price: read row 1 where it stands
+    5      740.9   50.0%  get_price: search the favourite and read row 1
+          1481.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.1    0.1%  get_price: focus the game
+    2      175.1   11.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      168.6   11.1%  get_price: purchase_tab_showing
+    4      412.8   27.2%  get_price: read row 1 where it stands
+    5      757.6   50.0%  get_price: search the favourite and read row 1
+          1515.1  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      155.3   10.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.3   11.5%  get_price: purchase_tab_showing
+    4      402.7   27.7%  get_price: read row 1 where it stands
+    5      725.8   50.0%  get_price: search the favourite and read row 1
+          1451.6  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      151.4   10.5%  get_price: _trade_window_open (OCR 1300x190)
+    3      170.5   11.8%  get_price: purchase_tab_showing
+    4      399.0   27.7%  get_price: read row 1 where it stands
+    5      721.5   50.0%  get_price: search the favourite and read row 1
+          1443.0  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 735,000 (735,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      148.8   10.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      168.5   11.6%  get_price: purchase_tab_showing
+    4      405.9   28.0%  get_price: read row 1 where it stands
+    5      723.9   50.0%  get_price: search the favourite and read row 1
+          1447.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x115 at 740,000 (740,000/unit)
+    row 1 leaves 9,962 a core against the 5,000 wanted
+    balance before 753,849,771
+    row 1 holds 115, 1 stays behind, so at most 114 comes off it
+    dialog: '* Chaos Core'  qty 1 of 115  price 740000
+    943 core(s) wanted, 1 to a pack -> 943 pack(s); 115 available, taking 114
+    ordering 114 pack(s) at 84,360,000; the spend will confirm what actually bought
+    balance after  669,489,771; spent 84,360,000 bought 114 pack(s) = 114 core(s) (740,000 a core)
+
+  buy from favourite slot 3: bought 114 core(s) in 114 order(s)
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      148.9    2.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.8    2.9%  get_price: purchase_tab_showing
+    4      304.2    5.3%  get_price: read row 1 where it stands
+    5      621.4   10.9%  get_price: search the favourite and read row 1
+    6      325.1    5.7%  select inventory tab 4
+    7      136.2    2.4%  read the balance before buying
+    8      375.4    6.6%  click the row at (500, 260)
+    9      330.0    5.8%  click Buy at (834, 260)
+   10      130.5    2.3%  await the Purchase dialog
+   11      460.7    8.1%  read the dialog (item, price, qty, qty_max)
+   12     1427.6   25.1%  click the quantity field and type 114
+   13      130.5    2.3%  find the Buy button
+   14      326.9    5.7%  click Buy
+   15      251.2    4.4%  park
+   16      152.7    2.7%  confirm the dialog is gone
+   17      399.3    7.0%  read the balance after buying
+          5688.8  100.0%  TOTAL
+  170 Chaos Core is 1 short of a whole batch of 3; topping up whatever the margin says, because a remainder crafts into nothing
+  row 1 offers 'Chaos Core' x1 at 649,999 (649,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      181.5    3.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      171.8    3.2%  get_price: purchase_tab_showing
+    4      252.1    4.6%  get_price: read row 1 before the search
+    5      324.2    6.0%  get_price: click favourite slot 3
+    6      134.5    2.5%  get_price: confirm the sort
+    7     1642.5   30.1%  get_price: poll row 1 until it answers (6 read(s))
+    8     2741.8   50.3%  get_price: search the favourite and read row 1
+          5448.9  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      178.2   11.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      171.2   11.3%  get_price: purchase_tab_showing
+    4      407.5   26.9%  get_price: read row 1 where it stands
+    5      757.5   50.0%  get_price: search the favourite and read row 1
+          1515.0  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 727,999 (727,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.2    0.1%  get_price: focus the game
+    2      146.3   10.2%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.4   11.7%  get_price: purchase_tab_showing
+    4      400.8   28.0%  get_price: read row 1 where it stands
+    5      715.7   50.0%  get_price: search the favourite and read row 1
+          1431.4  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.3    0.1%  get_price: focus the game
+    2      171.2   11.5%  get_price: _trade_window_open (OCR 1300x190)
+    3      170.0   11.4%  get_price: purchase_tab_showing
+    4      404.0   27.1%  get_price: read row 1 where it stands
+    5      746.5   50.0%  get_price: search the favourite and read row 1
+          1493.0  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.8    0.1%  get_price: focus the game
+    2      170.1   11.5%  get_price: _trade_window_open (OCR 1300x190)
+    3      169.7   11.4%  get_price: purchase_tab_showing
+    4      399.7   27.0%  get_price: read row 1 where it stands
+    5      741.4   50.0%  get_price: search the favourite and read row 1
+          1482.8  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      175.8   11.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      166.2   11.1%  get_price: purchase_tab_showing
+    4      404.2   27.1%  get_price: read row 1 where it stands
+    5      746.9   50.0%  get_price: search the favourite and read row 1
+          1493.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.8    0.1%  get_price: focus the game
+    2      160.3   11.0%  get_price: _trade_window_open (OCR 1300x190)
+    3      166.1   11.4%  get_price: purchase_tab_showing
+    4      402.0   27.6%  get_price: read row 1 where it stands
+    5      729.2   50.0%  get_price: search the favourite and read row 1
+          1458.4  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 735,000 (735,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.7    0.0%  get_price: focus the game
+    2      173.5   11.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      168.7   11.3%  get_price: purchase_tab_showing
+    4      403.2   27.0%  get_price: read row 1 where it stands
+    5      746.1   50.0%  get_price: search the favourite and read row 1
+          1492.1  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 740,000 (740,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.9    0.1%  get_price: focus the game
+    2      179.6   11.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      169.3   11.1%  get_price: purchase_tab_showing
+    4      413.5   27.1%  get_price: read row 1 where it stands
+    5      763.3   50.0%  get_price: search the favourite and read row 1
+          1526.6  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x115 at 740,000 (740,000/unit)
+    balance before 669,489,771
+    row 1 holds 115, 1 stays behind, so at most 114 comes off it
+    dialog: '* Chaos Core'  qty 1 of 115  price 740000
+    1 core(s) wanted, 1 to a pack -> 1 pack(s); 115 available, taking 1
+    the quantity field already reads 1; not retyping it
+    ordering 1 pack(s) at 740,000; the spend will confirm what actually bought
+    balance after  668,749,771; spent 740,000 bought 1 pack(s) = 1 core(s) (740,000 a core)
+
+  buy from favourite slot 3: bought 1 core(s) in 1 order(s)
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      175.5    4.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.2    4.1%  get_price: purchase_tab_showing
+    4      309.0    7.6%  get_price: read row 1 where it stands
+    5      652.2   16.0%  get_price: search the favourite and read row 1
+    6      327.3    8.0%  select inventory tab 4
+    7      143.7    3.5%  read the balance before buying
+    8      377.1    9.2%  click the row at (500, 260)
+    9      327.9    8.0%  click Buy at (834, 260)
+   10      147.7    3.6%  await the Purchase dialog
+   11      440.6   10.8%  read the dialog (item, price, qty, qty_max)
+   12      129.4    3.2%  find the Buy button
+   13      321.9    7.9%  click Buy
+   14      251.1    6.1%  park
+   15      180.4    4.4%  confirm the dialog is gone
+   16      135.5    3.3%  read the balance after buying
+          4087.1  100.0%  TOTAL
+TASK {"kind": "resupply", "core": "Chaos Core", "set": "Chaos Core Set", "slot": 3, "tab": 4, "step": "craft", "holding": "Chaos Core", "qty": 171, "price": 0}
+  Inventory shut; pressing I (attempt 1)
+  right-clicking the craft key on tab 6 slot (1, 8) at (1866, 237) (attempt 1/3)
+  opening the 2000-2999 tier at [91, 210]
+  choosing Chaos Core Set x3 at [146, 240]
+  171 Chaos Core(s) bought this pass, 3 to a craft
+  Request All at [265, 736]
+  waiting 20s for 171 core(s) (5s per 50, rounded up)
+  Complete All at [879, 735]
+  the Sets arrived in [(1, 1), (1, 2), (1, 3), (1, 4)]
+  compressing tab 4 slot (1, 1) at (1471, 237)
+  171 Chaos Core(s) went into the queue
+
+  craft from 171 Chaos Core(s)
+    #         ms   share  step
+    1     2672.2    9.3%  open the craft window
+    2     2531.1    8.8%  select the recipe
+    3      323.7    1.1%  Request All
+    4    20001.1   69.6%  wait for the queue
+    5      927.9    3.2%  select inventory tab 4 before completing
+    6       35.4    0.1%  read the slots before any Set arrives
+    7      829.7    2.9%  Complete All
+    8     1407.1    4.9%  compress the crafted Sets
+         28728.3  100.0%  TOTAL
+TASK {"kind": "resupply", "core": "Chaos Core", "set": "Chaos Core Set", "slot": 3, "tab": 4, "step": "list", "holding": "Chaos Core Set", "qty": 171, "price": 0}
+  the Agent Shop is shut and the vendor is not open either; reopening it
+  Inventory shut: slot grid 0.11, needs 0.33
+  listing the Chaos Core Set compressed into (1, 1) from 171 Chaos Core(s)
+  the board's cheapest is 749,962 a Set, and the panel scales that to whatever the bundle holds
+  it cost 739,182 a Core, so no Set goes out under that
+  inventory slot (1,1) at (1471, 237)
+    read: current min 128,242,989, price field 128,242,989, net sales 128,242,989, week average 124,503,048, listed at unread
+    the lowest listed price is 128,242,989, from the row and 2 more
+  the panel prices the bundle at 128,242,989, 171 x 749,962; the floor is 126,400,122
+    market 128,242,989, typing 128,242,988, 1 under the market
+    net sales 128,242,988 is 1 x 128,242,988
+  typed 250; the net sales make it 1
+    the panel holds 128,242,988 against the 128,242,988 typed
+  tab 4 read in 32 ms after the listing: 0 slot(s) held
+
+  list 1 at 128,242,988
+    #         ms   share  step
+    1       28.7    0.4%  read the panel before loading
+    2      832.3   13.1%  ctrl-click (1,1) attempt 1
+    3      713.2   11.2%  read the suggested price
+    4     1694.8   26.6%  type the price 128,242,988
+    5      963.2   15.1%  type the quantity 250
+    6      465.2    7.3%  take the quantity from the net sales
+    7      141.9    2.2%  read the price back before Register
+    8      323.3    5.1%  click Register
+    9      140.4    2.2%  find Confirmation
+   10       27.5    0.4%  look for the underprice question
+   11      324.7    5.1%  click Confirmation
+   12      251.6    3.9%  park
+   13      410.2    6.4%  confirm the dialog is gone
+   14       26.6    0.4%  wait for the panel to let the item go
+   15       31.7    0.5%  read tab 4 after the listing
+          6375.1  100.0%  TOTAL
+  listed 1 at 128,242,988; it lands in row 17
+    'Chaos Core Set' was bought at 739,182 a unit and listed against a verified 749,959; a row of it with no cost of its own is floored at 739,182 from now on
+DONE {"kind": "resupply", "core": "Chaos Core", "bought": 171, "listed": 1, "rows": [17]}
+
+  resupply Chaos Core: bought 171, 171 into the craft, listed 1 in rows [17]
+    #          ms   share     n      each  phase
+    1    63,121.7   28.7%     1  63,121.7  buy order 8
+    2    31,051.4   14.1%     1  31,051.4  buy order 1
+    3    28,762.4   13.1%     1  28,762.4  craft Chaos Core into Chaos Core Set
+    4    20,498.6    9.3%     3   6,832.9  buy order 4
+    5     6,383.7    2.9%     1   6,383.7  list Chaos Core Set from (1, 1)
+    6     5,082.8    2.3%     1   5,082.8  buy order 26
+    7     5,052.1    2.3%     1   5,052.1  reopen the Agent Shop
+    8     4,726.3    2.1%     1   4,726.3  buy order 17
+    9     3,450.0    1.6%     1   3,450.0  buy order 36
+   10     2,849.1    1.3%     1   2,849.1  buy order 9
+   11     2,744.1    1.2%     1   2,744.1  buy order 27
+   12     2,720.8    1.2%     1   2,720.8  buy order 18
+   13     2,718.5    1.2%     1   2,718.5  buy order 5
+   14     2,348.8    1.1%     1   2,348.8  select the Register tab
+   15     1,859.6    0.8%     5     371.9  step down to the next offer (2)
+   16     1,859.1    0.8%     5     371.8  step down to the next offer (1)
+   17     1,858.8    0.8%     5     371.8  step down to the next offer (3)
+   18     1,733.1    0.8%     1   1,733.1  price Chaos Core
+   19     1,727.7    0.8%     1   1,727.7  price Chaos Core Set
+   20     1,537.4    0.7%     1   1,537.4  close the Agent Shop
+   21     1,486.2    0.7%     4     371.6  step down to the next offer (5)
+   22     1,486.0    0.7%     4     371.5  step down to the next offer (4)
+   23     1,115.8    0.5%     3     371.9  step down to the next offer (6)
+   24     1,115.1    0.5%     3     371.7  step down to the next offer (8)
+   25     1,114.3    0.5%     3     371.4  step down to the next offer (7)
+   26     1,002.2    0.5%     1   1,002.2  close the craft window
+   27       923.5    0.4%     1     923.5  select inventory tab 4
+   28       772.9    0.4%     1     772.9  buy order 15
+   29       770.4    0.4%     1     770.4  buy order 14
+   30       765.1    0.3%     1     765.1  buy order 35
+   31       760.1    0.3%     1     760.1  buy order 2
+   32       758.9    0.3%     1     758.9  buy order 22
+   33       758.7    0.3%     1     758.7  buy order 28
+   34       748.4    0.3%     1     748.4  buy order 32
+   35       748.1    0.3%     1     748.1  buy order 30
+   36       747.4    0.3%     1     747.4  buy order 34
+   37       743.0    0.3%     1     743.0  buy order 31
+   38       742.1    0.3%     1     742.1  buy order 21
+   39       741.6    0.3%     1     741.6  buy order 19
+   40       741.5    0.3%     1     741.5  buy order 7
+   41       736.5    0.3%     1     736.5  buy order 6
+   42       732.7    0.3%     1     732.7  buy order 3
+   43       730.9    0.3%     1     730.9  buy order 20
+   44       730.4    0.3%     1     730.4  buy order 33
+   45       727.3    0.3%     1     727.3  buy order 23
+   46       726.1    0.3%     1     726.1  buy order 11
+   47       725.3    0.3%     1     725.3  buy order 25
+   48       722.9    0.3%     1     722.9  buy order 24
+   49       721.2    0.3%     1     721.2  buy order 12
+   50       719.6    0.3%     1     719.6  buy order 16
+   51       718.0    0.3%     1     718.0  buy order 10
+   52       717.2    0.3%     1     717.2  buy order 29
+   53       712.5    0.3%     1     712.5  buy order 13
+   54       372.4    0.2%     1     372.4  step down to the next offer (9)
+        219,920.4  100.0%
+
+  resupply order: Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Divine Stone
+
+-- Chaos Core Set under our listing: up to 3 row(s) --
+  Chaos Core Set 749,958 - Chaos Core 649,999 = 99,959
+  ours is listed at 749,958 a Set and a Chaos Core sells at 649,999; buying every Set under 644,999, 5,000 a Set below the lower of the two
+  the cheapest Chaos Core Set is 749,958 a Set, not under 644,999; nothing to buy under ours
+
+-- Divine Stone Set under our listing: up to 3 row(s) --
+  Divine Stone Set 715,383 - Divine Stone 691,855 = 23,528
+  ours is listed at 715,383 a Set and a Divine Stone sells at 691,855; buying every Set under 686,855, 5,000 a Set below the lower of the two
+  the cheapest Divine Stone Set is 715,383 a Set, not under 686,855; nothing to buy under ours
+
+  counting only rows 1-25; rows outside it are not repriced and do not count; 8 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                3         -         -         -      -   holds the most it can want, 3; not priced
+  Chaos Core                         1   649,999   749,958    99,959      5   YES
+  Divine Stone                       4         -         -         -      -   holds the most it can want, 4; not priced
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            3         -         -         -      -   holds the most it can want, 3; not priced
+  Alz 668,749,771 held covers 1,028 Chaos Core at 649,999; buying what it covers
+
+-- Chaos Core: 1 row(s) --
+  8 row(s) free inside 1-25
+  Chaos Core Set 749,958 - Chaos Core 649,999 = 99,959
+  a margin of 99,959 is worth 5 row(s) of Chaos Core; 1 held
+  buy_min 150 rolled to 151 (+/-15); buying 153 in whole batches of 3
+  1 stays behind on every row bought; an order 10 step(s) down with nothing spare takes the row it is on whole, and the next order leaves 1 behind again; each order prices the favourite afresh, then wheels down, up to 30 step(s)
+  every order takes all of the row it lands on, up to 999 held, and the orders stop once 153 is held
+TASK {"kind": "resupply", "core": "Chaos Core", "set": "Chaos Core Set", "slot": 3, "tab": 4}
+  0/153 Chaos Core held
+  row 1 offers 'Chaos Core' x1 at 649,999 (649,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      151.1    4.4%  get_price: _trade_window_open (OCR 1300x190)
+    3      169.4    5.0%  get_price: purchase_tab_showing
+    4      258.6    7.6%  get_price: read row 1 before the search
+    5      326.8    9.6%  get_price: click favourite slot 3
+    6      135.9    4.0%  get_price: confirm the sort
+    7      653.2   19.1%  get_price: poll row 1 until it answers (2 read(s))
+    8     1726.8   50.5%  get_price: search the favourite and read row 1
+          3422.2  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      155.8   10.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      166.1   11.5%  get_price: purchase_tab_showing
+    4      401.7   27.7%  get_price: read row 1 where it stands
+    5      724.3   50.0%  get_price: search the favourite and read row 1
+          1448.6  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.4    0.0%  get_price: focus the game
+    2      149.1   10.2%  get_price: _trade_window_open (OCR 1300x190)
+    3      178.5   12.2%  get_price: purchase_tab_showing
+    4      404.5   27.6%  get_price: read row 1 where it stands
+    5      732.6   50.0%  get_price: search the favourite and read row 1
+          1465.1  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.8    0.1%  get_price: focus the game
+    2      148.3   10.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      168.0   11.6%  get_price: purchase_tab_showing
+    4      405.6   28.1%  get_price: read row 1 where it stands
+    5      722.7   50.0%  get_price: search the favourite and read row 1
+          1445.4  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.7    0.1%  get_price: focus the game
+    2      146.8   10.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.3   11.7%  get_price: purchase_tab_showing
+    4      400.6   28.0%  get_price: read row 1 where it stands
+    5      715.5   50.0%  get_price: search the favourite and read row 1
+          1430.9  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.9    0.1%  get_price: focus the game
+    2      149.8   10.4%  get_price: _trade_window_open (OCR 1300x190)
+    3      163.9   11.4%  get_price: purchase_tab_showing
+    4      402.4   28.1%  get_price: read row 1 where it stands
+    5      717.1   50.0%  get_price: search the favourite and read row 1
+          1434.1  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.1    0.1%  get_price: focus the game
+    2      150.2   10.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.6   11.5%  get_price: purchase_tab_showing
+    4      407.1   28.0%  get_price: read row 1 where it stands
+    5      726.1   50.0%  get_price: search the favourite and read row 1
+          1452.2  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      149.1   10.4%  get_price: _trade_window_open (OCR 1300x190)
+    3      169.3   11.8%  get_price: purchase_tab_showing
+    4      400.9   27.8%  get_price: read row 1 where it stands
+    5      720.0   50.0%  get_price: search the favourite and read row 1
+          1439.9  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 735,000 (735,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.2    0.1%  get_price: focus the game
+    2      153.6   10.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      170.8   11.8%  get_price: purchase_tab_showing
+    4      400.9   27.6%  get_price: read row 1 where it stands
+    5      726.5   50.0%  get_price: search the favourite and read row 1
+          1452.9  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 740,000 (740,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      152.0   10.5%  get_price: _trade_window_open (OCR 1300x190)
+    3      171.2   11.8%  get_price: purchase_tab_showing
+    4      402.7   27.7%  get_price: read row 1 where it stands
+    5      726.4   50.0%  get_price: search the favourite and read row 1
+          1452.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  10 step(s) down with nothing spare; this order takes the row it is on whole, and the next one leaves 1 behind again
+  row 1 offers 'Chaos Core' x114 at 740,000 (740,000/unit)
+    row 1 leaves 9,958 a core against the 5,000 wanted
+    balance before 668,749,771
+    Alz 668,749,771 covers 903 pack(s) at 740,000, not the 999 wanted; asking for 903
+    dialog: '* Chaos Core'  qty 1 of 114  price 740000
+    999 core(s) wanted, 1 to a pack -> 903 pack(s); 114 available, taking 114
+    ordering 114 pack(s) at 84,360,000; the spend will confirm what actually bought
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      149.9    1.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      172.0    2.0%  get_price: purchase_tab_showing
+    4      319.0    3.7%  get_price: read row 1 where it stands
+    5      641.5    7.5%  get_price: search the favourite and read row 1
+    6      325.6    3.8%  select inventory tab 4
+    7      139.1    1.6%  read the balance before buying
+    8      382.0    4.4%  click the row at (500, 260)
+    9      327.3    3.8%  click Buy at (834, 260)
+   10      129.5    1.5%  await the Purchase dialog
+   11      438.5    5.1%  read the dialog (item, price, qty, qty_max)
+   12     1431.2   16.6%  click the quantity field and type 114
+   13      138.2    1.6%  find the Buy button
+   14      326.7    3.8%  click Buy
+   15      251.0    2.9%  park
+   16      163.2    1.9%  confirm the dialog is gone
+   17     3134.2   36.4%  read the balance after buying
+   18      139.1    1.6%  read the balance once more before calling it unbought
+          8608.7  100.0%  TOTAL
+  attempt 1/3: the balance never moved from 668,749,771, on two reads, so nothing was bought: row 1 went while the order was being placed. Trying the board again.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x115 at 740,000 (740,000/unit)
+    row 1 leaves 9,958 a core against the 5,000 wanted
+    balance before 668,749,771
+    Alz 668,749,771 covers 903 pack(s) at 740,000, not the 999 wanted; asking for 903
+    dialog: '* Chaos Core'  qty 1 of 115  price 740000
+    999 core(s) wanted, 1 to a pack -> 903 pack(s); 115 available, taking 115
+    ordering 115 pack(s) at 85,100,000; the spend will confirm what actually bought
+    balance after  583,649,771; spent 85,100,000 bought 115 pack(s) = 115 core(s) (740,000 a core)
+
+  buy from favourite slot 3: bought 115 core(s) in 115 order(s)
+    #         ms   share  step
+    1        0.7    0.0%  get_price: focus the game
+    2      153.1    2.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      169.1    3.0%  get_price: purchase_tab_showing
+    4      307.5    5.4%  get_price: read row 1 where it stands
+    5      630.4   11.1%  get_price: search the favourite and read row 1
+    6      319.9    5.6%  select inventory tab 4
+    7      141.5    2.5%  read the balance before buying
+    8      379.8    6.7%  click the row at (500, 260)
+    9      327.0    5.8%  click Buy at (834, 260)
+   10      131.7    2.3%  await the Purchase dialog
+   11      447.5    7.9%  read the dialog (item, price, qty, qty_max)
+   12     1414.0   24.9%  click the quantity field and type 115
+   13      128.4    2.3%  find the Buy button
+   14      321.1    5.6%  click Buy
+   15      251.4    4.4%  park
+   16      159.2    2.8%  confirm the dialog is gone
+   17      401.3    7.1%  read the balance after buying
+          5683.4  100.0%  TOTAL
+  115/153 Chaos Core held
+  row 1 offers 'Chaos Core' x1 at 649,999 (649,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.3    0.0%  get_price: focus the game
+    2      182.0    3.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      169.5    3.1%  get_price: purchase_tab_showing
+    4      248.1    4.5%  get_price: read row 1 before the search
+    5      331.4    6.1%  get_price: click favourite slot 3
+    6      126.5    2.3%  get_price: confirm the sort
+    7     1660.8   30.3%  get_price: poll row 1 until it answers (6 read(s))
+    8     2757.9   50.4%  get_price: search the favourite and read row 1
+          5476.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      178.9   12.0%  get_price: _trade_window_open (OCR 1300x190)
+    3      165.9   11.1%  get_price: purchase_tab_showing
+    4      400.0   26.8%  get_price: read row 1 where it stands
+    5      745.4   50.0%  get_price: search the favourite and read row 1
+          1490.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      157.4   10.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      166.3   11.5%  get_price: purchase_tab_showing
+    4      400.9   27.6%  get_price: read row 1 where it stands
+    5      725.3   50.0%  get_price: search the favourite and read row 1
+          1450.5  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.9    0.1%  get_price: focus the game
+    2      174.0   11.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      171.8   11.4%  get_price: purchase_tab_showing
+    4      405.2   26.9%  get_price: read row 1 where it stands
+    5      751.9   50.0%  get_price: search the favourite and read row 1
+          1503.8  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.7    0.0%  get_price: focus the game
+    2      173.8   11.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      168.5   11.3%  get_price: purchase_tab_showing
+    4      402.1   27.0%  get_price: read row 1 where it stands
+    5      745.1   50.0%  get_price: search the favourite and read row 1
+          1490.1  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.1    0.1%  get_price: focus the game
+    2      175.9   11.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      168.1   11.3%  get_price: purchase_tab_showing
+    4      397.3   26.8%  get_price: read row 1 where it stands
+    5      742.4   50.0%  get_price: search the favourite and read row 1
+          1484.8  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.4    0.1%  get_price: focus the game
+    2      180.6   11.9%  get_price: _trade_window_open (OCR 1300x190)
+    3      175.5   11.6%  get_price: purchase_tab_showing
+    4      399.6   26.4%  get_price: read row 1 where it stands
+    5      757.1   50.0%  get_price: search the favourite and read row 1
+          1514.2  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      175.5   11.6%  get_price: _trade_window_open (OCR 1300x190)
+    3      177.7   11.8%  get_price: purchase_tab_showing
+    4      399.8   26.5%  get_price: read row 1 where it stands
+    5      753.6   50.0%  get_price: search the favourite and read row 1
+          1507.1  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 735,000 (735,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      158.3   10.9%  get_price: _trade_window_open (OCR 1300x190)
+    3      165.4   11.4%  get_price: purchase_tab_showing
+    4      402.9   27.7%  get_price: read row 1 where it stands
+    5      727.2   50.0%  get_price: search the favourite and read row 1
+          1454.4  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 740,000 (740,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      173.2   11.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.7   11.3%  get_price: purchase_tab_showing
+    4      401.8   27.0%  get_price: read row 1 where it stands
+    5      743.3   50.0%  get_price: search the favourite and read row 1
+          1486.5  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  10 step(s) down with nothing spare; this order takes the row it is on whole, and the next one leaves 1 behind again
+  row 1 offers 'Chaos Core' x63 at 740,000 (740,000/unit)
+    row 1 leaves 9,958 a core against the 5,000 wanted
+    balance before 583,649,771
+    Alz 583,649,771 covers 788 pack(s) at 740,000, not the 884 wanted; asking for 788
+    dialog: '* Chaos Core'  qty 1 of 63  price 740000
+    884 core(s) wanted, 1 to a pack -> 788 pack(s); 63 available, taking 63
+    ordering 63 pack(s) at 46,620,000; the spend will confirm what actually bought
+    balance after  537,029,771; spent 46,620,000 bought 63 pack(s) = 63 core(s) (740,000 a core)
+
+  buy from favourite slot 3: bought 63 core(s) in 63 order(s)
+    #         ms   share  step
+    1        0.7    0.0%  get_price: focus the game
+    2      172.6    3.2%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.5    3.1%  get_price: purchase_tab_showing
+    4      305.9    5.7%  get_price: read row 1 where it stands
+    5      646.7   12.1%  get_price: search the favourite and read row 1
+    6      323.0    6.0%  select inventory tab 4
+    7      137.0    2.6%  read the balance before buying
+    8      383.6    7.2%  click the row at (500, 260)
+    9      329.3    6.1%  click Buy at (834, 260)
+   10      131.5    2.5%  await the Purchase dialog
+   11      443.0    8.3%  read the dialog (item, price, qty, qty_max)
+   12     1345.2   25.1%  click the quantity field and type 63
+   13      123.2    2.3%  find the Buy button
+   14      321.9    6.0%  click Buy
+   15      251.8    4.7%  park
+   16      147.5    2.7%  confirm the dialog is gone
+   17      134.2    2.5%  read the balance after buying
+          5364.4  100.0%  TOTAL
+  178 Chaos Core is 2 short of a whole batch of 3; topping up whatever the margin says, because a remainder crafts into nothing
+  row 1 offers 'Chaos Core' x1 at 649,999 (649,999/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.3    0.0%  get_price: focus the game
+    2      154.9    2.9%  get_price: _trade_window_open (OCR 1300x190)
+    3      166.5    3.1%  get_price: purchase_tab_showing
+    4      246.3    4.6%  get_price: read row 1 before the search
+    5      326.3    6.1%  get_price: click favourite slot 3
+    6      134.5    2.5%  get_price: confirm the sort
+    7     1647.8   30.6%  get_price: poll row 1 until it answers (6 read(s))
+    8     2711.8   50.3%  get_price: search the favourite and read row 1
+          5388.3  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.2    0.1%  get_price: focus the game
+    2      178.7   11.8%  get_price: _trade_window_open (OCR 1300x190)
+    3      176.0   11.6%  get_price: purchase_tab_showing
+    4      400.5   26.5%  get_price: read row 1 where it stands
+    5      756.4   50.0%  get_price: search the favourite and read row 1
+          1512.7  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      186.0   12.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      171.4   11.3%  get_price: purchase_tab_showing
+    4      401.1   26.4%  get_price: read row 1 where it stands
+    5      759.1   50.0%  get_price: search the favourite and read row 1
+          1518.2  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 725,000 (725,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.5    0.1%  get_price: focus the game
+    2      178.2   11.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      175.9   11.6%  get_price: purchase_tab_showing
+    4      403.2   26.6%  get_price: read row 1 where it stands
+    5      758.8   50.0%  get_price: search the favourite and read row 1
+          1517.6  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      174.1   11.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      168.5   11.3%  get_price: purchase_tab_showing
+    4      400.6   26.9%  get_price: read row 1 where it stands
+    5      743.8   50.0%  get_price: search the favourite and read row 1
+          1487.5  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      174.3   11.7%  get_price: _trade_window_open (OCR 1300x190)
+    3      168.6   11.3%  get_price: purchase_tab_showing
+    4      400.5   26.9%  get_price: read row 1 where it stands
+    5      744.1   50.0%  get_price: search the favourite and read row 1
+          1488.2  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      169.9   11.2%  get_price: _trade_window_open (OCR 1300x190)
+    3      169.7   11.2%  get_price: purchase_tab_showing
+    4      415.5   27.5%  get_price: read row 1 where it stands
+    5      755.7   50.0%  get_price: search the favourite and read row 1
+          1511.3  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 730,000 (730,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.2    0.1%  get_price: focus the game
+    2      169.6   11.3%  get_price: _trade_window_open (OCR 1300x190)
+    3      173.3   11.6%  get_price: purchase_tab_showing
+    4      403.2   27.0%  get_price: read row 1 where it stands
+    5      747.3   50.0%  get_price: search the favourite and read row 1
+          1494.5  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 735,000 (735,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        0.5    0.0%  get_price: focus the game
+    2      143.1   10.1%  get_price: _trade_window_open (OCR 1300x190)
+    3      167.1   11.8%  get_price: purchase_tab_showing
+    4      399.4   28.1%  get_price: read row 1 where it stands
+    5      710.1   50.0%  get_price: search the favourite and read row 1
+          1420.1  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  row 1 offers 'Chaos Core' x1 at 740,000 (740,000/unit)
+
+  buy from favourite slot 3: REFUSED
+    #         ms   share  step
+    1        1.1    0.1%  get_price: focus the game
+    2      184.7   12.1%  get_price: _trade_window_open (OCR 1300x190)
+    3      172.2   11.3%  get_price: purchase_tab_showing
+    4      402.1   26.4%  get_price: read row 1 where it stands
+    5      760.2   50.0%  get_price: search the favourite and read row 1
+          1520.3  100.0%  TOTAL
+  row 1 holds 1 and 1 stays behind, so there is nothing spare to take here.
+  wheeled 1 notch(es) down the offers, from row 2 at (500, 316)
+  10 step(s) down with nothing spare; this order takes the row it is on whole, and the next one leaves 1 behind again
+  row 1 offers 'Chaos Core' x137 at 740,000 (740,000/unit)
+    balance before 537,029,771
+    dialog: '* Chaos Core'  qty 1 of 129  price 740000
+    the dialog allows at most 129 of the row's 137
+    2 core(s) wanted, 1 to a pack -> 2 pack(s); 129 available, taking 2
+    ordering 2 pack(s) at 1,480,000; the spend will confirm what actually bought
+    balance after  535,549,771; spent 1,480,000 bought 2 pack(s) = 2 core(s) (740,000 a core)
+
+  buy from favourite slot 3: bought 2 core(s) in 2 order(s)
+    #         ms   share  step
+    1        0.6    0.0%  get_price: focus the game
+    2      182.7    3.4%  get_price: _trade_window_open (OCR 1300x190)
+    3      168.5    3.1%  get_price: purchase_tab_showing
+    4      308.7    5.8%  get_price: read row 1 where it stands
+    5      660.6   12.3%  get_price: search the favourite and read row 1
+    6      325.0    6.1%  select inventory tab 4
+    7      145.1    2.7%  read the balance before buying
+    8      389.1    7.3%  click the row at (500, 260)
+    9      328.0    6.1%  click Buy at (834, 260)
+   10      133.9    2.5%  await the Purchase dialog
+   11      439.5    8.2%  read the dialog (item, price, qty, qty_max)
+   12     1283.0   23.9%  click the quantity field and type 2
+   13      127.7    2.4%  find the Buy button
+   14      326.1    6.1%  click Buy
+   15      251.0    4.7%  park
+   16      157.5    2.9%  confirm the dialog is gone
+   17      132.3    2.5%  read the balance after buying
+          5359.4  100.0%  TOTAL
+TASK {"kind": "resupply", "core": "Chaos Core", "set": "Chaos Core Set", "slot": 3, "tab": 4, "step": "craft", "holding": "Chaos Core", "qty": 180, "price": 0}
+  Inventory shut; pressing I (attempt 1)
+  right-clicking the craft key on tab 6 slot (1, 8) at (1866, 237) (attempt 1/3)
+  opening the 2000-2999 tier at [91, 210]
+  choosing Chaos Core Set x3 at [146, 240]
+  180 Chaos Core(s) bought this pass, 3 to a craft
+  Request All at [265, 736]
+  waiting 20s for 180 core(s) (5s per 50, rounded up)
+  Complete All at [879, 735]
+  the Sets arrived in [(1, 1), (1, 2), (1, 3), (1, 4)]
+  compressing tab 4 slot (1, 1) at (1471, 237)
+  180 Chaos Core(s) went into the queue
+
+  craft from 180 Chaos Core(s)
+    #         ms   share  step
+    1     2717.6    9.5%  open the craft window
+    2     2525.1    8.8%  select the recipe
+    3      327.3    1.1%  Request All
+    4    20001.1   69.6%  wait for the queue
+    5      920.0    3.2%  select inventory tab 4 before completing
+    6       30.9    0.1%  read the slots before any Set arrives
+    7      821.5    2.9%  Complete All
+    8     1400.8    4.9%  compress the crafted Sets
+         28744.3  100.0%  TOTAL
+TASK {"kind": "resupply", "core": "Chaos Core", "set": "Chaos Core Set", "slot": 3, "tab": 4, "step": "list", "holding": "Chaos Core Set", "qty": 180, "price": 0}
+  the Agent Shop is shut and the vendor is not open either; reopening it
+  Inventory shut: slot grid 0.11, needs 0.33
+  listing the Chaos Core Set compressed into (1, 1) from 180 Chaos Core(s)
+  the board's cheapest is 749,958 a Set, and the panel scales that to whatever the bundle holds
+  it cost 740,000 a Core, so no Set goes out under that
+  inventory slot (1,1) at (1471, 237)
+    read: current min 134,992,440, price field 134,992,440, net sales 134,992,440, week average 131,055,840, listed at unread
+    the lowest listed price is 134,992,440, from the row and 2 more
+  the panel prices the bundle at 134,992,440, 180 x 749,958; the floor is 133,200,000
+    market 134,992,440, typing 134,992,439, 1 under the market
+    net sales 134,992,439 is 1 x 134,992,439
+  typed 250; the net sales make it 1
+    the panel holds 134,992,439 against the 134,992,439 typed
+  tab 4 read in 44 ms after the listing: 0 slot(s) held
+
+  list 1 at 134,992,439
+    #         ms   share  step
+    1       22.7    0.4%  read the panel before loading
+    2      829.5   13.1%  ctrl-click (1,1) attempt 1
+    3      701.4   11.0%  read the suggested price
+    4     1696.6   26.7%  type the price 134,992,439
+    5      970.1   15.3%  type the quantity 250
+    6      460.6    7.3%  take the quantity from the net sales
+    7      142.2    2.2%  read the price back before Register
+    8      327.5    5.2%  click Register
+    9      136.7    2.2%  find Confirmation
+   10       23.6    0.4%  look for the underprice question
+   11      325.4    5.1%  click Confirmation
+   12      251.1    4.0%  park
+   13      390.5    6.2%  confirm the dialog is gone
+   14       26.6    0.4%  wait for the panel to let the item go
+   15       44.4    0.7%  read tab 4 after the listing
+          6349.0  100.0%  TOTAL
+  listed 1 at 134,992,439; it lands in row 18
+    'Chaos Core Set' was bought at 740,000 a unit and listed against a verified 749,958; a row of it with no cost of its own is floored at 740,000 from now on
+DONE {"kind": "resupply", "core": "Chaos Core", "bought": 180, "listed": 1, "rows": [18]}
+
+  resupply Chaos Core: bought 180, 180 into the craft, listed 1 in rows [18]
+    #          ms   share     n      each  phase
+    1    28,780.1   26.0%     1  28,780.1  craft Chaos Core into Chaos Core Set
+    2    13,041.2   11.8%     2   6,520.6  buy order 11
+    3     6,358.2    5.7%     1   6,358.2  list Chaos Core Set from (1, 1)
+    4     5,016.3    4.5%     1   5,016.3  reopen the Agent Shop
+    5     4,733.5    4.3%     1   4,733.5  buy order 22
+    6     4,714.6    4.3%     1   4,714.6  buy order 33
+    7     2,760.0    2.5%     1   2,760.0  buy order 12
+    8     2,713.7    2.5%     1   2,713.7  buy order 23
+    9     2,347.6    2.1%     1   2,347.6  select the Register tab
+   10     1,738.1    1.6%     1   1,738.1  price Divine Stone
+   11     1,728.9    1.6%     1   1,728.9  price Divine Stone Set
+   12     1,728.8    1.6%     1   1,728.8  buy order 1
+   13     1,540.9    1.4%     1   1,540.9  close the Agent Shop
+   14     1,116.6    1.0%     3     372.2  step down to the next offer (7)
+   15     1,116.5    1.0%     3     372.2  step down to the next offer (9)
+   16     1,116.0    1.0%     3     372.0  step down to the next offer (10)
+   17     1,115.4    1.0%     3     371.8  step down to the next offer (4)
+   18     1,115.4    1.0%     3     371.8  step down to the next offer (5)
+   19     1,115.3    1.0%     3     371.8  step down to the next offer (6)
+   20     1,115.2    1.0%     3     371.7  step down to the next offer (8)
+   21     1,114.8    1.0%     3     371.6  step down to the next offer (1)
+   22     1,114.8    1.0%     3     371.6  step down to the next offer (3)
+   23     1,114.3    1.0%     3     371.4  step down to the next offer (2)
+   24       994.6    0.9%     1     994.6  close the craft window
+   25       923.8    0.8%     1     923.8  select inventory tab 4
+   26       761.3    0.7%     1     761.3  buy order 32
+   27       760.4    0.7%     1     760.4  buy order 25
+   28       760.3    0.7%     1     760.3  buy order 26
+   29       758.5    0.7%     1     758.5  buy order 18
+   30       757.6    0.7%     1     757.6  buy order 24
+   31       757.3    0.7%     1     757.3  buy order 29
+   32       755.0    0.7%     1     755.0  buy order 19
+   33       753.1    0.7%     1     753.1  buy order 15
+   34       748.6    0.7%     1     748.6  buy order 30
+   35       746.9    0.7%     1     746.9  buy order 13
+   36       746.7    0.7%     1     746.7  buy order 16
+   37       745.2    0.7%     1     745.2  buy order 27
+   38       745.1    0.7%     1     745.1  buy order 28
+   39       744.6    0.7%     1     744.6  buy order 21
+   40       743.9    0.7%     1     743.9  buy order 17
+   41       734.1    0.7%     1     734.1  buy order 3
+   42       728.4    0.7%     1     728.4  buy order 20
+   43       727.9    0.7%     1     727.9  buy order 9
+   44       727.7    0.7%     1     727.7  buy order 10
+   45       727.7    0.7%     1     727.7  buy order 7
+   46       726.7    0.7%     1     726.7  buy order 14
+   47       725.6    0.7%     1     725.6  buy order 2
+   48       724.8    0.7%     1     724.8  buy order 4
+   49       721.3    0.7%     1     721.3  buy order 8
+   50       718.7    0.6%     1     718.7  buy order 6
+   51       717.1    0.6%     1     717.1  buy order 5
+   52       711.5    0.6%     1     711.5  buy order 31
+   53       371.5    0.3%     1     371.5  step down to the next offer (11)
+        110,622.0  100.0%
+  Chaos Core: 2 of 5 row(s) after that one
+  Alz 535,549,771 held covers 823 Chaos Core at 649,999; buying what it covers
+
+-- Chaos Core: 2 row(s) --
+  7 row(s) free inside 1-25
+
+  Ctrl 4 times: stopping the run the way Ctrl+C would.
+
+PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+  item                              profit   units  margin        revenue           cost
+  Chaos Core                   -14,845,500     250   -8.7%    169,999,500    184,845,000
+  Divine Stone                      -5,150       1   -0.7%        697,350        702,500
+  ------------------------------------------------------------------------------------
+  SOLD                         -14,850,650     251   -8.7%    170,696,850    185,547,500
+  bought this run and still unsold, taken as sold at the price each lot was bought against:
+    chaoscore                        102 core(s)      75,480,000 Alz paid    +1,015,716
+    divinestone                        1 core(s)         697,000 Alz paid            +0
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                   -13,834,934   (-14,850,650 realised, +1,015,716 assumed)
+  started 01:22:27, ended 01:36:06, ran for 13m 39s
+
+##################################################################################
+
+  ########  ##########    ######    ########    ########    ##########  ########  
+  ########  ##########    ######    ########    ########    ##########  ########  
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+  ######        ##      ##      ##  ########    ########    ########    ##      ##
+  ######        ##      ##      ##  ########    ########    ########    ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+########        ##        ######    ##          ##          ##########  ########  
+########        ##        ######    ##          ##          ##########  ########  
+
+##################################################################################
+  stopped: interrupted from the keyboard
+

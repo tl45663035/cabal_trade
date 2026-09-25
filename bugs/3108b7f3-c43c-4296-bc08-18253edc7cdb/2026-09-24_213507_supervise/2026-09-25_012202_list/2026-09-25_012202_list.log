@@ -1,0 +1,70 @@
+2026-09-25_012202  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang list 1 1 0 4
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-25_012202_list.log
+  code 828e17a
+  screen 1920x1080
+  ledger C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\sales.db run 2026-09-25T01:22:02
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-09-25_012202_list, indexed in frames.jsonl; earlier runs' frames are kept until the 5,000-frame budget needs the room
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  a repair: not measuring the screen, using the calibration on file
+  calibrated for 1920x1080, measured 2026-09-25T00:33:39
+  the server clock at (15, 953, 90, 979) did not read a time ('')
+  the server clock would not anchor, so the war schedule is not being followed this run.
+  selecting inventory tab 4 before reading slot (1,1)
+  inventory slot (1,1) at (1471, 237)
+    read: current min 679,999, price field 679,999, net sales 679,999, week average 717,087, listed at unread
+    the lowest listed price is 679,999, from the row and 2 more
+    the market 679,999 says 'Divine Stone', or something priced like it
+    market 679,999, typing 679,998, 1 under the market
+    net sales 169,999,500 is 250 x 679,998
+  typed 250; the net sales make it 250
+    the panel holds 679,998 against the 679,998 typed
+  tab 4 read in 30 ms after the listing: 0 slot(s) held
+
+  list 250 at 679,998
+    #         ms   share  step
+    1       26.1    0.4%  read the panel before loading
+    2       25.7    0.4%  wait for slot (1,1) to fill
+    3      819.7   13.4%  ctrl-click (1,1) attempt 1
+    4      698.2   11.4%  read the suggested price
+    5     1465.0   24.0%  type the price 679,998
+    6      960.8   15.7%  type the quantity 250
+    7      455.3    7.5%  take the quantity from the net sales
+    8      140.5    2.3%  read the price back before Register
+    9      327.2    5.4%  click Register
+   10      133.1    2.2%  find Confirmation
+   11       25.4    0.4%  look for the underprice question
+   12      327.3    5.4%  click Confirmation
+   13      251.6    4.1%  park
+   14      398.2    6.5%  confirm the dialog is gone
+   15       25.8    0.4%  wait for the panel to let the item go
+   16       30.1    0.5%  read tab 4 after the listing
+          6109.9  100.0%  TOTAL
+  listed 250 at 679,998
+DONE {"kind": "list", "tab": 4, "slot": [1, 1], "qty": 250, "price": 679998}
+  done in 7042 ms
+
+PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+  nothing this run bought has sold yet.
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 01:22:02, ended 01:22:12, ran for 9s
+
+##############################################################################################
+
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+
+##############################################################################################
+
