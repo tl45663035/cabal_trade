@@ -1,0 +1,92 @@
+2026-09-25_015640  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung collect
+  logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-25_015640_collect.log
+  code 4881c7c
+  screen 1920x1080
+  ledger C:\Users\Trung\Cabal\src_1080p\sales.db run 2026-09-25T01:56:40
+  debug frames -> C:\Users\Trung\Cabal\src_1080p\debug_frames\2026-09-25_015640_collect, indexed in frames.jsonl; earlier runs' frames are kept until the 5,000-frame budget needs the room
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  a repair: not measuring the screen, using the calibration on file
+  calibrated for 1920x1080, measured 2026-09-25T00:49:50
+  server clock 10:56 (+59s for the unshown seconds)
+  server 10:56:59; the next war quiet runs 13:29:00 to 13:34:59, in 152.0 min
+  the Trade window is shut; opening the Agent Shop.
+  inventory already open
+  tab 6 at (1723, 181)
+  right-clicking slot (1,7) at (1815, 236) (attempt 1/3)
+  tab 4 at (1617, 181), so whatever is bought or withdrawn lands there
+  scrolled to the top; row 1 is at position 1
+                                                   bought/u   listed/u  margin      row price
+    the quantity column read 'Superior', which holds no digits, so it is the end of the name and not a count; reading the row as 'Blessing Bead - Superior' and letting the panel count what is there
+    one line read 'aa 1 169,999,998 OnSale Change'; read as stacked lines it is 'Blessing Bead - Superior 169,999,998 OnSale Change'
+     1  Blessing Bead - Superior           x1    163,756,817 169,999,998   +3.7%    169,999,998
+     2  Armor Account bind Unseal Stone    x1    187,364,780 187,364,780   +0.0%    187,364,780
+     3  Armor Account bind Seal Stone      x2    187,364,780 187,364,780   +0.0%    187,364,780
+     5  Astral Core(Palladium) X 127       x6             -      1,531       -        194,563
+     6  Force Core (Ultimate               x5             -    359,947       -        359,947
+     7  Force Core(High                    x73            -    185,930       -        185,930
+     8  Force Core(High                    x117           -    185,930       -        185,930
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+     9  Wexp Saver                         x1             - 65,880,000       -     65,880,000
+    10  Chaos Core                         x1             -    746,575       -        746,575
+    11  Force Core(High                    x101           -    185,930       -        185,930
+    12  Force Core (Ultimate               x250           -    359,946       -        359,946
+    13  Force Core (Ultimate               x33            -    359,945       -        359,945
+    14  Chaos Core Set X 252               x1             -    745,493       -    187,864,487
+    16  Force Core(Highest                 x250           -    197,983       -        197,983
+    17  Arionell                           x1    281,047,170 312,185,713  +10.0%    312,185,713
+    18  Chaos Core Set X 291               x1             -    745,490       -    216,937,880
+    19  Force Core(Highest                 x228           -    197,982       -        197,982
+    the quantity column read 'il', which holds no digits, so it is the end of the name and not a count; reading the row as 'Palladium Shoes (DM) il' and letting the panel count what is there
+    28  Palladium Shoes (DM) Lalla         x1             -  1,220,000       -      1,220,000
+    the quantity column read 'il', which holds no digits, so it is the end of the name and not a count; reading the row as 'Palladium Suit (DM) + 1 il' and letting the panel count what is there
+    29  Palladium Suit (DM) + 1 Lalla      x1             - 33,000,000       -     33,000,000
+    the quantity column read 'il', which holds no digits, so it is the end of the name and not a count; reading the row as 'Palladium Gauntlet(WA) il' and letting the panel count what is there
+    30  Palladium Gauntlet(WA) Lalla       x1             -  1,499,990       -      1,499,990
+  scrolled to the top; row 1 is at position 1
+  seeded 20 of rows 1-30
+    the quantity column read 'Superior', which holds no digits, so it is the end of the name and not a count; reading the row as 'Blessing Bead - Superior' and letting the panel count what is there
+    one line read 'aa 1 169,999,998 OnSale Change'; read as stacked lines it is 'Blessing Bead - Superior 169,999,998 OnSale Change'
+  row 4 is empty; nothing to relist
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+  row 15 is empty; nothing to relist
+  row 20 is empty; nothing to relist
+  row 21 is empty; nothing to relist
+  row 22 is empty; nothing to relist
+  row 23 is empty; nothing to relist
+  row 24 is empty; nothing to relist
+  row 25 is empty; nothing to relist
+  row 26 is empty; nothing to relist
+  row 27 is empty; nothing to relist
+
+  relisting rows 1-27: 0 relisted, 10 empty, 17 skipped
+    #          ms   share     n      each  phase
+    1    19,935.5   67.1%    27     738.4  scroll to the row and read it
+    2     9,763.7   32.9%    27     361.6  Refresh the table
+         29,699.2  100.0%
+  collected what sold in rows 1-27; 10 row(s) empty now
+
+PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+  nothing this run bought has sold yet.
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 01:56:40, ended 01:57:54, ran for 1m 14s
+
+##############################################################################################
+
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+
+##############################################################################################
+

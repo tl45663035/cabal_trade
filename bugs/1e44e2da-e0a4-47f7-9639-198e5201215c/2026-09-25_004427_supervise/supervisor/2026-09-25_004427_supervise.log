@@ -1,0 +1,243 @@
+2026-09-25_004427  .\tools\supervise.py --config trung
+  logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-25_004427_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-24_231923_run.log ended: interrupted from the keyboard,00:44:27,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-24_231923_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_004435_found.png
+  interrupted: relist row 22: 'Force Core(Highest' x250 at 199,713 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core(Highest'; nothing on screen is read to name it
+  frame 2026-09-25_004441_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 22: 'Force Core(Highest' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-25_004445_reset.png
+   2026-09-25_004446  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-25_004446_run.log
+     code 4881c7c
+     screen 1920x1080
+* relaunched (pid 20712),00:44:50,alive
+watching pid 20712, 2026-09-25_004446_run.log
+* server lag: not answering,00:45:52,alive
+* server lag: the server stalled,00:46:34,alive
+* server lag: the server stalled,00:46:55,alive
+* server lag: not answering,00:47:37,alive
+* server lag: the server stalled,00:48:19,alive
+* pushed the profit report for trung,00:59:23,alive
+* pushed the profit report for trung,01:14:32,alive
+* server lag: not answering,01:16:56,alive
+* server lag: the server stalled,01:17:58,alive
+* pushed the profit report for trung,01:29:43,alive
+* war window, log quiet 167s,01:31:28,alive
+* pushed the profit report for trung,01:44:57,alive
+* stop condition: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.,01:46:19,dead
+* 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.,01:46:20,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-25_004446_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_014624_found.png
+  interrupted: relist row 4: 'Force Core (Ultimate' x9 at 359,948 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_014631_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config trung collect
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-27; 10 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     item                              profit   units  margin        revenue           cost
+     ------------------------------------------------------------------------------------
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 01:46:32, ended 01:47:51, ran for 1m 19s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,01:47:51,dead
+$ py src_1080p/driver.py --config trung list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_014804_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 1 failed: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there; attempt 2 in 60s,01:48:04,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-25_004446_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_014909_found.png
+  interrupted: relist row 4: 'Force Core (Ultimate' x9 at 359,948 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_014915_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config trung collect
+     relisting rows 1-27: 0 relisted, 10 empty, 17 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-27; 10 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 01:49:15, ended 01:50:29, ran for 1m 13s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,01:50:29,dead
+$ py src_1080p/driver.py --config trung list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_015043_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 2 failed: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there; attempt 3 in 60s,01:50:43,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-25_004446_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_015147_found.png
+  interrupted: relist row 4: 'Force Core (Ultimate' x9 at 359,948 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_015153_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config trung collect
+     relisting rows 1-27: 0 relisted, 10 empty, 17 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-27; 10 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 01:51:54, ended 01:53:08, ran for 1m 13s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,01:53:08,dead
+$ py src_1080p/driver.py --config trung list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_015321_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery failed 3 times: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there; relogging (1 of 1),01:53:22,dead
+$ py src_1080p/recovery.py --relog
+     the character list is up
+     Inventory shut; pressing I (attempt 1)
+     Inventory shut; pressing I (attempt 2)
+     no login screen; the character list is already up
+     'Jarvan' at [1597, 466]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as Jarvan, the balance reads
+* relogged: back in the world,01:53:46,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-25_004446_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_015351_found.png
+  interrupted: relist row 4: 'Force Core (Ultimate' x9 at 359,948 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_015358_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config trung collect
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-27; 10 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     item                              profit   units  margin        revenue           cost
+     ------------------------------------------------------------------------------------
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 01:53:58, ended 01:55:15, ran for 1m 16s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,01:55:15,dead
+$ py src_1080p/driver.py --config trung list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_015529_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 1 failed: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there; attempt 2 in 60s,01:55:29,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-25_004446_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_015633_found.png
+  interrupted: relist row 4: 'Force Core (Ultimate' x9 at 359,948 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_015639_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config trung collect
+     relisting rows 1-27: 0 relisted, 10 empty, 17 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-27; 10 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 01:56:40, ended 01:57:54, ran for 1m 14s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,01:57:54,dead
+$ py src_1080p/driver.py --config trung list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_015807_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 2 failed: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there; attempt 3 in 60s,01:58:07,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-25_004446_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_015911_found.png
+  interrupted: relist row 4: 'Force Core (Ultimate' x9 at 359,948 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_015917_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config trung collect
+     relisting rows 1-27: 0 relisted, 10 empty, 17 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-27; 10 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 01:59:18, ended 02:00:32, ran for 1m 14s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,02:00:32,dead
+$ py src_1080p/driver.py --config trung list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_020045_tab4_9slots.png
+  tab 4 holds 1 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* supervisor stopped: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there,02:00:45,dead
