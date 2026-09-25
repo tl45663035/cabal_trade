@@ -8,12 +8,12 @@ Mon 2026-09-21            14.14h   24.00h        0        0        0       0    
 Tue 2026-09-22            15.79h   24.00h        0        0        0       0       0      --
 Wed 2026-09-23            19.99h   24.00h  137.97K    6.90K    6.92M   6.79M      25    2.0%
 Thu 2026-09-24            18.07h   24.00h  111.91M    6.19M    7.79B   7.68B  12.44K    1.4%
-Fri 2026-09-25 (so far)    4.47h    5.51h  132.34M   29.59M    3.15B   3.02B   5.09K    4.2%
+Fri 2026-09-25 (so far)    4.73h    5.76h  132.34M   27.99M    3.15B   3.02B   5.09K    4.2%
 ============================================================================================
-7 DAYS                   101.98h  149.51h  244.39M    2.40M   10.95B  10.71B  17.55K    2.2%
+7 DAYS                   102.24h  149.76h  244.39M    2.39M   10.95B  10.71B  17.55K    2.2%
 
 
-PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 05:30 Central)
+PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 05:45 Central)
 
 item                    profit  revenue     cost  units  bought/u   sold/u  margin
 ----------------------------------------------------------------------------------
@@ -31,39 +31,40 @@ TOTAL                  132.34M    3.15B    3.02B  5.09K   593.69K  619.70K    4.
 
 
 
-ROWS -- 2026-09-25_032054_run_board.log, board during pass 28 at row 1, read 2026-09-25T05:30:23 (live)
+ROWS -- 2026-09-25_032054_run_board.log, board during pass 31 at row 25, read 2026-09-25T05:45:30 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Force Core(Highest                     x29         -   190.00K         -   190.00K         - <- here
-    2  Honor Medal Chest                       x2         -   219.52M         -   219.52M         -
-    3  Divine Stone Set X 141                  x1         -   715.27K         -   100.85M         -
-    4  Divine Stone Set X 138                  x1         -   715.27K         -    98.71M         -
-    5  Divine Stone Set X 156                  x1         -   715.26K         -   111.58M         -
-    6  Divine Stone Set X 162                  x1   703.16K   715.26K   +12.10K   115.87M     1.96M
-    7  Divine Stone                            x1   699.81K   694.62K    -5.20K   694.62K    -5.20K
-    8  Chaos Core                              x1   725.43K   722.52K    -2.91K   722.52K    -2.91K
-    9  Chaos Core Set X 399                    x1         -   728.08K         -   290.50M         -
-   10  Chaos Core Set X 249                    x1   730.00K   728.08K    -1.92K   181.29M  -478.58K
-   11  Chaos Core Set X 249                    x1         -   728.08K         -   181.29M         -
-   12  Chaos Core Set X 183                    x1   717.25K   728.08K   +10.82K   133.24M     1.98M
-   13  Force Core(Highest                     x69   190.19K   190.00K      -194   190.00K   -13.39K
-   14  Chaos Core Set X 210                    x1   730.00K   728.08K    -1.93K   152.90M  -404.25K
+    1  Force Core(Highest                     x29         -   189.99K         -   189.99K         -
+    2  Honor Medal Chest                       x2         -   219.48M         -   219.48M         -
+    3  Divine Stone Set X 141                  x1         -   715.25K         -   100.85M         -
+    4  Divine Stone Set X 138                  x1         -   715.25K         -    98.70M         -
+    5  Divine Stone Set X 156                  x1         -   715.25K         -   111.58M         -
+    6  Divine Stone Set X 162                  x1   703.16K   715.25K   +12.08K   115.87M     1.96M
+    7  Divine Stone                            x1   699.81K   689.68K   -10.13K   689.68K   -10.13K
+    8  Chaos Core                              x1   725.43K   710.89K   -14.54K   710.89K   -14.54K
+    9  Chaos Core Set X 399                    x1         -   728.06K         -   290.50M         -
+   10  Chaos Core Set X 249                    x1   730.00K   728.06K    -1.94K   181.29M  -483.56K
+   11  Chaos Core Set X 249                    x1         -   728.06K         -   181.29M         -
+   12  Chaos Core Set X 183                    x1   717.25K   728.06K   +10.80K   133.23M     1.98M
+   13  Force Core(Highest                     x69   190.19K   189.99K      -202   189.99K   -13.94K
+   14  Chaos Core Set X 210                    x1   730.00K   728.05K    -1.95K   152.89M  -408.45K
+    25  (empty)                                           -          -       -              -               - <- here
    26  Siena's Unbinding Stone                 x1    74.95M   950.00M  +875.05M   950.00M   875.05M
    27  Tempus sndead - Immortal Etherno C        x1         -     4.00M         -     4.00M         -
    28  Palladium Headpiece (DM) | Lua          x1         -     6.41M         -     6.41M         -
    29  ee TUE = t__                            x1         -    10.00M         -    10.00M         -
    30  Life Capsule(Special) Type A X 100        x9         -    30.00K         -     3.00M         -
-    balance now 1.03B, read 2026-09-25T05:29:44
+    balance now 1.03B, read 2026-09-25T05:41:53
        stock at its listed price                                                              1.48B
        Alz, latest balance line                                                               1.03B
        NET WORTH                                                                              2.50B
 
 
-MARKET -- 2026-09-25_032054_run.log, pass 28, log last written 05:30 Central (live)
+MARKET -- 2026-09-25_032054_run.log, pass 31, log last written 05:45 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         2  195.75K  190.00K  -5.75K     -3.0%      0
+Force Core(Highest)         2  195.75K  189.99K  -5.76K     -3.0%      0
 Chaos Core                  5        -        -       -         -      -  holds the most it can want, 5; not priced
 Divine Stone                4        -        -       -         -      -  holds the most it can want, 4; not priced
-Force Core(High)            0  185.18K  185.93K     755      0.4%      0
+Force Core(High)            0  181.36K  185.93K   4.57K      2.5%      0
 Upgrade Core (Ultimate)     0  443.66K  440.00K  -3.66K     -0.8%      0
