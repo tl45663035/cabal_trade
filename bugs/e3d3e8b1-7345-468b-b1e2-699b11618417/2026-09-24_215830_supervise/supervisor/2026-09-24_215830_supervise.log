@@ -1,0 +1,390 @@
+2026-09-24_215830  .\tools\supervise.py --config bot
+  logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-24_215830_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-24_212634_run.log ended: interrupted from the keyboard,21:58:30,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-24_212634_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-24_215844_found.png
+  interrupted: relist row 22: "Siena's Unbinding Stone" x1 at 98,998,784 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the "Siena's Unbinding Stone"; nothing on screen is read to name it
+  frame 2026-09-24_215852_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 22: "Siena's Unbinding Stone" is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-24_215900_reset.png
+   2026-09-24_215901  C:\Users\tl456\Desktop\cabal_trade\src_1080p\driver.py --config bot
+     logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-24_215901_run.log
+     code 797572b
+     screen 1920x1080
+* relaunched (pid 17552),21:59:05,alive
+watching pid 17552, 2026-09-24_215901_run.log
+* server lag: not answering,22:01:17,alive
+* server lag: the server stalled,22:02:03,alive
+* pushed the profit report for bot and all,22:14:08,alive
+* pushed the profit report for bot and all,22:29:11,alive
+* server lag: not answering,22:42:16,alive
+* server lag: the server stalled,22:43:23,alive
+* pushed the profit report for bot and all,22:44:16,alive
+* pushed the profit report for bot and all,22:59:39,alive
+* pushed the profit report for bot and all,23:14:44,alive
+* pushed the profit report for bot and all,23:29:45,alive
+* pushed the profit report for bot and all,23:44:51,alive
+* server lag: not answering,23:52:51,alive
+* server lag: the server stalled,23:53:33,alive
+* server lag: the server stalled,23:53:59,alive
+* server lag: not answering,23:58:22,alive
+* server lag: the server stalled,23:59:29,alive
+* server lag: the server stalled,23:59:51,alive
+* pushed the profit report for bot and all,23:59:59,alive
+  pruned 56 frame(s), reel(s) and dead run(s) from before 2026-09-25
+* stop condition: the panel prices what loaded from (1,1) at 95,998,784, and "Siena's Unbinding Stone" sells near 70,000,000, and 95,998,784 is the price of nothing the,00:10:12,dead
+* the panel prices what loaded from (1,1) at 95,998,784, and "Siena's Unbinding Stone" sells near 70,000,000, and 95,998,784 is the price of nothing the,00:10:16,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-24_215901_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_001029_found.png
+  interrupted: relist row 11: "Siena's Unbinding Stone" x1 at 95,998,784 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the "Siena's Unbinding Stone"; nothing on screen is read to name it
+  frame 2026-09-25_001037_tab4_1slots.png
+$ py src_1080p/driver.py --config bot collect
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-30; 14 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     item                              profit   units  margin        revenue           cost
+     ------------------------------------------------------------------------------------
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 00:10:38, ended 00:12:31, ran for 1m 53s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the "Siena's Unbinding Stone" the log says is there,00:12:31,dead
+$ py src_1080p/driver.py --config bot list 1 1 0 4
+     listed 1 at 95,998,783
+   DONE {"kind": "list", "tab": 4, "slot": [1, 1], "qty": 1, "price": 95998783}
+     done in 9358 ms
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 00:12:33, ended 00:12:46, ran for 13s
+  frame 2026-09-25_001251_tab4_0slots.png
+* finished: list 1 1 0 4 (Siena's Unbinding Stone); 0 slot(s) left,00:12:52,dead
+  frame 2026-09-25_001256_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 11: "Siena's Unbinding Stone" is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-25_001302_reset.png
+   2026-09-25_001304  C:\Users\tl456\Desktop\cabal_trade\src_1080p\driver.py --config bot
+     logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-25_001304_run.log
+     code 797572b
+     screen 1920x1080
+* relaunched (pid 15116),00:13:07,alive
+watching pid 15116, 2026-09-25_001304_run.log
+* pushed the profit report for bot and all,00:23:49,alive
+* server lag: not answering,00:24:10,alive
+* server lag: the server stalled,00:25:15,alive
+* war window, log quiet 150s,00:31:07,alive
+* pushed the profit report for bot and all,00:38:56,alive
+* server lag: not answering,00:44:21,alive
+* server lag: the server stalled,00:45:28,alive
+* server lag: the server stalled,00:45:49,alive
+* server lag: not answering,00:46:10,alive
+* server lag: the server stalled,00:47:16,alive
+* server lag: the server stalled,00:47:40,alive
+* the all report was not written: TimeoutExpired: Command '['git', 'fetch', 'origin', 'main']' timed out after 30 seconds,00:54:30,alive
+* the profit report was written but not pushed: git fetch origin main gave no answer in 30s,00:55:44,alive
+* server lag: the server stalled,00:56:05,alive
+* pushed the profit report for bot and all,01:09:26,alive
+* server lag: not answering,01:16:17,alive
+* server lag: the server stalled,01:16:59,alive
+* server lag: the server stalled,01:17:26,alive
+* pushed the profit report for bot and all,01:24:30,alive
+* the all report was not written: TimeoutExpired: Command '['git', 'fetch', 'origin', 'main']' timed out after 30 seconds,01:39:57,alive
+* pushed the profit report for bot,01:40:01,alive
+* server lag: not answering,01:43:39,alive
+* server lag: the server stalled,01:44:25,alive
+* server lag: the server stalled,01:44:47,alive
+* pushed the profit report for bot and all,01:54:51,alive
+* server lag: not answering,01:56:19,alive
+* server lag: the server stalled,01:57:26,alive
+* server lag: the server stalled,01:57:47,alive
+* server lag: not answering,01:58:32,alive
+* server lag: the server stalled,01:59:14,alive
+* server lag: the server stalled,01:59:41,alive
+* pushed the profit report for bot and all,02:10:02,alive
+* server lag: not answering,02:14:04,alive
+* server lag: the server stalled,02:15:12,alive
+* server lag: not answering,02:18:50,alive
+* server lag: the server stalled,02:19:57,alive
+* server lag: the server stalled,02:20:18,alive
+* pushed the profit report for bot and all,02:25:14,alive
+* server lag: not answering,02:27:46,alive
+* server lag: the server stalled,02:28:54,alive
+* server lag: the server stalled,02:29:15,alive
+* pushed the profit report for bot and all,02:40:26,alive
+* server lag: not answering,02:40:47,alive
+* server lag: the server stalled,02:41:55,alive
+* pushed the profit report for bot and all,02:55:34,alive
+* server lag: not answering,03:06:36,alive
+* server lag: the server stalled,03:07:43,alive
+* server lag: the server stalled,03:08:05,alive
+* server lag: not answering,03:10:18,alive
+* pushed the profit report for bot and all,03:10:49,alive
+* server lag: the server stalled,03:11:31,alive
+* server lag: not answering,03:17:03,dead
+* stop condition: the panel still holds the item, priced 359,967, 3s after Confirmation and 22s of the server not answering; the registration did not go through. Nothin,03:17:03,dead
+* disconnected (run still up),03:17:06,alive
+  frame 2026-09-25_031706_disconnect_seen.png
+* disconnected 8s on; killing pid 15116,03:17:14,dead
+* the panel still holds the item, priced 359,967, 3s after Confirmation and 22s of the server not answering; the registration did not go through. Nothin,03:17:15,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-25_001304_run
+  screen: disconnect=[960, 430], failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_031730_found.png
+  case: disconnect / login / select screen -> recovery.py
+$ py src_1080p/recovery.py
+     the username field at [962, 598]
+     the password field at [962, 639]
+     typed; waiting 10s before Login
+     'Channel 12' at [1558, 627]; entering
+     'Boldy' at [1594, 468]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as Boldy, the balance reads
+* recovered: back in the world,03:18:30,dead
+  frame 2026-09-25_031846_after_login.png
+  interrupted: relist row 13: 'Force Core (Ultimate' x130 at 359,978 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_031855_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 13: 'Force Core (Ultimate' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-25_031903_reset.png
+   2026-09-25_031905  C:\Users\tl456\Desktop\cabal_trade\src_1080p\driver.py --config bot
+     logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-25_031905_run.log
+     code 797572b
+     screen 1920x1080
+* relaunched (pid 11880),03:19:09,alive
+watching pid 11880, 2026-09-25_031905_run.log
+* pushed the profit report for bot and all,03:29:12,alive
+* war window, log quiet 160s,03:32:05,alive
+* pushed the profit report for bot and all,03:44:35,alive
+* stop condition: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.,03:45:20,dead
+* 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.,03:45:20,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-25_031905_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_034537_found.png
+  interrupted: relist row 9: 'Force Core (Ultimate' x91 at 359,951 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_034545_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config bot collect
+     relisting rows 1-30: 0 relisted, 17 empty, 13 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-30; 17 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:45:47, ended 03:47:23, ran for 1m 35s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,03:47:23,dead
+$ py src_1080p/driver.py --config bot list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_034740_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 1 failed: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there; attempt 2 in 60s,03:47:40,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-25_031905_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_034854_found.png
+  interrupted: relist row 9: 'Force Core (Ultimate' x91 at 359,951 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_034902_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config bot collect
+     relisting rows 1-30: 0 relisted, 17 empty, 13 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-30; 17 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:49:03, ended 03:50:38, ran for 1m 35s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,03:50:38,dead
+$ py src_1080p/driver.py --config bot list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_035055_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 2 failed: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there; attempt 3 in 60s,03:50:56,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-25_031905_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_035211_found.png
+  interrupted: relist row 9: 'Force Core (Ultimate' x91 at 359,951 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_035218_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config bot collect
+     relisting rows 1-30: 0 relisted, 17 empty, 13 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-30; 17 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:52:19, ended 03:53:55, ran for 1m 35s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,03:53:55,dead
+$ py src_1080p/driver.py --config bot list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_035412_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery failed 3 times: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there; relogging (1 of 1),03:54:13,dead
+$ py src_1080p/recovery.py --relog
+     the character list is up
+     Inventory shut; pressing I (attempt 1)
+     Inventory shut; pressing I (attempt 2)
+     no login screen; the character list is already up
+     'Boldy' at [1594, 468]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as Boldy, the balance reads
+* relogged: back in the world,03:54:54,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-25_031905_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_035514_found.png
+  interrupted: relist row 9: 'Force Core (Ultimate' x91 at 359,951 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_035523_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config bot collect
+     relisting rows 1-30: 0 relisted, 17 empty, 13 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-30; 17 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:55:24, ended 03:57:02, ran for 1m 37s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,03:57:02,dead
+$ py src_1080p/driver.py --config bot list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_035719_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 1 failed: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there; attempt 2 in 60s,03:57:19,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-25_031905_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_035835_found.png
+  interrupted: relist row 9: 'Force Core (Ultimate' x91 at 359,951 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_035842_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config bot collect
+     relisting rows 1-30: 0 relisted, 17 empty, 13 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-30; 17 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 03:58:44, ended 04:00:18, ran for 1m 34s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,04:00:19,dead
+$ py src_1080p/driver.py --config bot list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_040036_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 2 failed: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there; attempt 3 in 60s,04:00:37,dead
+  kept 95 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-25_031905_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-25_040152_found.png
+  interrupted: relist row 9: 'Force Core (Ultimate' x91 at 359,951 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Force Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-25_040159_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config bot collect
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-30; 19 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     item                              profit   units  margin        revenue           cost
+     ------------------------------------------------------------------------------------
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 04:02:00, ended 04:03:43, ran for 1m 42s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core (Ultimate' the log says is there,04:03:43,dead
+$ py src_1080p/driver.py --config bot list 1 1 0 4
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+  frame 2026-09-25_040400_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* supervisor stopped: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there,04:04:01,dead

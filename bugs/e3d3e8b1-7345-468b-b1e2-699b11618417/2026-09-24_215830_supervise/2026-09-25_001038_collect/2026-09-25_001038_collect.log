@@ -1,0 +1,97 @@
+2026-09-25_001038  C:\Users\tl456\Desktop\cabal_trade\src_1080p\driver.py --config bot collect
+  logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-25_001038_collect.log
+  code 797572b
+  screen 1920x1080
+  ledger C:\Users\tl456\Desktop\cabal_trade\src_1080p\sales.db run 2026-09-25T00:10:38
+  debug frames -> C:\Users\tl456\Desktop\cabal_trade\src_1080p\debug_frames\2026-09-25_001038_collect, indexed in frames.jsonl; earlier runs' frames are kept until the 5,000-frame budget needs the room
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  a repair: not measuring the screen, using the calibration on file
+  calibrated for 1920x1080, measured 2026-09-24T22:04:52
+  server clock 07:10 (+59s for the unshown seconds)
+  server 07:10:59; the next war quiet runs 07:29:00 to 07:34:59, in 18.0 min
+  the Trade window is shut; opening the Agent Shop.
+  inventory already open
+  tab 6 at (1719, 181)
+  right-clicking slot (1,7) at (1811, 236) (attempt 1/3)
+  tab 4 at (1613, 181), so whatever is bought or withdrawn lands there
+  scrolled to the top; row 1 is at position 1
+                                                   bought/u   listed/u  margin      row price
+     1  Force Core (Ultimate               x2             -    368,800       -        368,800
+     2  Epic Booster (Highest)             x4    46,625,000 46,799,998   +0.4%     46,799,998
+    the quantity column read 'Membership', which holds no digits, so it is the end of the name and not a count; reading the row as 'Yekaterina VIP Membership' and letting the panel count what is there
+    one line read 'ene eae 1 113,499,999 OnSale Change'; read as stacked lines it is 'Yekaterina VIP Membership 113,499,999 OnSale Change'
+     3  Yekaterina VIP Membership          x1    111,900,000 113,499,999   +1.4%    113,499,999
+     4  Upgrade Core (Ultimate             x250           -    449,839       -        449,839
+     5  Force Core(Highest                 x1             -    199,767       -        199,767
+     6  Force Core(Highest                 x21            -    199,766       -        199,766
+    the quantity column read 'TAP', which holds no digits, so it is the end of the name and not a count; reading the row as 'Force Core(Highest) TAP' and letting the panel count what is there
+     7  Force Core(Highest) TAP            x1             -    199,765       -        199,765
+     8  Force Core(Highest                 x74            -    199,764       -        199,764
+     9  Upgrade Core (Ultimate             x180           -    449,838       -        449,838
+    10  Upgrade Core (Ultimate             x98            -    449,837       -        449,837
+    12  Chaos Core                         x1             -    649,348       -        649,348
+    13  Force Core(High                    x113           -    195,140       -        195,140
+    14  Force Core(High                    x236           -    195,139       -        195,139
+    15  Force Core(High                    x104           -    195,138       -        195,138
+    16  Force Core (Ultimate               x93            -    368,802       -        368,802
+    17  Force Core (Ultimate               x43            -    368,801       -        368,801
+    18  Chaos Core Set X 24                x1             -    717,916       -     17,230,007
+    19  Chaos Core                         x1             -    649,445       -        649,445
+  scrolled to the top; row 1 is at position 1
+  seeded 18 of rows 1-30
+    the quantity column read 'Membership', which holds no digits, so it is the end of the name and not a count; reading the row as 'Yekaterina VIP Membership' and letting the panel count what is there
+    one line read 'ene eae 1 113,499,999 OnSale Change'; read as stacked lines it is 'Yekaterina VIP Membership 113,499,999 OnSale Change'
+    the quantity column read 'TAP', which holds no digits, so it is the end of the name and not a count; reading the row as 'Force Core(Highest) TAP' and letting the panel count what is there
+  row 11 is empty; nothing to relist
+  row 12 has SOLD (fully); collecting
+    collected; row 12 is empty, nothing to relist
+  row 19 has SOLD (fully); collecting
+    collected; row 19 is empty, nothing to relist
+  row 20 is empty; nothing to relist
+  row 21 is empty; nothing to relist
+  row 22 is empty; nothing to relist
+  row 23 is empty; nothing to relist
+  row 24 is empty; nothing to relist
+  row 25 is empty; nothing to relist
+  row 26 is empty; nothing to relist
+  row 27 is empty; nothing to relist
+  row 28 is empty; nothing to relist
+  row 29 is empty; nothing to relist
+  row 30 is empty; nothing to relist
+
+  relisting rows 1-30: 0 relisted, 14 empty, 16 skipped
+    #          ms   share     n      each  phase
+    1    30,509.0   52.7%    30   1,017.0  scroll to the row and read it
+    2    13,100.5   22.6%    30     436.7  Refresh the table
+    3     7,766.7   13.4%     2   3,883.3  read the row again after collecting
+    4     6,493.1   11.2%     2   3,246.6  collect what sold
+         57,869.3  100.0%
+  collected what sold in rows 1-30; 14 row(s) empty now
+
+PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+  item                              profit   units  margin        revenue           cost
+  ------------------------------------------------------------------------------------
+  SOLD                                   0       0    0.0%              0              0
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 00:10:38, ended 00:12:31, ran for 1m 53s
+
+##############################################################################################
+
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+
+##############################################################################################
+

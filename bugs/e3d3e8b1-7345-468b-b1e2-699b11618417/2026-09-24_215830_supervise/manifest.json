@@ -1,0 +1,1088 @@
+{
+  "supervisor": "2026-09-24_215830_supervise.log",
+  "supervisor_ended": "supervisor stopped: list 1 1 0 4 changed nothing on tab 4; Force Core (Ultimate is still there",
+  "since": "2026-09-24T21:58:30",
+  "machine": "Trung-laptop",
+  "machine_id": "e3d3e8b1-7345-468b-b1e2-699b11618417",
+  "submitted_at": "2026-09-25T08:45:59",
+  "max_frames": 120,
+  "logs": [
+    {
+      "log": "2026-09-24_215901_run",
+      "kind": "run",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "stopped: the panel prices what loaded from (1,1) at 95,998,784, and \"Siena's Unbinding Stone\" sells near 70,000,000, and 95,998,784 is the price of nothing the run trades, so it is a bad read of a known item rather than an unknown one. Nothing has been listed.",
+      "frames": {
+        "kept": 120,
+        "indexed": 4584,
+        "sent": 0
+      },
+      "flagged": {
+        "is the price of nothing": 2
+      },
+      "events": [
+        {
+          "pattern": "is the price of nothing",
+          "line": "STOPPED: the panel prices what loaded from (1,1) at 95,998,784, and \"Siena's Unbinding Stone\" sells near 70,000,000, and 95,998,784 is the price of nothing the run trades, so it is a bad read of a known item rather than an unknown one. Nothing has been listed.",
+          "log": 935096,
+          "near": "2026-09-25T00:10:07.945"
+        },
+        {
+          "pattern": "is the price of nothing",
+          "line": "stopped: the panel prices what loaded from (1,1) at 95,998,784, and \"Siena's Unbinding Stone\" sells near 70,000,000, and 95,998,784 is the price of nothing the run trades, so it is a bad read of a known item rather than an unknown one. Nothing has been listed.",
+          "log": 937861,
+          "near": "2026-09-25T00:10:07.945"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-25_001038_collect",
+      "kind": "collect",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 0,
+        "indexed": 0,
+        "sent": 0
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_001233_list",
+      "kind": "list",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 0,
+        "indexed": 0,
+        "sent": 0
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_001304_run",
+      "kind": "run",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "stopped: the panel still holds the item, priced 359,967, 3s after Confirmation and 22s of the server not answering; the registration did not go through. Nothing is listed.",
+      "frames": {
+        "kept": 4455,
+        "indexed": 5309,
+        "sent": 6
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_031732_recovery",
+      "kind": "recovery",
+      "code": null,
+      "screen": null,
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 15,
+        "indexed": 14,
+        "sent": 8
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_031905_run",
+      "kind": "run",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+      "frames": {
+        "kept": 695,
+        "indexed": 695,
+        "sent": 8
+      },
+      "flagged": {
+        "was typed but the panel shows": 2
+      },
+      "events": [
+        {
+          "pattern": "was typed but the panel shows",
+          "line": "STOPPED: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+          "log": 115583,
+          "near": "2026-09-25T03:45:08.888"
+        },
+        {
+          "pattern": "was typed but the panel shows",
+          "line": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+          "log": 117840,
+          "near": "2026-09-25T03:45:08.888"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-25_034547_collect",
+      "kind": "collect",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 35,
+        "indexed": 35,
+        "sent": 8
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_034724_list",
+      "kind": "list",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+      "frames": {
+        "kept": 7,
+        "indexed": 7,
+        "sent": 7
+      },
+      "flagged": {
+        "was typed but the panel shows": 1
+      },
+      "events": [
+        {
+          "pattern": "was typed but the panel shows",
+          "line": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+          "log": 3115,
+          "near": "2026-09-25T03:47:34.994"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-25_034903_collect",
+      "kind": "collect",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 35,
+        "indexed": 35,
+        "sent": 8
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_035039_list",
+      "kind": "list",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+      "frames": {
+        "kept": 7,
+        "indexed": 7,
+        "sent": 7
+      },
+      "flagged": {
+        "was typed but the panel shows": 1
+      },
+      "events": [
+        {
+          "pattern": "was typed but the panel shows",
+          "line": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+          "log": 3115,
+          "near": "2026-09-25T03:50:50.793"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-25_035219_collect",
+      "kind": "collect",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 35,
+        "indexed": 35,
+        "sent": 8
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_035356_list",
+      "kind": "list",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+      "frames": {
+        "kept": 7,
+        "indexed": 7,
+        "sent": 7
+      },
+      "flagged": {
+        "was typed but the panel shows": 1
+      },
+      "events": [
+        {
+          "pattern": "was typed but the panel shows",
+          "line": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+          "log": 3115,
+          "near": "2026-09-25T03:54:07.559"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-25_035414_recovery",
+      "kind": "recovery",
+      "code": null,
+      "screen": null,
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 12,
+        "indexed": 12,
+        "sent": 8
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_035524_collect",
+      "kind": "collect",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 35,
+        "indexed": 35,
+        "sent": 8
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_035703_list",
+      "kind": "list",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+      "frames": {
+        "kept": 7,
+        "indexed": 7,
+        "sent": 7
+      },
+      "flagged": {
+        "was typed but the panel shows": 1
+      },
+      "events": [
+        {
+          "pattern": "was typed but the panel shows",
+          "line": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+          "log": 3115,
+          "near": "2026-09-25T03:57:14.162"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-25_035844_collect",
+      "kind": "collect",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 35,
+        "indexed": 35,
+        "sent": 8
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_040020_list",
+      "kind": "list",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+      "frames": {
+        "kept": 7,
+        "indexed": 7,
+        "sent": 7
+      },
+      "flagged": {
+        "was typed but the panel shows": 1
+      },
+      "events": [
+        {
+          "pattern": "was typed but the panel shows",
+          "line": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+          "log": 3115,
+          "near": "2026-09-25T04:00:31.520"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-25_040200_collect",
+      "kind": "collect",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 39,
+        "indexed": 39,
+        "sent": 8
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-25_040344_list",
+      "kind": "list",
+      "code": "797572b",
+      "screen": "1920x1080",
+      "reason": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+      "frames": {
+        "kept": 7,
+        "indexed": 7,
+        "sent": 7
+      },
+      "flagged": {
+        "was typed but the panel shows": 1
+      },
+      "events": [
+        {
+          "pattern": "was typed but the panel shows",
+          "line": "stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.",
+          "log": 3115,
+          "near": "2026-09-25T04:03:55.607"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "file": "2026-09-24_215901_run/2026-09-24_215901_run.log",
+      "mb": 0.89
+    },
+    {
+      "file": "2026-09-24_215901_run/2026-09-24_215901_run_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_001038_collect/2026-09-25_001038_collect.log",
+      "mb": 0.01
+    },
+    {
+      "file": "2026-09-25_001038_collect/2026-09-25_001038_collect_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_001233_list/2026-09-25_001233_list.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_001304_run/2026-09-25_001304_run.log",
+      "mb": 1.26
+    },
+    {
+      "file": "2026-09-25_001304_run/2026-09-25_001304_run_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_001304_run/frames/05302_ctrlclick_1479_236.png",
+      "mb": 1.77
+    },
+    {
+      "file": "2026-09-25_001304_run/frames/05303_click_36_384.png",
+      "mb": 1.87
+    },
+    {
+      "file": "2026-09-25_001304_run/frames/05304_click_112_425.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_001304_run/frames/05305_click_59_486.png",
+      "mb": 1.86
+    },
+    {
+      "file": "2026-09-25_001304_run/frames/05306_click_131_754.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_001304_run/frames/05307_click_968_634.png",
+      "mb": 1.72
+    },
+    {
+      "file": "2026-09-25_031732_recovery/2026-09-25_031732_recovery.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_031732_recovery/frames/00008_recovery_server_select.png",
+      "mb": 1.59
+    },
+    {
+      "file": "2026-09-25_031732_recovery/frames/00009_click_1558_627.png",
+      "mb": 1.59
+    },
+    {
+      "file": "2026-09-25_031732_recovery/frames/00010_click_1558_627.png",
+      "mb": 1.59
+    },
+    {
+      "file": "2026-09-25_031732_recovery/frames/00011_recovery_character_select.png",
+      "mb": 1.39
+    },
+    {
+      "file": "2026-09-25_031732_recovery/frames/00012_click_1594_468.png",
+      "mb": 1.38
+    },
+    {
+      "file": "2026-09-25_031732_recovery/frames/00013_recovery_pressed_enter.png",
+      "mb": 1.39
+    },
+    {
+      "file": "2026-09-25_031732_recovery/frames/00014_press_I.png",
+      "mb": 2.99
+    },
+    {
+      "file": "2026-09-25_031732_recovery/frames/00015_recovery_back_in_world.png",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_031905_run/2026-09-25_031905_run.log",
+      "mb": 0.11
+    },
+    {
+      "file": "2026-09-25_031905_run/2026-09-25_031905_run_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_031905_run/frames/00688_click_1101_634.png",
+      "mb": 1.5
+    },
+    {
+      "file": "2026-09-25_031905_run/frames/00689_click_968_634.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-25_031905_run/frames/00690_click_1617_181.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_031905_run/frames/00691_ctrlclick_1479_236.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_031905_run/frames/00692_click_36_384.png",
+      "mb": 1.85
+    },
+    {
+      "file": "2026-09-25_031905_run/frames/00693_click_112_425.png",
+      "mb": 1.85
+    },
+    {
+      "file": "2026-09-25_031905_run/frames/00694_click_59_486.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_031905_run/frames/00695_price_field_disagrees.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_034547_collect/2026-09-25_034547_collect.log",
+      "mb": 0.01
+    },
+    {
+      "file": "2026-09-25_034547_collect/2026-09-25_034547_collect_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_034547_collect/frames/00028_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_034547_collect/frames/00029_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_034547_collect/frames/00030_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_034547_collect/frames/00031_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_034547_collect/frames/00032_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_034547_collect/frames/00033_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_034547_collect/frames/00034_click_833_752.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_034547_collect/frames/00035_click_833_752.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-25_034724_list/2026-09-25_034724_list.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_034724_list/frames/00001_click_288_80.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_034724_list/frames/00002_click_1617_181.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_034724_list/frames/00003_ctrlclick_1479_236.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_034724_list/frames/00004_click_36_384.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_034724_list/frames/00005_click_112_425.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_034724_list/frames/00006_click_59_486.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_034724_list/frames/00007_price_field_disagrees.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_034903_collect/2026-09-25_034903_collect.log",
+      "mb": 0.01
+    },
+    {
+      "file": "2026-09-25_034903_collect/2026-09-25_034903_collect_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_034903_collect/frames/00028_click_833_752.png",
+      "mb": 1.86
+    },
+    {
+      "file": "2026-09-25_034903_collect/frames/00029_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_034903_collect/frames/00030_click_833_752.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-25_034903_collect/frames/00031_click_833_752.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_034903_collect/frames/00032_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_034903_collect/frames/00033_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_034903_collect/frames/00034_click_833_752.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-09-25_034903_collect/frames/00035_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_035039_list/2026-09-25_035039_list.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_035039_list/frames/00001_click_288_80.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_035039_list/frames/00002_click_1617_181.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_035039_list/frames/00003_ctrlclick_1479_236.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-09-25_035039_list/frames/00004_click_36_384.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_035039_list/frames/00005_click_112_425.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_035039_list/frames/00006_click_59_486.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_035039_list/frames/00007_price_field_disagrees.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_035219_collect/2026-09-25_035219_collect.log",
+      "mb": 0.01
+    },
+    {
+      "file": "2026-09-25_035219_collect/2026-09-25_035219_collect_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_035219_collect/frames/00028_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_035219_collect/frames/00029_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_035219_collect/frames/00030_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_035219_collect/frames/00031_click_833_752.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-25_035219_collect/frames/00032_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_035219_collect/frames/00033_click_833_752.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-25_035219_collect/frames/00034_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_035219_collect/frames/00035_click_833_752.png",
+      "mb": 1.77
+    },
+    {
+      "file": "2026-09-25_035356_list/2026-09-25_035356_list.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_035356_list/frames/00001_click_288_80.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_035356_list/frames/00002_click_1617_181.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_035356_list/frames/00003_ctrlclick_1479_236.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-09-25_035356_list/frames/00004_click_36_384.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_035356_list/frames/00005_click_112_425.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_035356_list/frames/00006_click_59_486.png",
+      "mb": 1.85
+    },
+    {
+      "file": "2026-09-25_035356_list/frames/00007_price_field_disagrees.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_035414_recovery/2026-09-25_035414_recovery.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_035414_recovery/frames/00005_logout_character_list.png",
+      "mb": 1.45
+    },
+    {
+      "file": "2026-09-25_035414_recovery/frames/00006_press_I.png",
+      "mb": 1.41
+    },
+    {
+      "file": "2026-09-25_035414_recovery/frames/00007_press_I.png",
+      "mb": 1.41
+    },
+    {
+      "file": "2026-09-25_035414_recovery/frames/00008_recovery_character_list_up.png",
+      "mb": 1.42
+    },
+    {
+      "file": "2026-09-25_035414_recovery/frames/00009_recovery_character_select.png",
+      "mb": 1.42
+    },
+    {
+      "file": "2026-09-25_035414_recovery/frames/00010_click_1594_468.png",
+      "mb": 1.42
+    },
+    {
+      "file": "2026-09-25_035414_recovery/frames/00011_recovery_pressed_enter.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-09-25_035414_recovery/frames/00012_press_I.png",
+      "mb": 2.97
+    },
+    {
+      "file": "2026-09-25_035524_collect/2026-09-25_035524_collect.log",
+      "mb": 0.01
+    },
+    {
+      "file": "2026-09-25_035524_collect/2026-09-25_035524_collect_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_035524_collect/frames/00028_click_833_752.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_035524_collect/frames/00029_click_833_752.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_035524_collect/frames/00030_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_035524_collect/frames/00031_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_035524_collect/frames/00032_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_035524_collect/frames/00033_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_035524_collect/frames/00034_click_833_752.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-25_035524_collect/frames/00035_click_833_752.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-25_035703_list/2026-09-25_035703_list.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_035703_list/frames/00001_click_288_80.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_035703_list/frames/00002_click_1617_181.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_035703_list/frames/00003_ctrlclick_1479_236.png",
+      "mb": 1.76
+    },
+    {
+      "file": "2026-09-25_035703_list/frames/00004_click_36_384.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_035703_list/frames/00005_click_112_425.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_035703_list/frames/00006_click_59_486.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_035703_list/frames/00007_price_field_disagrees.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_035844_collect/2026-09-25_035844_collect.log",
+      "mb": 0.01
+    },
+    {
+      "file": "2026-09-25_035844_collect/2026-09-25_035844_collect_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_035844_collect/frames/00028_click_833_752.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_035844_collect/frames/00029_click_833_752.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_035844_collect/frames/00030_click_833_752.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_035844_collect/frames/00031_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_035844_collect/frames/00032_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_035844_collect/frames/00033_click_833_752.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_035844_collect/frames/00034_click_833_752.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-25_035844_collect/frames/00035_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_040020_list/2026-09-25_040020_list.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_040020_list/frames/00001_click_288_80.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_040020_list/frames/00002_click_1617_181.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_040020_list/frames/00003_ctrlclick_1479_236.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_040020_list/frames/00004_click_36_384.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_040020_list/frames/00005_click_112_425.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_040020_list/frames/00006_click_59_486.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_040020_list/frames/00007_price_field_disagrees.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_040200_collect/2026-09-25_040200_collect.log",
+      "mb": 0.01
+    },
+    {
+      "file": "2026-09-25_040200_collect/2026-09-25_040200_collect_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_040200_collect/frames/00032_click_833_752.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_040200_collect/frames/00033_click_833_752.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_040200_collect/frames/00034_click_833_752.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_040200_collect/frames/00035_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_040200_collect/frames/00036_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_040200_collect/frames/00037_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-25_040200_collect/frames/00038_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-25_040200_collect/frames/00039_click_833_752.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_040344_list/2026-09-25_040344_list.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-25_040344_list/frames/00001_click_288_80.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_040344_list/frames/00002_click_1617_181.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_040344_list/frames/00003_ctrlclick_1479_236.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-25_040344_list/frames/00004_click_36_384.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-25_040344_list/frames/00005_click_112_425.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-25_040344_list/frames/00006_click_59_486.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-25_040344_list/frames/00007_price_field_disagrees.png",
+      "mb": 1.83
+    },
+    {
+      "file": "supervisor/2026-09-24_215830_supervise.log",
+      "mb": 0.03
+    },
+    {
+      "file": "supervisor/supervise.log",
+      "mb": 0.15
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_001029_found.png",
+      "mb": 1.63
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_001037_tab4_1slots.png",
+      "mb": 2.56
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_001251_tab4_0slots.png",
+      "mb": 1.57
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_001256_tab4_0slots.png",
+      "mb": 1.56
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_001302_reset.png",
+      "mb": 3.08
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_031706_disconnect_seen.png",
+      "mb": 1.76
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_031730_found.png",
+      "mb": 1.8
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_031846_after_login.png",
+      "mb": 2.72
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_031855_tab4_0slots.png",
+      "mb": 2.59
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_031903_reset.png",
+      "mb": 3.07
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_034537_found.png",
+      "mb": 1.84
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_034545_tab4_64slots.png",
+      "mb": 2.79
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_034740_tab4_64slots.png",
+      "mb": 1.82
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_034854_found.png",
+      "mb": 1.82
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_034902_tab4_64slots.png",
+      "mb": 2.77
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_035055_tab4_64slots.png",
+      "mb": 1.82
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_035211_found.png",
+      "mb": 1.82
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_035218_tab4_64slots.png",
+      "mb": 2.76
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_035412_tab4_64slots.png",
+      "mb": 1.84
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_035514_found.png",
+      "mb": 2.67
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_035523_tab4_64slots.png",
+      "mb": 2.77
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_035719_tab4_64slots.png",
+      "mb": 1.78
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_035835_found.png",
+      "mb": 1.83
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_035842_tab4_64slots.png",
+      "mb": 2.8
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_040036_tab4_64slots.png",
+      "mb": 1.81
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_040152_found.png",
+      "mb": 1.83
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_040159_tab4_64slots.png",
+      "mb": 2.76
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-25_040400_tab4_64slots.png",
+      "mb": 1.81
+    },
+    {
+      "file": "config.json",
+      "mb": 0.01
+    },
+    {
+      "file": "calibration.json",
+      "mb": 0.05
+    }
+  ],
+  "skipped_over_max_file_mb": []
+}

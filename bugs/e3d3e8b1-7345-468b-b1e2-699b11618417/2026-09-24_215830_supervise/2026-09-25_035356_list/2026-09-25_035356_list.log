@@ -1,0 +1,47 @@
+2026-09-25_035356  C:\Users\tl456\Desktop\cabal_trade\src_1080p\driver.py --config bot list 1 1 0 4
+  logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-25_035356_list.log
+  code 797572b
+  screen 1920x1080
+  ledger C:\Users\tl456\Desktop\cabal_trade\src_1080p\sales.db run 2026-09-25T03:53:56
+  debug frames -> C:\Users\tl456\Desktop\cabal_trade\src_1080p\debug_frames\2026-09-25_035356_list, indexed in frames.jsonl; earlier runs' frames are kept until the 5,000-frame budget needs the room
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  a repair: not measuring the screen, using the calibration on file
+  calibrated for 1920x1080, measured 2026-09-25T03:21:48
+  server clock 10:53 (+59s for the unshown seconds)
+  server 10:53:59; the next war quiet runs 13:29:00 to 13:34:59, in 155.0 min
+  selecting inventory tab 4 before reading slot (1,1)
+  inventory slot (1,1) at (1479, 236)
+    read: current min 359,945, price field 359,945, net sales 359,945, week average 411,299, listed at unread
+    the lowest listed price is 359,945, from the row and 2 more
+    the market 359,945 says 'Force Core (Ultimate)', or something priced like it
+    market 359,945, typing 359,944, 1 under the market
+    net sales 32,754,904 is 91 x 359,944
+  typed 250; the net sales make it 91
+    the panel holds 359,994 against the 359,944 typed
+
+PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+  nothing this run bought has sold yet.
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 03:53:56, ended 03:54:07, ran for 11s
+
+##################################################################################
+
+  ########  ##########    ######    ########    ########    ##########  ########  
+  ########  ##########    ######    ########    ########    ##########  ########  
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+  ######        ##      ##      ##  ########    ########    ########    ##      ##
+  ######        ##      ##      ##  ########    ########    ########    ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+########        ##        ######    ##          ##          ##########  ########  
+########        ##        ######    ##          ##          ##########  ########  
+
+##################################################################################
+  stopped: 359,944 was typed but the panel shows 359,994; the two must match before anything is registered. Nothing has been listed.
+
