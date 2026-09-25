@@ -1,36 +1,24 @@
-LAST 7 DAYS -- 2026-09-18 to 2026-09-24, each day midnight to midnight Central
+LAST 7 DAYS -- 2026-09-19 to 2026-09-25, each day midnight to midnight Central
 
 day                      up time  elapsed   profit  an hour  revenue   cost   units  margin
 -------------------------------------------------------------------------------------------
-Fri 2026-09-18            12.61h   24.00h        0        0        0      0       0      --
 Sat 2026-09-19            11.34h   24.00h        0        0        0      0       0      --
 Sun 2026-09-20            18.19h   24.00h        0        0        0      0       0      --
 Mon 2026-09-21            14.14h   24.00h        0        0        0      0       0      --
 Tue 2026-09-22            15.79h   24.00h        0        0        0      0       0      --
 Wed 2026-09-23            19.99h   24.00h  137.97K    6.90K    6.92M  6.79M      25    2.0%
-Thu 2026-09-24 (so far)   17.91h   23.85h  111.91M    6.25M    7.79B  7.68B  12.44K    1.4%
+Thu 2026-09-24            18.07h   24.00h  111.91M    6.19M    7.79B  7.68B  12.44K    1.4%
+Fri 2026-09-25 (so far)    0.10h    0.10h        0        0        0      0       0      --
 ===========================================================================================
-7 DAYS                   109.96h  167.85h  112.05M    1.02M    7.80B  7.69B  12.46K    1.4%
+7 DAYS                    97.61h  144.10h  112.05M    1.15M    7.80B  7.69B  12.46K    1.4%
 
 
-PROFIT SUMMARY -- sold since 2026-09-24 00:00 Central (as of 23:50 Central)
+PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 00:05 Central)
 
-item                  profit  revenue     cost   units  bought/u   sold/u  margin
----------------------------------------------------------------------------------
-chaoscore             63.06M    5.52B    5.46B   7.59K   718.93K  727.24K    1.1%
-divinestone           22.83M    1.44B    1.42B   2.04K   692.88K  704.04K    1.6%
-upgradecoreultimate   16.84M  517.62M  500.78M   1.13K   443.95K  458.88K    3.3%
-forcecorehigh          9.14M  212.16M  203.01M   1.10K   185.06K  193.40K    4.3%
-forcecorehighest      21.89K  106.00M  105.98M     581   182.41K  182.44K    0.0%
----------------------------------------------------------------------------------
-Cores                 48.84M    2.28B    2.23B   4.85K   459.02K  469.09K    2.1%
-Chaos                 63.06M    5.52B    5.46B   7.59K   718.93K  727.24K    1.1%
-=================================================================================
-TOTAL                111.91M    7.79B    7.68B  12.44K   617.58K  626.58K    1.4%
+  nothing has sold today.
 
 
-
-ROWS -- 2026-09-24_213535_run_board.log, board during pass 91 at row 1, read 2026-09-24T23:50:06 (live)
+ROWS -- 2026-09-24_213535_run_board.log, board during pass 110 at row 1, read 2026-09-25T00:05:39 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Force Core(Highest                    x202         -   199.81K         -   199.81K         - <- here
     2  Chaos Core                              x1   715.00K   714.44K      -556   714.44K      -556
@@ -55,7 +43,7 @@ ROWS -- 2026-09-24_213535_run_board.log, board during pass 91 at row 1, read 202
    26  Siena's Unbinding Stone                 x1    74.60M   950.00M  +875.40M   950.00M   875.40M
    29  Bemonvecnte" TE t__                     x1         -    10.00M         -    10.00M         -
    30  Life Capsule(Special) Type A X 100        x6         -    30.00K         -     3.00M         -
-    balance now 155.28M, read 2026-09-24T23:50:06
+    balance now 155.28M, read 2026-09-25T00:05:39
     held on tab 4, bought and not listed yet:
     Chaos Core Set                     slot (1, 6)         - unit(s)            - a unit
        stock at its listed price                                                              1.79B
@@ -63,12 +51,12 @@ ROWS -- 2026-09-24_213535_run_board.log, board during pass 91 at row 1, read 202
        NET WORTH                                                                              1.95B
 
 
-MARKET -- 2026-09-24_213535_run.log, pass 90, log last written 23:50 Central (live); pass 91 is under way and has not priced the cores yet, so this is the last table it printed
+MARKET -- 2026-09-24_213535_run.log, pass 110, log last written 00:05 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  4  715.96K  717.91K   1.95K      0.3%      0
+Chaos Core                  4  650.00K  717.92K  67.92K      9.5%      5  YES
 Divine Stone                4        -        -       -         -      -  holds the most it can want, 4; not priced
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
