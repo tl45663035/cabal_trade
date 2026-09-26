@@ -8,17 +8,17 @@ Mon 2026-09-21            14.14h   24.00h        0        0        0       0    
 Tue 2026-09-22            15.79h   24.00h        0        0        0       0       0      --
 Wed 2026-09-23            19.99h   24.00h  137.97K    6.90K    6.92M   6.79M      25    2.0%
 Thu 2026-09-24            18.07h   24.00h  111.91M    6.19M    7.79B   7.68B  12.44K    1.4%
-Fri 2026-09-25 (so far)   14.43h   23.12h  338.75M   23.47M   11.16B  10.83B  18.21K    3.0%
+Fri 2026-09-25 (so far)   14.69h   23.37h  338.41M   23.04M   11.25B  10.91B  18.38K    3.0%
 ============================================================================================
-7 DAYS                   111.94h  167.12h  450.79M    4.03M   18.97B  18.52B  30.67K    2.4%
+7 DAYS                   112.19h  167.37h  450.45M    4.01M   19.05B  18.60B  30.84K    2.4%
 
 
-PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 23:07 Central)
+PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 23:22 Central)
 
 item                    profit  revenue     cost   units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------
 chaoscore              222.40M    7.95B    7.73B  10.81K   714.74K  735.30K    2.8%
-upgradecoreultimate     81.69M  790.32M  708.64M   1.62K   436.62K  486.95K   10.3%
+upgradecoreultimate     81.35M  870.86M  789.51M   1.79K   440.58K  485.97K    9.3%
 divinestone             16.41M    1.72B    1.71B   2.41K   707.98K  714.78K    1.0%
 forcecorehigh           15.13M  394.95M  379.82M   2.16K   175.76K  182.76K    3.8%
 forcecorehighest         3.12M  212.07M  208.95M   1.08K   194.01K  196.91K    1.5%
@@ -26,36 +26,36 @@ materialcorepalladium        0   28.16M   28.16M     120   234.69K  234.69K    0
 wexpsaver                    0   62.63M   62.63M       1    62.63M   62.63M    0.0%
 archridiumsuitdmi           -5    1.69M    1.69M       1     1.69M    1.69M   -0.0%
 -----------------------------------------------------------------------------------
-Cores                  116.34M    3.21B    3.10B   7.39K   418.87K  434.60K    3.6%
+Cores                  116.00M    3.29B    3.18B   7.56K   420.20K  435.54K    3.5%
 Chaos                  222.40M    7.95B    7.73B  10.81K   714.74K  735.30K    2.8%
 ===================================================================================
-TOTAL                  338.75M   11.16B   10.83B  18.21K   594.57K  613.18K    3.0%
+TOTAL                  338.41M   11.25B   10.91B  18.38K   593.50K  611.92K    3.0%
 
 
 
-ROWS -- 2026-09-25_230200_run_board.log, board during pass 1 at row 25, read 2026-09-25T23:06:59 (live)
+ROWS -- 2026-09-25_230200_run_board.log, board during pass 8 at row 25, read 2026-09-25T23:22:08 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Honor Medal Chest                       x2         -   211.22M         -   211.22M         -
-    2  Palladium Headpiece (DM) | Lua          x1         -     4.02M         -     4.02M         -
-    3  Wexp Saver                              x1         -    62.62M         -    62.62M         -
-    4  Upgrade Core (Ultimate                x169         -   476.56K         -   476.56K         -
-    5  Upgrade Core (Ultimate                x178         -   476.56K         -   476.56K         -
+    1  Honor Medal Chest                       x2         -   211.17M         -   211.17M         -
+    2  Palladium Headpiece (DM) i              x1         -     3.97M         -     3.97M         -
+    3  Wexp Saver                              x1         -    62.57M         -    62.57M         -
+    4  Upgrade Core (Ultimate                x178         -   476.56K         -   476.56K         -
+    5  Chaos Core Set X 144                    x1   710.28K   749.72K   +39.44K   107.96M     5.68M
     25  (empty)                                           -          -       -              -               - <- here
    26  Siena's Unbinding Stone                 x1    84.00M   900.00M  +816.00M   900.00M   816.00M
    28  Nendpiece (Wi) = (anal                  x1         -    20.00M         -    20.00M         -
    30  Life Capsule(Special) Type A X 100        x9         -    30.00K         -     3.00M         -
-    balance now 2.24B, read 2026-09-25T23:06:14
-       stock at its listed price                                                            654.43M
-       Alz, latest balance line                                                               2.24B
-       NET WORTH                                                                              2.89B
+    balance now 2.22B, read 2026-09-25T23:20:17
+       stock at its listed price                                                            681.65M
+       Alz, latest balance line                                                               2.22B
+       NET WORTH                                                                              2.90B
 
 
-MARKET -- 2026-09-25_230200_run.log, pass 1, log last written 23:07 Central (live)
+MARKET -- 2026-09-25_230200_run.log, pass 8, log last written 23:22 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
--------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  194.94K  195.00K      59      0.0%      0
-Chaos Core                  1  706.10K  749.72K  43.62K      5.8%      6  YES
-Divine Stone                3  714.80K  715.17K     373      0.1%      0
+--------------------------------------------------------------------------------
+Force Core(Highest)         0  194.35K  195.00K     648      0.3%      0
+Chaos Core                  1  750.00K  749.72K    -281     -0.0%      0
+Divine Stone                0  714.80K  715.17K     373      0.1%      0
 Force Core(High)            0  183.16K  183.00K    -164     -0.1%      0
-Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
+Upgrade Core (Ultimate)     1  478.57K  476.56K  -2.01K     -0.4%      0
