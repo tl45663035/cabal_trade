@@ -1011,17 +1011,16 @@ class RowModel:
         if market:
             named, sure = identify_by_market(market)
             floor = calibration.price_floor(named)[0] if named and sure else 0
+            if named is None and expect_item:
+                named, sure = expect_item, True
+                floor = calibration.price_floor(expect_item)[0]
+                say(f"    {market:,} matches nothing else the run trades, so "
+                    f"it goes out as {expect_item!r} at its own market")
             price = max(calibration.undercut(market), floor)
             if cost and price < cost:
-                raise WrongItem(
-                    f"{seen}, and nothing it resolves to would go out above "
-                    f"{price:,}, under the {cost:,} the stock in tab "
-                    f"{WORK_TAB} cost. Nothing has been listed.")
-            if named is None and expect_item:
-                raise WrongItem(
-                    f"{seen}, and {market:,} is the price of nothing the run "
-                    f"trades, so it is a bad read of a known item rather "
-                    f"than an unknown one. Nothing has been listed.")
+                say(f"    {price:,} is under the {cost:,} the stock in tab "
+                    f"{WORK_TAB} cost; it goes out at its own market all the "
+                    f"same")
             label = repr(named) if named else "nothing the run trades"
             say(f"    the market {market:,} says {label}"
                 + ("" if sure else ", or something priced like it")
@@ -1368,13 +1367,16 @@ class RowModel:
                     f"{market:,}, and {expect_item!r} sells near "
                     f"{int(expect_market):,}")
             if not resolve:
-                raise WrongItem(f"{seen}. Nothing has been listed.")
-            resolved = self._resolve_loaded(market, expect_item, None, seen,
-                                            verbose, cost_guard)
-            price, floor, why = (resolved["price"], resolved["floor"],
-                                 resolved["why"])
-            expect_item, unit_market, price_each, listed_at = (
-                resolved["item"], None, None, None)
+                if verbose:
+                    print(f"    {seen}; listing what loaded at its own "
+                          f"market all the same")
+            else:
+                resolved = self._resolve_loaded(market, expect_item, None,
+                                                seen, verbose, cost_guard)
+                price, floor, why = (resolved["price"], resolved["floor"],
+                                     resolved["why"])
+                expect_item, unit_market, price_each, listed_at = (
+                    resolved["item"], None, None, None)
         elif (expect_item is None and price is None and price_each is None
               and market and resolve):
             named, sure = identify_by_market(market)
