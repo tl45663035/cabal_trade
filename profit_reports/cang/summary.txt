@@ -8,12 +8,12 @@ Mon 2026-09-21            14.14h   24.00h        0        0        0       0    
 Tue 2026-09-22            15.79h   24.00h        0        0        0       0       0      --
 Wed 2026-09-23            19.99h   24.00h  137.97K    6.90K    6.92M   6.79M      25    2.0%
 Thu 2026-09-24            18.07h   24.00h  111.91M    6.19M    7.79B   7.68B  12.44K    1.4%
-Fri 2026-09-25 (so far)   14.69h   23.37h  338.41M   23.04M   11.25B  10.91B  18.38K    3.0%
+Fri 2026-09-25 (so far)   14.94h   23.63h  338.41M   22.65M   11.25B  10.91B  18.38K    3.0%
 ============================================================================================
-7 DAYS                   112.19h  167.37h  450.45M    4.01M   19.05B  18.60B  30.84K    2.4%
+7 DAYS                   112.45h  167.63h  450.45M    4.01M   19.05B  18.60B  30.84K    2.4%
 
 
-PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 23:22 Central)
+PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 23:37 Central)
 
 item                    profit  revenue     cost   units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------
@@ -33,29 +33,28 @@ TOTAL                  338.41M   11.25B   10.91B  18.38K   593.50K  611.92K    3
 
 
 
-ROWS -- 2026-09-25_230200_run_board.log, board during pass 8 at row 25, read 2026-09-25T23:22:08 (live)
+ROWS -- 2026-09-25_230200_run_board.log, board during pass 15 at row 1, read 2026-09-25T23:37:26 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Honor Medal Chest                       x2         -   211.17M         -   211.17M         -
-    2  Palladium Headpiece (DM) i              x1         -     3.97M         -     3.97M         -
-    3  Wexp Saver                              x1         -    62.57M         -    62.57M         -
+    1  Honor Medal Chest                       x2         -   211.10M         -   211.10M         - <- here
+    2  Palladium Headpiece (DM) i              x1         -     3.91M         -     3.91M         -
+    3  Wexp Saver                              x1         -    62.51M         -    62.51M         -
     4  Upgrade Core (Ultimate                x178         -   476.56K         -   476.56K         -
     5  Chaos Core Set X 144                    x1   710.28K   749.72K   +39.44K   107.96M     5.68M
-    25  (empty)                                           -          -       -              -               - <- here
    26  Siena's Unbinding Stone                 x1    84.00M   900.00M  +816.00M   900.00M   816.00M
    28  Nendpiece (Wi) = (anal                  x1         -    20.00M         -    20.00M         -
    30  Life Capsule(Special) Type A X 100        x9         -    30.00K         -     3.00M         -
-    balance now 2.22B, read 2026-09-25T23:20:17
-       stock at its listed price                                                            681.65M
+    balance now 2.22B, read 2026-09-25T23:37:00
+       stock at its listed price                                                            681.39M
        Alz, latest balance line                                                               2.22B
        NET WORTH                                                                              2.90B
 
 
-MARKET -- 2026-09-25_230200_run.log, pass 8, log last written 23:22 Central (live)
+MARKET -- 2026-09-25_230200_run.log, pass 15, log last written 23:37 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 --------------------------------------------------------------------------------
 Force Core(Highest)         0  194.35K  195.00K     648      0.3%      0
-Chaos Core                  1  750.00K  749.72K    -281     -0.0%      0
+Chaos Core                  1  742.97K  749.72K   6.74K      0.9%      3  YES
 Divine Stone                0  714.80K  715.17K     373      0.1%      0
 Force Core(High)            0  183.16K  183.00K    -164     -0.1%      0
 Upgrade Core (Ultimate)     1  478.57K  476.56K  -2.01K     -0.4%      0
