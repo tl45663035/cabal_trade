@@ -2,6 +2,8 @@ import ctypes
 import re
 import time
 
+from PIL import Image, ImageStat
+
 import calibration
 import ledger
 import open_inventory as inv
@@ -321,6 +323,16 @@ def warm_money(image, box):
         prepared, calibration.ROW_PSM, calibration.DIGIT_WHITELIST))
 
 
+def only_boxes(image, boxes):
+    band = (min(b[0] for b in boxes), min(b[1] for b in boxes),
+            max(b[2] for b in boxes), max(b[3] for b in boxes))
+    fill = tuple(int(v) for v in ImageStat.Stat(image.crop(band)).median)
+    kept = Image.new(image.mode, image.size, fill)
+    for box in boxes:
+        kept.paste(image.crop(tuple(box)), tuple(box[:2]))
+    return kept
+
+
 def _asking(image, panel):
     rows = panel["suggestion_boxes"]
     field = tuple(panel["price_field"])
@@ -331,7 +343,7 @@ def _asking(image, panel):
     live = [box for box, _warm in wanted if box]
     band = (min(b[0] for b in live), min(b[1] for b in live),
             max(b[2] for b in live), max(b[3] for b in live))
-    spans = calibration.ocr_spans(image, band)
+    spans = calibration.ocr_spans(only_boxes(image, live), band)
     out = []
     for box, warm in wanted:
         if box is None:

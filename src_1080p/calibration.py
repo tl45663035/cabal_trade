@@ -242,6 +242,7 @@ PANEL_DIFF_THRESHOLD = _S["detect"]["panel_diff_threshold"]
 PANEL_ITEM_HALF = int(_S["detect"]["panel_item_half"])
 PANEL_LABEL_GAP = _S["detect"]["panel_label_gap"]
 PANEL_LABEL_PAD = _S["detect"]["panel_label_pad"]
+PANEL_ALZ_GAP = _S["detect"]["panel_alz_gap"]
 CLEAR_PRESSES_QTY = _S["detect"]["clear_presses_qty"]
 CLEAR_PRESSES_PRICE = _S["detect"]["clear_presses_price"]
 KEY_GAP = _S["timing"]["key_gap"]
@@ -3130,18 +3131,22 @@ def calibrate_panel(verbose=True):
 
     left = box[0] + PANEL_FIELD_INSET
     right = alz[0] + PANEL_LABEL_GAP
+    alz_right = next(edge for t, _c, point, edge in spans
+                     if tuple(point) == tuple(alz))
+    alz_wide = 2 * (alz_right - alz[0])
 
     def ends_at_label(y):
         here = [edge for t, _c, point, edge in spans
                 if re.search(_ALZ_WORD, t, re.IGNORECASE)
                 and abs(point[1] - y) <= PANEL_FIELD_HALF]
-        return min(box[2], max(here) + PANEL_LABEL_PAD) if here else right
+        return (max(here) - alz_wide - PANEL_ALZ_GAP) if here else right
 
     out = {
         "panel_box": list(box),
         "price_field": [box[0] + PANEL_PRICE_INSET,
                         alz[1] - PANEL_FIELD_HALF - PANEL_PRICE_LIFT,
-                        right, alz[1] + PANEL_FIELD_HALF - PANEL_PRICE_LIFT],
+                        alz_right - alz_wide - PANEL_ALZ_GAP,
+                        alz[1] + PANEL_FIELD_HALF - PANEL_PRICE_LIFT],
         "price_point": [(left + right) // 2, alz[1]],
         "qty_point": [qty[0], qty[1]],
         "qty_box": [left, qty[1] - PANEL_FIELD_HALF,
