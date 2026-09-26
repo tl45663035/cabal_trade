@@ -8,12 +8,12 @@ Mon 2026-09-21            15.04h   24.00h  128.47M    8.54M    7.73B   7.60B  12
 Tue 2026-09-22            18.43h   24.00h  325.00M   17.64M   12.70B  12.37B  18.88K    2.6%
 Wed 2026-09-23             8.79h   24.00h  -17.79M   -2.02M    3.82B   3.84B   6.58K   -0.5%
 Thu 2026-09-24            16.55h   24.00h  177.51M   10.73M   13.47B  13.29B  23.14K    1.3%
-Fri 2026-09-25 (so far)    9.53h   23.18h  257.65M   27.04M   11.66B  11.40B  19.47K    2.2%
+Fri 2026-09-25 (so far)    9.78h   23.43h  257.65M   26.34M   11.66B  11.40B  19.47K    2.2%
 ============================================================================================
-7 DAYS                    82.97h  167.18h    1.39B   16.76M   59.43B  58.03B  94.99K    2.3%
+7 DAYS                    83.22h  167.43h    1.39B   16.71M   59.43B  58.03B  94.99K    2.3%
 
 
-PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 23:10 Central)
+PROFIT SUMMARY -- sold since 2026-09-25 00:00 Central (as of 23:25 Central)
 
 item                   profit  revenue     cost   units  bought/u   sold/u  margin
 ----------------------------------------------------------------------------------
@@ -35,9 +35,9 @@ TOTAL                 257.65M   11.66B   11.40B  19.47K   585.43K  598.66K    2.
 
 
 
-ROWS -- 2026-09-25_210443_run_board.log, board during pass 1 at row 27, read 2026-09-25T21:10:25 (live)
+ROWS -- 2026-09-25_210443_run_board.log, board during pass 6 at row 1, read 2026-09-25T21:25:42 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Force Core(Highest                     x50         -   195.49K         -   195.49K         -
+    1  Force Core(Highest                     x50         -   195.49K         -   195.49K         - <- here
     2  Armor Account bind Seal Stone           x2   210.00M   210.00M        +0   210.00M         0
     3  Force Core (Ultimate                   x34         -   374.84K         -   374.84K         -
     4  Arionell                                x1   315.00M   315.00M        +0   315.00M         0
@@ -49,23 +49,21 @@ ROWS -- 2026-09-25_210443_run_board.log, board during pass 1 at row 27, read 202
    10  Palladium Headpiece(BL) (anal (ana        x1         -     1.78M         -     1.78M         -
    11  Palladium Headgear(FB) Lalla            x2         -   989.00K         -   989.00K         -
    12  Palladium Boots(FA) Lalla               x2         -     1.30M         -     1.30M         -
-   13  Palladium Headpiece(WI1) (anal (an        x1         -     1.12M         -     1.12M         -
+   13  Palladium Headpiece(WI1) (anal (an        x1         -     1.08M         -     1.08M         -
    14  Force Core (Ultimate                   x26         -   374.84K         -   374.84K         -
-    27  (empty)                                           -          -       -              -               - <- here
    28  Palladium Headgear(FA) (anal (anal        x1         -     3.22M         -     3.22M         -
    30  Palladium Suit (DM) + 1 Lalla           x1         -    33.00M         -    33.00M         -
-    balance now 1.71B, read 2026-09-25T21:07:14
+    balance now 1.71B, read 2026-09-25T21:25:42
        stock at its listed price                                                              1.21B
        Alz, latest balance line                                                               1.71B
        NET WORTH                                                                              2.91B
 
 
-MARKET -- 2026-09-25_210443_run.log, pass 1, log last written 23:10 Central (live)
+MARKET -- 2026-09-25_210443_run.log, pass 6, log last written 23:25 Central (live)
 
-core                     rows    buy/u   sell/u  margin  margin %  wants  short?
--------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  0  707.00K  749.72K  42.72K      5.7%      6  YES
-Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
-Force Core(High)            0  183.16K  183.00K    -164     -0.1%      0
-Upgrade Core (Ultimate)     0  478.57K  476.56K  -2.01K     -0.4%      0
+core                   rows    buy/u   sell/u  margin  margin %  wants  short?
+-----------------------------------------------------------------------------------------------------------------
+Force Core(Highest)       3        -        -       -         -      -  holds the most it can want, 3; not priced
+Chaos Core                0  748.28K  749.72K   1.44K      0.2%      0
+Force Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
+Force Core(High)          0  183.16K  183.00K    -164     -0.1%      0
