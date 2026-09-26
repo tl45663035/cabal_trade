@@ -1,6 +1,13 @@
+import base64
 import ctypes
+import io
+import json
+import queue
 import re
+import subprocess
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from PIL import Image, ImageStat
 
@@ -62,9 +69,17 @@ PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
 PRICE_RECHECKS = int(_SHARED["detect"]["price_rechecks"])
 PRICE_SLACK = int(_SHARED["detect"]["price_agree_slack"])
 PRICE_WITNESSES = int(_SHARED["detect"]["price_witnesses"])
+_BACKUP = _SHARED["ocr"]
+BACKUP_PYTHON = calibration.HERE / _BACKUP["backup_python"]
+BACKUP_READER = calibration.HERE / _BACKUP["backup_reader"]
+BACKUP_MODEL = _BACKUP["backup_model"]
+BACKUP_SCALE = int(_BACKUP["backup_scale"])
+BACKUP_START_TIMEOUT = _BACKUP["backup_start_timeout"]
+BACKUP_TIMEOUT = _BACKUP["backup_timeout"]
 PRICE_TRUST = int(_SHARED["run"]["price_trust_multiple"])
 ITEM_CHECK = float(_SHARED["run"]["item_check_factor"])
 PANEL_REREAD_GAP = _T["panel_reread_gap"]
+RECEIPT_SETTLE = _T["receipt_settle"]
 PANEL_POLL_GAP = _T["panel_poll_gap"]
 PANEL_ITEM_HALF = int(_SHARED["detect"]["panel_item_half"])
 NET_SALES_NUDGES = _SHARED["detect"]["net_sales_nudges"]
@@ -442,6 +457,103 @@ def _agreed(asked, filled, average, listed_at, verbose, net=None):
     return value
 
 
+_reader = {"proc": None, "lines": None, "failed": None}
+
+
+def _backup_reader():
+    proc = _reader["proc"]
+    if proc is not None and proc.poll() is None:
+        return _reader["lines"]
+    if _reader["failed"]:
+        return None
+    if not BACKUP_PYTHON.exists():
+        _reader["failed"] = f"PaddleOCR is not set up at {BACKUP_PYTHON}"
+        return None
+    proc = subprocess.Popen(
+        [str(BACKUP_PYTHON), str(BACKUP_READER), BACKUP_MODEL],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL, text=True, encoding="utf-8",
+        creationflags=subprocess.CREATE_NO_WINDOW)
+    lines = queue.Queue()
+
+    def pump():
+        for line in proc.stdout:
+            lines.put(line)
+        lines.put(None)
+
+    threading.Thread(target=pump, daemon=True).start()
+    try:
+        ready = lines.get(timeout=BACKUP_START_TIMEOUT)
+    except queue.Empty:
+        ready = None
+    if not ready:
+        proc.kill()
+        _reader["failed"] = (f"PaddleOCR did not start within "
+                             f"{BACKUP_START_TIMEOUT}s")
+        return None
+    _reader["proc"], _reader["lines"] = proc, lines
+    return lines
+
+
+def backup_money(image, boxes):
+    lines = _backup_reader()
+    if lines is None:
+        return None
+    prepared = [calibration.isolate_digits(image, tuple(box), BACKUP_SCALE)
+                if box else None for box in boxes]
+    crops = []
+    for digits in (p for p in prepared if p is not None):
+        buf = io.BytesIO()
+        digits.convert("RGB").save(buf, "PNG")
+        crops.append(base64.b64encode(buf.getvalue()).decode("ascii"))
+    proc = _reader["proc"]
+    try:
+        proc.stdin.write(json.dumps(crops) + "\n")
+        proc.stdin.flush()
+        answer = lines.get(timeout=BACKUP_TIMEOUT)
+    except (OSError, queue.Empty):
+        answer = None
+    if not answer:
+        proc.kill()
+        _reader["proc"] = None
+        _reader["failed"] = (f"PaddleOCR did not answer within "
+                             f"{BACKUP_TIMEOUT}s")
+        return None
+    read = iter(calibration._digits(text) for text, _score in json.loads(answer))
+    return [next(read) if p is not None else None for p in prepared]
+
+
+def _disputed(asked, filled, net):
+    core = [v for v in (asked, filled, net)
+            if v and v >= MIN_PLAUSIBLE_PRICE]
+    return len(core) == PRICE_WITNESSES or (
+        len(core) > 1 and not all(_same_price(core[0], v) for v in core[1:]))
+
+
+def _read_and_agree(panel, listed_at, verbose):
+    image = calibration.grab()
+    asked, filled, net, average = _asking(image, panel)
+    value = _agreed(asked, filled, average, listed_at, verbose, net)
+    if value is not None or not _disputed(asked, filled, net):
+        return value
+    rows = panel["suggestion_boxes"]
+    boxes = [rows[-1], panel["price_field"], panel.get("net_sales_box"),
+             rows[0] if len(rows) > 1 else None]
+    started = time.perf_counter()
+    again = backup_money(image, boxes)
+    if again is None:
+        if verbose:
+            print(f"    the reads disagree and "
+                  f"{_reader['failed'] or 'PaddleOCR did not answer'}; "
+                  f"nothing is typed from this read")
+        return None
+    if verbose:
+        print(f"    the reads disagree; PaddleOCR read all four again "
+              f"in {(time.perf_counter() - started) * 1000:.0f} ms")
+    p_asked, p_filled, p_net, p_average = again
+    return _agreed(p_asked, p_filled, p_average, listed_at, verbose, p_net)
+
+
 def panel_standing():
     asked, filled, _net, _average = _asking(calibration.grab(), _panel())
     for value in (filled, asked):
@@ -500,14 +612,12 @@ def suggested_price(verbose=False, listed_at=None):
     panel = _panel()
     box = tuple(panel["suggestion_boxes"][-1])
     radio = (box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
-    asked, filled, net, average = _asking(calibration.grab(), panel)
-    value = _agreed(asked, filled, average, listed_at, verbose, net)
+    value = _read_and_agree(panel, listed_at, verbose)
     calibration.click(*radio, settle=0.0)
     calibration.park(settle=False)
     time.sleep(FIELD_SETTLE)
     if value is None:
-        asked, filled, net, average = _asking(calibration.grab(), panel)
-        value = _agreed(asked, filled, average, listed_at, verbose, net)
+        value = _read_and_agree(panel, listed_at, verbose)
     if value is None and verbose:
         print(f"    the lowest listed price would not read")
     return value
@@ -609,11 +719,7 @@ def row_button_text(image=None, seat=FIRST_SEAT):
                     calibration.ocr(image, row_button_box(seat)))
 
 
-def row_function(text=None, seat=FIRST_SEAT):
-    seen = row_button(seat=seat)
-    if seen is not None:
-        return seen
-    text = read_row(seat) if text is None else text
+def _function_in(text):
     key = _key(text)
     for word in (RECEIPT_WORD, CHANGE_WORD, REGISTER_WORD):
         if _key(word) in key:
@@ -621,26 +727,35 @@ def row_function(text=None, seat=FIRST_SEAT):
     return None
 
 
+def row_function(text=None, seat=FIRST_SEAT):
+    seen = row_button(seat=seat)
+    if seen is not None:
+        return seen
+    return _function_in(read_row(seat) if text is None else text)
+
+
 def row_complete(text=None, seat=FIRST_SEAT):
     text = read_row(seat) if text is None else text
     return _key(STATUS_COMPLETE) in _key(text)
 
 
+def _dialog_button_seen(word, image):
+    known = remembered(word)
+    if known is not None:
+        return button_here(word, known, image)
+    want = _key(word)
+    return any(_key(t) == want
+               for t, _c, _p in calibration.ocr(
+                   image, calibration._box(calibration.DIALOG_BUTTONS_F)))
+
+
 def dialog_buttons(image=None):
     image = image if image is not None else calibration.grab()
-    seen = []
-    for word in (DISMISS_WORD, CONFIRM_WORD, RECEIPT_WORD):
-        known = remembered(word)
-        if known is not None:
-            if button_here(word, known, image):
-                seen.append(word)
-            continue
-        want = _key(word)
-        if any(_key(t) == want
-               for t, _c, _p in calibration.ocr(
-                   image, calibration._box(calibration.DIALOG_BUTTONS_F))):
-            seen.append(word)
-    return seen
+    words = (DISMISS_WORD, CONFIRM_WORD, RECEIPT_WORD)
+    with ThreadPoolExecutor(max_workers=len(words)) as pool:
+        found = list(pool.map(lambda word: _dialog_button_seen(word, image),
+                              words))
+    return [word for word, here in zip(words, found) if here]
 
 
 def underprice_warning(image=None):
@@ -733,7 +848,7 @@ def read_row_stacked(seat=FIRST_SEAT):
 def row_is_empty(text=None, seat=FIRST_SEAT):
     text = read_row(seat) if text is None else text
     key = _key(text)
-    return (not key) or EMPTY_MARKER in key
+    return (not key) or EMPTY_MARKER in key or key == _key(REGISTER_WORD)
 
 
 def _wheel_event(direction):
@@ -1088,7 +1203,7 @@ class RowModel:
             "lands_in_slot": landing,
         }
 
-    def receive(self, index, verbose=True):
+    def receive(self, index, verbose=True, complete=False):
         import get_alz
         listed = self._slots.get(index)
         before_alz = get_alz.read_balance()
@@ -1104,6 +1219,11 @@ class RowModel:
         if verbose:
             print(f"  Confirm Receipt: accepting at {accept}")
         calibration.click(*accept)
+        if complete:
+            calibration.park(settle=False)
+            time.sleep(RECEIPT_SETTLE)
+            self._book(index, listed, before_alz, verbose)
+            return True
         calibration.park()
         if not dialog_gone():
             raise Divergence(
@@ -1163,39 +1283,49 @@ class RowModel:
                   f"({attempt + 1} of {GAME_WAIT_RETRIES})")
         self.reopen_after_wait(verbose=verbose)
 
-    def cancel(self, index, verbose=True, tab_ready=False):
+    def cancel(self, index, verbose=True, tab_ready=False, tab_selected=False):
         attempt = 0
         while True:
             try:
                 return self._cancel(index, verbose=verbose,
-                                    tab_ready=tab_ready and not attempt)
+                                    tab_ready=tab_ready and not attempt,
+                                    tab_selected=tab_selected and not attempt)
             except GameSaysWait:
                 self.again_after_wait(f"cancelling row {index}", attempt,
                                       verbose=verbose)
                 attempt += 1
 
-    def _cancel(self, index, verbose=True, tab_ready=False):
+    def _cancel(self, index, verbose=True, tab_ready=False,
+                tab_selected=False):
         index = int(index)
         expected = self._slots.get(index)
         if expected is None:
             raise ValueError(f"row {index} is empty in the model; refusing to "
                              f"cancel a slot nothing is listed in")
-        if self.scroll_to(index, verbose=verbose):
-            time.sleep(TAB_SETTLE)
+        with calibration.step("scroll to the row again"):
+            if self.scroll_to(index, verbose=verbose)["moved"]:
+                time.sleep(TAB_SETTLE)
 
         seat = self._seat
         position = seat_position(seat)
-        seen = read_row(seat)
-        action = row_function(seen, seat)
+        with calibration.step("read the row and its button again"):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                reading = pool.submit(read_row, seat)
+                pressing = pool.submit(row_button, None, seat)
+                seen = reading.result()
+                action = pressing.result()
+            if action is None:
+                action = _function_in(seen)
         if action == RECEIPT_WORD:
             complete = row_complete(seen, seat)
             if verbose:
                 print(f"  row {index} has SOLD "
                       f"({'fully' if complete else 'partially'}); collecting "
                       f"before anything else")
-            self.receive(index, verbose=verbose)
-            time.sleep(TAB_SETTLE)
-            seen = read_row(seat)
+            self.receive(index, verbose=verbose, complete=complete)
+            if not complete:
+                time.sleep(TAB_SETTLE)
+                seen = read_row(seat)
             if complete or row_function(seen, seat) == REGISTER_WORD:
                 if verbose:
                     print(f"  row {index} is empty after the collection; "
@@ -1205,6 +1335,7 @@ class RowModel:
         if action == REGISTER_WORD:
             raise Divergence(
                 f"row {index} is empty on screen; nothing to cancel.")
+        checking = time.perf_counter()
         if not expected.key or not same_item(expected.name, seen):
             stacked = read_row_stacked(seat)
             if not expected.key or not same_item(expected.name, stacked):
@@ -1218,42 +1349,56 @@ class RowModel:
                       f"read as stacked lines it is {expected.name!r}")
         if verbose:
             print(f"  row {index} at position {position}: {seen!r}")
+        calibration._STEPS.append(("check the row is the one the run listed",
+                                   (time.perf_counter() - checking) * 1000))
 
-        show_work_tab(verbose=verbose, already=tab_ready)
+        if not tab_selected:
+            with calibration.step(f"select inventory tab {WORK_TAB} before "
+                                  f"{CHANGE_WORD}"):
+                show_work_tab(verbose=verbose, already=tab_ready)
 
         point = button_point(seat)
         if verbose:
             print(f"  {CHANGE_WORD} at {point}")
-        inv._user32.SetCursorPos(*point)
-        time.sleep(ACTION_GAP)
-        calibration.click(*point, settle=0.0)
+        with calibration.step(f"hover over {CHANGE_WORD} and click it"):
+            inv._user32.SetCursorPos(*point)
+            time.sleep(ACTION_GAP)
+            calibration.click(*point, settle=0.0)
 
-        dismiss = find_button(DISMISS_WORD)
+        with calibration.step(f"find {DISMISS_WORD}"):
+            dismiss = find_button(DISMISS_WORD)
         if dismiss is None:
             raise Divergence(
                 f"no {DISMISS_WORD} button appeared after clicking "
                 f"{CHANGE_WORD} on row {index}. Nothing has been cancelled.")
         if verbose:
             print(f"  {DISMISS_WORD} at {dismiss}")
-        calibration.click(*dismiss, settle=0.0)
+        with calibration.step(f"click {DISMISS_WORD}"):
+            calibration.click(*dismiss, settle=0.0)
 
-        confirm = find_button(CONFIRM_WORD)
+        with calibration.step(f"find {CONFIRM_WORD}"):
+            confirm = find_button(CONFIRM_WORD)
         if confirm is None:
             raise Divergence(
                 f"no {CONFIRM_WORD} button appeared after {DISMISS_WORD} on "
                 f"row {index}. The dialog is still open; nothing committed.")
         if verbose:
             print(f"  {CONFIRM_WORD} at {confirm}")
-        calibration.click(*confirm, settle=0.0)
-        calibration.park()
+        with calibration.step(f"click {CONFIRM_WORD} and park"):
+            calibration.click(*confirm, settle=0.0)
+            calibration.park(settle=False)
 
-        if not dialog_gone():
+        with calibration.step("wait for the dialog to close"):
+            gone = dialog_gone()
+        if not gone:
             raise Divergence(
                 f"the dialog stayed open after {CONFIRM_WORD} on row {index}. "
                 f"Whether the cancel committed is unknown -- check by hand.")
         landing = self.next_work_slot()
-        if landing is not None and game_refused(
-                lambda image: not calibration.slot_is_empty(image, *landing)):
+        with calibration.step(f"wait for the item to land in tab {WORK_TAB}"):
+            refused = landing is not None and game_refused(
+                lambda image: not calibration.slot_is_empty(image, *landing))
+        if refused:
             raise GameSaysWait(f"cancelling row {index}")
         result = self.note_cancel(index)
         if verbose:
@@ -1585,7 +1730,7 @@ class RowModel:
         with calibration.step(f"click {CONFIRM_WORD}"):
             calibration.click(*confirm, settle=0.0)
         with calibration.step("park"):
-            calibration.park()
+            calibration.park(settle=False)
         with calibration.step("confirm the dialog is gone"):
             gone = dialog_gone()
         if not gone:
@@ -1739,11 +1884,14 @@ class RowModel:
 
     def scroll_to(self, index, verbose=True):
         seat, _want = self.seat_of(index)
+        jumped = False
         if seat == LAST_SEAT and (self._seat != LAST_SEAT
                                   or self._top is None):
             self.bottom(verbose=verbose)
+            jumped = True
         elif self._top is None:
             self.home(verbose=verbose)
+            jumped = True
         plan = self.scroll_plan(index)
         if plan["notches"]:
             wheel(plan["notches"], verbose=verbose)
@@ -1751,7 +1899,7 @@ class RowModel:
         self._seat = seat
         if verbose:
             print(f"  row {index} is now at position {plan['position']}")
-        return plan
+        return dict(plan, moved=jumped or bool(plan["notches"]))
 
     def read(self):
         return read_row(self._seat)

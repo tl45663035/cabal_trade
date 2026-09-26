@@ -259,6 +259,7 @@ ALZ_MIN_DIGITS = _S["detect"]["alz_min_digits"]
 SLOT_HALF = _S["detect"]["slot_half"]
 SLOT_INSET = _S["detect"]["slot_inset"]
 SLOT_OCCUPIED_STDEV = _S["detect"]["slot_occupied_stdev"]
+SLOT_OCCUPIED_BRIGHTNESS = _S["detect"]["slot_occupied_brightness"]
 POLL_GAP = _S["timing"]["poll_gap"]
 
 ALZ_BRIGHT = _DET["alz_bright"]
@@ -1620,8 +1621,9 @@ def calibrate_gifts(verbose=True):
 
     found = gift_buttons()
     taking = gift_slots(found["column"])[:GIFT_BOXES]
-    say(f"  {RECEIPT_WORD} at {[list(p) for p in taking]}; the gifts on "
-        f"offer are read again each time the box is collected")
+    say(f"  {RECEIPT_WORD} at {[list(p) for p in taking]}; each collection "
+        f"presses only {RECEIPT_WORD} {GIFT_ALL_WORD} and the special "
+        f"giftbox's {RECEIPT_WORD}, at the points measured here")
     if found["receive_all"] is not None:
         say(f"  {RECEIPT_WORD} {GIFT_ALL_WORD} at "
             f"{list(found['receive_all'])}")
@@ -2095,7 +2097,7 @@ def _await_cash(read, timeout=None):
                                    else timeout)
     while time.monotonic() < deadline:
         seen = read()
-        if seen:
+        if seen is not None and seen is not False:
             return seen
         time.sleep(POLL_GAP)
     return None
@@ -2984,6 +2986,10 @@ def craft_min_cores(core_name):
     return _per_item("craft_min_cores", core_name) or 0
 
 
+def urgent_check_rows(core_name):
+    return _per_item("urgent_check", core_name) or 0
+
+
 def buy_whole_row(core_name):
     return bool(_per_item("buy_whole_row", core_name))
 
@@ -3173,15 +3179,24 @@ def slot_half():
                  * load()["inventory"]["panel_scale"])
 
 
+_SLOT_DISCS = {}
+
+
+def _slot_disc(half):
+    if half not in _SLOT_DISCS:
+        side = np.arange(2 * half) - (2 * half - 1) / 2
+        _SLOT_DISCS[half] = (side[None, :] ** 2 + side[:, None] ** 2
+                             <= half * half)
+    return _SLOT_DISCS[half]
+
+
 def slot_is_empty(image, row, col):
     point = inventory_slot_point(row, col)
     half = slot_half()
     crop = image.crop((point[0] - half, point[1] - half,
                        point[0] + half, point[1] + half)).convert("L")
-    data = list(crop.getdata())
-    mean = sum(data) / len(data)
-    stdev = (sum((v - mean) ** 2 for v in data) / len(data)) ** 0.5
-    return stdev < SLOT_OCCUPIED_STDEV
+    grey = np.asarray(crop, dtype=float)[_slot_disc(half)]
+    return float(grey.mean()) < SLOT_OCCUPIED_BRIGHTNESS
 
 
 def occupied_slots(image=None):

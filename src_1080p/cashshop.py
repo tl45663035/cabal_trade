@@ -9,8 +9,8 @@ _TEXT = _SHARED["text"]
 _REG = _SHARED["regions"]
 _T = _SHARED["timing"]
 _DET = _SHARED["detect"]
-CASH = _SHARED["resupply"]["cash_shop"]
-DEFAULT_TAB = str(CASH["tabs"]["default"])
+_LAUNCH_CASH = _SHARED["resupply"]["cash_shop"]
+DEFAULT_TAB = str(_LAUNCH_CASH["tabs"]["default"])
 PURCHASE_WORD = _TEXT["cash_purchase_word"]
 OK_WORD = _TEXT["cash_ok_word"]
 CANCEL_WORD = _TEXT["cash_cancel_word"]
@@ -38,7 +38,7 @@ TOGGLE_TRIES = int(_T["toggle_tries"])
 LINE_SLACK = _DET["word_row_slack"]
 BUTTON_HALF = tuple(_DET["dialog_button_half"])
 CLEAR_PRESSES = int(_DET["clear_presses_qty"])
-SCROLL_LIMIT = int(CASH["scroll_limit"])
+SCROLL_LIMIT = int(_LAUNCH_CASH["scroll_limit"])
 
 _AT = None
 _TAB = None
@@ -52,8 +52,12 @@ def _fold(text):
     return re.sub(r"[^a-z0-9]", "", (text or "").lower())
 
 
+def _cash():
+    return calibration.load_shared()["resupply"]["cash_shop"]
+
+
 def items():
-    return [str(name) for name in CASH["rows"]]
+    return [str(name) for name in _cash()["rows"]]
 
 
 def in_reading_order():
@@ -69,11 +73,11 @@ def in_reading_order():
 
 
 def rows_wanted(item):
-    return int(calibration._per_item_raw(CASH["rows"], item) or 0)
+    return int(calibration._per_item_raw(_cash()["rows"], item) or 0)
 
 
 def tab_for(item):
-    return str(calibration._per_item_raw(CASH["tabs"], item) or DEFAULT_TAB)
+    return str(calibration._per_item_raw(_cash()["tabs"], item) or DEFAULT_TAB)
 
 
 def matches(item, text):
@@ -171,7 +175,7 @@ def read_gems(image=None):
 
 
 def currency_of(item):
-    rule = calibration._per_item_raw(CASH.get("currency") or {}, item)
+    rule = calibration._per_item_raw(_cash().get("currency") or {}, item)
     return rule if isinstance(rule, dict) else None
 
 

@@ -24,6 +24,10 @@ class Refused(Exception):
     pass
 
 
+class NoOffer(Refused):
+    pass
+
+
 def _convert_cal():
     block = calibration.load().get("convert")
     if not block:
@@ -136,7 +140,7 @@ def convert(core_name, verbose=True):
     with calibration.step("await the Purchase Item dialog"):
         appeared = await_dialog()
     if not appeared:
-        raise Refused(
+        raise NoOffer(
             "no Purchase Item dialog appeared after Alt+click; nothing "
             "confirmed.")
 

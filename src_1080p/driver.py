@@ -6,6 +6,7 @@ import re
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 def _plain_argv():
     out, skip = [], False
@@ -75,6 +76,10 @@ class NotReady(Exception):
 _MEASURED = False
 REPAIR = False
 _PENDING = None
+_SINCE_PRICED = {}
+_PRICED_THIS_ROW = set()
+_FULL_SALES = 0
+_SELECTING = ThreadPoolExecutor(max_workers=1)
 
 
 def repair_command(args):
@@ -437,10 +442,6 @@ def restock_now(model, name, first, last, verbose=True):
         print(f"  the {name} special row sold; buying it back now, not on "
               f"the next pass")
         special_pass(model, first, last, verbose=verbose)
-        if not back_to_the_shop(verbose=verbose):
-            raise NotReady(f"the Agent Shop is not open after the {name} "
-                           f"special row.")
-        register_tab(verbose=verbose)
         return
     slot = counts_toward().get(calibration.favourite_slot_of(name))
     if slot is None:
@@ -465,32 +466,106 @@ def restock_cash_now(model, item, first, last, verbose=True):
 
 
 def restock_core_now(model, slot, name, first, last, verbose=True):
+    price_and_resupply(model, slot, first, last,
+                       f"a {name!r} row sold and is collected",
+                       verbose=verbose)
+
+
+def price_and_resupply(model, slot, first, last, why, verbose=True):
     core = calibration.FAVOURITE_ITEMS[str(slot)]
     have = rows_by_core(model, first, last).get(slot, 0)
     most = calibration.rows_wanted_at_most(core)
     if most is not None and have >= most:
         return
-    print(f"  a {name!r} row sold and is collected; {core} holds {have} "
-          f"row(s), pricing and resupplying it now, not on the next pass")
+    print(f"  {why}; {core} holds {have} row(s), pricing and resupplying it "
+          f"now, not on the next pass")
     done = []
+    outcome = "stopped"
+    saved = list(calibration._STEPS)
+    calibration.steps_reset()
+    started = time.perf_counter()
     try:
-        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
-        core_row, set_row, diff = price_gap(slot)
+        with calibration.step("wait out a war window if one is near"):
+            war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        core_row, set_row, diff = price_gap(slot, from_register=True)
         if diff is None:
+            outcome = "would not price"
             return
         wants = calibration.rows_by_margin(core, diff)
         if have >= wants:
+            outcome = f"margin {diff:,}, not buying"
             print(f"  a margin of {diff:,} is worth {wants} row(s) of "
                   f"{core}; {have} held; not buying.")
             return
+        outcome = f"margin {diff:,}, buying"
+        check_timing(core, outcome, started, saved)
+        saved = None
         resupply_core_rows(model, slot, have, wants, {slot: core_row},
                            first, last, done, verbose=verbose,
                            rows=(core_row, set_row))
     finally:
-        if not back_to_the_shop(verbose=verbose):
-            raise NotReady(f"the Agent Shop is not open after resupplying "
-                           f"{core}.")
-        register_tab(verbose=verbose)
+        if saved is None:
+            if not back_to_the_shop(verbose=verbose):
+                raise NotReady(f"the Agent Shop is not open after "
+                               f"resupplying {core}.")
+            register_tab(verbose=verbose)
+        else:
+            back_after_pricing(core, verbose=verbose)
+            check_timing(core, outcome, started, saved)
+
+
+def back_after_pricing(core, verbose=True):
+    with calibration.step("back: is the Trade window open"):
+        still_open = calibration._trade_window_open()
+    if not still_open:
+        with calibration.step("back: reopen the Agent Shop"):
+            if not back_to_the_shop(verbose=verbose):
+                raise NotReady(f"the Agent Shop is not open after pricing "
+                               f"{core}.")
+            register_tab(verbose=verbose)
+        return
+    with calibration.step("back: click the Register tab"):
+        calibration.click(*calibration.load()["shop"]["register_tab"],
+                          settle=0.0)
+    with calibration.step("back: wait for the tab"):
+        time.sleep(TAB_SETTLE)
+    with calibration.step("back: park the cursor"):
+        calibration.park()
+
+
+def check_timing(core, outcome, started, saved):
+    total = (time.perf_counter() - started) * 1000
+    inside = sum(ms for _label, ms in calibration._STEPS)
+    calibration._STEPS.append(("not inside any step", total - inside))
+    calibration.steps_table(f"margin check for {core}: {outcome}, "
+                            f"{total:,.0f} ms")
+    calibration._STEPS[:] = saved
+
+
+def urgent_check(model, first, last, verbose=True):
+    run = calibration.load_shared()["resupply"]
+    for slot in core_slots():
+        core = calibration.FAVOURITE_ITEMS[str(slot)]
+        every = calibration.urgent_check_rows(core)
+        if every <= 0:
+            continue
+        if slot not in _PRICED_THIS_ROW:
+            _SINCE_PRICED[slot] = _SINCE_PRICED.get(slot, 0) + 1
+        count = _SINCE_PRICED.get(slot, 0)
+        if count < every or not run["enabled"] or _PENDING is not None:
+            continue
+        if not craft_route(core) or not buying_enabled(core):
+            continue
+        have = rows_by_core(model, first, last).get(slot, 0)
+        most = calibration.rows_wanted_at_most(core)
+        if most is not None and have >= most:
+            continue
+        if not buying_rows(model, first, last):
+            continue
+        price_and_resupply(
+            model, slot, first, last,
+            f"urgent check: {count} row(s) processed since {core} was last "
+            f"priced", verbose=verbose)
 
 
 def reconcile_work_tab(model, verbose=True):
@@ -659,22 +734,44 @@ def resume_work_tab(model, first, last, verbose=True):
     return done
 
 
-def relist_one(model, index, verbose=True, first=None, last=None,
-               collect_only=False):
-    run = calibration.load_shared()["run"]
-    first = int(run["relist_from"] if first is None else first)
-    last = int(run["relist_to"] if last is None else last)
-    with calibration.phase(f"{calibration.REFRESH_WORD} the table"):
-        row_model.refresh_table(model, verbose=False)
-    with calibration.phase("scroll to the row and read it"):
-        model.scroll_to(index, verbose=False)
-        button = model.button() if model.get(index) is None else None
+def read_the_row(model, index):
+    held = model.get(index) is not None
+    selecting = (_SELECTING.submit(row_model.show_work_tab, False, True)
+                 if held else None)
+    try:
+        with calibration.step("read the button of a row the run holds "
+                              "empty"):
+            button = None if held else model.button()
         if button == row_model.REGISTER_WORD:
             text, row = "", None
         else:
-            text = model.read()
-            text, row = row_from_screen(text, model)
-            button = model.button()
+            with calibration.step("read the row"):
+                text = model.read()
+                text, row = row_from_screen(text, model)
+            with calibration.step("read the row's button"):
+                button = model.button()
+    finally:
+        if selecting is not None:
+            with calibration.step(f"finish selecting inventory tab "
+                                  f"{row_model.WORK_TAB}"):
+                selecting.result()
+    return text, row, button, selecting is not None
+
+
+def relist_one(model, index, verbose=True, first=None, last=None,
+               collect_only=False):
+    global _FULL_SALES
+    run = calibration.load_shared()["run"]
+    first = int(run["relist_from"] if first is None else first)
+    last = int(run["relist_to"] if last is None else last)
+    calibration.steps_reset()
+    with calibration.phase(f"{calibration.REFRESH_WORD} the table"):
+        with calibration.step(f"click {calibration.REFRESH_WORD}"):
+            row_model.refresh_table(model, verbose=False)
+    with calibration.phase("scroll to the row and read it"):
+        with calibration.step("scroll to the row"):
+            model.scroll_to(index, verbose=False)
+        text, row, button, tab_selected = read_the_row(model, index)
 
     if button == row_model.RECEIPT_WORD:
         complete = model.complete(text)
@@ -685,13 +782,15 @@ def relist_one(model, index, verbose=True, first=None, last=None,
         sold = held.name if held is not None else (
             row.name if row is not None else text)
         with calibration.phase("collect what sold"):
-            model.receive(index, verbose=False)
-        with calibration.phase("read the row again after collecting"):
-            text, row = row_at(model, index, verbose=False)
-            button = model.button()
+            model.receive(index, verbose=False, complete=complete)
+        if not complete:
+            with calibration.phase("read the row again after collecting"):
+                text, row = row_at(model, index, verbose=False)
+                button = model.button()
         if complete or button == row_model.REGISTER_WORD or row is None:
             model.drop(index)
             model.forget_floor(index)
+            _FULL_SALES += 1
             if verbose:
                 print(f"    collected; row {index} is empty, nothing to "
                       f"relist")
@@ -720,8 +819,11 @@ def relist_one(model, index, verbose=True, first=None, last=None,
               f"{model.button_text()!r}")
         return False
 
-    reconcile_work_tab(model, verbose=verbose)
-    tab_before_withdrawal(model, verbose=verbose)
+    with calibration.step(f"check tab {row_model.WORK_TAB} before the "
+                          f"withdrawal"):
+        reconcile_work_tab(model, verbose=verbose)
+        tab_before_withdrawal(model, verbose=verbose)
+    deciding = time.perf_counter()
     if model.work_slots():
         print(f"    the run still holds tab {row_model.WORK_TAB} slot(s) "
               f"{model.work_slots()} from earlier work, so a withdrawal "
@@ -787,9 +889,13 @@ def relist_one(model, index, verbose=True, first=None, last=None,
             print(f"    floor {whole:,}{carries} from {pair}; listed at "
                   f"{row.price:,}, "
                   f"{'UNDER the floor' if row.price < whole else 'above it'}")
+    calibration._STEPS.append(("work out the row, its floor and where it "
+                               "lands", (time.perf_counter() - deciding)
+                               * 1000))
     with calibration.phase("check the shop slot is empty"):
-        standing = (row_model.panel_standing()
-                    if row_model.panel_holds_item() else None)
+        with calibration.step("check the shop slot is empty"):
+            standing = (row_model.panel_standing()
+                        if row_model.panel_holds_item() else None)
     if standing is not None:
         raise row_model.Divergence(
             f"the shop slot already holds something the panel prices at "
@@ -802,10 +908,16 @@ def relist_one(model, index, verbose=True, first=None, last=None,
     task("relist", row=index, item=row.name, qty=row.qty, price=row.price,
          tab=row_model.WORK_TAB, slot=list(landing), lands_in=lands_in)
     with calibration.phase("cancel the row and take it back"):
-        model.cancel(index, verbose=False, tab_ready=True)
+        model.cancel(index, verbose=False, tab_ready=True,
+                     tab_selected=tab_selected)
     with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
-        time.sleep(max(0.0, WITHDRAW_SETTLE - calibration.PARK_SETTLE))
-        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB))
+        with calibration.step(f"select inventory tab {row_model.WORK_TAB} "
+                              f"after the withdrawal"):
+            time.sleep(max(0.0, WITHDRAW_SETTLE - calibration.PARK_SETTLE))
+            calibration.click(
+                *calibration.inventory_tab_point(row_model.WORK_TAB))
+    if verbose:
+        calibration.steps_table(f"cancel row {index}")
     whole = calibration.voucher_floor_ratio(row.name)[1] > 0
     pack = 1 if whole else row.pack
     floor = unit_floor * pack
@@ -864,6 +976,7 @@ def relist_one(model, index, verbose=True, first=None, last=None,
         if model.is_empty(seen):
             model.drop(index)
             model.forget_floor(index)
+            _FULL_SALES += 1
             print(f"    collected; row {index} is empty")
             task_done("relist", row=index, sold=True)
             restock_now(model, row.name, first, last, verbose=verbose)
@@ -958,6 +1071,8 @@ def relist_pass(model, first, last, passes=0, verbose=True,
     calibration.phases_reset()
     done = skipped = empty = 0
     for index in range(first, last + 1):
+        _PRICED_THIS_ROW.clear()
+        sold_before = _FULL_SALES
         out = relist_one(model, index, verbose=verbose, first=first,
                          last=last, collect_only=collect_only)
         if out:
@@ -974,6 +1089,8 @@ def relist_pass(model, first, last, passes=0, verbose=True,
                   f"cancelled into that tab this pass, the next pass "
                   f"carries the job on first")
             break
+        if not collect_only and (out or _FULL_SALES > sold_before):
+            urgent_check(model, first, last, verbose=verbose)
     if not collect_only:
         special_pass(model, first, last, verbose=verbose)
     if done or skipped:
@@ -1699,18 +1816,25 @@ def special_pass(model, first, last, verbose=True):
         register_tab(verbose=verbose)
 
 
-def price_gap(slot, say=True, rows=None):
+def price_gap(slot, say=True, rows=None, from_register=False):
+    _SINCE_PRICED[int(slot)] = 0
+    _PRICED_THIS_ROW.add(int(slot))
     core = calibration.FAVOURITE_ITEMS[str(slot)]
     pair = calibration.pair_slot(slot)
     set_name = calibration.FAVOURITE_ITEMS[str(pair)]
     if rows is not None:
         core_row, set_row = rows
     else:
-        calibration.phases_reset()
         with calibration.phase(f"price {core}"):
-            core_row = get_price.get_price(slot, verbose=False)
+            core_row = get_price.get_price(
+                slot, verbose=False,
+                on_purchase=False if from_register else None)
         with calibration.phase(f"price {set_name}"):
-            set_row = get_price.get_price(pair, verbose=False)
+            set_row = get_price.get_price(
+                pair, verbose=False,
+                on_purchase=True if core_row is not None else None,
+                before=get_price.last_seen() if core_row is not None
+                else None)
     if core_row is None or set_row is None:
         if say:
             print(f"  {core if core_row is None else set_name} would not "
@@ -1894,8 +2018,16 @@ def convert_round(job, verbose=True):
         calibration.close_everything()
     with calibration.phase(f"round {rounds}: open the vendor"):
         convert.open_vendor(verbose=verbose)
-    with calibration.phase(f"round {rounds}: convert into {core}"):
-        out = convert.convert(core, verbose=verbose)
+    try:
+        with calibration.phase(f"round {rounds}: convert into {core}"):
+            out = convert.convert(core, verbose=verbose)
+    except convert.NoOffer as exc:
+        print(f"  {exc} The vendor has no {job['set']} left to take, so "
+              f"what the earlier round converted is on tab "
+              f"{calibration.CONVERT_INVENTORY_TAB}; listing what it holds")
+        job["slots"] = None
+        job["step"] = "list"
+        return
     job["slots"] = list(out["slots"])
     job["filled"] += len(out["slots"])
     job["step"] = "list"
@@ -1917,6 +2049,18 @@ def list_round(model, job, first, last, verbose=True):
     with calibration.phase(f"round {rounds}: select inventory tab {tab}"):
         calibration.click(*calibration.inventory_tab_point(tab), settle=0.0)
         time.sleep(row_model.TAB_SETTLE)
+
+    if job["slots"] is None:
+        with calibration.phase(f"round {rounds}: read tab {tab}"):
+            calibration.park()
+            held = sorted(calibration.occupied_slots())
+        if len(held) >= row_model.GRID * row_model.GRID:
+            raise NotReady(f"tab {tab} reads full, which is how the client "
+                           f"draws an item in transit; {core} keeps its "
+                           f"place and the next pass reads it again.")
+        print(f"  tab {tab} holds {len(held)} slot(s)"
+              + (f": {held}" if held else "; nothing to list"))
+        job["slots"] = held
 
     remaining = list(job["slots"])
     if remaining:
@@ -1948,7 +2092,8 @@ def list_round(model, job, first, last, verbose=True):
                   f"({exc}); the next slot is tried instead")
             continue
         model.place(lands_in, row_model.Row(
-            core, qty=listed["qty"], price=listed["price"],
+            listed.get("item") or core, qty=listed["qty"],
+            price=listed["price"],
             buy_cost=job["floor"] if job["paid"] else 0))
         job["rows"].append(lands_in)
         job["listed"] += listed["qty"]
@@ -1964,20 +2109,28 @@ def list_round(model, job, first, last, verbose=True):
 def finish_resupply(model, job, first, last, verbose=True):
     if job["step"] == "buy" and not buy_sets(job, verbose=verbose):
         return None
+    tab = calibration.CONVERT_INVENTORY_TAB
     full = False
     while not full:
         if job["step"] == "convert":
-            if (job["listed"] >= job["bought"]
-                    or job["rounds"] >= job["max_rounds"]):
+            if job["listed"] >= job["bought"] or job.get("swept"):
                 break
-            convert_round(job, verbose=verbose)
+            if job["rounds"] >= job["max_rounds"]:
+                job["swept"] = True
+                job["slots"] = None
+                print(f"  {job['rounds']} round(s) done and "
+                      f"{job['bought'] - job['listed']} of {job['bought']} "
+                      f"not listed; listing whatever tab {tab} holds before "
+                      f"the job ends")
+            else:
+                convert_round(job, verbose=verbose)
         full = list_round(model, job, first, last, verbose=verbose)
     core, set_name, bought = job["core"], job["set"], job["bought"]
     left_to_convert = 0 if full else max(0, bought - job["listed"])
     if left_to_convert > 0:
-        print(f"  {left_to_convert} of {bought} {set_name} are still "
-              f"unconverted after {job['rounds']} round(s); they are on tab "
-              f"{calibration.CONVERT_INVENTORY_TAB}.")
+        print(f"  {left_to_convert} of {bought} {set_name} are not listed "
+              f"after {job['rounds']} round(s), and tab {tab} holds nothing "
+              f"more to list.")
     else:
         task_done("resupply", core=core, bought=bought,
                   listed=job["listed"], rows=job["rows"])
@@ -2127,8 +2280,11 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
                                               0 if whole
                                               else job["leave"]),
                                           search=not searched,
-                                          batch=batch)
+                                          batch=batch,
+                                          balance=job.get("balance"))
                 searched = True
+                job["balance"] = (out["balance"] if out["balance_seen"]
+                                  else None)
                 return out
             except buy.TooThin as exc:
                 searched = True
@@ -2137,10 +2293,12 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
             except buy.Broke as exc:
                 searched = True
                 job["broke"] = True
+                job["balance"] = None
                 print(f"  stopping: {exc}")
                 return None
             except buy.Refused as exc:
                 searched = True
+                job["balance"] = None
                 if not getattr(exc, "retryable", False):
                     print(f"  stopping: {exc}")
                     return None
@@ -2180,6 +2338,7 @@ def buy_cores(job, verbose=True):
     core, target = job["core"], job["target"]
     batch = calibration.CRAFT_CORES_PER_SET
     whole = calibration.buy_whole_row(core) and job.get("want_max")
+    job["balance"] = None
 
     while job["bought"] < target:
         print(f"  {job['bought']}/{target} {core} held")
@@ -3254,14 +3413,17 @@ def buy_under_lister(model, slot, first, last, verbose=True):
 
 def gifts_at_the_end(verbose=True):
     import collect_gifts
+    started = time.perf_counter()
     try:
-        taken = collect_gifts.collect_gifts(verbose=verbose)
+        pressed = collect_gifts.collect_gifts(verbose=verbose)
     except (collect_gifts.Refused, RuntimeError) as exc:
         print(f"  the gift box was left alone: {exc}")
         return 0
     if verbose:
-        print(f"  took {taken} gift(s)")
-    return taken
+        print(f"  pressed {pressed} {collect_gifts.RECEIVE_WORD} button(s); "
+              f"the gift box took "
+              f"{(time.perf_counter() - started) * 1000:,.0f} ms")
+    return pressed
 
 
 def rest_the_game(verbose=True):
@@ -3477,10 +3639,10 @@ def resupply_pass(model, first, last, verbose=True):
 def do_collect_gifts(verbose=True):
     import collect_gifts
     started = time.perf_counter()
-    taken = collect_gifts.collect_gifts(verbose=verbose)
-    print(f"  collected {taken} gift(s) in "
+    pressed = collect_gifts.collect_gifts(verbose=verbose)
+    print(f"  pressed {pressed} {collect_gifts.RECEIVE_WORD} button(s) in "
           f"{(time.perf_counter() - started) * 1000:.0f} ms")
-    return taken
+    return pressed
 
 
 def do_scan(verbose=True):

@@ -3,7 +3,6 @@ import time
 import calibration
 
 _SHARED = calibration.load_shared()
-ACTION_GAP = _SHARED["timing"]["action_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
 POLL_GAP = _SHARED["timing"]["poll_gap"]
 GIFT_GAP = _SHARED["timing"]["gift_gap"]
@@ -51,12 +50,13 @@ def collect_gifts(verbose=True):
 
     icon = tuple(gifts["icon"])
     close = tuple(gifts["close"])
-    taking = [tuple(p) for p in gifts["receive"]]
+    pressing = [(f"{RECEIVE_WORD} {calibration.GIFT_ALL_WORD}",
+                 gifts.get("receive_all")),
+                (f"the special giftbox's {RECEIVE_WORD}", gifts.get("special"))]
 
     if verbose:
         print(f"  the gift box at {list(icon)}")
     calibration.click(*icon)
-    time.sleep(ACTION_GAP)
 
     if not _window_open(close):
         calibration.snap("gift_window_never_opened")
@@ -65,33 +65,19 @@ def collect_gifts(verbose=True):
             f"{DIALOG_TIMEOUT:g}s, so the gift window is not open where it "
             f"was measured. Nothing clicked.")
 
-    found = calibration.gift_buttons()
-    receive_all = found["receive_all"] or (
-        tuple(gifts["receive_all"]) if gifts.get("receive_all") else None)
-    if receive_all is not None:
+    pressed = 0
+    for label, point in pressing:
+        if not point:
+            continue
         if verbose:
-            print(f"  {RECEIVE_WORD} {calibration.GIFT_ALL_WORD} at "
-                  f"{list(receive_all)}")
-        calibration.click(*receive_all, settle=GIFT_GAP)
-    taking = (calibration.gift_slots(found["column"])[:calibration.GIFT_BOXES]
-              or taking)
-    if not taking and verbose:
-        print(f"  no {RECEIVE_WORD} button in the gift box; nothing to take")
-    for n, point in enumerate(taking, 1):
-        if verbose:
-            print(f"  {RECEIVE_WORD} {n} of {len(taking)} at {list(point)}")
+            print(f"  {label} at {list(point)}")
         calibration.click(*point, settle=GIFT_GAP)
-    special = found["special"] or (
-        tuple(gifts["special"]) if gifts.get("special") else None)
-    if special is not None:
-        if verbose:
-            print(f"  the special giftbox's {RECEIVE_WORD} at {list(special)}")
-        calibration.click(*special, settle=GIFT_GAP)
+        pressed += 1
 
     if verbose:
         print(f"  {CLOSE_WORD} at {list(close)}")
     calibration.click(*close)
-    return len(taking)
+    return pressed
 
 
 if __name__ == "__main__":
@@ -99,4 +85,4 @@ if __name__ == "__main__":
 
     calibration.log_to_file("gifts")
     calibration.frames_on(True if "--frames" in sys.argv else None)
-    print(f"  collected {collect_gifts()} gift(s)")
+    print(f"  pressed {collect_gifts()} {RECEIVE_WORD} button(s)")

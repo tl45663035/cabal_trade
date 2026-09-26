@@ -1,6 +1,7 @@
 import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import calibration
 import open_agent_shop_premium as shop
@@ -25,12 +26,16 @@ VOUCHER_WORD = _SHARED["text"]["voucher_word"]
 PRICE_MIN_DIGITS = _DET["price_min_digits"]
 SHOP_CHECK_GAP = _SHARED["timing"]["shop_check_gap"]
 SEARCH_SETTLE = _SHARED["timing"]["search_settle"]
+FAVOURITE_GAP = _SHARED["timing"]["favourite_gap"]
+PARALLEL_READS = int(_SHARED["ocr"]["parallel_reads"])
 
 _NUMBER = re.compile(r"\d[\d,]*")
 _NOT_DIGIT = re.compile(r"[^0-9]")
 _ROW = re.compile(_SHARED["text"]["purchase_row"])
 _SORT_DIRECTION = re.compile(_SHARED["text"]["sort_direction"],
                              re.IGNORECASE)
+_POOL = ThreadPoolExecutor(max_workers=PARALLEL_READS)
+_SEEN = {}
 
 
 class NotReady(Exception):
@@ -66,6 +71,14 @@ def purchase_row_one_box():
     return tuple(_need("purchase_row_content"))
 
 
+def _band(image):
+    return image.crop(purchase_row_one_box()).tobytes()
+
+
+def last_seen():
+    return _SEEN.get("before")
+
+
 def column_box(field):
     cols = _need("purchase_columns")
     if field not in cols:
@@ -96,6 +109,8 @@ def read_fields(image=None):
     image = image if image is not None else calibration.grab()
     band = purchase_row_one_box()
     qty_lo, price_lo, function_lo = column_edges()
+    counted = _POOL.submit(calibration.read_number, image,
+                           tuple(_need("purchase_columns")["qty"]))
     tokens = calibration.ocr(image, band, min_conf=BULK_MIN_CONF)
 
     name_words, qty_words, price_words = [], [], []
@@ -124,7 +139,7 @@ def read_fields(image=None):
     if joined:
         qty = int(joined)
     if qty is None:
-        qty = calibration.read_number(image, tuple(_need("purchase_columns")["qty"]))
+        qty = counted.result()
     if qty is None:
         rescue = calibration.ocr(image,
                                  tuple(_need("purchase_columns")["qty"]),
@@ -230,22 +245,26 @@ def reopen_shop(slot, verbose=True):
     time.sleep(TAB_SETTLE)
 
 
-def get_price(slot, verbose=True, search=True):
+def get_price(slot, verbose=True, search=True, on_purchase=None, before=None):
     with calibration.step("get_price: focus the game"):
         inv.focus_game()
-    with calibration.step("get_price: _trade_window_open (OCR 1300x190)"):
-        shop_up = calibration._trade_window_open()
-    if not shop_up:
-        if verbose:
-            print("  the Trade window is shut; opening the Agent Shop.")
-        shop.open_agent_shop(verbose=verbose)
-        time.sleep(TAB_SETTLE)
-    with calibration.step("get_price: purchase_tab_showing"):
-        on_purchase = calibration.purchase_tab_showing()
+    if not search:
+        with calibration.step("get_price: _trade_window_open (OCR 1300x190)"):
+            shop_up = calibration._trade_window_open()
+        if not shop_up:
+            if verbose:
+                print("  the Trade window is shut; opening the Agent Shop.")
+            shop.open_agent_shop(verbose=verbose)
+            time.sleep(TAB_SETTLE)
+    if on_purchase is None:
+        with calibration.step("get_price: purchase_tab_showing"):
+            on_purchase = calibration.purchase_tab_showing()
+    clicked = False
     if not on_purchase:
         with calibration.step("get_price: click the Purchase tab + settle"):
-            shop.click(*_need("purchase_tab"))
+            shop.click(*_need("purchase_tab"), settle=0.0 if search else None)
             time.sleep(TAB_SETTLE)
+        clicked = True
 
     x, y = favourite_point(slot)
     if verbose:
@@ -265,24 +284,41 @@ def get_price(slot, verbose=True, search=True):
                       f"slot {slot} sells; not pricing it")
             row = None
     for attempt in range(1, (RETRIES + 1) if search else 0):
-        if not calibration.purchase_tab_showing():
-            reopen_shop(slot, verbose=verbose)
-        with calibration.step("get_price: read row 1 before the search"):
-            was = row_mark(read_fields())
-        before = was[0]
-        stale = None if name_matches(slot, before) else before
+        if clicked or attempt > 1:
+            with calibration.step("get_price: is the Purchase tab showing"):
+                showing = calibration.purchase_tab_showing()
+            if not showing:
+                reopen_shop(slot, verbose=verbose)
+        if attempt == 1 and before is not None:
+            was, was_band = before
+        else:
+            with calibration.step("get_price: read row 1 before the search"):
+                image = calibration.grab()
+                was, was_band = row_mark(read_fields(image)), _band(image)
+        stale = None if name_matches(slot, was[0]) else was[0]
+        wait = FAVOURITE_GAP - (time.monotonic() - _SEEN.get("searched", 0.0))
+        if wait > 0:
+            with calibration.step("get_price: wait out the gap since the last "
+                                  "search"):
+                time.sleep(wait)
         with calibration.step(f"get_price: click favourite slot {slot}"):
             shop.click(x, y, settle=0.0)
+        _SEEN["searched"] = time.monotonic()
         gone = False
         deadline = time.monotonic() + SEARCH_TIMEOUT
         next_check = time.monotonic() + SHOP_CHECK_GAP
-        polls = 0
+        looks = reads = 0
+        sort_ms = 0.0
         poll_started = time.monotonic()
         settled = time.monotonic() + SEARCH_SETTLE
         told = False
         while not gone and time.monotonic() < deadline:
-            polls += 1
+            looks += 1
             image = calibration.grab()
+            if _band(image) == was_band and time.monotonic() < settled:
+                continue
+            reads += 1
+            sort_seen = _POOL.submit(read_sort, image)
             fields = read_fields(image)
             text = (fields.get("name") or "").strip()
             if text == stale or not name_matches(slot, text):
@@ -307,18 +343,28 @@ def get_price(slot, verbose=True, search=True):
                 continue
             row = parse_fields(fields)
             if row is not None:
+                sort_started = time.monotonic()
                 with calibration.step("get_price: confirm the sort"):
-                    sort = confirm_sort_low_to_high(
-                        slot, verbose=verbose and attempt == 1)
+                    found = _SORT_DIRECTION.search(sort_seen.result())
+                    if found is not None and found.group(1).lower() == "low":
+                        if verbose and attempt == 1:
+                            print("  sort confirmed Price: Low to High")
+                        sort = "ok"
+                    else:
+                        sort = confirm_sort_low_to_high(
+                            slot, verbose=verbose and attempt == 1)
+                sort_ms += (time.monotonic() - sort_started) * 1000
                 if sort == "ok":
+                    _SEEN["before"] = (row_mark(fields), _band(image))
                     break
                 row = None
                 gone = sort in ("gone", "lagged")
                 break
             time.sleep(POLL_GAP)
         calibration._STEPS.append(
-            (f"get_price: poll row 1 until it answers ({polls} read(s))",
-             (time.monotonic() - poll_started) * 1000))
+            (f"get_price: poll row 1 until it answers ({looks} look(s), "
+             f"{reads} read(s))",
+             (time.monotonic() - poll_started) * 1000 - sort_ms))
         if row is not None:
             break
         if gone:
@@ -334,6 +380,10 @@ def get_price(slot, verbose=True, search=True):
         if verbose:
             print(f"  row 1 did not parse; name read {text!r}")
         return None
+    return _priced(row, slot, text, verbose)
+
+
+def _priced(row, slot, text, verbose):
     units = row["qty"] * row["pack"]
     row["slot"] = int(slot)
     row["units"] = units

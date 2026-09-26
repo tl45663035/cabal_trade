@@ -89,6 +89,11 @@
       "Chaos Core": 18,
       "Divine Stone": 18
     },
+    "urgent_check": {
+      "default": 0,
+      "Chaos Core": 4,
+      "Divine Stone": 0
+    },
     "buy_max": {
       "default": 500,
       "Chaos Core": 999,
@@ -316,11 +321,12 @@
     "hover_settle": 0.15,
     "modifier_settle": 0.25,
     "click_hold": 0.12,
+    "receipt_settle": 0.5,
     "panel_reread_gap": 1.0,
     "shop_check_gap": 1.0,
     "field_settle": 0.05,
     "clear_gap": 0.02,
-    "server_lag_idle": 60.0,
+    "server_lag_idle": 30.0,
     "server_lag_budget": 600.0,
     "server_lag_poll": 5.0,
     "craft_settle_per_block": 5.0,
@@ -330,6 +336,7 @@
     "gift_gap": 0.5,
     "gift_open_tries": 2,
     "search_settle": 1.5,
+    "favourite_gap": 1.0,
     "convert_grid_settle": 2.0,
     "refresh_settle": 0.05,
     "stale_sweep": 1.0,
@@ -540,8 +547,18 @@
       "would not read"
     ]
   },
+  "ocr": {
+    "backup_python": "../.paddle/Scripts/python.exe",
+    "backup_reader": "paddle_reader.py",
+    "backup_model": "PP-OCRv5_mobile_rec",
+    "backup_scale": 4,
+    "backup_start_timeout": 60,
+    "backup_timeout": 10,
+    "parallel_reads": 3
+  },
   "detect": {
     "slot_inset": 6,
+    "slot_occupied_brightness": 42,
     "panel_item_half": 24,
     "panel_diff_threshold": 40,
     "price_rechecks": 2,

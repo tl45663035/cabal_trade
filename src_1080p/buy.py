@@ -2,6 +2,7 @@ import ctypes
 import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import calibration
 import ledger
@@ -149,11 +150,14 @@ def await_dialog(timeout=None):
 
 def dialog_details(image=None):
     image = image if image is not None else calibration.grab()
-    return {"item": calibration.read_line(image, _reg("buy_dialog_item")),
-            "price": calibration.read_money(image, _reg("buy_dialog_price")),
-            "qty": calibration.read_money(image, _reg("buy_dialog_qty")),
-            "qty_max": calibration.read_money(image,
-                                              _reg("buy_dialog_qty_max"))}
+    reads = {"item": (calibration.read_line, "buy_dialog_item"),
+             "price": (calibration.read_money, "buy_dialog_price"),
+             "qty": (calibration.read_money, "buy_dialog_qty"),
+             "qty_max": (calibration.read_money, "buy_dialog_qty_max")}
+    with ThreadPoolExecutor(max_workers=len(reads)) as pool:
+        futures = {key: pool.submit(read, image, _reg(box))
+                   for key, (read, box) in reads.items()}
+        return {key: future.result() for key, future in futures.items()}
 
 
 def _cancel(why, retryable=False, kind=Refused):
@@ -197,7 +201,7 @@ def _whole_batches(held, pack, packs, batch):
 
 def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 ceiling=None, sells_at=0, gap=None, leave_behind=0,
-                search=True, batch=1, room=None):
+                search=True, batch=1, room=None, balance=None):
     steps_reset()
     outcome = "REFUSED"
     try:
@@ -205,7 +209,7 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                            floor_qty=floor_qty, ceiling=ceiling,
                            sells_at=sells_at, gap=gap,
                            leave_behind=leave_behind, search=search,
-                           batch=batch, room=room)
+                           batch=batch, room=room, balance=balance)
         outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
         return out
     finally:
@@ -215,7 +219,7 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
 def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                  ceiling=None, sells_at=0, gap=None, leave_behind=0,
-                 search=True, batch=1, room=None):
+                 search=True, batch=1, room=None, balance=None):
     say = print if verbose else (lambda *a: None)
     with step("get_price: search the favourite and read row 1"):
         offer = get_price.get_price(int(slot), verbose=False,
@@ -248,14 +252,17 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
             f"under the {limit} limit with {held} held; a bundle cannot be "
             f"split, so this offer is skipped.")
     want_packs = max(1, -(-int(want) // pack))
-    with step(f"select inventory tab {row_model.WORK_TAB}"):
-        show_work_tab()
-    with step("read the balance before buying"):
-        before_alz = get_alz.read_balance()
+    before_alz = balance
+    if before_alz is None:
+        with step(f"select inventory tab {row_model.WORK_TAB}"):
+            show_work_tab()
+        with step("read the balance before buying"):
+            before_alz = get_alz.read_balance()
     if before_alz is None:
         raise Refused("the Alz balance would not read, so a purchase could "
                       "not be checked against it. Nothing clicked.")
-    say(f"    balance before {before_alz:,}")
+    say(f"    balance before {before_alz:,}"
+        + ("" if balance is None else ", as the last order left it"))
     affordable = before_alz // max(1, int(offer["price"]))
     if affordable < 1:
         raise Broke(f"Alz {before_alz:,} held and row 1 asks "
@@ -401,6 +408,7 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
         after_alz, spent = again, before_alz - again
     packs = asked
     units = packs * pack
+    seen = True
     if spent != asked * per_pack:
         shelf = detail["price"] // max(1, detail["qty"] or 1)
         if shelf and spent == asked * shelf:
@@ -415,13 +423,14 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 f"{packs} pack(s) at the row's {per_pack:,}")
             spent = asked * per_pack
             after_alz = before_alz - spent
+            seen = False
     per_unit = spent // units if units else 0
     say(f"    balance after  {after_alz:,}; spent {spent:,} bought {packs} "
         f"pack(s) = {units} core(s) ({per_unit:,} a core)")
     ledger.bought(offer["name"], per_unit, spent, units, expect=sells_at)
     return {"slot": int(slot), "name": name, "packs": packs, "bought": units,
             "unit_price": per_unit, "price": offer["price"],
-            "spent": spent, "balance": after_alz}
+            "spent": spent, "balance": after_alz, "balance_seen": seen}
 
 
 def _voucher_name(text):
