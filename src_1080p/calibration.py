@@ -2979,6 +2979,10 @@ def buy_leave_behind(core_name):
     return _per_item("buy_leave_behind", core_name) or 0
 
 
+def craft_min_cores(core_name):
+    return _per_item("craft_min_cores", core_name) or 0
+
+
 def buy_whole_row(core_name):
     return bool(_per_item("buy_whole_row", core_name))
 

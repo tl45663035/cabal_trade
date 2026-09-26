@@ -2189,6 +2189,16 @@ def buy_cores(job, verbose=True):
         if not take_offers(job, want, batch, verbose=verbose):
             break
 
+    least = calibration.craft_min_cores(core)
+    while 0 < job["bought"] < least and not job.get("broke"):
+        short = least - job["bought"]
+        print(f"  {job['bought']} {core} is {short} short of the {least} a "
+              f"craft needs, so a Set is still waiting at Complete All; "
+              f"topping up whatever the margin says")
+        if not take_offers(job, short, batch, on_margin=False,
+                           verbose=verbose):
+            break
+
     while job["bought"] % batch and not job.get("broke"):
         short = batch - (job["bought"] % batch)
         print(f"  {job['bought']} {core} is {short} short of a whole batch "
@@ -2201,6 +2211,11 @@ def buy_cores(job, verbose=True):
     bought = job["bought"]
     if bought <= 0:
         print(f"  nothing bought; not opening the craft window.")
+        return False
+    if bought < least:
+        print(f"  {bought} {core} is under the {least} a craft needs; not "
+              f"crafting, and they stay on tab {row_model.WORK_TAB} for the "
+              f"next one.")
         return False
     spare = bought % batch
     if bought < batch:
