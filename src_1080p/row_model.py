@@ -543,6 +543,27 @@ def panel_quantity(want_price, verbose=False):
     return None
 
 
+def check_price_field(want, qty, verbose=False):
+    shown = warm_money(calibration.grab(), tuple(_panel()["price_field"]))
+    if verbose:
+        print(f"    the panel holds {shown:,} against the {want:,} typed"
+              if shown is not None else
+              f"    the panel price would not read back")
+    if shown is None or shown == want:
+        return
+    with calibration.step("let the net sales decide"):
+        settled = panel_quantity(want, verbose) == qty
+    if not settled:
+        calibration.snap("price_field_disagrees")
+        raise WrongItem(
+            f"{want:,} was typed but the panel shows {shown:,}, and the net "
+            f"sales are not {qty} x {want:,} either; the two must match "
+            f"before anything is registered. Nothing has been listed.")
+    if verbose:
+        print(f"    the net sales are {qty} x {want:,}, so the field holds "
+              f"what was typed and {shown:,} is a misread of it")
+
+
 def type_number(value, clear):
     from open_inventory import press
     keys = _SHARED["input"]
@@ -1498,18 +1519,7 @@ class RowModel:
                     f"listed.")
             want = need
         with calibration.step("read the price back before Register"):
-            shown = warm_money(calibration.grab(),
-                               tuple(panel["price_field"]))
-        if verbose:
-            print(f"    the panel holds {shown:,} against the {want:,} typed"
-                  if shown is not None else
-                  f"    the panel price would not read back")
-        if shown is not None and shown != want:
-            calibration.snap("price_field_disagrees")
-            raise WrongItem(
-                f"{want:,} was typed but the panel shows {shown:,}; the two "
-                f"must match before anything is registered. Nothing has been "
-                f"listed.")
+            check_price_field(want, qty, verbose)
         with calibration.step("click Register"):
             calibration.click(*panel["register_button"], settle=0.0)
         with calibration.step(f"find {CONFIRM_WORD}"):
