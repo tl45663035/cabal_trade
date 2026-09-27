@@ -565,11 +565,14 @@
       "size": 40,
       "margin": 20
     },
-    "parallel_reads": 3
+    "parallel_reads": 4
   },
   "detect": {
     "slot_inset": 6,
     "slot_occupied_brightness": 42,
+    "price_box_widen_left": 23,
+    "qty_read_left": 27,
+    "qty_read_right": 23,
     "panel_item_half": 24,
     "panel_diff_threshold": 40,
     "price_rechecks": 2,

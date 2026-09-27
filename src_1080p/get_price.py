@@ -17,13 +17,11 @@ RETRY_GAP = _SHARED["timing"]["retry_gap"]
 RETRIES = _SHARED["timing"]["search_retries"]
 EXPECTED = _SHARED["favourite_items"]
 _DET = _SHARED["detect"]
-BULK_MIN_CONF = _DET["bulk_min_conf"]
 RESCUE_MIN_CONF = _DET["rescue_min_conf"]
 MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
 FIELD_SETTLE = _SHARED["timing"]["field_settle"]
 VOUCHER_SEARCH = _SHARED["text"]["voucher_search"]
 VOUCHER_WORD = _SHARED["text"]["voucher_word"]
-PRICE_MIN_DIGITS = _DET["price_min_digits"]
 SHOP_CHECK_GAP = _SHARED["timing"]["shop_check_gap"]
 SEARCH_SETTLE = _SHARED["timing"]["search_settle"]
 FAVOURITE_GAP = _SHARED["timing"]["favourite_gap"]
@@ -100,58 +98,25 @@ def row_mark(fields):
             fields.get("qty"), fields.get("price"))
 
 
-def column_edges():
-    cols = _need("purchase_columns")
-    return (cols["qty"][0], cols["price"][0], cols["function"][0])
-
-
 def read_fields(image=None):
     image = image if image is not None else calibration.grab()
-    band = purchase_row_one_box()
-    qty_lo, price_lo, function_lo = column_edges()
-    counted = _POOL.submit(calibration.read_number, image,
-                           tuple(_need("purchase_columns")["qty"]))
-    tokens = calibration.ocr(image, band, min_conf=BULK_MIN_CONF)
-
-    name_words, qty_words, price_words = [], [], []
-    for text, _, (x, _y) in sorted(tokens, key=lambda t: t[2][0]):
-        if x < qty_lo:
-            name_words.append(text)
-        elif x < price_lo:
-            qty_words.append(text)
-        elif x < function_lo:
-            price_words.append(text)
-
-    price = None
-    widest = 0
-    joined_price = _NOT_DIGIT.sub("", "".join(price_words))
-    for text in price_words:
-        digits = _NOT_DIGIT.sub("", text)
-        if len(digits) >= PRICE_MIN_DIGITS:
-            price, widest = int(digits), len(digits)
-    if len(joined_price) >= PRICE_MIN_DIGITS and len(joined_price) > widest:
-        price = int(joined_price)
-    if price is None or price < MIN_PLAUSIBLE_PRICE:
-        price = calibration.read_money(image, column_box("price"))
-
-    qty = None
-    joined = _NOT_DIGIT.sub("", "".join(qty_words))
-    if joined:
-        qty = int(joined)
+    name = _POOL.submit(calibration.read_line, image, column_box("name"))
+    qty = _POOL.submit(calibration.read_line, image, column_box("qty"))
+    price = _POOL.submit(calibration.read_money, image, column_box("price"))
+    name, qty, price = name.result().strip(" |"), qty.result(), price.result()
+    digits = _NOT_DIGIT.sub("", qty)
+    qty = (int(digits) if digits
+           else calibration.read_number(image, column_box("qty")))
     if qty is None:
-        qty = counted.result()
-    if qty is None:
-        rescue = calibration.ocr(image,
-                                 tuple(_need("purchase_columns")["qty"]),
+        rescue = calibration.ocr(image, column_box("qty"),
                                  min_conf=RESCUE_MIN_CONF)
         digits = _NOT_DIGIT.sub("", "".join(t for t, _, _ in rescue))
         qty = int(digits) if digits else None
-
     return {
-        "name": " ".join(name_words).strip(),
+        "name": name,
         "qty": qty,
         "price": price,
-        "row": " ".join(t for t, _, _ in sorted(tokens, key=lambda t: t[2][0])),
+        "row": " ".join(str(v) for v in (name, qty, price) if v not in (None, "")),
     }
 
 

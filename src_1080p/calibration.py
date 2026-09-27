@@ -301,6 +301,9 @@ ROW_BORDER_MIN_GAP = _DET["row_border_min_gap"]
 QTY_HALF_WIDTH = _DET["qty_half_width"]
 FUNCTION_HALF_WIDTH = _DET["function_half_width"]
 PRICE_RIGHT_GAP = _DET["price_right_gap"]
+PRICE_BOX_WIDEN_LEFT = _DET["price_box_widen_left"]
+QTY_READ_LEFT = _DET["qty_read_left"]
+QTY_READ_RIGHT = _DET["qty_read_right"]
 INK_THRESHOLD = _DET["ink_threshold"]
 INK_PAD = _DET["ink_pad"]
 INK_CONTRAST_MIN = _DET["ink_contrast_min"]
@@ -1914,14 +1917,15 @@ def calibrate_purchase(shop, verbose=True):
 
     buy_x = out["purchase_buy_x"]
     qty_lo = centre["qty"] - QTY_HALF_WIDTH
-    qty_hi = centre["qty"] + QTY_HALF_WIDTH
     fn_lo = buy_x - FUNCTION_HALF_WIDTH
     fn_hi = buy_x + FUNCTION_HALF_WIDTH
     cols = {
         "name": [left + PURCHASE_CELL_INSET, top, qty_lo - PURCHASE_CELL_INSET,
                  bot],
-        "qty": [qty_lo, top, qty_hi, bot],
-        "price": [(centre["qty"] + centre["price"]) // 2, top,
+        "qty": [centre["qty"] - QTY_READ_LEFT, top,
+                centre["qty"] + QTY_READ_RIGHT, bot],
+        "price": [(centre["qty"] + centre["price"]) // 2
+                  - PRICE_BOX_WIDEN_LEFT, top,
                   fn_lo - PRICE_RIGHT_GAP + FUNCTION_HALF_WIDTH, bot],
         "function": [fn_lo, top, fn_hi, bot],
     }
