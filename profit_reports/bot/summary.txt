@@ -8,64 +8,64 @@ Wed 2026-09-23            23.16h   24.00h  464.14M   20.04M   16.99B  16.52B  25
 Thu 2026-09-24            23.41h   24.00h  375.88M   16.06M   14.98B  14.60B  20.62K    2.5%
 Fri 2026-09-25            17.07h   24.00h  561.81M   32.91M   13.75B  13.19B  19.63K    4.1%
 Sat 2026-09-26            21.88h   24.00h  565.37M   25.84M   12.65B  12.08B  21.70K    4.5%
-Sun 2026-09-27 (so far)    0.16h    0.16h  353.98K    2.18M    3.91M   3.56M       9    9.0%
+Sun 2026-09-27 (so far)    0.42h    0.42h  358.36K  862.72K    6.06M   5.70M      12    5.9%
 ============================================================================================
-7 DAYS                   131.31h  144.16h    3.21B   24.48M   90.80B  87.59B 135.26K    3.5%
+7 DAYS                   131.57h  144.42h    3.21B   24.44M   90.81B  87.59B 135.26K    3.5%
 
 
-PROFIT SUMMARY -- sold since 2026-09-27 00:00 Central (as of 00:09 Central)
+PROFIT SUMMARY -- sold since 2026-09-27 00:00 Central (as of 00:24 Central)
 
-item                profit  revenue     cost  units  bought/u   sold/u  margin
-------------------------------------------------------------------------------
-forcecoreultimate  351.94K    3.20M    2.84M      8   355.50K  399.49K   11.0%
-chaoscore            2.04K  715.59K  713.55K      1   713.55K  715.59K    0.3%
-------------------------------------------------------------------------------
-Cores              351.94K    3.20M    2.84M      8   355.50K  399.49K   11.0%
-Chaos                2.04K  715.59K  713.55K      1   713.55K  715.59K    0.3%
-==============================================================================
-TOTAL              353.98K    3.91M    3.56M      9   395.28K  434.62K    9.0%
+item                profit  revenue   cost  units  bought/u   sold/u  margin
+----------------------------------------------------------------------------
+forcecoreultimate  351.94K    3.20M  2.84M      8   355.50K  399.49K   11.0%
+chaoscore            6.42K    2.86M  2.85M      4   713.55K  715.15K    0.2%
+----------------------------------------------------------------------------
+Cores              351.94K    3.20M  2.84M      8   355.50K  399.49K   11.0%
+Chaos                6.42K    2.86M  2.85M      4   713.55K  715.15K    0.2%
+============================================================================
+TOTAL              358.36K    6.06M  5.70M     12   474.85K  504.71K    5.9%
 
 
 
-ROWS -- 2026-09-26_215737_run_board.log, board during pass 14 at row 20, read 2026-09-27T00:09:45 (live)
+ROWS -- 2026-09-26_215737_run_board.log, board during pass 18 at row 12, read 2026-09-27T00:24:53 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Chaos Core                              x1   718.00K   715.58K    -2.42K   715.58K    -2.42K
+    1  Chaos Core                              x1   714.97K   709.34K    -5.63K   709.34K    -5.63K
     2  Yekaterina VIP Membership               x1   113.33M   120.00M    +6.67M   120.00M     6.67M
     3  Epic Booster (Highest)                  x4    47.22M    47.50M  +277.77K    47.50M     1.11M
     4  Siena's Unbinding Stone                 x1    75.56M    96.00M   +20.44M    96.00M    20.44M
-    5  Upgrade Core (Ultimate                  x3         -   469.77K         -   469.77K         -
-    6  Upgrade Core (Ultimate                x170         -   469.76K         -   469.76K         -
-    7  Chaos Core                              x1   720.68K   715.07K    -5.62K   715.07K    -5.62K
-    8  Force Core(Highest                      x3         -   199.54K         -   199.54K         -
-    9  Upgrade Core (Ultimate                x123         -   469.76K         -   469.76K         -
-   10  Chaos Core                              x1   720.68K   714.38K    -6.30K   714.38K    -6.30K
-   11  Chaos Core Set X 156                    x1   719.82K   729.40K    +9.58K   113.79M     1.49M
-   12  Chaos Core                              x1   716.25K   714.97K    -1.28K   714.97K    -1.28K
-   13  Force Core(Highest                      x8         -   199.54K         -   199.54K         -
-   14  Chaos Core Set X 69                     x1   713.55K   729.40K   +15.85K    50.33M     1.09M
-   15  Force Core(Highest                    x180   191.05K   199.54K    +8.48K   199.54K     1.53M
-   16  Chaos Core Set X 129                    x1   718.84K   729.40K   +10.56K    94.09M     1.36M
-   17  Force Core(High                       x185         -   188.95K         -   188.95K         -
+    5  Upgrade Core (Ultimate                  x3         -   469.75K         -   469.75K         -
+    6  Upgrade Core (Ultimate                x170         -   469.75K         -   469.75K         -
+    7  Chaos Core                              x1   714.39K   708.66K    -5.73K   708.66K    -5.73K
+    8  Force Core(Highest                      x3         -   199.53K         -   199.53K         -
+    9  Upgrade Core (Ultimate                x123         -   469.75K         -   469.75K         -
+   10  Chaos Core                              x1   713.78K   707.98K    -5.80K   707.98K    -5.80K
+   11  Chaos Core Set X 156                    x1   719.82K   729.38K    +9.55K   113.78M     1.49M
+   12  Chaos Core                              x1   716.25K   707.41K    -8.83K   707.41K    -8.83K <- here
+   13  Force Core(Highest                      x8         -   199.53K         -   199.53K         -
+   14  Chaos Core Set X 69                     x1   713.55K   729.39K   +15.84K    50.33M     1.09M
+   15  Force Core(Highest                    x180   191.05K   199.53K    +8.48K   199.53K     1.53M
+   16  Chaos Core Set X 129                    x1   718.84K   729.39K   +10.54K    94.09M     1.36M
+   17  Force Core(High                       x185         -   188.94K         -   188.94K         -
    18  Force Core(High                       x180         -   188.94K         -   188.94K         -
    19  Force Core(High                       x180   180.00K   188.94K    +8.94K   188.94K     1.61M
-   20  Force Core (Ultimate                  x250   355.55K   411.10K   +55.54K   411.10K    13.89M <- here
-   21  Force Core (Ultimate                  x179   355.55K   411.10K   +55.54K   411.10K     9.94M
-   22  Chaos Core Set X 96                     x1   717.34K   729.41K   +12.07K    70.02M     1.16M
-   23  Chaos Core Set X 219                    x1   717.32K   729.41K   +12.10K   159.74M     2.65M
-   24  Chaos Core Set X 171                    x1   716.80K   729.41K   +12.61K   124.73M     2.16M
-   25  Force Core (Ultimate)                 x189   355.55K   411.10K   +55.54K   411.10K    10.50M
-    balance now 1.51B, read 2026-09-27T00:07:37
+   20  Force Core (Ultimate                  x250   355.55K   411.09K   +55.54K   411.09K    13.88M
+   21  Force Core (Ultimate                  x179   355.55K   411.09K   +55.54K   411.09K     9.94M
+   22  Chaos Core Set X 96                     x1   717.34K   729.38K   +12.04K    70.02M     1.16M
+   23  Chaos Core Set X 219                    x1   717.32K   729.38K   +12.07K   159.74M     2.64M
+   24  Chaos Core Set X 171                    x1   716.80K   729.38K   +12.58K   124.72M     2.15M
+   25  Force Core (Ultimate                  x189   355.55K   411.09K   +55.54K   411.09K    10.50M
+    balance now 1.51B, read 2026-09-27T00:18:52
        stock at its listed price                                                              1.55B
        Alz, latest balance line                                                               1.51B
        NET WORTH                                                                              3.07B
 
 
-MARKET -- 2026-09-26_215737_run.log, pass 14, log last written 00:09 Central (live)
+MARKET -- 2026-09-26_215737_run.log, pass 18, log last written 00:24 Central (live)
 
-core                     rows    buy/u   sell/u  margin  margin %  wants  short?
--------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  6        -        -       -         -      -  holds the most it can want, 6; not priced
-Force Core (Ultimate)       2  355.55K  411.10K  55.54K     13.5%      3  YES
-Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
+core                     rows  buy/u  sell/u  margin  margin %  wants  short?
+----------------------------------------------------------------------------------------------------------------
+Force Core(Highest)         3      -       -       -         -      -  holds the most it can want, 3; not priced
+Chaos Core                  6      -       -       -         -      -  holds the most it can want, 6; not priced
+Force Core (Ultimate)       3      -       -       -         -      -  holds the most it can want, 3; not priced
+Force Core(High)            3      -       -       -         -      -  holds the most it can want, 3; not priced
+Upgrade Core (Ultimate)     3      -       -       -         -      -  holds the most it can want, 3; not priced
