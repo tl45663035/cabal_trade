@@ -549,11 +549,22 @@
   },
   "ocr": {
     "backup_python": "../.paddle/Scripts/python.exe",
+    "backup_python_version": "3.13",
+    "backup_packages": [
+      "paddlepaddle==3.3.1",
+      "paddleocr==3.7.0"
+    ],
     "backup_reader": "paddle_reader.py",
     "backup_model": "PP-OCRv5_mobile_rec",
     "backup_scale": 4,
     "backup_start_timeout": 60,
     "backup_timeout": 10,
+    "backup_check": {
+      "sample": "1,729,428,170",
+      "font": "arial.ttf",
+      "size": 40,
+      "margin": 20
+    },
     "parallel_reads": 3
   },
   "detect": {
