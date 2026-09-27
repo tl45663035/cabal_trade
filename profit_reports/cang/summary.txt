@@ -8,12 +8,12 @@ Wed 2026-09-23            19.99h   24.00h  137.97K    6.90K    6.92M   6.79M    
 Thu 2026-09-24            18.07h   24.00h  111.91M    6.19M    7.79B   7.68B  12.44K    1.4%
 Fri 2026-09-25            15.31h   24.00h  340.73M   22.26M   11.27B  10.93B  18.42K    3.0%
 Sat 2026-09-26            17.54h   24.00h   -1.73B  -98.73M   15.15B  16.88B  24.45K  -11.4%
-Sun 2026-09-27 (so far)    7.17h    7.58h   86.85M   12.11M    4.26B   4.17B   7.34K    2.0%
+Sun 2026-09-27 (so far)    7.42h    7.83h   86.85M   11.70M    4.26B   4.17B   7.34K    2.0%
 ============================================================================================
-7 DAYS                   108.00h  151.58h   -1.19B  -11.03M   38.47B  39.66B  62.67K   -3.1%
+7 DAYS                   108.25h  151.83h   -1.19B  -11.01M   38.47B  39.66B  62.67K   -3.1%
 
 
-PROFIT SUMMARY -- sold since 2026-09-27 00:00 Central (as of 07:34 Central)
+PROFIT SUMMARY -- sold since 2026-09-27 00:00 Central (as of 07:49 Central)
 
 item                 profit  revenue     cost  units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------
@@ -30,7 +30,7 @@ TOTAL                86.85M    4.26B    4.17B  7.34K   567.99K  579.83K    2.0%
 
 
 
-ROWS -- 2026-09-27_023651_run_board.log, board during pass 324 at row 1, read 2026-09-27T07:34:09 (live)
+ROWS -- 2026-09-27_023651_run_board.log, board during pass 351 at row 1, read 2026-09-27T07:49:19 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Honor Medal Chest                       x2         -   188.82M         -   188.82M         - <- here
     2  Life Capsule(Special) Type A X 100        x9         -    20.00K         -     2.00M         -
@@ -52,24 +52,27 @@ ROWS -- 2026-09-27_023651_run_board.log, board during pass 324 at row 1, read 20
    18  Chaos Core Set                          x1   715.00K   729.45K   +14.45K   145.89M     2.89M
    19  Chaos Core Set                          x1   715.00K   729.45K   +14.45K   145.89M     2.89M
    20  Chaos Core Set                          x1   715.00K   729.45K   +14.45K   148.81M     2.95M
+   21  Chaos Core Set                          x1   700.00K   729.45K   +29.45K   145.89M     5.89M
+   22  Chaos Core Set                          x1   700.00K   729.45K   +29.45K   145.89M     5.89M
+   23  Chaos Core Set                          x1   700.00K   729.45K   +29.45K   145.89M     5.89M
    26  Palladium Hands(BL) | Lua               x1         -     2.56M         -     2.56M         -
    27  __ Palladium Gloves(Fa) |e              x1         -    12.20M         -    12.20M         -
    29  __alladium sutt (OM) mmf:               x1         -    27.20M         -    27.20M         -
    30  Palladium Headgear(FA) | Lua            x2         -     7.00M         -     7.00M         -
-    balance now 2.12B, read 2026-09-27T07:34:09
+    balance now 1.70B, read 2026-09-27T07:49:19
     held on tab 4, bought and not listed yet:
     Chaos Core Set                     slot (1, 2)         - unit(s)            - a unit
-       stock at its listed price                                                              1.47B
-       Alz, latest balance line                                                               2.12B
-       NET WORTH                                                                              3.58B
+       stock at its listed price                                                              1.90B
+       Alz, latest balance line                                                               1.70B
+       NET WORTH                                                                              3.60B
 
 
-MARKET -- 2026-09-27_023651_run.log, pass 324, log last written 07:34 Central (live)
+MARKET -- 2026-09-27_023651_run.log, pass 351, log last written 07:49 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         4        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  5  718.35K  715.00K  -3.35K     -0.5%      0
+Chaos Core                  8        -        -       -         -      -  holds the most it can want, 6; not priced
 Divine Stone                3  710.00K  713.97K   3.97K      0.6%      0
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
