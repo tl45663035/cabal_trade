@@ -1422,6 +1422,7 @@ class RowModel:
                    listed_at=None, wait_fill=True, price_each=None,
                    expect_qty=None, expect_market=None, resolve=True,
                    under=None, floor_item=None, floor_units=0,
+                   fallback=None,
                    resupply_cost=0):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
@@ -1491,6 +1492,13 @@ class RowModel:
                 print(f"  the market would not price it after "
                       f"{PRICE_ATTEMPTS} ctrl-click(s); listing at the "
                       f"{suggested:,} it came out of the row at")
+        elif suggested is None and fallback:
+            suggested = int(fallback)
+            price = suggested
+            if verbose:
+                print(f"  no market price read after {PRICE_ATTEMPTS} "
+                      f"ctrl-click(s), so nothing else is listed to follow; "
+                      f"listing at the first-listing price {suggested:,}")
         if suggested is None:
             raise NothingLoaded(
                 f"nothing loaded into the shop slot from ({row},{col}) after "

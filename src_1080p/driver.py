@@ -2918,14 +2918,13 @@ def cash_list_step(model, job, first, last, verbose=True):
         opening = calibration.first_list_price(item)
         if opening and verbose:
             print(f"  the first listing of a {item} bought from the "
-                  f"Cash Shop goes out at {opening:,}, whatever the "
-                  f"market reads")
+                  f"Cash Shop follows the market; {opening:,} only if no "
+                  f"market price reads")
         with calibration.phase(f"list {item} from {slot}"):
             listed = model.list_slot(*slot, floor=entry["floor"],
                                      why=entry["why"], verbose=verbose,
                                      lands_in=lands_in, expect_item=item,
-                                     price=opening or None,
-                                     listed_at=opening or None)
+                                     fallback=opening or None)
         model.place(lands_in, row_model.Row(item, qty=listed["qty"],
                                             price=listed["price"],
                                             buy_cost=entry["floor"],
