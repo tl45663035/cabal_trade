@@ -8,54 +8,65 @@ Thu 2026-09-24            18.07h   24.00h   111.91M    6.19M    7.79B   7.68B  1
 Fri 2026-09-25            15.31h   24.00h   340.73M   22.26M   11.27B  10.93B  18.42K    3.0%
 Sat 2026-09-26            17.54h   24.00h    -1.73B  -98.73M   15.15B  16.88B  24.45K  -11.4%
 Sun 2026-09-27            15.82h   24.00h   185.62M   11.73M   10.30B  10.12B  17.37K    1.8%
-Mon 2026-09-28 (so far)    6.86h    8.06h    96.51M   14.07M    6.62B   6.52B   9.70K    1.5%
+Mon 2026-09-28 (so far)    7.32h   10.20h   103.57M   14.15M    6.93B   6.83B  10.20K    1.5%
 =============================================================================================
-7 DAYS                   109.37h  152.06h  -996.35M   -9.11M   51.13B  52.13B  82.41K   -1.9%
+7 DAYS                   109.83h  154.20h  -989.29M   -9.01M   51.45B  52.44B  82.91K   -1.9%
 
 
-PROFIT SUMMARY -- sold since 2026-09-28 00:00 Central (as of 08:03 Central)
+PROFIT SUMMARY -- sold since 2026-09-28 00:00 Central (as of 10:11 Central)
 
-item                 profit  revenue     cost  units  bought/u   sold/u  margin
--------------------------------------------------------------------------------
-chaoscore            86.83M    5.39B    5.31B  7.40K   717.59K  729.33K    1.6%
-upgradecoreultimate   6.08M  161.90M  155.81M    363   429.24K  446.00K    3.8%
-divinestone           4.96M  632.50M  627.55M    889   705.90K  711.48K    0.8%
-wexpsaver                 0   61.61M   61.61M      1    61.61M   61.61M    0.0%
-honormedalchest           0  188.50M  188.50M      1   188.50M  188.50M    0.0%
-forcecorehigh        -1.37M  177.32M  178.69M  1.05K   170.02K  168.72K   -0.8%
--------------------------------------------------------------------------------
-Cores                 9.68M    1.22B    1.21B  2.31K   525.88K  530.08K    0.8%
-Chaos                86.83M    5.39B    5.31B  7.40K   717.59K  729.33K    1.6%
-===============================================================================
-TOTAL                96.51M    6.62B    6.52B  9.70K   672.05K  681.99K    1.5%
+item                  profit  revenue     cost   units  bought/u   sold/u  margin
+---------------------------------------------------------------------------------
+chaoscore             86.83M    5.39B    5.31B   7.40K   717.59K  729.33K    1.6%
+divinestone           11.13M  934.77M  923.65M   1.31K   704.00K  712.48K    1.2%
+upgradecoreultimate    6.08M  161.90M  155.81M     363   429.24K  446.00K    3.8%
+forcecorehighest     777.54K   10.16M    9.38M      51   183.90K  199.15K    7.7%
+wexpsaver                  0   61.61M   61.61M       1    61.61M   61.61M    0.0%
+honormedalchest            0  188.50M  188.50M       1   188.50M  188.50M    0.0%
+forcecorehigh         -1.25M  181.23M  182.48M   1.07K   169.91K  168.75K   -0.7%
+---------------------------------------------------------------------------------
+Cores                 16.74M    1.54B    1.52B   2.80K   542.98K  548.95K    1.1%
+Chaos                 86.83M    5.39B    5.31B   7.40K   717.59K  729.33K    1.6%
+=================================================================================
+TOTAL                103.57M    6.93B    6.83B  10.20K   669.62K  679.78K    1.5%
 
 
 
-ROWS -- 2026-09-28_025456_run_board.log, board during pass 97 at row 3, read 2026-09-28T08:03:36 (live)
+ROWS -- 2026-09-28_095023_run_board.log, board during pass 2 at row 25, read 2026-09-28T10:11:29 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Honor Medal Chest                       x1         -   188.50M         -   188.50M         -
-    2  Divine Stone Set X 141                  x1   705.90K   714.59K    +8.69K   100.76M     1.23M
-    3  Divine Stone Set X 141                  x1   705.90K   714.59K    +8.69K   100.76M     1.23M <- here
-    4  Divine Stone Set X 141                  x1   707.00K   714.59K    +7.59K   100.76M     1.07M
-    5  Force Core(High                        x23   165.00K   169.99K    +5.00K   169.99K   114.89K
-    6  Force Core(Highest                     x37    18.67K   199.16K  +180.50K   199.16K     6.68M
+    2  Divine Stone Set                        x1   700.00K   714.60K   +14.60K   117.91M     2.41M
+    3  Divine Stone Set                        x1   700.00K   714.60K   +14.60K   105.05M     2.15M
+    4  Divine Stone Set                        x1   700.00K   714.60K   +14.60K   115.76M     2.36M
+    5  Force Core(Highest                     x36         -   199.14K         -   199.14K         -
+    6  Chaos Core Set X 177                    x1   740.06K   779.96K   +39.91K   138.05M     7.06M
+    7  Chaos Core Set X 306                    x1   743.79K   779.96K   +36.17K   238.67M    11.07M
+    8  Chaos Core Set X 225                    x1   747.97K   779.96K   +32.00K   175.49M     7.20M
+    9  Chaos Core Set X 195                    x1   748.00K   779.96K   +31.96K   152.09M     6.23M
+   10  Chaos Core Set X 219                    x1   748.00K   779.96K   +31.96K   170.81M     7.00M
+   11  Chaos Core Set X 294                    x1   748.01K   779.96K   +31.95K   229.31M     9.39M
+   12  Force Core(Highest                    x203   183.90K   199.14K   +15.24K   199.14K     3.09M
+   13  Force Core(Highest                    x157   183.90K   199.14K   +15.24K   199.14K     2.39M
+   14  Divine Stone Set X 180                  x1   700.00K   714.59K   +14.59K   128.63M     2.63M
+   15  Divine Stone Set X 159                  x1   700.00K   714.59K   +14.59K   113.62M     2.32M
+    25  (empty)                                           -          -       -              -               - <- here
    26  Palladium Plate(WA) | Lua               x1         -     3.00M         -     3.00M         -
-   27  Palladium Suit (DM) i                   x1         -    24.11M         -    24.11M         -
+   27  Potion of Honor                         x1         -     7.25M         -     7.25M         -
    28  Life Capsule(Special) Type A X 100        x7         -    20.00K         -     2.00M         -
-   29  Arcana of Chaos + 18                    x2         -     1.39B         -     1.39B         -
+   29  Arcana of Chaos + 18                    x2         -     1.30B         -     1.30B         -
    30  Arcana of Chaos + 16                    x1         -   181.13M         -   181.13M         -
-    balance now 2.18B, read 2026-09-28T08:02:45
-       stock at its listed price                                                            502.05M
-       Alz, latest balance line                                                               2.18B
-       NET WORTH                                                                              2.68B
+    balance now 795.47M, read 2026-09-28T10:10:44
+       stock at its listed price                                                              1.95B
+       Alz, latest balance line                                                             795.47M
+       NET WORTH                                                                              2.75B
 
 
-MARKET -- 2026-09-28_025456_run.log, pass 97, log last written 08:03 Central (live)
+MARKET -- 2026-09-28_095023_run.log, pass 2, log last written 10:11 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 --------------------------------------------------------------------------------
-Force Core(Highest)         1  200.16K  199.16K    -997     -0.5%      0
-Chaos Core                  0  719.00K  729.01K  10.01K      1.4%      6  YES
-Divine Stone                3  707.00K  714.59K   7.59K      1.1%      3
-Force Core(High)            1  174.58K  169.99K  -4.58K     -2.7%      0
-Upgrade Core (Ultimate)     0  445.06K  446.25K   1.18K      0.3%      0
+Force Core(Highest)         1  183.90K  199.15K  15.25K      7.7%      3  YES
+Chaos Core                  5  748.00K  779.98K  31.98K      4.1%      6  YES
+Divine Stone                3  700.00K  714.60K  14.60K      2.0%      5  YES
+Force Core(High)            0  174.58K  179.12K   4.54K      2.5%      0
+Upgrade Core (Ultimate)     0  445.07K  458.91K  13.85K      3.0%      3  YES
