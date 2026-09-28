@@ -99,7 +99,9 @@ class SlotNeverFilled(Divergence):
 
 
 class GameSaysWait(Divergence):
-    pass
+    def __init__(self, what, answer=None):
+        super().__init__(what)
+        self.answer = answer
 
 
 class NothingLoaded(Divergence):
@@ -851,6 +853,17 @@ def row_is_empty(text=None, seat=FIRST_SEAT):
     return (not key) or EMPTY_MARKER in key or key == _key(REGISTER_WORD)
 
 
+def read_row_and_button(seat=FIRST_SEAT):
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        reading = pool.submit(read_row, seat)
+        pressing = pool.submit(row_button, None, seat)
+        seen = reading.result()
+        action = pressing.result()
+    if action is None:
+        action = _function_in(seen)
+    return seen, action
+
+
 def _wheel_event(direction):
     return inv._Input(
         type=INPUT_MOUSE,
@@ -1205,32 +1218,100 @@ class RowModel:
 
     def receive(self, index, verbose=True, complete=False):
         import get_alz
-        listed = self._slots.get(index)
-        before_alz = get_alz.read_balance()
+        saved = list(calibration._STEPS)
+        calibration.steps_reset()
+        started = time.perf_counter()
+        try:
+            listed = self._slots.get(index)
+            with calibration.step("read the balance before collecting"):
+                before_alz = get_alz.read_balance()
+            attempt = 0
+            while True:
+                try:
+                    self._receive(index, verbose=verbose, complete=complete,
+                                  again=attempt > 0)
+                    break
+                except GameSaysWait as refused:
+                    with calibration.step("close and open the Agent Shop "
+                                          "again"):
+                        self.again_after_wait(
+                            f"the collection on row {index}", attempt,
+                            answer=refused.answer)
+                    attempt += 1
+            with calibration.step("read the balance and book the sale"):
+                self._book(index, listed, before_alz, verbose)
+            if complete:
+                total = (time.perf_counter() - started) * 1000
+                inside = sum(ms for _label, ms in calibration._STEPS)
+                calibration._STEPS.append(("not inside any step",
+                                           total - inside))
+                calibration.steps_table(f"collect row {index} in full")
+        finally:
+            calibration._STEPS[:] = saved
+        return True
+
+    def _receive(self, index, verbose=True, complete=False, again=False):
+        if again:
+            with calibration.step("scroll to the row again"):
+                if self.scroll_to(index, verbose=verbose)["moved"]:
+                    time.sleep(TAB_SETTLE)
+            with calibration.step("read the row and its button again"):
+                seen, action = read_row_and_button(self._seat)
+            if action != RECEIPT_WORD:
+                print(f"  row {index} reads {seen!r} with the Agent Shop open "
+                      f"again; {RECEIPT_WORD} is no longer on it")
+                if complete:
+                    self._emptied(index, seen, action)
+                return
         point = button_point(self._seat)
         if verbose:
             print(f"  {RECEIPT_WORD} at {point}")
-        calibration.click(*point)
-        accept = find_button(RECEIPT_WORD)
+        with calibration.step(f"click {RECEIPT_WORD} on the row"):
+            calibration.click(*point)
+        with calibration.step(f"find {RECEIPT_WORD} in the Confirm Receipt "
+                              f"dialog"):
+            accept = find_button(RECEIPT_WORD)
         if accept is None:
             raise Divergence(
                 f"no Confirm Receipt dialog appeared after {RECEIPT_WORD} on "
                 f"row {index}. Nothing has been collected.")
         if verbose:
             print(f"  Confirm Receipt: accepting at {accept}")
-        calibration.click(*accept)
-        if complete:
+        with calibration.step(f"click {RECEIPT_WORD} in the Confirm Receipt "
+                              f"dialog"):
+            calibration.click(*accept)
+        if not complete:
+            calibration.park()
+            if not dialog_gone():
+                raise Divergence(
+                    f"the Confirm Receipt dialog stayed open on row {index}. "
+                    f"Whether the Alz was taken is unknown -- check by hand.")
+            with calibration.step("look for 'please wait and try again'"):
+                waiting = calibration.game_says_wait()
+            if waiting:
+                raise GameSaysWait(f"collecting row {index}")
+            return
+        with calibration.step("let the collection settle"):
             calibration.park(settle=False)
             time.sleep(RECEIPT_SETTLE)
-            self._book(index, listed, before_alz, verbose)
-            return True
-        calibration.park()
-        if not dialog_gone():
-            raise Divergence(
-                f"the Confirm Receipt dialog stayed open on row {index}. "
-                f"Whether the Alz was taken is unknown -- check by hand.")
-        self._book(index, listed, before_alz, verbose)
-        return True
+        with calibration.step("read the row and its button after collecting"):
+            seen, action = read_row_and_button(self._seat)
+        if action == RECEIPT_WORD:
+            with calibration.step("look for 'please wait and try again'"):
+                waiting = calibration.game_says_wait()
+            print(f"  row {index} still reads {seen!r} after {RECEIPT_WORD}; "
+                  f"nothing was collected")
+            raise GameSaysWait(f"collecting row {index}",
+                               answer=None if waiting else "did not take")
+        self._emptied(index, seen, action)
+
+    def _emptied(self, index, seen, action):
+        if action == REGISTER_WORD or row_is_empty(seen, self._seat):
+            return
+        calibration.snap(f"row_{index}_not_empty_after_collecting")
+        raise Divergence(
+            f"row {index} reads {seen!r} after collecting a sale that was "
+            f"complete, so it is not marked empty.")
 
     def _book(self, index, listed, before_alz, verbose=True):
         import get_alz
@@ -1271,16 +1352,16 @@ class RowModel:
             print(f"  the Agent Shop is closed and open again on the Register "
                   f"tab")
 
-    def again_after_wait(self, what, attempt, verbose=True):
+    def again_after_wait(self, what, attempt, verbose=True, answer=None):
         calibration.snap("game_says_wait")
+        said = answer or "answered 'please wait and try again' to"
         if attempt >= GAME_WAIT_RETRIES:
             raise GameSaysWait(
-                f"the game answered 'please wait and try again' to {what} "
-                f"{attempt + 1} time(s); nothing more is tried.")
+                f"the game {said} {what} {attempt + 1} time(s); nothing more "
+                f"is tried.")
         if verbose:
-            print(f"  the game answered 'please wait and try again' to {what}; "
-                  f"closing the Agent Shop and doing it again "
-                  f"({attempt + 1} of {GAME_WAIT_RETRIES})")
+            print(f"  the game {said} {what}; closing the Agent Shop and doing "
+                  f"it again ({attempt + 1} of {GAME_WAIT_RETRIES})")
         self.reopen_after_wait(verbose=verbose)
 
     def cancel(self, index, verbose=True, tab_ready=False, tab_selected=False):
@@ -1309,13 +1390,7 @@ class RowModel:
         seat = self._seat
         position = seat_position(seat)
         with calibration.step("read the row and its button again"):
-            with ThreadPoolExecutor(max_workers=2) as pool:
-                reading = pool.submit(read_row, seat)
-                pressing = pool.submit(row_button, None, seat)
-                seen = reading.result()
-                action = pressing.result()
-            if action is None:
-                action = _function_in(seen)
+            seen, action = read_row_and_button(seat)
         if action == RECEIPT_WORD:
             complete = row_complete(seen, seat)
             if verbose:

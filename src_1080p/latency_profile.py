@@ -11,6 +11,12 @@ STEP_ROW = re.compile(r"^\s+\d+\s+([\d,.]+)\s+[\d.]+%\s+(.+?)\s*$")
 PHASE_ROW = re.compile(r"^\s+\d+\s+([\d,.]+)\s+[\d.]+%\s+(\d+)\s+([\d,.]+)\s+(.+?)\s*$")
 TOTAL_ROW = re.compile(r"^\s+([\d,.]+)\s+100\.0%\s*(TOTAL)?\s*$")
 BUY_TITLE = re.compile(r"^buy from favourite slot (\d+): (.+)$")
+FULL_COLLECT = re.compile(r"^collect row \d+ in full$")
+COLLECT_CHECKS = {"read the row and its button after collecting",
+                  "look for 'please wait and try again'",
+                  "close and open the Agent Shop again",
+                  "scroll to the row again",
+                  "read the row and its button again"}
 CARRIED = re.compile(r"balance before [\d,]+, as the last order left it")
 LINES = [
     (re.compile(r"tab \d read in (\d+) ms after the listing"), "tab 4 read after a listing"),
@@ -83,6 +89,19 @@ def read_run(stamp):
                     add("relist: listing, whole", sum(ms for ms, _s in rows))
                     for ms, s in rows:
                         add(f"relist listing step: {plain(s)}", ms)
+                elif FULL_COLLECT.match(title):
+                    whole = sum(ms for ms, _s in rows)
+                    before, seen = 0.0, set()
+                    for ms, s in rows:
+                        if s not in COLLECT_CHECKS and s not in seen:
+                            before += ms
+                            seen.add(s)
+                    add("collect in full: whole", whole)
+                    add("collect in full: without the new checks", before)
+                    add("collect in full: added by the new checks",
+                        whole - before)
+                    for ms, s in rows:
+                        add(f"collect in full step: {plain(s)}", ms)
                 kind = None
                 continue
             m = STEP_ROW.match(line)
