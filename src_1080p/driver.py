@@ -88,6 +88,7 @@ def repair_command(args):
 
 def initialise(verbose=True):
     global _MEASURED
+    row_model.start_backup_reader()
     if not inv.focus_game():
         raise NotReady("could not bring the game to the foreground.")
     if REPAIR:

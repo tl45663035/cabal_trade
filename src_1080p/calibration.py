@@ -310,6 +310,12 @@ INK_CONTRAST_MIN = _DET["ink_contrast_min"]
 WARM_MIN_BRIGHT = _DET["warm_min_bright"]
 WARM_MIN_SATURATION = _DET["warm_min_saturation"]
 ALZ_MAX_TEXT_HEIGHT = _DET["alz_max_text_height"]
+REGISTER_BOX_MARGIN = _DET["register_box_margin"]
+REGISTER_LINE_SHARE = _DET["register_line_share"]
+REGISTER_LINE_CONTRAST = _DET["register_line_contrast"]
+REGISTER_LINE_REACH = _DET["register_line_reach"]
+REGISTER_INTERIOR_MAX = _DET["register_interior_max"]
+REGISTER_COLUMNS = tuple(_S["game_facts"]["register_columns"])
 BULK_MIN_CONF = _DET["bulk_min_conf"]
 RESCUE_MIN_CONF = _DET["rescue_min_conf"]
 MIN_PLAUSIBLE_PRICE = _DET["min_plausible_price"]
@@ -1941,6 +1947,60 @@ def calibrate_purchase(shop, verbose=True):
     return out
 
 
+def _thin_lines(share):
+    lines, start = [], None
+    for i, value in enumerate(share):
+        if value >= REGISTER_LINE_SHARE and start is None:
+            start = i
+        elif value < REGISTER_LINE_SHARE and start is not None:
+            lines.append((start, i - 1))
+            start = None
+    if start is not None:
+        lines.append((start, len(share) - 1))
+    return lines
+
+
+def _register_columns(image, band, first, last, pitch):
+    grey = np.asarray(image.convert("L"), dtype=int)
+    reach, lift = REGISTER_LINE_REACH, REGISTER_LINE_CONTRAST
+    y0, y1 = first - pitch // 2, last + pitch // 2
+    x0, x1 = band[0], band[2]
+    rows = grey[y0:y1]
+    here = rows[:, x0:x1]
+    share = ((here > rows[:, x0 - reach:x1 - reach] + lift)
+             & (here > rows[:, x0 + reach:x1 + reach] + lift)).mean(axis=0)
+    dividers = [(x0 + a, x0 + b) for a, b in _thin_lines(share)]
+    if len(dividers) != len(REGISTER_COLUMNS) - 1:
+        return None
+    dark = np.median(rows, axis=0) <= REGISTER_INTERIOR_MAX
+    inside_left = next((x for x in range(x0, dividers[0][0]) if dark[x]), None)
+    inside_right = next((x for x in range(x1 - 1, dividers[-1][1], -1)
+                         if dark[x]), None)
+    if inside_left is None or inside_right is None:
+        return None
+    edges = ([(inside_left - 1, inside_left - 1)] + dividers
+             + [(inside_right + 1, inside_right + 1)])
+    xs = {name: [edges[i][1] + 1 + REGISTER_BOX_MARGIN,
+                 edges[i + 1][0] - 1 - REGISTER_BOX_MARGIN]
+          for i, name in enumerate(REGISTER_COLUMNS)}
+    inside = grey[y0 - reach:y1 + reach, inside_left:inside_right + 1]
+    middle = inside[reach:-reach]
+    across = ((middle > inside[:-2 * reach] + lift)
+              & (middle > inside[2 * reach:] + lift)).mean(axis=1)
+    seps = [(y0 + a, y0 + b) for a, b in _thin_lines(across)]
+    ups, downs = [], []
+    for k in range(1, SHOP_VISIBLE - 1):
+        centre = first + k * pitch
+        above = [b for _a, b in seps if b < centre]
+        below = [a for a, _b in seps if a > centre]
+        if above and below and centre - above[-1] < pitch and below[0] - centre < pitch:
+            ups.append(centre - (above[-1] + 1 + REGISTER_BOX_MARGIN))
+            downs.append((below[0] - 1 - REGISTER_BOX_MARGIN) - centre)
+    if not ups:
+        return None
+    return {"x": xs, "up": int(np.median(ups)), "down": int(np.median(downs))}
+
+
 def calibrate_register_table(shop, verbose=True):
     say = print if verbose else (lambda *a: None)
     click(*shop["register_tab"])
@@ -2020,7 +2080,16 @@ def calibrate_register_table(shop, verbose=True):
         "table_point": [int(xs[len(xs) // 2]) - SCROLL_POINT_INSET, int(ys[0]) + pitch],
         "rows_per_notch": 1,
         "register_rows_seen": len(marks),
+        "register_columns": _register_columns(image, band, int(ys[0]),
+                                              int(bottom), int(pitch)),
     }
+    columns = out["register_columns"]
+    if columns is None:
+        say("  the Register table's column lines were not all found; its "
+            "rows are read whole, as before")
+    else:
+        say(f"  Register columns {columns['x']}, each from {columns['up']} "
+            f"above to {columns['down']} below its row's centre")
     say(f"  button column {buttons}")
     say(f"  Register table: {len(marks)} row(s), pitch {pitch}px, "
         f"row 1 y={out['row_one_y']}"
@@ -2450,6 +2519,18 @@ class ServerStalled(Exception):
 
 
 _HOLDING = False
+_TABLE_LOST = False
+
+
+def table_lost():
+    global _TABLE_LOST
+    _TABLE_LOST = True
+
+
+def take_table_lost():
+    global _TABLE_LOST
+    lost, _TABLE_LOST = _TABLE_LOST, False
+    return lost
 
 
 def hold_if_busy() -> None:
@@ -2501,6 +2582,7 @@ def wait_out_server_lag(verbose=True, reset=True):
         time.sleep(SERVER_LAG_IDLE)
         if not server_busy():
             waited = time.monotonic() - started
+            table_lost()
             snap("server_answered")
             if verbose:
                 print(f"  the server is answering again after {waited:.0f}s")

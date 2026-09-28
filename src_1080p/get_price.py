@@ -100,6 +100,21 @@ def row_mark(fields):
 
 def read_fields(image=None):
     image = image if image is not None else calibration.grab()
+    read = row_model.paddle_row(image, column_box("name"), column_box("qty"),
+                                column_box("price"))
+    if read is None:
+        if "tesseract" not in _SEEN:
+            _SEEN["tesseract"] = row_model._reader["failed"]
+            print(f"  {_SEEN['tesseract']}; row 1 is read by Tesseract "
+                  f"instead")
+        return _tesseract_fields(image)
+    name, qty, price = read
+    digits = _NOT_DIGIT.sub("", qty or "")
+    return _fields((name or "").strip(" |"), int(digits) if digits else None,
+                   calibration._digits(price))
+
+
+def _tesseract_fields(image):
     name = _POOL.submit(calibration.read_line, image, column_box("name"))
     qty = _POOL.submit(calibration.read_line, image, column_box("qty"))
     price = _POOL.submit(calibration.read_money, image, column_box("price"))
@@ -112,6 +127,10 @@ def read_fields(image=None):
                                  min_conf=RESCUE_MIN_CONF)
         digits = _NOT_DIGIT.sub("", "".join(t for t, _, _ in rescue))
         qty = int(digits) if digits else None
+    return _fields(name, qty, price)
+
+
+def _fields(name, qty, price):
     return {
         "name": name,
         "qty": qty,

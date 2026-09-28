@@ -131,6 +131,7 @@ def avoid(allowance=0.0, verbose=True):
     except Exception as exc:
         say(f"  could not reach the default state before waiting ({exc}); "
             f"waiting anyway.")
+    calibration.table_lost()
     deadline = time.monotonic() + wait
     while time.monotonic() < deadline:
         time.sleep(min(LAG_POLL, deadline - time.monotonic()))

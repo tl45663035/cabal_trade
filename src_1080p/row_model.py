@@ -38,7 +38,6 @@ HOME_NOTCHES = _SHARED["run"]["home_notches"]
 FIRST_SEAT = "row_one_y"
 LAST_SEAT = "row_last_y"
 
-EMPTY_MARKER = _SHARED["text"]["empty_row"]
 _TEXT = _SHARED["text"]
 CHANGE_WORD = _TEXT["change_word"]
 DISMISS_WORD = _TEXT["dismiss_word"]
@@ -460,6 +459,8 @@ def _agreed(asked, filled, average, listed_at, verbose, net=None):
 
 
 _reader = {"proc": None, "lines": None, "failed": None}
+_reading = threading.Lock()
+_told = set()
 
 
 def _backup_reader():
@@ -497,31 +498,64 @@ def _backup_reader():
     return lines
 
 
+def start_backup_reader():
+    def start():
+        with _reading:
+            _backup_reader()
+    threading.Thread(target=start, daemon=True).start()
+
+
 def backup_money(image, boxes):
-    lines = _backup_reader()
-    if lines is None:
+    if _reader["failed"]:
         return None
-    prepared = [calibration.isolate_digits(image, tuple(box), BACKUP_SCALE)
-                if box else None for box in boxes]
+    texts = _backup_texts([calibration.isolate_digits(image, tuple(box),
+                                                      BACKUP_SCALE)
+                           if box else None for box in boxes])
+    return None if texts is None else [calibration._digits(t) for t in texts]
+
+
+def _backup_line(image, box):
+    ink = calibration.ink_box(image, tuple(box))
+    if ink is None:
+        return None
+    crop = image.crop(ink)
+    return crop.resize((crop.width * BACKUP_SCALE, crop.height * BACKUP_SCALE),
+                       Image.LANCZOS)
+
+
+def paddle_row(image, name_box, qty_box, price_box):
+    if _reader["failed"]:
+        return None
+    return _backup_texts([_backup_line(image, name_box),
+                          _backup_line(image, qty_box),
+                          calibration.isolate_digits(image, tuple(price_box),
+                                                     BACKUP_SCALE)])
+
+
+def _backup_texts(prepared):
     crops = []
-    for digits in (p for p in prepared if p is not None):
+    for picture in (p for p in prepared if p is not None):
         buf = io.BytesIO()
-        digits.convert("RGB").save(buf, "PNG")
+        picture.convert("RGB").save(buf, "PNG")
         crops.append(base64.b64encode(buf.getvalue()).decode("ascii"))
-    proc = _reader["proc"]
-    try:
-        proc.stdin.write(json.dumps(crops) + "\n")
-        proc.stdin.flush()
-        answer = lines.get(timeout=BACKUP_TIMEOUT)
-    except (OSError, queue.Empty):
-        answer = None
-    if not answer:
-        proc.kill()
-        _reader["proc"] = None
-        _reader["failed"] = (f"PaddleOCR did not answer within "
-                             f"{BACKUP_TIMEOUT}s")
-        return None
-    read = iter(calibration._digits(text) for text, _score in json.loads(answer))
+    with _reading:
+        lines = _backup_reader()
+        if lines is None:
+            return None
+        proc = _reader["proc"]
+        try:
+            proc.stdin.write(json.dumps(crops) + "\n")
+            proc.stdin.flush()
+            answer = lines.get(timeout=BACKUP_TIMEOUT)
+        except (OSError, queue.Empty):
+            answer = None
+        if not answer:
+            proc.kill()
+            _reader["proc"] = None
+            _reader["failed"] = (f"PaddleOCR did not answer within "
+                                 f"{BACKUP_TIMEOUT}s")
+            return None
+    read = iter(text for text, _score in json.loads(answer))
     return [next(read) if p is not None else None for p in prepared]
 
 
@@ -706,17 +740,69 @@ def row_button_box(seat=FIRST_SEAT):
     return (x - half_x, y - half_y, x + half_x, y + half_y)
 
 
+def register_boxes(seat=FIRST_SEAT):
+    columns = _shop().get("register_columns")
+    if not columns:
+        return None
+    y = int(_need(seat))
+    return {name: (x0, y - columns["up"], x1 + 1, y + columns["down"] + 1)
+            for name, (x0, x1) in columns["x"].items()}
+
+
+def _button_word(text):
+    for word in (RECEIPT_WORD, CHANGE_WORD, REGISTER_WORD):
+        if calibration.button_word_matches(text, word):
+            return word
+    return None
+
+
+def _paddle_button(image, seat):
+    boxes = register_boxes(seat)
+    if boxes is None or _reader["failed"]:
+        return None
+    return _backup_texts([_backup_line(image, boxes["button"])])
+
+
+def _paddle_row(image, seat):
+    boxes = register_boxes(seat)
+    if boxes is None or _reader["failed"]:
+        return None
+    texts = _backup_texts([
+        _backup_line(image, boxes["name"]),
+        _backup_line(image, boxes["qty"]),
+        calibration.isolate_digits(image, boxes["price"], BACKUP_SCALE),
+        _backup_line(image, boxes["status"]),
+        _backup_line(image, boxes["button"])])
+    if texts is None:
+        return None
+    name, qty, price, status, button = (t or "" for t in texts)
+    word = _button_word(button)
+    if word == REGISTER_WORD:
+        return REGISTER_WORD
+    value = calibration._digits(price)
+    return " ".join(part for part in (
+        name.strip(" |"), re.sub(r"[^0-9]", "", qty),
+        f"{value:,}" if value else "", status.strip(),
+        word or button.strip()) if part)
+
+
 def row_button(image=None, seat=FIRST_SEAT):
     image = image if image is not None else calibration.grab()
+    texts = _paddle_button(image, seat)
+    if texts is not None and _button_word(texts[0]):
+        return _button_word(texts[0])
     for text, _conf, _point in calibration.ocr(image, row_button_box(seat)):
-        for word in (RECEIPT_WORD, CHANGE_WORD, REGISTER_WORD):
-            if calibration.button_word_matches(text, word):
-                return word
+        word = _button_word(text)
+        if word is not None:
+            return word
     return None
 
 
 def row_button_text(image=None, seat=FIRST_SEAT):
     image = image if image is not None else calibration.grab()
+    texts = _paddle_button(image, seat)
+    if texts is not None and texts[0]:
+        return texts[0]
     return " ".join(t for t, _c, _p in
                     calibration.ocr(image, row_button_box(seat)))
 
@@ -805,6 +891,13 @@ def read_row(seat=FIRST_SEAT):
     for attempt in range(PANEL_REREADS + 1):
         image = calibration.grab()
         box = row_box(seat)
+        text = _paddle_row(image, seat)
+        if text:
+            return text
+        if text is None and "rows" not in _told:
+            _told.add("rows")
+            why = _reader["failed"] or "the Register columns were not measured"
+            print(f"  {why}; Register rows are read whole by Tesseract instead")
         text = trim_borders(calibration.read_line(image, box))
         if text.strip():
             return text
@@ -849,8 +942,7 @@ def read_row_stacked(seat=FIRST_SEAT):
 
 def row_is_empty(text=None, seat=FIRST_SEAT):
     text = read_row(seat) if text is None else text
-    key = _key(text)
-    return (not key) or EMPTY_MARKER in key or key == _key(REGISTER_WORD)
+    return (not _key(text)) or _function_in(text) == REGISTER_WORD
 
 
 def read_row_and_button(seat=FIRST_SEAT):
@@ -1949,6 +2041,7 @@ class RowModel:
     def home(self, verbose=True):
         wheel(-HOME_NOTCHES, verbose=False)
         time.sleep(ACTION_GAP)
+        calibration.take_table_lost()
         self._top = 1
         self._seat = FIRST_SEAT
         if verbose:
@@ -1958,6 +2051,7 @@ class RowModel:
     def bottom(self, verbose=True):
         wheel(HOME_NOTCHES, verbose=False)
         time.sleep(ACTION_GAP)
+        calibration.take_table_lost()
         self._top = MAX_TOP
         self._seat = LAST_SEAT
         if verbose:
@@ -1966,6 +2060,11 @@ class RowModel:
         return MAX_TOP
 
     def scroll_to(self, index, verbose=True):
+        if calibration.take_table_lost() and self._top is not None:
+            print(f"  the shop was shut or the game stalled since the table "
+                  f"was last scrolled; scrolling all the way first, then to "
+                  f"row {index}")
+            self._top = None
         seat, _want = self.seat_of(index)
         jumped = False
         if seat == LAST_SEAT and (self._seat != LAST_SEAT

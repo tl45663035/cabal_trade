@@ -582,6 +582,14 @@
     "panel_price_lift": 3,
     "panel_alz_gap": 2,
     "price_agree_slack": 2,
-    "price_witnesses": 3
+    "price_witnesses": 3,
+    "register_box_margin": 3,
+    "register_line_share": 0.9,
+    "register_line_contrast": 5,
+    "register_line_reach": 2,
+    "register_interior_max": 20
+  },
+  "game_facts": {
+    "register_columns": ["name", "qty", "price", "status", "button"]
   }
 }
