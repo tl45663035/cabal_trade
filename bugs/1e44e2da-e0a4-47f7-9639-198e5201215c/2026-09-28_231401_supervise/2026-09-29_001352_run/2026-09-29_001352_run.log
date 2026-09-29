@@ -1,0 +1,76 @@
+2026-09-29_001352  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+  logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-29_001352_run.log
+  code d0ad626
+  screen 1920x1080
+  ledger C:\Users\Trung\Cabal\src_1080p\sales.db run 2026-09-29T00:13:52
+  debug frames -> C:\Users\Trung\Cabal\src_1080p\debug_frames\2026-09-29_001352_run, indexed in frames.jsonl; earlier runs' frames are kept until the 5,000-frame budget needs the room
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  measuring this screen before touching anything
+inventory:
+  Inventory shut; pressing I (attempt 1)
+  Alz box (1784, 688, 1860, 700)   anchor (1860, 688)
+  grid fitted in (1221, 23, 1920, 661): pitch 56.0x56.1 against a shared 73.3x73.4, slot (1,1) at 1475,236, scores 62 and 51
+  tab I [1454, 181]  tab VIII [1826, 181]
+  slot (1,1) [1475, 236]  (1,7) [1811, 236]  (8,8) [1867, 629]
+gift box:
+  the gift box at [284, 994]
+  the gift box shows no Close; clicking its icon again, 2 of 2
+  the gift box shows no Close; leaving the gift points unmeasured
+cash shop:
+  the Cash Shop icon at [348, 994]
+  no Useable tab within 3s of clicking the icon; leaving the Cash Shop unmeasured
+opening the Agent Shop:
+  tab 6 at [1719, 181]
+agent shop:
+  Register (288, 80)
+  Purchase [98, 80]  (mirrored about the boundary at x=193)
+  the favourites live on the Purchase tab; switching to [98, 80] to measure them
+Traceback (most recent call last):
+  File "C:\Users\Trung\Cabal\src_1080p\driver.py", line 3785, in main
+    _dispatch(args)
+    ~~~~~~~~~^^^^^^
+  File "C:\Users\Trung\Cabal\src_1080p\driver.py", line 3822, in _dispatch
+    do_relist()
+    ~~~~~~~~~^^
+  File "C:\Users\Trung\Cabal\src_1080p\driver.py", line 1129, in do_relist
+    initialise(verbose=verbose)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Trung\Cabal\src_1080p\driver.py", line 102, in initialise
+    calibration.main(close=False)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Trung\Cabal\src_1080p\calibration.py", line 3658, in main
+    return _measure(close)
+  File "C:\Users\Trung\Cabal\src_1080p\calibration.py", line 3751, in _measure
+    shop = calibrate_shop()
+  File "C:\Users\Trung\Cabal\src_1080p\calibration.py", line 1750, in calibrate_shop
+    raise RuntimeError(
+        f"the Purchase tab would not open at {purchase}, so the "
+        f"favourite row cannot be measured.")
+RuntimeError: the Purchase tab would not open at [98, 80], so the favourite row cannot be measured.
+
+PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+  nothing this run bought has sold yet.
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 00:13:52, ended 00:14:16, ran for 23s
+
+##################################################################################
+
+  ########  ########      ######      ########  ##      ##  ##########  ########  
+  ########  ########      ######      ########  ##      ##  ##########  ########  
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ########    ##########    ######    ##########  ########    ##      ##
+##          ########    ##########    ######    ##########  ########    ##      ##
+##          ##  ##      ##      ##          ##  ##      ##  ##          ##      ##
+##          ##  ##      ##      ##          ##  ##      ##  ##          ##      ##
+##          ##    ##    ##      ##          ##  ##      ##  ##          ##      ##
+##          ##    ##    ##      ##          ##  ##      ##  ##          ##      ##
+  ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+  ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+
+##################################################################################
+  crashed: RuntimeError: the Purchase tab would not open at [98, 80], so the favourite row cannot be measured.
+

@@ -1,0 +1,275 @@
+2026-09-28_231401  .\tools\supervise.py --config trung
+  logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-28_231401_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-28_225903_run.log ended: interrupted from the keyboard,23:14:02,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-28_225903_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-28_231408_found.png
+  interrupted: resupply of Upgrade Core (Ultimate): bought stock may be on tab 4
+  interrupted: resupply of Force Core (Ultimate): bought stock may be on tab 4
+  interrupted: resupply of Blessing Bead - Superior: bought stock may be on tab 4
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Upgrade Core (Ultimate)' it was making from; nothing on screen is read to name it
+  frame 2026-09-28_231415_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-28_231418_reset.png
+   2026-09-28_231419  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-28_231419_run.log
+     code d0ad626
+     screen 1920x1080
+* relaunched (pid 21208),23:14:22,alive
+watching pid 21208, 2026-09-28_231419_run.log
+* pushed the profit report for trung,23:20:37,alive
+* stop condition: the panel will not price 312,185,712 against its net sales after typing 250. Nothing has been listed.,23:35:44,dead
+* the panel will not price 312,185,712 against its net sales after typing 250. Nothing has been listed.,23:35:44,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-28_231419_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-28_233549_found.png
+  interrupted: resupply of Blessing Bead - Superior: bought stock may be on tab 4
+  interrupted: relist row 2: 'Arionell' x1 at 312,185,712 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Arionell'; nothing on screen is read to name it
+  frame 2026-09-28_233556_tab4_1slots.png
+$ py src_1080p/driver.py --config trung collect
+     relisting rows 1-25: 0 relisted, 10 empty, 15 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 10 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 23:35:56, ended 23:37:24, ran for 1m 28s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Arionell' the log says is there,23:37:24,dead
+$ py src_1080p/driver.py --config trung list 1 1 0 4
+     listed 1 at 312,185,712
+   DONE {"kind": "list", "tab": 4, "slot": [1, 1], "qty": 1, "price": 312185712}
+     done in 6311 ms
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 23:37:25, ended 23:37:35, ran for 9s
+  frame 2026-09-28_233739_tab4_0slots.png
+* finished: list 1 1 0 4 (Arionell); 0 slot(s) left,23:37:39,dead
+  frame 2026-09-28_233744_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 2: 'Arionell' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-28_233746_reset.png
+   2026-09-28_233747  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-28_233747_run.log
+     code d0ad626
+     screen 1920x1080
+* relaunched (pid 21928),23:37:51,alive
+watching pid 21928, 2026-09-28_233747_run.log
+* pushed the profit report for trung,23:43:25,alive
+* server lag: not answering,23:43:45,alive
+* server lag: the server stalled,23:44:27,alive
+* pushed the profit report for trung,23:58:37,alive
+  pruned 84 frame(s), reel(s) and dead run(s) from before 2026-09-29
+* stop condition: the panel will not price 457,534 against its net sales after typing 250. Nothing has been listed.,00:07:53,dead
+* the panel will not price 457,534 against its net sales after typing 250. Nothing has been listed.,00:07:54,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-28_233747_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-29_000758_found.png
+  interrupted: resupply of Blessing Bead - Superior: bought stock may be on tab 4
+  interrupted: relist row 15: 'Upgrade Core (Ultimate' x10 at 457,534 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Upgrade Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-09-29_000805_tab4_10slots.png
+  tab 4 holds 2 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config trung collect
+     relisting rows 1-25: 0 relisted, 10 empty, 15 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 10 row(s) empty now
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 00:08:05, ended 00:09:34, ran for 1m 28s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Upgrade Core (Ultimate' the log says is there,00:09:34,dead
+$ py src_1080p/driver.py --config trung list 1 1 0 4
+     listed 10 at 457,524
+   DONE {"kind": "list", "tab": 4, "slot": [1, 1], "qty": 10, "price": 457524}
+     done in 6313 ms
+   PROFIT THIS RUN -- what this run bought: sold lots at what they made, unsold lots at the price they were bought against
+     nothing this run bought has sold yet.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 00:09:34, ended 00:09:44, ran for 9s
+  frame 2026-09-29_000949_tab4_0slots.png
+* finished: list 1 1 0 4 (Upgrade Core (Ultimate); 0 slot(s) left,00:09:49,dead
+  frame 2026-09-29_000953_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 15: 'Upgrade Core (Ultimate' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-29_000956_reset.png
+   2026-09-29_000956  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-29_000956_run.log
+     code d0ad626
+     screen 1920x1080
+* relaunched (pid 24464),00:10:00,alive
+watching pid 24464, 2026-09-29_000956_run.log
+* stop condition: no Confirmation button appeared after Cancel on row 1. The dialog is still open; nothing committed.,00:13:06,dead
+* no Confirmation button appeared after Cancel on row 1. The dialog is still open; nothing committed.,00:13:07,dead
+  kept 96 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-29_000956_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=['Cancel', 'Receive'], underprice=False
+  frame 2026-09-29_001311_found.png
+  case: a dialog with Cancel is open -> Cancel
+  case: a dialog with Cancel is open -> Cancel
+  case: a dialog with Cancel is open -> Cancel
+  interrupted: resupply of Blessing Bead - Superior: bought stock may be on tab 4
+  interrupted: relist row 1: 'Divine Stone' x2 at 706,512 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Divine Stone'; nothing on screen is read to name it
+  frame 2026-09-29_001348_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 1: 'Divine Stone' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  frame 2026-09-29_001351_reset.png
+   2026-09-29_001352  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-29_001352_run.log
+     code d0ad626
+     screen 1920x1080
+* relaunched (pid 6172),00:13:56,alive
+watching pid 6172, 2026-09-29_001352_run.log
+* RuntimeError: the Purchase tab would not open at [98, 80], so the favourite row cannot be measured.,00:14:17,dead
+  kept 13 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-29_001352_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=['Cancel', 'Receive'], underprice=False
+  frame 2026-09-29_001421_found.png
+  case: a dialog with Cancel is open -> Cancel
+  case: a dialog with Cancel is open -> Cancel
+  case: a dialog with Cancel is open -> Cancel
+  the log shows no task cut short
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  frame 2026-09-29_001459_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  frame 2026-09-29_001502_reset.png
+   2026-09-29_001503  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-29_001503_run.log
+     code d0ad626
+     screen 1920x1080
+* relaunched (pid 24832),00:15:07,alive
+watching pid 24832, 2026-09-29_001503_run.log
+* RuntimeError: the Purchase tab would not open at [98, 80], so the favourite row cannot be measured.,00:15:28,dead
+* 3 runs in a row died within 300s of launch; relogging (1 of 1),00:15:28,dead
+  kept 13 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-29_001503_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=['Cancel', 'Receive'], underprice=False
+  frame 2026-09-29_001532_found.png
+  case: a dialog with Cancel is open -> Cancel
+  case: a dialog with Cancel is open -> Cancel
+  case: a dialog with Cancel is open -> Cancel
+  the log shows no task cut short
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  frame 2026-09-29_001610_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  frame 2026-09-29_001613_reset.png
+$ py src_1080p/recovery.py --relog
+     File "C:\Users\Trung\Cabal\src_1080p\recovery.py", line 590, in relog
+       logout(verbose=verbose)
+       ~~~~~~^^^^^^^^^^^^^^^^^
+     File "C:\Users\Trung\Cabal\src_1080p\recovery.py", line 564, in logout
+       raise Refused(
+           f"no {MENU_WORD!r} in the menu after {MENU_TRIES} Escape(s). "
+           f"Nothing clicked.")
+   Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.
+* recovery attempt 1 failed: relog refused: Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.; attempt 2 in 60s,00:16:24,dead
+  kept 0 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-29_001503_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=True, vendor=False, craft=False, buttons=['Cancel', 'Receive'], underprice=False
+  frame 2026-09-29_001728_found.png
+  case: a dialog with Cancel is open -> Cancel
+  case: a dialog with Cancel is open -> Cancel
+  case: a dialog with Cancel is open -> Cancel
+  the log shows no task cut short
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-29_001806_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  frame 2026-09-29_001809_reset.png
+$ py src_1080p/recovery.py --relog
+     File "C:\Users\Trung\Cabal\src_1080p\recovery.py", line 590, in relog
+       logout(verbose=verbose)
+       ~~~~~~^^^^^^^^^^^^^^^^^
+     File "C:\Users\Trung\Cabal\src_1080p\recovery.py", line 564, in logout
+       raise Refused(
+           f"no {MENU_WORD!r} in the menu after {MENU_TRIES} Escape(s). "
+           f"Nothing clicked.")
+   Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.
+* recovery attempt 2 failed: relog refused: Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.; attempt 3 in 60s,00:18:20,dead
+  kept 0 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-29_001503_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=True, vendor=False, craft=False, buttons=['Cancel', 'Receive'], underprice=False
+  frame 2026-09-29_001924_found.png
+  case: a dialog with Cancel is open -> Cancel
+  case: a dialog with Cancel is open -> Cancel
+  case: a dialog with Cancel is open -> Cancel
+  the log shows no task cut short
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-29_002003_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  I: Inventory closed
+  frame 2026-09-29_002006_reset.png
+$ py src_1080p/recovery.py --relog
+     File "C:\Users\Trung\Cabal\src_1080p\recovery.py", line 590, in relog
+       logout(verbose=verbose)
+       ~~~~~~^^^^^^^^^^^^^^^^^
+     File "C:\Users\Trung\Cabal\src_1080p\recovery.py", line 564, in logout
+       raise Refused(
+           f"no {MENU_WORD!r} in the menu after {MENU_TRIES} Escape(s). "
+           f"Nothing clicked.")
+   Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.
+* recovery failed 3 times: relog refused: Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.; relogging (1 of 1),00:20:16,dead
+$ py src_1080p/recovery.py --relog
+     File "C:\Users\Trung\Cabal\src_1080p\recovery.py", line 590, in relog
+       logout(verbose=verbose)
+       ~~~~~~^^^^^^^^^^^^^^^^^
+     File "C:\Users\Trung\Cabal\src_1080p\recovery.py", line 564, in logout
+       raise Refused(
+           f"no {MENU_WORD!r} in the menu after {MENU_TRIES} Escape(s). "
+           f"Nothing clicked.")
+   Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.
+* the relog was refused too: relog refused: Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.,00:20:27,dead
+* supervisor stopped: relog refused: Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.,00:20:27,dead
