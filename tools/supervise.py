@@ -701,6 +701,16 @@ def get_in(plan=False):
             if plan:
                 break
             state = dismiss_dialog(state)
+        elif row_model.RECEIPT_WORD in state["buttons"]:
+            point = row_model.receipt_dismiss_point()
+            print(f"  case: a Confirm Receipt dialog is open -> its "
+                  f"{row_model.DISMISS_WORD} at {point}")
+            if plan or point is None:
+                break
+            calibration.click(*point)
+            calibration.park()
+            time.sleep(K["dialog_settle"])
+            state = read_state()
         elif row_model.DISMISS_WORD in state["buttons"]:
             print(f"  case: a dialog with {row_model.DISMISS_WORD} is open "
                   f"-> {row_model.DISMISS_WORD}")

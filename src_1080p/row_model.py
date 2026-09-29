@@ -251,6 +251,14 @@ def _receipt_seat(verbose=False):
     return seat
 
 
+def receipt_dismiss_point():
+    seat = _receipt_seat()
+    cancel = remembered(DISMISS_WORD)
+    if seat is None or cancel is None:
+        return None
+    return (int(cancel[0]), seat[1])
+
+
 def find_button(word, timeout=None, verbose=False, hover=False):
     if _key(word) == _key(RECEIPT_WORD):
         seat = _receipt_seat(verbose=verbose)
