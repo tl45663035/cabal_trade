@@ -779,7 +779,7 @@ def read_the_row(model, index):
 
 
 def relist_one(model, index, verbose=True, first=None, last=None,
-               collect_only=False):
+               collect_only=False, again=False):
     global _FULL_SALES
     run = calibration.load_shared()["run"]
     first = int(run["relist_from"] if first is None else first)
@@ -914,13 +914,30 @@ def relist_one(model, index, verbose=True, first=None, last=None,
                                * 1000))
     with calibration.phase("check the shop slot is empty"):
         with calibration.step("check the shop slot is empty"):
+            image = calibration.grab()
             standing = (row_model.panel_standing()
-                        if row_model.panel_holds_item() else None)
+                        if row_model.panel_holds_item(image) else None)
     if standing is not None:
         raise row_model.Divergence(
             f"the shop slot already holds something the panel prices at "
             f"{standing:,}; row {index} has NOT been cancelled. Clear the "
             f"slot first.")
+    with calibration.phase(f"read the button again before "
+                           f"{row_model.CHANGE_WORD}"):
+        with calibration.step(f"read the button again before "
+                              f"{row_model.CHANGE_WORD}"):
+            now = model.button(image)
+    if now in (row_model.RECEIPT_WORD, row_model.REGISTER_WORD):
+        calibration.snap(f"row_{index}_button_turned_{row_model._key(now)}")
+        if again:
+            raise row_model.Divergence(
+                f"row {index} read {row_model.CHANGE_WORD} and its button "
+                f"then said {now!r}, twice running. Nothing cancelled.")
+        print(f"  row {index} read {row_model.CHANGE_WORD}, but its button "
+              f"now says {now!r}: the read was older than the table. "
+              f"Starting the row over")
+        return relist_one(model, index, verbose=verbose, first=first,
+                          last=last, collect_only=collect_only, again=True)
     lands_in = min([i for i in model.empty() if i < index] + [index])
     if verbose and lands_in != index:
         print(f"    rows {[i for i in model.empty() if i < index]} are empty, "
