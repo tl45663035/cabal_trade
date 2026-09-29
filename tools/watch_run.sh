@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-#
-#
 
 PID="$1"
 LOG="$2"
