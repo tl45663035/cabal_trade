@@ -1,0 +1,83 @@
+2026-09-29_144139  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-29_144139_run.log
+  code e938d28
+  screen 1920x1080
+  ledger C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\sales.db run 2026-09-29T14:41:40
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-09-29_144139_run, indexed in frames.jsonl; earlier runs' frames are kept until the 5,000-frame budget needs the room
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  measuring this screen before touching anything
+inventory:
+  Inventory shut; pressing I (attempt 1)
+  Alz box (1769, 692, 1859, 704)   anchor (1859, 692)
+  grid fitted in (1220, 23, 1920, 665): pitch 56.4x56.5 against a shared 73.3x73.4, slot (1,1) at 1471,229, scores 91 and 96
+  tab I [1450, 174]  tab VIII [1825, 174]
+  slot (1,1) [1471, 229]  (1,7) [1810, 229]  (8,8) [1866, 625]
+gift box:
+  the gift box at [284, 1001]
+  Receive at [[1217, 329], [1217, 428], [1217, 527], [1217, 626]]; each collection presses only Receive All and the special giftbox's Receive, at the points measured here
+  Receive All at [1211, 792]
+  the special giftbox's Receive at [1442, 496]
+  Close at [1487, 852]
+cash shop:
+  the Cash Shop icon at [348, 994]
+  the Cash balance box [1134, 826, 1230, 848] reads 200
+  the gem box [930, 826, 1060, 848] reads 14
+  Escape to close the Cash Shop (attempt 1)
+  the Inventory closed with the Cash Shop; opening it again
+  Inventory shut; pressing I (attempt 1)
+opening the Agent Shop:
+  tab 6 at [1718, 174]
+  right-clicking slot (1,7) at [1810, 229]
+agent shop:
+  Register (291, 80)
+  Purchase [97, 80]  (mirrored about the boundary at x=194)
+  favourites: 8 found, pitch 54.43px, first [484, 761] last [865, 761]
+Traceback (most recent call last):
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py", line 3827, in main
+    _dispatch(args)
+    ~~~~~~~~~^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py", line 3864, in _dispatch
+    do_relist()
+    ~~~~~~~~~^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py", line 1146, in do_relist
+    initialise(verbose=verbose)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py", line 102, in initialise
+    calibration.main(close=False)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py", line 3723, in main
+    return _measure(close)
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py", line 3816, in _measure
+    shop = calibrate_shop()
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py", line 1825, in calibrate_shop
+    raise RuntimeError(
+    ...<2 lines>...
+        f"not describe the row.")
+RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe the row.
+
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  nothing has sold yet this run.
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 14:41:39, ended 14:42:00, ran for 20s
+
+##################################################################################
+
+  ########  ########      ######      ########  ##      ##  ##########  ########  
+  ########  ########      ######      ########  ##      ##  ##########  ########  
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ########    ##########    ######    ##########  ########    ##      ##
+##          ########    ##########    ######    ##########  ########    ##      ##
+##          ##  ##      ##      ##          ##  ##      ##  ##          ##      ##
+##          ##  ##      ##      ##          ##  ##      ##  ##          ##      ##
+##          ##    ##    ##      ##          ##  ##      ##  ##          ##      ##
+##          ##    ##    ##      ##          ##  ##      ##  ##          ##      ##
+  ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+  ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+
+##################################################################################
+  crashed: RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe the row.
+
