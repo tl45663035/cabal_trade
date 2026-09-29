@@ -3122,8 +3122,32 @@ def rows_by_margin(core_name, margin):
     return int(ladder[min(tier, len(ladder)) - 1])
 
 
+def price_ladder(core_name):
+    table = load_shared()["resupply"].get("rows_by_price") or {}
+    ladder = _per_item_raw(table, core_name)
+    return sorted((int(at), int(rows)) for at, rows in ladder) if ladder else None
+
+
+def rows_by_price(core_name, price):
+    ladder = price_ladder(core_name)
+    if not ladder or price is None:
+        return None
+    return next((rows for at, rows in reversed(ladder) if int(price) >= at), 0)
+
+
+def rows_wanted(core_name, margin, price):
+    if not price_ladder(core_name):
+        return rows_by_margin(core_name, margin)
+    if not (rows_by_margin(core_name, margin) or 0):
+        return 0
+    return rows_by_price(core_name, price) or 0
+
+
 def rows_wanted_at_most(core_name):
     run = load_shared()["resupply"]
+    ladder = price_ladder(core_name)
+    if ladder:
+        return max(rows for _at, rows in ladder)
     table = run["rows_by_margin"]
     if not isinstance(table, dict):
         return None
@@ -3138,6 +3162,8 @@ def margin_for_rows(core_name, rows):
     table = load_shared()["resupply"]["rows_by_margin"]
     if not isinstance(table, dict):
         return None
+    if price_ladder(core_name):
+        rows = 1
     ladder = _per_item_raw(
         {k: v for k, v in table.items() if k != "step"}, core_name)
     if not ladder:

@@ -1099,6 +1099,33 @@ def hard_floor_each(name):
                  if item_key(item) == key), 0)
 
 
+def _run_table_each(table_name, name):
+    if not name:
+        return 0
+    table = calibration.load_shared()["run"].get(table_name) or {}
+    key = item_key(name)
+    return next((int(each) for item, each in table.items()
+                 if item_key(item) == key), 0)
+
+
+def never_buy_above(*names):
+    caps = [c for c in (_run_table_each("never_buy_above", n) for n in names)
+            if c]
+    return min(caps) if caps else 0
+
+
+def never_list_below(name):
+    return _run_table_each("never_list_below", name)
+
+
+def special_single(name, qty):
+    conf = calibration.load_shared()["resupply"].get("special_row") or {}
+    if not conf.get("enabled") or is_set(name) or pack_size(name) != 1:
+        return False
+    cores = {item_key(core) for core in conf.get("cores") or []}
+    return item_key(name) in cores and int(qty) == int(conf.get("qty") or 1)
+
+
 def canonical(name):
     named = calibration.voucher_floor_ratio(name or "")[0]
     return named or (name or "")
@@ -1714,7 +1741,8 @@ class RowModel:
                    expect_qty=None, expect_market=None, resolve=True,
                    under=None, floor_item=None, floor_units=0,
                    fallback=None,
-                   resupply_cost=0, overlap=False):
+                   resupply_cost=0, overlap=False, rule_item=None,
+                   special=False):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -1983,6 +2011,37 @@ class RowModel:
                     f"after raising it to the hard minimum. Nothing has been "
                     f"listed.")
             want = need
+        named = expect_item or meant or floor_item or rule_item
+        lowest = never_list_below(named)
+        if lowest and not (special and special_single(named, qty)):
+            same = item_key(named) == item_key(hard_name)
+            each = max(pack_size(named), int(count or 0),
+                       hard_total if same else 0,
+                       bundle_of(suggested, named) if is_set(named) else 0, 1)
+            need = lowest * each
+            if want < need:
+                if verbose:
+                    print(f"    {want:,} is under the {lowest:,} a unit "
+                          f"{named!r} is never listed below"
+                          + (f", x {each} in each" if each > 1 else "")
+                          + f"; listing at {need:,} instead")
+                with calibration.step(f"type the price {need:,} for the "
+                                      f"never-below rule"):
+                    calibration.click(*panel["price_point"],
+                                      settle=FIELD_SETTLE)
+                    type_number(need, CLEAR_PRESSES_PRICE)
+                    calibration.park()
+                with calibration.step("take the quantity from the net sales "
+                                      "again"):
+                    again = panel_quantity(need, verbose)
+                if again is None:
+                    calibration.snap("panel_will_not_confirm")
+                    raise Divergence(
+                        f"the panel will not price {need:,} against its net "
+                        f"sales after raising it to the {lowest:,} a unit "
+                        f"{named!r} is never listed below. Nothing has been "
+                        f"listed.")
+                qty, want = again, need
         with calibration.step("read the price back before Register"):
             check_price_field(want, qty, verbose,
                               next_point=(panel["register_button"]

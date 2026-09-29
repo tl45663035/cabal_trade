@@ -35,6 +35,21 @@
         }
       }
     },
+    "rows_by_price": {
+      "Chaos Core": [
+        [0, 10],
+        [700000, 10],
+        [705000, 10],
+        [710000, 8],
+        [715000, 8],
+        [720000, 6],
+        [725000, 6],
+        [730000, 4],
+        [735000, 3],
+        [740000, 1],
+        [745001, 0]
+      ]
+    },
     "rows_by_margin": {
       "step": 5000,
       "default": [
@@ -271,12 +286,20 @@
       }
     },
     "hard_min_per_unit": {
-      "Chaos Core Set": 650000,
+      "Chaos Core Set": 710000,
       "Divine Stone Set": 650000,
       "Upgrade Core (Ultimate)": 410000,
       "Force Core (Ultimate)": 320000,
       "Force Core(Highest)": 180000,
       "Force Core(High)": 165000
+    },
+    "never_buy_above": {
+      "Chaos Core": 745000,
+      "Chaos Core Set": 745000
+    },
+    "never_list_below": {
+      "Chaos Core": 710000,
+      "Chaos Core Set": 710000
     },
     "price_trust_multiple": 10,
     "screen": "1920x1080",

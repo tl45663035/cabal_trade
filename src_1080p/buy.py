@@ -201,7 +201,8 @@ def _whole_batches(held, pack, packs, batch):
 
 def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 ceiling=None, sells_at=0, gap=None, leave_behind=0,
-                search=True, batch=1, room=None, balance=None):
+                search=True, batch=1, room=None, balance=None,
+                special=False):
     steps_reset()
     outcome = "REFUSED"
     try:
@@ -209,7 +210,8 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                            floor_qty=floor_qty, ceiling=ceiling,
                            sells_at=sells_at, gap=gap,
                            leave_behind=leave_behind, search=search,
-                           batch=batch, room=room, balance=balance)
+                           batch=batch, room=room, balance=balance,
+                           special=special)
         outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
         return out
     finally:
@@ -219,7 +221,8 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 
 def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                  ceiling=None, sells_at=0, gap=None, leave_behind=0,
-                 search=True, batch=1, room=None, balance=None):
+                 search=True, batch=1, room=None, balance=None,
+                 special=False):
     say = print if verbose else (lambda *a: None)
     with step("get_price: search the favourite and read row 1"):
         offer = get_price.get_price(int(slot), verbose=False,
@@ -230,6 +233,17 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     name = calibration.FAVOURITE_ITEMS[str(int(slot))]
     say(f"  row 1 offers {offer['name']!r} x{offer['qty']} at "
         f"{offer['price']:,} ({offer['unit_price']:,}/unit)")
+    exempt = special and row_model.special_single(offer["name"], want)
+    limit = row_model.never_buy_above(name, offer["name"])
+    cap = 0 if exempt else limit
+    if exempt and limit:
+        say(f"    the special row buys at any price; other buys of "
+            f"{offer['name']!r} never pay over {limit:,}")
+    if cap and int(offer["unit_price"]) > cap:
+        raise Refused(
+            f"row 1 asks {offer['unit_price']:,} a unit for "
+            f"{offer['name']!r}, over the {cap:,} that is never paid. "
+            f"Nothing clicked.")
     if leave_behind and int(offer["qty"]) - leave_behind < 1:
         raise TooThin(
             f"row 1 holds {offer['qty']} and {leave_behind} stays behind, so "
@@ -308,6 +322,19 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     if not detail["qty_max"]:
         _cancel(f"the dialog offers a maximum of {detail['qty_max']}. "
                 f"Cancelled without buying.")
+    cap = (0 if exempt else
+           row_model.never_buy_above(name, offer["name"], detail["item"]))
+    if cap:
+        shown = (int(detail["price"] or 0) // max(1, int(detail["qty"] or 1))
+                 // pack)
+        if not shown:
+            _cancel(f"the dialog's price did not read, so the {cap:,} a unit "
+                    f"that is never paid cannot be checked. Cancelled "
+                    f"without buying.")
+        if shown > cap:
+            _cancel(f"the dialog asks {shown:,} a unit for "
+                    f"{detail['item']!r}, over the {cap:,} that is never "
+                    f"paid. Cancelled without buying.")
 
     cap = int(detail["qty_max"])
     if cap < stock:

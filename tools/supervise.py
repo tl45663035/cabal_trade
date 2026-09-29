@@ -626,7 +626,9 @@ def clear_work_tab(budget, tasks=()):
             event(f"the log says tab {WORK_TAB} holds {name!r}, which is "
                   f"converted and never listed; converting it", "dead")
         else:
-            args = ("list", str(row), str(col), "0", str(WORK_TAB))
+            args = (("list-named", str(row), str(col), "0", str(WORK_TAB),
+                     name) if name
+                    else ("list", str(row), str(col), "0", str(WORK_TAB)))
             event(f"listing tab {WORK_TAB} slot ({row},{col}) at the panel's "
                   f"price and the full quantity"
                   + (f", the {name!r} the log says is there" if name
@@ -641,7 +643,7 @@ def clear_work_tab(budget, tasks=()):
                       f"whole batch, as the run leaves it", "dead")
                 left_behind.add((row, col))
                 continue
-            if args[0] != "list":
+            if args[0] not in ("list", "list-named"):
                 event(f"{what} changed nothing on tab {WORK_TAB}; "
                       f"{name or 'the slot'} is already what it makes, so it "
                       f"is listed instead", "dead")

@@ -493,11 +493,12 @@ def price_and_resupply(model, slot, first, last, why, verbose=True):
         if diff is None:
             outcome = "would not price"
             return
-        wants = calibration.rows_by_margin(core, diff)
+        price = (core_row if craft_route(core) else set_row)["unit_price"]
+        wants = calibration.rows_wanted(core, diff, price)
         if have >= wants:
             outcome = f"margin {diff:,}, not buying"
-            print(f"  a margin of {diff:,} is worth {wants} row(s) of "
-                  f"{core}; {have} held; not buying.")
+            print(f"  {rows_reason(core, diff, price, wants)}; {have} held; "
+                  f"not buying.")
             return
         outcome = f"margin {diff:,}, buying"
         check_timing(core, outcome, started, saved)
@@ -995,7 +996,7 @@ def relist_one(model, index, verbose=True, first=None, last=None,
             expect = dict(floor=floor, why=why, expect_item=row.name,
                           listed_at=None if special else row.price,
                           expect_qty=row.qty,
-                          under=under,
+                          under=under, special=bool(special),
                           expect_market=(row_model.market_anchor(row.name)
                                          * row.pack) or None)
             out = model.list_slot(*landing, verbose=verbose,
@@ -1224,7 +1225,8 @@ def list_floor(item, verbose=True):
     return unit_floor, why, unit_market
 
 
-def do_list(row, col, price=None, verbose=True, tab=None, item=None):
+def do_list(row, col, price=None, verbose=True, tab=None, item=None,
+            named=None):
     tab = row_model.WORK_TAB if tab is None else int(tab)
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
@@ -1240,7 +1242,7 @@ def do_list(row, col, price=None, verbose=True, tab=None, item=None):
     out = model.list_slot(row, col, price=price, floor=floor, why=why,
                           unit_market=unit_market,
                           floor_each=floor if unit_market else 0,
-                          floor_item=item, verbose=verbose)
+                          floor_item=item, rule_item=named, verbose=verbose)
     task_done("list", tab=tab, slot=[int(row), int(col)], qty=out["qty"],
               price=out["price"])
     print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
@@ -1706,7 +1708,7 @@ def special_list(model, landing, core, first, last, verbose=True, cost=0,
                                      lands_in=lands_in,
                                      under=special_undercut(core, ordinal),
                                      floor=0, why="", wait_fill=False,
-                                     expect_item=core,
+                                     expect_item=core, special=True,
                                      expect_market=row_model.market_anchor(
                                          core) or None, resolve=False)
     except row_model.Divergence as exc:
@@ -1888,10 +1890,21 @@ def price_gap(slot, say=True, rows=None, from_register=False):
     return core_row, set_row, diff
 
 
-def margin_says_buy(core, held, diff):
-    wants = calibration.rows_by_margin(core, diff)
-    print(f"  a margin of {diff:,} is worth {wants} row(s) of {core}; "
-          f"{held} held" + ("" if held < wants else "; not buying."))
+def rows_reason(core, diff, price, wants):
+    if not calibration.price_ladder(core):
+        return f"a margin of {diff:,} is worth {wants} row(s) of {core}"
+    if not calibration.rows_by_margin(core, diff):
+        return (f"a margin of {diff:,} is under the "
+                f"{calibration.margin_for_rows(core, 1):,} that lets {core} "
+                f"be bought, so 0 row(s)")
+    return (f"a margin of {diff:,} lets {core} be bought, and at {price:,} a "
+            f"core the price table wants {wants} row(s)")
+
+
+def margin_says_buy(core, held, diff, price=None):
+    wants = calibration.rows_wanted(core, diff, price)
+    print(f"  {rows_reason(core, diff, price, wants)}; {held} held"
+          + ("" if held < wants else "; not buying."))
     if held >= wants:
         return None
     return calibration.margin_for_rows(core, held + 1)
@@ -2244,7 +2257,8 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True,
     print(f"  {len(free_rows)} row(s) free inside {first}-{last}")
 
     core_row, set_row, diff = price_gap(slot, rows=rows)
-    threshold = None if diff is None else margin_says_buy(core, held, diff)
+    threshold = (None if diff is None else
+                 margin_says_buy(core, held, diff, core_row["unit_price"]))
     if threshold is None:
         return None
 
@@ -2316,7 +2330,9 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
                                               else job["leave"]),
                                           search=not searched,
                                           batch=batch,
-                                          balance=job.get("balance"))
+                                          balance=job.get("balance"),
+                                          special=job.get("kind")
+                                          == "special")
                 searched = True
                 job["balance"] = (out["balance"] if out["balance_seen"]
                                   else None)
@@ -2544,7 +2560,8 @@ def finish_craft_resupply(model, job, first, last, verbose=True):
         f"resupply {core}: bought {bought}, {job['crafted']} into the craft, "
         f"listed {job['listed']} in rows {job['rows']}")
     return {"slot": job["slot"], "core": core, "set": set_name,
-            "diff": job["diff"], "bought": bought, "crafted": job["crafted"],
+            "diff": job["diff"], "bought": bought, "paid": job["paid"],
+            "sells_at": job["sells_at"], "crafted": job["crafted"],
             "listed": job["listed"], "rows": job["rows"]}
 
 
@@ -3547,7 +3564,8 @@ def price_table(model, first, last, verbose=True):
                                    else (set_row, core_row))
                 priced[slot] = buy_at
                 read[slot] = (core_row, set_row)
-                wants = calibration.rows_by_margin(core, diff)
+                wants = calibration.rows_wanted(core, diff,
+                                                buy_at["unit_price"])
                 if count < wants:
                     mark = "YES"
                     short.append(slot)
@@ -3593,6 +3611,14 @@ def resupply_core_rows(model, slot, have, wants, priced, first, last, done,
             break
         done.append(out)
         have += len(out["rows"])
+        if calibration.price_ladder(core_here) and out.get("bought"):
+            average = int(out.get("paid") or 0) // int(out["bought"])
+            margin = (int(out["sells_at"]) - average if out.get("sells_at")
+                      else int(out.get("diff") or 0))
+            wants = calibration.rows_wanted(core_here, margin, average)
+            print(f"  {core_here}: that one averaged {average:,} a core, a "
+                  f"margin of {margin:,}, which the price table makes "
+                  f"{wants} row(s)")
         print(f"  {core_here}: {have} of {wants} row(s) after that one")
 
 
@@ -3851,6 +3877,10 @@ def _dispatch(args):
                 int(args[3]) if len(args) > 3 and int(args[3]) else None,
                 tab=int(args[4]) if len(args) > 4 else None,
                 item=" ".join(args[5:]) if len(args) > 5 else None)
+    elif what == "list-named" and len(args) > 5:
+        do_list(int(args[1]), int(args[2]),
+                int(args[3]) if int(args[3]) else None,
+                tab=int(args[4]), named=" ".join(args[5:]))
     elif what == "row" and len(args) > 1:
         initialise()
         register_tab()
