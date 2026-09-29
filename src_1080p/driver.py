@@ -3557,7 +3557,9 @@ def resupply_core_rows(model, slot, have, wants, priced, first, last, done,
                        str(calibration.pair_slot(slot))])
     while have < wants:
         war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
-        least = (calibration.CRAFT_CORES_PER_SET
+        least = (max(calibration.craft_alz_cores(core_here),
+                     calibration.craft_min_cores(core_here),
+                     calibration.CRAFT_CORES_PER_SET)
                  if craft_route(core_here) else 1)
         if _PENDING is None and slot in priced and not alz_covers(
                 bought_name, least, priced[slot]["unit_price"],

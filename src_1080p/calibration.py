@@ -3125,6 +3125,10 @@ def craft_min_cores(core_name):
     return _per_item("craft_min_cores", core_name) or 0
 
 
+def craft_alz_cores(core_name):
+    return _per_item("craft_alz_cores", core_name) or 0
+
+
 def urgent_check_rows(core_name):
     return _per_item("urgent_check", core_name) or 0
 
