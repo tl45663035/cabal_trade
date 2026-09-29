@@ -6,6 +6,7 @@ import datetime
 import io
 import json
 import re
+import shutil
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -533,6 +534,8 @@ def _log_offset():
 
 
 PRUNE_EVERY = int(_S["debug"]["prune_every"])
+MIN_FREE_MB = int(_S["debug"]["min_free_mb"])
+_NOTHING_TO_CLEAR = False
 
 
 def frames_on(enabled: "bool | None" = None) -> bool:
@@ -544,6 +547,7 @@ def frames_on(enabled: "bool | None" = None) -> bool:
         if RUN_FRAMES is None:
             RUN_FRAMES = FRAME_DIR / _run_name()
         RUN_FRAMES.mkdir(parents=True, exist_ok=True)
+        make_room()
         print(f"  debug frames -> {RUN_FRAMES}, indexed in {FRAME_INDEX}; "
               f"earlier runs' frames are kept until the "
               f"{int(load_shared()['debug']['keep_frames']):,}-frame budget "
@@ -674,6 +678,40 @@ def _frame_age(frame):
         return 0.0
 
 
+def free_mb() -> int:
+    return shutil.disk_usage(FRAME_DIR.parent).free // (1024 * 1024)
+
+
+def make_room() -> None:
+    global _NOTHING_TO_CLEAR
+    try:
+        started = free_mb()
+    except OSError:
+        return
+    if started >= MIN_FREE_MB or not FRAME_DIR.is_dir():
+        _NOTHING_TO_CLEAR = False
+        return
+    earlier = sorted((p for p in FRAME_DIR.iterdir()
+                      if p.is_dir() and p != RUN_FRAMES), key=lambda p: p.name)
+    cleared = []
+    for old in earlier:
+        if free_mb() >= MIN_FREE_MB:
+            break
+        shutil.rmtree(old, ignore_errors=True)
+        cleared.append(old.name)
+    now = free_mb()
+    if cleared:
+        print(f"  the disk had {started:,} megabytes free, under the "
+              f"{MIN_FREE_MB:,} floor; cleared the debug frames of "
+              f"{len(cleared)} earlier run(s), oldest first, and it has "
+              f"{now:,} free now")
+    if now < MIN_FREE_MB and not _NOTHING_TO_CLEAR:
+        print(f"  the disk has {now:,} megabytes free, under the "
+              f"{MIN_FREE_MB:,} floor, and no earlier run's debug frames "
+              f"are left to clear")
+    _NOTHING_TO_CLEAR = now < MIN_FREE_MB
+
+
 def prune_frames() -> None:
     keep = int(load_shared()["debug"]["keep_frames"])
     if keep <= 0 or not FRAME_DIR.exists():
@@ -708,6 +746,7 @@ def _scribe():
                 return
             if job[0] == "prune":
                 prune_frames()
+                make_room()
                 continue
             _kind, out, image, meta = job
             image.save(out)

@@ -53,6 +53,9 @@ def start(stamp=None):
         columns = {row[1] for row in db.execute("PRAGMA table_info(board)")}
         if "floor_at" not in columns:
             db.execute("ALTER TABLE board ADD COLUMN floor_at INTEGER")
+        columns = {row[1] for row in db.execute("PRAGMA table_info(sales)")}
+        if "cost" not in columns:
+            db.execute("ALTER TABLE sales ADD COLUMN cost INTEGER")
     return _RUN
 
 
@@ -73,9 +76,10 @@ def bought(item, price, spend, qty, note=None, expect=None):
             int(expect) if expect else None))
 
 
-def sold(item, price, proceeds, qty, note=None):
-    _write("sales", ("item", "price", "proceeds", "qty", "note"),
-           (item, int(price or 0), int(proceeds or 0), int(qty or 0), note))
+def sold(item, price, proceeds, qty, note=None, cost=None):
+    _write("sales", ("item", "price", "proceeds", "qty", "note", "cost"),
+           (item, int(price or 0), int(proceeds or 0), int(qty or 0), note,
+            None if cost is None else int(cost)))
 
 
 def board_save(rows):
@@ -125,9 +129,11 @@ def run_profit(run=None):
             cost = (spend or 0) / qty
             lots[_key(item)].append([qty, cost, expect or cost])
     rows = {}
-    for item, proceeds, qty in db.execute(
-            "SELECT item, proceeds, qty FROM sales WHERE run=? ORDER BY at, id",
-            (run,)):
+    columns = {row[1] for row in db.execute("PRAGMA table_info(sales)")}
+    cost_col = "cost" if "cost" in columns else "NULL"
+    for item, proceeds, qty, booked in db.execute(
+            f"SELECT item, proceeds, qty, {cost_col} FROM sales WHERE run=? "
+            f"ORDER BY at, id", (run,)):
         left = qty or 0
         if not left or not proceeds:
             continue
@@ -135,17 +141,23 @@ def run_profit(run=None):
         key = _key(item)
         row = rows.setdefault(key, {"name": item, "units": 0, "revenue": 0.0,
                                     "cost": 0.0, "unmatched": 0})
+        if booked is not None:
+            row["units"] += left
+            row["revenue"] += proceeds
+            row["cost"] += booked
         while left and lots[key]:
             lot = lots[key][0]
             take = min(left, lot[0])
-            row["units"] += take
-            row["revenue"] += take * each
-            row["cost"] += take * lot[1]
+            if booked is None:
+                row["units"] += take
+                row["revenue"] += take * each
+                row["cost"] += take * lot[1]
             lot[0] -= take
             left -= take
             if lot[0] <= 0:
                 lots[key].popleft()
-        row["unmatched"] += left
+        if booked is None:
+            row["unmatched"] += left
     db.close()
     held = {}
     for key, dq in lots.items():
@@ -159,11 +171,12 @@ def run_profit(run=None):
 def print_run_profit(run=None):
     rows, held = run_profit(run)
     print("")
-    print("PROFIT THIS RUN -- what this run bought: sold lots at what they "
-          "made, unsold lots at the price they were bought against")
+    print("PROFIT THIS RUN -- each sale against its row's cost: what this run "
+          "bought at what it paid, stock it started with at the start-up "
+          "market price; unsold lots at the price they were bought against")
     units = revenue = cost = 0
     if not rows:
-        print("  nothing this run bought has sold yet.")
+        print("  nothing has sold yet this run.")
     else:
         print(f"  {'item':<26}{'profit':>14}{'units':>8}{'margin':>8}"
               f"{'revenue':>15}{'cost':>15}")

@@ -747,6 +747,20 @@ def keep_evidence(log):
                       f"rather than moved")
         kept.append(f"{len(files)} {pattern[2:]}")
     print(f"  kept {' and '.join(kept)} from the dead run in {into}")
+    trim_dead_runs()
+
+
+def trim_dead_runs():
+    if not DEAD.is_dir():
+        return
+    runs = sorted((p for p in DEAD.iterdir() if p.is_dir()),
+                  key=lambda p: p.name)
+    spent = runs[:max(0, len(runs) - K["keep_dead_runs"])]
+    for old in spent:
+        shutil.rmtree(old, ignore_errors=True)
+    if spent:
+        print(f"  cleared {len(spent)} older dead run(s); the newest "
+              f"{K['keep_dead_runs']} are kept")
 
 
 def recover(reason, text, plan=False, log=None, watched=True):

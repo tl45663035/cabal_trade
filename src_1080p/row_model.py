@@ -974,6 +974,39 @@ def read_row_stacked(seat=FIRST_SEAT):
     return trim_borders(_row_words(calibration.grab(), row_box(seat)))
 
 
+def listings_left(after, seat=FIRST_SEAT):
+    if after is None:
+        return None
+    text, action = after
+    if action == REGISTER_WORD or row_is_empty(text or "", seat):
+        return 0
+    found = calibration._ROW_TEXT.match((text or "").strip())
+    if found is None:
+        return None
+    digits = re.sub(r"[^0-9]", "", found.group("qty"))
+    return int(digits) if digits else None
+
+
+_START_COST = {}
+
+
+def cost_basis(row):
+    if row.buy_cost:
+        return int(row.buy_cost)
+    if row.name not in _START_COST:
+        each = 0
+        if calibration.voucher_floor_ratio(row.name)[1] > 0:
+            each = int(calibration.price_floor(row.name)[0] or 0)
+        else:
+            slot = calibration.favourite_slot_of(row.name)
+            pair = calibration.pair_slot(slot) if slot is not None else None
+            if pair is not None:
+                each = int(calibration.market_unit(
+                    calibration.FAVOURITE_ITEMS[str(pair)]) or 0)
+        _START_COST[row.name] = each
+    return _START_COST[row.name]
+
+
 def row_is_empty(text=None, seat=FIRST_SEAT):
     text = read_row(seat) if text is None else text
     return (not _key(text)) or _function_in(text) == REGISTER_WORD
@@ -1348,20 +1381,22 @@ class RowModel:
             "lands_in_slot": landing,
         }
 
-    def receive(self, index, verbose=True, complete=False):
+    def receive(self, index, verbose=True, complete=False, settle=False,
+                listed=None):
         import get_alz
         saved = list(calibration._STEPS)
         calibration.steps_reset()
         started = time.perf_counter()
         try:
-            listed = self._slots.get(index)
+            listed = listed or self._slots.get(index)
             with calibration.step("read the balance before collecting"):
                 before_alz = get_alz.read_balance()
             attempt = 0
             while True:
                 try:
-                    self._receive(index, verbose=verbose, complete=complete,
-                                  again=attempt > 0)
+                    after = self._receive(index, verbose=verbose,
+                                          complete=complete,
+                                          again=attempt > 0)
                     break
                 except GameSaysWait as refused:
                     with calibration.step("close and open the Agent Shop "
@@ -1370,8 +1405,16 @@ class RowModel:
                             f"the collection on row {index}", attempt,
                             answer=refused.answer)
                     attempt += 1
+            if after is None:
+                with calibration.step("read the row again after collecting"):
+                    if settle:
+                        time.sleep(TAB_SETTLE)
+                    if self.scroll_to(index, verbose=verbose)["moved"]:
+                        time.sleep(TAB_SETTLE)
+                    after = read_row_and_button(self._seat)
             with calibration.step("read the balance and book the sale"):
-                self._book(index, listed, before_alz, verbose)
+                self._book(index, listed, before_alz, after, complete,
+                           verbose)
             if complete:
                 total = (time.perf_counter() - started) * 1000
                 inside = sum(ms for _label, ms in calibration._STEPS)
@@ -1380,7 +1423,7 @@ class RowModel:
                 calibration.steps_table(f"collect row {index} in full")
         finally:
             calibration._STEPS[:] = saved
-        return True
+        return after
 
     def _receive(self, index, verbose=True, complete=False, again=False):
         if again:
@@ -1394,7 +1437,7 @@ class RowModel:
                       f"again; {RECEIPT_WORD} is no longer on it")
                 if complete:
                     self._emptied(index, seen, action)
-                return
+                return seen, action
         point = button_point(self._seat)
         if verbose:
             print(f"  {RECEIPT_WORD} at {point}")
@@ -1422,7 +1465,7 @@ class RowModel:
                 waiting = calibration.game_says_wait()
             if waiting:
                 raise GameSaysWait(f"collecting row {index}")
-            return
+            return None
         with calibration.step("let the collection settle"):
             calibration.park(settle=False)
             time.sleep(RECEIPT_SETTLE)
@@ -1436,6 +1479,7 @@ class RowModel:
             raise GameSaysWait(f"collecting row {index}",
                                answer=None if waiting else "did not take")
         self._emptied(index, seen, action)
+        return seen, action
 
     def _emptied(self, index, seen, action):
         if action == REGISTER_WORD or row_is_empty(seen, self._seat):
@@ -1445,30 +1489,53 @@ class RowModel:
             f"row {index} reads {seen!r} after collecting a sale that was "
             f"complete, so it is not marked empty.")
 
-    def _book(self, index, listed, before_alz, verbose=True):
+    def _book(self, index, listed, before_alz, after, complete, verbose=True):
         import get_alz
-        if listed is None or before_alz is None:
+        if listed is None:
             return
-        after_alz = get_alz.read_balance()
-        if after_alz is None or after_alz <= before_alz:
-            return
-        proceeds = after_alz - before_alz
         price = int(listed.price or 0)
-        sold = proceeds // price if price else 0
-        if not sold:
+        if not price:
             return
-        each = calibration.market_unit(listed.name)
-        held = round(price / each) if each else 1
-        if held < 1 or not (each and abs(price - each * held)
-                            <= each * (PRICE_CHECK_FACTOR - 1)):
-            held = pack_size(listed.name)
+        after_alz = get_alz.read_balance() if before_alz is not None else None
+        proceeds = (after_alz - before_alz
+                    if after_alz is not None and before_alz is not None
+                    else None)
+        left = 0 if complete else listings_left(after, self._seat)
+        if left is not None and 0 <= left < listed.qty:
+            sold = listed.qty - left
+        elif proceeds and proceeds > 0:
+            sold = max(1, min(listed.qty, proceeds // price))
+            print(f"  row {index}'s count after collecting did not read; "
+                  f"{sold} of {listed.qty} booked from the {proceeds:,} Alz "
+                  f"the balance moved")
+        else:
+            print(f"  row {index}: neither the row count nor the balance says "
+                  f"how many sold; nothing is booked")
+            return
+        revenue = sold * price
+        if proceeds is not None and abs(proceeds - revenue) > price:
+            print(f"  row {index}: the balance moved {proceeds:,} Alz and the "
+                  f"row count makes it {sold} x {price:,} = {revenue:,}; the "
+                  f"sale is booked from the row count")
+        held = listed.units // listed.qty if listed.qty else 0
+        if held <= 1:
+            each = calibration.market_unit(listed.name)
+            held = round(price / each) if each else 1
+            if held < 1 or not (each and abs(price - each * held)
+                                <= each * (PRICE_CHECK_FACTOR - 1)):
+                held = pack_size(listed.name)
         if held < 1:
             held = 1
-        ledger.sold(listed.name, price // held, proceeds, sold * held)
-        if verbose:
-            print(f"  collected {proceeds:,} Alz for {sold} x "
-                  f"{listed.name!r} at {price:,}"
-                  + (f", {held} to a listing" if held > 1 else ""))
+        basis = cost_basis(listed)
+        cost = basis * sold * held if basis else revenue
+        ledger.sold(listed.name, price // held, revenue, sold * held,
+                    cost=cost)
+        print(f"  booked {sold} x {listed.name!r} at {price:,} = {revenue:,}"
+              + (f", {held} to a listing" if held > 1 else "")
+              + f"; cost {cost:,}"
+              + (f" at {basis:,} each" if basis else ", not an item the run "
+                 f"prices, so no profit is counted")
+              + f"; profit {revenue - cost:+,}")
 
     def reopen_after_wait(self, verbose=True):
         import open_agent_shop_premium as shop
@@ -1536,10 +1603,8 @@ class RowModel:
                 print(f"  row {index} has SOLD "
                       f"({'fully' if complete else 'partially'}); collecting "
                       f"before anything else")
-            self.receive(index, verbose=verbose, complete=complete)
-            if not complete:
-                time.sleep(TAB_SETTLE)
-                seen, action = read_row_and_button(seat)
+            seen, action = self.receive(index, verbose=verbose,
+                                        complete=complete, settle=True)
             if complete or action == REGISTER_WORD:
                 if verbose:
                     print(f"  row {index} is empty after the collection; "

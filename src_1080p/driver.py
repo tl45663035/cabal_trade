@@ -140,9 +140,10 @@ def trace_path():
 
 
 def row_gain(row):
-    if not row.buy_cost or not row.sell_unit:
+    basis = row_model.cost_basis(row)
+    if not basis or not row.sell_unit:
         return None
-    return (row.sell_unit - row.buy_cost) * row.units
+    return (row.sell_unit - basis) * row.units
 
 
 def trace_line(index, row, here):
@@ -232,9 +233,10 @@ def board_header():
 
 
 def board_line(index, row):
-    bought = f"{row.buy_cost:,}" if row.buy_cost else "-"
-    margin = (f"{(row.sell_unit - row.buy_cost) / row.sell_unit:+.1%}"
-              if row.buy_cost and row.sell_unit else "-")
+    basis = row_model.cost_basis(row)
+    bought = f"{basis:,}" if basis else "-"
+    margin = (f"{(row.sell_unit - basis) / row.sell_unit:+.1%}"
+              if basis and row.sell_unit else "-")
     return (f"    {index:2}  {row.name[:34]:34} x{row.qty:<4} {bought:>10} "
             f"{row.sell_unit:>10,} {margin:>7} {row.price:>14,}")
 
@@ -800,12 +802,10 @@ def relist_one(model, index, verbose=True, first=None, last=None,
         sold = held.name if held is not None else (
             row.name if row is not None else text)
         with calibration.phase("collect what sold"):
-            model.receive(index, verbose=False, complete=complete)
+            text, button = model.receive(index, verbose=False,
+                                         complete=complete)
         if not complete:
-            with calibration.phase("read the row again after collecting"):
-                model.scroll_to(index, verbose=False)
-                text, button = model.read_with_button()
-                text, row = row_from_screen(text, model)
+            text, row = row_from_screen(text, model)
         if complete or button == row_model.REGISTER_WORD or row is None:
             model.drop(index)
             model.forget_floor(index)
@@ -990,8 +990,7 @@ def relist_one(model, index, verbose=True, first=None, last=None,
         print(f"  row {index} sold while it was being cancelled, so nothing "
               f"came back to tab {row_model.WORK_TAB}; collecting it instead")
         model.release_work(landing)
-        model.receive(index, verbose=False)
-        seen = model.read()
+        seen, _action = model.receive(index, verbose=False, listed=row)
         if model.is_empty(seen):
             model.drop(index)
             model.forget_floor(index)

@@ -270,14 +270,17 @@ def ledger_runs(start):
         if qty:
             buys[run].append({"at": at, "item": item, "k": key(item),
                               "units": qty, "cost": (spend or 0) / qty})
-    for at, run, item, qty, price, proceeds in conn.execute(
-            "SELECT at, run, item, qty, price, proceeds FROM sales WHERE at>=? "
-            "ORDER BY at, id", (start,)):
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(sales)")}
+    cost_col = "cost" if "cost" in columns else "NULL"
+    for at, run, item, qty, price, proceeds, booked in conn.execute(
+            f"SELECT at, run, item, qty, price, proceeds, {cost_col} FROM sales "
+            f"WHERE at>=? ORDER BY at, id", (start,)):
         if qty:
             gross = proceeds if proceeds is not None else (price or 0) * qty
             sells[run].append({"at": at, "item": item, "k": key(item),
-                               "units": units_sold(item, qty),
-                               "gross": gross or 0})
+                               "units": qty if booked is not None
+                               else units_sold(item, qty),
+                               "gross": gross or 0, "cost": booked})
     conn.close()
     return buys, sells
 
@@ -300,6 +303,7 @@ def close_runs(since):
     logs = run_logs(since - datetime.timedelta(days=1))
     buys, sells = ledger_runs(stamp(since))
     runs = []
+    latest = ({}, 0)
     for run in sorted(set(buys) | set(sells)):
         log = match_log(run, logs)
         text = ""
@@ -309,6 +313,10 @@ def close_runs(since):
             except OSError:
                 text = ""
         prices, voucher = launch_floors(text)
+        if prices or voucher:
+            latest = (prices, voucher)
+        else:
+            prices, voucher = latest
         stock = collections.defaultdict(collections.deque)
         opened = collections.Counter()
         for name, count, each in opening_stock(text):
@@ -337,8 +345,18 @@ def close_runs(since):
                 taken += take
                 if lot["units"] <= 0:
                     queue.popleft()
+            if event["cost"] is not None:
+                sold.append({"at": event["at"], "item": event["item"],
+                             "k": event["k"], "bucket": bucket(event["item"]),
+                             "units": event["units"],
+                             "revenue": event["gross"],
+                             "cost": event["cost"]})
+                continue
             if left:
                 unmatched[event["k"]] += left
+                cost += left * (floor_for(event["item"], prices, voucher)
+                                or event["gross"] / event["units"])
+                taken += left
             if taken:
                 each = event["gross"] / event["units"]
                 sold.append({"at": event["at"], "item": event["item"],

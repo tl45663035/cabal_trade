@@ -300,6 +300,7 @@
     "keep_videos": 5,
     "video_scale": 0.5,
     "prune_every": 50,
+    "min_free_mb": 5120,
     "banner_scale": 2,
     "banner_colours": {
       "FINISHED": "32",
@@ -445,6 +446,7 @@
     "slot_read_gap": 1.0,
     "keep_frames": 120,
     "keep_reels": 1,
+    "keep_dead_runs": 5,
     "escape_settle": 1,
     "stall_wait": 60,
     "stall_retries": 2,
