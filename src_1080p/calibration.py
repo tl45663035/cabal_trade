@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -477,7 +478,32 @@ def grab() -> Image.Image:
     return Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
 
 
+_HOVERED = {"point": None, "at": 0.0}
+
+
+def cursor():
+    from ctypes import wintypes
+    at = wintypes.POINT()
+    ctypes.windll.user32.GetCursorPos(ctypes.byref(at))
+    return (at.x, at.y)
+
+
+def hover(x: int, y: int) -> float:
+    from open_inventory import _user32
+    _user32.SetCursorPos(int(x), int(y))
+    _HOVERED.update(point=(int(x), int(y)), at=time.monotonic())
+    return _HOVERED["at"]
+
+
+def hovering(point):
+    here = (int(point[0]), int(point[1]))
+    if _HOVERED["point"] != here or cursor() != here:
+        return None
+    return _HOVERED["at"]
+
+
 def park(settle: bool = True) -> None:
+    _HOVERED["point"] = None
     ctypes.windll.user32.SetCursorPos(*_point(PARK_F))
     if settle:
         time.sleep(PARK_SETTLE)
@@ -717,8 +743,22 @@ def frames_written() -> None:
               f"not keep up")
 
 
-def snap(label: str, image=None) -> "Path | None":
-    global _FRAME_N, _FRAMES_DROPPED
+_ALONGSIDE = ThreadPoolExecutor(max_workers=1)
+
+
+def _queue_frame(waiting, out, image, meta) -> bool:
+    global _FRAMES_DROPPED
+    try:
+        waiting.put_nowait(("frame", out, grab() if image is None else image,
+                            meta))
+    except Exception:
+        _FRAMES_DROPPED += 1
+        return False
+    return True
+
+
+def snap(label: str, image=None, alongside=False) -> "Path | None":
+    global _FRAME_N
     if not FRAMES_ON:
         return None
     _FRAME_N += 1
@@ -733,11 +773,9 @@ def snap(label: str, image=None) -> "Path | None":
     except Exception as exc:
         print(f"  no frame writer: {type(exc).__name__}: {exc}")
         return None
-    try:
-        waiting.put_nowait(("frame", out, grab() if image is None else image,
-                            meta))
-    except Exception:
-        _FRAMES_DROPPED += 1
+    if alongside and image is None:
+        _ALONGSIDE.submit(_queue_frame, waiting, out, None, meta)
+    elif not _queue_frame(waiting, out, image, meta):
         return None
     if _FRAME_N % PRUNE_EVERY == 0:
         try:
@@ -752,10 +790,20 @@ def _mouse_event(flags: int):
     return _Input(type=_S["input"]["INPUT_MOUSE"], u=_InputUnion(mi=_MouseInput(0, 0, 0, flags, 0, None)))
 
 
-def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
+def _arrive(x: int, y: int, hovered=False, check=False) -> None:
+    since = hovering((x, y)) if hovered else None
+    if since is None:
+        since = hover(x, y)
+    if check:
+        hold_if_busy()
+    time.sleep(max(0.0, HOVER_SETTLE - (time.monotonic() - since)))
+    _HOVERED["point"] = None
+
+
+def _button(down: int, up: int, x: int, y: int, settle: float,
+            hovered=False, check=False, released=None) -> None:
     from open_inventory import _user32
-    _user32.SetCursorPos(int(x), int(y))
-    time.sleep(HOVER_SETTLE)
+    _arrive(x, y, hovered, check)
     _user32.SendInput(1, ctypes.byref(_mouse_event(down)),
                       ctypes.sizeof(_mouse_event(down)))
     try:
@@ -763,6 +811,8 @@ def _button(down: int, up: int, x: int, y: int, settle: float) -> None:
     finally:
         _user32.SendInput(1, ctypes.byref(_mouse_event(up)),
                           ctypes.sizeof(_mouse_event(up)))
+    if released is not None:
+        released.set()
     time.sleep(settle)
 
 
@@ -814,14 +864,14 @@ def watch_for_stop(verbose=True):
               f"from the game or anywhere else")
 
 
-def ctrl_click(x: int, y: int) -> None:
-    hold_if_busy()
+def ctrl_click(x: int, y: int, check_hovering=False) -> None:
+    if not check_hovering:
+        hold_if_busy()
     from open_inventory import _user32, _Input, _event
     keys = load_shared()["input"]
     vk = keys["VK_CONTROL"]
 
-    _user32.SetCursorPos(int(x), int(y))
-    time.sleep(HOVER_SETTLE)
+    _arrive(x, y, check=check_hovering)
     with _own_ctrl():
         _user32.SendInput(1, ctypes.byref(_event(vk, up=False)),
                           ctypes.sizeof(_Input))
@@ -999,13 +1049,16 @@ def panel_suggestion(panel):
     return None
 
 
-def click(x: int, y: int, settle: float = None) -> None:
-    hold_if_busy()
+def click(x: int, y: int, settle: float = None, hovered=False,
+          check_hovering=False, alongside=False, released=None) -> None:
+    if not check_hovering:
+        hold_if_busy()
     shared = load_shared()
     _button(shared["input"]["MOUSEEVENTF_LEFTDOWN"],
             shared["input"]["MOUSEEVENTF_LEFTUP"], x, y,
-            shared["timing"]["action_gap"] if settle is None else settle)
-    snap(f"click_{x}_{y}")
+            shared["timing"]["action_gap"] if settle is None else settle,
+            hovered=hovered, check=check_hovering, released=released)
+    snap(f"click_{x}_{y}", alongside=alongside)
 
 
 def right_click(x: int, y: int, settle: float = None) -> None:

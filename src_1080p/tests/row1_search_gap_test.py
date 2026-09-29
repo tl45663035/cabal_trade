@@ -36,9 +36,11 @@ calls = []
 real = {"trade": calibration._trade_window_open, "tab": calibration.purchase_tab_showing}
 calibration._trade_window_open = lambda image=None: calls.append("trade window check") or real["trade"](image)
 calibration.purchase_tab_showing = lambda image=None: calls.append("Purchase tab check") or real["tab"](image)
-reads = {"text": get_price.read_row_one, "fields": get_price.read_fields}
-get_price.read_row_one = lambda image=None: calls.append("row 1 text read") or reads["text"](image)
-get_price.read_fields = lambda image=None: calls.append("row 1 price read") or reads["fields"](image)
+reads = {"fields": get_price.read_fields, "line": calibration.read_line}
+get_price.read_fields = lambda image=None: calls.append("row 1 read") or reads["fields"](image)
+calibration.read_line = lambda image, box, *a, **k: (
+    calls.append("whole row 1 read by Tesseract") if tuple(box) == get_price.purchase_row_one_box() else None
+) or reads["line"](image, box, *a, **k)
 get_price.inv.focus_game = lambda *a, **k: True
 
 
@@ -52,11 +54,13 @@ def run(image, slot, search=False):
     return out, (time.perf_counter() - t) * 1000, list(calls)
 
 
-in_order = ["trade window check", "Purchase tab check", "row 1 text read", "row 1 price read"]
+in_order = ["trade window check", "Purchase tab check", "row 1 read"]
 out, ms, seen = run(buy_row, 3)
-check("reading row 1 where it stands: the Trade window and the Purchase tab are checked first, then row 1 is read",
+check("reading row 1 where it stands: the Trade window and the Purchase tab are checked first, then row 1 is read once",
       out is not None and (out["name"], out["qty"], out["price"]) == ("Chaos Core", 35, 709999) and seen == in_order,
       f"{ms:.0f} ms, order {seen}, {out and (out['name'], out['qty'], out['price'])}")
+check("row 1 in place is not read a second time as a whole line by Tesseract",
+      "whole row 1 read by Tesseract" not in seen, f"{seen}")
 
 register_image = Image.open(FX / "2026-09-26_184309_00096_click_833_752.png").convert("RGB")
 FAKE_CLICKS.clear()

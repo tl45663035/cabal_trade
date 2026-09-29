@@ -251,7 +251,7 @@ def _receipt_seat(verbose=False):
     return seat
 
 
-def find_button(word, timeout=None, verbose=False):
+def find_button(word, timeout=None, verbose=False, hover=False):
     if _key(word) == _key(RECEIPT_WORD):
         seat = _receipt_seat(verbose=verbose)
         if seat is not None:
@@ -263,8 +263,14 @@ def find_button(word, timeout=None, verbose=False):
     else:
         deadline = time.monotonic() + budget
         while time.monotonic() < deadline:
-            if button_here(word, known):
+            image = calibration.grab()
+            if hover:
+                calibration.hover(*known)
+            if button_here(word, known, image):
                 return known
+            if hover:
+                calibration.park(settle=False)
+                hover = False
             time.sleep(POLL_GAP)
         if verbose:
             print(f"  {word} never appeared at the calibrated {known} in "
@@ -286,12 +292,12 @@ def refresh_table(model=None, verbose=False):
         return None
     if verbose:
         print(f"  {calibration.REFRESH_WORD} at {tuple(point)}")
-    calibration.click(*point, settle=0.0)
+    calibration.click(*point, settle=0.0, check_hovering=True, alongside=True)
     time.sleep(REFRESH_SETTLE)
     return tuple(point)
 
 
-def show_work_tab(verbose=False, already=False):
+def show_work_tab(verbose=False, already=False, released=None):
     import open_agent_shop_premium as shop
     if not already and calibration.await_inventory(verbose=verbose) is None:
         raise Divergence(
@@ -301,7 +307,7 @@ def show_work_tab(verbose=False, already=False):
     if verbose:
         print(f"  inventory tab {WORK_TAB} at {point}, so the cancelled item "
               f"has nowhere else to land")
-    calibration.click(*point)
+    calibration.click(*point, released=released)
     return point
 
 
@@ -566,8 +572,8 @@ def _disputed(asked, filled, net):
         len(core) > 1 and not all(_same_price(core[0], v) for v in core[1:]))
 
 
-def _read_and_agree(panel, listed_at, verbose):
-    image = calibration.grab()
+def _read_and_agree(panel, listed_at, verbose, image=None):
+    image = calibration.grab() if image is None else image
     asked, filled, net, average = _asking(image, panel)
     value = _agreed(asked, filled, average, listed_at, verbose, net)
     if value is not None or not _disputed(asked, filled, net):
@@ -644,14 +650,29 @@ def _back_in_the_shop(verbose=False):
     show_work_tab(verbose=verbose)
 
 
-def suggested_price(verbose=False, listed_at=None):
-    panel = _panel()
-    box = tuple(panel["suggestion_boxes"][-1])
-    radio = (box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
-    value = _read_and_agree(panel, listed_at, verbose)
+_PICKING = ThreadPoolExecutor(max_workers=1)
+
+
+def _pick_suggestion(radio):
     calibration.click(*radio, settle=0.0)
     calibration.park(settle=False)
     time.sleep(FIELD_SETTLE)
+
+
+def suggested_price(verbose=False, listed_at=None, overlap=False):
+    panel = _panel()
+    box = tuple(panel["suggestion_boxes"][-1])
+    radio = (box[0] - SUGGESTION_RADIO_DX, (box[1] + box[3]) // 2)
+    if overlap:
+        image = calibration.grab()
+        picking = _PICKING.submit(_pick_suggestion, radio)
+        try:
+            value = _read_and_agree(panel, listed_at, verbose, image)
+        finally:
+            picking.result()
+    else:
+        value = _read_and_agree(panel, listed_at, verbose)
+        _pick_suggestion(radio)
     if value is None:
         value = _read_and_agree(panel, listed_at, verbose)
     if value is None and verbose:
@@ -701,14 +722,19 @@ def panel_quantity(want_price, verbose=False):
     return None
 
 
-def check_price_field(want, qty, verbose=False):
-    shown = warm_money(calibration.grab(), tuple(_panel()["price_field"]))
+def check_price_field(want, qty, verbose=False, next_point=None):
+    image = calibration.grab()
+    if next_point is not None:
+        calibration.hover(*next_point)
+    shown = warm_money(image, tuple(_panel()["price_field"]))
     if verbose:
         print(f"    the panel holds {shown:,} against the {want:,} typed"
               if shown is not None else
               f"    the panel price would not read back")
     if shown is None or shown == want:
         return
+    if next_point is not None:
+        calibration.park()
     with calibration.step("let the net sales decide"):
         settled = panel_quantity(want, verbose) == qty
     if not settled:
@@ -778,12 +804,20 @@ def _paddle_row(image, seat):
     name, qty, price, status, button = (t or "" for t in texts)
     word = _button_word(button)
     if word == REGISTER_WORD:
-        return REGISTER_WORD
+        return REGISTER_WORD, word
     value = calibration._digits(price)
     return " ".join(part for part in (
         name.strip(" |"), re.sub(r"[^0-9]", "", qty),
         f"{value:,}" if value else "", status.strip(),
-        word or button.strip()) if part)
+        word or button.strip()) if part), word
+
+
+def _tesseract_button(image, seat):
+    for text, _conf, _point in calibration.ocr(image, row_button_box(seat)):
+        word = _button_word(text)
+        if word is not None:
+            return word
+    return None
 
 
 def row_button(image=None, seat=FIRST_SEAT):
@@ -791,11 +825,7 @@ def row_button(image=None, seat=FIRST_SEAT):
     texts = _paddle_button(image, seat)
     if texts is not None and _button_word(texts[0]):
         return _button_word(texts[0])
-    for text, _conf, _point in calibration.ocr(image, row_button_box(seat)):
-        word = _button_word(text)
-        if word is not None:
-            return word
-    return None
+    return _tesseract_button(image, seat)
 
 
 def row_button_text(image=None, seat=FIRST_SEAT):
@@ -886,27 +916,31 @@ def trim_borders(text):
     return " ".join(parts)
 
 
-def read_row(seat=FIRST_SEAT):
+def _read_row(seat=FIRST_SEAT):
     text = ""
     for attempt in range(PANEL_REREADS + 1):
         image = calibration.grab()
         box = row_box(seat)
-        text = _paddle_row(image, seat)
-        if text:
-            return text
-        if text is None and "rows" not in _told:
+        read = _paddle_row(image, seat)
+        if read is not None and read[0]:
+            return read[0], read[1], image
+        if read is None and "rows" not in _told:
             _told.add("rows")
             why = _reader["failed"] or "the Register columns were not measured"
             print(f"  {why}; Register rows are read whole by Tesseract instead")
         text = trim_borders(calibration.read_line(image, box))
         if text.strip():
-            return text
+            return text, None, None
         text = trim_borders(_row_words(image, box))
         if text.strip():
-            return text
+            return text, None, None
         if attempt < PANEL_REREADS:
             time.sleep(PANEL_REREAD_GAP)
-    return text
+    return text, None, None
+
+
+def read_row(seat=FIRST_SEAT):
+    return _read_row(seat)[0]
 
 
 def _row_words(image, box):
@@ -946,6 +980,12 @@ def row_is_empty(text=None, seat=FIRST_SEAT):
 
 
 def read_row_and_button(seat=FIRST_SEAT):
+    if register_boxes(seat) is not None and not _reader["failed"]:
+        seen, action, image = _read_row(seat)
+        if image is not None:
+            return seen, (action or _tesseract_button(image, seat)
+                          or _function_in(seen))
+        return seen, row_button(None, seat) or _function_in(seen)
     with ThreadPoolExecutor(max_workers=2) as pool:
         reading = pool.submit(read_row, seat)
         pressing = pool.submit(row_button, None, seat)
@@ -1456,33 +1496,40 @@ class RowModel:
                   f"it again ({attempt + 1} of {GAME_WAIT_RETRIES})")
         self.reopen_after_wait(verbose=verbose)
 
-    def cancel(self, index, verbose=True, tab_ready=False, tab_selected=False):
+    def cancel(self, index, verbose=True, tab_ready=False, tab_selected=False,
+               read=None, overlap=False):
         attempt = 0
         while True:
             try:
                 return self._cancel(index, verbose=verbose,
                                     tab_ready=tab_ready and not attempt,
-                                    tab_selected=tab_selected and not attempt)
+                                    tab_selected=tab_selected and not attempt,
+                                    read=None if attempt else read,
+                                    overlap=overlap)
             except GameSaysWait:
                 self.again_after_wait(f"cancelling row {index}", attempt,
                                       verbose=verbose)
                 attempt += 1
 
     def _cancel(self, index, verbose=True, tab_ready=False,
-                tab_selected=False):
+                tab_selected=False, read=None, overlap=False):
         index = int(index)
         expected = self._slots.get(index)
         if expected is None:
             raise ValueError(f"row {index} is empty in the model; refusing to "
                              f"cancel a slot nothing is listed in")
         with calibration.step("scroll to the row again"):
-            if self.scroll_to(index, verbose=verbose)["moved"]:
+            moved = self.scroll_to(index, verbose=verbose)["moved"]
+            if moved:
                 time.sleep(TAB_SETTLE)
 
         seat = self._seat
         position = seat_position(seat)
-        with calibration.step("read the row and its button again"):
-            seen, action = read_row_and_button(seat)
+        if read is not None and not moved:
+            seen, action = read
+        else:
+            with calibration.step("read the row and its button again"):
+                seen, action = read_row_and_button(seat)
         if action == RECEIPT_WORD:
             complete = row_complete(seen, seat)
             if verbose:
@@ -1492,13 +1539,12 @@ class RowModel:
             self.receive(index, verbose=verbose, complete=complete)
             if not complete:
                 time.sleep(TAB_SETTLE)
-                seen = read_row(seat)
-            if complete or row_function(seen, seat) == REGISTER_WORD:
+                seen, action = read_row_and_button(seat)
+            if complete or action == REGISTER_WORD:
                 if verbose:
                     print(f"  row {index} is empty after the collection; "
                           f"nothing left to cancel")
                 return self.note_cancel(index)
-            action = row_function(seen, seat)
         if action == REGISTER_WORD:
             raise Divergence(
                 f"row {index} is empty on screen; nothing to cancel.")
@@ -1528,12 +1574,17 @@ class RowModel:
         if verbose:
             print(f"  {CHANGE_WORD} at {point}")
         with calibration.step(f"hover over {CHANGE_WORD} and click it"):
-            inv._user32.SetCursorPos(*point)
-            time.sleep(ACTION_GAP)
-            calibration.click(*point, settle=0.0)
+            if overlap:
+                since = calibration.hovering(point) or calibration.hover(*point)
+                time.sleep(max(0.0, ACTION_GAP - (time.monotonic() - since)))
+                calibration.click(*point, settle=0.0, check_hovering=True)
+            else:
+                inv._user32.SetCursorPos(*point)
+                time.sleep(ACTION_GAP)
+                calibration.click(*point, settle=0.0)
 
         with calibration.step(f"find {DISMISS_WORD}"):
-            dismiss = find_button(DISMISS_WORD)
+            dismiss = find_button(DISMISS_WORD, hover=overlap)
         if dismiss is None:
             raise Divergence(
                 f"no {DISMISS_WORD} button appeared after clicking "
@@ -1541,10 +1592,10 @@ class RowModel:
         if verbose:
             print(f"  {DISMISS_WORD} at {dismiss}")
         with calibration.step(f"click {DISMISS_WORD}"):
-            calibration.click(*dismiss, settle=0.0)
+            calibration.click(*dismiss, settle=0.0, hovered=overlap)
 
         with calibration.step(f"find {CONFIRM_WORD}"):
-            confirm = find_button(CONFIRM_WORD)
+            confirm = find_button(CONFIRM_WORD, hover=overlap)
         if confirm is None:
             raise Divergence(
                 f"no {CONFIRM_WORD} button appeared after {DISMISS_WORD} on "
@@ -1552,7 +1603,7 @@ class RowModel:
         if verbose:
             print(f"  {CONFIRM_WORD} at {confirm}")
         with calibration.step(f"click {CONFIRM_WORD} and park"):
-            calibration.click(*confirm, settle=0.0)
+            calibration.click(*confirm, settle=0.0, hovered=overlap)
             calibration.park(settle=False)
 
         with calibration.step("wait for the dialog to close"):
@@ -1590,7 +1641,7 @@ class RowModel:
                    expect_qty=None, expect_market=None, resolve=True,
                    under=None, floor_item=None, floor_units=0,
                    fallback=None,
-                   resupply_cost=0):
+                   resupply_cost=0, overlap=False):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
@@ -1603,7 +1654,9 @@ class RowModel:
         if verbose:
             print(f"  inventory slot ({row},{col}) at {point}")
         with calibration.step("read the panel before loading"):
-            standing = panel_standing() if panel_holds_item() else None
+            loading = calibration.grab()
+            standing = (panel_standing() if panel_holds_item(loading)
+                        else None)
         if standing is not None:
             raise Divergence(
                 f"the shop slot already holds something the panel prices at "
@@ -1611,11 +1664,14 @@ class RowModel:
 
         deadline = time.monotonic() + DIALOG_TIMEOUT
         filled, lagged = not wait_fill, 0
+        shared = loading if overlap else None
         while not filled:
             while time.monotonic() < deadline:
                 with calibration.step(f"wait for slot ({row},{col}) to fill"):
-                    filled = not calibration.slot_is_empty(calibration.grab(),
-                                                           int(row), int(col))
+                    image = shared if shared is not None else calibration.grab()
+                    shared = None
+                    filled = not calibration.slot_is_empty(image, int(row),
+                                                           int(col))
                 if filled:
                     break
                 time.sleep(POLL_GAP)
@@ -1635,9 +1691,10 @@ class RowModel:
         while attempt < PRICE_ATTEMPTS:
             attempt += 1
             with calibration.step(f"ctrl-click ({row},{col}) attempt {attempt}"):
-                calibration.ctrl_click(*point)
+                calibration.ctrl_click(*point, check_hovering=overlap)
             with calibration.step("read the suggested price"):
-                suggested = suggested_price(verbose, listed_at)
+                suggested = suggested_price(verbose, listed_at,
+                                            overlap=overlap)
             if suggested is not None:
                 break
             calibration.snap(f"nothing_loaded_{row}x{col}_{attempt}")
@@ -1787,7 +1844,8 @@ class RowModel:
             calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
             type_number(want, CLEAR_PRESSES_PRICE)
         with calibration.step(f"type the quantity {MAX_STACK}"):
-            calibration.click(*panel["qty_point"], settle=FIELD_SETTLE)
+            calibration.click(*panel["qty_point"], settle=FIELD_SETTLE,
+                              check_hovering=overlap, alongside=overlap)
             type_number(MAX_STACK, CLEAR_PRESSES_QTY)
             calibration.park()
         with calibration.step("take the quantity from the net sales"):
@@ -1853,11 +1911,14 @@ class RowModel:
                     f"listed.")
             want = need
         with calibration.step("read the price back before Register"):
-            check_price_field(want, qty, verbose)
+            check_price_field(want, qty, verbose,
+                              next_point=(panel["register_button"]
+                                          if overlap else None))
         with calibration.step("click Register"):
-            calibration.click(*panel["register_button"], settle=0.0)
+            calibration.click(*panel["register_button"], settle=0.0,
+                              hovered=overlap)
         with calibration.step(f"find {CONFIRM_WORD}"):
-            confirm = find_button(CONFIRM_WORD)
+            confirm = find_button(CONFIRM_WORD, hover=overlap)
         if confirm is None:
             raise Divergence(
                 f"no {CONFIRM_WORD} appeared after Register. Nothing "
@@ -1903,7 +1964,7 @@ class RowModel:
                     f"no {CONFIRM_WORD} appeared after the underprice "
                     f"question was accepted. Nothing committed.")
         with calibration.step(f"click {CONFIRM_WORD}"):
-            calibration.click(*confirm, settle=0.0)
+            calibration.click(*confirm, settle=0.0, hovered=overlap)
         with calibration.step("park"):
             calibration.park(settle=False)
         with calibration.step("confirm the dialog is gone"):
@@ -2085,6 +2146,9 @@ class RowModel:
 
     def read(self):
         return read_row(self._seat)
+
+    def read_with_button(self):
+        return read_row_and_button(self._seat)
 
     def read_stacked(self):
         return read_row_stacked(self._seat)

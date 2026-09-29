@@ -296,15 +296,16 @@ check("three Chaos orders: the first reads the balance, the next two carry the l
 m = row_model
 cancel_events = []
 saved = (m.read_row, m.row_button, m.show_work_tab, m.find_button, m.dialog_gone, m.game_refused,
-         m.inv._user32, calibration.click, calibration.park, m.time.sleep)
+         m.inv._user32, calibration.click, calibration.park, m.time.sleep, m._read_row)
 m.read_row = lambda seat=None: "Force Core (Ultimate) 49 399,553 On Sale Change"
+m._read_row = lambda seat=None: ("Force Core (Ultimate) 49 399,553 On Sale Change", m.CHANGE_WORD, object())
 m.row_button = lambda image=None, seat=None: m.CHANGE_WORD
 m.show_work_tab = lambda verbose=False, already=False: cancel_events.append("tab 4")
-m.find_button = lambda word, timeout=None, verbose=False: cancel_events.append(f"find {word}") or (1, 1)
+m.find_button = lambda word, timeout=None, verbose=False, hover=False: cancel_events.append(f"find {word}") or (1, 1)
 m.dialog_gone = lambda timeout=None: cancel_events.append("dialog gone") or True
 m.game_refused = lambda done, timeout=None: cancel_events.append("landed") or False
 m.inv._user32 = type("Hover", (), {"SetCursorPos": staticmethod(lambda *a: cancel_events.append("hover"))})()
-calibration.click = lambda x, y, settle=None: cancel_events.append("click")
+calibration.click = lambda x, y, settle=None, **k: cancel_events.append("click")
 calibration.park = lambda settle=True: cancel_events.append(f"park{'' if settle else ' without the pause'}")
 m.time.sleep = lambda s: None
 try:
@@ -318,7 +319,7 @@ try:
     labels = [s for s, _ms in calibration._STEPS]
 finally:
     (m.read_row, m.row_button, m.show_work_tab, m.find_button, m.dialog_gone, m.game_refused,
-     m.inv._user32, calibration.click, calibration.park, m.time.sleep) = saved
+     m.inv._user32, calibration.click, calibration.park, m.time.sleep, m._read_row) = saved
 check("the cancel times every part in its own step, in the order the actions happen",
       labels == ["scroll to the row again", "read the row and its button again",
                  "check the row is the one the run listed", f"select inventory tab {m.WORK_TAB} before {m.CHANGE_WORD}",

@@ -5,6 +5,7 @@ import random
 import re
 import subprocess
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -310,10 +311,8 @@ def seed(verbose=True):
         print(board_header())
     for index in range(1, last + 1):
         model.scroll_to(index, verbose=False)
-        if model.button() == row_model.REGISTER_WORD:
-            continue
-        text = model.read()
-        if model.is_empty(text):
+        text, button = model.read_with_button()
+        if button == row_model.REGISTER_WORD or model.is_empty(text):
             continue
         text, row = row_from_screen(text, model)
         if row is None:
@@ -735,9 +734,24 @@ def resume_work_tab(model, first, last, verbose=True):
     return done
 
 
+def select_after_withdrawal():
+    time.sleep(max(0.0, WITHDRAW_SETTLE - calibration.PARK_SETTLE
+                   - calibration.HOVER_SETTLE))
+    calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
+                      check_hovering=True, alongside=True)
+
+
+def _select_work_tab(released):
+    try:
+        return row_model.show_work_tab(False, True, released)
+    finally:
+        released.set()
+
+
 def read_the_row(model, index):
     held = model.get(index) is not None
-    selecting = (_SELECTING.submit(row_model.show_work_tab, False, True)
+    released = threading.Event()
+    selecting = (_SELECTING.submit(_select_work_tab, released)
                  if held else None)
     try:
         with calibration.step("read the button of a row the run holds "
@@ -746,11 +760,14 @@ def read_the_row(model, index):
         if button == row_model.REGISTER_WORD:
             text, row = "", None
         else:
-            with calibration.step("read the row"):
-                text = model.read()
+            with calibration.step("read the row and its button"):
+                text, button = model.read_with_button()
                 text, row = row_from_screen(text, model)
-            with calibration.step("read the row's button"):
-                button = model.button()
+        if (selecting is not None and row is not None
+                and button == row_model.CHANGE_WORD):
+            released.wait()
+            if not selecting.done() or selecting.exception() is None:
+                calibration.hover(*row_model.button_point(model.seat))
     finally:
         if selecting is not None:
             with calibration.step(f"finish selecting inventory tab "
@@ -786,8 +803,9 @@ def relist_one(model, index, verbose=True, first=None, last=None,
             model.receive(index, verbose=False, complete=complete)
         if not complete:
             with calibration.phase("read the row again after collecting"):
-                text, row = row_at(model, index, verbose=False)
-                button = model.button()
+                model.scroll_to(index, verbose=False)
+                text, button = model.read_with_button()
+                text, row = row_from_screen(text, model)
         if complete or button == row_model.REGISTER_WORD or row is None:
             model.drop(index)
             model.forget_floor(index)
@@ -866,6 +884,7 @@ def relist_one(model, index, verbose=True, first=None, last=None,
     if cost:
         unit_floor, pair = cost, "what it cost"
     if not unit_floor:
+        calibration.park()
         stacked = model.read_stacked()
         again = _row_from(stacked)
         if again is not None and again.name != row.name:
@@ -910,13 +929,12 @@ def relist_one(model, index, verbose=True, first=None, last=None,
          tab=row_model.WORK_TAB, slot=list(landing), lands_in=lands_in)
     with calibration.phase("cancel the row and take it back"):
         model.cancel(index, verbose=False, tab_ready=True,
-                     tab_selected=tab_selected)
+                     tab_selected=tab_selected, read=(text, button),
+                     overlap=True)
     with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
         with calibration.step(f"select inventory tab {row_model.WORK_TAB} "
                               f"after the withdrawal"):
-            time.sleep(max(0.0, WITHDRAW_SETTLE - calibration.PARK_SETTLE))
-            calibration.click(
-                *calibration.inventory_tab_point(row_model.WORK_TAB))
+            select_after_withdrawal()
     if verbose:
         calibration.steps_table(f"cancel row {index}")
     whole = calibration.voucher_floor_ratio(row.name)[1] > 0
@@ -964,10 +982,10 @@ def relist_one(model, index, verbose=True, first=None, last=None,
                           expect_market=(row_model.market_anchor(row.name)
                                          * row.pack) or None)
             out = model.list_slot(*landing, verbose=verbose,
-                                  lands_in=lands_in, **expect)
+                                  lands_in=lands_in, overlap=True, **expect)
     except row_model.SlotNeverFilled:
-        seen = model.read()
-        if model.function(seen) != row_model.RECEIPT_WORD:
+        seen, action = model.read_with_button()
+        if action != row_model.RECEIPT_WORD:
             raise
         print(f"  row {index} sold while it was being cancelled, so nothing "
               f"came back to tab {row_model.WORK_TAB}; collecting it instead")
@@ -1030,7 +1048,7 @@ def relist_one(model, index, verbose=True, first=None, last=None,
     return out
 
 
-PASS_ALLOWANCE = _SHARED["war"]["quiet_before_end"]
+PASS_ALLOWANCE = _SHARED["war"]["pass_allowance"]
 
 
 def recover_after_lag(verbose=True):

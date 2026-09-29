@@ -109,8 +109,7 @@ try:
           table.wheels == [1] and model.top == 4 == table.top, f"{table.wheels}, model {model.top}, table {table.top}")
 
     for label, event in (("a war wait", lambda t: war_wait()),
-                         ("a server wait", lambda t: server_wait()),
-                         ("opening the Agent Shop", open_shop)):
+                         ("a server wait", lambda t: server_wait())):
         table = Table(3)
         m.wheel = table.wheel
         model = board(3)
@@ -142,10 +141,22 @@ try:
     table = Table(3)
     m.wheel = table.wheel
     model = board(3)
+    saved_opened = table.shop_opened
+    table.shop_opened = lambda: None
+    open_shop(table)
+    table.shop_opened = saved_opened
+    with contextlib.redirect_stdout(io.StringIO()):
+        model.scroll_to(4, verbose=False)
+    check("opening the Agent Shop alone, as after a craft (the table keeps its place), costs no trip to the top",
+          table.wheels == [1] and model.top == 4 == table.top, f"{table.wheels}, model {model.top}, table {table.top}")
+
+    table = Table(3)
+    m.wheel = table.wheel
+    model = board(3)
     table.shop_opened()
     with contextlib.redirect_stdout(io.StringIO()):
         model.scroll_to(4, verbose=False)
-    check("without the mark (the old code) the table shows row 2 where the run believes row 4",
+    check("what is left uncaught: a reset with no war or server wait shows row 2 where the run believes row 4",
           table.top == 2 and model.top == 4, f"model {model.top}, table {table.top}")
 
     table = Table(3)

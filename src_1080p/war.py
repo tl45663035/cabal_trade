@@ -10,7 +10,7 @@ _WAR = _SHARED["war"]
 ENABLED = _WAR["enabled"]
 START_HOURS = tuple(_WAR["start_hours"])
 WAR_MINUTES = _WAR["war_minutes"]
-QUIET_BEFORE_END = _WAR["quiet_before_end"]
+QUIET_FROM_END = _WAR["quiet_from_end"]
 QUIET_SECONDS = _WAR["quiet_seconds"]
 UNCERTAINTY = _WAR["clock_uncertainty"]
 CONFIRM_PAUSE = _WAR["clock_confirm_pause"]
@@ -95,7 +95,7 @@ def quiet_window(after):
         for hour in START_HOURS:
             ends = midnight + datetime.timedelta(hours=hour,
                                                  minutes=WAR_MINUTES)
-            start = ends - datetime.timedelta(seconds=QUIET_BEFORE_END)
+            start = ends + datetime.timedelta(seconds=QUIET_FROM_END)
             end = start + datetime.timedelta(
                 seconds=QUIET_SECONDS + UNCERTAINTY)
             if end <= after:
@@ -120,9 +120,10 @@ def avoid(allowance=0.0, verbose=True):
     wait = (end - at).total_seconds()
     if wait <= 0:
         return 0.0
-    war_ends = start + datetime.timedelta(seconds=QUIET_BEFORE_END)
+    war_ends = start - datetime.timedelta(seconds=QUIET_FROM_END)
     reason = (f"a war ends in {(war_ends - at).total_seconds() / 60:.1f} min"
-              if at < start else "a war has just ended")
+              if at < war_ends else
+              f"a war ended {(at - war_ends).total_seconds() / 60:.1f} min ago")
     say("")
     say(f"WAR LAG: {reason} (server {at:%H:%M:%S}). Going to the default "
         f"state and waiting {wait / 60:.1f} min, until server {end:%H:%M:%S}.")

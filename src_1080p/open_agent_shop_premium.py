@@ -143,7 +143,6 @@ def open_agent_shop(verbose: bool = True) -> None:
         deadline = time.monotonic() + DIALOG_TIMEOUT
         while time.monotonic() < deadline:
             if calibration._trade_window_open():
-                calibration.table_lost()
                 if verbose:
                     print(f"  tab {WORK_TAB} at {tab_point(WORK_TAB)}, so "
                           f"whatever is bought or withdrawn lands there")

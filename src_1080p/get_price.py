@@ -198,11 +198,6 @@ def expected_item(slot):
     return EXPECTED.get(str(int(slot)))
 
 
-def read_row_one(image=None):
-    image = image if image is not None else calibration.grab()
-    return calibration.read_line(image, purchase_row_one_box())
-
-
 SET_WORD = calibration.load_shared()["game_facts"]["set_word"]
 
 
@@ -260,8 +255,8 @@ def get_price(slot, verbose=True, search=True, on_purchase=None, before=None):
     text, row = "", None
     if not search:
         with calibration.step("get_price: read row 1 where it stands"):
-            text = read_row_one()
-            row = parse_fields(read_fields())
+            fields = read_fields()
+            text, row = fields["row"], parse_fields(fields)
         if row is not None and not name_matches(slot, row["name"]):
             if verbose:
                 print(f"  row 1 reads {row['name']!r}, which is not what "
@@ -426,10 +421,10 @@ def get_voucher_price(verbose=True):
     row, text = None, ""
     deadline = time.monotonic() + SEARCH_TIMEOUT
     while time.monotonic() < deadline:
-        image = calibration.grab()
-        text = read_row_one(image)
-        if VOUCHER_WORD.lower() in text.lower():
-            row = parse_fields(read_fields(image))
+        fields = read_fields()
+        text = fields["row"]
+        if VOUCHER_WORD.lower() in (fields["name"] or "").lower():
+            row = parse_fields(fields)
             if row is not None:
                 break
         time.sleep(POLL_GAP)

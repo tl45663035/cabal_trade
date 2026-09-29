@@ -126,8 +126,8 @@
     },
     "buy_under_lister": {
       "default": 0,
-      "Chaos Core": 3,
-      "Divine Stone": 3
+      "Chaos Core": 0,
+      "Divine Stone": 0
     },
     "buy_under_gap": {
       "default": 5000
@@ -361,8 +361,9 @@
       22
     ],
     "war_minutes": 30,
-    "quiet_before_end": 60,
-    "quiet_seconds": 300,
+    "quiet_from_end": 120,
+    "quiet_seconds": 120,
+    "pass_allowance": 60,
     "clock_uncertainty": 59,
     "clock_confirm_pause": 1.0
   },

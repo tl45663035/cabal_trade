@@ -34,6 +34,8 @@ def check(label, ok, detail=""):
 
 
 class Board:
+    seat = m.FIRST_SEAT
+
     def __init__(self, held):
         self.held = held
 
@@ -48,18 +50,28 @@ class Board:
         time.sleep(READ)
         return m.CHANGE_WORD if self.held else m.REGISTER_WORD
 
+    def read_with_button(self):
+        time.sleep(READ)
+        return "Force Core (Ultimate) 49 399,553 On Sale Change", (m.CHANGE_WORD if self.held else m.REGISTER_WORD)
+
 
 clicks = []
 
 
-def slow_tab(verbose=False, already=False):
+def slow_tab(verbose=False, already=False, released=None):
     clicks.append(("start", time.perf_counter(), threading.current_thread().name))
-    time.sleep(CLICK)
+    time.sleep(CLICK / 2)
+    clicks.append(("released", time.perf_counter()))
+    if released is not None:
+        released.set()
+    time.sleep(CLICK / 2)
     clicks.append(("end", time.perf_counter()))
 
 
-saved = (m.show_work_tab, driver.row_from_screen)
+hovers = []
+saved = (m.show_work_tab, driver.row_from_screen, calibration.hover)
 m.show_work_tab = slow_tab
+calibration.hover = lambda x, y: hovers.append(((x, y), time.perf_counter())) or time.monotonic()
 driver.row_from_screen = lambda text, model: (text, "row")
 try:
     calibration.steps_reset()
@@ -70,9 +82,14 @@ try:
     check("a listed row: tab 4 is clicked while the row and its button are read",
           selected and button == m.CHANGE_WORD and took < CLICK + READ
           and clicks[0][2] != threading.current_thread().name,
-          f"{took * 1000:.0f} ms against {(CLICK + 2 * READ) * 1000:.0f} ms one after another")
+          f"{took * 1000:.0f} ms against {(CLICK + READ) * 1000:.0f} ms one after another")
     check("and the click has finished before anything else happens",
           finished is not None and finished <= started + took)
+    released_at = next((c[1] for c in clicks if c[0] == "released"), None)
+    check("the cursor goes to Change once the row reads Change, after the tab 4 click is released and before its settle ends",
+          len(hovers) == 1 and hovers[0][0] == m.button_point(m.FIRST_SEAT) and released_at is not None
+          and released_at <= hovers[0][1] < finished, f"{hovers}, released {released_at}, finished {finished}")
+    hovers.clear()
     clicks.clear()
     started = time.perf_counter()
     text, row, button, selected = driver.read_the_row(Board(False), 5)
@@ -80,21 +97,23 @@ try:
     check("an empty row: no tab 4 click, only its button is read",
           not selected and clicks == [] and button == m.REGISTER_WORD and took < READ + CLICK / 2,
           f"{took * 1000:.0f} ms")
+    check("and the cursor does not go to Change for an empty row", hovers == [], str(hovers))
 finally:
-    m.show_work_tab, driver.row_from_screen = saved
+    m.show_work_tab, driver.row_from_screen, calibration.hover = saved
 
 events = []
 saved = (m.read_row, m.row_button, m.show_work_tab, m.find_button, m.dialog_gone, m.game_refused,
-         m.inv._user32, calibration.click, calibration.park, m.time.sleep)
+         m.inv._user32, calibration.click, calibration.park, m.time.sleep, m._read_row)
 m.read_row = lambda seat=None: "Force Core (Ultimate) 49 399,553 On Sale Change"
+m._read_row = lambda seat=None: ("Force Core (Ultimate) 49 399,553 On Sale Change", None, None)
 m.row_button = lambda image=None, seat=None: None
 m.show_work_tab = lambda verbose=False, already=False: events.append("tab 4")
-m.find_button = lambda word, timeout=None, verbose=False: (1, 1)
+m.find_button = lambda word, timeout=None, verbose=False, hover=False: (1, 1)
 m.dialog_gone = lambda timeout=None: True
 refusals = []
 m.game_refused = lambda done, timeout=None: bool(refusals and refusals.pop())
 m.inv._user32 = type("Hover", (), {"SetCursorPos": staticmethod(lambda *a: None)})()
-calibration.click = lambda x, y, settle=None: events.append("click")
+calibration.click = lambda x, y, settle=None, **k: events.append("click")
 calibration.park = lambda settle=True: events.append(f"park settle={settle}")
 m.time.sleep = lambda s: events.append(f"wait {s}")
 try:
@@ -128,7 +147,7 @@ try:
     check(f"it still waits {m.TAB_SETTLE:g} s when the table did move", f"wait {m.TAB_SETTLE}" in events, str(events))
 finally:
     (m.read_row, m.row_button, m.show_work_tab, m.find_button, m.dialog_gone, m.game_refused,
-     m.inv._user32, calibration.click, calibration.park, m.time.sleep) = saved
+     m.inv._user32, calibration.click, calibration.park, m.time.sleep, m._read_row) = saved
 
 wheels = []
 saved = m.wheel
@@ -159,7 +178,7 @@ finally:
     calibration.grab, m.warm_money = saved
 check("the price read-back takes its own screenshot of the field, with no reading carried in",
       grabs == ["grab"] and list(inspect.signature(m.check_price_field).parameters)
-      == ["want", "qty", "verbose"] and not hasattr(m, "read_price_field"), str(grabs))
+      == ["want", "qty", "verbose", "next_point"] and not hasattr(m, "read_price_field"), str(grabs))
 
 check("no real input reached the game during the whole test", TRIPPED == [], f"{TRIPPED}")
 print(f"\n{fails} failure(s)")

@@ -97,6 +97,49 @@ for name, seat, label, ok in cases:
 check("PaddleOCR did the reading, not the Tesseract backup",
       m._reader["proc"] is not None and not m._reader["failed"] and "rows" not in m._told, str(m._reader["failed"]))
 
+calls = []
+real_texts = m._backup_texts
+m._backup_texts = lambda crops: calls.append(len(crops)) or real_texts(crops)
+try:
+    for name, seat in (("2026-09-28_142914_01994_click_833_752.png", m.LAST_SEAT),
+                       ("2026-09-28_142914_02492_click_830_175.png", m.FIRST_SEAT),
+                       ("2026-09-28_142914_01994_click_833_752.png", m.FIRST_SEAT)):
+        image = frame(name)
+        calibration.grab = lambda *a, **k: image
+        calls.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            together = m.read_row_and_button(seat)
+        once = list(calls)
+        with contextlib.redirect_stdout(io.StringIO()):
+            apart = (m.read_row(seat), m.row_button(image, seat))
+        check(f"the row and its button come from one PaddleOCR call ({name[18:23]}, {seat})",
+              once == [5] and together == apart, f"calls {once}, together {together}, apart {apart}")
+finally:
+    m._backup_texts = real_texts
+    calibration.grab = saved[2]
+
+seeded = []
+real_seed = (m.RowModel.scroll_to, m.RowModel.save, m.RowModel.home)
+m.RowModel.scroll_to = lambda self, index, verbose=True: {"moved": False}
+m.RowModel.save = lambda self: None
+m.RowModel.home = lambda self, verbose=True: 1
+image = frame("2026-09-28_142914_01994_click_833_752.png")
+calibration.grab = lambda *a, **k: image
+calls.clear()
+m._backup_texts = lambda crops: calls.append(len(crops)) or real_texts(crops)
+saved_register_tab = driver.register_tab
+driver.register_tab = lambda verbose=True: None
+try:
+    with contextlib.redirect_stdout(io.StringIO()):
+        board_model = driver.seed(verbose=False)
+finally:
+    m._backup_texts = real_texts
+    m.RowModel.scroll_to, m.RowModel.save, m.RowModel.home = real_seed
+    driver.register_tab = saved_register_tab
+    calibration.grab = saved[2]
+check("the launch seed reads each row with one PaddleOCR call, not a button read and then a row read",
+      calls and all(c == 5 for c in calls), f"calls {calls[:6]}")
+
 m._reader["failed"] = "PaddleOCR switched off by this test"
 said = io.StringIO()
 with contextlib.redirect_stdout(said):
@@ -105,6 +148,13 @@ with contextlib.redirect_stdout(said):
 check("without PaddleOCR, Tesseract still reads the row and its button",
       row is not None and (row.qty, row.price) == (8, 457998) and button == m.CHANGE_WORD, f"{text!r}, {button!r}")
 check("and says so once", said.getvalue().count("read whole by Tesseract instead") == 1, said.getvalue().strip())
+image = frame("2026-09-28_142914_01994_click_833_752.png")
+calibration.grab = lambda *a, **k: image
+with contextlib.redirect_stdout(io.StringIO()):
+    seen, action = m.read_row_and_button(m.LAST_SEAT)
+calibration.grab = saved[2]
+check("and the row with its button falls back to the two Tesseract reads", action == m.CHANGE_WORD and "457,998" in seen,
+      f"{seen!r}, {action!r}")
 
 m._reader["failed"] = None
 m._told.clear()
