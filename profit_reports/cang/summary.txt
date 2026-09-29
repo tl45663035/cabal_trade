@@ -8,12 +8,12 @@ Fri 2026-09-25            15.31h   24.00h   340.73M   22.26M   11.27B  10.93B  1
 Sat 2026-09-26            17.54h   24.00h    -1.73B  -98.73M   15.15B  16.88B  24.45K  -11.4%
 Sun 2026-09-27            15.82h   24.00h   185.62M   11.73M   10.30B  10.12B  17.37K    1.8%
 Mon 2026-09-28            14.81h   24.00h   340.01M   22.97M   15.57B  15.23B  23.96K    2.2%
-Tue 2026-09-29 (so far)    1.38h    2.28h     1.22M  887.61K   36.82M  35.60M      81    3.3%
+Tue 2026-09-29 (so far)    1.63h    2.53h     1.22M  751.12K   36.82M  35.60M      81    3.3%
 =============================================================================================
-7 DAYS                   102.91h  146.28h  -751.63M   -7.30M   60.13B  60.88B  96.75K   -1.3%
+7 DAYS                   103.16h  146.53h  -751.63M   -7.29M   60.13B  60.88B  96.75K   -1.3%
 
 
-PROFIT SUMMARY -- sold since 2026-09-29 00:00 Central (as of 02:16 Central)
+PROFIT SUMMARY -- sold since 2026-09-29 00:00 Central (as of 02:31 Central)
 
 item                 profit  revenue     cost  units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------
@@ -26,12 +26,12 @@ TOTAL                 1.22M   36.82M   35.60M     81   439.45K  454.54K    3.3%
 
 
 
-ROWS -- 2026-09-29_005410_run_board.log, board during pass 25 at row 1, read 2026-09-29T02:16:22 (live)
+ROWS -- 2026-09-29_005410_run_board.log, board during pass 30 at row 1, read 2026-09-29T02:31:38 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Honor Medal Chest                       x1         -   188.50M         -   188.50M         - <- here
-    2  Divine Stone Set X 162                  x1         -   714.37K         -   115.73M         -
-    3  Divine Stone Set X 156                  x1         -   714.36K         -   111.44M         -
-    4  Divine Stone Set X 138                  x1         -   714.36K         -    98.58M         -
+    2  Divine Stone Set X 162                  x1         -   714.35K         -   115.73M         -
+    3  Divine Stone Set X 156                  x1         -   714.35K         -   111.44M         -
+    4  Divine Stone Set X 138                  x1         -   714.35K         -    98.58M         -
     5  Chaos Core Set X 174                    x1         -   745.00K         -   129.63M         -
     6  Chaos Core Set X 303                    x1         -   745.00K         -   225.74M         -
     7  Chaos Core Set X 141                    x1         -   745.00K         -   105.05M         -
@@ -39,26 +39,28 @@ ROWS -- 2026-09-29_005410_run_board.log, board during pass 25 at row 1, read 202
     9  Chaos Core Set X 219                    x1         -   745.00K         -   163.16M         -
    10  Chaos Core Set X 312                    x1         -   745.00K         -   232.44M         -
    11  Arcana of Chaos + 16                    x1         -   181.13M         -   181.13M         -
-   12  Upgrade Core (Ultimate                  x3         -   457.52K         -   457.52K         -
+   12  Upgrade Core (Ultimate                  x3         -   457.51K         -   457.51K         -
    13  Chaos Core Set X 255                    x1         -   745.00K         -   189.97M         -
    14  Chaos Core Set X 348                    x1         -   745.00K         -   259.26M         -
-   15  Force Core(Highest                      x1   165.00K   204.99K   +39.99K   204.99K    39.99K
+   15  Force Core(Highest                      x1   165.00K   204.99K   +39.98K   204.99K    39.98K
+   16  Upgrade Core (Ultimate                 x34   445.00K   457.51K   +12.51K   457.51K   425.34K
+   17  Upgrade Core (Ultimate                x200   445.07K   457.51K   +12.44K   457.51K     2.49M
    26  Palladium Plate(WA) | Lua               x1         -     1.67M         -     1.67M         -
    27  Potion of Honor                         x1         -     7.25M         -     7.25M         -
    28  Life Capsule(Special) Type A X 100        x7         -    20.00K         -     2.00M         -
    29  Palladium Hands(WI1) | Lua              x2         -     1.62M         -     1.62M         -
-    balance now 332.23M, read 2026-09-29T02:16:22
-       stock at its listed price                                                              2.19B
-       Alz, latest balance line                                                             332.23M
+    balance now 228.08M, read 2026-09-29T02:30:48
+       stock at its listed price                                                              2.29B
+       Alz, latest balance line                                                             228.08M
        NET WORTH                                                                              2.52B
 
 
-MARKET -- 2026-09-29_005410_run.log, pass 25, log last written 02:16 Central (live)
+MARKET -- 2026-09-29_005410_run.log, pass 30, log last written 02:31 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         1  210.00K  204.99K  -5.01K     -2.4%      0
 Chaos Core                  8        -        -       -         -      -  holds the most it can want, 6; not priced
-Divine Stone                3  706.52K  714.36K   7.85K      1.1%      3
+Divine Stone                3  706.00K  714.35K   8.35K      1.2%      3
 Force Core(High)            0  167.22K  170.00K   2.78K      1.6%      0
-Upgrade Core (Ultimate)     1  445.00K  457.52K  12.52K      2.7%      3  YES
+Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
