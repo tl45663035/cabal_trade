@@ -8,12 +8,12 @@ Fri 2026-09-25            15.31h   24.00h   340.73M    22.26M   11.27B  10.93B  
 Sat 2026-09-26            17.54h   24.00h    -1.73B   -98.73M   15.15B  16.88B  24.45K  -11.4%
 Sun 2026-09-27            15.82h   24.00h   185.62M    11.73M   10.30B  10.12B  17.37K    1.8%
 Mon 2026-09-28            14.81h   24.00h   340.01M    22.97M   15.57B  15.23B  23.96K    2.2%
-Tue 2026-09-29 (so far)    6.46h    7.43h    -3.24M  -502.20K    4.89B   4.89B   7.17K   -0.1%
+Tue 2026-09-29 (so far)    6.62h    8.26h    -3.24M  -490.02K    4.89B   4.89B   7.17K   -0.1%
 ==============================================================================================
-7 DAYS                   107.99h  151.43h  -756.10M    -7.00M   64.98B  65.73B 103.83K   -1.2%
+7 DAYS                   108.15h  152.26h  -756.10M    -6.99M   64.98B  65.73B 103.83K   -1.2%
 
 
-PROFIT SUMMARY -- sold since 2026-09-29 00:00 Central (as of 07:25 Central)
+PROFIT SUMMARY -- sold since 2026-09-29 00:00 Central (as of 08:15 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
@@ -30,37 +30,33 @@ TOTAL                 -3.24M    4.89B    4.89B  7.17K   682.21K  681.75K   -0.1%
 
 
 
-ROWS -- 2026-09-29_072026_run_board.log, board during pass 1 at row 25, read 2026-09-29T07:25:39 (live)
+ROWS -- 2026-09-29_081026_run_board.log, board during pass 2 at row 1, read 2026-09-29T08:15:47 (live)
                                               qty  bought/u  listed/u    margin     price    profit
-    1  Honor Medal Chest                       x1         -   188.50M         -   188.50M         -
-    2  Divine Stone Set X 144                  x1         -   714.35K         -   102.87M         -
-    3  Upgrade Core (Ultimate                  x3         -   456.64K         -   456.64K         -
-    4  Force Core(Highest                      x1         -   198.19K         -   198.19K         -
-    5  Divine Stone Set X 144                  x1         -   714.35K         -   102.87M         -
-    6  Divine Stone Set X 138                  x1         -   714.35K         -    98.58M         -
-    7  Force Core(Highest                    x135         -   198.18K         -   198.18K         -
-    8  Force Core(Highest                      x2         -   198.18K         -   198.18K         -
-    9  Upgrade Core (Ultimate                 x21         -   456.64K         -   456.64K         -
-   10  Upgrade Core (Ultimate                  x1         -   456.64K         -   456.64K         -
-   11  Force Core(High                       x200         -   179.07K         -   179.07K         -
-   12  Force Core(High                       x191         -   179.07K         -   179.07K         -
-   13  Force Core(High                       x132         -   179.07K         -   179.07K         -
-    25  (empty)                                           -          -       -              -               - <- here
+    1  Honor Medal Chest                       x1         -   188.50M         -   188.50M         - <- here
+    2  Divine Stone Set X 144                  x1         -   714.34K         -   102.87M         -
+    3  Upgrade Core (Ultimate                  x3         -   456.63K         -   456.63K         -
+    4  Force Core(Highest                      x1         -   198.17K         -   198.17K         -
+    5  Divine Stone Set X 144                  x1         -   714.34K         -   102.87M         -
+    6  Divine Stone Set X 138                  x1         -   714.34K         -    98.58M         -
+    7  Force Core(Highest                    x135         -   198.17K         -   198.17K         -
+    8  Force Core(Highest                      x2         -   198.17K         -   198.17K         -
+    9  Upgrade Core (Ultimate                 x21         -   456.63K         -   456.63K         -
+   10  Upgrade Core (Ultimate                  x1         -   456.63K         -   456.63K         -
+   11  Force Core(High                       x200         -   179.06K         -   179.06K         -
+   12  Force Core(High                       x191         -   179.06K         -   179.06K         -
+   13  Force Core(High                       x132         -   179.06K         -   179.06K         -
    26  Palladium Plate(WA) | Lua               x1         -     1.67M         -     1.67M         -
    27  Potion of Honor                         x1         -     7.25M         -     7.25M         -
    28  Life Capsule(Special) Type A X 100        x7         -    20.00K         -     2.00M         -
    29  Palladium Hands(WI1) | Lua              x2         -     1.62M         -     1.62M         -
-       stock at its listed price                                                            625.23M
-    Alz, latest balance line                                   unread
-       NET WORTH                                                                            625.23M
+    balance now 1.85B, read 2026-09-29T08:15:47
+       stock at its listed price                                                            625.22M
+       Alz, latest balance line                                                               1.85B
+       NET WORTH                                                                              2.47B
 
 
-MARKET -- 2026-09-29_072026_run.log, pass 1, log last written 07:25 Central (live)
+MARKET -- 2026-09-29_081026_run.log, pass 2, log last written 08:15 Central (live)
 
-core                     rows    buy/u   sell/u   margin  margin %  wants  short?
---------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         3        -        -        -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  0  714.50K  699.98K  -14.52K     -2.1%      0
-Divine Stone                3  706.00K  714.35K    8.35K      1.2%      3
-Force Core(High)            3        -        -        -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     3        -        -        -         -      -  holds the most it can want, 3; not priced
+core                 rows  buy/u  sell/u  margin  margin %  wants  short?
+------------------------------------------------------------------------------------------------------------
+Force Core(Highest)     3      -       -       -         -      -  holds the most it can want, 3; not priced
