@@ -1,0 +1,470 @@
+2026-09-30_061024  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+  logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-30_061024_run.log
+  code bf77c7cc
+  screen 1920x1080
+  ledger C:\Users\Trung\Cabal\src_1080p\sales.db run 2026-09-30T06:10:24
+  debug frames -> C:\Users\Trung\Cabal\src_1080p\debug_frames\2026-09-30_061024_run, indexed in frames.jsonl; earlier runs' frames are kept until the 5,000-frame budget needs the room
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  measuring this screen before touching anything
+inventory:
+  Inventory shut; pressing I (attempt 1)
+  Alz box (1782, 688, 1860, 700)   anchor (1860, 688)
+  grid fitted in (1221, 23, 1920, 661): pitch 56.0x56.1 against a shared 73.3x73.4, slot (1,1) at 1479,236, scores 68 and 57
+  tab I [1458, 181]  tab VIII [1830, 181]
+  slot (1,1) [1479, 236]  (1,7) [1815, 236]  (8,8) [1871, 629]
+gift box:
+  the gift box at [284, 994]
+  Receive at [[1214, 327], [1214, 425], [1214, 523], [1214, 621]]; each collection presses only Receive All and the special giftbox's Receive, at the points measured here
+  Receive All at [1209, 786]
+  the special giftbox's Receive at [1438, 492]
+  Close at [1483, 846]
+cash shop:
+  the Cash Shop icon at [348, 994]
+  the Cash balance box [1134, 826, 1230, 848] reads 300
+  the gem box [930, 826, 1060, 848] reads 50
+  Useable at [844, 168]
+    'Blessing Bead - Superior' is where it was measured, 0 notch(es) down the Useable tab
+  Blessing Bead - Superior at 350 Cash; Purchase at [739, 520]
+  50 gem(s) held and Blessing Bead - Superior costs 350; the game opens no confirmation for that, so it is not measured this launch
+    'Force Gem Package' is where it was measured, 0 notch(es) down the Useable tab
+  Force Gem Package at 500 Cash; Purchase at [739, 750]
+  300 Cash held and Force Gem Package costs 500; the game opens no confirmation for that, so it is not measured this launch
+    'Arionell' is where it was measured, 10 notch(es) down the Useable tab
+  Arionell at 750 Cash; Purchase at [739, 750]
+  300 Cash held and Arionell costs 750; the game opens no confirmation for that, so it is not measured this launch
+  Escape to close the Cash Shop (attempt 1)
+  the Inventory closed with the Cash Shop; opening it again
+  Inventory shut; pressing I (attempt 1)
+opening the Agent Shop:
+  tab 6 at [1723, 181]
+  right-clicking slot (1,7) at [1815, 236]
+agent shop:
+  Register (288, 80)
+  Purchase [96, 80]  (mirrored about the boundary at x=192)
+  favourites: 10 found, pitch 42.00px, first [480, 755] last [858, 755]
+  favourite row set on an even 42px grid from 480: [480, 522, 564, 606, 648, 690, 732, 774, 816, 858]
+purchase tab:
+  switching to the Purchase tab at (96, 80)
+  sort reads 'IC y Price:Low to »Eal' -> region [622, 134, 752, 166]
+  running favourite 1 at (480, 755) to fill the table (attempt 1/20)
+  offers arrived after 0.1s
+  row content [232, 231, 870, 285] -> 'Force Core(Highest) 5 197,607 Buy'
+    name      [232, 231, 554, 285]  -> 'Force Core(Highest)'
+    qty       [574, 231, 624, 285]  -> '5'
+    price     [631, 231, 782, 285]  -> '197,607'
+    function  [782, 231, 874, 285]  -> 'Buy'
+  Buy column x=828, 8 row(s), pitch 54px
+  row 1 centre y=258, box [192, 231, 922, 285]
+register table:
+  Register columns {'name': [212, 522], 'qty': [530, 575], 'price': [584, 712], 'status': [721, 779], 'button': [788, 870]}, each from 28 above to 21 below its row's centre
+  button column (786, 144, 884, 722)
+  Register table: 10 row(s), pitch 58px, row 1 y=176, row 10 y=697
+  table_x [192, 880], scroll point [231, 234]
+  Refresh at [833, 752]
+market prices:
+  Force Core(Highest)              197,607
+  Force Core Set (Highest)         193,000
+  Chaos Core                       722,429
+  Chaos Core Set                   729,885
+  Force Core (Ultimate)            355,301
+  Force Core Set (Ultimate)        333,332
+  Force Core(High)                 178,335
+  Force Core Set (High)            167,000
+  Upgrade Core (Ultimate)          455,978
+  Upgrade Core Set (Ultimate)      415,583
+voucher:
+  a Gold voucher costs 374,444,440
+register panel:
+  price field [32, 408, 154, 436] (click [112, 425])
+  quantity box [37, 472, 188, 500] (click [59, 486])
+  2 suggested price row(s) at y [358, 384]
+  net sales box [37, 574, 154, 602]
+  Register button at [131, 754]
+actions:
+  scrolled to the top, so position 1 is row 1
+  tab 4 slot (1,2) is the first free one; a withdrawal lands there
+  row 1 is 'Arionell 1 312,185,712 OnSale Change'
+  Change at (831, 176)
+  Cancel at (1101, 634)
+  Confirmation at (968, 634)
+  row 1 now reads ''
+  back to inventory tab 4 at (1617, 181); the withdrawal moves the panel to whichever tab it landed on
+  listing it back from tab 4 slot (1, 2) at (1535, 236)
+  the loaded item shows at (102, 217) in the Register Item box
+  panel suggests 312,185,713; listing at 312,185,712, the price row 1 was withdrawn at
+  typed 250; the net sales make it 1
+  listed 1 at 312,185,712; it lands in the lowest empty row
+  learned button_cancel, button_confirmation, button_register, item_point
+actions at position 10:
+  scrolled to the top, so position 10 is row 10
+  tab 4 slot (1,1) is the first free one; a withdrawal lands there
+  row 10 is 'Upgrade Core (Ultimate) 207 455,980 On Sale Change'
+  Change at (831, 697)
+  Cancel at (1101, 634)
+  Confirmation at (968, 634)
+  row 10 now reads 'Premium Exclusive Slot Register'
+  back to inventory tab 4 at (1617, 181); the withdrawal moves the panel to whichever tab it landed on
+  listing it back from tab 4 slot (1, 1) at (1479, 236)
+  the loaded item shows at (106, 221) in the Register Item box
+  panel suggests 273,771,417; listing at 455,980, the price row 10 was withdrawn at
+  typed 250; the net sales make it 1
+  the game asks again because 455,980 is at least 25% under its average for this item; accepting
+  listed 1 at 455,980; it lands in the lowest empty row
+  learned button_cancel, button_confirmation, button_register, item_point
+conversion vendor:
+  pressing N to open the vendor Shop (attempt 1)
+  Dungeon tab at (143, 158)
+  grid band (163, 770, 413, 946): 5 column(s) at [184, 235, 283, 328, 375], 4 row(s) at [792, 839, 883, 931]
+    Force Core(Low)              <- Force Core Set (Low)           r2c1 at (184, 839)
+    Force Core(Medium)           <- Force Core Set (Medium)        r2c2 at (235, 839)
+    Force Core(High)             <- Force Core Set (High)          r2c3 at (283, 839)
+    Force Core(Highest)          <- Force Core Set (Highest)       r2c4 at (328, 839)
+    Force Core (Ultimate)        <- Force Core Set (Ultimate)      r2c5 at (375, 839)
+    Upgrade Core(Low)            <- Upgrade Core Set (Low)         r4c1 at (184, 931)
+    Upgrade Core(Medium)         <- Upgrade Core Set (Medium)      r4c2 at (235, 931)
+    Upgrade Core(High)           <- Upgrade Core Set (High)        r4c3 at (283, 931)
+    Upgrade Core(Highest)        <- Upgrade Core Set (Highest)     r4c4 at (328, 931)
+    Upgrade Core (Ultimate)      <- Upgrade Core Set (Ultimate)    r4c5 at (375, 931)
+craft window:
+  Inventory shut; pressing I (attempt 1)
+  right-clicking the craft key on tab 6 slot (1, 8) at (1871, 236)
+  recipe Chaos Core Set x3 at [146, 268]
+  tier 2000-2999 at [90, 209]
+  Request All at [263, 730]
+  Complete All at [872, 729]
+  material counter [420, 448, 750, 522]
+
+wrote C:\Users\Trung\Cabal\src_1080p\calibration.json  [1920x1080]
+  resolutions in the file: ['1920x1080', '2560x1440']
+  kept 3 value(s) this pass does not measure in shop: button_receive, buy_button_buy, buy_button_cancel
+  kept 16 value(s) this pass does not measure in cashshop: cancel, ok, purchase_armoraccountbindsealstone, purchase_armoraccountbindunsealstone, purchase_epicboosterhighest, purchase_sienasunbindingstone, purchase_yekaterinavipmembership, scroll_arionell, scroll_armoraccountbindsealstone, scroll_armoraccountbindunsealstone, scroll_blessingbeadsuperior, scroll_epicboosterhighest, scroll_forcegempackage, scroll_sienasunbindingstone, scroll_yekaterinavipmembership, window
+reopening the Agent Shop the caller was promised:
+  Inventory shut; pressing I (attempt 1)
+  the Agent Shop is open again
+  calibrated for 1920x1080, measured 2026-09-30T06:11:55, shop open
+  server clock 08:11 (+59s for the unshown seconds)
+  server 08:11:59; the next war quiet runs 10:32:00 to 10:34:59, in 140.0 min
+  scrolled to the top; row 1 is at position 1
+                                                   bought/u   listed/u  margin      row price
+     1  Arionell                           x1    280,833,330 312,185,712  +10.0%    312,185,712
+     2  Force Core (Ultimate               x8       333,332    355,304   +6.2%        355,304
+     3  Force Core (Ultimate               x73      333,332    355,303   +6.2%        355,303
+     4  Blessing Bead - Superior           x1    163,632,220 169,999,998   +3.7%    169,999,998
+     5  Force Core (Ultimate               x10      333,332    355,302   +6.2%        355,302
+     6  UNREAD '1 181,130,882 On Sale Change'
+     7  Extreme Core (Lv. 10               x1             - 29,790,000       -     29,790,000
+     8  Extreme Core (Lv. 11               x1             - 48,999,999       -     48,999,999
+     9  Chaos Core Set X 72                x1       722,429    729,888   +1.0%     52,552,007
+    10  Minesta's Chaos Fighter Belt + 15  x1             -    455,980       -        455,980
+    12  Force Core(High                    x250     167,000    179,071   +6.7%        179,071
+    13  Force Core(High                    x16      167,000    179,070   +6.7%        179,070
+    14  Force Core(High                    x212     167,000    179,069   +6.7%        179,069
+    15  Chaos Core Set X 270               x1       722,429    729,947   +1.0%    197,085,959
+    16  Chaos Core Set X 96                x1       722,429    729,939   +1.0%     70,074,223
+    17  Chaos Core Set X 141               x1       722,429    729,902   +1.0%    102,916,322
+    18  Chaos Core Set X 198               x1       722,429    729,901   +1.0%    144,520,595
+    19  Chaos Core Set X 378               x1       722,429    729,898   +1.0%    275,901,821
+    20  Upgrade Core (Ultimate             x250     415,583    455,985   +8.9%        455,985
+    21  Upgrade Core (Ultimate             x5       415,583    455,983   +8.9%        455,983
+  scrolled to the top; row 1 is at position 1
+  seeded 19 of rows 1-30
+relisting rows 1-30 for 10000 minute(s)
+
+-- pass 1 --
+
+  resupply order: Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Force Core (Ultimate), Blessing Bead - Superior, Arionell
+
+  counting only rows 1-30; rows outside it are not repriced and do not count; 11 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                0   193,000   197,607     4,607      0   
+  Chaos Core                         6   722,429   729,883     7,454      6   
+  Force Core (Ultimate)              3         -         -         -      -   holds the most it can want, 3; not priced
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            2   415,583   455,978    40,395      3   YES
+  Alz 980,311,878 held covers 2,358 Upgrade Core Set (Ultimate) at 415,583; buying what it covers
+
+-- Upgrade Core (Ultimate): 2 row(s) --
+  11 row(s) free inside 1-30; a resupply needs up to 2
+  Upgrade Core (Ultimate) 455,978 - Upgrade Core Set (Ultimate) 415,583 = 40,395
+  a margin of 40,395 is worth 3 row(s) of Upgrade Core (Ultimate); 2 held
+  tab 4 is showing and free from (1, 1), so the Upgrade Core Set (Ultimate) and the Upgrade Core (Ultimate) land there
+TASK {"kind": "resupply", "core": "Upgrade Core (Ultimate)", "set": "Upgrade Core Set (Ultimate)", "slot": 9, "tab": 4, "landing": [1, 1]}
+  0/200 Upgrade Core Set (Ultimate) held
+  row 1 offers 'Upgrade Core Set (Ultimate) X 310' x1 at 128,830,730 (415,583/unit)
+    row 1 leaves 40,395 a core against the 5,000 wanted
+    balance before 980,311,878
+    dialog: '* Upgrade Core Set (Ultimate) X 3'  qty 1 of 1  price 128830730
+    200 core(s) wanted, 310 to a pack -> 1 pack(s); 1 available, taking 1
+    the quantity field already reads 1; not retyping it
+    ordering 1 pack(s) at 128,830,730; the spend will confirm what actually bought
+    balance after  851,481,148; spent 128,830,730 bought 1 pack(s) = 310 core(s) (415,583 a core)
+
+  buy from favourite slot 10: bought 310 core(s) in 1 order(s)
+    #         ms   share  step
+    1        0.2    0.0%  get_price: focus the game
+    2      122.7    1.9%  get_price: purchase_tab_showing
+    3      151.8    2.3%  get_price: read row 1 before the search
+    4      314.6    4.8%  get_price: click favourite slot 10
+    5        0.0    0.0%  get_price: confirm the sort
+    6     1612.8   24.7%  get_price: poll row 1 until it answers (89 look(s), 1 read(s))
+    7     2202.5   33.8%  get_price: search the favourite and read row 1
+    8      315.2    4.8%  select inventory tab 4
+    9       99.6    1.5%  read the balance before buying
+   10      362.0    5.6%  click the row at (500, 258)
+   11      311.2    4.8%  click Buy at (828, 258)
+   12       87.3    1.3%  await the Purchase dialog
+   13      109.9    1.7%  read the dialog (item, price, qty, qty_max)
+   14       85.9    1.3%  find the Buy button
+   15      310.2    4.8%  click Buy
+   16      250.7    3.8%  park
+   17       89.2    1.4%  confirm the dialog is gone
+   18       93.2    1.4%  read the balance after buying
+          6519.0  100.0%  TOTAL
+TASK {"kind": "resupply", "core": "Upgrade Core (Ultimate)", "set": "Upgrade Core Set (Ultimate)", "slot": 9, "tab": 4, "step": "convert", "holding": "Upgrade Core Set (Ultimate)", "qty": 310, "price": 415583}
+
+  -- round 1: convert up to 250, then list -- 310 of 310 left --
+  pressing N to open the vendor Shop (attempt 1)
+  4x5 at (375, 931): Upgrade Core Set (Ultimate) -> Upgrade Core (Ultimate)
+    dialog offers '* Upgrade Core (Ultimate)'
+    typed 250; the dialog clamps it to what is held
+    inventory tab 4 holds 64 slot(s) and is showing, so the Upgrade Core (Ultimate) lands there
+  Upgrade Core (Ultimate) keeps its place at convert; 310 bought are in the bag and the next pass carries on there
+  resupply of 'Upgrade Core (Ultimate)' stopped: no slot on tab 4 filled after OK. Nothing converted.
+
+  Blessing Bead - Superior: 1 row(s) inside 1-30, 1 wanted; row 4 'Blessing Bead - Superior'
+    floor 163,632,220: 437/1000 of the 374,444,440 voucher, read at launch
+
+  Arionell: 1 row(s) inside 1-30, 1 wanted; row 1 'Arionell'
+    floor 280,833,330: 750/1000 of the 374,444,440 voucher, read at launch
+  the Agent Shop is shut after the vendor; reopening it
+  Inventory shut: slot grid 0.13, needs 0.33
+  tab 4 holds 310 bought Upgrade Core (Ultimate) waiting at convert; no row is cancelled into that tab this pass, the next pass carries the job on first
+
+  returning the game to its default state
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the gift box at [284, 994]
+  Receive All at [1209, 786]
+  the special giftbox's Receive at [1438, 492]
+  Close at [1483, 846]
+  pressed 2 Receive button(s); the gift box took 3,332 ms
+  the Agent Shop is shut and the vendor is not open either; reopening it
+  Inventory shut: slot grid 0.14, needs 0.33
+
+  board after pass 1:
+                                                   bought/u   listed/u  margin      row price
+     1  Arionell                           x1    280,833,330 312,185,712  +10.0%    312,185,712
+     2  Force Core (Ultimate               x8       333,332    355,304   +6.2%        355,304
+     3  Force Core (Ultimate               x73      333,332    355,303   +6.2%        355,303
+     4  Blessing Bead - Superior           x1    163,632,220 169,999,998   +3.7%    169,999,998
+     5  Force Core (Ultimate               x10      333,332    355,302   +6.2%        355,302
+     7  Extreme Core (Lv. 10               x1             - 29,790,000       -     29,790,000
+     8  Extreme Core (Lv. 11               x1             - 48,999,999       -     48,999,999
+     9  Chaos Core Set X 72                x1       722,429    729,888   +1.0%     52,552,007
+    10  Minesta's Chaos Fighter Belt + 15  x1             -    455,980       -        455,980
+    12  Force Core(High                    x250     167,000    179,071   +6.7%        179,071
+    13  Force Core(High                    x16      167,000    179,070   +6.7%        179,070
+    14  Force Core(High                    x212     167,000    179,069   +6.7%        179,069
+    15  Chaos Core Set X 270               x1       722,429    729,947   +1.0%    197,085,959
+    16  Chaos Core Set X 96                x1       722,429    729,939   +1.0%     70,074,223
+    17  Chaos Core Set X 141               x1       722,429    729,902   +1.0%    102,916,322
+    18  Chaos Core Set X 198               x1       722,429    729,901   +1.0%    144,520,595
+    19  Chaos Core Set X 378               x1       722,429    729,898   +1.0%    275,901,821
+    20  Upgrade Core (Ultimate             x250     415,583    455,985   +8.9%        455,985
+    21  Upgrade Core (Ultimate             x5       415,583    455,983   +8.9%        455,983
+    item                               rows   units          listed
+    Arionell                              1       1     312,185,712
+    Blessing Bead - Superior              1       1     169,999,998
+    Chaos Core Set                        6   1,155     843,050,927
+    Extreme Core (Lv. 10                  1       1      29,790,000
+    Extreme Core (Lv. 11                  1       1      48,999,999
+    Force Core (Ultimate                  3      91      32,332,571
+    Force Core(High                       3     478      85,595,498
+    Minesta's Chaos Fighter Belt + 15     1       1         455,980
+    Upgrade Core (Ultimate                2     255     116,276,165
+    board                                19   1,984   1,638,686,850
+    balance now 851,481,148
+  pass 1: 0 relisted, 0 empty, 0 skipped; 9999.2 minute(s) left
+
+-- pass 2 --
+
+-- Upgrade Core (Ultimate): carrying on at convert where it stopped; 310 bought, 0 listed --
+TASK {"kind": "resupply", "core": "Upgrade Core (Ultimate)", "set": "Upgrade Core Set (Ultimate)", "slot": 9, "tab": 4, "landing": [1, 1], "resumed": "convert"}
+
+  -- round 2: convert up to 250, then list -- 310 of 310 left --
+  pressing N to open the vendor Shop (attempt 1)
+  4x5 at (375, 931): Upgrade Core Set (Ultimate) -> Upgrade Core (Ultimate)
+    dialog offers '* Upgrade Core (Ultimate)'
+    typed 250; the dialog clamps it to what is held
+    inventory tab 4 holds 64 slot(s) and is showing, so the Upgrade Core (Ultimate) lands there
+  Upgrade Core (Ultimate) keeps its place at convert; 310 bought are in the bag and the next pass carries on there
+  resupply of 'Upgrade Core (Ultimate)' stopped: no slot on tab 4 filled after OK. Nothing converted.
+
+  resupply order: Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Force Core (Ultimate), Blessing Bead - Superior, Arionell
+
+  counting only rows 1-30; rows outside it are not repriced and do not count; 11 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                0   193,000   197,607     4,607      0   
+  Chaos Core                         6   722,429   729,883     7,454      6   
+  Force Core (Ultimate)              3         -         -         -      -   holds the most it can want, 3; not priced
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            2   415,583   455,978    40,395      3   YES
+
+-- Upgrade Core (Ultimate): carrying on at convert where it stopped; 310 bought, 0 listed --
+TASK {"kind": "resupply", "core": "Upgrade Core (Ultimate)", "set": "Upgrade Core Set (Ultimate)", "slot": 9, "tab": 4, "landing": [1, 1], "resumed": "convert"}
+
+  -- round 3: convert up to 250, then list -- 310 of 310 left --
+  pressing N to open the vendor Shop (attempt 1)
+  4x5 at (375, 931): Upgrade Core Set (Ultimate) -> Upgrade Core (Ultimate)
+    dialog offers '* Upgrade Core (Ultimate)'
+    typed 250; the dialog clamps it to what is held
+    inventory tab 4 holds 64 slot(s) and is showing, so the Upgrade Core (Ultimate) lands there
+  Upgrade Core (Ultimate) keeps its place at convert; 310 bought are in the bag and the next pass carries on there
+  resupply of 'Upgrade Core (Ultimate)' stopped: no slot on tab 4 filled after OK. Nothing converted.
+
+  Blessing Bead - Superior: 1 row(s) inside 1-30, 1 wanted; row 4 'Blessing Bead - Superior'
+    floor 163,632,220: 437/1000 of the 374,444,440 voucher, read at launch
+
+  Arionell: 1 row(s) inside 1-30, 1 wanted; row 1 'Arionell'
+    floor 280,833,330: 750/1000 of the 374,444,440 voucher, read at launch
+  the Agent Shop is shut after the vendor; reopening it
+  Inventory shut: slot grid 0.13, needs 0.33
+  tab 4 holds 310 bought Upgrade Core (Ultimate) waiting at convert; no row is cancelled into that tab this pass, the next pass carries the job on first
+
+  returning the game to its default state
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the gift box at [284, 994]
+  Receive All at [1209, 786]
+  the special giftbox's Receive at [1438, 492]
+  Close at [1483, 846]
+  pressed 2 Receive button(s); the gift box took 3,330 ms
+  the Agent Shop is shut and the vendor is not open either; reopening it
+  Inventory shut: slot grid 0.13, needs 0.33
+
+  board after pass 2:
+                                                   bought/u   listed/u  margin      row price
+     1  Arionell                           x1    280,833,330 312,185,712  +10.0%    312,185,712
+     2  Force Core (Ultimate               x8       333,332    355,304   +6.2%        355,304
+     3  Force Core (Ultimate               x73      333,332    355,303   +6.2%        355,303
+     4  Blessing Bead - Superior           x1    163,632,220 169,999,998   +3.7%    169,999,998
+     5  Force Core (Ultimate               x10      333,332    355,302   +6.2%        355,302
+     7  Extreme Core (Lv. 10               x1             - 29,790,000       -     29,790,000
+     8  Extreme Core (Lv. 11               x1             - 48,999,999       -     48,999,999
+     9  Chaos Core Set X 72                x1       722,429    729,888   +1.0%     52,552,007
+    10  Minesta's Chaos Fighter Belt + 15  x1             -    455,980       -        455,980
+    12  Force Core(High                    x250     167,000    179,071   +6.7%        179,071
+    13  Force Core(High                    x16      167,000    179,070   +6.7%        179,070
+    14  Force Core(High                    x212     167,000    179,069   +6.7%        179,069
+    15  Chaos Core Set X 270               x1       722,429    729,947   +1.0%    197,085,959
+    16  Chaos Core Set X 96                x1       722,429    729,939   +1.0%     70,074,223
+    17  Chaos Core Set X 141               x1       722,429    729,902   +1.0%    102,916,322
+    18  Chaos Core Set X 198               x1       722,429    729,901   +1.0%    144,520,595
+    19  Chaos Core Set X 378               x1       722,429    729,898   +1.0%    275,901,821
+    20  Upgrade Core (Ultimate             x250     415,583    455,985   +8.9%        455,985
+    21  Upgrade Core (Ultimate             x5       415,583    455,983   +8.9%        455,983
+    item                               rows   units          listed
+    Arionell                              1       1     312,185,712
+    Blessing Bead - Superior              1       1     169,999,998
+    Chaos Core Set                        6   1,155     843,050,927
+    Extreme Core (Lv. 10                  1       1      29,790,000
+    Extreme Core (Lv. 11                  1       1      48,999,999
+    Force Core (Ultimate                  3      91      32,332,571
+    Force Core(High                       3     478      85,595,498
+    Minesta's Chaos Fighter Belt + 15     1       1         455,980
+    Upgrade Core (Ultimate                2     255     116,276,165
+    board                                19   1,984   1,638,686,850
+    balance now 851,481,148
+  pass 2: 0 relisted, 0 empty, 0 skipped; 9998.3 minute(s) left
+
+-- pass 3 --
+
+-- Upgrade Core (Ultimate): carrying on at convert where it stopped; 310 bought, 0 listed --
+TASK {"kind": "resupply", "core": "Upgrade Core (Ultimate)", "set": "Upgrade Core Set (Ultimate)", "slot": 9, "tab": 4, "landing": [1, 1], "resumed": "convert"}
+  3 round(s) done and 310 of 310 not listed; listing whatever tab 4 holds before the job ends
+  Upgrade Core (Ultimate) keeps its place at convert; 310 bought are in the bag and the next pass carries on there
+  resupply of 'Upgrade Core (Ultimate)' stopped: tab 4 reads full, which is how the client draws an item in transit; Upgrade Core (Ultimate) keeps its place and the next pass reads it again.
+
+  resupply order: Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Force Core (Ultimate), Blessing Bead - Superior, Arionell
+
+  counting only rows 1-30; rows outside it are not repriced and do not count; 11 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                0   193,000   197,607     4,607      0   
+  Chaos Core                         6   722,429   729,883     7,454      6   
+  Force Core (Ultimate)              3         -         -         -      -   holds the most it can want, 3; not priced
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            2   415,583   455,978    40,395      3   YES
+
+-- Upgrade Core (Ultimate): carrying on at convert where it stopped; 310 bought, 0 listed --
+TASK {"kind": "resupply", "core": "Upgrade Core (Ultimate)", "set": "Upgrade Core Set (Ultimate)", "slot": 9, "tab": 4, "landing": [1, 1], "resumed": "convert"}
+  310 of 310 Upgrade Core Set (Ultimate) are not listed after 3 round(s), and tab 4 holds nothing more to list.
+
+  resupply Upgrade Core (Ultimate): bought 310, 0 slot(s) filled, listed 0 in rows []
+    #          ms   share     n      each  phase
+    1    10,441.8   14.0%     3   3,480.6  price Force Core(Highest)
+    2     6,674.3    8.9%     2   3,337.2  collect the gift box
+    3     6,469.1    8.7%     1   6,469.1  round 2: convert into Upgrade Core (Ultimate)
+    4     6,460.3    8.7%     1   6,460.3  round 1: convert into Upgrade Core (Ultimate)
+    5     6,444.3    8.6%     1   6,444.3  round 3: convert into Upgrade Core (Ultimate)
+    6     4,341.2    5.8%     1   4,341.2  buy order 1
+    7     3,987.0    5.3%     3   1,329.0  price Force Core Set (Highest)
+    8     3,949.1    5.3%     3   1,316.4  price Upgrade Core (Ultimate)
+    9     3,929.6    5.3%     3   1,309.9  price Upgrade Core Set (Ultimate)
+   10     3,900.8    5.2%     3   1,300.3  price Chaos Core
+   11     3,884.3    5.2%     3   1,294.8  price Chaos Core Set
+   12     2,258.5    3.0%     1   2,258.5  round 3: select the Register tab
+   13     1,843.9    2.5%     1   1,843.9  round 2: open the vendor
+   14     1,835.4    2.5%     1   1,835.4  round 3: open the vendor
+   15     1,831.1    2.5%     1   1,831.1  round 1: open the vendor
+   16     1,315.3    1.8%     1   1,315.3  round 3: close the Agent Shop
+   17     1,284.2    1.7%     1   1,284.2  round 1: close the Agent Shop
+   18     1,280.2    1.7%     1   1,280.2  round 2: close the Agent Shop
+   19     1,076.4    1.4%     1   1,076.4  find the free slot on tab 4
+   20       908.0    1.2%     1     908.0  round 3: select inventory tab 4
+   21       298.7    0.4%     1     298.7  round 3: reopen the Agent Shop
+   22       267.4    0.4%     1     267.4  round 3: read tab 4
+         74,680.7  100.0%
+
+  Blessing Bead - Superior: 1 row(s) inside 1-30, 1 wanted; row 4 'Blessing Bead - Superior'
+    floor 163,632,220: 437/1000 of the 374,444,440 voucher, read at launch
+
+  Arionell: 1 row(s) inside 1-30, 1 wanted; row 1 'Arionell'
+    floor 280,833,330: 750/1000 of the 374,444,440 voucher, read at launch
+  tab 4 reads full, which is how the client draws a withdrawal in transit; the run trusts its own map for this row
+  row 1: 'Arionell' x1 at 312,185,712 -> tab 4 slot (1, 1)
+    floor 280,833,330 from what it cost; listed at 312,185,712, above it
+TASK {"kind": "relist", "row": 1, "item": "Arionell", "qty": 1, "price": 312185712, "tab": 4, "slot": [1, 1], "lands_in": 1}
+  STOPPED: the dialog stayed open after Confirmation on row 1. Whether the cancel committed is unknown -- check by hand.
+
+3 pass(es), 0 relisted, 0 empty, 0 skipped in 129s
+
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  nothing has sold yet this run.
+  bought this run and still unsold, taken as sold at the price each lot was bought against:
+    upgradecoreultimate              310 core(s)     128,830,730 Alz paid   +12,522,450
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                    12,522,450   (0 realised, +12,522,450 assumed)
+  started 06:10:24, ended 06:14:51, ran for 4m 26s
+
+##################################################################################
+
+  ########  ##########    ######    ########    ########    ##########  ########  
+  ########  ##########    ######    ########    ########    ##########  ########  
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+  ######        ##      ##      ##  ########    ########    ########    ##      ##
+  ######        ##      ##      ##  ########    ########    ########    ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+########        ##        ######    ##          ##          ##########  ########  
+########        ##        ######    ##          ##          ##########  ########  
+
+##################################################################################
+  stopped: the dialog stayed open after Confirmation on row 1. Whether the cancel committed is unknown -- check by hand.
+

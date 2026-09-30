@@ -1,0 +1,652 @@
+{
+  "supervisor": "2026-09-29_201625_supervise.log",
+  "supervisor_ended": "supervisor cancelled with Ctrl x4",
+  "since": "2026-09-29T20:16:25",
+  "machine": "Trung-laptop",
+  "machine_id": "e3d3e8b1-7345-468b-b1e2-699b11618417",
+  "submitted_at": "2026-09-30T02:15:15",
+  "max_frames": 120,
+  "logs": [
+    {
+      "log": "2026-09-29_201714_run",
+      "kind": "run",
+      "code": "08af49c3",
+      "screen": "1920x1080",
+      "reason": "stopped: no Cancel button appeared after clicking Change on row 2. Nothing has been cancelled.",
+      "frames": {
+        "kept": 120,
+        "indexed": 8977,
+        "sent": 45
+      },
+      "flagged": {
+        "under the hard minimum": 40,
+        "this is not '": 1,
+        "would not read": 30
+      },
+      "events": [
+        {
+          "pattern": "under the hard minimum",
+          "line": "1 x 93,571,763 is 93,571,763, under the hard minimum of 710,000 a unit x 132 = 93,720,000; listing at 93,720,000 each instead",
+          "log": 538602,
+          "near": "2026-09-29T23:57:18.018"
+        },
+        {
+          "pattern": "under the hard minimum",
+          "line": "1 x 138,231,014 is 138,231,014, under the hard minimum of 710,000 a unit x 195 = 138,450,000; listing at 138,450,000 each instead",
+          "log": 592068,
+          "near": "2026-09-29T23:57:18.018"
+        },
+        {
+          "pattern": "under the hard minimum",
+          "line": "1 x 61,728,500 is 61,728,500, under the hard minimum of 710,000 a unit x 87 = 61,770,000; listing at 61,770,000 each instead",
+          "log": 2329336,
+          "near": "2026-09-29T23:57:18.018"
+        },
+        {
+          "pattern": "under the hard minimum",
+          "line": "1 x 70,242,776 is 70,242,776, under the hard minimum of 710,000 a unit x 99 = 70,290,000; listing at 70,290,000 each instead",
+          "log": 2345379,
+          "near": "2026-09-29T23:57:18.018"
+        },
+        {
+          "pattern": "this is not '",
+          "line": "the panel prices what loaded from (1,1) at 295,601,709, and 'Chaos Core Set' sells near 176,510,373; this is not 'Chaos Core Set'",
+          "log": 515370,
+          "near": "2026-09-29T23:57:18.018"
+        },
+        {
+          "pattern": "would not read",
+          "line": "the lowest listed price would not read",
+          "log": 14169,
+          "near": "2026-09-29T23:57:18.018"
+        },
+        {
+          "pattern": "would not read",
+          "line": "the lowest listed price would not read",
+          "log": 35217,
+          "near": "2026-09-29T23:57:18.018"
+        },
+        {
+          "pattern": "would not read",
+          "line": "the lowest listed price would not read",
+          "log": 2815347,
+          "near": "2026-09-29T23:57:18.018"
+        },
+        {
+          "pattern": "would not read",
+          "line": "the lowest listed price would not read",
+          "log": 3053720,
+          "near": "2026-09-30T00:00:16.986"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-30_000115_run",
+      "kind": "run",
+      "code": "08af49c3",
+      "screen": "1920x1080",
+      "reason": "stopped: interrupted from the keyboard",
+      "frames": {
+        "kept": 5039,
+        "indexed": 6189,
+        "sent": 75
+      },
+      "flagged": {
+        "would not read": 18
+      },
+      "events": [
+        {
+          "pattern": "would not read",
+          "line": "the lowest listed price would not read",
+          "log": 15792,
+          "near": "2026-09-30T00:25:40.481"
+        },
+        {
+          "pattern": "would not read",
+          "line": "the lowest listed price would not read",
+          "log": 128106,
+          "near": "2026-09-30T00:25:40.481"
+        },
+        {
+          "pattern": "would not read",
+          "line": "the lowest listed price would not read",
+          "log": 1684742,
+          "near": "2026-09-30T02:09:12.479"
+        },
+        {
+          "pattern": "would not read",
+          "line": "the lowest listed price would not read",
+          "log": 1721285,
+          "near": "2026-09-30T02:13:20.544"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "file": "2026-09-29_201714_run/2026-09-29_201714_run.log",
+      "mb": 2.92
+    },
+    {
+      "file": "2026-09-29_201714_run/2026-09-29_201714_run_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08858_click_112_425.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08859_click_59_486.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08860_click_131_754.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08861_click_968_634.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08862_click_1617_181.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08863_click_96_80.png",
+      "mb": 1.58
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08864_click_690_755.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08865_click_1617_181.png",
+      "mb": 1.66
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08941_vendor_open_attempt_1.png",
+      "mb": 2.3
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08942_click_143_158.png",
+      "mb": 2.31
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08943_altclick_381_839.png",
+      "mb": 2.07
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08944_click_905_456.png",
+      "mb": 2.06
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08945_click_1617_181.png",
+      "mb": 2.08
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08946_click_965_677.png",
+      "mb": 2.31
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08947_click_1723_181.png",
+      "mb": 2.57
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08948_rightclick_1815_236.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08949_click_1617_181.png",
+      "mb": 1.59
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08950_click_288_80.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08951_click_1617_181.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08952_ctrlclick_1535_236.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08953_click_36_384.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08954_click_112_425.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08955_click_59_486.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08956_click_131_754.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08957_click_968_634.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08958_click_288_80.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08959_click_833_752.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08960_click_1617_181.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08961_click_1617_181.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08962_click_1617_181.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08963_click_831_175.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08964_click_1101_634.png",
+      "mb": 1.51
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08965_click_968_634.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08966_click_1617_181.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08967_ctrlclick_1479_236.png",
+      "mb": 1.59
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08968_click_36_384.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08969_nothing_loaded_1x1_1.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08970_click_112_425.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08971_click_59_486.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08972_click_131_754.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08973_click_968_634.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08974_click_833_752.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08975_click_1617_181.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08976_click_831_175.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-29_201714_run/frames/08977_no_cancel_button_at__1101_634.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/2026-09-30_000115_run.log",
+      "mb": 1.66
+    },
+    {
+      "file": "2026-09-30_000115_run/2026-09-30_000115_run_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/01151_click_131_754.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/01152_click_968_634.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/01153_click_833_752.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/01154_click_1617_181.png",
+      "mb": 1.6
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/01155_click_831_175.png",
+      "mb": 1.51
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/01156_click_1101_634.png",
+      "mb": 1.5
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/01157_click_968_634.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/01158_click_1617_181.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06011_click_833_752.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06012_click_1617_181.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06013_click_831_175.png",
+      "mb": 1.5
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06014_click_1101_634.png",
+      "mb": 1.5
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06015_click_968_634.png",
+      "mb": 1.49
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06016_click_1617_181.png",
+      "mb": 1.6
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06017_ctrlclick_1479_236.png",
+      "mb": 1.57
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06018_click_36_384.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06019_nothing_loaded_1x1_1.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06020_click_112_425.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06021_click_59_486.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06022_click_131_754.png",
+      "mb": 1.52
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06023_click_968_634.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06024_click_833_752.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06025_click_1617_181.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06026_click_831_175.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06139_click_1617_181.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06140_click_1617_181.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06141_click_831_175.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06142_click_1101_634.png",
+      "mb": 1.5
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06143_click_968_634.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06144_click_1617_181.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06145_ctrlclick_1479_236.png",
+      "mb": 1.58
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06146_click_36_384.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06147_nothing_loaded_1x1_1.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06148_click_112_425.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06149_click_59_486.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06150_click_131_754.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06151_click_968_634.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06152_click_833_752.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06153_click_1617_181.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06154_click_831_175.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06155_click_1101_634.png",
+      "mb": 1.51
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06156_click_968_634.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06157_click_1617_181.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06158_ctrlclick_1479_236.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06159_click_36_384.png",
+      "mb": 1.59
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06160_click_112_425.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06161_click_59_486.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06162_click_131_754.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06163_click_968_634.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06164_click_833_752.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06165_click_1617_181.png",
+      "mb": 1.6
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06166_click_831_175.png",
+      "mb": 1.5
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06167_click_1101_634.png",
+      "mb": 1.5
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06168_click_968_634.png",
+      "mb": 1.5
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06169_click_1617_181.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06170_ctrlclick_1479_236.png",
+      "mb": 1.59
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06171_click_36_384.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06172_click_112_425.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06173_click_59_486.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06174_click_131_754.png",
+      "mb": 1.51
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06175_click_968_634.png",
+      "mb": 1.51
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06176_click_833_752.png",
+      "mb": 1.6
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06177_click_1617_181.png",
+      "mb": 1.59
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06178_click_831_175.png",
+      "mb": 1.5
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06179_click_1101_634.png",
+      "mb": 1.49
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06180_click_968_634.png",
+      "mb": 1.6
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06181_click_1617_181.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06182_ctrlclick_1479_236.png",
+      "mb": 1.59
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06183_click_36_384.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06184_click_112_425.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06185_click_59_486.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06186_click_131_754.png",
+      "mb": 1.52
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06187_click_968_634.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06188_click_96_80.png",
+      "mb": 1.6
+    },
+    {
+      "file": "2026-09-30_000115_run/frames/06189_click_288_80.png",
+      "mb": 1.6
+    },
+    {
+      "file": "supervisor/2026-09-29_201625_supervise.log",
+      "mb": 0.01
+    },
+    {
+      "file": "supervisor/supervise.log",
+      "mb": 0.21
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_000058_found.png",
+      "mb": 1.63
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_000105_tab4_0slots.png",
+      "mb": 2.56
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_000114_reset.png",
+      "mb": 3.04
+    },
+    {
+      "file": "config.json",
+      "mb": 0.01
+    },
+    {
+      "file": "calibration.json",
+      "mb": 0.05
+    }
+  ],
+  "skipped_over_max_file_mb": []
+}
