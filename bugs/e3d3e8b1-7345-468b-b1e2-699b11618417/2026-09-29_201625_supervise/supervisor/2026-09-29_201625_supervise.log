@@ -1,0 +1,113 @@
+2026-09-29_201625  .\tools\supervise.py --config bot
+  logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-29_201625_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-29_152213_run.log ended: interrupted from the keyboard,20:16:27,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-29_152213_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-29_201654_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-29_201703_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-29_201712_reset.png
+   2026-09-29_201714  C:\Users\tl456\Desktop\cabal_trade\src_1080p\driver.py --config bot
+     logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-29_201714_run.log
+     code 08af49c3
+     screen 1920x1080
+* relaunched (pid 4128),20:17:17,alive
+watching pid 4128, 2026-09-29_201714_run.log
+* server lag: not answering,20:22:50,alive
+* server lag: the server stalled,20:23:15,alive
+* server lag: the server stalled,20:23:36,alive
+* pushed the profit report for bot and all,20:29:41,alive
+* pushed the profit report for bot and all,20:44:50,alive
+* pushed the profit report for bot and all,21:00:05,alive
+* pushed the profit report for bot and all,21:15:25,alive
+* pushed the profit report for bot and all,21:30:47,alive
+* war window, log quiet 174s,21:34:51,alive
+* pushed the profit report for bot and all,21:45:47,alive
+* server lag: not answering,21:56:57,alive
+* server lag: the server stalled,21:57:23,alive
+* server lag: the server stalled,21:57:44,alive
+* pushed the profit report for bot and all,22:00:58,alive
+* pushed the profit report for bot and all,22:16:00,alive
+* pushed the profit report for bot and all,22:31:12,alive
+* server lag: not answering,22:42:00,alive
+* server lag: the server stalled,22:42:22,alive
+* pushed the profit report for bot and all,22:46:22,alive
+* server lag: not answering,22:56:04,alive
+* server lag: the server stalled,22:56:30,alive
+* server lag: the server stalled,22:56:52,alive
+* pushed the profit report for bot and all,23:01:32,alive
+* server lag: not answering,23:03:00,alive
+* server lag: the server stalled,23:03:46,alive
+* server lag: not answering,23:09:46,alive
+* server lag: the server stalled,23:10:31,alive
+* pushed the profit report for bot and all,23:16:48,alive
+* server lag: not answering,23:23:32,alive
+* server lag: the server stalled,23:23:58,alive
+* server lag: the server stalled,23:24:20,alive
+* server lag: not answering,23:27:45,alive
+* server lag: the server stalled,23:28:07,alive
+* server lag: the server stalled,23:28:32,alive
+* pushed the profit report for bot and all,23:32:07,alive
+* server lag: not answering,23:40:46,alive
+* server lag: the server stalled,23:41:12,alive
+* server lag: the server stalled,23:41:34,alive
+* pushed the profit report for bot and all,23:47:06,alive
+* server lag: not answering,23:53:52,alive
+* server lag: the server stalled,23:54:35,alive
+  pruned 36 frame(s), reel(s) and dead run(s) from before 2026-09-30
+* stop condition: no Cancel button appeared after clicking Change on row 2. Nothing has been cancelled.,00:00:42,dead
+* no Cancel button appeared after clicking Change on row 2. Nothing has been cancelled.,00:00:43,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\dead_runs\2026-09-29_201714_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-30_000058_found.png
+  interrupted: relist row 2: 'Epic Booster (Highest)' x4 at 47,999,999 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Epic Booster (Highest)'; nothing on screen is read to name it
+  frame 2026-09-30_000105_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 2: 'Epic Booster (Highest)' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-30_000114_reset.png
+   2026-09-30_000115  C:\Users\tl456\Desktop\cabal_trade\src_1080p\driver.py --config bot
+     logging to C:\Users\tl456\Desktop\cabal_trade\src_1080p\logs\2026-09-30_000115_run.log
+     code 08af49c3
+     screen 1920x1080
+* relaunched (pid 12208),00:01:19,alive
+watching pid 12208, 2026-09-30_000115_run.log
+* pushed the profit report for bot and all,00:13:20,alive
+* pushed the profit report for bot and all,00:28:28,alive
+* war window, log quiet 155s,00:33:15,alive
+* pushed the profit report for bot and all,00:43:44,alive
+* pushed the profit report for bot and all,00:58:58,alive
+* server lag: not answering,01:13:26,alive
+* server lag: the server stalled,01:13:47,alive
+* pushed the profit report for bot and all,01:14:02,alive
+* server lag: the server stalled,01:14:23,alive
+* server lag: not answering,01:16:36,alive
+* server lag: the server stalled,01:16:58,alive
+* server lag: the server stalled,01:17:19,alive
+* pushed the profit report for bot and all,01:29:07,alive
+* pushed the profit report for bot and all,01:44:27,alive
+* pushed the profit report for bot and all,01:59:45,alive
+* server lag: not answering,02:12:11,alive
+* server lag: the server stalled,02:12:39,alive
+* server lag: the server stalled,02:13:01,alive
+
+  Ctrl 4 times: stopping the run the way Ctrl+C would.
+* supervisor cancelled with Ctrl x4,02:14:12,dead
