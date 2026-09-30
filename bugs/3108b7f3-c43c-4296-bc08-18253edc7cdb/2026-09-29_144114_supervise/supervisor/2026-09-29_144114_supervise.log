@@ -1,0 +1,117 @@
+2026-09-29_144114  .\supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-29_144114_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-29_101357_run.log ended: interrupted from the keyboard,14:41:14,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-29_101357_run
+  cleared 2 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-29_144126_found.png
+  interrupted: relist row 1: 'Honor Medal Chest' x1 at 188,499,999 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Honor Medal Chest'; nothing on screen is read to name it
+  frame 2026-09-29_144134_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 1: 'Honor Medal Chest' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-29_144138_reset.png
+   2026-09-29_144139  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-29_144139_run.log
+     code e938d28
+     screen 1920x1080
+* relaunched (pid 11016),14:41:43,alive
+watching pid 11016, 2026-09-29_144139_run.log
+* RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe,14:42:05,dead
+  kept 12 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-29_144139_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-29_144211_found.png
+  the log shows no task cut short
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-29_144217_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-29_144222_reset.png
+   2026-09-29_144223  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-29_144223_run.log
+     code e938d28
+     screen 1920x1080
+* relaunched (pid 13404),14:42:27,alive
+watching pid 13404, 2026-09-29_144223_run.log
+* RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe,14:42:49,dead
+  kept 12 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-29_144223_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-29_144254_found.png
+  the log shows no task cut short
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-29_144301_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-29_144305_reset.png
+   2026-09-29_144307  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-29_144307_run.log
+     code e938d28
+     screen 1920x1080
+* relaunched (pid 9556),14:43:10,alive
+watching pid 9556, 2026-09-29_144307_run.log
+* RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe,14:43:32,dead
+* 3 runs in a row died within 300s of launch; relogging (1 of 1),14:43:32,dead
+  kept 12 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-29_144307_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-29_144338_found.png
+  the log shows no task cut short
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-09-29_144344_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-29_144349_reset.png
+$ py src_1080p/recovery.py --relog
+     the character list is up
+     Inventory shut; pressing I (attempt 1)
+     Inventory shut; pressing I (attempt 2)
+     no login screen; the character list is already up
+     'SoloCabalLevelin' at [1626, 470]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as SoloCabalLevelin, the balance reads
+* relogged: back in the world,14:44:14,dead
+   2026-09-29_144414  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-09-29_144414_run.log
+     code e938d28
+     screen 1920x1080
+* relaunched (pid 18136),14:44:18,alive
+watching pid 18136, 2026-09-29_144414_run.log
+* RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe,14:44:41,dead
+  kept 11 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-09-29_144414_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-29_144448_found.png
+  the log shows no task cut short
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+
+  Ctrl 4 times: stopping the run the way Ctrl+C would.
+* supervisor cancelled with Ctrl x4,14:44:53,dead

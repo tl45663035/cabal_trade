@@ -1,0 +1,476 @@
+{
+  "supervisor": "2026-09-29_144114_supervise.log",
+  "supervisor_ended": "supervisor cancelled with Ctrl x4",
+  "since": "2026-09-29T14:41:14",
+  "machine": "DESKTOP-5CFR0IQ",
+  "machine_id": "3108b7f3-c43c-4296-bc08-18253edc7cdb",
+  "submitted_at": "2026-09-29T14:45:14",
+  "max_frames": 120,
+  "logs": [
+    {
+      "log": "2026-09-29_144139_run",
+      "kind": "run",
+      "code": "e938d28",
+      "screen": null,
+      "reason": "crashed: RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe the row.",
+      "frames": {
+        "kept": 12,
+        "indexed": 12,
+        "sent": 12
+      },
+      "flagged": {
+        "Traceback": 1,
+        "crashed:": 1
+      },
+      "events": [
+        {
+          "pattern": "Traceback",
+          "line": "Traceback (most recent call last):",
+          "log": 1896,
+          "near": "2026-09-29T14:41:59.543"
+        },
+        {
+          "pattern": "crashed:",
+          "line": "crashed: RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe the row.",
+          "log": 4961,
+          "near": "2026-09-29T14:41:59.543"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-29_144223_run",
+      "kind": "run",
+      "code": "e938d28",
+      "screen": null,
+      "reason": "crashed: RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe the row.",
+      "frames": {
+        "kept": 12,
+        "indexed": 12,
+        "sent": 12
+      },
+      "flagged": {
+        "Traceback": 1,
+        "crashed:": 1
+      },
+      "events": [
+        {
+          "pattern": "Traceback",
+          "line": "Traceback (most recent call last):",
+          "log": 1896,
+          "near": "2026-09-29T14:42:42.380"
+        },
+        {
+          "pattern": "crashed:",
+          "line": "crashed: RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe the row.",
+          "log": 4961,
+          "near": "2026-09-29T14:42:42.380"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-29_144307_run",
+      "kind": "run",
+      "code": "e938d28",
+      "screen": null,
+      "reason": "crashed: RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe the row.",
+      "frames": {
+        "kept": 12,
+        "indexed": 12,
+        "sent": 12
+      },
+      "flagged": {
+        "Traceback": 1,
+        "crashed:": 1
+      },
+      "events": [
+        {
+          "pattern": "Traceback",
+          "line": "Traceback (most recent call last):",
+          "log": 1896,
+          "near": "2026-09-29T14:43:26.132"
+        },
+        {
+          "pattern": "crashed:",
+          "line": "crashed: RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe the row.",
+          "log": 4961,
+          "near": "2026-09-29T14:43:26.132"
+        }
+      ]
+    },
+    {
+      "log": "2026-09-29_144350_recovery",
+      "kind": "recovery",
+      "code": null,
+      "screen": null,
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 13,
+        "indexed": 12,
+        "sent": 13
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-29_144414_run",
+      "kind": "run",
+      "code": "e938d28",
+      "screen": null,
+      "reason": "crashed: RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe the row.",
+      "frames": {
+        "kept": 11,
+        "indexed": 11,
+        "sent": 11
+      },
+      "flagged": {
+        "Traceback": 1,
+        "crashed:": 1
+      },
+      "events": [
+        {
+          "pattern": "Traceback",
+          "line": "Traceback (most recent call last):",
+          "log": 1854,
+          "near": "2026-09-29T14:44:36.020"
+        },
+        {
+          "pattern": "crashed:",
+          "line": "crashed: RuntimeError: expected about 10 favourite slots, found 8 at [484, 526, 568, 611, 653, 695, 823, 865]. Not writing a calibration that does not describe the row.",
+          "log": 4919,
+          "near": "2026-09-29T14:44:36.020"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "file": "2026-09-29_144139_run/2026-09-29_144139_run.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00001_press_I.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00002_inventory_as_measured.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00003_inventory_grid_as_fitted.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00004_inventory_after_measure.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00005_click_284_1001.png",
+      "mb": 1.4
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00006_click_1487_852.png",
+      "mb": 2.04
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00007_click_348_994.png",
+      "mb": 1.31
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00008_press_I.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00009_cash_shop_measured.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00010_click_1718_174.png",
+      "mb": 2.1
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00011_rightclick_1810_229.png",
+      "mb": 1.48
+    },
+    {
+      "file": "2026-09-29_144139_run/frames/00012_shop_open.png",
+      "mb": 1.45
+    },
+    {
+      "file": "2026-09-29_144223_run/2026-09-29_144223_run.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00001_press_I.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00002_inventory_as_measured.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00003_inventory_grid_as_fitted.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00004_inventory_after_measure.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00005_click_284_1001.png",
+      "mb": 1.4
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00006_click_1487_852.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00007_click_348_994.png",
+      "mb": 1.32
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00008_press_I.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00009_cash_shop_measured.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00010_click_1718_174.png",
+      "mb": 2.1
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00011_rightclick_1810_229.png",
+      "mb": 1.47
+    },
+    {
+      "file": "2026-09-29_144223_run/frames/00012_shop_open.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-09-29_144307_run/2026-09-29_144307_run.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00001_press_I.png",
+      "mb": 2.02
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00002_inventory_as_measured.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00003_inventory_grid_as_fitted.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00004_inventory_after_measure.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00005_click_284_1001.png",
+      "mb": 1.41
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00006_click_1487_852.png",
+      "mb": 2.02
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00007_click_348_994.png",
+      "mb": 1.32
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00008_press_I.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00009_cash_shop_measured.png",
+      "mb": 2.03
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00010_click_1718_174.png",
+      "mb": 2.1
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00011_rightclick_1810_229.png",
+      "mb": 1.48
+    },
+    {
+      "file": "2026-09-29_144307_run/frames/00012_shop_open.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-09-29_144350_recovery/2026-09-29_144350_recovery.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00001_logout_menu.png",
+      "mb": 2.3
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00002_click_926_552.png",
+      "mb": 2.25
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00003_logout_confirm.png",
+      "mb": 2.25
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00004_click_984_638.png",
+      "mb": 2.18
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00005_logout_character_list.png",
+      "mb": 1.52
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00006_press_I.png",
+      "mb": 1.47
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00007_press_I.png",
+      "mb": 1.47
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00008_recovery_character_list_up.png",
+      "mb": 1.47
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00009_recovery_character_select.png",
+      "mb": 1.47
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00010_click_1626_470.png",
+      "mb": 1.55
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00011_recovery_pressed_enter.png",
+      "mb": 1.58
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00012_press_I.png",
+      "mb": 1.59
+    },
+    {
+      "file": "2026-09-29_144350_recovery/frames/00013_press_I.png",
+      "mb": 2.13
+    },
+    {
+      "file": "2026-09-29_144414_run/2026-09-29_144414_run.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00001_inventory_as_measured.png",
+      "mb": 2.88
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00002_inventory_grid_as_fitted.png",
+      "mb": 2.88
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00003_inventory_after_measure.png",
+      "mb": 2.88
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00004_click_284_1001.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00005_click_1487_852.png",
+      "mb": 2.88
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00006_click_348_994.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00007_press_I.png",
+      "mb": 2.88
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00008_cash_shop_measured.png",
+      "mb": 2.88
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00009_click_1718_174.png",
+      "mb": 2.68
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00010_rightclick_1810_229.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-09-29_144414_run/frames/00011_shop_open.png",
+      "mb": 1.75
+    },
+    {
+      "file": "supervisor/2026-09-29_144114_supervise.log",
+      "mb": 0.01
+    },
+    {
+      "file": "supervisor/supervise.log",
+      "mb": 0.15
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144126_found.png",
+      "mb": 3.11
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144134_tab4_0slots.png",
+      "mb": 2.03
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144138_reset.png",
+      "mb": 2.38
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144211_found.png",
+      "mb": 1.44
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144217_tab4_0slots.png",
+      "mb": 2.04
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144222_reset.png",
+      "mb": 2.38
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144254_found.png",
+      "mb": 1.43
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144301_tab4_0slots.png",
+      "mb": 2.03
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144305_reset.png",
+      "mb": 2.37
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144338_found.png",
+      "mb": 1.44
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144344_tab4_0slots.png",
+      "mb": 2.03
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144349_reset.png",
+      "mb": 2.38
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-29_144448_found.png",
+      "mb": 1.75
+    },
+    {
+      "file": "config.json",
+      "mb": 0.01
+    },
+    {
+      "file": "calibration.json",
+      "mb": 0.05
+    }
+  ],
+  "skipped_over_max_file_mb": []
+}
