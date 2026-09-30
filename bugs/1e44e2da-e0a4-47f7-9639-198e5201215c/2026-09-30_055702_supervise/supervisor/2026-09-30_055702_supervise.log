@@ -1,0 +1,73 @@
+2026-09-30_055702  .\tools\supervise.py --config trung
+  logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-30_055702_supervise.log
+  screen 1920x1080
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-09-30_055336_run.log ended: interrupted from the keyboard,05:57:03,dead
+  kept 76 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-30_055336_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-30_055710_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-30_055717_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-30_055720_reset.png
+   2026-09-30_055721  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-30_055721_run.log
+     code bf77c7cc
+     screen 1920x1080
+* relaunched (pid 22292),05:57:24,alive
+watching pid 22292, 2026-09-30_055721_run.log
+* server lag: not answering,06:01:54,alive
+* server lag: the server stalled,06:02:35,alive
+* stop condition: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,06:10:10,dead
+* tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,06:10:10,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-30_055721_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-09-30_061014_found.png
+  interrupted: relist row 11: "Minesta's Chaos Fighter Belt + 15" x1 at 273,771,413 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the "Minesta's Chaos Fighter Belt + 15"; nothing on screen is read to name it
+  frame 2026-09-30_061020_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 11: "Minesta's Chaos Fighter Belt + 15" is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-09-30_061024_reset.png
+   2026-09-30_061024  C:\Users\Trung\Cabal\src_1080p\driver.py --config trung
+     logging to C:\Users\Trung\Cabal\src_1080p\logs\2026-09-30_061024_run.log
+     code bf77c7cc
+     screen 1920x1080
+* relaunched (pid 8692),06:10:28,alive
+watching pid 8692, 2026-09-30_061024_run.log
+* stop condition: the dialog stayed open after Confirmation on row 1. Whether the cancel committed is unknown -- check by hand.,06:14:58,dead
+* the dialog stayed open after Confirmation on row 1. Whether the cancel committed is unknown -- check by hand.,06:14:58,dead
+* the server took the run down: the dialog stayed open after Confirmation on row 1. Whether the cancel committed is unknown -- check by hand.; not counted as a short run,06:14:58,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\Trung\Cabal\src_1080p\logs\dead_runs\2026-09-30_061024_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=['Cancel', 'Confirmation'], underprice=False
+  frame 2026-09-30_061502_found.png
+  case: a registration dialog is open -> Confirmation
+  Confirmation at [968, 634] (attempt 1)
+  Confirmation at [968, 634] (attempt 2)
+  Confirmation at [968, 634] (attempt 3)
+  3 Confirmation clicks did nothing; the game is refusing it, so Cancel instead and the row stays listed for the next run to retry
+  Cancel at [1101, 634]
+  frame 2026-09-30_061546_dialog_dismissed.png
+  interrupted: resupply of Upgrade Core (Ultimate): bought stock may be on tab 4
+  interrupted: relist row 1: 'Arionell' x1 at 312,185,712 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Arionell'; nothing on screen is read to name it
+  frame 2026-09-30_061552_tab4_64slots.png
+  tab 4 holds 56 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config trung collect

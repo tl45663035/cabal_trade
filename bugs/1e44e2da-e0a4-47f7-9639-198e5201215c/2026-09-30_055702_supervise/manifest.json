@@ -1,0 +1,612 @@
+{
+  "supervisor": "2026-09-30_055702_supervise.log",
+  "supervisor_ended": "no end line: still running, or killed from outside",
+  "since": "2026-09-30T05:57:02",
+  "machine": "DESKTOP-AAD5RN6",
+  "machine_id": "1e44e2da-e0a4-47f7-9639-198e5201215c",
+  "submitted_at": "2026-09-30T06:39:35",
+  "max_frames": 120,
+  "logs": [
+    {
+      "log": "2026-09-30_055721_run",
+      "kind": "run",
+      "code": "bf77c7cc",
+      "screen": "1920x1080",
+      "reason": "stopped: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.",
+      "frames": {
+        "kept": 470,
+        "indexed": 470,
+        "sent": 40
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-30_061024_run",
+      "kind": "run",
+      "code": "bf77c7cc",
+      "screen": "1920x1080",
+      "reason": "stopped: the dialog stayed open after Confirmation on row 1. Whether the cancel committed is unknown -- check by hand.",
+      "frames": {
+        "kept": 161,
+        "indexed": 161,
+        "sent": 40
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-09-30_061553_collect",
+      "kind": "collect",
+      "code": "bf77c7cc",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 40,
+        "indexed": 40,
+        "sent": 40
+      },
+      "flagged": {},
+      "events": []
+    }
+  ],
+  "files": [
+    {
+      "file": "2026-09-30_055721_run/2026-09-30_055721_run.log",
+      "mb": 0.25
+    },
+    {
+      "file": "2026-09-30_055721_run/2026-09-30_055721_run_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00431_click_36_384.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00432_click_112_425.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00433_click_59_486.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00434_click_131_754.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00435_click_968_634.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00436_click_833_752.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00437_click_1617_181.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00438_click_831_175.png",
+      "mb": 1.52
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00439_click_1101_634.png",
+      "mb": 1.52
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00440_click_968_634.png",
+      "mb": 1.51
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00441_click_1617_181.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00442_ctrlclick_1479_236.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00443_click_36_384.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00444_click_112_425.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00445_click_59_486.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00446_click_131_754.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00447_click_968_634.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00448_click_96_80.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00449_click_564_755.png",
+      "mb": 1.66
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00450_click_606_755.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00451_click_288_80.png",
+      "mb": 1.65
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00452_click_833_752.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00453_click_1617_181.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00454_click_831_175.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00455_click_1101_634.png",
+      "mb": 1.52
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00456_click_968_634.png",
+      "mb": 1.51
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00457_click_1617_181.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00458_ctrlclick_1479_236.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00459_click_36_384.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00460_click_112_425.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00461_click_59_486.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00462_click_131_754.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00463_click_968_634.png",
+      "mb": 1.71
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00464_click_833_752.png",
+      "mb": 1.63
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00465_click_1617_181.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00466_click_831_175.png",
+      "mb": 1.52
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00467_click_1101_634.png",
+      "mb": 1.52
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00468_click_968_634.png",
+      "mb": 1.51
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00469_click_1617_181.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_055721_run/frames/00470_slot_1x1_never_filled.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-09-30_061024_run/2026-09-30_061024_run.log",
+      "mb": 0.03
+    },
+    {
+      "file": "2026-09-30_061024_run/2026-09-30_061024_run_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00122_click_564_755.png",
+      "mb": 1.85
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00123_click_606_755.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00124_click_816_755.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00125_click_858_755.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00126_press_escape.png",
+      "mb": 3.01
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00127_vendor_open_attempt_1.png",
+      "mb": 2.54
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00128_click_143_158.png",
+      "mb": 2.55
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00129_altclick_375_931.png",
+      "mb": 2.35
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00130_click_905_456.png",
+      "mb": 2.34
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00131_click_1617_181.png",
+      "mb": 2.32
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00132_click_965_677.png",
+      "mb": 2.36
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00133_click_1723_181.png",
+      "mb": 2.72
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00134_rightclick_1815_236.png",
+      "mb": 1.77
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00135_click_1617_181.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00136_click_288_80.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00137_press_escape.png",
+      "mb": 3.01
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00138_click_284_994.png",
+      "mb": 1.91
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00139_click_1209_786.png",
+      "mb": 1.91
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00140_click_1438_492.png",
+      "mb": 1.92
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00141_click_1483_846.png",
+      "mb": 3.01
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00142_click_1723_181.png",
+      "mb": 2.72
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00143_rightclick_1815_236.png",
+      "mb": 1.77
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00144_click_1617_181.png",
+      "mb": 1.77
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00145_click_288_80.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00146_click_288_80.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00147_click_1617_181.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00148_click_96_80.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00149_click_480_755.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00150_click_522_755.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00151_click_564_755.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00152_click_606_755.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00153_click_816_755.png",
+      "mb": 1.86
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00154_click_858_755.png",
+      "mb": 1.87
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00155_click_288_80.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00156_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00157_click_1617_181.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00158_click_1617_181.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00159_click_831_176.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00160_click_1101_634.png",
+      "mb": 1.7
+    },
+    {
+      "file": "2026-09-30_061024_run/frames/00161_click_968_634.png",
+      "mb": 1.68
+    },
+    {
+      "file": "2026-09-30_061553_collect/2026-09-30_061553_collect.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-30_061553_collect/2026-09-30_061553_collect_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00001_click_1723_181.png",
+      "mb": 2.73
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00002_rightclick_1815_236.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00003_click_1617_181.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00004_click_288_80.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00005_click_288_80.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00006_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00007_click_1617_181.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00008_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00009_click_1617_181.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00010_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00011_click_1617_181.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00012_click_833_752.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00013_click_1617_181.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00014_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00015_click_1617_181.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00016_click_833_752.png",
+      "mb": 1.85
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00017_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00018_click_1617_181.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00019_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00020_click_1617_181.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00021_click_833_752.png",
+      "mb": 1.85
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00022_click_1617_181.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00023_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00024_click_1617_181.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00025_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00026_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00027_click_1617_181.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00028_click_833_752.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00029_click_1617_181.png",
+      "mb": 1.84
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00030_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00031_click_1617_181.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00032_click_833_752.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00033_click_1617_181.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00034_click_833_752.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00035_click_1617_181.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00036_click_833_752.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00037_click_1617_181.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00038_click_833_752.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00039_click_1617_181.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-09-30_061553_collect/frames/00040_click_833_752.png",
+      "mb": 1.82
+    },
+    {
+      "file": "supervisor/2026-09-30_055702_supervise.log",
+      "mb": 0.0
+    },
+    {
+      "file": "supervisor/supervise.log",
+      "mb": 0.16
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_055710_found.png",
+      "mb": 3.03
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_055717_tab4_0slots.png",
+      "mb": 2.55
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_055720_reset.png",
+      "mb": 3.03
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_061014_found.png",
+      "mb": 1.62
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_061020_tab4_0slots.png",
+      "mb": 2.55
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_061024_reset.png",
+      "mb": 3.03
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_061502_found.png",
+      "mb": 1.69
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_061546_dialog_dismissed.png",
+      "mb": 1.83
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-09-30_061552_tab4_64slots.png",
+      "mb": 2.73
+    },
+    {
+      "file": "config.json",
+      "mb": 0.01
+    },
+    {
+      "file": "calibration.json",
+      "mb": 0.05
+    }
+  ],
+  "skipped_over_max_file_mb": []
+}
