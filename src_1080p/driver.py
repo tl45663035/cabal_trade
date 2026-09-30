@@ -1581,6 +1581,10 @@ def special_rows(core=None):
     amounts = special_amounts(core)
     if len(amounts) > 1:
         return len(amounts)
+    by_price = calibration.special_rows_by_price(core,
+                                                 row_model.market_anchor(core))
+    if by_price is not None:
+        return by_price
     table = special_conf().get("rows") or 1
     if isinstance(table, dict):
         return int(calibration._per_item_raw(table, core) or 1)
@@ -1782,8 +1786,12 @@ def resupply_special(model, first, last, verbose=True):
         leave = int(calibration.buy_leave_behind(core))
         steps_max = int(run["buy_scroll_limit"])
         take_all = int(run["buy_take_all_after"])
+        priced = row_model.market_anchor(core)
         print(f"-- {core} special row {ordinal + 1} of "
-              f"{special_rows(core)}: {special_qty()} at "
+              f"{special_rows(core)}"
+              + (f" ({core} at {priced:,} a core)"
+                 if calibration.special_ladder(core) and priced else "")
+              + f": {special_qty()} at "
               f"{special_under(core, ordinal):,} to "
               f"{special_under(core, ordinal) + special_spread():,} under "
               f"the market --")

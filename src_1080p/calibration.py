@@ -3122,17 +3122,36 @@ def rows_by_margin(core_name, margin):
     return int(ladder[min(tier, len(ladder)) - 1])
 
 
-def price_ladder(core_name):
-    table = load_shared()["resupply"].get("rows_by_price") or {}
-    ladder = _per_item_raw(table, core_name)
+def _ladder(table, core_name):
+    ladder = _per_item_raw(table or {}, core_name)
     return sorted((int(at), int(rows)) for at, rows in ladder) if ladder else None
+
+
+def _rows_at(ladder, price):
+    return next((rows for at, rows in reversed(ladder) if int(price) >= at), 0)
+
+
+def price_ladder(core_name):
+    return _ladder(load_shared()["resupply"].get("rows_by_price"), core_name)
 
 
 def rows_by_price(core_name, price):
     ladder = price_ladder(core_name)
     if not ladder or price is None:
         return None
-    return next((rows for at, rows in reversed(ladder) if int(price) >= at), 0)
+    return _rows_at(ladder, price)
+
+
+def special_ladder(core_name):
+    special = load_shared()["resupply"].get("special_row") or {}
+    return _ladder(special.get("rows_by_price"), core_name)
+
+
+def special_rows_by_price(core_name, price):
+    ladder = special_ladder(core_name)
+    if not ladder or not price:
+        return None
+    return _rows_at(ladder, price)
 
 
 def rows_wanted(core_name, margin, price):
