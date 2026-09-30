@@ -8,12 +8,12 @@ Sat 2026-09-26            17.54h   24.00h   -2.76B  -157.48M   15.48B  18.24B  2
 Sun 2026-09-27            15.82h   24.00h  191.45M    12.10M   10.44B  10.25B  17.99K    1.8%
 Mon 2026-09-28            14.81h   24.00h  342.15M    23.11M   15.73B  15.39B  24.86K    2.2%
 Tue 2026-09-29            16.27h   24.00h  168.59M    10.36M   14.10B  13.93B  23.64K    1.2%
-Wed 2026-09-30 (so far)    4.80h    5.77h   37.14M     7.73M    2.43B   2.39B   4.17K    1.5%
+Wed 2026-09-30 (so far)    5.05h    6.03h   37.14M     7.35M    2.43B   2.39B   4.17K    1.5%
 =============================================================================================
-7 DAYS                   102.61h  149.77h   -1.52B   -14.84M   79.06B  80.58B 129.93K   -1.9%
+7 DAYS                   102.87h  150.03h   -1.52B   -14.80M   79.06B  80.58B 129.93K   -1.9%
 
 
-PROFIT SUMMARY -- sold since 2026-09-30 00:00 Central (as of 05:46 Central)
+PROFIT SUMMARY -- sold since 2026-09-30 00:00 Central (as of 06:01 Central)
 
 item                   profit  revenue     cost  units  bought/u   sold/u  margin
 ---------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ TOTAL                  37.14M    2.43B    2.39B  4.17K   573.88K  582.79K    1.5
 
 
 
-ROWS -- 2026-09-30_023926_run_board.log, board during pass 138 at row 1, read 2026-09-30T05:45:50 (live)
+ROWS -- 2026-09-30_023926_run_board.log, board during pass 162 at row 1, read 2026-09-30T06:00:53 (live)
                                               qty  bought/u  listed/u    margin     price    profit
     1  Honor Medal Chest                       x1         -   188.50M         -   188.50M         - <- here
     2  chaos) x 1 Chaos Guardian (Arcana        x1         -    26.48M         -    26.48M         -
@@ -54,7 +54,7 @@ ROWS -- 2026-09-30_023926_run_board.log, board during pass 138 at row 1, read 20
    28  Palladium Headgear(FA) | Lua            x1         -     3.22M         -     3.22M         -
    29  Chaos Core Set X 712                    x1   720.34K   734.45K   +14.11K   522.93M    10.04M
    30  Chaos Core Set X 999                    x2   720.34K   734.45K   +14.11K   733.71M    28.18M
-    balance now 1.22B, read 2026-09-30T05:45:50
+    balance now 1.22B, read 2026-09-30T06:00:53
     held on tab 4, bought and not listed yet:
     Chaos Core Set                     slot (8, 4)         - unit(s)            - a unit
        stock at its listed price                                                            786.64M
@@ -62,12 +62,12 @@ ROWS -- 2026-09-30_023926_run_board.log, board during pass 138 at row 1, read 20
        NET WORTH                                                                              2.01B
 
 
-MARKET -- 2026-09-30_023926_run.log, pass 138, log last written 05:46 Central (live)
+MARKET -- 2026-09-30_023926_run.log, pass 162, log last written 06:01 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         2  192.96K  189.92K  -3.04K     -1.6%      0
-Chaos Core                  3  718.05K  729.34K  11.28K      1.5%      8  YES
-Divine Stone                3  719.00K  714.07K  -4.93K     -0.7%      0
+Chaos Core                  3  715.45K  729.31K  13.86K      1.9%      8  YES
+Divine Stone                3  718.00K  714.07K  -3.93K     -0.6%      0
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
