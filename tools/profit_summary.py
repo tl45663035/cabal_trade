@@ -529,6 +529,9 @@ MARGIN_COLUMNS = re.compile(r"^(\s+bought/u\s+listed/u)\s+margin"
                             r"(\s+row price.*)$")
 MARGIN_ROW = re.compile(r"^(\s{4,}\d+\s{2,}.+?\s+x[\d,]+\s+([\d,]+|-)"
                         r"\s+([\d,]+)\s+)(?:[-+]?[\d,.]+%?|-)(\s+.*)$")
+COST_ROW = re.compile(r"^(\s{4,}\d+\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+|-)"
+                      r"\s+(?:[\d,]+|-)\s+\S+\s+(?:[\d,]+|-))"
+                      r"(\s+(?:-?[\d,]+|-))(.*)$")
 BOARD_INDENT = "    "
 BOARD_LABEL = 49
 BOARD_NUMBER = 16
@@ -548,11 +551,22 @@ def raw_margin(line):
             f"{found.group(4)}")
 
 
+def row_cost(line):
+    found = COST_ROW.match(line)
+    if found is None:
+        return line
+    cost = found.group(4)
+    total = ("-" if cost == "-" else
+             f"{int(cost.replace(',', '')) * int(found.group(3).replace(',', '')) * pack(found.group(2)):,}")
+    return f"{found.group(1)}{total:>{PROFIT_WIDTH}}{found.group(5)}{found.group(6)}"
+
+
 def row_total(line, gains):
     line = raw_margin(line)
     found = BOARD_COLUMNS.match(line)
     if found:
-        return f"{found.group(1)}{'profit if sold':>{PROFIT_WIDTH}}"
+        return (f"{found.group(1)}{'row cost':>{PROFIT_WIDTH}}"
+                f"{'profit if sold':>{PROFIT_WIDTH}}")
     found = ITEM_COLUMNS.match(line)
     if found:
         return f"{found.group(1)}{'profit if sold':>{PROFIT_WIDTH}}"
@@ -569,11 +583,12 @@ def row_total(line, gains):
     head = found.group(1).rstrip()
     price = f"{head} {last * qty:>14,}" if last == each else f"{head} {last:>14,}"
     if cost == "-":
-        return f"{price}{'-':>{PROFIT_WIDTH}}"
+        return f"{price}{'-':>{PROFIT_WIDTH}}{'-':>{PROFIT_WIDTH}}"
+    paid = int(cost.replace(",", "")) * qty * pack(name)
     gain = (each - int(cost.replace(",", ""))) * qty * pack(name)
     gains[key_item(name)] = gains.get(key_item(name), 0) + gain
     gains["board"] = gains.get("board", 0) + gain
-    return f"{price}{gain:>{PROFIT_WIDTH},}"
+    return f"{price}{paid:>{PROFIT_WIDTH},}{gain:>{PROFIT_WIDTH},}"
 
 
 def key_item(name):
@@ -610,7 +625,7 @@ def report_trace(log, text):
         if line.lstrip().startswith("balance now"):
             skip = False
         if not skip:
-            print(raw_margin(line))
+            print(row_cost(raw_margin(line)))
     import networth
     networth.summary(log, BOARD_INDENT, BOARD_LABEL, BOARD_NUMBER,
                      board_text=body)
@@ -864,7 +879,7 @@ BOARD_WIDE = int(KNOBS["short_board_fields"])
 ITEM_WIDE = int(KNOBS["short_item_fields"])
 ROW_AT = re.compile(r"^\s{2,}(\d+)\s{2,}(\S.*)$")
 SUM_AT = re.compile(r"^\s{2,}(\S.*?)\s{2,}(\d+\s+[\d,]+\s+\S+\s+\S+)$")
-BOARD_HEADS = ("qty", "bought/u", "listed/u", "margin", "price", "profit")
+BOARD_HEADS = ("qty", "bought/u", "listed/u", "margin", "price", "row cost", "profit")
 ITEM_HEADS = ("rows", "units", "listed", "profit")
 
 
