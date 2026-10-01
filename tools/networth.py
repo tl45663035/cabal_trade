@@ -45,6 +45,58 @@ BOUGHT = re.compile(r"balance after\s+[\d,]+; spent ([\d,]+) bought \d+ pack\(s\
                     r"= ([\d,]+) core\(s\)")
 
 
+SETTINGS = json.loads((TREE / "config.json").read_text(encoding="utf-8"))
+SHOP = SETTINGS["resupply"]["cash_shop"]
+FLOORS = SETTINGS["run"]["voucher_floor"]
+PARTS = int(json.loads((TREE / "calibration.json").read_text(encoding="utf-8"))
+            ["game_facts"]["voucher_cash"])
+CASH_READ = re.compile(r"the Cash balance box \[[^\]]*\] reads ([\d,]+)|"
+                       r"Cash [\d,]+ before the voucher, ([\d,]+) after")
+GEM_READ = re.compile(r"the gem box \[[^\]]*\] reads ([\d,]+)")
+SHOP_BUY = re.compile(r"bought \d+ (.+?) for [\d,]+(?: Cash)?, ([\d,]+)(?: Cash)? left")
+VOUCHER_PRICE = re.compile(r"a \w+ voucher costs ([\d,]+)|"
+                           r"spent ([\d,]+) on \d+ 'CABAL Gift Voucher")
+
+
+def cash_held(text):
+    cash = gems = price = None
+    for line in text.splitlines():
+        found = CASH_READ.search(line)
+        if found:
+            cash = number(found.group(1) or found.group(2))
+            continue
+        found = GEM_READ.search(line)
+        if found:
+            gems = number(found.group(1))
+            continue
+        found = SHOP_BUY.search(line)
+        if found:
+            if found.group(1).strip() in SHOP.get("currency", {}):
+                gems = number(found.group(2))
+            else:
+                cash = number(found.group(2))
+            continue
+        found = VOUCHER_PRICE.search(line)
+        if found:
+            price = number(found.group(1) or found.group(2))
+    return cash, gems, price
+
+
+def gem_cash():
+    for rule in SHOP.get("currency", {}).values():
+        package = FLOORS.get(rule.get("from"), {}).get("ratio")
+        if package and rule.get("per"):
+            return package / rule["per"]
+    return 0
+
+
+def cash_worth(cash, gems, price):
+    if not price:
+        return 0, 0
+    each = price / PARTS
+    return round((cash or 0) * each), round((gems or 0) * gem_cash() * each)
+
+
 def newest_log():
     logs = sorted(TREE.glob("logs/*_run.log"), key=lambda p: p.stat().st_mtime)
     return logs[-1] if logs else None
@@ -183,14 +235,15 @@ def totals(log, board_text=None):
     stock = sum(row_worth(qty, each, listed)
                 for _, _, qty, each, listed, _ in board)
     held = sum(worth for *_, worth in bought_worth(market, bought))
-    return stock, held, balance, unread
+    cash, gems = cash_worth(*cash_held(log.read_text(encoding="utf-8", errors="replace")))
+    return stock, held, balance, unread, cash, gems
 
 
 def summary(log, indent="    ", width=40, number=18, board_text=None):
     found = totals(log, board_text)
     if found is None:
         return
-    stock, held, balance, unread = found
+    stock, held, balance, unread, cash, gems = found
     print(f"{indent}{'stock at its listed price':<{width}}{stock:>{number},}")
     if held:
         print(f"{indent}{'bought since that board, not on it yet':<{width}}"
@@ -200,7 +253,12 @@ def summary(log, indent="    ", width=40, number=18, board_text=None):
               f"{0:>{number},}")
     print(f"{indent}{'Alz, latest balance line':<{width}}"
           f"{(f'{balance:,}' if balance is not None else 'unread'):>{number}}")
-    print(f"{indent}{'NET WORTH':<{width}}{stock + held + (balance or 0):>{number},}")
+    if cash:
+        print(f"{indent}{'Cash at the voucher price':<{width}}{cash:>{number},}")
+    if gems:
+        print(f"{indent}{'gems at the voucher price':<{width}}{gems:>{number},}")
+    print(f"{indent}{'NET WORTH':<{width}}"
+          f"{stock + held + (balance or 0) + cash + gems:>{number},}")
 
 
 def report(log, market, board, unread, balance, bought):

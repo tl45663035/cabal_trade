@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import math
 import os
@@ -8,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import networth
-from profit_summary import KNOBS, SETTINGS, central_now
+from profit_summary import KNOBS, SETTINGS, central_now, log_launch
 
 STAMP = "%Y-%m-%d %H:%M:%S"
 DATE = "%Y-%m-%d"
@@ -34,41 +35,77 @@ PASS_END = re.compile(r"^  pass \d+: ", re.M)
 SIGNED = r"(?:[-+][\d,]+|-)"
 DAY_ROW = re.compile(rf"^\w+ (\d{{4}}-\d\d-\d\d)(?:{re.escape(SO_FAR)})?\s+([\d,]+)"
                      rf"\s+([\d,]+)\s+{SIGNED}\s*$")
-KEPT = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),(\d+),(\d+)$")
+KEPT = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),(\d+),(\d+)(?:,(\d+),(\d+))?$")
 
 
 def number(text):
     return int(text.replace(",", ""))
 
 
+def worth(row):
+    return sum(part or 0 for part in row[1:])
+
+
+def boards(text):
+    first, last = networth.counted_rows(text)
+    cash = gems = price = None
+    board = None
+    for line in text.splitlines():
+        if AFTER.match(line):
+            if board and board["seen"] and board["balance"] is not None:
+                yield board["balance"], board["stock"], *networth.cash_worth(cash, gems, price)
+            board = {"stock": 0, "balance": None, "seen": False}
+            continue
+        if board is not None:
+            if PASS_END.match(line):
+                if board["seen"] and board["balance"] is not None:
+                    yield board["balance"], board["stock"], *networth.cash_worth(cash, gems, price)
+                board = None
+                continue
+            found = networth.BOARD_ROW.match(line)
+            if found:
+                if first <= int(found.group(1)) <= last:
+                    board["stock"] += networth.row_worth(number(found.group(3)),
+                                                         number(found.group(5)),
+                                                         number(found.group(6)))
+                    board["seen"] = True
+                continue
+            found = networth.BALANCE.search(line)
+            if found:
+                board["balance"] = number(found.group(1))
+                continue
+        found = networth.CASH_READ.search(line)
+        if found:
+            cash = number(found.group(1) or found.group(2))
+            continue
+        found = networth.GEM_READ.search(line)
+        if found:
+            gems = number(found.group(1))
+            continue
+        found = networth.SHOP_BUY.search(line)
+        if found:
+            if found.group(1).strip() in networth.SHOP.get("currency", {}):
+                gems = number(found.group(2))
+            else:
+                cash = number(found.group(2))
+            continue
+        found = networth.VOUCHER_PRICE.search(line)
+        if found:
+            price = number(found.group(1) or found.group(2))
+    if board and board["seen"] and board["balance"] is not None:
+        yield board["balance"], board["stock"], *networth.cash_worth(cash, gems, price)
+
+
 def reading():
     log = networth.newest_log()
     if log is None:
         return None
-    text = log.read_text(encoding="utf-8", errors="replace")
-    heads = list(AFTER.finditer(text))
-    if not heads:
+    found = None
+    for found in boards(log.read_text(encoding="utf-8", errors="replace")):
+        pass
+    if found is None:
         return None
-    section = text[heads[-1].end():]
-    end = PASS_END.search(section)
-    section = section[:end.start()] if end else section
-    first, last = networth.counted_rows(text)
-    stock, balance, seen = 0, None, False
-    for line in section.splitlines():
-        found = networth.BOARD_ROW.match(line)
-        if found:
-            if first <= int(found.group(1)) <= last:
-                stock += networth.row_worth(number(found.group(3)),
-                                            number(found.group(5)),
-                                            number(found.group(6)))
-                seen = True
-            continue
-        found = networth.BALANCE.search(line)
-        if found:
-            balance = number(found.group(1))
-    if not seen or balance is None:
-        return None
-    return central_now().replace(microsecond=0), balance, stock
+    return (central_now().replace(microsecond=0),) + tuple(found)
 
 
 def recorded(path):
@@ -79,7 +116,34 @@ def recorded(path):
         found = KEPT.match(line)
         if found:
             out.append((datetime.datetime.strptime(found.group(1), STAMP),
-                        int(found.group(2)), int(found.group(3))))
+                        int(found.group(2)), int(found.group(3)),
+                        None if found.group(4) is None else int(found.group(4)),
+                        None if found.group(5) is None else int(found.group(5))))
+    return out
+
+
+def backfill(rows):
+    if all(row[3] is not None for row in rows):
+        return rows
+    since = min(row[0] for row in rows) - WHOLE_DAY
+    held = {}
+    for log in sorted(LOGS.glob("*_run.log")):
+        try:
+            launched = log_launch(log)
+            if launched is None or launched < since:
+                continue
+            for balance, stock, cash, gems in boards(log.read_text(encoding="utf-8", errors="replace")):
+                held[(balance, stock)] = (cash, gems)
+        except (OSError, ValueError):
+            continue
+    out, last = [], (0, 0)
+    for row in rows:
+        if row[3] is None:
+            last = held.get((row[1], row[2]), last)
+            row = row[:3] + last
+        else:
+            last = row[3:]
+        out.append(row)
     return out
 
 
@@ -95,9 +159,11 @@ def saved_days(path):
 
 
 def fold(days, rows):
-    for when, alz, stock in rows:
-        held = days.setdefault(when.date(), [alz + stock, alz + stock])
-        held[1] = alz + stock
+    fresh = {}
+    for row in rows:
+        held = fresh.setdefault(row[0].date(), [worth(row), worth(row)])
+        held[1] = worth(row)
+    days.update(fresh)
     return days
 
 
@@ -122,24 +188,38 @@ def log_table(rows, today):
     room = len(rows[0][0].strftime(STAMP)) + GAP
     head = (f"{'time':<{room}}{'net worth':>{FIELD}}"
             f"{'since last':>{FIELD}}{'since midnight':>{FIELD}}"
-            f"{'Alz':>{FIELD}}{'stock':>{FIELD}}")
-    out = [f"NET WORTH EVERY {EVERY // MINUTE} MINUTES, {today:{DAY}} -- Alz "
-           f"plus stock at its listed price, from the board and balance the run "
-           f"printed at the end of its latest pass", "", head, "-" * len(head)]
-    before, opened = None, rows[0][1] + rows[0][2]
-    for when, alz, stock in rows:
-        total = alz + stock
+            f"{'Alz':>{FIELD}}{'stock':>{FIELD}}{'Cash':>{FIELD}}{'gems':>{FIELD}}")
+    out = [f"NET WORTH EVERY {EVERY // MINUTE} MINUTES, {today:{DAY}} -- Alz, "
+           f"stock at its listed price, and Cash and gems at the voucher price, "
+           f"from the board, balance and Cash the run printed by the end of its "
+           f"latest pass", "", head, "-" * len(head)]
+    before, opened = None, worth(rows[0])
+    for row in rows:
+        when, alz, stock, cash, gems = row
+        total = worth(row)
         since = "-" if before is None else f"{total - before:+,}"
         out.append(f"{when:{STAMP}}".ljust(room) +
                    f"{total:>{FIELD},}{since:>{FIELD}}"
                    f"{total - opened:>+{FIELD},}"
-                   f"{alz:>{FIELD},}{stock:>{FIELD},}")
+                   f"{alz:>{FIELD},}{stock:>{FIELD},}{cash or 0:>{FIELD},}{gems or 0:>{FIELD},}")
         before = total
     return out
 
 
+PAINT = [LOOK["colors"]]
+
+
+@contextlib.contextmanager
+def painted(colors):
+    PAINT.append(colors)
+    try:
+        yield
+    finally:
+        PAINT.pop()
+
+
 def tone(name):
-    return LOOK["colors"][name]
+    return PAINT[-1][name]
 
 
 def nice(span):
@@ -149,8 +229,8 @@ def nice(span):
 
 
 def changes(rows):
-    start = rows[0][1] + rows[0][2]
-    return [(when, alz + stock - start) for when, alz, stock in rows]
+    start = worth(rows[0])
+    return [(row[0], worth(row) - start) for row in rows]
 
 
 def scale(values, top, bottom):
@@ -174,8 +254,9 @@ def header(width, eyebrow, title, detail, big, big_colour, note):
     pad, small = LOOK["pad"], LOOK["small"]
     return [f'<rect width="{width}" height="{LOOK["card_height"]}" rx="{LOOK["radius"]}" '
             f'fill="{tone("card")}" stroke="{tone("edge")}"/>',
-            f'<text x="{pad}" y="{LOOK["eyebrow_y"]}" font-size="{small}" font-weight="700" '
-            f'letter-spacing="{LOOK["eyebrow_spacing"]}" fill="{tone("accent")}">{eyebrow}</text>',
+            f'<text x="{pad}" y="{LOOK["eyebrow_y"]}" font-size="{LOOK["eyebrow_font"]}" '
+            f'font-weight="700" letter-spacing="{LOOK["eyebrow_spacing"]}" '
+            f'fill="{tone("title")}">{eyebrow}</text>',
             f'<text x="{pad}" y="{LOOK["title_y"]}" font-size="{LOOK["title_font"]}" '
             f'font-weight="700" fill="{tone("ink")}">{title}</text>',
             f'<text x="{pad}" y="{LOOK["detail_y"]}" fill="{tone("muted")}">{detail}</text>',
@@ -215,6 +296,26 @@ def hour_marks(x, origin, every, top, bottom, guides=0):
     return out
 
 
+def day_bands(x, origin, look, bottom):
+    band_top = look["day_label_y"] - LOOK["font"] - LOOK["label_pad"]
+    out = []
+    for k in range(1, DAYS, 2):
+        midnight = origin + WHOLE_DAY * k
+        out.append(f'<rect x="{x(midnight):.1f}" y="{band_top}" '
+                   f'width="{x(midnight + WHOLE_DAY) - x(midnight):.1f}" '
+                   f'height="{bottom - band_top}" fill="{tone("stripe")}"/>')
+    return out
+
+
+def day_marks(x, origin, day, today, k, look, top, bottom):
+    midnight = origin + WHOLE_DAY * k
+    sx = x(midnight) + LOOK["label_pad"]
+    label = f"Today {day:{TODAY_DAY}}" if day == today else f"{day:{WEEK_DAY}}"
+    return sx, ([f'<text x="{sx:.1f}" y="{look["day_label_y"]}" font-weight="700" '
+                 f'fill="{tone("accent") if day == today else tone("ink")}">{label}</text>']
+                + hour_marks(x, midnight, look["hours"], top, bottom))
+
+
 def area(x, y, points, left, right, top, bottom, tag):
     base = y(0)
     line = "L".join(f"{x(when):.1f} {y(v):.1f}" for when, v in points)
@@ -231,6 +332,36 @@ def area(x, y, points, left, right, top, bottom, tag):
                    f'stroke-width="{LOOK["line"]}" stroke-linejoin="round" '
                    f'stroke-linecap="round" clip-path="url(#{side}-{tag})"/>')
     return out
+
+
+def stepped(points):
+    out = points[:1]
+    for (_, held), (when, value) in zip(points, points[1:]):
+        out += [(when, held), (when, value)]
+    return out
+
+
+def flow(x, y, points, start, left, right, top, bottom, tag):
+    when, change = points[-1]
+    colour = signed_colour(change)
+    ex, ey = x(when), y(change)
+    earlier = [v for moment, v in points if when - moment >= LOOK["end"]["slope"] * MINUTE]
+    rising = not earlier or earlier[-1] <= change
+    return (area(x, y, stepped(points), left, right, top, bottom, tag) + [dot(ex, ey, colour)]
+            + end_label(ex, ey, rising,
+                        [(f"{change:+,} Alz", LOOK["end"]["font"], 700, colour),
+                         (f"net worth {start + change:,}", LOOK["font"], 600, tone("ink"))],
+                        right, top, bottom))
+
+
+def steady(rows, carried=None):
+    points = [carried] if carried else []
+    for row in rows:
+        if not points or worth(row) != points[-1][1]:
+            points.append((row[0], worth(row)))
+    if points[-1][0] != rows[-1][0]:
+        points.append((rows[-1][0], worth(rows[-1])))
+    return points
 
 
 def dot(cx, cy, colour):
@@ -258,13 +389,13 @@ def end_label(cx, cy, rising, lines, right, top, bottom):
 def today_card(rows, name, width):
     left, right = LOOK["pad"] + LOOK["axis_room"], width - LOOK["pad"]
     top, bottom = LOOK["today"]["plot_top"], LOOK["card_height"] - LOOK["plot_bottom"]
-    when, alz, stock = rows[-1]
+    when = rows[-1][0]
     origin = datetime.datetime.combine(when.date(), datetime.time())
     x = lambda moment: left + (moment - origin) / WHOLE_DAY * (right - left)
     points = changes(rows)
     y, ticks = scale([v for _, v in points], top, bottom)
     began = rows[0][0]
-    start, now, change = rows[0][1] + rows[0][2], alz + stock, points[-1][1]
+    start, now, change = worth(rows[0]), worth(rows[-1]), points[-1][1]
     colour = signed_colour(change)
     out = header(width, f"{name.upper()} {DOT} NET WORTH TODAY", "Since midnight",
                  f"{when:{TITLE_DAY}} {DOT} started at {strong(f'{start:,}')} at "
@@ -301,21 +432,12 @@ def week_card(history, name, today, width):
                  "each day starts again at its first reading after midnight",
                  f"{total:+,}", signed_colour(total),
                  f"Alz, the {len(series)} daily changes added up")
-    band_top = look["day_label_y"] - LOOK["font"] - LOOK["label_pad"]
-    for k in range(1, DAYS, 2):
-        midnight = origin + WHOLE_DAY * k
-        out.append(f'<rect x="{x(midnight):.1f}" y="{band_top}" '
-                   f'width="{x(midnight + WHOLE_DAY) - x(midnight):.1f}" '
-                   f'height="{bottom - band_top}" fill="{tone("stripe")}"/>')
+    out += day_bands(x, origin, look, bottom)
     out += grid(y, ticks, left, right, "day start")
     for k in range(DAYS):
         day = first + datetime.timedelta(days=k)
-        midnight = origin + WHOLE_DAY * k
-        sx = x(midnight) + LOOK["label_pad"]
-        label = f"Today {day:{TODAY_DAY}}" if day == today else f"{day:{WEEK_DAY}}"
-        out.append(f'<text x="{sx:.1f}" y="{look["day_label_y"]}" font-weight="700" '
-                   f'fill="{tone("accent") if day == today else tone("ink")}">{label}</text>')
-        out += hour_marks(x, midnight, look["hours"], top, bottom)
+        sx, marks = day_marks(x, origin, day, today, k, look, top, bottom)
+        out += marks
         if day in series:
             points = series[day][::look["every"]]
             if points[-1] != series[day][-1]:
@@ -328,20 +450,77 @@ def week_card(history, name, today, width):
     return out
 
 
-def graph(rows, history, name, today):
+def flow_today_card(rows, carried, name, width):
+    left, right = LOOK["pad"] + LOOK["axis_room"], width - LOOK["pad"]
+    top, bottom = LOOK["today"]["plot_top"], LOOK["card_height"] - LOOK["plot_bottom"]
+    when = rows[-1][0]
+    origin = datetime.datetime.combine(when.date(), datetime.time())
+    x = lambda moment: left + (moment - origin) / WHOLE_DAY * (right - left)
+    totals = steady(rows, (origin, worth(carried)) if carried else None)
+    start = totals[0][1]
+    points = [(moment, value - start) for moment, value in totals]
+    y, ticks = scale([v for _, v in points], top, bottom)
+    began = (carried or rows[0])[0]
+    since = (f"{began:{TODAY_DAY}} {began:{CLOCK}}" if began.date() != when.date()
+             else f"{began:{CLOCK}}")
+    now, change = totals[-1][1], points[-1][1]
+    opened = (f"carried over at {strong(f'{start:,}')} from {since}" if carried
+              else f"started at {strong(f'{start:,}')} at {since}")
+    out = header(width, f"{name.upper()} {DOT} CONTINUOUS NETWORTH", "Today",
+                 f"{when:{TITLE_DAY}} {DOT} {opened} {DOT} now {strong(f'{now:,}')} at "
+                 f"{when:{CLOCK}} Central", f"{change:+,}", signed_colour(change),
+                 f"Alz since {since}")
+    out += grid(y, ticks, left, right, f"{start:,}")
+    out += hour_marks(x, origin, LOOK["today"]["hours"], top, bottom, LOOK["today"]["guides"])
+    return out + flow(x, y, points, start, left, right, top, bottom, "flow-today")
+
+
+def flow_week_card(history, carried, name, today, width):
+    look = LOOK["week"]
+    left, right = LOOK["pad"] + LOOK["axis_room"], width - LOOK["pad"]
+    top, bottom = look["plot_top"], LOOK["card_height"] - LOOK["plot_bottom"]
+    first = today - datetime.timedelta(days=DAYS - 1)
+    origin = datetime.datetime.combine(first, datetime.time())
+    x = lambda moment: left + (moment - origin) / (WHOLE_DAY * DAYS) * (right - left)
+    full = steady(history, (origin, worth(carried)) if carried else None)
+    totals = full[::look["every"]]
+    if totals[-1] != full[-1]:
+        totals.append(full[-1])
+    start = totals[0][1]
+    points = [(moment, value - start) for moment, value in totals]
+    y, ticks = scale([v for _, v in points], top, bottom)
+    began, ended = (carried or history[0])[0], history[-1][0]
+    now, change = totals[-1][1], points[-1][1]
+    out = header(width, f"{name.upper()} {DOT} CONTINUOUS NETWORTH", f"Last {DAYS} days",
+                 f"from {strong(f'{start:,}')} at {began:{WEEK_DAY}} {began:{CLOCK}} {DOT} "
+                 f"now {strong(f'{now:,}')} at {ended:{WEEK_DAY}} {ended:{CLOCK}} Central",
+                 f"{change:+,}", signed_colour(change),
+                 f"Alz since {began:{WEEK_DAY}} {began:{CLOCK}}")
+    out += day_bands(x, origin, look, bottom)
+    out += grid(y, ticks, left, right, f"{start:,}")
+    for k in range(DAYS):
+        out += day_marks(x, origin, first + datetime.timedelta(days=k), today, k, look,
+                         top, bottom)[1]
+    return out + flow(x, y, points, start, left, right, top, bottom, "flow-week")
+
+
+def graph(rows, history, carried, before, name, today):
     margin, gap, card = LOOK["margin"], LOOK["gap"], LOOK["card_height"]
     width = LOOK["width"]
     inner = width - 2 * margin
-    total = 2 * margin + 2 * card + gap
+    cards = [today_card(rows, name, inner), week_card(history, name, today, inner)]
+    with painted(LOOK["flow_colors"]):
+        cards += [flow_today_card(rows, before, name, inner),
+                  flow_week_card(history, carried, name, today, inner)]
+    total = 2 * margin + len(cards) * card + (len(cards) - 1) * gap
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{total}" '
            f'viewBox="0 0 {width} {total}" font-family="{LOOK["face"]}" '
            f'font-size="{LOOK["font"]}" style="font-variant-numeric: tabular-nums">',
-           f'<rect width="{width}" height="{total}" fill="{tone("page")}"/>',
-           f'<g transform="translate({margin},{margin})">']
-    out += today_card(rows, name, inner)
-    out += ["</g>", f'<g transform="translate({margin},{margin + card + gap})">']
-    out += week_card(history, name, today, inner)
-    out += ["</g>", "</svg>"]
+           f'<rect width="{width}" height="{total}" fill="{tone("page")}"/>']
+    for k, body in enumerate(cards):
+        out += [f'<g transform="translate({margin},{margin + k * (card + gap)})">'] + body
+        out.append("</g>")
+    out.append("</svg>")
     return "\n".join(out) + "\n"
 
 
@@ -360,17 +539,21 @@ def main():
     today = now[0].date()
     kept = LOGS / WATCH["networth_history"].format(config=path.parent.name)
     keep_from = today - datetime.timedelta(days=DAYS - 1)
-    history = [row for row in recorded(kept) + [now] if row[0].date() >= keep_from]
-    staged_write(kept, "".join(f"{when:{STAMP}},{alz},{stock}\n"
-                               for when, alz, stock in history))
+    seen = backfill(recorded(kept) + [now])
+    history = [row for row in seen if row[0].date() >= keep_from]
+    carried = [row for row in seen if row[0].date() < keep_from][-1:]
+    staged_write(kept, "".join(f"{when:{STAMP}},{alz},{stock},{cash},{gems}\n"
+                               for when, alz, stock, cash, gems in carried + history))
     rows = [row for row in history if row[0].date() == today]
+    before = (carried + [row for row in history if row[0].date() < today])[-1:]
     days = fold({day: held for day, held in saved_days(path).items()
                  if day >= keep_from}, history)
     path.parent.mkdir(parents=True, exist_ok=True)
     staged_write(path, "\n".join(day_table(days, today) + ["", ""]
                                  + log_table(rows, today)) + "\n")
     staged_write(path.with_name(WATCH["networth_graph"]),
-                 graph(rows, history, path.parent.name, today))
+                 graph(rows, history, (carried or [None])[0], (before or [None])[0],
+                       path.parent.name, today))
     print(log_table(rows, today)[-1])
     return 0
 

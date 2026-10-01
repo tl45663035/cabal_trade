@@ -9,17 +9,32 @@ import sqlite3
 import zoneinfo
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import online_clock
+
 LEDGER = ROOT / "src_1080p" / "sales.db"
 LOGS = ROOT / "src_1080p" / "logs"
 CLOCK = zoneinfo.ZoneInfo("America/Chicago")
+_SHIFT = []
+
+
+def shift():
+    if not _SHIFT:
+        found = online_clock.offset()
+        if found is None:
+            raise SystemExit("no online time: no time server answered and none "
+                             "was measured before, so no report time is given")
+        _SHIFT.append(datetime.timedelta(seconds=found))
+    return _SHIFT[0]
 
 
 def central(when):
-    return when.astimezone(CLOCK).replace(tzinfo=None)
+    return ((when.astimezone(datetime.timezone.utc) + shift())
+            .astimezone(CLOCK).replace(tzinfo=None))
 
 
 def from_central(when):
-    return when.replace(tzinfo=CLOCK).astimezone().replace(tzinfo=None)
+    return (when.replace(tzinfo=CLOCK) - shift()).astimezone().replace(tzinfo=None)
 
 
 def central_now():

@@ -5,6 +5,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from profit_summary import central_now
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SETTINGS = json.loads((ROOT / "src_1080p" / "config.json")
                       .read_text(encoding="utf-8"))
@@ -23,6 +26,7 @@ DAY = re.compile(r"^(\w{3} \d{4}-\d{2}-\d{2})( \(so far\))?\s+([\d.]+)h\s+"
 ASOF = re.compile(r"^PROFIT SUMMARY -- sold since (\S+ \S+ \S+) \(as of (.+)\)")
 WORTH = re.compile(r"^\s+(stock at its listed price|Alz, latest balance line|"
                    r"NET WORTH|bought since that board, at what it cost|"
+                   r"Cash at the voucher price|gems at the voucher price|"
                    r"rows the board did not show)\s+(\S+)\s*$")
 
 
@@ -98,8 +102,8 @@ def main(argv):
         books[account]["source"] = source
     labels = sorted({d for b in books.values() for d in b["days"]},
                     key=lambda d: d.split()[1])
-    now = datetime.datetime.now()
-    print(f"ALL -- {', '.join(ACCOUNTS)}, compiled {now:%Y-%m-%d %H:%M} "
+    now = central_now()
+    print(f"ALL -- {', '.join(ACCOUNTS)}, compiled {now:%Y-%m-%d %H:%M} Central "
           f"from each account's own profit summary")
     print("")
     for account in ACCOUNTS:
@@ -150,9 +154,10 @@ def main(argv):
     print("")
     print("")
     parts = ["stock at its listed price", "bought since that board, at what it cost",
-             "Alz, latest balance line", "NET WORTH"]
+             "Alz, latest balance line", "Cash at the voucher price",
+             "gems at the voucher price", "NET WORTH"]
     head = f"{'account':<26}" + "".join(f"{p.split(',')[0]:>26}" for p in parts[:1]) \
-        + f"{'bought since':>16}{'Alz':>16}{'NET WORTH':>16}"
+        + f"{'bought since':>16}{'Alz':>16}{'Cash, gems':>16}{'NET WORTH':>16}"
     print("NET WORTH -- each account at the moment its report was written")
     print("")
     print(head)
@@ -165,10 +170,12 @@ def main(argv):
         print(f"{account:<26}{short(worth.get(parts[0], 0.0)):>26}"
               f"{short(worth.get(parts[1], 0.0)):>16}"
               f"{short(worth.get(parts[2], 0.0)):>16}"
-              f"{short(worth.get(parts[3], 0.0)):>16}")
+              f"{short(worth.get(parts[3], 0.0) + worth.get(parts[4], 0.0)):>16}"
+              f"{short(worth.get(parts[5], 0.0)):>16}")
     line("=", width=len(head))
     print(f"{'ALL':<26}{short(sums[parts[0]]):>26}{short(sums[parts[1]]):>16}"
-          f"{short(sums[parts[2]]):>16}{short(sums[parts[3]]):>16}")
+          f"{short(sums[parts[2]]):>16}{short(sums[parts[3]] + sums[parts[4]]):>16}"
+          f"{short(sums[parts[5]]):>16}")
 
 
 if __name__ == "__main__":

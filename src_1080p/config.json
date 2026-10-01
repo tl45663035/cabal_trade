@@ -550,6 +550,22 @@
     "report_ready": "relisting rows \\d+-\\d+: \\d+ relisted"
   },
   "tools": {
+    "online_clock": {
+      "servers": [
+        "time.windows.com",
+        "pool.ntp.org"
+      ],
+      "port": 123,
+      "timeout": 3,
+      "every": 3600,
+      "cache": "online_clock.json",
+      "epoch": "1900-01-01",
+      "request": 27,
+      "packet": 48,
+      "received_at": 32,
+      "transmitted_at": 40,
+      "fraction_bits": 32
+    },
     "profit_days_back": 7,
     "live_within": 600,
     "log_tail_lines": 40,
@@ -576,6 +592,7 @@
       "pad": 24,
       "eyebrow_y": 32,
       "eyebrow_spacing": 1.4,
+      "eyebrow_font": 18,
       "title_y": 60,
       "detail_y": 84,
       "big_y": 62,
@@ -636,7 +653,22 @@
         "stripe": "#f5f8f6",
         "gain": "#1d8a53",
         "loss": "#c4402b",
-        "accent": "#2b5d87"
+        "accent": "#2b5d87",
+        "title": "#6741d9"
+      },
+      "flow_colors": {
+        "page": "#eef2ef",
+        "card": "#152131",
+        "edge": "#24364a",
+        "ink": "#eaf1f8",
+        "muted": "#93a6ba",
+        "grid": "#243548",
+        "base": "#eaf1f8",
+        "stripe": "#1b2b3d",
+        "gain": "#3ddc84",
+        "loss": "#ff6b6b",
+        "accent": "#7cc4ff",
+        "title": "#ffd166"
       },
       "face": "Segoe UI, Helvetica Neue, Arial, sans-serif"
     }

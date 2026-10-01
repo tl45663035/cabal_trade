@@ -1075,6 +1075,12 @@ def undercut(price, by=None):
     return lowered if lowered >= MIN_PLAUSIBLE_PRICE else price
 
 
+def at_least_market(price, market, by=None):
+    if not market:
+        return price
+    return max(int(price), undercut(int(market), by))
+
+
 def panel_suggestion(panel):
     box = tuple(panel["suggestion_boxes"][-1])
     value = read_money(grab(), box)
@@ -3672,10 +3678,14 @@ def calibrate_actions(shop, verbose=True, seat="row_one", position=1):
             learned["item_point"] = list(centre)
             say(f"  the loaded item shows at {centre} in the Register Item "
                 f"box")
-    price = was
+    price = at_least_market(was, suggested)
     if suggested is None:
         say(f"  the market would not price it after two ctrl-clicks; listing "
             f"at the {price:,} row {position} was withdrawn at")
+    elif price != was:
+        say(f"  panel suggests {suggested:,}; the {was:,} row {position} was "
+            f"withdrawn at is under what loaded sells for, so listing at "
+            f"{price:,}, its own market")
     else:
         say(f"  panel suggests {suggested:,}; listing at {price:,}, the price "
             f"row {position} was withdrawn at")

@@ -2,6 +2,7 @@ import ast
 import contextlib
 import copy
 import importlib.util
+import inspect
 import io
 import os
 import sys
@@ -259,6 +260,50 @@ try:
 
     out, last, said = listed(705_000 * 3, floor=0, expect_item="Divine Stone Set X 3")
     check("Divine Stone Sets are not under the Chaos rule", out["price"] < SET_LOW * 3, f"{out['price']:,}")
+
+    belt = 273_771_417
+    out, last, said = listed(belt, price=455_980, floor=0)
+    check("a price handed in under what loaded sells for is not typed: the 2026-09-30 belt goes out at its own "
+          "market, not 455,980",
+          out["price"] == calibration.undercut(belt) and typed[0] == out["price"] and 455_980 not in typed
+          and "follows its own market" in said, f"{out['price']:,}, typed {typed}")
+
+    out, last, said = listed(150_000, qty=82, price=165_000, floor=0)
+    check("a price over the market is kept, since floors and minimums may only raise it",
+          out["price"] == 165_000 and "follows its own market" not in said, f"{out['price']:,}")
+
+    out, last, said = listed(700_000, floor=0, expect_item="Chaos Core", under=600, special=True, resolve=False)
+    check("the special row still goes out its own amount under the market",
+          out["price"] == calibration.undercut(700_000, 600) and "follows its own market" not in said,
+          f"{out['price']:,}")
+
+    came_back = m._server_came_back
+    m._server_came_back = lambda verbose=False: False
+    try:
+        out, last, said = listed(None, listed_at=100_000_000, floor=0)
+        check("with no market to read, a relist goes back at the price it came off at",
+              out["price"] == 100_000_000 and typed[0] == 100_000_000, f"{out['price']:,}, typed {typed}")
+
+        out, last, said = listed(None, fallback=340_000_000, floor=0)
+        check("with no market to read, a Cash item's first listing goes out at its starting price",
+              out["price"] == 340_000_000 and typed[0] == 340_000_000, f"{out['price']:,}, typed {typed}")
+
+        try:
+            listed(None, price=455_980, floor=0)
+            check("with no market to read and no relist or first-listing price, nothing is listed", False)
+        except m.NothingLoaded:
+            check("with no market to read and no relist or first-listing price, nothing is listed", True)
+    finally:
+        m._server_came_back = came_back
+
+    check("the start-up relist never types under the market: 455,980 into the belt becomes its own market",
+          calibration.at_least_market(455_980, belt) == calibration.undercut(belt), "")
+    check("the start-up relist keeps its own price when the market is lower",
+          calibration.at_least_market(455_980, 440_000) == 455_980, "")
+    check("the start-up relist with no market goes back at the price it was withdrawn at",
+          calibration.at_least_market(100_000_000, None) == 100_000_000, "")
+    check("the start-up relist prices through the market check",
+          "at_least_market(was, suggested)" in inspect.getsource(calibration.calibrate_actions), "")
 finally:
     (calibration.grab, m.panel_holds_item, calibration.slot_is_empty, calibration.ctrl_click,
      m.suggested_price, calibration.click, m.type_number, calibration.park, m.panel_quantity,

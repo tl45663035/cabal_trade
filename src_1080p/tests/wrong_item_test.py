@@ -247,10 +247,31 @@ m.WORK_TAB_STALE = False
 
 reads({(r, c) for r in range(1, 9) for c in range(1, 9)})
 model, calls = resume_model({(1, 1): STRANDED}, BOARD, names="Chaos Core")
-check(driver.resume_work_tab(model, 1, 30, verbose=False) == 0 and not calls,
-      "a full 64-slot read is the client drawing a withdrawal in transit, "
-      "not 64 stranded slots")
-check(m.WORK_TAB_STALE, "and the tab is read again before anything is taken")
+check(driver.resume_work_tab(model, 1, 30, verbose=False) == 1
+      and [s for s, _ in calls] == [(1, 1)],
+      "a full 64-slot read is the client drawing a withdrawal in transit; the "
+      "run lists what its own record set down, and no other slot")
+check(calls and calls[0][1]["expect_item"] == "Chaos Core Set X 147"
+      and calls[0][1]["expect_qty"] == 1
+      and calls[0][1]["listed_at"] == 108_786_173,
+      "as the item, quantity and price that came off the row")
+check(model.get(11) is not None and model.work_slots() == [],
+      "the board records where it went and tab 4 is clear again")
+check(m.WORK_TAB_STALE and model.work_seen is None,
+      "and the tab is read again before the next withdrawal")
+m.WORK_TAB_STALE = False
+
+reads({(r, c) for r in range(1, 9) for c in range(1, 9)})
+cores = m.Row("Force Core(High", qty=82, price=165_000, buy_cost=163_663,
+              floor_at=146_258)
+model, calls = resume_model({(1, 1): cores},
+                            {i: r for i, r in BOARD.items() if i != 9})
+check(driver.resume_work_tab(model, 1, 30, verbose=False) == 1
+      and calls and calls[0][0] == (1, 1)
+      and calls[0][1]["expect_item"] == "Force Core(High"
+      and calls[0][1]["expect_qty"] == 82 and calls[0][1]["lands_in"] == 9,
+      "2026-10-01 09:21: the 82 Force Core(High) a stall left in tab 4 while "
+      "it drew all 64 slots go straight back into row 9")
 m.WORK_TAB_STALE = False
 
 reads({(1, 1), (1, 2)})

@@ -95,6 +95,14 @@ def now():
     return datetime.datetime.now().strftime("%H:%M:%S")
 
 
+def report_now():
+    try:
+        from profit_summary import central_now
+        return central_now().strftime("%H:%M:%S")
+    except (Exception, SystemExit) as exc:
+        return f"{now()} by the machine clock ({type(exc).__name__})"
+
+
 def snap(name, image=None):
     try:
         FRAMES.mkdir(parents=True, exist_ok=True)
@@ -1033,7 +1041,7 @@ def _push_report(paths):
             return "no change"
         made = git("commit-tree", tree.stdout.strip(), "-p",
                    head.stdout.strip(), "-m",
-                   K["report_message"].format(config=CONFIG, at=now()))
+                   K["report_message"].format(config=CONFIG, at=report_now()))
         if made.returncode:
             return "the commit would not build"
         sent = git("push", "origin", f"{made.stdout.strip()}:{branch}")

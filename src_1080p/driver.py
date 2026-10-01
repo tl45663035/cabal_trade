@@ -683,17 +683,21 @@ def resume_work_tab(model, first, last, verbose=True):
         return 0
     with calibration.phase(f"read tab {row_model.WORK_TAB} before resuming"):
         held = work_tab_slots(verbose=verbose)
-    if work_tab_in_transit(held, verbose=verbose):
-        return 0
-    new, gone = model.reconcile_work_tab(held)
-    row_model.WORK_TAB_STALE = False
-    model.work_seen = set(held)
-    if verbose:
-        print(f"  tab {row_model.WORK_TAB} read before resuming: "
-              f"{len(held)} slot(s) held"
-              + (f", {new} the run did not know of" if new else "")
-              + (f", {gone} the run thought it held are empty" if gone
-                 else ""))
+    if work_tab_in_transit(held, verbose=False):
+        if verbose:
+            print(f"  tab {row_model.WORK_TAB} reads full, which is how the "
+                  f"client draws a withdrawal in transit; the run resumes "
+                  f"from its own record of what it set down there")
+    else:
+        new, gone = model.reconcile_work_tab(held)
+        row_model.WORK_TAB_STALE = False
+        model.work_seen = set(held)
+        if verbose:
+            print(f"  tab {row_model.WORK_TAB} read before resuming: "
+                  f"{len(held)} slot(s) held"
+                  + (f", {new} the run did not know of" if new else "")
+                  + (f", {gone} the run thought it held are empty" if gone
+                     else ""))
     done = 0
     for slot in stranded_work(model):
         what = model._work[slot]

@@ -1926,6 +1926,13 @@ class RowModel:
             want = floor
         want = self._hold_core_floor(want, hard_each, hard_set, hard_name,
                                      verbose)
+        priced = calibration.at_least_market(want, market, under)
+        if priced != want:
+            if verbose:
+                print(f"    {want:,} is under the {market:,} the panel prices "
+                      f"what loaded at; every listing follows its own "
+                      f"market, so typing {priced:,}")
+            want = priced
         if want < MIN_PLAUSIBLE_PRICE:
             raise Divergence(
                 f"refusing to list at {want:,}, under the "
