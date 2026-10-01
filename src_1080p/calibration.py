@@ -1044,29 +1044,27 @@ def alz_band():
 
 
 def balance_box():
+    fixed = (_measured().get("regions") or {}).get("alz_read")
+    if fixed:
+        return _box(tuple(fixed))
     band = alz_band()
     measured = tuple(load()["inventory"]["alz_box"])
     return (min(band[0], measured[0]), min(band[1], measured[1]),
             max(band[2], measured[2]), max(band[3], measured[3]))
 
 
-_LOOKALIKE = str.maketrans(dict(_S["text"]["lookalikes"]))
-
-
 def read_balance_from(image):
+    import row_model
     box = balance_box()
-    seen = read_line(image, box)
-    label = re.search(_ALZ_WORD, seen, flags=re.IGNORECASE)
-    trimmed = seen[:label.start()] if label else seen
-    for token in reversed(trimmed.split()):
-        for candidate in (token, token.translate(_LOOKALIKE)):
-            value = _digits(candidate)
-            if value is not None and value >= MIN_PLAUSIBLE_BALANCE:
-                if candidate != token or len(trimmed.split()) > 1:
-                    print(f"  the balance band reads {seen.strip()!r}; the "
-                          f"figure against the label is {value:,}")
-                return value
-    return read_money(image, box)
+    prepared = isolate_digits(image, box, row_model.BACKUP_SCALE)
+    if prepared is None:
+        return None
+    texts = row_model._backup_texts([prepared])
+    seen = texts[0] if texts is not None else read_line(image, box)
+    value = _digits(seen)
+    if value is None or value < MIN_PLAUSIBLE_BALANCE:
+        return None
+    return value
 
 
 def undercut(price, by=None):
