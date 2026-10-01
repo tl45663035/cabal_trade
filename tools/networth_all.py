@@ -19,8 +19,8 @@ READING = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\s+([\d,]+)\s")
 SAVED = re.compile(r"^(\w+),(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),(\d+)$")
 
 
-def page(account, live):
-    path = FOLDER / account / SUP["networth_name"]
+def page(account, live, name=None):
+    path = FOLDER / account / (name or SUP["networth_name"])
     if account == live and path.exists():
         return path.read_text(encoding="utf-8", errors="replace")
     out = subprocess.run(["git", "show", f"origin/{SUP['report_branch']}:"
@@ -43,6 +43,16 @@ def parse(text):
             day = datetime.datetime.strptime(found.group(1), single.DATE).date()
             days[day] = (single.number(found.group(2)), single.number(found.group(3)))
     return readings, days
+
+
+def readings_of(text):
+    out = []
+    for line in text.splitlines():
+        found = single.KEPT.match(line)
+        if found:
+            out.append((datetime.datetime.strptime(found.group(1), single.STAMP),
+                        sum(int(part) for part in found.groups()[1:] if part)))
+    return out
 
 
 def recorded():
@@ -71,7 +81,7 @@ def grid(held, now):
               for a in ACCOUNTS}
     if not all(series.values()):
         return []
-    moment = max(rows[0][0] for rows in series.values())
+    moment = min(rows[0][0] for rows in series.values())
     at = {a: 0 for a in ACCOUNTS}
     out = []
     while moment <= now:
@@ -134,7 +144,8 @@ def main():
     books = {a: parse(page(a, live)) for a in ACCOUNTS}
     held = recorded()
     for account, (readings, _days) in books.items():
-        for when, total in readings:
+        pushed = readings_of(page(account, live, SUP["networth_history_report"]))
+        for when, total in pushed + readings:
             if when <= now:
                 held[(account, when)] = total
     held = kept(held, keep_from)

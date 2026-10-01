@@ -542,13 +542,15 @@ def main():
     seen = backfill(recorded(kept) + [now])
     history = [row for row in seen if row[0].date() >= keep_from]
     carried = [row for row in seen if row[0].date() < keep_from][-1:]
-    staged_write(kept, "".join(f"{when:{STAMP}},{alz},{stock},{cash},{gems}\n"
-                               for when, alz, stock, cash, gems in carried + history))
+    kept_text = "".join(f"{when:{STAMP}},{alz},{stock},{cash},{gems}\n"
+                        for when, alz, stock, cash, gems in carried + history)
+    staged_write(kept, kept_text)
     rows = [row for row in history if row[0].date() == today]
     before = (carried + [row for row in history if row[0].date() < today])[-1:]
     days = fold({day: held for day, held in saved_days(path).items()
                  if day >= keep_from}, history)
     path.parent.mkdir(parents=True, exist_ok=True)
+    staged_write(path.with_name(WATCH["networth_history_report"]), kept_text)
     staged_write(path, "\n".join(day_table(days, today) + ["", ""]
                                  + log_table(rows, today)) + "\n")
     staged_write(path.with_name(WATCH["networth_graph"]),

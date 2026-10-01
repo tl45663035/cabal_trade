@@ -926,7 +926,8 @@ def networth_path():
 def networth_files():
     try:
         page = networth_path()
-        return [p for p in (page, page.with_name(K["networth_graph"]))
+        return [p for p in (page, page.with_name(K["networth_graph"]),
+                            page.with_name(K["networth_history_report"]))
                 if p.exists()]
     except Exception:
         return []
