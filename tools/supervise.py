@@ -933,6 +933,26 @@ def networth_files():
         return []
 
 
+def ledger_files():
+    try:
+        out = subprocess.run([sys.executable, str(ROOT / K["ledger_tool"]), CONFIG],
+                             cwd=str(ROOT), text=True, capture_output=True,
+                             timeout=K["report_timeout"],
+                             creationflags=getattr(subprocess, "IDLE_PRIORITY_CLASS", 0))
+        if out.returncode != 0:
+            raise Stop(f"{K['ledger_tool']} exited {out.returncode}: "
+                       f"{(out.stderr or out.stdout).strip()[:K['reason_width']]}")
+        return [ROOT / line.strip() for line in out.stdout.splitlines()
+                if line.strip() and (ROOT / line.strip()).exists()]
+    except Exception as exc:
+        try:
+            event(f"the ledger was not exported: {type(exc).__name__}: "
+                  f"{exc}"[:K["reason_width"]], "alive")
+        except Exception:
+            pass
+        return []
+
+
 def networth_due(log):
     global _SAMPLED, _SAMPLING
     try:
@@ -1085,7 +1105,7 @@ def report_due(log, force=False):
         event(f"the profit report was not written: {type(exc).__name__}: "
               f"{exc}"[:K["reason_width"]], "alive")
         return
-    paths = [path] + networth_files()
+    paths = [path] + networth_files() + ledger_files()
     if CONFIG == K["all_for"]:
         try:
             paths.append(write_all())

@@ -548,6 +548,13 @@
     ],
     "all_tool": "tools/profit_all.py",
     "all_networth_tool": "tools/networth_all.py",
+    "ledger_tool": "tools/ledger_export.py",
+    "ledger_dir": "ledger",
+    "ledger_tables": [
+      "sales",
+      "purchases",
+      "board"
+    ],
     "all_for": "bot",
     "report_ready": "relisting rows \\d+-\\d+: \\d+ relisted"
   },
