@@ -70,14 +70,14 @@ def offer(name, each, pack=1, qty=5):
     return {"name": name, "qty": qty, "price": each * pack, "unit_price": each}
 
 
-def buy_once(item, want, offered, detail, spend, balance=10 ** 12, special=False, shared=None):
+def buy_once(item, want, offered, detail, spend, balance=10 ** 12, special=False, shared=None, topping_up=False):
     events.clear()
     state.update(offer=offered, detail=detail, after=balance - spend)
     calibration.load_shared = (lambda: copy.deepcopy(shared)) if shared else REAL_SHARED
     out = err = None
     with contextlib.redirect_stdout(io.StringIO()):
         try:
-            out = buy._buy_row_one(SLOT[item], want, balance=balance, special=special)
+            out = buy._buy_row_one(SLOT[item], want, balance=balance, special=special, topping_up=topping_up)
         except buy.Refused as exc:
             err = exc
     calibration.load_shared = REAL_SHARED
@@ -140,6 +140,18 @@ try:
                                 {"item": "Chaos Core", "price": 2_400_000, "qty": 1, "qty_max": 5}, 2_400_000,
                                 special=True)
     check("a bundle offered to the special row is not exempt: refused",
+          err is not None and "never paid" in str(err) and clicks == [], f"{err}; {clicks}")
+
+    out, err, clicks = buy_once("Chaos Core", 7, offer("Chaos Core", CAP + 1_375, qty=9),
+                                {"item": "Chaos Core", "price": 7 * (CAP + 1_375), "qty": 7, "qty_max": 9},
+                                7 * (CAP + 1_375), topping_up=True)
+    check(f"a craft top-up buys over the {CAP:,} limit on both reads",
+          err is None and out["bought"] == 7 and CONFIRM in clicks, f"{err}; {clicks}")
+
+    out, err, clicks = buy_once("Chaos Core", 7, offer("Chaos Core", CAP + 1_375, qty=9),
+                                {"item": "Chaos Core", "price": 7 * (CAP + 1_375), "qty": 7, "qty_max": 9},
+                                7 * (CAP + 1_375))
+    check(f"the same order that is not a top-up is still refused over {CAP:,}",
           err is not None and "never paid" in str(err) and clicks == [], f"{err}; {clicks}")
 
     off = REAL_SHARED()
@@ -343,18 +355,20 @@ check("only the special row asks for the exemption: its relist, its listing, and
 
 placed = []
 saved = buy.buy_row_one
-buy.buy_row_one = lambda *a, **k: placed.append(k.get("special")) or {
+buy.buy_row_one = lambda *a, **k: placed.append((k.get("special"), k.get("topping_up"))) or {
     "bought": 1, "spent": 800_000, "balance": 1, "balance_seen": True, "packs": 1, "unit_price": 800_000,
     "price": 800_000}
 try:
-    for kind, want in (("special", True), ("resupply", False)):
+    for kind, on_margin, want in (("special", False, (True, False)), ("resupply", False, (False, True)),
+                                  ("resupply", True, (False, False))):
         placed.clear()
         job = {"kind": kind, "core": "Chaos Core", "slot": SLOT["Chaos Core"], "target": 1, "want_max": None,
                "sells_at": 0, "gap": None, "leave": 1, "steps_max": 1, "take_all": 1, "orders": 0, "bought": 0,
                "paid": 0}
         with contextlib.redirect_stdout(io.StringIO()):
-            driver.take_offers(job, 1, 1, on_margin=False, verbose=False)
-        check(f"a {kind} job's order asks for the exemption: {want}", placed == [want], str(placed))
+            driver.take_offers(job, 1, 1, on_margin=on_margin, verbose=False)
+        check(f"a {kind} job's order {'on' if on_margin else 'past'} the margin asks for (special, top-up) "
+              f"{want}", placed == [want], str(placed))
 finally:
     buy.buy_row_one = saved
 

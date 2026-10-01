@@ -2340,7 +2340,9 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
                                           batch=batch,
                                           balance=job.get("balance"),
                                           special=job.get("kind")
-                                          == "special")
+                                          == "special",
+                                          topping_up=not on_margin
+                                          and job.get("kind") != "special")
                 searched = True
                 job["balance"] = (out["balance"] if out["balance_seen"]
                                   else None)
