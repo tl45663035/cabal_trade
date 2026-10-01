@@ -77,6 +77,7 @@ class NotReady(Exception):
 _MEASURED = False
 REPAIR = False
 _PENDING = None
+_WALK = {"at": None}
 _SINCE_PRICED = {}
 _PRICED_THIS_ROW = set()
 _FULL_SALES = 0
@@ -1105,12 +1106,17 @@ def shop_ready(why, verbose=True):
 
 
 def relist_pass(model, first, last, passes=0, verbose=True,
-                collect_only=False):
+                collect_only=False, start=None):
     shop_ready(f"rows {first}-{last}", verbose=verbose)
     model.home(verbose=False)
     calibration.phases_reset()
     done = skipped = empty = 0
-    for index in range(first, last + 1):
+    begin = min(max(first, start or first), last)
+    if begin > first:
+        print(f"  carrying on at row {begin}, where the stall stopped the "
+              f"walk; rows {first}-{begin - 1} were walked before it")
+    for index in range(begin, last + 1):
+        _WALK["at"] = index
         _PRICED_THIS_ROW.clear()
         sold_before = _FULL_SALES
         out = relist_one(model, index, verbose=verbose, first=first,
@@ -1131,6 +1137,7 @@ def relist_pass(model, first, last, passes=0, verbose=True,
             break
         if not collect_only and (out or _FULL_SALES > sold_before):
             urgent_check(model, first, last, verbose=verbose)
+    _WALK["at"] = None
     if not collect_only:
         special_pass(model, first, last, verbose=verbose)
     if done or skipped:
@@ -1177,13 +1184,17 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
                 made = missed = bare = 0
             else:
                 made, missed, bare = relist_pass(model, first, last, passes,
-                                                 verbose=verbose)
+                                                 verbose=verbose,
+                                                 start=_WALK["at"])
             done += made
             skipped += missed
             empty += bare
             rest_the_game(verbose=verbose)
         except calibration.ServerStalled as exc:
             print(f"  {exc}")
+            if _WALK["at"]:
+                print(f"  the walk stopped at row {_WALK['at']}; the next pass "
+                      f"carries on there once the stall is recovered")
             row_model.WORK_TAB_STALE = True
             if time.monotonic() >= deadline:
                 print(f"  {minutes:g} minute(s) are up after pass {passes}")
