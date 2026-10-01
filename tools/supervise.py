@@ -1003,6 +1003,18 @@ def write_all():
     return path
 
 
+def write_all_networth():
+    out = subprocess.run([sys.executable, str(ROOT / K["all_networth_tool"]), CONFIG],
+                         cwd=str(ROOT), text=True, capture_output=True,
+                         timeout=K["report_timeout"])
+    if out.returncode != 0:
+        raise Stop(f"{K['all_networth_tool']} exited {out.returncode}: "
+                   f"{(out.stderr or out.stdout).strip()[:K['reason_width']]}")
+    folder = all_path().parent
+    return [p for p in (folder / K["networth_name"], folder / K["networth_graph"])
+            if p.exists()]
+
+
 def push_report(paths):
     try:
         return _push_report(paths)
@@ -1078,6 +1090,11 @@ def report_due(log, force=False):
             paths.append(write_all())
         except Exception as exc:
             event(f"the {K['all_dir']} report was not written: "
+                  f"{type(exc).__name__}: {exc}"[:K["reason_width"]], "alive")
+        try:
+            paths += write_all_networth()
+        except Exception as exc:
+            event(f"the {K['all_dir']} net worth was not written: "
                   f"{type(exc).__name__}: {exc}"[:K["reason_width"]], "alive")
     failed = push_report(paths)
     if failed:
