@@ -4,11 +4,21 @@
 <rect width="1160" height="470" rx="12" fill="#ffffff" stroke="#dbe3de"/>
 <text x="24" y="32" font-size="11" font-weight="700" letter-spacing="1.4" fill="#2b5d87">BOT · NET WORTH TODAY</text>
 <text x="24" y="60" font-size="21" font-weight="700" fill="#16211b">Since midnight</text>
-<text x="24" y="84" fill="#5f6b65">Thu 01 Oct 2026 · started at <tspan font-weight="700" fill="#16211b">2,384,184,542</tspan> at 00:00 · now <tspan font-weight="700" fill="#16211b">2,384,184,542</tspan> at 00:05 Central</text>
-<text x="1136" y="62" font-size="30" font-weight="700" text-anchor="end" fill="#1d8a53">+0</text>
+<text x="24" y="84" fill="#5f6b65">Thu 01 Oct 2026 · started at <tspan font-weight="700" fill="#16211b">2,384,184,542</tspan> at 00:00 · now <tspan font-weight="700" fill="#16211b">2,374,800,397</tspan> at 00:21 Central</text>
+<text x="1136" y="62" font-size="30" font-weight="700" text-anchor="end" fill="#c4402b">-9,384,145</text>
 <text x="1136" y="84" font-size="11" text-anchor="end" fill="#5f6b65">Alz since 00:00</text>
-<line x1="140" x2="1136" y1="428.0" y2="428.0" stroke="#16211b" stroke-width="1.5"/>
-<text x="130" y="428.0" text-anchor="end" dominant-baseline="middle" font-weight="700" fill="#16211b">2,384,184,542</text>
+<line x1="140" x2="1136" y1="428.0" y2="428.0" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
+<text x="130" y="428.0" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">-10,000,000</text>
+<line x1="140" x2="1136" y1="375.3" y2="375.3" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
+<text x="130" y="375.3" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">-8,000,000</text>
+<line x1="140" x2="1136" y1="322.7" y2="322.7" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
+<text x="130" y="322.7" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">-6,000,000</text>
+<line x1="140" x2="1136" y1="270.0" y2="270.0" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
+<text x="130" y="270.0" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">-4,000,000</text>
+<line x1="140" x2="1136" y1="217.3" y2="217.3" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
+<text x="130" y="217.3" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">-2,000,000</text>
+<line x1="140" x2="1136" y1="164.7" y2="164.7" stroke="#16211b" stroke-width="1.5"/>
+<text x="130" y="164.7" text-anchor="end" dominant-baseline="middle" font-weight="700" fill="#16211b">2,384,184,542</text>
 <line x1="140" x2="1136" y1="112.0" y2="112.0" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
 <text x="130" y="112.0" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">+2,000,000</text>
 <line x1="140.0" x2="140.0" y1="428" y2="433" stroke="#5f6b65" stroke-width="1"/>
@@ -39,39 +49,35 @@
 <line x1="1053.0" x2="1053.0" y1="428" y2="433" stroke="#5f6b65" stroke-width="1"/>
 <text x="1053.0" y="448" font-size="11" text-anchor="middle" fill="#5f6b65">22:00</text>
 <line x1="1136.0" x2="1136.0" y1="428" y2="433" stroke="#5f6b65" stroke-width="1"/>
-<defs><path id="shape-today" d="M140.1 428.0L140.1 428.0L143.7 428.0L143.7 428.0Z"/><path id="line-today" d="M140.1 428.0L143.7 428.0"/><clipPath id="up-today"><rect x="140" y="112" width="996" height="316.0"/></clipPath><clipPath id="down-today"><rect x="140" y="428.0" width="996" height="0.0"/></clipPath></defs>
+<defs><path id="shape-today" d="M140.1 164.7L140.1 164.7L143.7 164.7L147.5 411.8L151.1 411.8L154.8 411.8L154.8 164.7Z"/><path id="line-today" d="M140.1 164.7L143.7 164.7L147.5 411.8L151.1 411.8L154.8 411.8"/><clipPath id="up-today"><rect x="140" y="112" width="996" height="52.7"/></clipPath><clipPath id="down-today"><rect x="140" y="164.7" width="996" height="263.3"/></clipPath></defs>
 <use href="#shape-today" fill="#1d8a53" fill-opacity="0.15" clip-path="url(#up-today)"/>
 <use href="#line-today" fill="none" stroke="#1d8a53" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#up-today)"/>
 <use href="#shape-today" fill="#c4402b" fill-opacity="0.15" clip-path="url(#down-today)"/>
 <use href="#line-today" fill="none" stroke="#c4402b" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#down-today)"/>
-<circle cx="143.7" cy="428.0" r="5" fill="#1d8a53" stroke="#ffffff" stroke-width="2.5"/>
-<text x="155.7" y="407.0" text-anchor="start" font-size="15" font-weight="700" fill="#1d8a53" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+0 Alz</text>
-<text x="155.7" y="424.0" text-anchor="start" font-size="13" font-weight="600" fill="#16211b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">net worth 2,384,184,542</text>
+<circle cx="154.8" cy="411.8" r="5" fill="#c4402b" stroke="#ffffff" stroke-width="2.5"/>
+<text x="166.8" y="407.0" text-anchor="start" font-size="15" font-weight="700" fill="#c4402b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">-9,384,145 Alz</text>
+<text x="166.8" y="424.0" text-anchor="start" font-size="13" font-weight="600" fill="#16211b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">net worth 2,374,800,397</text>
 </g>
 <g transform="translate(20,510)">
 <rect width="1160" height="470" rx="12" fill="#ffffff" stroke="#dbe3de"/>
 <text x="24" y="32" font-size="11" font-weight="700" letter-spacing="1.4" fill="#2b5d87">BOT · NET WORTH BY DAY</text>
 <text x="24" y="60" font-size="21" font-weight="700" fill="#16211b">Last 7 days</text>
 <text x="24" y="84" fill="#5f6b65">each day starts again at its first reading after midnight</text>
-<text x="1136" y="62" font-size="30" font-weight="700" text-anchor="end" fill="#1d8a53">+117,070,407</text>
+<text x="1136" y="62" font-size="30" font-weight="700" text-anchor="end" fill="#1d8a53">+107,686,262</text>
 <text x="1136" y="84" font-size="11" text-anchor="end" fill="#5f6b65">Alz, the 2 daily changes added up</text>
 <rect x="282.3" y="93" width="142.3" height="335" fill="#f5f8f6"/>
 <rect x="566.9" y="93" width="142.3" height="335" fill="#f5f8f6"/>
 <rect x="851.4" y="93" width="142.3" height="335" fill="#f5f8f6"/>
 <line x1="140" x2="1136" y1="428.0" y2="428.0" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
-<text x="130" y="428.0" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">-25,000,000</text>
-<line x1="140" x2="1136" y1="381.7" y2="381.7" stroke="#16211b" stroke-width="1.5"/>
-<text x="130" y="381.7" text-anchor="end" dominant-baseline="middle" font-weight="700" fill="#16211b">day start</text>
-<line x1="140" x2="1136" y1="335.3" y2="335.3" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
-<text x="130" y="335.3" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">+25,000,000</text>
+<text x="130" y="428.0" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">-50,000,000</text>
+<line x1="140" x2="1136" y1="358.5" y2="358.5" stroke="#16211b" stroke-width="1.5"/>
+<text x="130" y="358.5" text-anchor="end" dominant-baseline="middle" font-weight="700" fill="#16211b">day start</text>
 <line x1="140" x2="1136" y1="289.0" y2="289.0" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
 <text x="130" y="289.0" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">+50,000,000</text>
-<line x1="140" x2="1136" y1="242.7" y2="242.7" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
-<text x="130" y="242.7" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">+75,000,000</text>
-<line x1="140" x2="1136" y1="196.3" y2="196.3" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
-<text x="130" y="196.3" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">+100,000,000</text>
+<line x1="140" x2="1136" y1="219.5" y2="219.5" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
+<text x="130" y="219.5" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">+100,000,000</text>
 <line x1="140" x2="1136" y1="150.0" y2="150.0" stroke="#e3e9e5" stroke-width="1" stroke-dasharray="3 4"/>
-<text x="130" y="150.0" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">+125,000,000</text>
+<text x="130" y="150.0" text-anchor="end" dominant-baseline="middle" font-weight="400" fill="#5f6b65">+150,000,000</text>
 <text x="150.0" y="116" font-weight="700" fill="#16211b">Fri 25 Sep</text>
 <line x1="140.0" x2="140.0" y1="428" y2="433" stroke="#5f6b65" stroke-width="1"/>
 <text x="140.0" y="448" font-size="11" text-anchor="middle" fill="#5f6b65">00:00</text>
@@ -109,24 +115,24 @@
 <text x="922.6" y="448" font-size="11" text-anchor="middle" fill="#5f6b65">12:00</text>
 <line x1="993.7" x2="993.7" y1="428" y2="433" stroke="#5f6b65" stroke-width="1"/>
 <text x="861.4" y="134" font-weight="700" fill="#1d8a53">+117,070,407</text>
-<defs><path id="shape-day5" d="M972.8 381.7L972.8 381.7L974.3 372.5L975.9 371.1L977.4 371.1L979.0 371.1L985.1 309.9L986.6 295.5L988.1 295.7L989.6 278.7L991.2 241.8L992.7 164.7L993.2 164.7L993.2 381.7Z"/><path id="line-day5" d="M972.8 381.7L974.3 372.5L975.9 371.1L977.4 371.1L979.0 371.1L985.1 309.9L986.6 295.5L988.1 295.7L989.6 278.7L991.2 241.8L992.7 164.7L993.2 164.7"/><clipPath id="up-day5"><rect x="140" y="150" width="996" height="231.7"/></clipPath><clipPath id="down-day5"><rect x="140" y="381.7" width="996" height="46.3"/></clipPath></defs>
+<defs><path id="shape-day5" d="M972.8 358.5L972.8 358.5L974.3 351.6L975.9 350.6L977.4 350.6L979.0 350.6L985.1 304.7L986.6 293.9L988.1 294.0L989.6 281.3L991.2 253.6L992.7 195.8L993.2 195.8L993.2 358.5Z"/><path id="line-day5" d="M972.8 358.5L974.3 351.6L975.9 350.6L977.4 350.6L979.0 350.6L985.1 304.7L986.6 293.9L988.1 294.0L989.6 281.3L991.2 253.6L992.7 195.8L993.2 195.8"/><clipPath id="up-day5"><rect x="140" y="150" width="996" height="208.5"/></clipPath><clipPath id="down-day5"><rect x="140" y="358.5" width="996" height="69.5"/></clipPath></defs>
 <use href="#shape-day5" fill="#1d8a53" fill-opacity="0.15" clip-path="url(#up-day5)"/>
 <use href="#line-day5" fill="none" stroke="#1d8a53" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#up-day5)"/>
 <use href="#shape-day5" fill="#c4402b" fill-opacity="0.15" clip-path="url(#down-day5)"/>
 <use href="#line-day5" fill="none" stroke="#c4402b" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#down-day5)"/>
-<circle cx="993.2" cy="164.7" r="5" fill="#1d8a53" stroke="#ffffff" stroke-width="2.5"/>
+<circle cx="993.2" cy="195.8" r="5" fill="#1d8a53" stroke="#ffffff" stroke-width="2.5"/>
 <text x="1003.7" y="116" font-weight="700" fill="#2b5d87">Today 01 Oct</text>
 <line x1="993.7" x2="993.7" y1="428" y2="433" stroke="#5f6b65" stroke-width="1"/>
 <text x="993.7" y="448" font-size="11" text-anchor="middle" fill="#5f6b65">00:00</text>
 <line x1="1064.9" x2="1064.9" y1="428" y2="433" stroke="#5f6b65" stroke-width="1"/>
 <text x="1064.9" y="448" font-size="11" text-anchor="middle" fill="#5f6b65">12:00</text>
 <line x1="1136.0" x2="1136.0" y1="428" y2="433" stroke="#5f6b65" stroke-width="1"/>
-<text x="1003.7" y="134" font-weight="700" fill="#1d8a53">+0</text>
-<defs><path id="shape-day6" d="M993.7 381.7L993.7 381.7L994.2 381.7L994.2 381.7Z"/><path id="line-day6" d="M993.7 381.7L994.2 381.7"/><clipPath id="up-day6"><rect x="140" y="150" width="996" height="231.7"/></clipPath><clipPath id="down-day6"><rect x="140" y="381.7" width="996" height="46.3"/></clipPath></defs>
+<text x="1003.7" y="134" font-weight="700" fill="#c4402b">-9,384,145</text>
+<defs><path id="shape-day6" d="M993.7 358.5L993.7 358.5L995.3 371.5L995.8 371.5L995.8 358.5Z"/><path id="line-day6" d="M993.7 358.5L995.3 371.5L995.8 371.5"/><clipPath id="up-day6"><rect x="140" y="150" width="996" height="208.5"/></clipPath><clipPath id="down-day6"><rect x="140" y="358.5" width="996" height="69.5"/></clipPath></defs>
 <use href="#shape-day6" fill="#1d8a53" fill-opacity="0.15" clip-path="url(#up-day6)"/>
 <use href="#line-day6" fill="none" stroke="#1d8a53" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#up-day6)"/>
 <use href="#shape-day6" fill="#c4402b" fill-opacity="0.15" clip-path="url(#down-day6)"/>
 <use href="#line-day6" fill="none" stroke="#c4402b" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" clip-path="url(#down-day6)"/>
-<circle cx="994.2" cy="381.7" r="5" fill="#1d8a53" stroke="#ffffff" stroke-width="2.5"/>
+<circle cx="995.8" cy="371.5" r="5" fill="#c4402b" stroke="#ffffff" stroke-width="2.5"/>
 </g>
 </svg>
