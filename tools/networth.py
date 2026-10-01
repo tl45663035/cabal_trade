@@ -176,13 +176,21 @@ def bought_worth(market, bought):
     return out
 
 
-def summary(log, indent="    ", width=40, number=18, board_text=None):
+def totals(log, board_text=None):
     market, board, unread, balance, bought = read(log, board_text)
     if not board:
-        return
+        return None
     stock = sum(row_worth(qty, each, listed)
                 for _, _, qty, each, listed, _ in board)
     held = sum(worth for *_, worth in bought_worth(market, bought))
+    return stock, held, balance, unread
+
+
+def summary(log, indent="    ", width=40, number=18, board_text=None):
+    found = totals(log, board_text)
+    if found is None:
+        return
+    stock, held, balance, unread = found
     print(f"{indent}{'stock at its listed price':<{width}}{stock:>{number},}")
     if held:
         print(f"{indent}{'bought since that board, not on it yet':<{width}}"

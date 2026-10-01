@@ -254,6 +254,7 @@ def watch(pid, log):
             return reason
         if f"{datetime.date.today():%Y-%m-%d}" != day:
             day = prune_before_today()
+        networth_due(log)
         report_due(log)
         time.sleep(K["poll"])
 
@@ -896,6 +897,8 @@ def recover_and_launch(reason, log, watched=True, relog_first=False):
 
 
 _REPORTED = 0.0
+_SAMPLED = 0.0
+_SAMPLING = None
 
 
 def git(*args, env=None):
@@ -906,6 +909,59 @@ def git(*args, env=None):
 
 def report_path():
     return ROOT / K["report_dir"] / CONFIG / K["report_name"]
+
+
+def networth_path():
+    return ROOT / K["report_dir"] / CONFIG / K["networth_name"]
+
+
+def networth_files():
+    try:
+        page = networth_path()
+        return [p for p in (page, page.with_name(K["networth_graph"]))
+                if p.exists()]
+    except Exception:
+        return []
+
+
+def networth_due(log):
+    global _SAMPLED, _SAMPLING
+    try:
+        if not K.get("networth_tool"):
+            return
+        if _SAMPLING is not None:
+            proc, began = _SAMPLING
+            if proc.poll() is None:
+                if time.time() - began > K["networth_timeout"]:
+                    proc.kill()
+                    _SAMPLING = None
+                    event(f"the net worth was not logged: {K['networth_tool']} "
+                          f"gave no answer in {K['networth_timeout']}s", "alive")
+                return
+            _SAMPLING = None
+            if proc.returncode:
+                _, err = proc.communicate()
+                event(f"the net worth was not logged: {K['networth_tool']} "
+                      f"exited {proc.returncode}: {(err or '').strip()}"
+                      [:K["reason_width"]], "alive")
+        if time.time() - _SAMPLED < K["networth_every"]:
+            return
+        _SAMPLED = time.time()
+        if not board_walked(log):
+            return
+        _SAMPLING = (subprocess.Popen(
+            [sys.executable, str(ROOT / K["networth_tool"]),
+             str(networth_path())], cwd=str(ROOT), text=True,
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            creationflags=getattr(subprocess, "IDLE_PRIORITY_CLASS", 0)),
+            time.time())
+    except Exception as exc:
+        _SAMPLED, _SAMPLING = time.time(), None
+        try:
+            event(f"the net worth was not logged: {type(exc).__name__}: "
+                  f"{exc}"[:K["reason_width"]], "alive")
+        except Exception:
+            pass
 
 
 def write_report():
@@ -1008,7 +1064,7 @@ def report_due(log, force=False):
         event(f"the profit report was not written: {type(exc).__name__}: "
               f"{exc}"[:K["reason_width"]], "alive")
         return
-    paths = [path]
+    paths = [path] + networth_files()
     if CONFIG == K["all_for"]:
         try:
             paths.append(write_all())
