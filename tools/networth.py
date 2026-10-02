@@ -32,7 +32,7 @@ MARKET_HEAD = re.compile(r"^market prices:\s*$")
 MARKET_ROW = re.compile(r"^\s{2}(\S.*?)\s{2,}([\d,]+)\s*$")
 BOARD_ROW = re.compile(r"^\s{4,}(\d+)\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+|-)"
                        r"\s+([\d,]+)\s+(?:[-+]?[\d.]+%|-)\s+([\d,]+)"
-                       r"(?:\s+(?:[\d,]+|-))?(?:\s+<- here)?\s*$")
+                       r"(?:\s+(?:[-+]?[\d,]+|-))?(?:\s+<- here)?\s*$")
 BOARD_UNREAD = re.compile(r"^\s{4,}(\d+)\s+UNREAD\s+(.*)$")
 COUNTED = re.compile(r"counting only rows (\d+)-(\d+)")
 BOARD_HEAD = re.compile(r"^\s+board (?:after pass \d+:|during pass \d+, at row )")
