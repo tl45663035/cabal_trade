@@ -993,6 +993,34 @@ def networth_due(log):
             pass
 
 
+def networth_now():
+    global _SAMPLED, _SAMPLING
+    if not K.get("networth_tool"):
+        return
+    try:
+        if _SAMPLING is not None:
+            proc, _began = _SAMPLING
+            _SAMPLING = None
+            try:
+                proc.communicate(timeout=K["networth_timeout"])
+            except subprocess.TimeoutExpired:
+                proc.kill()
+        out = subprocess.run([sys.executable, str(ROOT / K["networth_tool"]), CONFIG],
+                             cwd=str(ROOT), text=True, capture_output=True,
+                             timeout=K["networth_timeout"],
+                             creationflags=getattr(subprocess, "IDLE_PRIORITY_CLASS", 0))
+        _SAMPLED = time.time()
+        if out.returncode != 0:
+            raise Stop(f"{K['networth_tool']} exited {out.returncode}: "
+                       f"{(out.stderr or out.stdout).strip()[:K['reason_width']]}")
+    except Exception as exc:
+        try:
+            event(f"the net worth was not logged: {type(exc).__name__}: "
+                  f"{exc}"[:K["reason_width"]], "alive")
+        except Exception:
+            pass
+
+
 def write_report():
     out = subprocess.run([sys.executable, str(ROOT / K["report_tool"])],
                          cwd=str(ROOT), text=True, capture_output=True,
@@ -1118,6 +1146,7 @@ def report_due(log, force=False):
         event(f"the profit report was not written: {type(exc).__name__}: "
               f"{exc}"[:K["reason_width"]], "alive")
         return
+    networth_now()
     paths = [path] + networth_files() + ledger_files()
     if CONFIG == K["all_for"]:
         try:
