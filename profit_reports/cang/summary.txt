@@ -8,12 +8,12 @@ Sun 2026-09-27            15.82h   24.00h   191.45M      12.10M         10.44B  
 Mon 2026-09-28            14.81h   24.00h   342.15M      23.11M         15.73B         15.39B  24.86K    2.2%
 Tue 2026-09-29            16.27h   24.00h   168.59M      10.36M         14.10B         13.93B  23.64K    1.2%
 Wed 2026-09-30            17.19h   24.00h   319.40M      18.58M         16.34B         16.02B  25.15K    2.0%
-Thu 2026-10-01 (so far)   15.48h   18.98h   469.43M      30.32M         15.32B         14.85B  23.77K    3.1%
+Thu 2026-10-01 (so far)   15.73h   19.23h   469.43M      29.84M         15.32B         14.85B  23.77K    3.1%
 =============================================================================================================
-7 DAYS                   112.41h  162.98h  -887.67M  -7,896,486100,029,377,268100,917,049,790 161.46K   -0.9%
+7 DAYS                   112.67h  163.23h  -887.67M  -7,878,726100,029,377,268100,917,049,790 161.46K   -0.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-01 00:00 Central (as of 18:58 Central)
+PROFIT SUMMARY -- sold since 2026-10-01 00:00 Central (as of 19:13 Central)
 
 item                  profit  revenue     cost   units  bought/u   sold/u  margin
 ---------------------------------------------------------------------------------
@@ -33,35 +33,36 @@ TOTAL                469.43M   15.32B   14.85B  23.77K   624.63K  644.38K    3.1
 
 
 
-ROWS -- 2026-10-01_183644_run_board.log, board during pass 7 at row 25, read 2026-10-01T18:58:17 (live)
+ROWS -- 2026-10-01_183644_run_board.log, board during pass 13 at row 9, read 2026-10-01T19:13:36 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Extreme Upgrade Seal Stone (Normal        x1         -   137.13M         -   137.13M         -         -
-    2  Upgrade Core (Ultimate                x144   431.82K   455.77K   +23.95K   455.77K    62.18M     3.45M
-    3  Upgrade Core (Ultimate                  x9   431.82K   455.77K   +23.95K   455.77K     3.89M   215.56K
-    4  Upgrade Core (Ultimate                 x12   431.82K   455.77K   +23.95K   455.77K     5.18M   287.40K
-    5  Chaos Core Set X 339                    x1   727.19K   789.48K   +62.29K   267.63M   246.52M    21.12M
-    6  Chaos Core Set X 291                    x1   727.19K   789.48K   +62.29K   229.74M   211.61M    18.13M
-    7  Chaos Core Set X 21                     x1   728.09K   789.48K   +61.39K    16.58M    15.29M     1.29M
-    8  Chaos Core Set X 99                     x1   724.81K   789.48K   +64.66K    78.16M    71.76M     6.40M
-    25  (empty)                                           -          -       -              -               - <- here
+    1  Extreme Upgrade Seal Stone (Normal        x1         -   137.08M         -   137.08M         -         -
+    2  Upgrade Core (Ultimate                x144   431.82K   455.75K   +23.93K   455.75K    62.18M     3.45M
+    3  Upgrade Core (Ultimate                  x9   431.82K   455.75K   +23.93K   455.75K     3.89M   215.37K
+    4  Upgrade Core (Ultimate                 x12   431.82K   455.75K   +23.93K   455.75K     5.18M   287.15K
+    5  Chaos Core Set X 339                    x1   727.19K   789.44K   +62.25K   267.62M   246.52M    21.10M
+    6  Chaos Core Set X 291                    x1   727.19K   789.44K   +62.25K   229.73M   211.61M    18.12M
+    7  Chaos Core Set X 21                     x1   728.09K   789.44K   +61.35K    16.58M    15.29M     1.29M
+    8  Chaos Core Set X 99                     x1   724.81K   789.44K   +64.62K    78.15M    71.76M     6.40M
+    9  Chaos Core Set X 111                    x1   725.99K   789.44K   +63.45K    87.63M    80.58M     7.04M <- here
+   10  Chaos Core Set X 333                    x1   725.86K   789.44K   +63.58K   262.88M   241.71M    21.17M
    27  Potion of Honor                         x1         -     7.11M         -     7.11M         -         -
    28  Palladium Headgear(FA) | Lua            x1         -     3.00M         -     3.00M         -         -
    29  Palladium Gauntlet(GL) i                x1         -     1.70M         -     1.70M         -         -
    30  Palladium Greaves(WA) i                 x1         -     2.00M         -     2.00M         -         -
-    balance now 3.72B, read 2026-10-01T18:56:16
-       stock at its listed price                                                                      804.44M
-       Alz, latest balance line                                                                         3.72B
+    balance now 3.40B, read 2026-10-01T19:11:46
+       stock at its listed price                                                                        1.15B
+       Alz, latest balance line                                                                         3.40B
        Cash at the voucher price                                                                       75.11M
        gems at the voucher price                                                                        7.98M
-       NET WORTH                                                                                        4.61B
+       NET WORTH                                                                                        4.64B
 
 
-MARKET -- 2026-10-01_183644_run.log, pass 7, log last written 18:58 Central (live)
+MARKET -- 2026-10-01_183644_run.log, pass 13, log last written 19:13 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         0  190.60K  191.97K    1.37K      0.7%      0
-Chaos Core                  4  748.29K  789.48K   41.19K      5.2%      0
+Chaos Core                  6  723.22K  789.44K   66.22K      8.4%      6
 Divine Stone                0  720.00K  705.71K  -14.29K     -2.0%      0
 Force Core(High)            0  160.16K  165.00K    4.84K      2.9%      0
 Upgrade Core (Ultimate)     3        -        -        -         -      -  holds the most it can want, 3; not priced
