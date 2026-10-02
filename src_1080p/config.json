@@ -533,6 +533,7 @@
     "networth_tool": "tools/networth_log.py",
     "networth_history": "networth_history_{config}.csv",
     "networth_history_report": "networth_history.csv",
+    "artifacts_dir": "artifacts",
     "networth_timeout": 60,
     "report_branch": "main",
     "report_index": "report_index",
@@ -549,7 +550,6 @@
     "all_tool": "tools/profit_all.py",
     "all_networth_tool": "tools/networth_all.py",
     "ledger_tool": "tools/ledger_export.py",
-    "ledger_dir": "ledger",
     "ledger_tables": [
       "sales",
       "purchases",

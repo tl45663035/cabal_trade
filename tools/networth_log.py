@@ -30,6 +30,7 @@ MINUTE = datetime.timedelta(minutes=1)
 WHOLE_DAY = datetime.timedelta(days=1)
 HOURS = WHOLE_DAY // datetime.timedelta(hours=1)
 LOGS = networth.TREE / "logs"
+REPORTS = networth.ROOT / WATCH["report_dir"]
 AFTER = re.compile(r"^  board after pass (\d+):$", re.M)
 PASS_END = re.compile(r"^  pass \d+: ", re.M)
 SIGNED = r"(?:[-+][\d,]+|-)"
@@ -531,13 +532,15 @@ def staged_write(path, text):
 
 
 def main():
-    path = Path(sys.argv[1])
+    config = sys.argv[1]
+    folder = REPORTS / config
+    path = folder / WATCH["artifacts_dir"] / WATCH["networth_name"]
     now = reading()
     if now is None:
         print("no finished pass with a board and a balance yet; nothing logged")
         return 0
     today = now[0].date()
-    kept = LOGS / WATCH["networth_history"].format(config=path.parent.name)
+    kept = LOGS / WATCH["networth_history"].format(config=config)
     keep_from = today - datetime.timedelta(days=DAYS - 1)
     seen = backfill(recorded(kept) + [now])
     history = [row for row in seen if row[0].date() >= keep_from]
@@ -553,9 +556,9 @@ def main():
     staged_write(path.with_name(WATCH["networth_history_report"]), kept_text)
     staged_write(path, "\n".join(day_table(days, today) + ["", ""]
                                  + log_table(rows, today)) + "\n")
-    staged_write(path.with_name(WATCH["networth_graph"]),
+    staged_write(folder / WATCH["networth_graph"],
                  graph(rows, history, (carried or [None])[0], (before or [None])[0],
-                       path.parent.name, today))
+                       config, today))
     print(log_table(rows, today)[-1])
     return 0
 

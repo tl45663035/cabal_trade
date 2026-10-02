@@ -35,7 +35,7 @@ def write(copy, table, folder):
 
 def main():
     config = sys.argv[1]
-    folder = ROOT / SUP["report_dir"] / config / SUP["ledger_dir"]
+    folder = ROOT / SUP["report_dir"] / config / SUP["artifacts_dir"]
     folder.mkdir(parents=True, exist_ok=True)
     copy = snapshot()
     for table in SUP["ledger_tables"]:

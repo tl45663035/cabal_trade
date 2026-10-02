@@ -919,15 +919,12 @@ def report_path():
     return ROOT / K["report_dir"] / CONFIG / K["report_name"]
 
 
-def networth_path():
-    return ROOT / K["report_dir"] / CONFIG / K["networth_name"]
-
-
 def networth_files():
     try:
-        page = networth_path()
-        return [p for p in (page, page.with_name(K["networth_graph"]),
-                            page.with_name(K["networth_history_report"]))
+        folder = report_path().parent
+        kept = folder / K["artifacts_dir"]
+        return [p for p in (folder / K["networth_graph"], kept / K["networth_name"],
+                            kept / K["networth_history_report"])
                 if p.exists()]
     except Exception:
         return []
@@ -942,14 +939,17 @@ def ledger_files():
         if out.returncode != 0:
             raise Stop(f"{K['ledger_tool']} exited {out.returncode}: "
                        f"{(out.stderr or out.stdout).strip()[:K['reason_width']]}")
-        return [ROOT / line.strip() for line in out.stdout.splitlines()
-                if line.strip() and (ROOT / line.strip()).exists()]
     except Exception as exc:
         try:
             event(f"the ledger was not exported: {type(exc).__name__}: "
                   f"{exc}"[:K["reason_width"]], "alive")
         except Exception:
             pass
+    try:
+        kept = report_path().parent / K["artifacts_dir"]
+        return [p for p in (kept / f"{table}.csv" for table in K["ledger_tables"])
+                if p.exists()]
+    except Exception:
         return []
 
 
@@ -980,7 +980,7 @@ def networth_due(log):
             return
         _SAMPLING = (subprocess.Popen(
             [sys.executable, str(ROOT / K["networth_tool"]),
-             str(networth_path())], cwd=str(ROOT), text=True,
+             CONFIG], cwd=str(ROOT), text=True,
             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
             creationflags=getattr(subprocess, "IDLE_PRIORITY_CLASS", 0)),
             time.time())
@@ -1031,9 +1031,17 @@ def write_all_networth():
     if out.returncode != 0:
         raise Stop(f"{K['all_networth_tool']} exited {out.returncode}: "
                    f"{(out.stderr or out.stdout).strip()[:K['reason_width']]}")
+
+
+def all_files():
     folder = all_path().parent
-    return [p for p in (folder / K["networth_name"], folder / K["networth_graph"])
+    return [p for p in (all_path(), folder / K["networth_graph"],
+                        folder / K["artifacts_dir"] / K["networth_name"])
             if p.exists()]
+
+
+def owned_folders():
+    return [report_path().parent] + ([all_path().parent] if CONFIG == K["all_for"] else [])
 
 
 def push_report(paths):
@@ -1046,6 +1054,7 @@ def push_report(paths):
 
 def _push_report(paths):
     rels = [p.relative_to(ROOT).as_posix() for p in paths]
+    owned = [p.relative_to(ROOT).as_posix() for p in owned_folders()]
     branch = K["report_branch"]
     index = LOGS / K["report_index"]
     for attempt in range(1, K["report_tries"] + 1):
@@ -1055,6 +1064,10 @@ def _push_report(paths):
         env = dict(os.environ, GIT_INDEX_FILE=str(index))
         if git("read-tree", f"origin/{branch}", env=env).returncode:
             return f"origin/{branch} would not read"
+        cleared = git("rm", "--cached", "-r", "-f", "-q", "--ignore-unmatch", "--",
+                      *owned, env=env)
+        if cleared.returncode:
+            return cleared.stderr.strip()[:K["reason_width"]]
         for path, rel in zip(paths, rels):
             blob = git("hash-object", "-w", str(path))
             if blob.returncode:
@@ -1108,15 +1121,16 @@ def report_due(log, force=False):
     paths = [path] + networth_files() + ledger_files()
     if CONFIG == K["all_for"]:
         try:
-            paths.append(write_all())
+            write_all()
         except Exception as exc:
             event(f"the {K['all_dir']} report was not written: "
                   f"{type(exc).__name__}: {exc}"[:K["reason_width"]], "alive")
         try:
-            paths += write_all_networth()
+            write_all_networth()
         except Exception as exc:
             event(f"the {K['all_dir']} net worth was not written: "
                   f"{type(exc).__name__}: {exc}"[:K["reason_width"]], "alive")
+        paths += all_files()
     failed = push_report(paths)
     if failed:
         event(f"the profit report was written but not pushed: {failed}",

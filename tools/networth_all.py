@@ -20,14 +20,20 @@ SAVED = re.compile(r"^(\w+),(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),(\d+)$")
 
 
 def page(account, live, name=None):
-    path = FOLDER / account / (name or SUP["networth_name"])
-    if account == live and path.exists():
-        return path.read_text(encoding="utf-8", errors="replace")
-    out = subprocess.run(["git", "show", f"origin/{SUP['report_branch']}:"
-                          f"{path.relative_to(ROOT).as_posix()}"],
-                         cwd=str(ROOT), capture_output=True, text=True, encoding="utf-8",
-                         errors="replace", timeout=SUP["report_timeout"])
-    return out.stdout if out.returncode == 0 else ""
+    name = name or SUP["networth_name"]
+    places = (FOLDER / account / SUP["artifacts_dir"] / name, FOLDER / account / name)
+    if account == live:
+        for path in places:
+            if path.exists():
+                return path.read_text(encoding="utf-8", errors="replace")
+    for path in places:
+        out = subprocess.run(["git", "show", f"origin/{SUP['report_branch']}:"
+                              f"{path.relative_to(ROOT).as_posix()}"],
+                             cwd=str(ROOT), capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", timeout=SUP["report_timeout"])
+        if out.returncode == 0:
+            return out.stdout
+    return ""
 
 
 def parse(text):
@@ -156,14 +162,14 @@ def main():
     history = [row for row in every if row[0].date() >= keep_from]
     rows = [row for row in history if row[0].date() == today]
     folder = FOLDER / NAME
-    folder.mkdir(parents=True, exist_ok=True)
+    (folder / SUP["artifacts_dir"]).mkdir(parents=True, exist_ok=True)
     if not rows:
         print("not every account has a reading today yet; nothing written")
         return 0
     carried = [row for row in every if row[0].date() < keep_from][-1:]
     before = [row for row in every if row[0].date() < today][-1:]
     latest = {a: max(when for (who, when) in held if who == a) for a in ACCOUNTS}
-    single.staged_write(folder / SUP["networth_name"],
+    single.staged_write(folder / SUP["artifacts_dir"] / SUP["networth_name"],
                         "\n".join(day_table(books, today) + ["", ""]
                                   + log_table(rows, today, latest)) + "\n")
     single.staged_write(folder / SUP["networth_graph"],
