@@ -30,9 +30,10 @@ def check(label, ok, detail=""):
 
 CHAOS = "Chaos Core"
 ENABLE = calibration.margin_for_rows(CHAOS, 1)
-TABLE = [(0, 10), (699_999, 10), (700_000, 10), (705_000, 10), (709_999, 10), (710_000, 8), (715_000, 8),
-         (716_000, 8), (719_999, 8), (720_000, 6), (725_000, 6), (727_000, 6), (729_999, 6), (730_000, 4),
-         (734_999, 4), (735_000, 3), (739_999, 3), (740_000, 1), (745_000, 1), (745_001, 0), (777_777, 0)]
+TABLE = [(0, 14), (699_999, 14), (700_000, 14), (705_000, 14), (709_999, 14), (710_000, 10), (715_000, 10),
+         (716_000, 10), (719_999, 10), (720_000, 8), (725_000, 8), (727_000, 8), (729_999, 8), (730_000, 5),
+         (734_999, 5), (735_000, 5), (739_999, 5), (740_000, 2), (745_000, 2), (749_999, 2), (750_000, 0),
+         (777_777, 0)]
 seen = [(price, calibration.rows_by_price(CHAOS, price)) for price, _rows in TABLE]
 check("the price table: each line holds until the next line's price",
       all(got == rows for (price, rows), (_p, got) in zip(TABLE, seen)),
@@ -44,30 +45,30 @@ check(f"the margin switches the table on at {ENABLE:,}", ENABLE == 5_000, f"{ENA
 check("a margin under that means 0 rows at any price",
       calibration.rows_wanted(CHAOS, ENABLE - 1, 690_000) == 0
       and calibration.rows_wanted(CHAOS, ENABLE - 1, 740_000) == 0)
-check("a margin of 5,000 follows the table: 10 rows at 700,000, 1 at 740,000",
-      calibration.rows_wanted(CHAOS, 5_000, 700_000) == 10
-      and calibration.rows_wanted(CHAOS, 5_000, 740_000) == 1)
-check("a margin of 10,000 or more follows the same table: 6 rows at 721,724, 0 over 745,000",
-      calibration.rows_wanted(CHAOS, 12_000, 721_724) == 6
-      and calibration.rows_wanted(CHAOS, 12_000, 745_001) == 0)
+check("a margin of 5,000 follows the table: 14 rows at 700,000, 2 at 740,000",
+      calibration.rows_wanted(CHAOS, 5_000, 700_000) == 14
+      and calibration.rows_wanted(CHAOS, 5_000, 740_000) == 2)
+check("a margin of 10,000 or more follows the same table: 8 rows at 721,724, 0 from 750,000",
+      calibration.rows_wanted(CHAOS, 12_000, 721_724) == 8
+      and calibration.rows_wanted(CHAOS, 12_000, 750_000) == 0)
 check("a price that did not read buys nothing", calibration.rows_wanted(CHAOS, 12_000, None) == 0)
 divine = calibration.rows_by_margin("Divine Stone", 12_000)
 check("other cores keep their margin rows", calibration.rows_wanted("Divine Stone", 12_000, 690_000) == divine,
       f"{divine}")
-check("Chaos Core can want as many as 10 rows", calibration.rows_wanted_at_most(CHAOS) == 10)
+check("Chaos Core can want as many as 14 rows", calibration.rows_wanted_at_most(CHAOS) == 14)
 check("every Chaos order needs only the margin that switches the table on, whatever the row",
-      all(calibration.margin_for_rows(CHAOS, rows) == ENABLE for rows in range(1, 11)))
+      all(calibration.margin_for_rows(CHAOS, rows) == ENABLE for rows in range(1, 15)))
 check("other cores keep their per-row margins",
       calibration.margin_for_rows("Divine Stone", 1) == 5_000
       and calibration.margin_for_rows("Divine Stone", 4) == 10_000)
 
 said = io.StringIO()
 with contextlib.redirect_stdout(said):
-    full = driver.margin_says_buy(CHAOS, 6, 12_000, 721_724)
-    short = driver.margin_says_buy(CHAOS, 5, 12_000, 721_724)
+    full = driver.margin_says_buy(CHAOS, 8, 12_000, 721_724)
+    short = driver.margin_says_buy(CHAOS, 7, 12_000, 721_724)
     thin = driver.margin_says_buy(CHAOS, 5, 4_000, 700_000)
-check("with 6 rows held at 721,724 the table wants no more", full is None, said.getvalue().splitlines()[0])
-check("with 5 held it buys, needing a margin of 5,000 on every order", short == ENABLE,
+check("with 8 rows held at 721,724 the table wants no more", full is None, said.getvalue().splitlines()[0])
+check("with 7 held it buys, needing a margin of 5,000 on every order", short == ENABLE,
       said.getvalue().splitlines()[1])
 check("a 4,000 margin stops it however cheap the core is", thin is None, said.getvalue().splitlines()[2])
 
@@ -153,7 +154,7 @@ try:
     done = []
     with contextlib.redirect_stdout(io.StringIO()) as out:
         driver.resupply_core_rows(None, slot, 4, 10, {}, 1, 25, done)
-    check("row 1 said 10 rows, the restock averaged 731,000 (4 rows): with 5 now held, no second restock",
+    check("row 1 said 10 rows, the restock averaged 731,000 (5 rows): with 5 now held, no second restock",
           len(done) == 1 and len(restocks) == 1, out.getvalue().strip().splitlines()[-1])
 
     restocks[:] = [{"rows": [9], "bought": 150, "paid": 150 * 712_000, "diff": 9_000},
@@ -161,8 +162,8 @@ try:
                    {"rows": [11], "bought": 150, "paid": 150 * 712_000, "diff": 9_000}]
     done = []
     with contextlib.redirect_stdout(io.StringIO()) as out:
-        driver.resupply_core_rows(None, slot, 5, 6, {}, 1, 25, done)
-    check("row 1 said 6 rows, the restocks averaged 712,000 (8 rows): it goes on to 8",
+        driver.resupply_core_rows(None, slot, 7, 8, {}, 1, 25, done)
+    check("row 1 said 8 rows, the restocks averaged 712,000 (10 rows): it goes on to 10",
           len(done) == 3, out.getvalue().strip().splitlines()[-1])
 finally:
     driver.resupply_chaos, driver.war.avoid = saved
