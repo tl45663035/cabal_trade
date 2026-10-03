@@ -1058,6 +1058,8 @@ def read_balance_from(image):
     box = balance_box()
     prepared = isolate_digits(image, box, row_model.BACKUP_SCALE)
     if prepared is None:
+        prepared = row_model._backup_line(image, box)
+    if prepared is None:
         return None
     texts = row_model._backup_texts([prepared])
     seen = texts[0] if texts is not None else read_line(image, box)
