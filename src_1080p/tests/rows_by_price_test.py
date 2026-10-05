@@ -30,7 +30,7 @@ def check(label, ok, detail=""):
 
 CHAOS = "Chaos Core"
 ENABLE = calibration.margin_for_rows(CHAOS, 1)
-TABLE = [(0, 14), (699_999, 14), (700_000, 14), (705_000, 14), (709_999, 14), (710_000, 10), (715_000, 10),
+TABLE = [(0, 10), (699_999, 10), (700_000, 10), (705_000, 10), (709_999, 10), (710_000, 10), (715_000, 10),
          (716_000, 10), (719_999, 10), (720_000, 8), (725_000, 8), (727_000, 8), (729_999, 8), (730_000, 5),
          (734_999, 5), (735_000, 5), (739_999, 5), (740_000, 2), (745_000, 2), (749_999, 2), (750_000, 0),
          (777_777, 0)]
@@ -45,8 +45,8 @@ check(f"the margin switches the table on at {ENABLE:,}", ENABLE == 5_000, f"{ENA
 check("a margin under that means 0 rows at any price",
       calibration.rows_wanted(CHAOS, ENABLE - 1, 690_000) == 0
       and calibration.rows_wanted(CHAOS, ENABLE - 1, 740_000) == 0)
-check("a margin of 5,000 follows the table: 14 rows at 700,000, 2 at 740,000",
-      calibration.rows_wanted(CHAOS, 5_000, 700_000) == 14
+check("a margin of 5,000 follows the table: 10 rows at 700,000, 2 at 740,000",
+      calibration.rows_wanted(CHAOS, 5_000, 700_000) == 10
       and calibration.rows_wanted(CHAOS, 5_000, 740_000) == 2)
 check("a margin of 10,000 or more follows the same table: 8 rows at 721,724, 0 from 750,000",
       calibration.rows_wanted(CHAOS, 12_000, 721_724) == 8
@@ -55,9 +55,9 @@ check("a price that did not read buys nothing", calibration.rows_wanted(CHAOS, 1
 divine = calibration.rows_by_margin("Divine Stone", 12_000)
 check("other cores keep their margin rows", calibration.rows_wanted("Divine Stone", 12_000, 690_000) == divine,
       f"{divine}")
-check("Chaos Core can want as many as 14 rows", calibration.rows_wanted_at_most(CHAOS) == 14)
+check("Chaos Core can want as many as 10 rows", calibration.rows_wanted_at_most(CHAOS) == 10)
 check("every Chaos order needs only the margin that switches the table on, whatever the row",
-      all(calibration.margin_for_rows(CHAOS, rows) == ENABLE for rows in range(1, 15)))
+      all(calibration.margin_for_rows(CHAOS, rows) == ENABLE for rows in range(1, 11)))
 check("other cores keep their per-row margins",
       calibration.margin_for_rows("Divine Stone", 1) == 5_000
       and calibration.margin_for_rows("Divine Stone", 4) == 10_000)
