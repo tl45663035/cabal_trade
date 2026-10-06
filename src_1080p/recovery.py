@@ -28,6 +28,7 @@ OK_WORD = _R["ok_word"]
 CONFIRM_WORD = _R["confirm_word"]
 YES_WORD = _R["yes_word"]
 ENTER_WORD = _R["enter_word"]
+PREVIOUS_WORD = _R["previous_word"]
 MENU_WORD = _R["menu_word"]
 MENU_TRIES = _R["menu_tries"]
 MENU_WAIT = _R["menu_wait"]
@@ -589,6 +590,16 @@ def logout(verbose=True):
 def relog(verbose=True):
     logout(verbose=verbose)
     return recover(verbose=verbose)
+
+
+def relog_to(channel, verbose=True):
+    logout(verbose=verbose)
+    who = account()
+    calibration.click(*_needed(PREVIOUS_WORD, verbose=verbose,
+                               region=ENTER_BUTTON_F))
+    calibration.snap("relog_previous_screen")
+    _pick_channel(dict(who, channel=channel), verbose=verbose)
+    return _pick_character(who, verbose=verbose)
 
 
 def _pick_channel(who, verbose=True):

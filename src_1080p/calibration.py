@@ -4152,7 +4152,7 @@ def end_banner(word, note=""):
         console.write(shown)
 
 
-def log_to_file(what="run"):
+def log_to_file(what="run", point=False):
     import sys
     if isinstance(sys.stdout, _Tee):
         return Path(sys.stdout.handle.name)
@@ -4161,6 +4161,9 @@ def log_to_file(what="run"):
     path = LOG_DIR / f"{stamp}_{what}.log"
     handle = open(path, "a", encoding="utf-8", buffering=1)
     handle.write(stamp + "  " + " ".join(sys.argv) + chr(10))
+    if point:
+        (LOG_DIR / _S["supervise"]["run_pointer"]).write_text(
+            path.name, encoding="utf-8")
     sys.stdout = _Tee(sys.stdout, handle)
     sys.stderr = _Tee(sys.stderr, handle)
     print(f"  logging to {path}")

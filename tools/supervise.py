@@ -144,8 +144,8 @@ def kill(pid):
 
 
 def newest_log():
-    logs = sorted(LOGS.glob("*_run.log"), key=lambda p: p.stat().st_mtime)
-    return logs[-1] if logs else None
+    name = read(LOGS / K["run_pointer"]).strip()
+    return LOGS / name if name and (LOGS / name).exists() else None
 
 
 def read(path):
@@ -341,8 +341,14 @@ def run_driver(*args):
             dismiss_dialog(state)
 
 
+def forget_dungeon():
+    import dungeon
+    dungeon.forget_active()
+
+
 def recover_login():
     no_driver_alive()
+    forget_dungeon()
     print("$ py src_1080p/recovery.py", flush=True)
     code, out = run_child([sys.executable, str(SRC / "recovery.py")], SRC,
                           K["login_timeout"])
@@ -357,6 +363,7 @@ def recover_login():
 
 def relog():
     no_driver_alive()
+    forget_dungeon()
     print("$ py src_1080p/recovery.py --relog", flush=True)
     code, out = run_child([sys.executable, str(SRC / "recovery.py"),
                            "--relog"], SRC, K["login_timeout"])
@@ -788,6 +795,8 @@ def trim_dead_runs():
 
 
 def recover(reason, text, plan=False, log=None, watched=True):
+    if "interrupted from the keyboard" in reason and not plan:
+        forget_dungeon()
     if watched and "interrupted from the keyboard" in reason:
         raise Cancelled("cancelled with Ctrl x4")
     if log is not None and not plan:
@@ -1216,6 +1225,11 @@ def main():
         pids = driver_pids()
         if pids:
             pid, log = pids[0], newest_log()
+            if log is None:
+                event(f"supervisor stopped: driver.py pid {pid} is running "
+                      f"but {K['run_pointer']} names no run log to watch; "
+                      f"stop it and start the supervisor again", "dead")
+                return 1
             event(f"attached (pid {pid})", "alive")
         else:
             log = newest_log()

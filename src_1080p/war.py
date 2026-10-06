@@ -105,7 +105,7 @@ def quiet_window(after):
     return best
 
 
-def avoid(allowance=0.0, verbose=True):
+def avoid(allowance=0.0, verbose=True, waiting=None):
     say = print if verbose else (lambda *a: None)
     if not ENABLED:
         return 0.0
@@ -135,7 +135,9 @@ def avoid(allowance=0.0, verbose=True):
     calibration.table_lost()
     deadline = time.monotonic() + wait
     while time.monotonic() < deadline:
-        time.sleep(min(LAG_POLL, deadline - time.monotonic()))
+        if waiting is not None:
+            waiting()
+        time.sleep(max(0.0, min(LAG_POLL, deadline - time.monotonic())))
     say(f"WAR LAG: done waiting; resuming.")
     return wait
 

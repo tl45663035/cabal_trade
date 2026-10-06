@@ -38,7 +38,8 @@ os.environ["CABAL_CONFIG"] = _chosen_config()
 import calibration
 
 if __name__ == "__main__":
-    calibration.log_to_file(next((a.lower() for a in _plain_argv()), "run"))
+    calibration.log_to_file(next((a.lower() for a in _plain_argv()), "run"),
+                            point=not _plain_argv())
 
 import buy
 import cashshop
@@ -79,6 +80,7 @@ REPAIR = False
 SESSION_MEASURED = "--measured" in sys.argv[1:]
 _PENDING = None
 _WALK = {"at": None}
+_DUNGEON = {"due": None, "spent": False, "off": False, "resume_checked": False}
 _SINCE_PRICED = {}
 _PRICED_THIS_ROW = set()
 _FULL_SALES = 0
@@ -443,6 +445,8 @@ def restock_now(model, name, first, last, verbose=True):
     model.work_seen = None
     if not calibration.load_shared()["resupply"]["enabled"]:
         return
+    if alz_too_low():
+        return
     item = cash_item_of(name)
     if item is not None:
         restock_cash_now(model, item, first, last, verbose=verbose)
@@ -495,7 +499,7 @@ def price_and_resupply(model, slot, first, last, why, verbose=True):
     started = time.perf_counter()
     try:
         with calibration.step("wait out a war window if one is near"):
-            war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+            avoid_war(verbose=verbose)
         core_row, set_row, diff = price_gap(slot, from_register=True)
         if diff is None:
             outcome = "would not price"
@@ -572,6 +576,8 @@ def urgent_check(model, first, last, verbose=True):
             continue
         if not buying_rows(model, first, last):
             continue
+        if alz_too_low():
+            return
         price_and_resupply(
             model, slot, first, last,
             f"urgent check: {count} row(s) processed since {core} was last "
@@ -1160,6 +1166,10 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     minutes = run["for_minutes"] if minutes is None else float(minutes)
     if first < 1 or last < first:
         raise NotReady(f"rows {first}-{last} is not a range to relist")
+    if dungeon_on():
+        calibration.close_everything(verbose=verbose)
+        dungeon_turn(verbose=verbose)
+        calibration.close_everything(verbose=verbose)
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
     model = seed(verbose=verbose)
@@ -1171,7 +1181,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     stopped = None
     started = time.perf_counter()
     while True:
-        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        avoid_war(verbose=verbose)
         passes += 1
         print("")
         print(f"-- pass {passes} --")
@@ -1795,6 +1805,8 @@ def resupply_special(model, first, last, verbose=True):
         wanted = special_wanted(model, first, last)
         if not wanted:
             return None
+        if alz_too_low():
+            return None
         core = wanted[0]
         slot = calibration.favourite_slot_of(core)
         if not [i for i in model.empty() if first <= i <= last]:
@@ -1824,7 +1836,7 @@ def resupply_special(model, first, last, verbose=True):
                   f"wheels down, up to {steps_max} step(s)")
         if not shop_ready(f"the {core} special row", verbose=verbose):
             return None
-        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        avoid_war(verbose=verbose)
         landing = model.next_work_slot()
         if landing is None:
             raise NotReady(
@@ -1937,6 +1949,20 @@ def margin_says_buy(core, held, diff, price=None):
     if held >= wants:
         return None
     return calibration.margin_for_rows(core, held + 1)
+
+
+def alz_too_low():
+    floor = int(calibration.load_shared()["resupply"]["stop_below_alz"])
+    balance = get_alz.read_balance()
+    if balance is None:
+        print("  the Alz balance would not read; no resupply now rather "
+              "than buying blind.")
+        return True
+    if balance < floor:
+        print(f"  Alz {balance:,} held is under {floor:,}; no resupply "
+              f"until the balance is back over it.")
+        return True
+    return False
 
 
 def alz_covers(what, units, unit_price, verbose=True):
@@ -3468,7 +3494,7 @@ def buy_under_lister(model, slot, first, last, verbose=True):
                   f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
                   f"buying.")
             break
-        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        avoid_war(verbose=verbose)
         landing = model.next_work_slot()
         if landing is None:
             raise NotReady(f"the run holds every slot of tab "
@@ -3526,12 +3552,73 @@ def gifts_at_the_end(verbose=True):
     return pressed
 
 
+def dungeon_on():
+    return bool((calibration.load_shared().get("dungeon") or {})
+                .get("enabled"))
+
+
+def dungeon_turn(verbose=True, report_wait=True):
+    if not dungeon_on() or _DUNGEON["off"]:
+        return False
+    import dungeon
+    if _DUNGEON["due"] is None and not _DUNGEON["resume_checked"]:
+        _DUNGEON["resume_checked"] = True
+        found = dungeon.resume()
+        if found is not None:
+            level, _DUNGEON["due"] = found
+            print(f"  dungeon: resuming level {level} after a script crash; "
+                  f"the boss is due in "
+                  f"{max(0.0, _DUNGEON['due'] - time.monotonic()):.0f}s")
+    due = _DUNGEON["due"]
+    acted = False
+    if due is not None:
+        left = due - time.monotonic()
+        if left > 0:
+            if report_wait:
+                print(f"  dungeon: the boss is due in {left:.0f}s; trading "
+                      f"on")
+            return False
+        print("  dungeon: the boss is due; killing it")
+        dungeon.kill_and_finish(verbose=verbose)
+        _DUNGEON["due"] = None
+        acted = True
+    level = dungeon.next_level(dungeon.server_day())
+    if level is None:
+        if not _DUNGEON["spent"]:
+            print("  dungeon: every level is at its daily limit for this "
+                  "server day; trading only")
+        _DUNGEON["spent"] = True
+        return acted
+    _DUNGEON["spent"] = False
+    print(f"  dungeon: buying the level {level} key and starting the next "
+          f"one")
+    try:
+        _DUNGEON["due"] = dungeon.start(level, verbose=verbose, rotate=True)
+    except dungeon.NotAtStorm as exc:
+        print(f"  dungeon: {exc} We are not at the storm, so no more "
+              f"dungeons this run; trading only")
+        _DUNGEON["off"] = True
+    return True
+
+
+def dungeon_in_war(verbose=True):
+    if dungeon_turn(verbose=verbose, report_wait=False):
+        calibration.close_everything(verbose=verbose)
+
+
+def avoid_war(verbose=True):
+    return war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose,
+                     waiting=lambda: dungeon_in_war(verbose))
+
+
 def rest_the_game(verbose=True):
     print("")
     print(f"  returning the game to its default state")
     calibration.close_everything(verbose=verbose)
     with calibration.phase("collect the gift box"):
         gifts_at_the_end(verbose=verbose)
+    with calibration.phase("dungeon"):
+        dungeon_turn(verbose=verbose)
     if not back_to_the_shop(verbose=verbose):
         raise NotReady("the Agent Shop would not reopen after resting.")
     register_tab(verbose=verbose)
@@ -3575,7 +3662,7 @@ def price_table(model, first, last, verbose=True):
     for slot in core_slots():
         if not free or not craft_route(calibration.FAVOURITE_ITEMS[str(slot)]):
             continue
-        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        avoid_war(verbose=verbose)
         try:
             _bought, pair = buy_under_lister(model, slot, first, last,
                                              verbose=verbose)
@@ -3639,7 +3726,7 @@ def resupply_core_rows(model, slot, have, wants, priced, first, last, done,
                    else calibration.FAVOURITE_ITEMS[
                        str(calibration.pair_slot(slot))])
     while have < wants:
-        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        avoid_war(verbose=verbose)
         least = (max(calibration.craft_alz_cores(core_here),
                      calibration.craft_min_cores(core_here),
                      calibration.CRAFT_CORES_PER_SET)
@@ -3675,7 +3762,7 @@ def resupply_cash_rows(model, item, wants, first, last, done, verbose=True):
     print("")
     have = cash_status(model, item, first, last, wants)
     while have < wants:
-        war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+        avoid_war(verbose=verbose)
         try:
             out = resupply_cash(model, item, have, first, last,
                                 verbose=verbose)
@@ -3697,7 +3784,7 @@ def resupply_pass(model, first, last, verbose=True):
     try:
         if _PENDING is not None:
             core_here = _PENDING["core"]
-            war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose)
+            avoid_war(verbose=verbose)
             try:
                 if _PENDING.get("kind") == "cash":
                     out = resupply_cash(model, _PENDING["core"], 0, first,
@@ -3717,6 +3804,8 @@ def resupply_pass(model, first, last, verbose=True):
             if out and out.get("rows"):
                 done.append(out)
         if not run["enabled"]:
+            return done
+        if alz_too_low():
             return done
         jobs = resupply_order(
             [("cash", item, item) for item in cashshop.items()

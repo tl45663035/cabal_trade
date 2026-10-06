@@ -84,6 +84,8 @@ PANEL_ITEM_HALF = int(_SHARED["detect"]["panel_item_half"])
 NET_SALES_NUDGES = _SHARED["detect"]["net_sales_nudges"]
 STALE_SWEEP = _T["stale_sweep"]
 POLL_GAP = _T["poll_gap"]
+CHANGE_RETRIES = int(_T["change_retries"])
+_CHANGE_STALLS = {}
 GAME_WAIT_RETRIES = int(_SHARED["run"]["game_wait_retries"])
 
 _NOT_ALNUM = re.compile(r"[^a-z0-9]")
@@ -1682,22 +1684,31 @@ class RowModel:
         point = button_point(seat)
         if verbose:
             print(f"  {CHANGE_WORD} at {point}")
-        with calibration.step(f"hover over {CHANGE_WORD} and click it"):
-            if overlap:
-                since = calibration.hovering(point) or calibration.hover(*point)
-                time.sleep(max(0.0, ACTION_GAP - (time.monotonic() - since)))
-                calibration.click(*point, settle=0.0, check_hovering=True)
-            else:
-                inv._user32.SetCursorPos(*point)
-                time.sleep(ACTION_GAP)
-                calibration.click(*point, settle=0.0)
+        with calibration.step(f"click {CHANGE_WORD} and park"):
+            calibration.park(settle=False)
+            calibration.click(*point, settle=0.0)
+            calibration.park(settle=False)
+            lagging = calibration.server_busy()
 
         with calibration.step(f"find {DISMISS_WORD}"):
             dismiss = find_button(DISMISS_WORD, hover=overlap)
         if dismiss is None:
+            if lagging or calibration.server_busy():
+                stalls = _CHANGE_STALLS[index] = _CHANGE_STALLS.get(index, 0) + 1
+                if stalls <= CHANGE_RETRIES:
+                    if not calibration.wait_out_server_lag(verbose=verbose):
+                        calibration.table_lost()
+                        calibration._recovered()
+                    raise calibration.ServerStalled(
+                        f"the server lagged after {CHANGE_WORD} on row {index} "
+                        f"and no {DISMISS_WORD} came; nothing was cancelled "
+                        f"and the shop is shut. The pass starts again at row "
+                        f"{index}, which clicks {CHANGE_WORD} once more if it "
+                        f"is still on sale.")
             raise Divergence(
                 f"no {DISMISS_WORD} button appeared after clicking "
                 f"{CHANGE_WORD} on row {index}. Nothing has been cancelled.")
+        _CHANGE_STALLS.pop(index, None)
         if verbose:
             print(f"  {DISMISS_WORD} at {dismiss}")
         with calibration.step(f"click {DISMISS_WORD}"):

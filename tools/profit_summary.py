@@ -979,7 +979,37 @@ def caught(work):
     return held.getvalue()
 
 
+def report_dungeons():
+    conf = SETTINGS["dungeon"]
+    path = LOGS / conf["state_file"]
+    if not path.exists():
+        return
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        state = {}
+    now = datetime.datetime.now(datetime.timezone.utc) + shift()
+    today = (now + datetime.timedelta(
+        hours=float(conf["server_utc_offset_hours"]))).date().isoformat()
+    ran = (state.get("ran") or {}) if state.get("day") == today else {}
+    limits = conf["daily_limits"]
+    print(f"DUNGEONS -- Chaos Arena entries on server day {today}")
+    print("")
+    print(f"{'level':<8}{'done':>6}{'limit':>7}")
+    done = cap = 0
+    for level in conf["order"]:
+        count, most = int(ran.get(str(level), 0)), int(limits[str(level)])
+        done, cap = done + count, cap + most
+        print(f"{f'CA{level}':<8}{count:>6}{most:>7}")
+    print(f"{'total':<8}{done:>6}{cap:>7}")
+
+
 def main():
+    dungeons = caught(report_dungeons)
+    if dungeons:
+        print(dungeons.rstrip("\n"))
+        print("")
+        print("")
     book = open_book()
     days = caught(lambda: (by_day(book), print(""), print(""),
                            report_day(book)))
