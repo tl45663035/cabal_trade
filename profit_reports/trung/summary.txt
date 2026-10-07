@@ -8,33 +8,33 @@ Sat 2026-10-03            23.08h   24.00h  542.82M      23.52M         20.43B   
 Sun 2026-10-04            23.48h   24.00h  383.07M      16.31M         16.96B         16.58B  22.93K    2.3%
 Mon 2026-10-05            23.77h   24.00h  395.45M      16.64M         18.39B         17.99B  26.95K    2.2%
 Tue 2026-10-06            19.57h   24.00h  387.51M      19.80M         22.98B         22.60B  31.73K    1.7%
-Wed 2026-10-07 (so far)    1.81h    2.67h   19.70M      10.86M        786.82M        767.12M     668    2.5%
+Wed 2026-10-07 (so far)    2.07h    2.92h   21.83M      10.57M          1.08B          1.06B   1.07K    2.0%
 ============================================================================================================
-7 DAYS                   138.16h  146.67h    3.01B  21,817,918106,653,185,867103,638,815,398 147.87K    2.8%
+7 DAYS                   138.41h  146.92h    3.02B  21,793,612106,946,578,296103,930,085,398 148.26K    2.8%
 
 
-PROFIT SUMMARY -- sold since 2026-10-07 00:00 Central (as of 02:40 Central)
+PROFIT SUMMARY -- sold since 2026-10-07 00:00 Central (as of 02:55 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
 blessingbeadsuperior  10.31M  173.75M  163.44M      1   163.44M  173.75M    5.9%
-chaoscore              4.25M  372.30M  368.04M    507   725.92K  734.31K    1.1%
+chaoscore              6.38M  665.69M  659.31M    906   727.72K  734.76K    1.0%
 forcecoreultimate      3.08M   49.28M   46.20M    154   299.99K  320.00K    6.3%
 upgradecoreultimate    2.06M    4.49M    2.44M      5   487.21K  898.97K   45.8%
 forcegempackage            0  187.00M  187.00M      1   187.00M  187.00M    0.0%
 --------------------------------------------------------------------------------
 Cores                  5.14M   53.77M   48.63M    159   305.88K  338.21K    9.6%
-Chaos                  4.25M  372.30M  368.04M    507   725.92K  734.31K    1.1%
+Chaos                  6.38M  665.69M  659.31M    906   727.72K  734.76K    1.0%
 Cash                  10.31M  360.75M  350.44M      2   175.22M  180.37M    2.9%
 ================================================================================
-TOTAL                 19.70M  786.82M  767.12M    668     1.15M    1.18M    2.5%
+TOTAL                 21.83M    1.08B    1.06B  1.07K   991.93K    1.01M    2.0%
 
 
 
-ROWS -- 2026-10-07_005130_run_board.log, board during pass 15 at row 20, read 2026-10-07T02:40:12 (live)
+ROWS -- 2026-10-07_005130_run_board.log, board during pass 26 at row 1, read 2026-10-07T02:55:19 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Siena's Unbinding Stone                 x1    74.80M    97.67M   +22.87M    97.67M    74.80M    22.87M
-    2  Critical Ring +2                        x1         -    99.47M         -    99.47M         -         -
+    1  Siena's Unbinding Stone                 x1    74.80M    97.67M   +22.87M    97.67M    74.80M    22.87M <- here
+    2  Critical Ring +2                        x1         -    99.46M         -    99.46M         -         -
     3  Force Core (Ultimate                  x203   299.99K   320.00K   +20.01K   320.00K    60.90M     4.06M
     4  Blessing Bead - Superior                x1   163.44M   173.75M   +10.31M   173.75M   163.44M    10.31M
     5  Force Core(High                        x55   157.81K   165.00K    +7.20K   165.00K     8.68M   395.73K
@@ -51,28 +51,29 @@ ROWS -- 2026-10-07_005130_run_board.log, board during pass 15 at row 20, read 20
    16  Armor Account bind Unseal Stone         x1   187.00M   187.00M        +0   187.00M   187.00M         0
    17  Armor Account bind Seal Stone           x1   187.00M   187.00M        +0   187.00M   187.00M         0
    18  Arionell                                x1   280.50M   320.00M   +39.50M   320.00M   280.50M    39.50M
-   19  Chaos Core Set X 150                    x1   730.00K   735.32K    +5.32K   110.30M   109.50M   797.85K
-   20  Chaos Core Set X 249                    x1   730.00K   735.32K    +5.32K   183.09M   181.77M     1.32M <- here
+   19  Chaos Core Set                          x1   725.92K   145.60M  +144.87M   145.60M   725.92K   144.87M
    21  Chaos Core Set X 210                    x1   730.00K   735.32K    +5.32K   154.42M   153.30M     1.12M
-   22  Chaos Core Set X 18                     x1   731.89K   735.32K    +3.43K    13.24M    13.17M    61.72K
-   23  Chaos Core Set X 96                     x1   725.92K   735.32K    +9.40K    70.59M    69.69M   902.11K
-   24  Chaos Core Set X 18                     x1   730.65K   735.32K    +4.67K    13.24M    13.15M    84.01K
-   25  Chaos Core Set X 18                     x1   728.62K   735.32K    +6.70K    13.24M    13.12M   120.53K
+   22  Chaos Core Set X 18                     x1   731.89K   735.32K    +3.42K    13.24M    13.17M    61.60K
+   23  Chaos Core Set X 96                     x1   725.92K   735.32K    +9.39K    70.59M    69.69M   901.44K
+   24  Chaos Core Set X 18                     x1   730.65K   735.31K    +4.66K    13.24M    13.15M    83.88K
+   25  Chaos Core Set X 18                     x1   728.62K   735.31K    +6.69K    13.24M    13.12M   120.40K
    29  NN                                      x1         -     3.80B         -     3.80B         -         -
-    balance now 1.80B, read 2026-10-07T02:36:11
-       stock at its listed price                                                                        2.23B
-       Alz, latest balance line                                                                         1.80B
+    balance now 1.81B, read 2026-10-07T02:55:19
+    held on tab 4, bought and not listed yet:
+    Chaos Core Set                     slot (2, 5)         - unit(s)            - a unit
+       stock at its listed price                                                                        2.08B
+       Alz, latest balance line                                                                         1.81B
        Cash at the voucher price                                                                      112.20M
        gems at the voucher price                                                                      132.77M
-       NET WORTH                                                                                        4.27B
+       NET WORTH                                                                                        4.13B
 
 
-MARKET -- 2026-10-07_005130_run.log, pass 15, log last written 02:40 Central (live)
+MARKET -- 2026-10-07_005130_run.log, pass 25, log last written 02:55 Central (live); pass 26 is under way and has not priced the cores yet, so this is the last table it printed
 
-core                     rows  buy/u  sell/u  margin  margin %  wants  short?
-----------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0      -       -       -         -      -  no row free; not priced
-Chaos Core                  7      -       -       -         -      -  no row free; not priced
-Force Core (Ultimate)       4      -       -       -         -      -  holds the most it can want, 3; not priced
-Force Core(High)            3      -       -       -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     2      -       -       -         -      -  no row free; not priced
+core                     rows    buy/u   sell/u   margin  margin %  wants  short?
+--------------------------------------------------------------------------------------------------------------------
+Force Core(Highest)         0  190.00K  182.50K   -7.50K     -4.1%      0
+Chaos Core                  6  732.00K  735.48K    3.48K      0.5%      0
+Force Core (Ultimate)       4        -        -        -         -      -  holds the most it can want, 3; not priced
+Force Core(High)            3        -        -        -         -      -  holds the most it can want, 3; not priced
+Upgrade Core (Ultimate)     2  457.76K  897.95K  440.18K     49.0%      3  YES
