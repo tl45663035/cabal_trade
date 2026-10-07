@@ -8,12 +8,12 @@ Sat 2026-10-03            23.08h   24.00h  542.82M      23.52M         20.43B   
 Sun 2026-10-04            23.48h   24.00h  383.07M      16.31M         16.96B         16.58B  22.93K    2.3%
 Mon 2026-10-05            23.77h   24.00h  395.45M      16.64M         18.39B         17.99B  26.95K    2.2%
 Tue 2026-10-06            19.57h   24.00h  387.51M      19.80M         22.98B         22.60B  31.73K    1.7%
-Wed 2026-10-07 (so far)    3.33h    4.19h   21.83M       6.55M          1.08B          1.06B   1.07K    2.0%
+Wed 2026-10-07 (so far)    3.59h    4.45h   21.83M       6.08M          1.08B          1.06B   1.07K    2.0%
 ============================================================================================================
-7 DAYS                   139.68h  148.19h    3.02B  21,595,788106,946,578,296103,930,085,398 148.26K    2.8%
+7 DAYS                   139.93h  148.45h    3.02B  21,556,490106,946,578,296103,930,085,398 148.26K    2.8%
 
 
-PROFIT SUMMARY -- sold since 2026-10-07 00:00 Central (as of 04:11 Central)
+PROFIT SUMMARY -- sold since 2026-10-07 00:00 Central (as of 04:26 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ TOTAL                 21.83M    1.08B    1.06B  1.07K   991.93K    1.01M    2.0%
 
 
 
-ROWS -- 2026-10-07_005130_run_board.log, board during pass 112 at row 1, read 2026-10-07T04:11:09 (live)
+ROWS -- 2026-10-07_005130_run_board.log, board during pass 129 at row 1, read 2026-10-07T04:26:12 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    74.80M    97.67M   +22.87M    97.67M    74.80M    22.87M <- here
     2  Critical Ring +2                        x1         -    99.46M         -    99.46M         -         -
@@ -58,7 +58,7 @@ ROWS -- 2026-10-07_005130_run_board.log, board during pass 112 at row 1, read 20
    24  Chaos Core Set X 18                     x1   730.65K   735.31K    +4.66K    13.24M    13.15M    83.88K
    25  Chaos Core Set X 18                     x1   728.62K   735.31K    +6.69K    13.24M    13.12M   120.40K
    29  NN                                      x1         -     3.80B         -     3.80B         -         -
-    balance now 1.81B, read 2026-10-07T04:11:09
+    balance now 1.81B, read 2026-10-07T04:26:12
     held on tab 4, bought and not listed yet:
     Chaos Core Set                     slot (2, 5)         - unit(s)            - a unit
        stock at its listed price                                                                        2.08B
@@ -68,11 +68,11 @@ ROWS -- 2026-10-07_005130_run_board.log, board during pass 112 at row 1, read 20
        NET WORTH                                                                                        4.13B
 
 
-MARKET -- 2026-10-07_005130_run.log, pass 112, log last written 04:11 Central (live)
+MARKET -- 2026-10-07_005130_run.log, pass 129, log last written 04:26 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  189.99K  182.50K   -7.49K     -4.1%      0
+Force Core(Highest)         0  180.71K  182.50K    1.79K      1.0%      0
 Chaos Core                  6  725.92K  742.64K   16.72K      2.3%      8  YES
 Force Core (Ultimate)       4        -        -        -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            3        -        -        -         -      -  holds the most it can want, 3; not priced
