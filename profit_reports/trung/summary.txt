@@ -8,12 +8,12 @@ Sat 2026-10-03            23.08h   24.00h  542.82M      23.52M         20.43B   
 Sun 2026-10-04            23.48h   24.00h  383.07M      16.31M         16.96B         16.58B  22.93K    2.3%
 Mon 2026-10-05            23.77h   24.00h  395.45M      16.64M         18.39B         17.99B  26.95K    2.2%
 Tue 2026-10-06            19.57h   24.00h  387.51M      19.80M         22.98B         22.60B  31.73K    1.7%
-Wed 2026-10-07 (so far)   12.27h   17.97h  345.93M      28.19M         12.43B         12.09B  16.02K    2.8%
+Wed 2026-10-07 (so far)   12.52h   18.22h  345.93M      27.62M         12.43B         12.09B  16.02K    2.8%
 ============================================================================================================
-7 DAYS                   148.62h  161.97h    3.34B  22,477,931118,300,881,356114,960,283,779 163.22K    2.8%
+7 DAYS                   148.87h  162.22h    3.34B  22,439,471118,300,881,356114,960,283,779 163.22K    2.8%
 
 
-PROFIT SUMMARY -- sold since 2026-10-07 00:00 Central (as of 17:57 Central)
+PROFIT SUMMARY -- sold since 2026-10-07 00:00 Central (as of 18:13 Central)
 
 item                        profit  revenue     cost   units  bought/u   sold/u  margin
 ---------------------------------------------------------------------------------------
@@ -36,16 +36,16 @@ TOTAL                      345.93M   12.43B   12.09B  16.02K   754.50K  776.09K 
 
 
 
-ROWS -- 2026-10-07_171736_run_board.log, board during pass 8 at row 1, read 2026-10-07T17:57:51 (live)
+ROWS -- 2026-10-07_171736_run_board.log, board during pass 10 at row 18, read 2026-10-07T18:13:04 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Upgrade Core (Ultimate                 x27   418.92K   608.00K  +189.08K   608.00K    11.31M     5.11M <- here
-    2  Critical Ring +2                        x1         -    99.17M         -    99.17M         -         -
+    1  Upgrade Core (Ultimate                 x27   418.92K   578.00K  +159.08K   578.00K    11.31M     4.30M
+    2  Critical Ring +2                        x1         -    99.14M         -    99.14M         -         -
     3  Force Core (Ultimate                  x193   292.27K   320.00K   +27.73K   320.00K    56.41M     5.35M
     4  Blessing Bead - Superior                x1   174.36M   174.36M        +0   174.36M   174.36M         0
     5  Force Core (Ultimate                    x2   292.27K   320.00K   +27.73K   320.00K   584.55K    55.45K
     6  Chaos Core Set X 3                     x10   731.00K   731.00K        +0     2.19M    21.93M         0
     7  Force Core (Ultimate                    x1   292.27K   320.00K   +27.73K   320.00K   292.27K    27.73K
-    8  Upgrade Core (Ultimate                 x33   418.92K   618.00K  +199.08K   618.00K    13.82M     6.57M
+    8  Upgrade Core (Ultimate                 x33   418.92K   588.00K  +169.08K   588.00K    13.82M     5.58M
     9  Force Gem Package                       x1   199.50M   199.50M        +0   199.50M   199.50M         0
    10  Armor Account bind Unseal Stone         x1   199.50M   199.50M        +0   199.50M   199.50M         0
    11  Armor Account bind Seal Stone           x1   199.50M   199.50M        +0   199.50M   199.50M         0
@@ -53,15 +53,15 @@ ROWS -- 2026-10-07_171736_run_board.log, board during pass 8 at row 1, read 2026
    13  Chaos Core Set X 417                    x1   731.00K   731.00K        +0   304.83M   304.83M         0
    14  Chaos Core Set X 171                    x1   731.00K   731.00K        +0   125.00M   125.00M         0
    15  Yekaterina VIP Membership               x1   119.70M   144.44M   +24.74M   144.44M   119.70M    24.74M
-   16  Upgrade Core (Ultimate                  x6   418.92K   515.00K   +96.08K   515.00K     2.51M   576.47K
+   16  Upgrade Core (Ultimate                  x6   418.92K   514.99K   +96.07K   514.99K     2.51M   576.44K
    17  Siena's Unbinding Stone                 x2    79.80M    97.67M   +17.87M    97.67M   159.60M    35.73M
-   18  Force Core(High                         x8   156.14K   165.00K    +8.86K   165.00K     1.25M    70.91K
-   19  Upgrade Core (Ultimate                 x25   418.92K   515.00K   +96.08K   515.00K    10.47M     2.40M
+   18  Force Core(High                         x8   156.14K   165.00K    +8.86K   165.00K     1.25M    70.91K <- here
+   19  Upgrade Core (Ultimate                 x25   418.92K   514.99K   +96.07K   514.99K    10.47M     2.40M
    20  Chaos Core Set X 264                    x1   731.00K   731.00K        +0   192.98M   192.98M         0
    21  Chaos Core Set X 3                      x5   731.00K   731.00K        +0     2.19M    10.96M         0
    22  Force Core(High                         x7   156.14K   165.00K    +8.86K   165.00K     1.09M    62.05K
    23  Force Core(High                         x2   156.14K   165.00K    +8.86K   165.00K   312.27K    17.73K
-    balance now 1.94B, read 2026-10-07T17:57:51
+    balance now 1.94B, read 2026-10-07T18:09:00
        stock at its listed price                                                                        2.27B
        Alz, latest balance line                                                                         1.94B
        Cash at the voucher price                                                                      279.30M
@@ -69,7 +69,7 @@ ROWS -- 2026-10-07_171736_run_board.log, board during pass 8 at row 1, read 2026
        NET WORTH                                                                                        4.65B
 
 
-MARKET -- 2026-10-07_171736_run.log, pass 7, log last written 17:57 Central (live); pass 8 is under way and has not priced the cores yet, so this is the last table it printed
+MARKET -- 2026-10-07_171736_run.log, pass 10, log last written 18:13 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
