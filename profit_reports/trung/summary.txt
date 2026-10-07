@@ -8,12 +8,12 @@ Sat 2026-10-03            23.08h   24.00h  542.82M      23.52M         20.43B   
 Sun 2026-10-04            23.48h   24.00h  383.07M      16.31M         16.96B         16.58B  22.93K    2.3%
 Mon 2026-10-05            23.77h   24.00h  395.45M      16.64M         18.39B         17.99B  26.95K    2.2%
 Tue 2026-10-06            19.57h   24.00h  387.51M      19.80M         22.98B         22.60B  31.73K    1.7%
-Wed 2026-10-07 (so far)    9.76h   15.08h  271.42M      27.82M         10.10B          9.83B  12.58K    2.7%
+Wed 2026-10-07 (so far)   10.01h   15.33h  271.42M      27.12M         10.10B          9.83B  12.58K    2.7%
 ============================================================================================================
-7 DAYS                   146.10h  159.08h    3.27B  22,354,483115,967,434,294112,701,341,980 159.78K    2.8%
+7 DAYS                   146.35h  159.33h    3.27B  22,316,524115,967,434,294112,701,341,980 159.78K    2.8%
 
 
-PROFIT SUMMARY -- sold since 2026-10-07 00:00 Central (as of 15:04 Central)
+PROFIT SUMMARY -- sold since 2026-10-07 00:00 Central (as of 15:20 Central)
 
 item                        profit  revenue     cost   units  bought/u   sold/u  margin
 ---------------------------------------------------------------------------------------
@@ -35,7 +35,7 @@ TOTAL                      271.42M   10.10B    9.83B  12.58K   781.25K  802.82K 
 
 
 
-ROWS -- 2026-10-07_120702_run_board.log, board during pass 182 at row 1, read 2026-10-07T15:04:46 (live)
+ROWS -- 2026-10-07_120702_run_board.log, board during pass 202 at row 1, read 2026-10-07T15:19:19 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Upgrade Core (Ultimate                 x27   457.76K   748.00K  +290.24K   748.00K    12.36M     7.84M <- here
     2  Critical Ring +2                        x1         -    99.31M         -    99.31M         -         -
@@ -62,7 +62,7 @@ ROWS -- 2026-10-07_120702_run_board.log, board during pass 182 at row 1, read 20
    23  Force Core(High                        x83   146.17K   165.00K   +18.83K   165.00K    12.13M     1.56M
    24  Upgrade Core (Ultimate                 x25   457.76K   609.00K  +151.24K   609.00K    11.44M     3.78M
    29  NN                                      x1         -     3.80B         -     3.80B         -         -
-    balance now 1.65B, read 2026-10-07T15:04:46
+    balance now 1.65B, read 2026-10-07T15:19:19
     held on tab 4, bought and not listed yet:
     Chaos Core Set                     slot (5, 2)         - unit(s)            - a unit
        stock at its listed price                                                                        2.34B
@@ -72,12 +72,8 @@ ROWS -- 2026-10-07_120702_run_board.log, board during pass 182 at row 1, read 20
        NET WORTH                                                                                        4.31B
 
 
-MARKET -- 2026-10-07_120702_run.log, pass 181, log last written 15:04 Central (live); pass 182 is under way and has not priced the cores yet, so this is the last table it printed
+MARKET -- 2026-10-07_120702_run.log, pass 202, log last written 15:19 Central (live)
 
-core                     rows    buy/u   sell/u  margin  margin %  wants  short?
--------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  188.19K  182.75K  -5.44K     -3.0%      0
-Chaos Core                  3  737.65K  739.61K   1.96K      0.3%      0
-Force Core (Ultimate)       4        -        -       -         -      -  holds the most it can want, 3; not priced
-Force Core(High)            4        -        -       -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     4        -        -       -         -      -  holds the most it can want, 3; not priced
+core                 rows    buy/u   sell/u  margin  margin %  wants  short?
+----------------------------------------------------------------------------
+Force Core(Highest)     0  183.88K  182.75K  -1.13K     -0.6%      0
