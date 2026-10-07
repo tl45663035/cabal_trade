@@ -123,6 +123,40 @@ with contextlib.redirect_stdout(io.StringIO()):
 check("a Set bundle books all its units at the cost per unit",
       last_sale() == ("Chaos Core Set X 877", 653_365_000 // 877, 653_365_000, 877, 877 * 760725), str(last_sale()))
 
+saved_unit = calibration.market_unit
+calibration.market_unit = lambda name: 499_798
+try:
+    said = io.StringIO()
+    with contextlib.redirect_stdout(said):
+        balances[:] = [before + 22 * 999_596]
+        board._book(18, m.Row("Upgrade Core (Ultimate", qty=200, price=999_596, buy_cost=487_209), before,
+                    ("Upgrade Core (Ultimate) 178 999,596 On Sale Change", m.CHANGE_WORD), False)
+    check("the 18:00 case: 22 single cores sold at 999,596, twice the 499,798 market, book as 22 at 999,596",
+          last_sale() == ("Upgrade Core (Ultimate", 999_596, 21_991_112, 22, 22 * 487_209)
+          and "to a listing" not in said.getvalue() and "+512,387 a unit" in said.getvalue(),
+          f"{last_sale()}; {said.getvalue().strip()[:160]}")
+
+    calibration.market_unit = lambda name: 320_000
+    with contextlib.redirect_stdout(io.StringIO()):
+        balances[:] = [before + 1_279_996]
+        board._book(1, m.Row("Force Core (Ultimate", qty=1, price=1_279_996, buy_cost=299_998), before,
+                    ("", m.REGISTER_WORD), True)
+    check("a single item sold at four times its market is still one unit, not a pack of four",
+          last_sale() == ("Force Core (Ultimate", 1_279_996, 1_279_996, 1, 299_998), str(last_sale()))
+
+    calibration.market_unit = lambda name: 722_970
+    said = io.StringIO()
+    with contextlib.redirect_stdout(said):
+        balances[:] = [before + 180_019_778]
+        board._book(27, m.Row("Chaos Core Set", qty=1, price=180_019_778, buy_cost=715_049), before,
+                    ("", m.REGISTER_WORD), True)
+    check("a Set whose size did not read still takes its units from the price: 249 at 722,970",
+          last_sale() == ("Chaos Core Set", 722_970, 180_019_778, 249, 249 * 715_049)
+          and "249 to a listing, 249 unit(s) at 722,970" in said.getvalue(),
+          f"{last_sale()}; {said.getvalue().strip()[:160]}")
+finally:
+    calibration.market_unit = saved_unit
+
 with contextlib.redirect_stdout(io.StringIO()):
     balances[:] = []
     board._book(4, m.Row("Force Core(High", qty=40, price=172998, buy_cost=170000), None,

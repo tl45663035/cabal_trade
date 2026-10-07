@@ -2762,6 +2762,7 @@ def vendor_tab_point(name, image=None):
 
 
 CRAFT_TAB = _S["game_facts"]["craft_tab"]
+CRAFT_COLLECT_TAB = _S["game_facts"]["craft_collect_tab"]
 CRAFT_KEY_SLOT = tuple(_S["game_facts"]["craft_key_slot"])
 REFRESH_WORD = _S["game_facts"]["refresh_word"]
 HELD_OF_NEEDED = _S["game_facts"]["held_of_needed"]
@@ -2955,6 +2956,12 @@ def calibrate_craft(verbose=True):
     say(f"  {' '.join(CRAFT_REQUEST_WORDS)} at {request}")
     say(f"  {CRAFT_COMPLETE_WORD} All at {complete}")
     say(f"  material counter {out['material_box']}")
+    click(*inventory_tab_point(CRAFT_COLLECT_TAB))
+    time.sleep(TAB_SETTLE)
+    click(*complete)
+    say(f"  tab {CRAFT_COLLECT_TAB} shown and {CRAFT_COMPLETE_WORD} All "
+        f"clicked, so Sets an earlier craft left in the queue land in tab "
+        f"{CRAFT_COLLECT_TAB}")
     return out
 
 

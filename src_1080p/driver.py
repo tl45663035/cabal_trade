@@ -2537,6 +2537,18 @@ def list_sets(model, job, first, last, verbose=True):
         except row_model.NothingLoaded as exc:
             if job["rows"]:
                 break
+            held = {tuple(int(n) for n in slot)
+                    for slot in work_tab_slots(verbose=False)}
+            if (not work_tab_in_transit(held, verbose=False)
+                    and tuple(int(n) for n in work) not in held):
+                model.release_work(work)
+                print(f"  LOST CRAFT: tab {row_model.WORK_TAB} slot "
+                      f"{tuple(work)} reads empty on the screen, so the "
+                      f"{set_name} crafted from {job['crafted']} {core}(s) "
+                      f"never reached tab {row_model.WORK_TAB}; the game put "
+                      f"it in another tab. The job is closed and the pass "
+                      f"goes on relisting.")
+                break
             model.hold_work(work, set_name)
             raise NotReady(
                 f"{exc} Tab {row_model.WORK_TAB} slot {work} is left to the "

@@ -318,7 +318,7 @@
     "frames": true,
     "video": false,
     "board_trace": true,
-    "keep_frames": 5000,
+    "keep_frames": 3000,
     "frames_queued": 64,
     "video_fps": 15,
     "video_seconds": 180,
@@ -744,6 +744,7 @@
     "register_interior_max": 20
   },
   "game_facts": {
+    "craft_collect_tab": 1,
     "register_columns": ["name", "qty", "price", "status", "button"]
   }
 }

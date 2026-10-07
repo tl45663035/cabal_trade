@@ -1553,7 +1553,7 @@ class RowModel:
                   f"row count makes it {sold} x {price:,} = {revenue:,}; the "
                   f"sale is booked from the row count")
         held = listed.units // listed.qty if listed.qty else 0
-        if held <= 1:
+        if held <= 1 and is_set(listed.name):
             each = calibration.market_unit(listed.name)
             held = round(price / each) if each else 1
             if held < 1 or not (each and abs(price - each * held)
@@ -1561,16 +1561,19 @@ class RowModel:
                 held = pack_size(listed.name)
         if held < 1:
             held = 1
+        units = sold * held
+        each_sold = revenue // units
         basis = cost_basis(listed)
-        cost = basis * sold * held if basis else revenue
-        ledger.sold(listed.name, price // held, revenue, sold * held,
-                    cost=cost)
+        cost = basis * units if basis else revenue
+        ledger.sold(listed.name, each_sold, revenue, units, cost=cost)
         print(f"  booked {sold} x {listed.name!r} at {price:,} = {revenue:,}"
-              + (f", {held} to a listing" if held > 1 else "")
+              + (f", {held} to a listing, {units:,} unit(s) at {each_sold:,}"
+                 if held > 1 else "")
               + f"; cost {cost:,}"
               + (f" at {basis:,} each" if basis else ", not an item the run "
                  f"prices, so no profit is counted")
-              + f"; profit {revenue - cost:+,}")
+              + f"; profit {revenue - cost:+,}"
+              + (f", {(revenue - cost) // units:+,} a unit" if basis else ""))
 
     def reopen_after_wait(self, verbose=True):
         import open_agent_shop_premium as shop
