@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TREE = ROOT / "src_1080p"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from profit_summary import PACK, pack
+from profit_summary import PACK, row_units
 
 
 def key(name):
@@ -208,13 +208,15 @@ def row_worth(qty, each, listed):
     return listed * qty if listed == each and qty > 1 else listed
 
 
-def row_profit(name, qty, each, cost):
-    return None if cost is None else (each - cost) * qty * pack(name)
+def row_profit(name, qty, each, cost, listed):
+    return (None if cost is None
+            else (each - cost) * row_units(name, qty, each, listed))
 
 
 def profit_if_sold(board):
-    rows = [(index, name, qty * pack(name), row_profit(name, qty, each, cost))
-            for index, name, qty, each, _, cost in board]
+    rows = [(index, name, row_units(name, qty, each, listed),
+             row_profit(name, qty, each, cost, listed))
+            for index, name, qty, each, listed, cost in board]
     total = sum(gain for *_, gain in rows if gain is not None)
     unknown = sum(1 for *_, gain in rows if gain is None)
     return rows, total, unknown
@@ -276,10 +278,10 @@ def report(log, market, board, unread, balance, bought):
 
     total = 0
     for index, name, qty, each, listed, cost in board:
-        units = qty * pack(name)
+        units = row_units(name, qty, each, listed)
         worth = row_worth(qty, each, listed)
         at = market.get(key(name))
-        gain = row_profit(name, qty, each, cost)
+        gain = row_profit(name, qty, each, cost, listed)
         total += worth
         print(f"{index:>4}  {name[:27]:<28}{units:>8,}"
               f"{(f'{cost:,}' if cost is not None else '-'):>12}{each:>12,}"

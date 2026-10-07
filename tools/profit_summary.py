@@ -114,9 +114,9 @@ def listed_now():
     _market, board, _unread, _balance, bought = networth.read(log)
     units = collections.Counter()
     worth = collections.Counter()
-    for _index, name, qty, each, _listed, _cost in board:
+    for _index, name, qty, each, listed, _cost in board:
         k = key(name)
-        n = qty * pack(name)
+        n = row_units(name, qty, each, listed)
         units[k] += n
         worth[k] += n * each
     listed = {k: worth[k] / units[k] for k in units if units[k]}
@@ -258,7 +258,9 @@ def opening_stock(text):
         found = networth.BOARD_ROW.match(raw)
         if found:
             name = found.group(2).strip()
-            table.append((name, number(found.group(3)) * pack(name),
+            table.append((name, row_units(name, number(found.group(3)),
+                                          number(found.group(5)),
+                                          number(found.group(6))),
                           number(found.group(5))))
     return table if done else []
 
@@ -545,7 +547,7 @@ MARGIN_COLUMNS = re.compile(r"^(\s+bought/u\s+listed/u)\s+margin"
 MARGIN_ROW = re.compile(r"^(\s{4,}\d+\s{2,}.+?\s+x[\d,]+\s+([\d,]+|-)"
                         r"\s+([\d,]+)\s+)(?:[-+]?[\d,.]+%?|-)(\s+.*)$")
 COST_ROW = re.compile(r"^(\s{4,}\d+\s{2,}(.+?)\s+x([\d,]+)\s+([\d,]+|-)"
-                      r"\s+(?:[\d,]+|-)\s+\S+\s+(?:[\d,]+|-))"
+                      r"\s+([\d,]+|-)\s+\S+\s+([\d,]+|-))"
                       r"(\s+(?:-?[\d,]+|-))(.*)$")
 BOARD_INDENT = "    "
 BOARD_LABEL = 49
@@ -566,14 +568,22 @@ def raw_margin(line):
             f"{found.group(4)}")
 
 
+def row_units(name, qty, each, price):
+    if each and price:
+        return max(1, round(price * qty / each))
+    return qty * pack(name)
+
+
 def row_cost(line):
     found = COST_ROW.match(line)
     if found is None:
         return line
-    cost = found.group(4)
-    total = ("-" if cost == "-" else
-             f"{int(cost.replace(',', '')) * int(found.group(3).replace(',', '')) * pack(found.group(2)):,}")
-    return f"{found.group(1)}{total:>{PROFIT_WIDTH}}{found.group(5)}{found.group(6)}"
+    cost, each, price = found.group(4, 5, 6)
+    units = row_units(found.group(2), number(found.group(3)),
+                      0 if each == "-" else number(each),
+                      0 if price == "-" else number(price))
+    total = "-" if cost == "-" else f"{number(cost) * units:,}"
+    return f"{found.group(1)}{total:>{PROFIT_WIDTH}}{found.group(7)}{found.group(8)}"
 
 
 def row_total(line, gains):
@@ -599,8 +609,9 @@ def row_total(line, gains):
     price = f"{head} {last * qty:>14,}" if last == each else f"{head} {last:>14,}"
     if cost == "-":
         return f"{price}{'-':>{PROFIT_WIDTH}}{'-':>{PROFIT_WIDTH}}"
-    paid = int(cost.replace(",", "")) * qty * pack(name)
-    gain = (each - int(cost.replace(",", ""))) * qty * pack(name)
+    units = row_units(name, qty, each, last)
+    paid = int(cost.replace(",", "")) * units
+    gain = (each - int(cost.replace(",", ""))) * units
     gains[key_item(name)] = gains.get(key_item(name), 0) + gain
     gains["board"] = gains.get("board", 0) + gain
     return f"{price}{paid:>{PROFIT_WIDTH},}{gain:>{PROFIT_WIDTH},}"

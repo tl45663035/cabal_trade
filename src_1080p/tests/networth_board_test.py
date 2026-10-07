@@ -49,6 +49,16 @@ check("both reads value the stock alike",
       sum(networth.row_worth(r[2], r[3], r[4]) for r in live)
       == sum(networth.row_worth(r[2], r[3], r[4]) for r in after)
       == 98_799_994 + 2 * 328_443 + 720_192 + 253_985_477 + 7_250_000)
+import profit_summary
+
+fresh = "    23  Chaos Core Set                     x1       710,579    723,728   +1.8%    115,072,910       2,090,775"
+named = fresh.replace("Chaos Core Set    ", "Chaos Core Set X 159")
+costed = [profit_summary.row_cost(profit_summary.raw_margin(line)) for line in (fresh, named)]
+check("a Set just crafted, named without its size until the row is read back, costs its 159 units, as named",
+      all(" 112,982,061 " in line for line in costed), " | ".join(c.strip()[:110] for c in costed))
+_, fresh_rows, _, _, _ = networth.read(log, "\n".join([trace.splitlines()[0], HEAD + "  profit if sold", fresh, ""]))
+units = [(name, networth.row_units(name, qty, each, listed)) for _, name, qty, each, listed, _ in fresh_rows]
+check("the net worth tool counts the same 159 units for it", units == [("Chaos Core Set", 159)], str(units))
 check("no input reached the game", not TRIPPED, str(TRIPPED))
 print(f"{fails} failure(s)")
 sys.exit(1 if fails else 0)
