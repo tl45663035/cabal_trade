@@ -1547,6 +1547,12 @@ class RowModel:
             print(f"  row {index}: neither the row count nor the balance says "
                   f"how many sold; nothing is booked")
             return
+        if (proceeds and proceeds > 0 and proceeds % price == 0
+                and proceeds // price != sold):
+            print(f"  row {index}: the balance moved {proceeds:,} Alz, exactly "
+                  f"{proceeds // price} x {price:,}, and the row count makes it "
+                  f"{sold}; the sale is booked from the balance")
+            sold = proceeds // price
         revenue = sold * price
         if proceeds is not None and abs(proceeds - revenue) > price:
             print(f"  row {index}: the balance moved {proceeds:,} Alz and the "

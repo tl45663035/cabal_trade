@@ -10,11 +10,10 @@ POLL_GAP = _SHARED["timing"]["poll_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
 CRAFT_WINDOW_TIMEOUT = _SHARED["timing"]["craft_window_timeout"]
 LOAD_ATTEMPTS = _SHARED["detect"]["load_attempts"]
-SETTLE_PER_BLOCK = _SHARED["timing"]["craft_settle_per_block"]
-SETTLE_BLOCK = _SHARED["timing"]["craft_settle_block"]
 SETTLE_MAX = _SHARED["timing"]["craft_settle_max"]
+CRAFT_POLL = _SHARED["timing"]["craft_poll"]
+FINISH_SETTLE = _SHARED["timing"]["craft_finish_settle"]
 CORES_PER_SET = calibration.CRAFT_CORES_PER_SET
-UNKNOWN_HELD = int(_SHARED["resupply"]["craft_unknown_held"])
 
 
 def _core_name(core=None):
@@ -101,24 +100,23 @@ def request_all(verbose=True):
     return point
 
 
-def settle_seconds(made):
-    blocks = -(-max(0, int(made)) // SETTLE_BLOCK)
-    return min(SETTLE_MAX, SETTLE_PER_BLOCK * max(1, blocks))
-
-
-def await_drain(before, verbose=True):
+def await_drain(before, core=None, verbose=True):
     say = print if verbose else (lambda *a: None)
-    if before:
-        wait = settle_seconds(before)
-        say(f"  waiting {wait:.0f}s for {before} core(s) "
-            f"({SETTLE_PER_BLOCK:.0f}s per {SETTLE_BLOCK}, rounded up)")
-    else:
-        wait = settle_seconds(UNKNOWN_HELD)
-        say(f"  the caller did not say how many; waiting {wait:.0f}s, what "
-            f"{UNKNOWN_HELD} core(s) would need "
-            f"({SETTLE_PER_BLOCK:.0f}s per {SETTLE_BLOCK}, rounded up)")
-    time.sleep(wait)
-    return before
+    name = _core_name(core)
+    started = time.monotonic()
+    deadline = started + SETTLE_MAX
+    while time.monotonic() < deadline:
+        if calibration.craft_material_short(calibration.grab()):
+            say(f"  the {name} line turned red after "
+                f"{time.monotonic() - started:.1f}s: under {CORES_PER_SET} "
+                f"left; waiting {FINISH_SETTLE:g}s before tab "
+                f"{calibration.WORK_TAB} and "
+                f"{calibration.CRAFT_COMPLETE_WORD} All")
+            time.sleep(FINISH_SETTLE)
+            return before
+        time.sleep(CRAFT_POLL)
+    raise Refused(f"the {name} line was still not red after "
+                  f"{SETTLE_MAX:g}s. Nothing was completed.")
 
 
 def complete_all(verbose=True):
@@ -171,7 +169,7 @@ def craft_sets(core=None, verbose=True, held=None, slot=None):
     with calibration.step(f"{' '.join(calibration.CRAFT_REQUEST_WORDS)}"):
         request_all(verbose=verbose)
     with calibration.step("wait for the queue"):
-        used = await_drain(before, verbose=verbose)
+        used = await_drain(before, core=core, verbose=verbose)
     with calibration.step(f"select inventory tab {calibration.WORK_TAB} "
                           f"before completing"):
         show_work_tab()

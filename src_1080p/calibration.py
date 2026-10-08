@@ -2811,6 +2811,24 @@ def craft_window_open(image=None):
     return any(want in word for word in seen)
 
 
+CRAFT_WARM_LEVEL = _DET["craft_warm_level"]
+CRAFT_WARM_MARGIN = _DET["craft_warm_margin"]
+CRAFT_WARM_PIXELS = _DET["craft_warm_pixels"]
+
+
+def _warm_pixels(image, region):
+    r, g, b = image.crop(_box(tuple(_REG[region]))).convert("RGB").split()
+    warm = ImageChops.subtract(r, ImageChops.lighter(g, b)).point(
+        lambda v: 255 if v >= CRAFT_WARM_MARGIN else 0)
+    lit = r.point(lambda v: 255 if v >= CRAFT_WARM_LEVEL else 0)
+    return ImageChops.multiply(warm, lit).histogram()[255]
+
+
+def craft_material_short(image=None):
+    image = image if image is not None else grab()
+    return _warm_pixels(image, "craft_material_line") >= CRAFT_WARM_PIXELS
+
+
 WORD_ROW_SLACK = _DET["word_row_slack"]
 TIER_ROW_SLACK = _DET["tier_row_slack"]
 

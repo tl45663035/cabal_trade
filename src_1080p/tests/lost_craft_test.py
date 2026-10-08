@@ -40,7 +40,7 @@ craft.open_craft = lambda verbose=True: calls.append("open the craft window")
 craft.select_recipe = lambda core=None, verbose=True: calls.append("select the recipe")
 craft.show_work_tab = lambda: calls.append("show tab 4")
 craft.request_all = lambda verbose=True: calls.append("Request All")
-craft.await_drain = lambda before, verbose=True: calls.append("wait") or before
+craft.await_drain = lambda before, *a, **k: calls.append("wait") or before
 craft.complete_all = lambda verbose=True: calls.append("Complete All") or slots.update(now={(1, 1)})
 craft.compress = lambda slot, verbose=True: calls.append(f"compress {tuple(slot)}")
 calibration.occupied_slots = lambda *a, **k: set(slots["now"])

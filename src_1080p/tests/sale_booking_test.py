@@ -190,7 +190,14 @@ try:
     with contextlib.redirect_stdout(io.StringIO()):
         board.receive(7, verbose=False, complete=False,
                       listed=m.Row("Force Core(High", qty=180, price=172998, buy_cost=170000))
-    check("a row that sold during its cancel is booked from the row the caller hands over",
+    check("a row that sold during its cancel is booked from the row the caller hands over, at the 180 the balance "
+          "proves, not the 30 a stale read of the row says",
+          last_sale()[3] == 180, str(last_sale()))
+    balances[:] = [before, before + 30 * 172998]
+    with contextlib.redirect_stdout(io.StringIO()):
+        board.receive(7, verbose=False, complete=False,
+                      listed=m.Row("Force Core(High", qty=180, price=172998, buy_cost=170000))
+    check("and when the balance agrees with the row (30 sold), it books those 30",
           last_sale()[3] == 30, str(last_sale()))
 finally:
     m.RowModel._receive, m.RowModel.scroll_to, m.read_row_and_button, m.time.sleep = saved
@@ -232,6 +239,34 @@ with sqlite3.connect(ledger.DB) as db:
 check("and counts every booked sale at its booked cost, even in a run with no log",
       (round(sum(s["revenue"] for s in summary)), round(sum(s["cost"] for s in summary)), len(summary)) == total,
       f"{len(summary)} of {total[2]}")
+
+said = io.StringIO()
+with contextlib.redirect_stdout(said):
+    balances[:] = [before + 33_000_000]
+    board._book(22, m.Row("Force Core(High", qty=1, price=165000, buy_cost=156125), before,
+                ("", m.REGISTER_WORD), True)
+check("a full sale the run had recorded as 1, where the balance rose exactly 200 x 165,000, books 200 (14:52 today)",
+      last_sale() == ("Force Core(High", 165000, 33_000_000, 200, 200 * 156125)
+      and "booked from the balance" in said.getvalue(), str(last_sale()))
+with contextlib.redirect_stdout(io.StringIO()):
+    balances[:] = [before + 5 * 2_315_951]
+    board._book(14, m.Row("Chaos Core Set X 3", qty=1, price=2_315_951), before, ("", m.REGISTER_WORD), True)
+check("a row of single Sets recorded as 1, where the balance rose exactly 5 x 2,315,951, books 5 Sets of 3 (15 units)",
+      last_sale()[2:4] == (5 * 2_315_951, 15), str(last_sale()))
+with contextlib.redirect_stdout(io.StringIO()):
+    balances[:] = [before + 70 * 165000]
+    board._book(21, m.Row("Force Core(High", qty=200, price=165000, buy_cost=156125), before,
+                ("Force Core(High) 148 165,000 On Sale Change", m.CHANGE_WORD), False)
+check("a partial sale whose count says 52 but whose balance rose exactly 70 x 165,000 books 70",
+      last_sale() == ("Force Core(High", 165000, 70 * 165000, 70, 70 * 156125), str(last_sale()))
+said = io.StringIO()
+with contextlib.redirect_stdout(said):
+    balances[:] = [before + 33_000_000 - 1_234]
+    board._book(22, m.Row("Force Core(High", qty=1, price=165000, buy_cost=156125), before,
+                ("", m.REGISTER_WORD), True)
+check("a balance that is not an exact multiple of the price keeps the row count, as before",
+      last_sale() == ("Force Core(High", 165000, 165000, 1, 156125)
+      and "booked from the row count" in said.getvalue(), str(last_sale()))
 
 check("no real input reached the game during the whole test", TRIPPED == [], f"{TRIPPED}")
 print(f"\n{fails} failure(s)")
