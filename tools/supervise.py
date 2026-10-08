@@ -56,6 +56,9 @@ DEAD = LOGS / "dead_runs"
 REELS = LOGS / "recovery_video"
 DRIVER = SRC / "driver.py"
 K = calibration.load_shared()["supervise"]
+SESSION_STARTED = datetime.datetime.now()
+START_UP_DONE = re.compile(K["start_up_done"], re.M)
+MEASURED_FLAG = "--measured"
 LAG = re.compile(r"not answering|answering again|does not count|"
                  r"starting the pass again|going to the default state|"
                  r"the server stalled")
@@ -812,14 +815,32 @@ def recover(reason, text, plan=False, log=None, watched=True):
     snap("reset")
 
 
+def measured_this_session(before):
+    try:
+        at = datetime.datetime.strptime(
+            str(calibration.load(force=True).get("measured_at") or ""),
+            "%Y-%m-%dT%H:%M:%S")
+    except (OSError, ValueError):
+        return False
+    return (at >= SESSION_STARTED and before is not None
+            and START_UP_DONE.search(read(before)) is not None)
+
+
+def driver_argv(before):
+    argv = [sys.executable, str(DRIVER), "--config", CONFIG]
+    if measured_this_session(before):
+        argv.append(MEASURED_FLAG)
+    return argv
+
+
 def launch():
     no_driver_alive()
     before = newest_log()
     info = subprocess.STARTUPINFO()
     info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     info.wShowWindow = SW_MINIMIZE
-    proc = subprocess.Popen([sys.executable, str(DRIVER),
-                             "--config", CONFIG], cwd=ROOT,
+    argv = driver_argv(before)
+    proc = subprocess.Popen(argv, cwd=ROOT,
                             creationflags=subprocess.CREATE_NEW_CONSOLE,
                             startupinfo=info)
     for waited in range(1, K["launch_wait"] + 1):
@@ -837,7 +858,9 @@ def launch():
     time.sleep(K["launch_settle"])
     for line in read(log).splitlines()[:K['head_lines']]:
         print("   " + line)
-    event(f"relaunched (pid {proc.pid})", "alive")
+    event(f"relaunched (pid {proc.pid})"
+          + (", reusing this session's calibration" if MEASURED_FLAG in argv
+             else ""), "alive")
     global _CHILD
     _CHILD = proc
     return proc.pid, log

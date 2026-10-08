@@ -111,8 +111,8 @@
     },
     "buy_max": {
       "default": 500,
-      "Chaos Core": 999,
-      "Divine Stone": 999
+      "Chaos Core": 249,
+      "Divine Stone": 249
     },
     "buy_whole_row": {
       "default": false,
@@ -551,7 +551,8 @@
       "board"
     ],
     "all_for": "bot",
-    "report_ready": "relisting rows \\d+-\\d+: \\d+ relisted"
+    "report_ready": "relisting rows \\d+-\\d+: \\d+ relisted",
+    "start_up_done": "^relisting rows \\d+-\\d+ for "
   },
   "tools": {
     "online_clock": {

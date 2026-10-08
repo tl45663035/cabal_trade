@@ -18,7 +18,7 @@ def _plain_argv():
         if arg == "--config":
             skip = True
             continue
-        if arg.startswith("--config=") or arg == "--frames":
+        if arg.startswith("--config=") or arg in ("--frames", "--measured"):
             continue
         out.append(arg)
     return out
@@ -76,6 +76,7 @@ class NotReady(Exception):
 
 _MEASURED = False
 REPAIR = False
+SESSION_MEASURED = "--measured" in sys.argv[1:]
 _PENDING = None
 _WALK = {"at": None}
 _SINCE_PRICED = {}
@@ -97,6 +98,11 @@ def initialise(verbose=True):
         if verbose:
             print("  a repair: not measuring the screen, using the "
                   "calibration on file")
+    elif SESSION_MEASURED and not _MEASURED:
+        if verbose:
+            print("  the supervisor measured this screen earlier in its "
+                  "session; using that calibration instead of measuring again")
+        _MEASURED = True
     elif not _MEASURED:
         if verbose:
             print("  measuring this screen before touching anything")
@@ -108,7 +114,7 @@ def initialise(verbose=True):
     if verbose:
         print(f"  calibrated for {cal['resolution']}, measured "
               f"{cal.get('measured_at')}"
-              + ("" if REPAIR else ", shop open"))
+              + ("" if REPAIR or SESSION_MEASURED else ", shop open"))
     if war.ENABLED:
         if war.sync(verbose=verbose):
             at = war.now()
