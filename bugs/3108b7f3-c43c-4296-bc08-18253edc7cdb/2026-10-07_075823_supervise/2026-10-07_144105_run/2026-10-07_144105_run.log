@@ -1,0 +1,74 @@
+2026-10-07_144105  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-07_144105_run.log
+  code e7a89456
+  screen 1920x1080
+  ledger C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\sales.db run 2026-10-07T14:41:05
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-07_144105_run, indexed in frames.jsonl; earlier runs' frames are kept until the 5,000-frame budget needs the room
+  press Ctrl 4 times within 1.5s to stop, from the game or anywhere else
+  measuring this screen before touching anything
+inventory:
+  Inventory shut; pressing I (attempt 1)
+  Alz box (1767, 692, 1859, 704)   anchor (1859, 692)
+  grid fitted in (1220, 23, 1920, 665): pitch 56.4x56.5 against a shared 73.3x73.4, slot (1,1) at 1471,229, scores 84 and 88
+  tab I [1450, 174]  tab VIII [1825, 174]
+  slot (1,1) [1471, 229]  (1,7) [1810, 229]  (8,8) [1866, 625]
+gift box:
+  the gift box at [284, 1001]
+  Receive at [[1217, 329], [1217, 428], [1217, 527], [1217, 626]]; each collection presses only Receive All and the special giftbox's Receive, at the points measured here
+  Receive All at [1211, 792]
+  the special giftbox's Receive at [1442, 496]
+  Close at [1487, 852]
+cash shop:
+  the Cash Shop icon at [348, 1001]
+  no Useable tab within 3s of clicking the icon; leaving the Cash Shop unmeasured
+opening the Agent Shop:
+  tab 6 at [1718, 174]
+  right-clicking slot (1,7) at [1810, 229]
+  right-clicking slot (1,7) at [1810, 229]
+Traceback (most recent call last):
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py", line 3852, in main
+    _dispatch(args)
+    ~~~~~~~~~^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py", line 3889, in _dispatch
+    do_relist()
+    ~~~~~~~~~^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py", line 1157, in do_relist
+    initialise(verbose=verbose)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py", line 103, in initialise
+    calibration.main(close=False)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py", line 3752, in main
+    return _measure(close)
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py", line 3838, in _measure
+    raise RuntimeError(
+        f"right-clicked the Agent Shop key {TOGGLE_TRIES} times and "
+        f"the Trade window never appeared. Nothing written.")
+RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.
+
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  nothing has sold yet this run.
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 14:41:05, ended 14:41:29, ran for 24s
+
+##################################################################################
+
+  ########  ########      ######      ########  ##      ##  ##########  ########  
+  ########  ########      ######      ########  ##      ##  ##########  ########  
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ##      ##  ##      ##  ##          ##      ##  ##          ##      ##
+##          ########    ##########    ######    ##########  ########    ##      ##
+##          ########    ##########    ######    ##########  ########    ##      ##
+##          ##  ##      ##      ##          ##  ##      ##  ##          ##      ##
+##          ##  ##      ##      ##          ##  ##      ##  ##          ##      ##
+##          ##    ##    ##      ##          ##  ##      ##  ##          ##      ##
+##          ##    ##    ##      ##          ##  ##      ##  ##          ##      ##
+  ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+  ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+
+##################################################################################
+  crashed: RuntimeError: right-clicked the Agent Shop key 2 times and the Trade window never appeared. Nothing written.
+

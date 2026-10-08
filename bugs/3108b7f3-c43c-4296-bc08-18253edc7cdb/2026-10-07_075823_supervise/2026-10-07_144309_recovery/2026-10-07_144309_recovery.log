@@ -1,0 +1,20 @@
+2026-10-07_144309  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py --relog
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-07_144309_recovery.log
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-07_144309_recovery, indexed in frames.jsonl; earlier runs' frames are kept until the 5,000-frame budget needs the room
+  Escape for the menu (attempt 1)
+  'select character' at [926, 552]
+Traceback (most recent call last):
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 675, in <module>
+    relog()
+    ~~~~~^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 590, in relog
+    logout(verbose=verbose)
+    ~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 570, in logout
+    yes = _needed(YES_WORD, timeout=LOGOUT_YES_WAIT, verbose=verbose,
+                  region=POPUP_F)
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 238, in _needed
+    raise Refused(
+        f"no {want!r} on screen within {timeout:g}s, so the login is not "
+        f"where it was expected. Nothing further was clicked.")
+Refused: no 'yes' on screen within 5s, so the login is not where it was expected. Nothing further was clicked.
