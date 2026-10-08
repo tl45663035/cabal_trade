@@ -568,7 +568,7 @@ def logout(verbose=True):
     calibration.click(*entry)
 
     yes = _needed(YES_WORD, timeout=LOGOUT_YES_WAIT, verbose=verbose,
-                  region=POPUP_F)
+                  region=calibration.DIALOG_BUTTONS_F)
     calibration.snap("logout_confirm")
     calibration.click(*yes)
 
