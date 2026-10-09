@@ -21,12 +21,12 @@ Mon 2026-10-05             2.87h   24.00h   18.33M    6.38M  322.92M  304.59M   
 Tue 2026-10-06             0.47h   24.00h  496.69K    1.06M    8.88M    8.38M      35    5.6%
 Wed 2026-10-07             0.00h   24.00h        0        0        0        0       0      --
 Thu 2026-10-08             0.00h   24.00h        0        0        0        0       0      --
-Fri 2026-10-09 (so far)   11.70h   17.20h  318.98M   27.25M   10.88B   10.56B  13.34K    2.9%
+Fri 2026-10-09 (so far)   11.95h   17.45h  318.98M   26.68M   10.88B   10.56B  13.34K    2.9%
 =============================================================================================
-7 DAYS                    29.70h  161.20h  560.34M   18.86M   19.32B   18.76B  31.37K    2.9%
+7 DAYS                    29.95h  161.45h  560.34M   18.71M   19.32B   18.76B  31.37K    2.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-09 00:00 Central (as of 17:12 Central)
+PROFIT SUMMARY -- sold since 2026-10-09 00:00 Central (as of 17:27 Central)
 
 item                          profit  revenue     cost   units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------------
@@ -52,27 +52,27 @@ TOTAL                        318.98M   10.88B   10.56B  13.34K   791.42K  815.34
 
 
 
-ROWS -- 2026-10-09_121751_run_board.log, board during pass 30 at row 3, read 2026-10-09T14:12:10 (live)
+ROWS -- 2026-10-09_121751_run_board.log, board during pass 34 at row 7, read 2026-10-09T14:27:08 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Critical Ring +2                        x1         -    91.60M         -    91.60M         -         -
+    1  Critical Ring +2                        x1         -    91.56M         -    91.56M         -         -
     2  Armor Account bind Unseal Stone         x1   187.50M   194.50M    +7.00M   194.50M   187.50M     7.00M
-    3  Upgrade Core (Ultimate                 x33   444.44K   460.33K   +15.89K   460.33K    14.67M   524.30K <- here
+    3  Upgrade Core (Ultimate                 x33   444.44K   450.33K    +5.89K   450.33K    14.67M   194.30K
     4  Blessing Bead - Superior                x1   163.87M   180.00M   +16.12M   180.00M   163.87M    16.12M
     5  Armor Account bind Seal Stone           x1   187.50M   194.50M    +7.00M   194.50M   187.50M     7.00M
     6  Force Gem Package                       x1   187.50M   195.00M    +7.50M   195.00M   187.50M     7.50M
-    7  Upgrade Core (Ultimate                  x6   444.44K   460.33K   +15.89K   460.33K     2.67M    95.33K
+    7  Upgrade Core (Ultimate                  x6   444.44K   450.33K    +5.89K   450.33K     2.67M    35.33K <- here
     8  Force Core (Ultimate                   x63   287.35K   297.46K   +10.12K   297.46K    18.10M   637.31K
     9  Force Core (Ultimate                  x118   287.35K   297.46K   +10.12K   297.46K    33.91M     1.19M
    10  Force Core (Ultimate                   x41   287.35K   297.46K   +10.12K   297.46K    11.78M   414.76K
    11  Upgrade Core (Ultimate                 x33   444.44K   460.33K   +15.89K   460.33K    14.67M   524.30K
-   12  Force Core(Highest                     x80   166.67K   185.49K   +18.82K   185.49K    13.33M     1.51M
-   13  Force Core(High                        x24   150.00K   159.87K    +9.87K   159.87K     3.60M   236.95K
-   14  Force Core(High                       x139   150.00K   159.87K    +9.87K   159.87K    20.85M     1.37M
+   12  Force Core(Highest                     x80   166.67K   185.46K   +18.79K   185.46K    13.33M     1.50M
+   13  Force Core(High                        x24   150.00K   159.85K    +9.85K   159.85K     3.60M   236.47K
+   14  Force Core(High                       x139   150.00K   159.85K    +9.85K   159.85K    20.85M     1.37M
    15  Arionell                                x1   281.25M   310.00M   +28.75M   310.00M   281.25M    28.75M
-   16  Force Core(High                        x85   150.00K   159.87K    +9.87K   159.87K    12.75M   839.03K
-   17  Force Core(Highest                    x250   166.67K   185.49K   +18.82K   185.49K    41.67M     4.70M
-   18  Force Core(Highest                      x4   166.67K   185.48K   +18.82K   185.48K   666.67K    75.27K
-    balance now 2.44B, read 2026-10-09T14:11:33
+   16  Force Core(High                        x85   150.00K   159.85K    +9.85K   159.85K    12.75M   837.34K
+   17  Force Core(Highest                    x250   166.67K   185.46K   +18.79K   185.46K    41.67M     4.70M
+   18  Force Core(Highest                      x4   166.67K   185.46K   +18.79K   185.46K   666.67K    75.15K
+    balance now 2.44B, read 2026-10-09T14:26:37
        stock at its listed price                                                                        1.37B
        Alz, latest balance line                                                                         2.44B
        Cash at the voucher price                                                                       37.50M
@@ -80,12 +80,12 @@ ROWS -- 2026-10-09_121751_run_board.log, board during pass 30 at row 3, read 202
        NET WORTH                                                                                        3.89B
 
 
-MARKET -- 2026-10-09_121751_run.log, pass 30, log last written 17:12 Central (live)
+MARKET -- 2026-10-09_121751_run.log, pass 34, log last written 17:27 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  0  726.90K  728.77K   1.88K      0.3%      0
+Chaos Core                  0  726.34K  728.77K   2.44K      0.3%      0
 Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
