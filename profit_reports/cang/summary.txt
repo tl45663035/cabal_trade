@@ -8,12 +8,12 @@ Mon 2026-10-05            13.47h   24.00h  166.53M      12.36M         11.49B  1
 Tue 2026-10-06            19.29h   24.00h  396.23M      20.54M         21.72B  21.32B  33.17K    1.8%
 Wed 2026-10-07             9.46h   24.00h  456.58M      48.28M         21.78B  21.32B  30.75K    2.1%
 Thu 2026-10-08            17.51h   24.00h  510.41M      29.15M         19.87B  19.36B  33.26K    2.6%
-Fri 2026-10-09 (so far)    1.89h    2.41h   75.51M      40.05M          3.51B   3.43B   4.99K    2.2%
+Fri 2026-10-09 (so far)    2.02h    2.72h   75.51M      37.31M          3.51B   3.43B   4.99K    2.2%
 =====================================================================================================
-7 DAYS                    95.39h  146.41h    2.12B  22,216,874100,414,800,918  98.30B 158.22K    2.1%
+7 DAYS                    95.53h  146.72h    2.12B  22,184,760100,414,800,918  98.30B 158.22K    2.1%
 
 
-PROFIT SUMMARY -- sold since 2026-10-09 00:00 Central (as of 02:24 Central)
+PROFIT SUMMARY -- sold since 2026-10-09 00:00 Central (as of 02:43 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
@@ -29,29 +29,28 @@ TOTAL                 75.51M    3.51B    3.43B  4.99K   688.93K  704.08K    2.2%
 
 
 
-ROWS -- 2026-10-09_003343_run_board.log, board during pass 32 at row 5, read 2026-10-09T02:24:43 (live)
+ROWS -- 2026-10-09_023816_run_board.log, board during pass 2 at row 1, read 2026-10-09T02:43:15 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Force Core(High                        x65   125.64K   165.00K   +39.36K   165.00K     8.17M     2.56M
-    2  Force Core(High                        x89   125.64K   165.00K   +39.36K   165.00K    11.18M     3.50M
-    3  Force Core(High                       x152   125.64K   165.00K   +39.36K   165.00K    19.10M     5.98M
-    4  Divine Stone Set X 18                   x1   705.16K   705.16K        +0    12.69M    12.69M         0
-    5  Divine Stone Set X 153                  x1   700.00K   705.07K    +5.07K   107.88M   107.10M   776.02K <- here
-    6  Upgrade Core (Ultimate                x250   465.12K   497.69K   +32.57K   497.69K   116.28M     8.14M
-    7  Upgrade Core (Ultimate                  x7   465.12K   497.69K   +32.57K   497.69K     3.26M   227.98K
-    8  Divine Stone Set X 165                  x1   700.00K   705.07K    +5.07K   116.34M   115.50M   837.04K
-    9  Upgrade Core (Ultimate                x208   465.12K   497.69K   +32.57K   497.69K    96.75M     6.77M
-   10  Upgrade Core (Ultimate                 x72   465.12K   497.69K   +32.57K   497.69K    33.49M     2.34M
-   29  uation) 1 SHER GARESIE                  x1         -     6.00M         -     6.00M         -         -
+    1  Force Core(High                        x65   153.73K   165.00K   +11.27K   165.00K     9.99M   732.68K <- here
+    2  Force Core(High                        x89   153.73K   165.00K   +11.27K   165.00K    13.68M     1.00M
+    3  Force Core(High                       x152   153.73K   165.00K   +11.27K   165.00K    23.37M     1.71M
+    4  Divine Stone Set X 18                   x1   706.63K   705.07K    -1.56K    12.69M    12.72M   -28.13K
+    5  Divine Stone Set X 153                  x1   706.63K   705.07K    -1.56K   107.88M   108.11M  -239.29K
+    6  Upgrade Core (Ultimate                x250   457.46K   497.67K   +40.21K   497.67K   114.36M    10.05M
+    7  Upgrade Core (Ultimate                  x7   457.46K   497.67K   +40.21K   497.67K     3.20M   281.47K
+    8  Divine Stone Set X 165                  x1   706.63K   705.07K    -1.56K   116.34M   116.59M  -258.23K
+    9  Upgrade Core (Ultimate                x208   457.46K   497.67K   +40.21K   497.67K    95.15M     8.36M
+   10  Upgrade Core (Ultimate                 x72   457.46K   497.67K   +40.21K   497.67K    32.94M     2.89M
    30  Se a i i                                x1         -     8.89M         -     8.89M         -         -
-    balance now 2.95B, read 2026-10-09T02:23:37
-       stock at its listed price                                                                      554.66M
-       Alz, latest balance line                                                                         2.95B
+    balance now 2.96B, read 2026-10-09T02:43:15
+       stock at its listed price                                                                      554.64M
+       Alz, latest balance line                                                                         2.96B
        Cash at the voucher price                                                                       76.00M
        gems at the voucher price                                                                       22.80M
-       NET WORTH                                                                                        3.60B
+       NET WORTH                                                                                        3.61B
 
 
-MARKET -- 2026-10-09_003343_run.log, pass 32, log last written 02:24 Central (live)
+MARKET -- 2026-10-09_023816_run.log, pass 1, log last written 02:43 Central (live); pass 2 is under way and has not priced the cores yet, so this is the last table it printed
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
