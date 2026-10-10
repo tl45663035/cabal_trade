@@ -8,12 +8,12 @@ Tue 2026-10-06            19.57h   24.00h  387.51M      19.80M         22.98B   
 Wed 2026-10-07            18.12h   24.00h  457.53M      25.25M         15.90B         15.44B  20.76K    2.9%
 Thu 2026-10-08            21.73h   24.00h  629.82M      28.99M         18.35B         17.72B  24.07K    3.4%
 Fri 2026-10-09            23.74h   24.00h  448.40M      18.88M         17.22B         16.77B  25.12K    2.6%
-Sat 2026-10-10 (so far)    2.09h    2.09h   13.53M       6.48M        535.40M        521.88M   1.14K    2.5%
+Sat 2026-10-10 (so far)    2.34h    2.34h   13.53M       5.77M        535.40M        521.88M   1.14K    2.5%
 ============================================================================================================
-7 DAYS                   132.50h  146.09h    2.72B  20,492,217110,338,575,710107,623,272,450 152.70K    2.5%
+7 DAYS                   132.76h  146.34h    2.72B  20,452,692110,338,575,710107,623,272,450 152.70K    2.5%
 
 
-PROFIT SUMMARY -- sold since 2026-10-10 00:00 Central (as of 02:05 Central)
+PROFIT SUMMARY -- sold since 2026-10-10 00:00 Central (as of 02:20 Central)
 
 item                   profit  revenue     cost  units  bought/u   sold/u  margin
 ---------------------------------------------------------------------------------
@@ -31,32 +31,33 @@ TOTAL                  13.53M  535.40M  521.88M  1.14K   458.99K  470.89K    2.5
 
 
 
-ROWS -- 2026-10-09_151528_run_board.log, board during pass 144 at row 3, read 2026-10-10T02:05:01 (live)
+ROWS -- 2026-10-09_151528_run_board.log, board during pass 148 at row 5, read 2026-10-10T02:20:32 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Yekaterina VIP Membership               x1   115.00M   122.22M    +7.22M   122.22M   115.00M     7.22M
     2  Epic Booster (Highest)                  x4    47.50M    47.50M        +0    47.50M   190.00M         0
-    3  Blessing Bead - Superior                x1   166.06M   180.00M   +13.94M   180.00M   166.06M    13.94M <- here
+    3  Blessing Bead - Superior                x1   166.06M   180.00M   +13.94M   180.00M   166.06M    13.94M
     4  Siena's Unbinding Stone                 x1    76.00M    97.50M   +21.50M    97.50M    76.00M    21.50M
-    5  Force Core (Ultimate                  x132   306.09K   294.64K   -11.45K   294.64K    40.40M    -1.51M
-    6  Force Core (Ultimate                  x176   287.35K   294.64K    +7.29K   294.64K    50.57M     1.28M
-    7  Force Core (Ultimate                    x8   287.35K   294.64K    +7.29K   294.64K     2.30M    58.36K
-    8  Force Core(High                        x55   153.73K   158.95K    +5.23K   158.95K     8.45M   287.49K
-    9  Force Core(High                         x4   153.73K   158.95K    +5.23K   158.95K   614.91K    20.90K
-   10  Force Core(High                       x137   153.73K   158.95K    +5.22K   158.95K    21.06M   715.83K
-    balance now 2.80B, read 2026-10-10T02:04:04
-       stock at its listed price                                                                      713.98M
-       Alz, latest balance line                                                                         2.80B
+    5  Force Core (Ultimate                  x132   306.09K   294.63K   -11.46K   294.63K    40.40M    -1.51M <- here
+    6  Force Core (Ultimate                  x176   287.35K   294.63K    +7.28K   294.63K    50.57M     1.28M
+    7  Force Core (Ultimate                    x8   287.35K   294.63K    +7.28K   294.63K     2.30M    58.26K
+    8  Force Core(High                        x55   153.73K   158.93K    +5.20K   158.93K     8.45M   286.22K
+    9  Force Core(High                         x4   153.73K   158.93K    +5.20K   158.93K   614.91K    20.81K
+   10  Force Core(High                       x137   153.73K   158.93K    +5.20K   158.93K    21.06M   712.54K
+   11  Chaos Core Set X 57                     x1   723.04K   728.47K    +5.43K    41.52M    41.21M   309.57K
+    balance now 2.76B, read 2026-10-10T02:19:04
+       stock at its listed price                                                                      755.50M
+       Alz, latest balance line                                                                         2.76B
        Cash at the voucher price                                                                      230.00M
        gems at the voucher price                                                                       52.71M
        NET WORTH                                                                                        3.79B
 
 
-MARKET -- 2026-10-09_151528_run.log, pass 144, log last written 02:05 Central (live)
+MARKET -- 2026-10-09_151528_run.log, pass 148, log last written 02:20 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  184.98K  185.00K       19      0.0%      0
-Chaos Core                  0  724.00K  728.50K    4.50K      0.6%      0
+Force Core(Highest)         0  184.98K  185.00K       20      0.0%      0
+Chaos Core                  1  724.00K  728.47K    4.47K      0.6%      0
 Force Core (Ultimate)       3        -        -        -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            3        -        -        -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     0  441.99K  424.86K  -17.13K     -4.0%      0
