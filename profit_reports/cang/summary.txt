@@ -8,12 +8,12 @@ Mon 2026-10-05            13.47h   24.00h  166.53M      12.36M         11.49B   
 Tue 2026-10-06            19.29h   24.00h  396.23M      20.54M         21.72B         21.32B  33.17K    1.8%
 Wed 2026-10-07             9.46h   24.00h  456.58M      48.28M         21.78B         21.32B  30.75K    2.1%
 Thu 2026-10-08            17.51h   24.00h  510.41M      29.15M         19.87B         19.36B  33.26K    2.6%
-Fri 2026-10-09 (so far)   18.19h   23.30h  258.17M      14.19M         13.33B         13.08B  20.38K    1.9%
+Fri 2026-10-09 (so far)   18.44h   23.55h  258.17M      14.00M         13.33B         13.08B  20.38K    1.9%
 ============================================================================================================
-7 DAYS                   111.69h  167.30h    2.30B  20,609,366110,239,316,642107,937,373,169 173.61K    2.1%
+7 DAYS                   111.95h  167.55h    2.30B  20,562,769110,239,316,642107,937,373,169 173.61K    2.1%
 
 
-PROFIT SUMMARY -- sold since 2026-10-09 00:00 Central (as of 23:17 Central)
+PROFIT SUMMARY -- sold since 2026-10-09 00:00 Central (as of 23:33 Central)
 
 item                  profit  revenue     cost   units  bought/u   sold/u  margin
 ---------------------------------------------------------------------------------
@@ -30,33 +30,33 @@ TOTAL                258.17M   13.33B   13.08B  20.38K   641.78K  654.45K    1.9
 
 
 
-ROWS -- 2026-10-09_192558_run_board.log, board during pass 95 at row 5, read 2026-10-09T23:17:45 (live)
+ROWS -- 2026-10-09_192558_run_board.log, board during pass 101 at row 3, read 2026-10-09T23:33:05 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Force Core(High                        x65   153.73K   165.00K   +11.27K   165.00K     9.99M   732.75K
     2  Force Core(High                        x89   153.73K   165.00K   +11.27K   165.00K    13.68M     1.00M
-    3  Force Core(High                       x152   153.73K   165.00K   +11.27K   165.00K    23.37M     1.71M
+    3  Force Core(High                       x152   153.73K   165.00K   +11.27K   165.00K    23.37M     1.71M <- here
     4  Force Core(Highest                     x70   180.70K   180.00K      -699   180.00K    12.65M   -48.93K
-    5  Force Core(Highest                     x12   180.70K   180.00K      -699   180.00K     2.17M    -8.39K <- here
-    6  Divine Stone Set X 138                  x1   703.00K   712.69K    +9.69K    98.35M    97.01M     1.34M
-    7  Divine Stone Set X 156                  x1   703.96K   712.69K    +8.73K   111.18M   109.82M     1.36M
-    8  Divine Stone Set X 159                  x1   703.96K   712.69K    +8.73K   113.32M   111.93M     1.39M
-    9  Chaos Core Set X 165                    x1   720.03K   728.70K    +8.67K   120.24M   118.81M     1.43M
+    5  Force Core(Highest                     x12   180.70K   180.00K      -699   180.00K     2.17M    -8.39K
+    6  Divine Stone Set X 138                  x1   703.00K   712.68K    +9.68K    98.35M    97.01M     1.34M
+    7  Divine Stone Set X 156                  x1   703.96K   712.67K    +8.71K   111.18M   109.82M     1.36M
+    8  Divine Stone Set X 159                  x1   703.96K   712.67K    +8.71K   113.32M   111.93M     1.39M
+    9  Chaos Core Set X 165                    x1   720.03K   728.68K    +8.65K   120.23M   118.81M     1.43M
    29  ae . of | Lua                           x1         -     3.20B         -     3.20B         -         -
    30  Se a i i                                x1         -     8.89M         -     8.89M         -         -
-    balance now 2.83B, read 2026-10-09T23:16:36
-       stock at its listed price                                                                      508.34M
+    balance now 2.83B, read 2026-10-09T23:32:18
+       stock at its listed price                                                                      508.32M
        Alz, latest balance line                                                                         2.83B
        Cash at the voucher price                                                                       75.80M
        gems at the voucher price                                                                       22.74M
        NET WORTH                                                                                        3.43B
 
 
-MARKET -- 2026-10-09_192558_run.log, pass 95, log last written 23:17 Central (live)
+MARKET -- 2026-10-09_192558_run.log, pass 101, log last written 23:33 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         2  186.57K  179.97K   -6.61K     -3.7%      0
-Chaos Core                  1  725.00K  728.70K    3.70K      0.5%      0
-Divine Stone                3  703.00K  712.69K    9.69K      1.4%      3
+Force Core(Highest)         2  186.57K  180.00K   -6.57K     -3.7%      0
+Chaos Core                  1  725.00K  728.68K    3.68K      0.5%      0
+Divine Stone                3  703.00K  712.67K    9.67K      1.4%      3
 Force Core(High)            3        -        -        -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     0  441.99K  422.96K  -19.02K     -4.5%      0
+Upgrade Core (Ultimate)     0  441.99K  422.95K  -19.03K     -4.5%      0
