@@ -8,53 +8,54 @@ Wed 2026-10-07             9.46h   24.00h  456.58M      48.28M         21.78B   
 Thu 2026-10-08            17.51h   24.00h  510.41M      29.15M         19.87B   19.36B  33.26K    2.6%
 Fri 2026-10-09            18.89h   24.00h  258.16M      13.67M         13.34B   13.08B  20.38K    1.9%
 Sat 2026-10-10            15.93h   24.00h  224.26M      14.08M         12.81B   12.59B  19.59K    1.8%
-Sun 2026-10-11 (so far)    1.58h    2.64h   16.09M      10.19M        131.94M  115.86M     279   12.2%
+Sun 2026-10-11 (so far)    1.83h    2.89h   18.49M      10.09M        461.95M  443.46M     747    4.0%
 ======================================================================================================
-7 DAYS                    96.12h  146.64h    2.03B  21,101,270101,130,671,490   99.10B 155.42K    2.0%
+7 DAYS                    96.37h  146.89h    2.03B  21,070,666101,460,682,932   99.43B 155.89K    2.0%
 
 
-PROFIT SUMMARY -- sold since 2026-10-11 00:00 Central (as of 02:38 Central)
+PROFIT SUMMARY -- sold since 2026-10-11 00:00 Central (as of 02:53 Central)
 
 item                 profit  revenue     cost  units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------
 upgradecoreultimate  16.08M  129.32M  113.25M    265   427.35K  488.02K   12.4%
+divinestone           2.41M  330.01M  327.60M    468   700.01K  705.15K    0.7%
 forcecorehighest      9.62K    2.62M    2.61M     14   186.29K  186.98K    0.4%
 -------------------------------------------------------------------------------
-Cores                16.09M  131.94M  115.86M    279   415.25K  472.91K   12.2%
+Cores                18.49M  461.95M  443.46M    747   593.65K  618.41K    4.0%
 ===============================================================================
-TOTAL                16.09M  131.94M  115.86M    279   415.25K  472.91K   12.2%
+TOTAL                18.49M  461.95M  443.46M    747   593.65K  618.41K    4.0%
 
 
 
-ROWS -- 2026-10-11_010317_run_board.log, board during pass 46 at row 1, read 2026-10-11T02:37:50 (live)
+ROWS -- 2026-10-11_010317_run_board.log, board during pass 51 at row 1, read 2026-10-11T02:53:05 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Force Core(High                        x53   150.00K   165.00K   +15.00K   165.00K     7.95M   795.00K <- here
     2  Force Core(High                        x44   150.00K   165.00K   +15.00K   165.00K     6.60M   660.00K
     3  Force Core(High                       x189   150.00K   165.00K   +15.00K   165.00K    28.35M     2.83M
-    4  Upgrade Core (Ultimate                x106   427.35K   487.98K   +60.63K   487.98K    45.30M     6.43M
-    5  Upgrade Core (Ultimate                  x2   427.35K   487.98K   +60.63K   487.98K   854.70K   121.26K
-    6  Upgrade Core (Ultimate                 x23   427.35K   487.98K   +60.63K   487.98K     9.83M     1.39M
-    7  Divine Stone Set X 162                  x1   700.00K   705.15K    +5.15K   114.24M   113.40M   834.95K
-    8  Divine Stone Set X 159                  x1   700.00K   705.15K    +5.15K   112.12M   111.30M   819.33K
-    9  Divine Stone Set X 147                  x1   700.03K   705.15K    +5.12K   103.66M   102.90M   752.79K
+    4  Upgrade Core (Ultimate                x106   427.35K   487.96K   +60.61K   487.96K    45.30M     6.42M
+    5  Upgrade Core (Ultimate                  x2   427.35K   487.96K   +60.61K   487.96K   854.70K   121.22K
+    6  Upgrade Core (Ultimate                 x23   427.35K   487.96K   +60.61K   487.96K     9.83M     1.39M
+    7  Divine Stone Set X 159                  x1   700.00K   705.15K    +5.15K   112.12M   111.30M   818.85K
+    8  Divine Stone Set X 66                   x1   700.13K   705.15K    +5.01K    46.54M    46.21M   330.92K
+    9  Divine Stone Set X 159                  x1   700.00K   705.15K    +5.15K   112.12M   111.30M   818.53K
    27  Life Capsule(Special) Type A X 100        x1         -    20.00K         -     2.00M         -         -
    28  Essence of Chaos Guardian (Bracele        x1         -    14.00M         -    14.00M         -         -
    29  ae . of | Lua                           x1         -     3.00B         -     3.00B         -         -
    30  Se a i i                                x1         -     8.89M         -     8.89M         -         -
-    balance now 2.61B, read 2026-10-11T02:37:50
-       stock at its listed price                                                                      441.13M
-       Alz, latest balance line                                                                         2.61B
+    balance now 2.67B, read 2026-10-11T02:52:38
+       stock at its listed price                                                                      381.89M
+       Alz, latest balance line                                                                         2.67B
        Cash at the voucher price                                                                       75.40M
        gems at the voucher price                                                                        6.60M
        NET WORTH                                                                                        3.13B
 
 
-MARKET -- 2026-10-11_010317_run.log, pass 46, log last written 02:37 Central (live)
+MARKET -- 2026-10-11_010317_run.log, pass 51, log last written 02:53 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         0  185.90K  190.40K   4.50K      2.4%      0
-Chaos Core                  0  712.00K  714.00K   2.00K      0.3%      0
+Chaos Core                  0  711.00K  714.00K   3.00K      0.4%      0
 Divine Stone                3  700.00K  705.15K   5.15K      0.7%      3
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
