@@ -395,9 +395,7 @@
     "war_minutes": 30,
     "quiet_from_end": 120,
     "quiet_seconds": 120,
-    "pass_allowance": 60,
-    "clock_uncertainty": 59,
-    "clock_confirm_pause": 1.0
+    "pass_allowance": 60
   },
   "recovery": {
     "screen_timeout": 25.0,
@@ -456,7 +454,6 @@
     "order": [7, 6, 5, 4, 3, 2, 1],
     "rotate_count": 2,
     "daily_limits": {"1": 5, "2": 5, "3": 5, "4": 7, "5": 7, "6": 10, "7": 15},
-    "server_utc_offset_hours": 2,
     "state_file": "dungeon_next.json",
     "storm": [738, 305],
     "storm_settle": 3.0,
@@ -685,7 +682,92 @@
     "report_ready": "relisting rows \\d+-\\d+: \\d+ relisted",
     "start_up_done": "^relisting rows \\d+-\\d+ for "
   },
+  "stock_up": {
+    "enabled": false,
+    "item": "Chaos Core Set",
+    "below_fallback": 727000,
+    "below_override": 0,
+    "budget": 1000000000,
+    "ledger_note": "stock up",
+    "buy_gap": 1,
+    "weekly_above": 500,
+    "set_max": 999,
+    "full_row_from_end": 0,
+    "rest_row_from_end": 1
+  },
+  "divide": {
+    "window": [924, 583, 1016, 602],
+    "word": "Confirmation"
+  },
+  "input": {
+    "VK_SHIFT": 16
+  },
   "tools": {
+    "recorder": {
+      "folder": "recordings",
+      "toggle_taps": 2,
+      "toggle_window": 0.8,
+      "pump_ms": 50,
+      "timer_resolution_ms": 1,
+      "spin_below": 0.002,
+      "win": {
+        "WH_KEYBOARD_LL": 13,
+        "WH_MOUSE_LL": 14,
+        "WM_KEYDOWN": 256,
+        "WM_KEYUP": 257,
+        "WM_SYSKEYDOWN": 260,
+        "WM_SYSKEYUP": 261,
+        "WM_MOUSEMOVE": 512,
+        "WM_LBUTTONDOWN": 513,
+        "WM_LBUTTONUP": 514,
+        "WM_RBUTTONDOWN": 516,
+        "WM_RBUTTONUP": 517,
+        "WM_MBUTTONDOWN": 519,
+        "WM_MBUTTONUP": 520,
+        "WM_MOUSEWHEEL": 522,
+        "WM_XBUTTONDOWN": 523,
+        "WM_XBUTTONUP": 524,
+        "WM_MOUSEHWHEEL": 526,
+        "LLKHF_EXTENDED": 1,
+        "LLKHF_INJECTED": 16,
+        "LLMHF_INJECTED": 1,
+        "VK_CONTROL": 17,
+        "VK_LCONTROL": 162,
+        "VK_RCONTROL": 163,
+        "INPUT_MOUSE": 0,
+        "INPUT_KEYBOARD": 1,
+        "INPUT_STRUCT_SIZE": 40,
+        "KEYEVENTF_EXTENDEDKEY": 1,
+        "KEYEVENTF_KEYUP": 2,
+        "KEYEVENTF_SCANCODE": 8,
+        "MOUSEEVENTF_MOVE": 1,
+        "MOUSEEVENTF_LEFTDOWN": 2,
+        "MOUSEEVENTF_LEFTUP": 4,
+        "MOUSEEVENTF_RIGHTDOWN": 8,
+        "MOUSEEVENTF_RIGHTUP": 16,
+        "MOUSEEVENTF_MIDDLEDOWN": 32,
+        "MOUSEEVENTF_MIDDLEUP": 64,
+        "MOUSEEVENTF_XDOWN": 128,
+        "MOUSEEVENTF_XUP": 256,
+        "MOUSEEVENTF_WHEEL": 2048,
+        "MOUSEEVENTF_HWHEEL": 4096,
+        "MOUSEEVENTF_ABSOLUTE": 32768,
+        "XBUTTON1": 1,
+        "XBUTTON2": 2,
+        "SM_CXSCREEN": 0,
+        "SM_CYSCREEN": 1,
+        "SM_XVIRTUALSCREEN": 76,
+        "SM_YVIRTUALSCREEN": 77,
+        "SM_CXVIRTUALSCREEN": 78,
+        "SM_CYVIRTUALSCREEN": 79,
+        "MOUSEEVENTF_VIRTUALDESK": 16384,
+        "ABSOLUTE_SPAN": 65536,
+        "HIGH_WORD_SHIFT": 16,
+        "KEY_NAME_SCAN_SHIFT": 16,
+        "KEY_NAME_EXTENDED_SHIFT": 24,
+        "KEY_NAME_CHARS": 64
+      }
+    },
     "online_clock": {
       "servers": [
         "time.windows.com",
@@ -882,6 +964,7 @@
     "register_interior_max": 20
   },
   "game_facts": {
+    "server_utc_offset_hours": 2,
     "craft_collect_tab": 1,
     "register_columns": ["name", "qty", "price", "status", "button"]
   }

@@ -372,6 +372,7 @@ def scroll(notches):
     global _AT
     if not notches:
         return
+    calibration.halt_if_stopped()
     x, y = grid_point()
     row_model.inv._user32.SetCursorPos(int(x), int(y))
     event = row_model._wheel_event(-1 if notches > 0 else 1)

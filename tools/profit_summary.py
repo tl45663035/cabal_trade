@@ -990,7 +990,7 @@ def report_dungeons():
         state = {}
     now = datetime.datetime.now(datetime.timezone.utc) + shift()
     today = (now + datetime.timedelta(
-        hours=float(conf["server_utc_offset_hours"]))).date().isoformat()
+        hours=float(SETTINGS["game_facts"]["server_utc_offset_hours"]))).date().isoformat()
     ran = (state.get("ran") or {}) if state.get("day") == today else {}
     limits = conf["daily_limits"]
     print(f"DUNGEONS -- Chaos Arena entries on server day {today}")
@@ -1004,6 +1004,51 @@ def report_dungeons():
     print(f"{'total':<8}{done:>6}{cap:>7}")
 
 
+RANGE = re.compile(r"^relisting rows (\d+)-(\d+) for ", re.M)
+
+
+def report_stock_up():
+    import networth
+    conf = json.loads((ROOT / "src_1080p" / "config.json").read_text(
+        encoding="utf-8")).get("stock_up") or {}
+    note = conf.get("ledger_note")
+    if not note or not LEDGER.exists():
+        return
+    conn = sqlite3.connect(f"file:{LEDGER}?mode=ro", uri=True)
+    bought, spent = conn.execute(
+        "SELECT COALESCE(SUM(qty), 0), COALESCE(SUM(spend), 0) FROM "
+        "purchases WHERE note=?", (note,)).fetchone()
+    conn.close()
+    log = networth.newest_log()
+    held = worth = 0
+    if log is not None:
+        found = RANGE.search(log.read_text(encoding="utf-8", errors="replace"))
+        if found:
+            last = int(found.group(2))
+            rows = {last - int(conf["rest_row_from_end"]),
+                    last - int(conf["full_row_from_end"])}
+            _market, board, _unread, _balance, _bought = networth.read(log)
+            for index, name, qty, each, listed, _cost in board:
+                if index in rows and key(name) == key(conf["item"]):
+                    n = row_units(name, qty, each, listed)
+                    held += n
+                    worth += n * each
+    print("STOCK UP CHAOS -- every Chaos Core and Set bought for stock up, "
+          "at the stock rows' listed price now")
+    print("")
+    print(f"{'item':<30}{'profit':>15}{'bought':>15}{'bought/u':>15}"
+          f"{'listed/u':>15}{'held':>15}")
+    line(width=DAY_WIDTH)
+    if not bought:
+        print("  nothing bought for stock up yet.")
+        return
+    paid = spent / bought
+    listed = worth / held if held else 0
+    profit = (listed - paid) * bought if listed else 0
+    print(f"{'Stock up Chaos':<30}{profit:>15,.0f}{bought:>15,.0f}"
+          f"{paid:>15,.0f}{listed:>15,.0f}{held:>15,.0f}")
+
+
 def main():
     dungeons = caught(report_dungeons)
     if dungeons:
@@ -1012,7 +1057,8 @@ def main():
         print("")
     book = open_book()
     days = caught(lambda: (by_day(book), print(""), print(""),
-                           report_day(book)))
+                           report_day(book), print(""), print(""),
+                           report_stock_up()))
     board = caught(report_board)
     market = caught(report_market)
     print(tighten(days))

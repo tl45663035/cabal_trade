@@ -69,6 +69,7 @@ def _event(vk: int, up: bool) -> _Input:
 
 
 def press(vk: int, hold: float = None) -> None:
+    calibration.halt_if_stopped()
     sent = _user32.SendInput(
         1, ctypes.byref(_event(vk, up=False)), ctypes.sizeof(_Input))
     try:

@@ -21,7 +21,7 @@ CARRIED = re.compile(r"balance before [\d,]+, as the last order left it")
 LINES = [
     (re.compile(r"tab \d read in (\d+) ms after the listing"), "tab 4 read after a listing"),
     (re.compile(r"tab \d read from the screen in (\d+) ms"), "tab 4 read before a withdrawal"),
-    (re.compile(r"PaddleOCR read all four again in (\d+) ms"), "backup OCR re-read of the four prices"),
+    (re.compile(r"Tesseract read all four again in (\d+) ms"), "backup OCR re-read of the four prices"),
     (re.compile(r"the gift box took ([\d,]+) ms"), "gift box"),
     (re.compile(r"^\s+margin check for (?:.+?): (?:.+?), ([\d,]+) ms$"), "margin check, whole"),
 ]

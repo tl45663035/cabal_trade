@@ -73,7 +73,7 @@ LIMITS = {int(level): int(cap)
           for level, cap in _DUNGEON["daily_limits"].items()}
 STATE = calibration.LOG_DIR / _DUNGEON["state_file"]
 SERVER_UTC_OFFSET = datetime.timedelta(
-    hours=float(_DUNGEON["server_utc_offset_hours"]))
+    hours=float(_SHARED["game_facts"]["server_utc_offset_hours"]))
 TIME_LIMIT = datetime.timedelta(seconds=float(_DUNGEON["time_limit_seconds"]))
 sys.path.append(str(calibration.HERE.parent / "tools"))
 CLEARED_WINDOW = tuple(_DUNGEON["cleared_window"])

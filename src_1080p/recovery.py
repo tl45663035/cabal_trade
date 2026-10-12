@@ -269,6 +269,7 @@ def _clear_field():
 
 def _type(text):
     from open_inventory import _user32, _Input, _InputUnion, _KeyInput
+    calibration.halt_if_stopped()
     for ch in str(text):
         for up in (False, True):
             flags = KEYEVENTF_UNICODE | (KEYEVENTF_KEYUP if up else 0)

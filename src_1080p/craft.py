@@ -8,6 +8,7 @@ TAB_SETTLE = _SHARED["timing"]["tab_settle"]
 ACTION_GAP = _SHARED["timing"]["action_gap"]
 POLL_GAP = _SHARED["timing"]["poll_gap"]
 DIALOG_TIMEOUT = _SHARED["timing"]["dialog_timeout"]
+DIVIDE = _SHARED["divide"]
 CRAFT_WINDOW_TIMEOUT = _SHARED["timing"]["craft_window_timeout"]
 LOAD_ATTEMPTS = _SHARED["detect"]["load_attempts"]
 SETTLE_MAX = _SHARED["timing"]["craft_settle_max"]
@@ -128,9 +129,57 @@ def complete_all(verbose=True):
     return point
 
 
-def compress(slot, verbose=True):
+def _divide_reads(window, word):
+    seen = calibration.read_line(calibration.grab(), window)
+    return _fold(word) in _fold(seen), seen
+
+
+def _fold(text):
+    return re.sub(r"[^a-z0-9]", "", (text or "").lower())
+
+
+def divide(point, verbose=True):
+    say = print if verbose else (lambda *a: None)
+    window, word = tuple(DIVIDE["window"]), DIVIDE["word"]
+    calibration.shift_right_click(*point, settle=0.0)
+    calibration.park()
+    deadline = time.monotonic() + DIALOG_TIMEOUT
+    up, seen = _divide_reads(window, word)
+    while not up and time.monotonic() < deadline:
+        time.sleep(POLL_GAP)
+        up, seen = _divide_reads(window, word)
+    if not up:
+        calibration.snap("divide_never_opened")
+        say(f"  no Divide Items window over {point}: {list(window)} reads "
+            f"{seen!r}; compressing it as it is")
+        return False
+    centre = ((window[0] + window[2]) // 2, (window[1] + window[3]) // 2)
+    say(f"  Divide Items open; {word} at {centre}")
+    calibration.click(*centre, settle=0.0)
+    calibration.park()
+    deadline = time.monotonic() + DIALOG_TIMEOUT
+    while up and time.monotonic() < deadline:
+        time.sleep(POLL_GAP)
+        up, seen = _divide_reads(window, word)
+    if up:
+        calibration.snap("divide_stayed_open")
+        raise Refused(f"the Divide Items window stayed open after {word}; "
+                      f"nothing is compressed.")
+    return True
+
+
+def compress(slot, verbose=True, divided=False):
     say = print if verbose else (lambda *a: None)
     point = calibration.inventory_slot_point(*slot)
+    if calibration.inventory_open() is None:
+        calibration.snap("compress_inventory_shut")
+        raise Refused(f"the Inventory is not open, so tab "
+                      f"{calibration.WORK_TAB} slot {tuple(slot)} is not on "
+                      f"screen; nothing is divided or compressed.")
+    if divided:
+        say(f"  dividing tab {calibration.WORK_TAB} slot {tuple(slot)} "
+            f"first: a Set at its full stack does not compress")
+        divide(point, verbose=verbose)
     say(f"  compressing tab {calibration.WORK_TAB} slot {tuple(slot)} at "
         f"{point}")
     calibration.alt_click(*point, settle=0.0)

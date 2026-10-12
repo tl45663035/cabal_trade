@@ -1,9 +1,11 @@
 import datetime
-import re
 import sys
 import time
 
 import calibration
+
+sys.path.append(str(calibration.HERE.parent / "tools"))
+import online_clock
 
 _SHARED = calibration.load_shared()
 _WAR = _SHARED["war"]
@@ -12,79 +14,19 @@ START_HOURS = tuple(_WAR["start_hours"])
 WAR_MINUTES = _WAR["war_minutes"]
 QUIET_FROM_END = _WAR["quiet_from_end"]
 QUIET_SECONDS = _WAR["quiet_seconds"]
-UNCERTAINTY = _WAR["clock_uncertainty"]
-CONFIRM_PAUSE = _WAR["clock_confirm_pause"]
 LAG_POLL = _SHARED["timing"]["server_lag_poll"]
-_CLOCK = re.compile(_SHARED["text"]["server_clock"])
-EPOCH = datetime.datetime.strptime(
-    _SHARED["game_facts"]["clock_epoch"], "%Y-%m-%d")
-DAY = datetime.timedelta(days=1).total_seconds()
-MINUTE = datetime.timedelta(minutes=1).total_seconds()
-
-_SYNC = None
-
-
-def _apart(seconds):
-    gap = abs(seconds) % DAY
-    return min(gap, DAY - gap)
-
-
-def clock_box():
-    return calibration._box(tuple(calibration._REG["server_clock"]))
-
-
-def read_clock(image=None, verbose=False):
-    image = image if image is not None else calibration.grab()
-    box = clock_box()
-    words = calibration.ocr(image, box)
-    seen = " ".join(t for t, _c, _p in words)
-    for text, _c, _p in words:
-        found = _CLOCK.match(text.strip())
-        if found is not None:
-            hour, minute = int(found.group(1)), int(found.group(2))
-            return datetime.time(hour, minute)
-    if verbose:
-        print(f"  the server clock at {box} did not read a time ({seen!r})")
-    return None
-
-
-def sync(verbose=False):
-    global _SYNC
-    if _SYNC is not None:
-        return True
-    reading = read_clock(verbose=verbose)
-    if reading is None:
-        return False
-    stamped = EPOCH + datetime.timedelta(
-        hours=reading.hour, minutes=reading.minute, seconds=UNCERTAINTY)
-    time.sleep(CONFIRM_PAUSE)
-    second = read_clock(verbose=False)
-    if second is None:
-        if verbose:
-            print("  the server clock did not read a second time; not "
-                  "anchoring on one reading.")
-        return False
-    gap = _apart(((second.hour * 60 + second.minute)
-                  - (reading.hour * 60 + reading.minute)) * MINUTE)
-    if gap > MINUTE:
-        if verbose:
-            print(f"  two readings disagree ({reading:%H:%M} then "
-                  f"{second:%H:%M}); not anchoring on either.")
-        return False
-    _SYNC = (time.monotonic(), stamped)
-    if verbose:
-        print(f"  server clock {reading:%H:%M} (+{UNCERTAINTY}s for the "
-              f"unshown seconds)")
-    return True
+SERVER_UTC_OFFSET = datetime.timedelta(
+    hours=float(_SHARED["game_facts"]["server_utc_offset_hours"]))
 
 
 def now(verbose=False):
-    if _SYNC is None:
-        sync(verbose=verbose)
-    if _SYNC is None:
+    found = online_clock.utc_now()
+    if found is None:
+        if verbose:
+            print("  no time server answered and no internet time is cached, "
+                  "so the server time is not known")
         return None
-    at, stamped = _SYNC
-    return stamped + datetime.timedelta(seconds=time.monotonic() - at)
+    return (found + SERVER_UTC_OFFSET).replace(tzinfo=None)
 
 
 def quiet_window(after):
@@ -96,8 +38,7 @@ def quiet_window(after):
             ends = midnight + datetime.timedelta(hours=hour,
                                                  minutes=WAR_MINUTES)
             start = ends + datetime.timedelta(seconds=QUIET_FROM_END)
-            end = start + datetime.timedelta(
-                seconds=QUIET_SECONDS + UNCERTAINTY)
+            end = start + datetime.timedelta(seconds=QUIET_SECONDS)
             if end <= after:
                 continue
             if best is None or start < best[0]:
@@ -111,8 +52,8 @@ def avoid(allowance=0.0, verbose=True, waiting=None):
         return 0.0
     at = now(verbose=verbose)
     if at is None:
-        say("  the server clock has never read, so the war schedule cannot "
-            "be followed this run.")
+        say("  the server time is not known, so the war schedule cannot be "
+            "followed this pass.")
         return 0.0
     start, end = quiet_window(at)
     if at < start and (start - at).total_seconds() > allowance:
@@ -144,15 +85,9 @@ def avoid(allowance=0.0, verbose=True, waiting=None):
 
 def main():
     calibration.log_to_file("war")
-    from open_inventory import focus_game
-    if not focus_game():
-        print("could not bring the game to the foreground.")
+    at = now(verbose=True)
+    if at is None:
         sys.exit(1)
-    print(f"server clock region {clock_box()}")
-    if not sync(verbose=True):
-        print("  the clock did not anchor; nothing to schedule against.")
-        sys.exit(1)
-    at = now()
     start, end = quiet_window(at)
     print(f"  server now      {at:%H:%M:%S}")
     print(f"  war hours       {list(START_HOURS)}, {WAR_MINUTES} min long")

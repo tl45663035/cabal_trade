@@ -365,7 +365,25 @@ def only_boxes(image, boxes):
     return kept
 
 
+def _price_boxes(panel):
+    rows = panel["suggestion_boxes"]
+    return [tuple(rows[-1]), tuple(panel["price_field"]),
+            tuple(panel["net_sales_box"]) if panel.get("net_sales_box")
+            else None,
+            tuple(rows[0]) if len(rows) > 1 else None]
+
+
 def _asking(image, panel):
+    boxes = _price_boxes(panel)
+    read = [value if value and value >= MIN_PLAUSIBLE_PRICE else None
+            for value in (paddle_money(image, boxes) or [None] * len(boxes))]
+    if all(value for value, box in zip(read, boxes) if box):
+        return tuple(read)
+    backup = _tesseract_asking(image, panel)
+    return tuple(value or other for value, other in zip(read, backup))
+
+
+def _tesseract_asking(image, panel):
     rows = panel["suggestion_boxes"]
     field = tuple(panel["price_field"])
     wanted = [(tuple(rows[-1]), False), (field, True),
@@ -407,8 +425,8 @@ def _same_price(a, b):
     return bool(low) and high % low == 0
 
 
-def _places_agree(asked, filled, net, say):
-    core = [(v, w) for v, w in ((asked, "current min"),
+def _places_agree(asked, filled, net, say, where="current min"):
+    core = [(v, w) for v, w in ((asked, where),
                                 (filled, "price field"),
                                 (net, "net sales"))
             if v and v >= MIN_PLAUSIBLE_PRICE]
@@ -426,13 +444,31 @@ def _places_agree(asked, filled, net, say):
     return True
 
 
-def _agreed(asked, filled, average, listed_at, verbose, net=None):
-    say = print if verbose else (lambda *a: None)
+def _say_read(say, asked, filled, net, average, listed_at):
     say("    read: " + ", ".join(
         f"{w} {v:,}" if v else f"{w} unread"
         for v, w in ((asked, "current min"), (filled, "price field"),
                      (net, "net sales"), (average, "week average"),
                      (listed_at, "listed at"))))
+
+
+def _agreed_weekly(asked, filled, average, listed_at, verbose, net=None):
+    say = print if verbose else (lambda *a: None)
+    _say_read(say, asked, filled, net, average, listed_at)
+    if not _places_agree(average, filled, net, say, "week average"):
+        return None
+    if abs(average - filled) > PRICE_SLACK:
+        say(f"    the week average reads {average:,} and the price field "
+            f"{filled:,}; the field must hold the week average before "
+            f"anything is typed")
+        return None
+    say(f"    the price field holds the week average, {filled:,}")
+    return filled
+
+
+def _agreed(asked, filled, average, listed_at, verbose, net=None):
+    say = print if verbose else (lambda *a: None)
+    _say_read(say, asked, filled, net, average, listed_at)
     if not _places_agree(asked, filled, net, say):
         return None
     seen = [(v, w, exact) for v, w, exact in
@@ -521,17 +557,17 @@ def start_backup_reader():
     threading.Thread(target=start, daemon=True).start()
 
 
-def backup_money(image, boxes):
+def paddle_money(image, boxes):
     if _reader["failed"]:
         return None
-    texts = _backup_texts([calibration.isolate_digits(image, tuple(box),
-                                                      BACKUP_SCALE)
+    texts = _backup_texts([_backup_line(image, box, colour=True)
                            if box else None for box in boxes])
-    return None if texts is None else [calibration._digits(t) for t in texts]
+    return None if texts is None else [calibration._digits(t) if t else None
+                                       for t in texts]
 
 
-def _backup_line(image, box):
-    ink = calibration.ink_box(image, tuple(box))
+def _backup_line(image, box, colour=False):
+    ink = calibration.ink_box(image, tuple(box), colour=colour)
     if ink is None:
         return None
     crop = image.crop(ink)
@@ -582,28 +618,20 @@ def _disputed(asked, filled, net):
         len(core) > 1 and not all(_same_price(core[0], v) for v in core[1:]))
 
 
-def _read_and_agree(panel, listed_at, verbose, image=None):
+def _read_and_agree(panel, listed_at, verbose, image=None, weekly=False):
     image = calibration.grab() if image is None else image
+    agree = _agreed_weekly if weekly else _agreed
     asked, filled, net, average = _asking(image, panel)
-    value = _agreed(asked, filled, average, listed_at, verbose, net)
-    if value is not None or not _disputed(asked, filled, net):
+    value = agree(asked, filled, average, listed_at, verbose, net)
+    if value is not None or not _disputed(average if weekly else asked,
+                                          filled, net):
         return value
-    rows = panel["suggestion_boxes"]
-    boxes = [rows[-1], panel["price_field"], panel.get("net_sales_box"),
-             rows[0] if len(rows) > 1 else None]
     started = time.perf_counter()
-    again = backup_money(image, boxes)
-    if again is None:
-        if verbose:
-            print(f"    the reads disagree and "
-                  f"{_reader['failed'] or 'PaddleOCR did not answer'}; "
-                  f"nothing is typed from this read")
-        return None
+    t_asked, t_filled, t_net, t_average = _tesseract_asking(image, panel)
     if verbose:
-        print(f"    the reads disagree; PaddleOCR read all four again "
+        print(f"    the reads disagree; Tesseract read all four again "
               f"in {(time.perf_counter() - started) * 1000:.0f} ms")
-    p_asked, p_filled, p_net, p_average = again
-    return _agreed(p_asked, p_filled, p_average, listed_at, verbose, p_net)
+    return agree(t_asked, t_filled, t_average, listed_at, verbose, t_net)
 
 
 def panel_standing():
@@ -687,6 +715,24 @@ def suggested_price(verbose=False, listed_at=None, overlap=False):
         value = _read_and_agree(panel, listed_at, verbose)
     if value is None and verbose:
         print(f"    the lowest listed price would not read")
+    return value
+
+
+def weekly_price(verbose=False, listed_at=None):
+    panel = _panel()
+    rows = panel["suggestion_boxes"]
+    weekly, market = tuple(rows[0]), tuple(rows[-1])
+    _pick_suggestion((weekly[0] - SUGGESTION_RADIO_DX,
+                      (weekly[1] + weekly[3]) // 2))
+    calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
+    calibration.park()
+    value = _read_and_agree(panel, listed_at, verbose, weekly=True)
+    if value is None:
+        value = _read_and_agree(panel, listed_at, verbose, weekly=True)
+    if value is None and verbose:
+        print(f"    the week average would not read")
+    _pick_suggestion((market[0] - SUGGESTION_RADIO_DX,
+                      (market[1] + market[3]) // 2))
     return value
 
 
@@ -1055,6 +1101,7 @@ def wheel(rows, verbose=True):
     if not notches:
         return 0
     direction = -1 if rows > 0 else 1
+    calibration.halt_if_stopped()
     inv._user32.SetCursorPos(int(x), int(y))
     event = _wheel_event(direction)
     for _ in range(notches):
@@ -1762,13 +1809,16 @@ class RowModel:
                    under=None, floor_item=None, floor_units=0,
                    fallback=None,
                    resupply_cost=0, overlap=False, rule_item=None,
-                   special=False):
+                   special=False, weekly=False, register_row=None,
+                   read_weekly=False, expect_set=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
         if not panel:
             raise Divergence(
                 "the register panel has not been measured; run "
                 "py src/calibration.py before listing anything.")
+        if weekly:
+            resolve = False
 
         calibration.steps_reset()
         point = shop.slot_point(int(row), int(col))
@@ -1807,6 +1857,13 @@ class RowModel:
                 f"tab {WORK_TAB} slot ({row},{col}) is still empty "
                 f"{DIALOG_TIMEOUT:g}s after the withdrawal. Nothing listed.")
 
+        if (register_row is not None
+                and not self.register_at(register_row, verbose)):
+            raise Divergence(
+                f"row {register_row} does not show {REGISTER_WORD}, so what "
+                f"is in tab {WORK_TAB} slot ({row},{col}) is not listed into "
+                f"any other row. Nothing has been listed.")
+
         suggested = None
         attempt = lagged = 0
         while attempt < PRICE_ATTEMPTS:
@@ -1830,14 +1887,14 @@ class RowModel:
                 print(f"  ctrl-click {attempt}/{PRICE_ATTEMPTS} loaded nothing "
                       f"from ({row},{col})")
         market = suggested
-        if suggested is None and listed_at:
+        if suggested is None and listed_at and not weekly:
             suggested = int(listed_at)
             price = suggested
             if verbose:
                 print(f"  the market would not price it after "
                       f"{PRICE_ATTEMPTS} ctrl-click(s); listing at the "
                       f"{suggested:,} it came out of the row at")
-        elif suggested is None and fallback:
+        elif suggested is None and fallback and not weekly:
             suggested = int(fallback)
             price = suggested
             if verbose:
@@ -1848,6 +1905,21 @@ class RowModel:
             raise NothingLoaded(
                 f"nothing loaded into the shop slot from ({row},{col}) after "
                 f"{PRICE_ATTEMPTS} ctrl-click(s). Nothing has been listed.")
+        if expect_set:
+            count = bundle_of(market, expect_set)
+            if not count:
+                calibration.snap(f"wrong_item_{row}x{col}")
+                raise WrongItem(
+                    f"the panel prices what loaded from ({row},{col}) at "
+                    f"{market:,}, which is no whole number of {expect_set!r} "
+                    f"at {market_anchor(expect_set):,} a core; a week-average "
+                    f"listing only goes out for what it expects. Nothing has "
+                    f"been listed.")
+            expect_item = f"{expect_set} X {count}"
+            floor = int(floor_each or 0) * count
+            if verbose:
+                print(f"    the panel prices what loaded at {market:,}: "
+                      f"{expect_item!r}")
         meant = expect_item
         if not expect_market and expect_item:
             anchor = market_anchor(expect_item)
@@ -1876,6 +1948,11 @@ class RowModel:
             seen = (f"the panel prices what loaded from ({row},{col}) at "
                     f"{market:,}, and {expect_item!r} sells near "
                     f"{int(expect_market):,}")
+            if weekly:
+                calibration.snap(f"wrong_item_{row}x{col}")
+                raise WrongItem(f"{seen}; a week-average listing only goes "
+                                f"out for what it expects. Nothing has been "
+                                f"listed.")
             if not resolve:
                 if verbose:
                     print(f"    {seen}; listing what loaded at its own "
@@ -1916,7 +1993,21 @@ class RowModel:
                     print(f"  asking {price_each:,} each, {price:,} for the "
                           f"{count}")
 
+        average = noted = None
+        if read_weekly and suggested is not None:
+            with calibration.step("pick and read the week average"):
+                noted = weekly_price(verbose, listed_at)
+        if weekly and price is None:
+            with calibration.step("pick and read the week average"):
+                average = weekly_price(verbose, listed_at)
+            if average is None:
+                calibration.snap(f"week_average_unread_{row}x{col}")
+                raise Divergence(
+                    f"the week average for what loaded from ({row},{col}) "
+                    f"would not read, and this listing goes out at the week "
+                    f"average or not at all. Nothing has been listed.")
         want = (price if price is not None
+                else average if average is not None
                 else calibration.undercut(suggested, under))
         if want is None:
             raise Divergence(
@@ -1966,7 +2057,9 @@ class RowModel:
                 print(f"    market {suggested:,}, typing {want:,}"
                       + (f", {abs(apart):,} "
                          f"{'over' if apart > 0 else 'under'} the market"
-                         if apart else ", the market itself"))
+                         if apart else ", the market itself")
+                      + (f"; the week average is {average:,}"
+                         if average is not None else ""))
 
         with calibration.step(f"type the price {want:,}"):
             calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
@@ -2164,6 +2257,12 @@ class RowModel:
                   f"panel let the item go {time.monotonic() - stalled:.0f}s "
                   f"later, so the listing registered")
         self.release_work((row, col))
+        with calibration.step(f"wait for slot ({row},{col}) to clear"):
+            deadline = time.monotonic() + DIALOG_TIMEOUT
+            while (not calibration.slot_is_empty(calibration.grab(), int(row),
+                                                 int(col))
+                   and time.monotonic() < deadline):
+                time.sleep(POLL_GAP)
         with calibration.step(f"read tab {WORK_TAB} after the listing"):
             began = time.perf_counter()
             self.work_seen = calibration.occupied_slots()
@@ -2188,7 +2287,8 @@ class RowModel:
         return {"item": expect_item, "resolved": resolved is not None,
                 "slot": (int(row), int(col)), "qty": qty,
                 "price": want, "row": lands_in, "floored": floored,
-                "units": count}
+                "units": count,
+                "weekly": average if average is not None else noted}
 
     def collect(self, index, remaining=0):
         index = int(index)
@@ -2308,6 +2408,23 @@ class RowModel:
 
     def read_with_button(self):
         return read_row_and_button(self._seat)
+
+    def register_at(self, index, verbose=True):
+        with calibration.step(f"scroll to row {index}"):
+            self.scroll_to(index, verbose=False)
+        with calibration.step(f"read row {index}'s button"):
+            button = self.button()
+        if button != REGISTER_WORD:
+            print(f"  row {index}'s button reads {button!r}, not "
+                  f"{REGISTER_WORD}; the row is not empty")
+            return False
+        point = button_point(self._seat)
+        if verbose:
+            print(f"  {REGISTER_WORD} on row {index} at {point}")
+        with calibration.step(f"click {REGISTER_WORD} on row {index}"):
+            calibration.click(*point)
+            calibration.park()
+        return True
 
     def read_stacked(self):
         return read_row_stacked(self._seat)

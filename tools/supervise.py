@@ -485,6 +485,8 @@ def marked(text):
                                  **{k: info[k] for k in ("holding", "qty",
                                                          "special")
                                     if info.get(k) is not None}})
+        elif kind == "stock":
+            task = ("stock", {"state": json.dumps(info, sort_keys=True)})
         else:
             continue
         mark = (task[0], tuple(sorted(task[1].items())))
@@ -530,6 +532,10 @@ def interrupted(text):
 
 
 def describe(kind, info):
+    if kind == "stock":
+        state = json.loads(info["state"])
+        return (f"stock up of {state.get('core')!r} cut short at step "
+                f"{state.get('step')!r}")
     if kind == "relist":
         return (f"relist row {info['row']}: {info['item']!r} x{info['qty']} "
                 f"at {info['price']:,} withdrawn to tab {info['tab']} slot "
@@ -812,7 +818,19 @@ def recover(reason, text, plan=False, log=None, watched=True):
               f"{WORK_TAB} holds, close_everything, relaunch")
         return
     calibration.close_everything(True)
-    clear_work_tab(K["task_cap"], tasks)
+    for kind, info in tasks:
+        if kind == "stock":
+            event(f"resuming the {describe(kind, info)}", "dead")
+            try:
+                run_driver("stock-resume", info["state"])
+            except Stop as exc:
+                event(f"stock-resume failed: "
+                      f"{str(exc)[:K['reason_width']]}; what is left on tab "
+                      f"{WORK_TAB} is listed the usual way", "dead")
+            calibration.close_everything(True)
+    stocked = any(kind == "stock" for kind, _info in tasks)
+    clear_work_tab(K["task_cap"], [(kind, info) for kind, info in tasks
+                                   if not (stocked and kind == "resupply")])
     for kind, info in tasks:
         if kind == "relist":
             print(f"  relist row {info['row']}: {info['item']!r} is handled above "

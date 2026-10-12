@@ -8,6 +8,7 @@ import json
 import re
 import shutil
 import subprocess
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -829,7 +830,17 @@ def _mouse_event(flags: int):
     return _Input(type=_S["input"]["INPUT_MOUSE"], u=_InputUnion(mi=_MouseInput(0, 0, 0, flags, 0, None)))
 
 
+STOPPED = threading.Event()
+
+
+def halt_if_stopped() -> None:
+    if STOPPED.is_set():
+        raise KeyboardInterrupt("stopped with Ctrl; nothing more is sent to "
+                                "the game")
+
+
 def _arrive(x: int, y: int, hovered=False, check=False) -> None:
+    halt_if_stopped()
     since = hovering((x, y)) if hovered else None
     if since is None:
         since = hover(x, y)
@@ -891,8 +902,9 @@ def watch_for_stop(verbose=True):
                 at = time.monotonic()
                 seen = [t for t in seen if at - t <= window] + [at]
                 if len(seen) >= presses:
+                    STOPPED.set()
                     print(f"{chr(10)}  Ctrl {presses} times: stopping the "
-                          f"run the way Ctrl+C would.")
+                          f"run the way Ctrl+C would; no more input is sent.")
                     _thread.interrupt_main()
                     return
             held = down
@@ -930,7 +942,35 @@ def ctrl_click(x: int, y: int, check_hovering=False) -> None:
     snap(f"ctrlclick_{x}_{y}")
 
 
+def shift_right_click(x: int, y: int, settle: float = None) -> None:
+    hold_if_busy()
+    from open_inventory import _user32, _Input, _event
+    shared = load_shared()
+    keys, timing = shared["input"], shared["timing"]
+    vk = keys["VK_SHIFT"]
+
+    _arrive(x, y)
+    _user32.SendInput(1, ctypes.byref(_event(vk, up=False)),
+                      ctypes.sizeof(_Input))
+    try:
+        time.sleep(MODIFIER_SETTLE)
+        _user32.SendInput(1, ctypes.byref(_mouse_event(
+            keys["MOUSEEVENTF_RIGHTDOWN"])), ctypes.sizeof(_Input))
+        try:
+            time.sleep(CLICK_HOLD)
+        finally:
+            _user32.SendInput(1, ctypes.byref(_mouse_event(
+                keys["MOUSEEVENTF_RIGHTUP"])), ctypes.sizeof(_Input))
+        time.sleep(MODIFIER_SETTLE)
+    finally:
+        _user32.SendInput(1, ctypes.byref(_event(vk, up=True)),
+                          ctypes.sizeof(_Input))
+    time.sleep(timing["action_gap"] if settle is None else settle)
+    snap(f"shiftrightclick_{x}_{y}")
+
+
 def alt_click(x: int, y: int, settle: float = None) -> None:
+    halt_if_stopped()
     from open_inventory import _user32, _Input, _event
     shared = load_shared()
     keys, timing = shared["input"], shared["timing"]
@@ -1237,15 +1277,17 @@ def read_line(image: Image.Image, box, scale: int = None, border: int = 0):
     return " ".join(t for _, t in sorted(words))
 
 
-def ink_box(image: Image.Image, box):
-    grey = np.asarray(image.crop(box).convert("L"), dtype=float)
-    rows, cols = np.where(grey > INK_THRESHOLD)
+def ink_box(image: Image.Image, box, colour=False):
+    crop = image.crop(box)
+    light = (np.asarray(crop.convert("RGB"), dtype=float).max(axis=2)
+             if colour else np.asarray(crop.convert("L"), dtype=float))
+    rows, cols = np.where(light > INK_THRESHOLD)
     if not len(rows):
         return None
     x0 = max(0, int(cols.min()) - INK_PAD)
-    x1 = min(grey.shape[1], int(cols.max()) + 1 + INK_PAD)
+    x1 = min(light.shape[1], int(cols.max()) + 1 + INK_PAD)
     y0 = max(0, int(rows.min()) - INK_PAD)
-    y1 = min(grey.shape[0], int(rows.max()) + 1 + INK_PAD)
+    y1 = min(light.shape[0], int(rows.max()) + 1 + INK_PAD)
     return (box[0] + x0, box[1] + y0, box[0] + x1, box[1] + y1)
 
 

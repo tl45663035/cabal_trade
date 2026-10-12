@@ -63,6 +63,7 @@ _GROUPING = re.compile(_SHARED["text"]["row_grouping"])
 MIN_PLAUSIBLE_PRICE = _SHARED["detect"]["min_plausible_price"]
 CAPACITY = _SHARED["game_facts"]["shop_capacity"]
 VISIBLE = _SHARED["game_facts"]["shop_visible"]
+STOCK_UP = _SHARED["stock_up"]
 USE_LINE_F = tuple(_SHARED["regions"]["use_question_line"])
 USE_YES_F = tuple(_SHARED["regions"]["use_yes"])
 USE_QUESTIONS = _SHARED["text"]["use_question"]
@@ -118,15 +119,15 @@ def initialise(verbose=True):
               f"{cal.get('measured_at')}"
               + ("" if REPAIR or SESSION_MEASURED else ", shop open"))
     if war.ENABLED:
-        if war.sync(verbose=verbose):
-            at = war.now()
+        at = war.now(verbose=verbose)
+        if at is not None:
             start, end = war.quiet_window(at)
-            print(f"  server {at:%H:%M:%S}; the next war quiet runs "
-                  f"{start:%H:%M:%S} to {end:%H:%M:%S}, in "
+            print(f"  server {at:%H:%M:%S} by internet time; the next war "
+                  f"quiet runs {start:%H:%M:%S} to {end:%H:%M:%S}, in "
                   f"{(start - at).total_seconds() / 60:.1f} min")
         else:
-            print("  the server clock would not anchor, so the war schedule "
-                  "is not being followed this run.")
+            print("  the server time is not known yet, so the war schedule "
+                  "waits for internet time.")
     return cal
 
 
@@ -312,7 +313,7 @@ def price_by_voucher(row):
     return row
 
 
-def seed(verbose=True):
+def seed(verbose=True, rows=None):
     register_tab(verbose=verbose)
     last = CAPACITY if row_model.last_seat_placed() else row_model.MAX_TOP
     model = row_model.RowModel().seed({})
@@ -320,7 +321,7 @@ def seed(verbose=True):
     found = {}
     if verbose:
         print(board_header())
-    for index in range(1, last + 1):
+    for index in rows or range(1, last + 1):
         model.scroll_to(index, verbose=False)
         text, button = model.read_with_button()
         if button == row_model.REGISTER_WORD or model.is_empty(text):
@@ -338,7 +339,9 @@ def seed(verbose=True):
     model.tracked = True
     model.save()
     model.home(verbose=verbose)
-    if verbose:
+    if verbose and rows:
+        print(f"  read rows {list(rows)} only: {len(found)} hold something")
+    elif verbose:
         print(f"  seeded {len(found)} of rows 1-{last}")
         if last < CAPACITY:
             print(f"  rows {last + 1}-{CAPACITY} were not read; the last "
@@ -566,7 +569,8 @@ def urgent_check(model, first, last, verbose=True):
         if slot not in _PRICED_THIS_ROW:
             _SINCE_PRICED[slot] = _SINCE_PRICED.get(slot, 0) + 1
         count = _SINCE_PRICED.get(slot, 0)
-        if count < every or not run["enabled"] or _PENDING is not None:
+        if (count < every or not run["enabled"] or _PENDING is not None
+                or _STOCK is not None):
             continue
         if not craft_route(core) or not buying_enabled(core):
             continue
@@ -639,7 +643,7 @@ def sweep_work_tab(model, first, last, verbose, expect, record):
         if not held:
             print(f"  tab {row_model.WORK_TAB} is empty again")
             return
-        free = [i for i in model.empty() if first <= i <= last]
+        free = open_rows(model, first, last)
         if not free:
             for slot in held:
                 model.hold_work(slot, None)
@@ -651,7 +655,7 @@ def sweep_work_tab(model, first, last, verbose, expect, record):
               f"expecting the {name!r} that came off the row")
         with calibration.phase(f"list tab {row_model.WORK_TAB} slot {slot}"):
             out = model.list_slot(*slot, verbose=verbose, lands_in=lands_in,
-                                  **expect)
+                                  weekly=lists_weekly(name), **expect)
         record(out, lands_in)
         task_done("list", tab=row_model.WORK_TAB, slot=list(slot),
                   qty=out["qty"], price=out["price"], item=out["item"])
@@ -714,7 +718,7 @@ def resume_work_tab(model, first, last, verbose=True):
     done = 0
     for slot in stranded_work(model):
         what = model._work[slot]
-        free = [i for i in model.empty() if first <= i <= last]
+        free = open_rows(model, first, last)
         if not free:
             print(f"  rows {first}-{last} are full, so tab "
                   f"{row_model.WORK_TAB} slot {slot} waits for one to free")
@@ -733,7 +737,7 @@ def resume_work_tab(model, first, last, verbose=True):
                 out = model.list_slot(
                     *slot, verbose=verbose, lands_in=lands_in, floor=floor,
                     why=why, expect_item=what.name, listed_at=what.price,
-                    expect_qty=what.qty,
+                    expect_qty=what.qty, weekly=lists_weekly(what.name),
                     expect_market=(row_model.market_anchor(what.name)
                                    * what.pack) or None)
         except (row_model.SlotNeverFilled, row_model.NothingLoaded) as exc:
@@ -1017,7 +1021,9 @@ def relist_one(model, index, verbose=True, first=None, last=None,
                           expect_market=(row_model.market_anchor(row.name)
                                          * row.pack) or None)
             out = model.list_slot(*landing, verbose=verbose,
-                                  lands_in=lands_in, overlap=True, **expect)
+                                  lands_in=lands_in, overlap=True,
+                                  weekly=lists_weekly(row.name),
+                                  **expect)
     except row_model.SlotNeverFilled:
         seen, action = model.read_with_button()
         if action != row_model.RECEIPT_WORD:
@@ -1127,7 +1133,10 @@ def relist_pass(model, first, last, passes=0, verbose=True,
     if begin > first:
         print(f"  carrying on at row {begin}, where the stall stopped the "
               f"walk; rows {first}-{begin - 1} were walked before it")
+    reserved = stock_rows(last) if STOCK_UP["enabled"] else ()
     for index in range(begin, last + 1):
+        if index in reserved:
+            continue
         _WALK["at"] = index
         _PRICED_THIS_ROW.clear()
         sold_before = _FULL_SALES
@@ -1174,6 +1183,17 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     register_tab(verbose=verbose)
     model = seed(verbose=verbose)
     special_pass(model, first, last, verbose=verbose)
+    if STOCK_UP["enabled"]:
+        try:
+            stock_threshold(model, first, last, verbose=verbose)
+        except (buy.Refused, NotReady, row_model.Divergence) as exc:
+            print(f"  the week average was not read at start-up: {exc} "
+                  f"Stock up reads it again at the start of the next pass.")
+        finally:
+            if not back_to_the_shop(verbose=verbose):
+                raise NotReady("the Agent Shop is not open after reading "
+                               "the week average.")
+            register_tab(verbose=verbose)
 
     deadline = time.monotonic() + minutes * 60
     print(f"relisting rows {first}-{last} for {minutes:g} minute(s)")
@@ -1190,6 +1210,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
             shop_ready(f"pass {passes}", verbose=verbose)
             model.work_seen = None
             reconcile_work_tab(model, verbose=verbose)
+            stock_up_pass(model, first, last, verbose=verbose)
             resume_work_tab(model, first, last, verbose=verbose)
             resupply_pass(model, first, last, verbose=verbose)
             if pending_holds_stock():
@@ -1197,6 +1218,13 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
                       f"bought {_PENDING['core']} waiting at "
                       f"{_PENDING['step']}; no row is cancelled into that tab "
                       f"this pass, the next pass carries the job on first")
+                made = missed = bare = 0
+            elif _STOCK is not None:
+                print(f"  a stock up job stopped at step "
+                      f"{_STOCK.get('step')!r} holds tab "
+                      f"{row_model.WORK_TAB}; no row is cancelled into that "
+                      f"tab this pass, the next pass carries the job on "
+                      f"first")
                 made = missed = bare = 0
             else:
                 made, missed, bare = relist_pass(model, first, last, passes,
@@ -1273,7 +1301,9 @@ def do_list(row, col, price=None, verbose=True, tab=None, item=None,
     out = model.list_slot(row, col, price=price, floor=floor, why=why,
                           unit_market=unit_market,
                           floor_each=floor if unit_market else 0,
-                          floor_item=item, rule_item=named, verbose=verbose)
+                          floor_item=item, rule_item=named,
+                          weekly=bool(named) and lists_weekly(named),
+                          verbose=verbose)
     task_done("list", tab=tab, slot=[int(row), int(col)], qty=out["qty"],
               price=out["price"])
     print(f"  done in {(time.perf_counter() - started) * 1000:.0f} ms")
@@ -1335,7 +1365,7 @@ def do_craft_chaos(verbose=True):
         print(f"  {core if core_row is None else set_name} would not price, "
               f"so there is no market to list against.")
         return None
-    free = [i for i in model.empty() if first <= i <= last]
+    free = open_rows(model, first, last)
     if not free:
         print(f"  rows {first}-{last} are full, and a crafted {set_name} with "
               f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
@@ -1371,7 +1401,7 @@ def do_craft_chaos(verbose=True):
 
     rows, listed_total = [], 0
     while True:
-        empty = [i for i in model.empty() if first <= i <= last]
+        empty = open_rows(model, first, last)
         if not empty:
             print(f"  rows {first}-{last} are full; what is left of the "
                   f"{set_name} stays on tab {row_model.WORK_TAB}.")
@@ -1449,7 +1479,7 @@ def do_convert(slot, verbose=True):
     print("")
     print(f"-- recovery: convert whatever {set_name} is held into {core} --")
 
-    free = [i for i in model.empty() if first <= i <= last]
+    free = open_rows(model, first, last)
     if not free:
         print(f"  rows {first}-{last} are full, and a converted {core} with "
               f"nowhere to list stays on tab "
@@ -1499,7 +1529,7 @@ def do_convert(slot, verbose=True):
               f"{out['slots'][0]} to {out['slots'][-1]}")
         remaining, full = list(out["slots"]), False
         while remaining:
-            empty = [i for i in model.empty() if first <= i <= last]
+            empty = open_rows(model, first, last)
             if not empty:
                 print(f"  rows {first}-{last} are full; {len(remaining)} "
                       f"slot(s) of {core} stay on tab "
@@ -1703,7 +1733,7 @@ def special_wanted(model, first, last):
 
 
 def buying_rows(model, first, last):
-    free = [i for i in model.empty() if first <= i <= last]
+    free = open_rows(model, first, last)
     keep = len(special_wanted(model, first, last))
     return free[keep:] if keep else free
 
@@ -1711,8 +1741,10 @@ def buying_rows(model, first, last):
 def rows_by_core(model, first, last):
     held = {slot: 0 for slot in core_slots()}
     where = counts_toward()
+    reserved = stock_rows(last) if STOCK_UP["enabled"] else ()
     for index, row in (model._slots or {}).items():
-        if row is None or not first <= index <= last or is_special(row):
+        if (row is None or not first <= index <= last or is_special(row)
+                or index in reserved):
             continue
         slot = where.get(calibration.favourite_slot_of(row.name))
         if slot in held:
@@ -1732,7 +1764,7 @@ def special_list(model, landing, core, first, last, verbose=True, cost=0,
         calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
                           settle=0.0)
         time.sleep(row_model.TAB_SETTLE)
-    empty = [i for i in model.empty() if first <= i <= last]
+    empty = open_rows(model, first, last)
     if not empty:
         raise NotReady(f"rows {first}-{last} are full; the {core} stays on "
                        f"tab {row_model.WORK_TAB}.")
@@ -1809,7 +1841,7 @@ def resupply_special(model, first, last, verbose=True):
             return None
         core = wanted[0]
         slot = calibration.favourite_slot_of(core)
-        if not [i for i in model.empty() if first <= i <= last]:
+        if not open_rows(model, first, last):
             print(f"  rows {first}-{last} are full, so the {core} special "
                   f"row waits for one to free")
             return None
@@ -2171,7 +2203,7 @@ def list_round(model, job, first, last, verbose=True):
               f"{remaining[0]} to {remaining[-1]}")
     full = False
     while remaining:
-        empty = [i for i in model.empty() if first <= i <= last]
+        empty = open_rows(model, first, last)
         if not empty:
             print(f"  rows {first}-{last} are full; {len(remaining)} "
                   f"slot(s) of {core} stay on tab {tab}.")
@@ -2389,7 +2421,8 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
                                           special=job.get("kind")
                                           == "special",
                                           topping_up=not on_margin
-                                          and job.get("kind") != "special")
+                                          and job.get("kind") != "special",
+                                          note=job.get("note"))
                 searched = True
                 job["balance"] = (out["balance"] if out["balance_seen"]
                                   else None)
@@ -2439,6 +2472,8 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
             return False
         job["bought"] += got["bought"]
         job["paid"] += got["spent"]
+        if "on_bought" in job:
+            job["on_bought"]()
         return True
 
 
@@ -2549,7 +2584,7 @@ def list_sets(model, job, first, last, verbose=True):
 
     full = False
     while True:
-        empty = [i for i in model.empty() if first <= i <= last]
+        empty = open_rows(model, first, last)
         if not empty:
             print(f"  rows {first}-{last} are full; what is left of the "
                   f"{set_name} stays on tab {row_model.WORK_TAB}.")
@@ -2619,6 +2654,749 @@ def list_sets(model, job, first, last, verbose=True):
         if listed["qty"] < row_model.MAX_STACK:
             break
     return full
+
+
+def stock_rows(last):
+    return (last - int(STOCK_UP["rest_row_from_end"]),
+            last - int(STOCK_UP["full_row_from_end"]))
+
+
+def open_rows(model, first, last):
+    reserved = stock_rows(last) if STOCK_UP["enabled"] else ()
+    return [i for i in model.empty()
+            if first <= i <= last and i not in reserved]
+
+
+def compress_rows(model, first, last):
+    key = row_model.item_key(STOCK_UP["item"])
+    return [index for index in stock_rows(last)
+            if first <= index <= last and model.get(index) is not None
+            and row_model.item_key(model.get(index).name) == key]
+
+
+def read_stock_row(model, index, why):
+    calibration.steps_reset()
+    with calibration.phase(f"{calibration.REFRESH_WORD} the table"):
+        with calibration.step(f"click {calibration.REFRESH_WORD}"):
+            row_model.refresh_table(model, verbose=False)
+    with calibration.phase("scroll to the row and read it"):
+        with calibration.step("scroll to the row"):
+            model.scroll_to(index, verbose=False)
+        text, row, button, tab_selected = read_the_row(model, index)
+    if button == row_model.RECEIPT_WORD:
+        complete = model.complete(text)
+        print(f"  stock row {index} has SOLD "
+              f"({'fully' if complete else 'partly'}); collecting it {why}")
+        with calibration.phase("collect what sold"):
+            text, button = model.receive(index, verbose=False,
+                                         complete=complete)
+        if complete or button == row_model.REGISTER_WORD:
+            model.drop(index)
+            model.forget_floor(index)
+            print(f"    collected; row {index} is empty")
+            return None
+        text, row = row_from_screen(text, model)
+    return text, row, button, tab_selected
+
+
+def withdraw_row(model, index, verbose=True):
+    key = row_model.item_key(STOCK_UP["item"])
+    out = read_stock_row(model, index, "before the merge")
+    if out is None:
+        return None
+    text, row, button, tab_selected = out
+    if (row is None or button != row_model.CHANGE_WORD
+            or row_model.item_key(row.name) != key):
+        print(f"  row {index} reads {text!r} with {button!r}; it is not a "
+              f"{STOCK_UP['item']} on sale, so it stays")
+        return None
+    with calibration.step(f"check tab {row_model.WORK_TAB} before the "
+                          f"withdrawal"):
+        reconcile_work_tab(model, verbose=verbose)
+        tab_before_withdrawal(model, verbose=verbose)
+    landing = model.next_work_slot()
+    if landing is None:
+        raise NotReady(
+            f"the run holds every slot of tab {row_model.WORK_TAB}, so row "
+            f"{index} would come back with nowhere to go. Nothing cancelled.")
+    held = model.get(index)
+    if held is not None and row_model.item_key(held.name) == key:
+        row.buy_cost, row.floor_at = held.buy_cost, held.floor_at
+    model._slots[index] = row
+    if verbose:
+        print(f"  row {index}: {row.name!r} x{row.qty} at {row.price:,} -> "
+              f"tab {row_model.WORK_TAB} slot {landing}")
+    task("relist", row=index, item=row.name, qty=row.qty, price=row.price,
+         tab=row_model.WORK_TAB, slot=list(landing), lands_in=index)
+    with calibration.phase("cancel the row and take it back"):
+        model.cancel(index, verbose=False, tab_ready=True,
+                     tab_selected=tab_selected, read=(text, button),
+                     overlap=True)
+    model.hold_work(landing, STOCK_UP["item"])
+    with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
+        with calibration.step(f"select inventory tab {row_model.WORK_TAB} "
+                              f"after the withdrawal"):
+            select_after_withdrawal()
+    if verbose:
+        calibration.steps_table(f"withdraw row {index}")
+    return landing, row
+
+
+def stock_room(model, first, last):
+    rows = [model.get(index) for index in compress_rows(model, first, last)]
+    if any(not row.price for row in rows):
+        return None, None
+    held = sum(int(row.price) * int(row.qty or 1) for row in rows)
+    return int(STOCK_UP["budget"]) - held, held
+
+
+def collect_stock_rows(model, first, last):
+    key = row_model.item_key(STOCK_UP["item"])
+    for index in compress_rows(model, first, last):
+        out = read_stock_row(model, index, "for the stock up budget")
+        if out is None:
+            continue
+        _text, row, button, _tab = out
+        held = model.get(index)
+        if (row is not None and held is not None
+                and button == row_model.CHANGE_WORD
+                and row_model.item_key(row.name) == key):
+            row.buy_cost, row.floor_at = held.buy_cost, held.floor_at
+            model._slots[index] = row
+
+
+def stock_budget(model, first, last):
+    budget = int(STOCK_UP["budget"])
+    room, held = stock_room(model, first, last)
+    if room is not None and room <= 0:
+        print(f"  the stock rows hold {held:,}, over the {budget:,} stock up "
+              f"budget; checking them for sales")
+        collect_stock_rows(model, first, last)
+        room, held = stock_room(model, first, last)
+    if room is None:
+        print(f"  a stock row's price is not known, so the stock up budget "
+              f"cannot be checked; no stock up this pass")
+        return None
+    if room <= 0:
+        print(f"  the stock rows hold {held:,}, over the {budget:,} stock up "
+              f"budget; stock up is off until they sell")
+        return None
+    print(f"  the stock rows hold {held:,} of the {budget:,} stock up "
+          f"budget; {room:,} left")
+    return room
+
+
+def merged_costs(rows):
+    units = sum(row.units for row in rows)
+    floors = [(row.floor_at or row.buy_cost
+               or calibration.price_floor(row.name)[0], row.units)
+              for row in rows]
+    floor_each = -(-sum(each * count for each, count in floors) // units)
+    buy_cost = (-(-sum(row.buy_cost * row.units for row in rows) // units)
+                if all(row.buy_cost for row in rows) else 0)
+    holds = all(row.floor_at or row.buy_cost for row in rows)
+    return units, floor_each, buy_cost, floor_each if holds else 0
+
+
+_STOCK = None
+_STOCK_BELOW = None
+
+
+def stock_step(step, **fields):
+    global _STOCK
+    _STOCK = {"step": step, **fields}
+    task("stock", core=STOCK_UP["item"], **_STOCK)
+
+
+def stock_done():
+    global _STOCK
+    _STOCK = None
+    task_done("stock", core=STOCK_UP["item"])
+
+
+def stock_names():
+    name = STOCK_UP["item"]
+    set_slot = calibration.favourite_slot_of(name)
+    core_slot = calibration.pair_slot(set_slot)
+    return name, set_slot, calibration.FAVOURITE_ITEMS[str(core_slot)], core_slot
+
+
+def lists_weekly(name):
+    return (row_model.item_key(name) == row_model.item_key(STOCK_UP["item"])
+            and row_model.pack_size(name) > int(STOCK_UP["weekly_above"]))
+
+
+def compress_sets(model, first, last, held=(), rows=(), verbose=True):
+    name, set_max = STOCK_UP["item"], int(STOCK_UP["set_max"])
+    rest_row, full_row = stock_rows(last)
+    found = compress_rows(model, first, last)
+    register_tab(verbose=verbose)
+    with calibration.phase(f"read tab {row_model.WORK_TAB}"):
+        on_tab = sorted(work_tab_slots(verbose=verbose))
+    if held and not on_tab:
+        print(f"  tab {row_model.WORK_TAB} holds none of the "
+              f"{sum(r.units for r in held):,} cores of {name} this job put "
+              f"there, so they were moved or listed by hand; the stock job "
+              f"is closed")
+        stock_done()
+        return None
+    if on_tab and not held:
+        print(f"  tab {row_model.WORK_TAB} holds {on_tab}, which stock up "
+              f"did not put there; nothing is compressed")
+        return None
+    if not on_tab and len(found) < 2:
+        print(f"  {len(found)} {name} row(s) in the stock rows {rest_row} and "
+              f"{full_row} and nothing on tab {row_model.WORK_TAB}; nothing "
+              f"to compress")
+        return None
+    units = sum(row.units for row in held)
+    stock_step("stock", on_tab=units, rows=list(rows))
+    taken = []
+    if len(on_tab) + len(found) > 1:
+        taken = withdraw_stock_rows(model, first, last, "stock", units, rows,
+                                    verbose=verbose)
+        units += sum(row.units for _index, _slot, row in taken)
+    if not on_tab and not taken:
+        print(f"  neither stock row came off; nothing to compress")
+        stock_done()
+        return None
+    _units, floor_each, buy_cost, floor_at = merged_costs(
+        list(held) + [row for _index, _slot, row in taken])
+    full, rest = divmod(units, set_max)
+    merging = len(on_tab) + len(taken) > 1
+    start = on_tab[0] if on_tab else taken[0][1]
+    print(f"  {len(on_tab)} {name} item(s) on tab {row_model.WORK_TAB} and "
+          f"{len(taken)} from the stock rows hold {units:,} core(s)"
+          + ((f"; compressing from {start} into {full} Set(s) of {set_max}"
+              + (f" and one of {rest}" if rest else "")) if merging
+             else "; one item, nothing to merge it with"))
+    print(f"  floor {floor_each:,} a core"
+          + (f"; cost {buy_cost:,} a core" if buy_cost
+             else "; no cost is carried, so the market floor stands"))
+    if merging:
+        with calibration.phase("close the Agent Shop to compress"):
+            calibration.close_everything(verbose=verbose)
+        with calibration.phase(f"compress the {name}"):
+            if calibration.await_inventory(verbose=verbose) is None:
+                raise NotReady(f"the Inventory would not open, so the {name} "
+                               f"on tab {row_model.WORK_TAB} is not "
+                               f"compressed.")
+            craft.show_work_tab()
+            craft.compress(start, verbose=verbose, divided=True)
+        release_stock_slots(model)
+        with calibration.phase("reopen the Agent Shop"):
+            if not back_to_the_shop(verbose=verbose):
+                raise NotReady(f"the Agent Shop would not reopen after "
+                               f"compressing; tab {row_model.WORK_TAB} holds "
+                               f"the {name}.")
+    stock_step("list", on_tab=units, full=full, rest=rest, merged=merging,
+               start=list(start),
+               rows=list(rows) + [i for i, _s, _r in taken])
+    return list_stock(model, last, dict(_STOCK), floor_each, buy_cost,
+                      floor_at, verbose=verbose)
+
+
+def withdraw_stock_rows(model, first, last, step, units, rows=(),
+                        verbose=True):
+    taken = []
+    found = compress_rows(model, first, last)
+    if not found:
+        return taken
+    register_tab(verbose=verbose)
+    model.work_seen = None
+    for index in found:
+        out = withdraw_row(model, index, verbose=verbose)
+        if out is not None:
+            taken.append((index,) + out)
+            units += out[1].units
+            stock_step(step, on_tab=units,
+                       rows=list(rows) + [i for i, _s, _r in taken])
+    return taken
+
+
+def release_stock_slots(model):
+    key = row_model.item_key(STOCK_UP["item"])
+    for slot, what in list(model._work.items()):
+        held_name = what.name if isinstance(what, row_model.Row) else what
+        if held_name and row_model.item_key(held_name) == key:
+            model.release_work(slot)
+
+
+def list_stock(model, last, state, floor_each, buy_cost, floor_at,
+               verbose=True):
+    merging, start = bool(state["merged"]), tuple(state["start"])
+    name = STOCK_UP["item"]
+    rest_row, full_row = stock_rows(last)
+    register_tab(verbose=verbose)
+    with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
+                          settle=0.0)
+        time.sleep(row_model.TAB_SETTLE)
+    listed = []
+
+    def place_at(slot, index):
+        with calibration.phase(f"list the {name} from {slot} into row "
+                               f"{index}"):
+            out = model.list_slot(*slot, verbose=verbose, lands_in=index,
+                                  register_row=index, expect_set=name,
+                                  floor_each=floor_each,
+                                  why=f"the merged pieces floor at "
+                                      f"{floor_each:,} a core",
+                                  wait_fill=False, resolve=False,
+                                  weekly=True)
+        cores = row_model.pack_size(out["item"])
+        model.place(index, row_model.Row(
+            out["item"], qty=out["qty"], price=out["price"],
+            buy_cost=buy_cost, units=out["qty"] * cores, floor_at=floor_at))
+        task_done("list", tab=row_model.WORK_TAB, slot=list(slot),
+                  qty=out["qty"], price=out["price"], item=out["item"])
+        listed.append((index, out["qty"], cores, out["price"]))
+
+    held = calibration.occupied_slots()
+    if not merging:
+        if start in held:
+            place_at(start, full_row if int(state["full"]) else rest_row)
+        else:
+            print(f"  tab {row_model.WORK_TAB} slot {start} is clear; "
+                  f"nothing of this job is left there to list")
+    else:
+        slot = start if start in held else None
+        for index in [i for i in (full_row, rest_row) if model.get(i) is None]:
+            if not held:
+                break
+            if slot is None and len(held) >= row_model.GRID * row_model.GRID:
+                calibration.snap("stock_tab_reads_full")
+                raise NotReady(
+                    f"tab {row_model.WORK_TAB} reads full, so what is left of "
+                    f"the {name} cannot be told from an empty slot; nothing "
+                    f"more is listed.")
+            place_at(slot or min(held), index)
+            stock_step("rest", **{k: v for k, v in state.items()
+                                  if k != "step"})
+            slot, held = None, set(model.work_seen)
+        if held:
+            calibration.snap("sets_left_on_tab")
+            raise NotReady(
+                f"rows {full_row} and {rest_row} hold the {name} and tab "
+                f"{row_model.WORK_TAB} still holds {sorted(held)}; nothing "
+                f"more is listed.")
+    for index in state.get("rows") or ():
+        task_done("relist", row=index, merged=True,
+                  lands_in=listed[0][0] if listed else None)
+    stock_done()
+    print(f"  {name}: {int(state['on_tab']):,} core(s) into "
+          + (", ".join(f"row {at} ({qty} x {count:,} at {price:,})"
+                       for at, qty, count, price in listed)
+             or "nothing listed this time"))
+    return listed
+
+
+def stock_craft(core, held, check=False, verbose=True):
+    with calibration.phase("close the Agent Shop"):
+        calibration.close_everything()
+    with calibration.phase(f"craft {core}"):
+        try:
+            craft.open_craft(verbose=verbose)
+            craft.select_recipe(core, verbose=verbose)
+            if check and calibration.craft_material_short(calibration.grab()):
+                print(f"  no whole craft of {core} is left to queue; "
+                      f"completing whatever the queue holds")
+            else:
+                craft.request_all(verbose=verbose)
+                craft.await_drain(held, core=core, verbose=verbose)
+            craft.show_work_tab()
+            before = calibration.occupied_slots()
+            craft.complete_all(verbose=verbose)
+            arrived = sorted(calibration.occupied_slots() - before)
+            if arrived:
+                print(f"  the Sets arrived in {arrived}")
+                craft.compress(arrived[0], verbose=verbose)
+            elif check:
+                print(f"  nothing new arrived on tab {row_model.WORK_TAB}; "
+                      f"the Sets were completed before the stop")
+            else:
+                raise NotReady(f"{held} {core} were crafted and no Set "
+                               f"arrived on tab {row_model.WORK_TAB}; "
+                               f"nothing is compressed.")
+        finally:
+            with calibration.phase("close the craft window"):
+                craft.close_craft()
+    with calibration.phase("reopen the Agent Shop"):
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady(f"the Agent Shop would not reopen after crafting; "
+                           f"tab {row_model.WORK_TAB} holds the Sets.")
+
+
+def stock_cores(model, first, last, slot, core, set_name, below, bought=0,
+                room=None, verbose=True):
+    run = calibration.load_shared()["resupply"]
+    floor = int(run["stop_below_alz"])
+    batch = calibration.CRAFT_CORES_PER_SET
+    least = int(calibration.craft_min_cores(core))
+    if bought:
+        most = max(least, -(-bought // batch) * batch)
+        print(f"  {bought} {core} were bought before the stop; topping them "
+              f"up to {most} and crafting")
+    elif not below:
+        print(f"  no threshold is known for this job, so no {core} is "
+              f"bought")
+        return None
+    else:
+        balance = get_alz.read_balance()
+        if balance is None:
+            print(f"  the Alz balance would not read; not buying {core} "
+                  f"blind")
+            return None
+        most = min(int(calibration.buy_max(core)), (balance - floor) // below)
+        if room is not None:
+            most = min(most, max(least, room // below))
+        most -= most % batch
+        if most < max(batch, least):
+            print(f"  Alz {balance:,} leaves room for {most} {core} over the "
+                  f"{floor:,} floor at {below:,} a core, under the {least} "
+                  f"a craft needs; no {core} bought")
+            return None
+        leave = int(calibration.buy_leave_behind(core))
+        print(f"  buying up to {most} {core} under {below:,} this batch"
+              + ("" if room is None else
+                 f", {room:,} left of the stock up budget")
+              + f"; {leave} stays behind on every row bought")
+    job = {"slot": slot, "core": core, "set": set_name, "diff": None,
+           "target": bought or most, "want_max": most,
+           "sells_at": below or 0,
+           "core_price": None, "gap": int(STOCK_UP["buy_gap"]),
+           "leave": int(calibration.buy_leave_behind(core)),
+           "steps_max": int(run["buy_scroll_limit"]),
+           "take_all": int(run["buy_take_all_after"]), "step": "buy",
+           "orders": 0, "bought": bought, "paid": 0, "crafted": 0,
+           "work": None, "rows": [], "listed": 0,
+           "note": STOCK_UP["ledger_note"]}
+    job["on_bought"] = lambda: stock_step("cores", bought=job["bought"],
+                                          below=below)
+    if not bought:
+        stock_step("cores", bought=0, below=below)
+    buy_cores(job, verbose=verbose)
+    task_done("resupply", core=core, bought=job["bought"])
+    if job["bought"] <= 0:
+        stock_done()
+        return None
+    if job["bought"] < least or job["bought"] % batch:
+        raise NotReady(f"{job['bought']} {core} is not a whole craft "
+                       f"({least} at least, in threes) and the top-up could "
+                       f"not finish it.")
+    stock_step("craft", bought=job["bought"])
+    stock_craft(core, job["bought"], verbose=verbose)
+    each = 0 if bought else -(-job["paid"] // job["bought"])
+    print(f"  {job['bought']} {core} crafted into {set_name}"
+          + (f" at {each:,} a core" if each else ""))
+    made = row_model.Row(f"{set_name} X {job['bought']}", qty=1, price=0,
+                         buy_cost=each, units=job["bought"], floor_at=each)
+    return compress_sets(model, first, last, [made], verbose=verbose)
+
+
+def stock_sets(slot, name, below, bought=0, room=None, verbose=True):
+    run = calibration.load_shared()["resupply"]
+    gap = int(STOCK_UP["buy_gap"])
+    floor = int(run["stop_below_alz"])
+    fresh = not bought
+    paid = orders = attempt = 0
+    if fresh:
+        stock_step("sets", on_tab=0, below=below)
+    else:
+        print(f"  {bought:,} cores of {name} were bought before the stop; "
+              f"buying the rest")
+    while True:
+        if room is not None and paid >= room:
+            print(f"  {paid:,} spent on {name} this batch uses up the "
+                  f"{max(0, room):,} left of the stock up budget; no more "
+                  f"{name} bought")
+            break
+        with calibration.phase(f"price {name}"):
+            offer = get_price.get_price(slot, verbose=False)
+        if offer is None:
+            print(f"  {name} would not price; not buying blind")
+            break
+        if offer["unit_price"] >= below:
+            print(f"  the cheapest {name} is {offer['unit_price']:,} a core, "
+                  f"not under {below:,}")
+            break
+        balance = get_alz.read_balance()
+        if balance is None:
+            print(f"  the Alz balance would not read; not buying {name} "
+                  f"blind")
+            break
+        price = max(1, int(offer["price"]))
+        packs = (balance - floor) // price
+        if packs < 1:
+            print(f"  Alz {balance:,} cannot pay {offer['price']:,} for a "
+                  f"{name} and stay over the {floor:,} floor")
+            break
+        if room is not None:
+            packs = min(packs, max(1, (room - paid) // price))
+        pack = max(1, row_model.pack_size(offer["name"]))
+        orders += 1
+        try:
+            with calibration.phase(f"buy order {orders}"):
+                got = buy.buy_row_one(slot, packs * pack, verbose=verbose,
+                                      held=bought, sells_at=below, gap=gap,
+                                      search=False,
+                                      note=STOCK_UP["ledger_note"])
+        except buy.Refused as exc:
+            if not exc.retryable:
+                print(f"  stopping: {exc}")
+                break
+            attempt += 1
+            print(f"  attempt {attempt}/{run['buy_retries']}: {exc}")
+            if attempt >= int(run["buy_retries"]):
+                break
+            continue
+        attempt = 0
+        if got["bought"] <= 0:
+            break
+        bought += got["bought"]
+        paid += got["spent"]
+        stock_step("sets", on_tab=bought, below=below)
+    if bought <= 0:
+        stock_done()
+        return None
+    each = -(-paid // bought) if fresh else 0
+    print(f"  {bought:,} core(s) of {name} on tab {row_model.WORK_TAB}"
+          + (f", bought at {each:,} a core" if each else ""))
+    return row_model.Row(f"{name} X {bought}", qty=1, price=0,
+                         buy_cost=each, units=bought, floor_at=each)
+
+
+def stock_sets_listed(model, first, last, slot, name, below, room=None,
+                      verbose=True):
+    got = stock_sets(slot, name, below, room=room, verbose=verbose)
+    if got is None:
+        return None
+    return compress_sets(model, first, last, [got], verbose=verbose) or []
+
+
+def stock_resume(model, first, last, state, verbose=True):
+    name, set_slot, core, core_slot = stock_names()
+    state = {k: v for k, v in state.items() if k not in ("kind", "core")}
+    step = state.get("step")
+    print(f"  stock up stopped at step {step!r}; carrying it on from there")
+    if step == "cores":
+        return stock_cores(model, first, last, core_slot, core, name,
+                           state.get("below"),
+                           bought=int(state.get("bought") or 0),
+                           verbose=verbose)
+    if step == "craft":
+        bought = int(state["bought"])
+        units = int(state.get("on_tab") or bought)
+        stock_craft(core, bought, check=True, verbose=verbose)
+        return compress_sets(model, first, last,
+                             [row_model.Row(f"{name} X {units}",
+                                            units=units)],
+                             rows=state.get("rows") or (), verbose=verbose)
+    if step == "sets":
+        held = int(state.get("on_tab") or 0)
+        room = stock_room(model, first, last)[0]
+        got = (stock_sets(set_slot, name, state["below"], bought=held,
+                          room=(0 if room is None
+                                else room - held * int(state["below"])),
+                          verbose=verbose) if state.get("below")
+               else row_model.Row(f"{name} X {held}", units=held)
+               if held else None)
+        return (compress_sets(model, first, last, [got], verbose=verbose)
+                if got else None)
+    if step == "stock":
+        units = int(state.get("on_tab") or 0)
+        return compress_sets(model, first, last,
+                             [row_model.Row(f"{name} X {units}", units=units)]
+                             if units else (),
+                             rows=state.get("rows") or (), verbose=verbose)
+    if step in ("list", "rest"):
+        units = int(state["on_tab"])
+        _units, floor_each, buy_cost, floor_at = merged_costs(
+            [row_model.Row(f"{name} X {units}", units=units)])
+        return list_stock(model, last, state, floor_each, buy_cost, floor_at,
+                          verbose=verbose)
+    print(f"  stock up has no step {step!r}; nothing is carried on")
+    stock_done()
+    return None
+
+
+def stock_threshold(model, first, last, verbose=True):
+    global _STOCK_BELOW
+    name, _set_slot, core, core_slot = stock_names()
+    override = int(STOCK_UP.get("below_override") or 0)
+    if override:
+        _STOCK_BELOW = override
+        print(f"  stock up buys under {override:,} a core this run, from "
+              f"stock_up.below_override; no week average is read")
+        return override
+    fallback = int(STOCK_UP.get("below_fallback") or 0)
+
+    def fall_back(why):
+        global _STOCK_BELOW
+        if not fallback:
+            print(f"  {why}; stock up waits for the next pass")
+            return None
+        _STOCK_BELOW = fallback
+        print(f"  {why}; stock up buys under the configured {fallback:,} a "
+              f"core this run (stock_up.below_fallback)")
+        return fallback
+
+    run = calibration.load_shared()["resupply"]
+    free = open_rows(model, first, last)
+    if not free:
+        return fall_back(f"rows {first}-{last} have no empty row for a "
+                         f"{core}, so the week average is not read")
+    print(f"  buying one {core} to read its week average in the Register "
+          f"panel")
+    job = {"slot": core_slot, "core": core, "set": name, "target": 1,
+           "want_max": 1, "sells_at": 0, "gap": None,
+           "leave": int(calibration.buy_leave_behind(core)),
+           "steps_max": int(run["buy_scroll_limit"]),
+           "take_all": int(run["buy_take_all_after"]),
+           "orders": 0, "bought": 0, "paid": 0}
+    landing = model.next_work_slot()
+    before = work_tab_slots(verbose=verbose)
+    if not take_offers(job, 1, 1, verbose=verbose):
+        return fall_back(f"no {core} was bought, so the week average is "
+                         f"not known")
+    arrived = sorted(await_arrival(before, verbose=verbose))
+    if len(arrived) == 1:
+        landing = arrived[0]
+    else:
+        print(f"  tab {row_model.WORK_TAB} shows {arrived} new after the "
+              f"buy; the {core} is taken to have landed in {landing}, the "
+              f"first slot the run holds nothing in")
+    model.hold_work(landing, row_model.Row(core, qty=1, buy_cost=job["paid"]))
+    register_tab(verbose=verbose)
+    with calibration.phase(f"select inventory tab {row_model.WORK_TAB}"):
+        calibration.click(*calibration.inventory_tab_point(row_model.WORK_TAB),
+                          settle=0.0)
+        time.sleep(row_model.TAB_SETTLE)
+    lands_in = min(free)
+    with calibration.phase(f"list the {core} and read its week average"):
+        out = model.list_slot(*landing, verbose=verbose, lands_in=lands_in,
+                              wait_fill=len(arrived) != 1, expect_item=core,
+                              expect_qty=1, read_weekly=True)
+    model.place(lands_in, row_model.Row(core, qty=out["qty"],
+                                        price=out["price"],
+                                        buy_cost=job["paid"]))
+    task_done("list", tab=row_model.WORK_TAB, slot=list(landing),
+              qty=out["qty"], price=out["price"], item=core)
+    if not out["weekly"]:
+        return fall_back(f"the week average of {core} did not read")
+    _STOCK_BELOW = int(out["weekly"])
+    print(f"  {core}: week average {_STOCK_BELOW:,}; stock up buys {core} "
+          f"and {name} under it this run")
+    return _STOCK_BELOW
+
+
+def stock_up_pass(model, first, last, verbose=True):
+    if not STOCK_UP["enabled"] or _PENDING is not None:
+        return None
+    name, set_slot, core, core_slot = stock_names()
+    print("")
+    print(f"-- stock up: every {core} and {name} under "
+          + (f"{_STOCK_BELOW:,}" if _STOCK_BELOW else "the week average")
+          + " a core --")
+    listed = []
+
+    def batches(slot, what, buying, below):
+        while True:
+            if alz_too_low():
+                return False
+            room, held = stock_room(model, first, last)
+            if room is None:
+                print(f"  a stock row's price is not known, so the stock up "
+                      f"budget cannot be checked; no more stock up this pass")
+                return False
+            if room <= 0:
+                print(f"  the stock rows hold {held:,}, over the "
+                      f"{int(STOCK_UP['budget']):,} stock up budget; stock up "
+                      f"is off until they sell")
+                return False
+            print(f"  the stock rows hold {held:,} of the "
+                  f"{int(STOCK_UP['budget']):,} stock up budget; {room:,} "
+                  f"left before this batch")
+            avoid_war(verbose=verbose)
+            offer = market(slot, verbose=verbose)
+            if offer is None:
+                return True
+            if offer["unit_price"] >= below:
+                print(f"  the cheapest {what} is {offer['unit_price']:,} a "
+                      f"core, not under {below:,}")
+                return True
+            out = buying(room)
+            if out is None:
+                return True
+            listed.extend(out)
+            if slot == set_slot:
+                return True
+
+    try:
+        if _STOCK is not None:
+            listed.extend(stock_resume(model, first, last, dict(_STOCK),
+                                       verbose=verbose) or [])
+        if model.work_slots():
+            print(f"  the run holds tab {row_model.WORK_TAB} slot(s) "
+                  f"{model.work_slots()}; no new stock up until it is clear")
+            return listed
+        with calibration.phase(f"read tab {row_model.WORK_TAB}"):
+            on_tab = work_tab_slots(verbose=verbose)
+        if on_tab:
+            print(f"  tab {row_model.WORK_TAB} holds {sorted(on_tab)}; no new "
+                  f"stock up until it is clear")
+            return listed
+        key = row_model.item_key(name)
+        foreign = [index for index in stock_rows(last)
+                   if model.get(index) is not None
+                   and row_model.item_key(model.get(index).name) != key]
+        if foreign:
+            print(f"  stock row(s) {foreign} hold something other than "
+                  f"{name}; no new stock up until they are clear")
+            return listed
+        below = _STOCK_BELOW or stock_threshold(model, first, last,
+                                                verbose=verbose)
+        if not below or stock_budget(model, first, last) is None:
+            return listed
+        if batches(set_slot, name,
+                   lambda room: stock_sets_listed(model, first, last,
+                                                  set_slot, name, below,
+                                                  room=room,
+                                                  verbose=verbose), below):
+            batches(core_slot, core,
+                    lambda room: stock_cores(model, first, last, core_slot,
+                                             core, name, below, room=room,
+                                             verbose=verbose),
+                    below)
+    except (craft.Refused, buy.Refused, NotReady) as exc:
+        print(f"  stock up stopped at step "
+              f"{(_STOCK or {}).get('step')!r}: {exc} The next pass carries "
+              f"it on from there.")
+    finally:
+        if not back_to_the_shop(verbose=verbose):
+            raise NotReady("the Agent Shop is not open after stocking up.")
+        register_tab(verbose=verbose)
+    return listed
+
+
+def do_compress(verbose=True):
+    run = calibration.load_shared()["run"]
+    first, last = int(run["relist_from"]), int(run["relist_to"])
+    initialise(verbose=verbose)
+    register_tab(verbose=verbose)
+    model = seed(verbose=verbose)
+    return compress_sets(model, first, last, verbose=verbose)
+
+
+def do_stock_resume(state, verbose=True):
+    run = calibration.load_shared()["run"]
+    first, last = int(run["relist_from"]), int(run["relist_to"])
+    initialise(verbose=verbose)
+    register_tab(verbose=verbose)
+    model = seed(verbose=verbose, rows=stock_rows(last))
+    print("")
+    print(f"-- recovery: stock up at step {state.get('step')!r} --")
+    return stock_resume(model, first, last, state, verbose=verbose)
 
 
 def finish_craft_resupply(model, job, first, last, verbose=True):
@@ -2734,7 +3512,7 @@ def start_cash(model, item, held, first, last, verbose=True):
     count = int(calibration.buy_min(item) or 1)
     print("")
     print(f"-- {item}: {held} row(s) --")
-    free = [i for i in model.empty() if first <= i <= last]
+    free = open_rows(model, first, last)
     if not free:
         print(f"  rows {first}-{last} are full, and a bought {item} with "
               f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
@@ -3034,7 +3812,7 @@ def cash_list_step(model, job, first, last, verbose=True):
                       f"frame is kept")
                 entry["listed"] = True
                 continue
-        empty = [i for i in model.empty() if first <= i <= last]
+        empty = open_rows(model, first, last)
         if not empty:
             print(f"  rows {first}-{last} are full; the {item} stays on "
                   f"tab {tab} slot {slot}.")
@@ -3418,7 +4196,7 @@ def list_sets_under(model, job, first, last, verbose=True):
     print(f"  listing the {set_name} that landed in {work}: {bought} "
           f"bought at {unit_cost:,} a Set; asking ours, {job['ours']:,} a Set, "
           f"no lower than {unit_cost:,}")
-    empty = [i for i in model.empty() if first <= i <= last]
+    empty = open_rows(model, first, last)
     if not empty:
         print(f"  rows {first}-{last} are full; the {set_name} stays on tab "
               f"{row_model.WORK_TAB}.")
@@ -3489,7 +4267,7 @@ def buy_under_lister(model, slot, first, last, verbose=True):
         if set_row is not None and not alz_covers(
                 set_name, 1, set_row["unit_price"], verbose=verbose):
             break
-        if not [i for i in model.empty() if first <= i <= last]:
+        if not open_rows(model, first, last):
             print(f"  rows {first}-{last} are full; a bought {set_name} with "
                   f"nowhere to list stays on tab {row_model.WORK_TAB}; not "
                   f"buying.")
@@ -3780,6 +4558,11 @@ def resupply_pass(model, first, last, verbose=True):
     run = calibration.load_shared()["resupply"]
     if not run["enabled"] and _PENDING is None:
         return []
+    if _STOCK is not None:
+        print(f"  a stock up job stopped at step {_STOCK.get('step')!r} "
+              f"holds tab {row_model.WORK_TAB}; no resupply until it is "
+              f"finished")
+        return []
     done = []
     try:
         if _PENDING is not None:
@@ -4004,6 +4787,10 @@ def _dispatch(args):
     what = args[0].lower()
     if what == "cancel" and len(args) > 1:
         do_cancel(int(args[1]))
+    elif what == "compress":
+        do_compress()
+    elif what == "stock-resume" and len(args) > 1:
+        do_stock_resume(json.loads(" ".join(args[1:])))
     elif what == "collect":
         do_collect()
     elif what == "relist":

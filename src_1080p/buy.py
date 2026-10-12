@@ -68,6 +68,7 @@ def row_point(index=BUY_ROW):
 
 
 def scroll_down(notches=1, verbose=False):
+    calibration.halt_if_stopped()
     x, y = row_point(BUY_ROW + 1)
     row_model.inv._user32.SetCursorPos(int(x), int(y))
     event = row_model._wheel_event(-1)
@@ -202,7 +203,7 @@ def _whole_batches(held, pack, packs, batch):
 def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                 ceiling=None, sells_at=0, gap=None, leave_behind=0,
                 search=True, batch=1, room=None, balance=None,
-                special=False, topping_up=False):
+                special=False, topping_up=False, note=None):
     steps_reset()
     outcome = "REFUSED"
     try:
@@ -211,7 +212,8 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                            sells_at=sells_at, gap=gap,
                            leave_behind=leave_behind, search=search,
                            batch=batch, room=room, balance=balance,
-                           special=special, topping_up=topping_up)
+                           special=special, topping_up=topping_up,
+                           note=note)
         outcome = f"bought {out['bought']} core(s) in {out['packs']} order(s)"
         return out
     finally:
@@ -222,7 +224,7 @@ def buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
 def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
                  ceiling=None, sells_at=0, gap=None, leave_behind=0,
                  search=True, batch=1, room=None, balance=None,
-                 special=False, topping_up=False):
+                 special=False, topping_up=False, note=None):
     say = print if verbose else (lambda *a: None)
     with step("get_price: search the favourite and read row 1"):
         offer = get_price.get_price(int(slot), verbose=False,
@@ -457,7 +459,8 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
     per_unit = spent // units if units else 0
     say(f"    balance after  {after_alz:,}; spent {spent:,} bought {packs} "
         f"pack(s) = {units} core(s) ({per_unit:,} a core)")
-    ledger.bought(offer["name"], per_unit, spent, units, expect=sells_at)
+    ledger.bought(offer["name"], per_unit, spent, units, note=note,
+                  expect=sells_at)
     return {"slot": int(slot), "name": name, "packs": packs, "bought": units,
             "unit_price": per_unit, "price": offer["price"],
             "spent": spent, "balance": after_alz, "balance_seen": seen}
