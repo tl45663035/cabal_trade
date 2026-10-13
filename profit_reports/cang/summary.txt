@@ -8,22 +8,22 @@ Fri 2026-10-09            18.89h   24.00h  258.16M   13.67M   13.34B  13.08B  20
 Sat 2026-10-10            15.93h   24.00h  224.26M   14.08M   12.81B  12.59B  19.59K    1.8%
 Sun 2026-10-11            17.10h   24.00h  160.66M    9.40M    5.27B   5.11B  10.12K    3.0%
 Mon 2026-10-12             9.32h   24.00h   77.46M    8.32M    6.86B   6.78B  12.42K    1.1%
-Tue 2026-10-13 (so far)    5.95h    6.76h    2.61M  438.29K    2.49B   2.49B   3.43K    0.1%
+Tue 2026-10-13 (so far)    6.21h    7.02h    8.76M    1.41M    2.71B   2.70B   3.74K    0.3%
 ============================================================================================
-7 DAYS                    94.15h  150.76h    1.69B   17.95M   82.41B  80.72B 129.94K    2.1%
+7 DAYS                    94.40h  151.02h    1.70B   17.97M   82.63B  80.93B 130.25K    2.1%
 
 
-PROFIT SUMMARY -- sold since 2026-10-13 00:00 Central (as of 06:45 Central)
+PROFIT SUMMARY -- sold since 2026-10-13 00:00 Central (as of 07:01 Central)
 
 item                  profit  revenue   cost  units  bought/u   sold/u  margin
 ------------------------------------------------------------------------------
-chaoscore              2.50M    2.48B  2.48B  3.43K   724.40K  725.13K    0.1%
+chaoscore              8.65M    2.70B  2.69B  3.73K   722.43K  724.75K    0.3%
 upgradecoreultimate  112.81K    3.67M  3.56M      8   444.43K  458.53K    3.1%
 ------------------------------------------------------------------------------
 Cores                112.81K    3.67M  3.56M      8   444.43K  458.53K    3.1%
-Chaos                  2.50M    2.48B  2.48B  3.43K   724.40K  725.13K    0.1%
+Chaos                  8.65M    2.70B  2.69B  3.73K   722.43K  724.75K    0.3%
 ==============================================================================
-TOTAL                  2.61M    2.49B  2.49B  3.43K   723.75K  724.50K    0.1%
+TOTAL                  8.76M    2.71B  2.70B  3.74K   721.84K  724.18K    0.3%
 
 
 
@@ -34,20 +34,20 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-13_052506_run_board.log, board during pass 75 at row 1, read 2026-10-13T06:45:38 (live)
+ROWS -- 2026-10-13_052506_run_board.log, board during pass 86 at row 25, read 2026-10-13T07:00:56 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-     1  (empty)                                           -          -       -              -               - <- here
+    25  (empty)                                           -          -       -              -               - <- here
    29  Essence of Chaos Guardian (Bracele        x1         -     8.00M         -     8.00M         -         -
    30  Se a i i                                x1         -     4.00M         -     4.00M         -         -
-    balance now 1.90B, read 2026-10-13T06:45:38
+    balance now 1.90B, read 2026-10-13T07:00:18
 
 
-MARKET -- 2026-10-13_052506_run.log, pass 75, log last written 06:45 Central (live)
+MARKET -- 2026-10-13_052506_run.log, pass 86, log last written 07:01 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 ------------------------------------------------------------------------------------
 Force Core(Highest)         0        -        -       -         -      -  buying off
-Chaos Core                  0  720.00K  720.48K     480      0.1%      0
+Chaos Core                  0  700.00K  720.72K  20.72K      2.9%     10  YES
 Divine Stone                0        -        -       -         -      -  buying off
 Force Core(High)            0        -        -       -         -      -  buying off
 Upgrade Core (Ultimate)     0        -        -       -         -      -  buying off
