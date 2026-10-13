@@ -8,12 +8,12 @@ Fri 2026-10-09            18.89h   24.00h  258.16M   13.67M   13.34B  13.08B  20
 Sat 2026-10-10            15.93h   24.00h  224.26M   14.08M   12.81B  12.59B  19.59K    1.8%
 Sun 2026-10-11            17.10h   24.00h  160.66M    9.40M    5.27B   5.11B  10.12K    3.0%
 Mon 2026-10-12             9.32h   24.00h   77.46M    8.32M    6.86B   6.78B  12.42K    1.1%
-Tue 2026-10-13 (so far)    4.94h    5.75h    2.61M  528.43K    2.49B   2.49B   3.43K    0.1%
+Tue 2026-10-13 (so far)    5.19h    6.00h    2.61M  502.61K    2.49B   2.49B   3.43K    0.1%
 ============================================================================================
-7 DAYS                    93.13h  149.75h    1.69B   18.15M   82.41B  80.72B 129.94K    2.1%
+7 DAYS                    93.39h  150.00h    1.69B   18.10M   82.41B  80.72B 129.94K    2.1%
 
 
-PROFIT SUMMARY -- sold since 2026-10-13 00:00 Central (as of 05:44 Central)
+PROFIT SUMMARY -- sold since 2026-10-13 00:00 Central (as of 06:00 Central)
 
 item                  profit  revenue   cost  units  bought/u   sold/u  margin
 ------------------------------------------------------------------------------
@@ -34,20 +34,20 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-13_052506_run_board.log, board during pass 13 at row 25, read 2026-10-13T05:44:38 (live)
+ROWS -- 2026-10-13_052506_run_board.log, board during pass 30 at row 1, read 2026-10-13T05:59:56 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    25  (empty)                                           -          -       -              -               - <- here
+     1  (empty)                                           -          -       -              -               - <- here
    29  Essence of Chaos Guardian (Bracele        x1         -     8.00M         -     8.00M         -         -
    30  Se a i i                                x1         -     4.00M         -     4.00M         -         -
-    balance now 1.90B, read 2026-10-13T05:44:02
+    balance now 1.90B, read 2026-10-13T05:59:56
 
 
-MARKET -- 2026-10-13_052506_run.log, pass 13, log last written 05:44 Central (live)
+MARKET -- 2026-10-13_052506_run.log, pass 30, log last written 05:59 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 ------------------------------------------------------------------------------------
 Force Core(Highest)         0        -        -       -         -      -  buying off
-Chaos Core                  0  720.00K  720.37K     372      0.1%      0
+Chaos Core                  0  720.00K  720.48K     479      0.1%      0
 Divine Stone                0        -        -       -         -      -  buying off
 Force Core(High)            0        -        -       -         -      -  buying off
 Upgrade Core (Ultimate)     0        -        -       -         -      -  buying off
