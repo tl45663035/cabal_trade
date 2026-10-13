@@ -35,6 +35,28 @@ def ask(server):
     return ((received - sent) + (transmitted - back)) / 2, back - sent
 
 
+def ask_time(server):
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.settimeout(CLOCK["timeout"])
+        sent = time.perf_counter()
+        sock.sendto(REQUEST, (server, CLOCK["port"]))
+        data, _ = sock.recvfrom(CLOCK["packet"])
+        trip = time.perf_counter() - sent
+    if len(data) < CLOCK["packet"]:
+        raise OSError(f"{server} answered {len(data)} bytes")
+    return stamp(data, CLOCK["transmitted_at"]) + trip / 2
+
+
+def online_utc():
+    failed = []
+    for server in CLOCK["servers"]:
+        try:
+            return datetime.datetime.fromtimestamp(ask_time(server), UTC)
+        except OSError as exc:
+            failed.append(f"{server}: {exc}")
+    raise OSError("no time server answered: " + "; ".join(failed))
+
+
 def measure():
     failed = []
     for server in CLOCK["servers"]:

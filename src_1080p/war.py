@@ -15,18 +15,30 @@ WAR_MINUTES = _WAR["war_minutes"]
 QUIET_FROM_END = _WAR["quiet_from_end"]
 QUIET_SECONDS = _WAR["quiet_seconds"]
 LAG_POLL = _SHARED["timing"]["server_lag_poll"]
+ONLINE_EVERY = float(_WAR["online_every"])
 SERVER_UTC_OFFSET = datetime.timedelta(
     hours=float(_SHARED["game_facts"]["server_utc_offset_hours"]))
 
+_ONLINE = None
+
 
 def now(verbose=False):
-    found = online_clock.utc_now()
-    if found is None:
-        if verbose:
-            print("  no time server answered and no internet time is cached, "
-                  "so the server time is not known")
-        return None
-    return (found + SERVER_UTC_OFFSET).replace(tzinfo=None)
+    global _ONLINE
+    if _ONLINE is None or time.monotonic() - _ONLINE[0] >= ONLINE_EVERY:
+        try:
+            found = online_clock.online_utc()
+            _ONLINE = (time.monotonic(), found)
+        except OSError as exc:
+            if verbose:
+                print(f"  {exc}"
+                      + ("; the server time is not known" if _ONLINE is None
+                         else f"; going on from the time server's answer "
+                              f"{time.monotonic() - _ONLINE[0]:.0f}s ago"))
+            if _ONLINE is None:
+                return None
+    at, found = _ONLINE
+    return (found + datetime.timedelta(seconds=time.monotonic() - at)
+            + SERVER_UTC_OFFSET).replace(tzinfo=None)
 
 
 def quiet_window(after):
