@@ -18,7 +18,8 @@ def _plain_argv():
         if arg == "--config":
             skip = True
             continue
-        if arg.startswith("--config=") or arg in ("--frames", "--measured"):
+        if (arg.startswith(("--config=", "--floor="))
+                or arg in ("--frames", "--measured")):
             continue
         out.append(arg)
     return out
@@ -79,6 +80,8 @@ class NotReady(Exception):
 _MEASURED = False
 REPAIR = False
 SESSION_MEASURED = "--measured" in sys.argv[1:]
+REPAIR_FLOOR = next((int(arg.split("=", 1)[1]) for arg in sys.argv[1:]
+                     if arg.startswith("--floor=")), 0)
 _PENDING = None
 _WALK = {"at": None}
 _DUNGEON = {"due": None, "spent": False, "off": False, "resume_checked": False}
@@ -418,11 +421,17 @@ def task_done(kind, **fields):
     print("DONE " + json.dumps({"kind": kind, **fields}), flush=True)
 
 
-def note_step(job, holding=None, qty=0, price=0, tab=None):
+def note_step(job, holding=None, qty=0, price=0, tab=None, work=None):
     task("resupply", core=job.get("core"), set=job.get("set"),
          slot=job.get("slot"), tab=tab or row_model.WORK_TAB,
          step=job.get("step"), holding=holding,
-         qty=int(qty or 0), price=int(price or 0))
+         qty=int(qty or 0), price=int(price or 0),
+         **({"work": [int(n) for n in work]} if work else {}))
+
+
+def paid_each(job):
+    bought, paid = job.get("bought") or 0, job.get("paid") or 0
+    return -(-paid // bought) if bought and paid else 0
 
 
 def _after_the_lag(nothing_done, verbose=True):
@@ -1293,6 +1302,12 @@ def do_list(row, col, price=None, verbose=True, tab=None, item=None,
     started = time.perf_counter()
     floor, why, unit_market = (list_floor(item, verbose=verbose)
                                if item and price is None else (0, "", None))
+    if REPAIR_FLOOR and price is None:
+        floor, unit_market = REPAIR_FLOOR, None
+        why = f"the run that bought it paid {REPAIR_FLOOR:,} a unit"
+        if verbose:
+            print(f"    floor {floor:,} a unit: what the run that bought "
+                  f"{item or named or 'it'} paid")
     if verbose:
         print(f"  selecting inventory tab {tab} before reading slot "
               f"({row},{col})")
@@ -1340,14 +1355,23 @@ def do_resupply(slot, verbose=True):
     return out
 
 
-def do_craft_chaos(verbose=True):
+def do_craft(slot=None, verbose=True):
     run = calibration.load_shared()["run"]
     first, last = int(run["relist_from"]), int(run["relist_to"])
-    core_slot, made_slot = calibration._craft_slots()
-    if core_slot is None:
-        print("  no favourite pair matches the measured recipe; there is "
-              "nothing this craft window makes.")
-        return None
+    if slot is None:
+        core_slot, made_slot = calibration._craft_slots()
+        if core_slot is None:
+            print("  no favourite pair matches the measured recipe; there is "
+                  "nothing this craft window makes.")
+            return None
+    else:
+        core_slot, made_slot = int(slot), calibration.pair_slot(slot)
+        crafted = {calibration.favourite_slot_of(name)
+                   for name in calibration.craft_cores()}
+        if made_slot is None or core_slot not in crafted:
+            print(f"  favourite slot {slot} is not a crafted core with a Set "
+                  f"beside it; there is nothing to craft.")
+            return None
     core = calibration.FAVOURITE_ITEMS[str(core_slot)]
     set_name = calibration.FAVOURITE_ITEMS[str(made_slot)]
     initialise(verbose=verbose)
@@ -1394,9 +1418,15 @@ def do_craft_chaos(verbose=True):
     unit_cost, floor_pair = calibration.price_floor(set_name)
     unit_cost = unit_cost or core_row["unit_price"]
     why = f"a {floor_pair} costs {unit_cost:,}, a Set at a time"
+    if REPAIR_FLOOR:
+        unit_cost = REPAIR_FLOOR
+        why = (f"the run that bought it paid {REPAIR_FLOOR:,} a {core}, a Set "
+               f"at a time")
     print(f"  listing the {set_name} compressed into {work} from "
           f"{made['used']} {core}(s)")
-    print(f"  it costs {unit_cost:,} a Core today, so no Set goes out under "
+    print(f"  the run that bought them paid {unit_cost:,} a {core}, so no Set "
+          f"goes out under that" if REPAIR_FLOOR else
+          f"  it costs {unit_cost:,} a {core} today, so no Set goes out under "
           f"that")
 
     rows, listed_total = [], 0
@@ -1470,7 +1500,7 @@ def do_convert(slot, verbose=True):
         return None
     if not convert.cell_for(core):
         print(f"  {core} is not on the vendor grid; it is crafted rather "
-              f"than converted. Use craft chaos.")
+              f"than converted. Use craft {slot}.")
         return None
     set_name = calibration.FAVOURITE_ITEMS[str(pair)]
     initialise(verbose=verbose)
@@ -1490,6 +1520,10 @@ def do_convert(slot, verbose=True):
     floor, floor_pair = calibration.price_floor(core)
     floor = floor or 0
     why = f"a {floor_pair} costs {floor:,}" if floor else ""
+    if REPAIR_FLOOR:
+        floor = REPAIR_FLOOR
+        why = f"the run that bought it paid {REPAIR_FLOOR:,} a unit"
+        print(f"  floor {floor:,} a unit: what the run that bought it paid")
     calibration.phases_reset()
     started = time.perf_counter()
     rows, listed_total, slots_filled, rounds = [], 0, 0, 0
@@ -2530,7 +2564,7 @@ def buy_cores(job, verbose=True):
               f"{row_model.WORK_TAB}.")
     job["step"] = "craft"
     note_step(job, holding=job.get("core"), qty=job.get("bought", 0),
-              price=job.get("floor"))
+              price=paid_each(job))
     return True
 
 
@@ -2551,7 +2585,7 @@ def craft_cores(model, job, verbose=True):
     job["crafted"] = made["used"]
     job["step"] = "list"
     note_step(job, holding=set_name, qty=made["used"],
-              price=job.get("floor"))
+              price=paid_each(job), work=job["work"])
     with calibration.phase("close the craft window"):
         craft.close_craft()
 
@@ -4652,6 +4686,8 @@ def usage():
     print("  py src/driver.py craft chaos     craft the Chaos Core already")
     print("                                   in the bag into Sets and list")
     print("                                   them")
+    print("  py src/driver.py craft N         the same for favourite N's")
+    print("                                   crafted core, Divine Stone too")
     print("  py src/driver.py convert N       convert the Set already in ")
     print("                                   the bag into favourite N's ")
     print("                                   core and list it")
@@ -4812,8 +4848,8 @@ def _dispatch(args):
         row_at(row_model.RowModel().seed({}), int(args[1]))
     elif what == "resupply" and len(args) > 1:
         do_resupply(int(args[1]))
-    elif what == "craft" and len(args) > 1 and args[1].lower() == "chaos":
-        do_craft_chaos()
+    elif what == "craft" and len(args) > 1:
+        do_craft(None if args[1].lower() == "chaos" else int(args[1]))
     elif what == "convert" and len(args) > 1:
         do_convert(int(args[1]))
     elif what in ("cash", "vip"):

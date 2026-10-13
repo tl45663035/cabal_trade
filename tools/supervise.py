@@ -483,8 +483,10 @@ def marked(text):
         elif kind == "resupply":
             task = ("resupply", {"core": info["core"],
                                  **{k: info[k] for k in ("holding", "qty",
-                                                         "special")
-                                    if info.get(k) is not None}})
+                                                         "special", "price")
+                                    if info.get(k) is not None},
+                                 **({"work": tuple(info["work"])}
+                                    if info.get("work") else {})})
         elif kind == "stock":
             task = ("stock", {"state": json.dumps(info, sort_keys=True)})
         else:
@@ -557,15 +559,17 @@ def named_by_log(tasks):
     for kind, info in tasks:
         if info.get("holding"):
             return ("holding", str(info["holding"]), info.get("qty"),
-                    bool(info.get("special")))
+                    bool(info.get("special")), int(info.get("price") or 0),
+                    tuple(info["work"]) if info.get("work") else None)
     for kind, info in tasks:
         if kind == "relist" and info.get("item"):
-            return kind, str(info["item"]), info.get("qty"), False
+            return kind, str(info["item"]), info.get("qty"), False, 0, None
     for kind, info in tasks:
         if kind == "resupply" and info.get("core"):
             return (kind, str(info["core"]), info.get("qty"),
-                    bool(info.get("special")))
-    return None, None, None, False
+                    bool(info.get("special")), int(info.get("price") or 0),
+                    None)
+    return None, None, None, False, 0, None
 
 
 def special_qty_for(name):
@@ -597,8 +601,9 @@ def step_for(kind, name, qty=None, special=False):
     want = special_qty_for(name)
     if want is not None and qty is not None and int(qty) == want:
         return None
-    if slot == calibration._craft_slots()[0]:
-        return ("craft", "chaos")
+    if slot in {calibration.favourite_slot_of(core)
+                for core in calibration.craft_cores()}:
+        return ("craft", str(slot))
     if kind == "holding":
         pair = calibration.pair_slot(slot)
         if not convertible(slot) and pair is not None and convertible(pair):
@@ -618,13 +623,20 @@ def step_for(kind, name, qty=None, special=False):
 
 def clear_work_tab(budget, tasks=()):
     left_behind, collected, stepped = set(), False, False
-    kind, name, qty, special = named_by_log(tasks)
+    kind, name, qty, special, paid, whole = named_by_log(tasks)
     if name:
         holds = (f"the {name!r} it was making from" if kind == "resupply"
                  else f"the {name!r} it recorded holding" if kind == "holding"
                  else f"the {name!r}")
         print(f"  the dead run's log says tab {WORK_TAB} holds {holds}; "
               f"nothing on screen is read to name it")
+    if paid:
+        print(f"  the dead run's log says it was bought at {paid:,} a unit; "
+              f"it is listed no lower than that"
+              + (f", and the {name!r} in slot {whole} holds {qty} of them, "
+                 f"so it goes out no lower than {paid * int(qty):,}"
+                 if whole and qty else ""))
+    floored = (f"--floor={paid}",) if paid else ()
     while True:
         left = first_row(WORK_TAB)
         if not left:
@@ -647,17 +659,29 @@ def clear_work_tab(budget, tasks=()):
         step = None if stepped else step_for(kind, name, qty, special)
         if step is not None:
             stepped = True
-            args = step
+            args = step + (floored if step[0] in ("convert", "craft") else ())
             event(f"the log says tab {WORK_TAB} holds {name!r}, which is "
-                  f"converted and never listed; converting it", "dead")
+                  f"converted and never listed; converting it"
+                  + (f", listed no lower than the {paid:,} a unit it was "
+                     f"bought at" if paid and step[0] in ("convert", "craft")
+                     else ""),
+                  "dead")
         else:
+            set_cost = (paid * int(qty) if paid and qty and whole
+                        and (row, col) == whole else 0)
             args = (("list-named", str(row), str(col), "0", str(WORK_TAB),
                      name) if name
-                    else ("list", str(row), str(col), "0", str(WORK_TAB)))
+                    else ("list", str(row), str(col), "0",
+                          str(WORK_TAB))) + (
+                        (f"--floor={set_cost}",) if set_cost else floored)
             event(f"listing tab {WORK_TAB} slot ({row},{col}) at the panel's "
                   f"price and the full quantity"
                   + (f", the {name!r} the log says is there" if name
-                     else ", whatever it is"), "dead")
+                     else ", whatever it is")
+                  + (f", no lower than the {set_cost:,} the {qty} it was "
+                     f"crafted from cost" if set_cost else
+                     f", no lower than the {paid:,} a unit it was bought at"
+                     if paid else ""), "dead")
         what = " ".join(args)
         budget = spend(budget, what)
         run_driver(*args)

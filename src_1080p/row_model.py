@@ -65,7 +65,6 @@ FIELD_SETTLE = _T["field_settle"]
 SUGGESTION_RADIO_DX = _SHARED["detect"]["suggestion_radio_dx"]
 PRICE_CHECK_FACTOR = _SHARED["run"]["price_check_factor"]
 PANEL_REREADS = _SHARED["detect"]["panel_rereads"]
-PRICE_RECHECKS = int(_SHARED["detect"]["price_rechecks"])
 PRICE_SLACK = int(_SHARED["detect"]["price_agree_slack"])
 PRICE_WITNESSES = int(_SHARED["detect"]["price_witnesses"])
 _BACKUP = _SHARED["ocr"]
@@ -495,11 +494,6 @@ def _agreed(asked, filled, average, listed_at, verbose, net=None):
             f"{with_it[0][0]:,}, and none of them carries the asking price")
         return None
     value, where, _ = carries[0]
-    if average and average >= MIN_PLAUSIBLE_PRICE and not _near(value,
-                                                               average):
-        say(f"    the week's average says {average:,} against the {value:,} "
-            f"being asked; they are too far apart for the read to be trusted")
-        return None
     odd = [o for o in seen if o not in with_it]
     if odd:
         say(f"    {', '.join(f'{o[1]} says {o[0]:,}' for o in odd)}, against "
@@ -1332,16 +1326,10 @@ class RowModel:
         return new, gone
 
     def _keep_verified_cost(self, name, paid, market_each, verbose):
-        if not within(paid, market_each):
-            if verbose:
-                print(f"    the {paid:,} a unit this resupply paid is not "
-                      f"near the {market_each:,} the panel verified, so it "
-                      f"is not kept as the floor for {name!r}")
-            return
         if calibration.note_verified_cost(name, paid) and verbose:
             print(f"    {name!r} was bought at {paid:,} a unit and listed "
-                  f"against a verified {market_each:,}; a row of it with no "
-                  f"cost of its own is floored at {paid:,} from now on")
+                  f"against {market_each:,}; a row of it with no cost of its "
+                  f"own is floored at {paid:,} from now on")
 
     def _hold_core_floor(self, want, each, whole, name, verbose):
         if not each or whole or want >= each:
@@ -1350,19 +1338,6 @@ class RowModel:
             print(f"    {want:,} is under the hard minimum of {each:,} a core "
                   f"for {name!r}; listing at {each:,} instead")
         return each
-
-    def _price_again(self, market, expect_market, listed_at, verbose):
-        for look in range(PRICE_RECHECKS):
-            again = suggested_price(False, listed_at)
-            if again is None:
-                continue
-            if verbose:
-                print(f"    the panel said {market:,} where "
-                      f"{int(expect_market):,} was expected; look "
-                      f"{look + 2} reads {again:,}")
-            if within(again, expect_market):
-                return again
-        return market
 
     def _resolve_loaded(self, market, expect_item, qty_seen, seen, verbose,
                         cost=0):
@@ -1937,35 +1912,9 @@ class RowModel:
                          int(floor_units or 0))
         cost_each = int(floor_each or 0) if crafted else 0
         cost_guard = cost_each * max(1, crafted)
-        if market and expect_market and not within(market, expect_market):
-            with calibration.step("read the price again against what was "
-                                  "expected"):
-                market = self._price_again(market, expect_market, listed_at,
-                                           verbose)
-            suggested = market
         resolved = None
-        if market and expect_market and not within(market, expect_market):
-            seen = (f"the panel prices what loaded from ({row},{col}) at "
-                    f"{market:,}, and {expect_item!r} sells near "
-                    f"{int(expect_market):,}")
-            if weekly:
-                calibration.snap(f"wrong_item_{row}x{col}")
-                raise WrongItem(f"{seen}; a week-average listing only goes "
-                                f"out for what it expects. Nothing has been "
-                                f"listed.")
-            if not resolve:
-                if verbose:
-                    print(f"    {seen}; listing what loaded at its own "
-                          f"market all the same")
-            else:
-                resolved = self._resolve_loaded(market, expect_item, None,
-                                                seen, verbose, cost_guard)
-                price, floor, why = (resolved["price"], resolved["floor"],
-                                     resolved["why"])
-                expect_item, unit_market, price_each, listed_at = (
-                    resolved["item"], None, None, None)
-        elif (expect_item is None and price is None and price_each is None
-              and market and resolve):
+        if (expect_item is None and price is None and price_each is None
+                and market and resolve):
             named, sure = identify_by_market(market)
             if named:
                 expect_item = named
