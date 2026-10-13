@@ -13,7 +13,7 @@
       }
     },
     "enable_buying": {
-      "Divine Stone": true,
+      "Divine Stone": false,
       "Force Core (Ultimate)": false
     },
     "buy_min": {
@@ -60,6 +60,10 @@
   },
   "run": {
     "relist_to": 25
+  },
+  "favourite_items": {
+    "5": "Divine Stone",
+    "6": "Divine Stone Set"
   },
   "dungeon": {
     "shout_phrases": [
