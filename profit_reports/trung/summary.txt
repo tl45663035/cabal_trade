@@ -21,24 +21,24 @@ Fri 2026-10-09            15.73h   24.00h  325.73M   20.70M   12.02B   11.69B  1
 Sat 2026-10-10             7.37h   24.00h   24.55M    3.33M    4.69B    4.66B   7.61K    0.5%
 Sun 2026-10-11             6.50h   24.00h  130.96M   20.14M    3.10B    2.97B   6.83K    4.2%
 Mon 2026-10-12             2.68h   24.00h   16.62M    6.21M    1.82B    1.80B   2.57K    0.9%
-Tue 2026-10-13 (so far)    0.97h    1.67h  127.45M  131.96M  368.70M  241.25M   2.04K   34.6%
+Tue 2026-10-13 (so far)    1.22h    1.92h  144.04M  118.14M  401.56M  257.52M   2.08K   35.9%
 =============================================================================================
-7 DAYS                    33.25h  145.67h  625.31M   18.81M   21.99B   21.37B  34.61K    2.8%
+7 DAYS                    33.50h  145.92h  641.90M   19.16M   22.02B   21.38B  34.65K    2.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-13 00:00 Central (as of 01:40 Central)
+PROFIT SUMMARY -- sold since 2026-10-13 00:00 Central (as of 01:55 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
-forcecorehighest     112.25M  222.24M  109.98M    250   439.94K  888.95K   50.5%
+forcecorehighest     128.84M  255.10M  126.26M    287   439.94K  888.85K   50.5%
 forcecorehigh         14.37M   34.71M   20.34M    124   164.06K  279.92K   41.4%
 chaoscore            833.93K  107.85M  107.02M    147   728.00K  733.67K    0.8%
 astralcorepalladium        0    3.90M    3.90M  1.52K     2.56K    2.56K    0.0%
 --------------------------------------------------------------------------------
-Cores                126.62M  260.85M  134.23M  1.90K    70.72K  137.43K   48.5%
+Cores                143.21M  293.71M  150.51M  1.94K    77.78K  151.79K   48.8%
 Chaos                833.93K  107.85M  107.02M    147   728.00K  733.67K    0.8%
 ================================================================================
-TOTAL                127.45M  368.70M  241.25M  2.04K   117.97K  180.29K   34.6%
+TOTAL                144.04M  401.56M  257.52M  2.08K   123.69K  192.87K   35.9%
 
 
 
@@ -49,41 +49,42 @@ item            profit  bought  bought/u  listed/u  held
 Stock up Chaos       0   2.56K   728.13K         0     0
 
 
-ROWS -- 2026-10-12_221939_run_board.log, board during pass 6 at row 9, read 2026-10-12T22:40:00 (live)
+ROWS -- 2026-10-12_221939_run_board.log, board during pass 10 at row 9, read 2026-10-12T22:55:09 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Force Core(Highest                    x169   439.94K   888.89K  +448.95K   888.89K    74.35M    75.87M
-    2  Arionell                                x1   315.00M   317.50M    +2.50M   317.50M   315.00M     2.50M
-    3  Force Core(Highest                    x137   439.94K   888.89K  +448.95K   888.89K    60.27M    61.51M
-    4  Force Core (Ultimate                   x18   429.43K   554.97K  +125.54K   554.97K     7.73M     2.26M
+    1  Force Core(Highest                    x169   439.94K   867.00K  +427.06K   867.00K    74.35M    72.17M
+    2  Arionell                                x1   315.00M   315.00M        +0   315.00M   315.00M         0
+    3  Force Core(Highest                    x100   439.94K   867.00K  +427.06K   867.00K    43.99M    42.71M
+    4  Force Core (Ultimate                   x18   429.43K   554.96K  +125.53K   554.96K     7.73M     2.26M
     5  Armor Account bind Seal Stone           x1   210.00M   210.00M        +0   210.00M   210.00M         0
-    6  Force Core(Highest                    x124   439.94K   888.88K  +448.95K   888.88K    54.55M    55.67M
+    6  Force Core(Highest                    x124   439.94K   867.00K  +427.06K   867.00K    54.55M    52.96M
     7  Blessing Bead - Superior                x1   183.54M   200.00M   +16.46M   200.00M   183.54M    16.46M
-    8  Force Core(Highest                    x103   439.94K   888.88K  +448.94K   888.88K    45.31M    46.24M
-    9  Upgrade Core (Ultimate                x199   444.42K   487.49K   +43.07K   487.49K    88.44M     8.57M <- here
-   10  Chaos Core Set X 168                    x1   722.53K   733.52K   +10.99K   123.23M   121.38M     1.85M
-   11  Chaos Core Set X 249                    x1   722.53K   733.52K   +10.99K   182.65M   179.91M     2.74M
-   12  Chaos Core Set X 249                    x1   722.53K   733.52K   +10.99K   182.65M   179.91M     2.74M
-   13  Chaos Core Set X 249                    x1   722.53K   733.52K   +10.99K   182.65M   179.91M     2.74M
+    8  Force Core(Highest                    x103   439.94K   867.00K  +427.06K   867.00K    45.31M    43.99M
+    9  Upgrade Core (Ultimate                x199   444.42K   449.00K    +4.57K   449.00K    88.44M   910.23K <- here
+   10  Chaos Core Set X 168                    x1   722.53K   733.47K   +10.94K   123.22M   121.38M     1.84M
+   11  Chaos Core Set X 249                    x1   722.53K   733.46K   +10.94K   182.63M   179.91M     2.72M
+   12  Chaos Core Set X 249                    x1   722.53K   733.46K   +10.94K   182.63M   179.91M     2.72M
+   13  Chaos Core Set X 249                    x1   722.53K   733.46K   +10.94K   182.63M   179.91M     2.72M
    14  Slot Extender(Low                       x1         -    15.00M         -    15.00M         -         -
-   15  Upgrade Core (Ultimate                 x26   444.42K   487.50K   +43.07K   487.50K    11.56M     1.12M
-   16  Chaos Core Set X 150                    x1   722.53K   733.52K   +10.99K   110.03M   108.38M     1.65M
-   17  Force Core(High                        x38   249.25K   259.91K   +10.66K   259.91K     9.47M   405.04K
+   15  Upgrade Core (Ultimate                 x26   444.42K   457.49K   +13.06K   457.49K    11.56M   339.69K
+   16  Chaos Core Set X 150                    x1   722.53K   733.46K   +10.93K   110.02M   108.38M     1.64M
+   17  Force Core(High                        x38   249.25K   259.89K   +10.65K   259.89K     9.47M   404.55K
+   18  Chaos Core Set                          x1   722.58K   733.45K   +10.87K    99.02M    97.55M     1.47M
    29  Chaos Core Set X 474                    x1   722.53K   733.60K   +11.07K   347.72M   342.48M     5.25M
    30  Essence Rune(HP Absorb Up) X 1          x1         -   114.72M         -   114.72M         -         -
-    balance now 228.62M, read 2026-10-12T22:39:47
-       stock at its listed price                                                                        2.13B
-       Alz, latest balance line                                                                       228.62M
+    balance now 163.93M, read 2026-10-12T22:54:55
+       stock at its listed price                                                                        2.17B
+       Alz, latest balance line                                                                       163.93M
        Cash at the voucher price                                                                      357.00M
        gems at the voucher price                                                                       22.05M
-       NET WORTH                                                                                        2.73B
+       NET WORTH                                                                                        2.71B
 
 
-MARKET -- 2026-10-12_221939_run.log, pass 6, log last written 01:40 Central (live)
+MARKET -- 2026-10-12_221939_run.log, pass 10, log last written 01:55 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 ------------------------------------------------------------------------------------
 Force Core(Highest)         4        -        -       -         -      -  buying off
-Chaos Core                  5  730.00K  733.52K   3.52K      0.5%      0
+Chaos Core                  5  730.00K  733.46K   3.46K      0.5%      0
 Force Core (Ultimate)       1        -        -       -         -      -  buying off
 Force Core(High)            1        -        -       -         -      -  buying off
 Upgrade Core (Ultimate)     2        -        -       -         -      -  buying off
