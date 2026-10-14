@@ -8,17 +8,17 @@ Sat 2026-10-10            15.93h   24.00h  224.26M   14.08M   12.81B  12.59B  19
 Sun 2026-10-11            17.10h   24.00h  160.66M    9.40M    5.27B   5.11B  10.12K    3.0%
 Mon 2026-10-12             9.32h   24.00h   77.46M    8.32M    6.86B   6.78B  12.42K    1.1%
 Tue 2026-10-13            17.08h   24.00h  118.98M    6.97M    8.90B   8.78B  14.19K    1.3%
-Wed 2026-10-14 (so far)   11.90h   13.10h   75.25M    6.32M    3.33B   3.25B   5.49K    2.3%
+Wed 2026-10-14 (so far)   12.15h   13.35h   76.91M    6.33M    3.52B   3.44B   5.74K    2.2%
 ============================================================================================
-7 DAYS                   107.71h  157.10h    1.43B   13.23M   70.38B  68.95B 115.45K    2.0%
+7 DAYS                   107.96h  157.35h    1.43B   13.22M   70.56B  69.13B 115.70K    2.0%
 
 
-PROFIT SUMMARY -- sold since 2026-10-14 00:00 Central (as of 13:05 Central)
+PROFIT SUMMARY -- sold since 2026-10-14 00:00 Central (as of 13:20 Central)
 
 item                          profit  revenue     cost  units  bought/u   sold/u  margin
 ----------------------------------------------------------------------------------------
 upgradecoreultimate           36.43M  161.75M  125.33M    363   345.25K  445.60K   22.5%
-chaoscore                     20.10M    2.58B    2.56B  3.50K   731.67K  737.41K    0.8%
+chaoscore                     21.76M    2.77B    2.74B  3.75K   732.42K  738.23K    0.8%
 forcecorehigh                 15.66M  325.81M  310.15M  1.22K   254.43K  267.28K    4.8%
 forcecorehighest               3.06M  157.24M  154.18M    398   387.38K  395.08K    1.9%
 petuntrainkitoptionselective       0   30.72M   30.72M      5     6.14M    6.14M    0.0%
@@ -28,9 +28,9 @@ potionofhonor                      0    6.30M    6.30M      1     6.30M    6.30M
 timereducerddiamondinsignia        0   32.36M   32.36M      2    16.18M   16.18M    0.0%
 ----------------------------------------------------------------------------------------
 Cores                         55.15M  750.38M  695.23M  1.99K   348.66K  376.32K    7.3%
-Chaos                         20.10M    2.58B    2.56B  3.50K   731.67K  737.41K    0.8%
+Chaos                         21.76M    2.77B    2.74B  3.75K   732.42K  738.23K    0.8%
 ========================================================================================
-TOTAL                         75.25M    3.33B    3.25B  5.49K   592.61K  606.31K    2.3%
+TOTAL                         76.91M    3.52B    3.44B  5.74K   599.13K  612.53K    2.2%
 
 
 
@@ -41,31 +41,33 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-14_091527_run_board.log, board during pass 72 at row 7, read 2026-10-14T13:05:40 (live)
+ROWS -- 2026-10-14_091527_run_board.log, board during pass 76 at row 12, read 2026-10-14T13:19:45 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Force Core(Highest                     x25   387.38K   387.38K        +4   387.38K     9.68M       100
     2  Force Core(Highest                     x89   387.38K   387.38K        +4   387.38K    34.48M       356
     3  Force Core(Highest                      x5   387.38K   387.38K        +4   387.38K     1.94M        20
-    4  Upgrade Core (Ultimate                x150   345.00K   399.68K   +54.68K   399.68K    51.75M     8.20M
-    5  Upgrade Core (Ultimate                 x40   345.00K   399.68K   +54.68K   399.68K    13.80M     2.19M
-    6  Upgrade Core (Ultimate                x196   345.00K   399.68K   +54.68K   399.68K    67.62M    10.72M
-    7  Wexp Saver                              x2         -    10.00M         -    10.00M         -         - <- here
+    4  Upgrade Core (Ultimate                x150   345.00K   399.65K   +54.65K   399.65K    51.75M     8.20M
+    5  Upgrade Core (Ultimate                 x40   345.00K   399.65K   +54.65K   399.65K    13.80M     2.19M
+    6  Upgrade Core (Ultimate                x196   345.00K   399.65K   +54.65K   399.65K    67.62M    10.71M
+    7  Wexp Saver                              x2         -    10.00M         -    10.00M         -         -
     8  Essence of Chaos Guardian (Bracele        x1         -     5.30M         -     5.30M         -         -
-    9  Force Core(High                        x51   274.00K   279.00K    +5.00K   279.00K    13.97M   254.95K
-   10  Force Core(High                         x2   274.00K   279.00K    +5.00K   279.00K   548.00K    10.00K
-   11  Force Core(High                         x3   272.73K   279.00K    +6.27K   279.00K   818.18K    18.81K
-    balance now 2.38B, read 2026-10-14T13:05:08
-       stock at its listed price                                                                      241.30M
-       Alz, latest balance line                                                                         2.38B
+    9  Force Core(High                        x51   274.00K   278.98K    +4.98K   278.98K    13.97M   253.88K
+   10  Force Core(High                         x2   274.00K   278.98K    +4.98K   278.98K   548.00K     9.95K
+   11  Force Core(High                         x3   272.73K   278.98K    +6.25K   278.98K   818.18K    18.75K
+   12  Chaos Core Set X 96                     x1   743.06K   749.68K    +6.62K    71.97M    71.33M   635.90K <- here
+   13  Chaos Core Set X 249                    x1   743.00K   749.69K    +6.69K   186.67M   185.01M     1.67M
+    balance now 2.12B, read 2026-10-14T13:19:04
+       stock at its listed price                                                                      499.93M
+       Alz, latest balance line                                                                         2.12B
        NET WORTH                                                                                        2.62B
 
 
-MARKET -- 2026-10-14_091527_run.log, pass 72, log last written 13:05 Central (live)
+MARKET -- 2026-10-14_091527_run.log, pass 76, log last written 13:20 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         3        -        -        -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  0  745.89K  749.70K    3.80K      0.5%      0
+Chaos Core                  2  743.00K  749.69K    6.69K      0.9%      2
 Divine Stone                0  780.00K  705.78K  -74.22K    -10.5%      0
 Force Core(High)            3        -        -        -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -        -         -      -  holds the most it can want, 3; not priced
