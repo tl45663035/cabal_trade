@@ -1191,6 +1191,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
         calibration.close_everything(verbose=verbose)
         dungeon_turn(verbose=verbose)
         calibration.close_everything(verbose=verbose)
+    world_boss_turn(verbose=verbose)
     initialise(verbose=verbose)
     register_tab(verbose=verbose)
     model = seed(verbose=verbose)
