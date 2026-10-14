@@ -2,6 +2,7 @@ import _thread
 import ctypes
 import datetime
 import os
+import random
 import re
 import sys
 import threading
@@ -56,6 +57,10 @@ STOP_PRESSES = int(_BOSS["stop_presses"])
 STOP_WINDOW = float(_BOSS["stop_window"])
 SPAWNS = sorted(datetime.time.fromisoformat(at) for at in _BOSS["spawn_times"])
 CHANNELS = [int(channel) for channel in _BOSS["channels"]]
+HOME_CHANNELS = [int(channel) for channel in _BOSS["home_channels"]]
+POT_DELAY = float(_BOSS["pot_delay"])
+POT_GAP = float(_BOSS["pot_gap"])
+BUFF_AFTER_SPAWN = float(_BOSS["buff_after_spawn"])
 PREPARE_LEAD = float(_BOSS["prepare_lead"])
 PREPARE_CHANNEL = int(_BOSS["prepare_channel"])
 PREPARE_WAIT = float(_BOSS["prepare_wait"])
@@ -68,21 +73,22 @@ HEAL_VK = int(_BOSS["heal_vk"])
 HEAL_EVERY = float(_BOSS["heal_every"])
 HEAL_OFFSET = float(_BOSS["heal_offset"])
 KEY_SPACING = float(_BOSS["key_spacing"])
-BUFF_EVERY = float(_BOSS["buff_every"])
-BUFF_GAP = float(_BOSS["buff_gap"])
 OFFENSIVE_BUFFS = {name: tuple(point)
                    for name, point in _BOSS["offensive_buffs"].items()}
+DEFENSIVE = "defensive_buffs"
 DEFENSIVE_BUFFS = [(name, tuple(point))
-                   for name, point in _BOSS["defensive_buffs"].items()]
-DEFENSIVE_USES = round(float(_BOSS["defensive_switch"]) / BUFF_EVERY)
+                   for name, point in _BOSS[DEFENSIVE].items()]
+DEFENSIVE_SWITCH = float(_BOSS["defensive_switch"])
+BUFF_NAMES = set(OFFENSIVE_BUFFS) | {DEFENSIVE}
 BM_ICON = tuple(_BOSS["bm_icon"])
 BM_LEAD = float(_BOSS["bm_lead"])
-WINDOWS = {"main": list(_BOSS["main_window"]),
-           "alternate": list(_BOSS["alternate_window"])}
-WINDOW_POINTS = {name: tuple(_BOSS[name])
-                 for cycle in WINDOWS.values() for name in cycle}
-ACTIVATE_GAP = float(_BOSS["activate_gap"])
-WINDOW_CLICKS = round(float(_BOSS["activate_for"]) / ACTIVATE_GAP)
+LOOP_GAP = float(_BOSS["loop_gap"])
+LOOPS = {"main": list(_BOSS["main_loop"]),
+         "alternate": list(_BOSS["alternate_loop"])}
+LOOP_POINTS = {name: tuple(_BOSS[name])
+               for cycle in LOOPS.values() for name in cycle
+               if name not in BUFF_NAMES}
+LOOP_POINTS.update(OFFENSIVE_BUFFS)
 MODE_DURATION = float(_BOSS["mode_duration"])
 CANCEL_BEFORE = float(_BOSS["cancel_before"])
 MAIN_BM_COOLDOWN = float(_BOSS["main_bm_cooldown"])
@@ -410,94 +416,92 @@ def next_due(due, every):
 
 
 def mode_plan(spawn_at):
-    return {"stage": "main", "due": spawn_at - BM_LEAD, "clicks": 0,
+    return {"phase": "main", "next": spawn_at - BM_LEAD, "index": 0,
             "timer": None, "cancelled": None, "spawn": spawn_at}
 
 
-def mode_step(plan, at, verbose=True):
-    stage = plan["stage"]
-    since = at - plan["spawn"]
-    if stage in ("cancel_main", "cancel_alternate"):
-        if verbose:
-            print(f"  spawn {since:+.1f}s: cancel "
-                  f"{'main' if stage == 'cancel_main' else 'alternate'} BM")
-        cancel_bm(verbose)
-        if stage == "cancel_main":
-            plan.update(stage="alternate", due=at + ACTIVATE_GAP, clicks=0,
-                        cancelled=at)
-        else:
-            plan.update(stage="main", due=at + ACTIVATE_GAP, clicks=0,
-                        timer=None)
-        return
-    cycle = WINDOWS[stage]
-    if plan["clicks"] == 0 and verbose:
-        print(f"  spawn {since:+.1f}s: {stage} window: "
-              f"{' -> '.join(cycle)} in turn, {WINDOW_CLICKS} right-clicks "
-              f"{ACTIVATE_GAP:g}s apart")
-    name = cycle[plan["clicks"] % len(cycle)]
-    right_click(WINDOW_POINTS[name])
-    calibration.snap(f"{stage}_{plan['clicks'] + 1}_{name}", alongside=True)
-    if name == "aura" and plan["timer"] is None:
-        plan["timer"] = at
-        if verbose:
-            print(f"  spawn {since:+.1f}s: aura clicked; timer started, main "
-                  f"BM cancel at +{MODE_DURATION - CANCEL_BEFORE:g}s")
-    plan["clicks"] += 1
-    if plan["clicks"] < WINDOW_CLICKS:
-        plan["due"] = at + ACTIVATE_GAP
-    elif stage == "main":
-        plan.update(stage="cancel_main",
-                    due=plan["timer"] + MODE_DURATION - CANCEL_BEFORE)
-    else:
-        plan.update(stage="cancel_alternate",
-                    due=plan["cancelled"] + MAIN_BM_COOLDOWN)
+def switch_due(plan, now):
+    if plan["phase"] == "main":
+        return (plan["timer"] is not None
+                and now >= plan["timer"] + MODE_DURATION - CANCEL_BEFORE)
+    return now >= plan["cancelled"] + MAIN_BM_COOLDOWN
 
 
-def kill_boss(channel, yes_at, plan, verbose=True):
-    start = yes_at + KILL_DELAY
-    due = {"target": start, "heal": start + HEAL_OFFSET, "round": start}
-    count = {"target": 0, "heal": 0, "round": 0}
-    clicks = []
+def switch_bm(plan, now, verbose=True):
     if verbose:
-        print(f"kill world boss in Channel {channel}, from {KILL_DELAY:g}s "
-              f"after Yes, until {REWARD_WORD!r} reads")
+        print(f"  spawn {now - plan['spawn']:+.1f}s: cancel {plan['phase']} "
+              f"BM")
+    cancel_bm(verbose)
+    if plan["phase"] == "main":
+        plan.update(phase="alternate", cancelled=now)
+    else:
+        plan.update(phase="main", timer=None)
+    plan.update(index=0, next=now + LOOP_GAP)
+    if verbose:
+        print(f"  spawn {now - plan['spawn']:+.1f}s: {plan['phase']} loop: "
+              f"{' -> '.join(LOOPS[plan['phase']])}, {LOOP_GAP:g}s apart")
+
+
+def loop_click(plan, now, buffs_from, count, verbose=True):
+    cycle = LOOPS[plan["phase"]]
+    for _ in cycle:
+        name = cycle[plan["index"] % len(cycle)]
+        plan["index"] += 1
+        if name not in BUFF_NAMES or now >= buffs_from:
+            break
+    if name == DEFENSIVE:
+        name, point = DEFENSIVE_BUFFS[int((now - buffs_from) // DEFENSIVE_SWITCH)
+                                      % len(DEFENSIVE_BUFFS)]
+    else:
+        point = LOOP_POINTS[name]
+    right_click(point)
+    count[name] = count.get(name, 0) + 1
+    if plan["index"] % len(cycle) == 1:
+        calibration.snap(f"{plan['phase']}_loop_{name}", alongside=True)
+    if name == "aura" and plan["timer"] is None:
+        plan["timer"] = now
+        if verbose:
+            print(f"  spawn {now - plan['spawn']:+.1f}s: aura clicked; timer "
+                  f"started, main BM cancel at "
+                  f"+{MODE_DURATION - CANCEL_BEFORE:g}s")
+    plan["next"] = now + LOOP_GAP
+
+
+def kill_boss(channel, start, plan, verbose=True, buffs_from=None,
+              loop_from=None):
+    buffs_from = start if buffs_from is None else buffs_from
+    loop_from = plan["next"] if loop_from is None else loop_from
+    due = {"target": start, "heal": start + HEAL_OFFSET}
+    count = {}
+    if verbose:
+        print(f"kill world boss in Channel {channel}: target and heal from "
+              f"spawn {start - plan['spawn']:+.1f}s, buffs in the "
+              f"{plan['phase']} loop from spawn "
+              f"{buffs_from - plan['spawn']:+.1f}s, until {REWARD_WORD!r} "
+              f"reads")
     while True:
         if reward_up():
             calibration.snap(f"reward_channel_{channel}", alongside=True)
             if verbose:
-                print(f"  Channel {channel}: the reward window is up "
-                      f"{time.monotonic() - start:.1f}s into the kill; "
-                      f"target x{count['target']}, heal x{count['heal']}, "
-                      f"{count['round']} buff round(s)")
+                print(f"  Channel {channel}: the reward window is up at spawn "
+                      f"{time.monotonic() - plan['spawn']:+.1f}s; "
+                      + ", ".join(f"{name} x{n}" for name, n in count.items()))
             return
         now = time.monotonic()
         keys_free = key_free()
         if keys_free and now >= due["target"]:
             tap_key(TARGET_VK)
-            count["target"] += 1
+            count["target"] = count.get("target", 0) + 1
             due["target"] = next_due(due["target"], TARGET_EVERY)
         elif keys_free and now >= due["heal"]:
             tap_key(HEAL_VK)
-            count["heal"] += 1
+            count["heal"] = count.get("heal", 0) + 1
             due["heal"] = next_due(due["heal"], HEAL_EVERY)
-        elif now >= plan["due"]:
-            mode_step(plan, now, verbose)
-        elif now >= due["round"]:
-            at = due["round"]
-            guard, guard_point = DEFENSIVE_BUFFS[
-                (count["round"] // DEFENSIVE_USES) % len(DEFENSIVE_BUFFS)]
-            clicks.extend((at + index * BUFF_GAP, point)
-                          for index, point in enumerate(OFFENSIVE_BUFFS.values()))
-            clicks.append((at + len(OFFENSIVE_BUFFS) * BUFF_GAP, guard_point))
-            count["round"] += 1
-            calibration.snap(f"kill_channel_{channel}_round_{count['round']}",
-                             alongside=True)
-            if verbose:
-                print(f"  Channel {channel} +{at - start:.1f}s: "
-                      f"{', '.join(OFFENSIVE_BUFFS)} then {guard}")
-            due["round"] = next_due(due["round"], BUFF_EVERY)
-        elif clicks and now >= clicks[0][0]:
-            right_click(clicks.pop(0)[1])
+        elif now >= plan["next"] and now >= loop_from:
+            if switch_due(plan, now):
+                switch_bm(plan, now, verbose)
+            else:
+                loop_click(plan, now, buffs_from, count, verbose)
 
 
 def cancel_bm(verbose=True):
@@ -514,15 +518,17 @@ def prepare(verbose=True):
     if verbose:
         print(f"  waiting {PREPARE_WAIT:g}s in Channel {PREPARE_CHANNEL}")
     pause(PREPARE_WAIT)
-    clicked = quick_relog(CHANNELS[0], verbose)
+    quick_relog(CHANNELS[0], verbose)
+    pause(POT_DELAY)
     click(TAB_TWO)
     for point in POT_SLOTS:
+        pause(POT_GAP)
         right_click(point)
     calibration.snap("pots", alongside=True)
     if verbose:
-        print(f"  hotbar tab II at {list(TAB_TWO)}; pots right-clicked at "
+        print(f"  {POT_DELAY:g}s after Yes: hotbar tab II at {list(TAB_TWO)}, "
+              f"then pots {POT_GAP:g}s apart at "
               f"{[list(point) for point in POT_SLOTS]}")
-    return clicked
 
 
 def run(verbose=True):
@@ -536,11 +542,18 @@ def run(verbose=True):
           f"({when.astimezone(UTC):%H:%M:%S} UTC); preparing from "
           f"{start:%H:%M:%S %Z}, in {str(start - now).split('.')[0]}")
     wait_until(start, verbose)
-    plan = mode_plan(time.monotonic()
-                     + (when - online_utc()).total_seconds())
-    kill_boss(CHANNELS[0], prepare(verbose), plan, verbose)
+    spawn_at = time.monotonic() + (when - online_utc()).total_seconds()
+    plan = mode_plan(spawn_at)
+    prepare(verbose)
+    kill_boss(CHANNELS[0], spawn_at, plan, verbose,
+              spawn_at + BUFF_AFTER_SPAWN)
     for channel in CHANNELS[1:]:
-        kill_boss(channel, quick_relog(channel, verbose), plan, verbose)
+        start = quick_relog(channel, verbose) + KILL_DELAY
+        kill_boss(channel, start, plan, verbose, loop_from=start)
+    home = random.choice(HOME_CHANNELS)
+    if verbose:
+        print(f"the route is done; back to Channel {home}")
+    quick_relog(home, verbose)
 
 
 if __name__ == "__main__":
