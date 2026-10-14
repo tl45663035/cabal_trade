@@ -85,6 +85,7 @@ REPAIR_FLOOR = next((int(arg.split("=", 1)[1]) for arg in sys.argv[1:]
 _PENDING = None
 _WALK = {"at": None}
 _DUNGEON = {"due": None, "spent": False, "off": False, "resume_checked": False}
+_WORLD_BOSS = {"done": None, "clockless": False}
 _SINCE_PRICED = {}
 _PRICED_THIS_ROW = set()
 _FULL_SALES = 0
@@ -1146,6 +1147,8 @@ def relist_pass(model, first, last, passes=0, verbose=True,
     for index in range(begin, last + 1):
         if index in reserved:
             continue
+        if world_boss_turn(verbose=verbose):
+            reopen_after_world_boss(model, verbose=verbose)
         _WALK["at"] = index
         _PRICED_THIS_ROW.clear()
         sold_before = _FULL_SALES
@@ -4419,8 +4422,57 @@ def dungeon_in_war(verbose=True):
 
 
 def avoid_war(verbose=True):
+    world_boss_turn(verbose=verbose)
     return war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose,
                      waiting=lambda: dungeon_in_war(verbose))
+
+
+def world_boss_on():
+    return bool((calibration.load_shared().get("world_boss") or {})
+                .get("enabled"))
+
+
+def world_boss_turn(verbose=True):
+    if not world_boss_on():
+        return False
+    import world_boss
+    try:
+        now = world_boss.online_utc()
+    except RuntimeError as exc:
+        if not _WORLD_BOSS["clockless"]:
+            print(f"  world boss: {exc}")
+            _WORLD_BOSS["clockless"] = True
+        return False
+    when = world_boss.next_spawn(now)
+    left = (when - now).total_seconds()
+    if left > world_boss.TRADING_LEAD or _WORLD_BOSS["done"] == when:
+        return False
+    _WORLD_BOSS["done"] = when
+    print("")
+    print(f"WORLD BOSS: {when:%H:%M:%S %Z} is {left:.0f}s away; trading "
+          f"stops here and the world boss run starts")
+    calibration.close_everything(verbose=verbose)
+    try:
+        world_boss.run(verbose=verbose, when=when)
+    except Exception as exc:
+        calibration.snap("world_boss_failed")
+        print(f"  WORLD BOSS failed: {type(exc).__name__}: {exc}")
+    print(f"  waiting {world_boss.RESUME_WAIT:g}s after the world boss "
+          f"before trading resumes")
+    world_boss.pause(world_boss.RESUME_WAIT)
+    calibration.close_everything(verbose=verbose)
+    calibration.table_lost()
+    print("WORLD BOSS: over; trading resumes with every row, cost and floor "
+          "it held before")
+    return True
+
+
+def reopen_after_world_boss(model, verbose=True):
+    if not back_to_the_shop(verbose=verbose):
+        raise NotReady("the Agent Shop would not reopen after the world "
+                       "boss.")
+    register_tab(verbose=verbose)
+    model.home(verbose=False)
 
 
 def rest_the_game(verbose=True):

@@ -53,6 +53,9 @@ _BOSS = _SHARED["world_boss"]
 _INPUT = _SHARED["input"]
 UTC = datetime.timezone.utc
 ZONE = zoneinfo.ZoneInfo(_BOSS["timezone"])
+TRADING_LEAD = float(_BOSS["trading_lead"])
+RESUME_WAIT = float(_BOSS["resume_wait"])
+TIME_LIMIT = float(_BOSS["time_limit"])
 STOP_PRESSES = int(_BOSS["stop_presses"])
 STOP_WINDOW = float(_BOSS["stop_window"])
 SPAWNS = sorted(datetime.time.fromisoformat(at) for at in _BOSS["spawn_times"])
@@ -132,6 +135,9 @@ def online_utc(fresh=False):
                     f"cannot be timed. Nothing started.") from exc
             print(f"  {exc}; going on from the time server's answer "
                   f"{time.monotonic() - _ONLINE['at']:.0f}s ago")
+    if _ONLINE["utc"] is None:
+        raise RuntimeError("no time server has answered yet, so the world "
+                           "boss cannot be timed.")
     return _ONLINE["utc"] + datetime.timedelta(
         seconds=time.monotonic() - _ONLINE["at"])
 
@@ -467,7 +473,7 @@ def loop_click(plan, now, buffs_from, count, verbose=True):
     plan["next"] = now + LOOP_GAP
 
 
-def kill_boss(channel, start, plan, verbose=True, buffs_from=None,
+def kill_boss(channel, start, plan, deadline, verbose=True, buffs_from=None,
               loop_from=None):
     buffs_from = start if buffs_from is None else buffs_from
     loop_from = plan["next"] if loop_from is None else loop_from
@@ -486,8 +492,16 @@ def kill_boss(channel, start, plan, verbose=True, buffs_from=None,
                 print(f"  Channel {channel}: the reward window is up at spawn "
                       f"{time.monotonic() - plan['spawn']:+.1f}s; "
                       + ", ".join(f"{name} x{n}" for name, n in count.items()))
-            return
+            return True
         now = time.monotonic()
+        if now >= deadline:
+            calibration.snap(f"time_limit_channel_{channel}", alongside=True)
+            if verbose:
+                print(f"  Channel {channel}: spawn +{TIME_LIMIT:g}s, the time "
+                      f"limit; the world boss is over, no reward window seen "
+                      f"here; " + ", ".join(f"{name} x{n}"
+                                             for name, n in count.items()))
+            return False
         keys_free = key_free()
         if keys_free and now >= due["target"]:
             tap_key(TARGET_VK)
@@ -531,25 +545,30 @@ def prepare(verbose=True):
               f"{[list(point) for point in POT_SLOTS]}")
 
 
-def run(verbose=True):
+def run(verbose=True, when=None):
     row_model.start_backup_reader()
     now = online_utc()
-    when = next_spawn(now)
+    when = next_spawn(now) if when is None else when
     start = when - datetime.timedelta(seconds=PREPARE_LEAD)
     print(f"  online time {now.astimezone(ZONE):%Y-%m-%d %H:%M:%S %Z} "
           f"({now:%H:%M:%S} UTC)")
     print(f"  the next world boss is {when:%Y-%m-%d %H:%M:%S %Z} "
           f"({when.astimezone(UTC):%H:%M:%S} UTC); preparing from "
-          f"{start:%H:%M:%S %Z}, in {str(start - now).split('.')[0]}")
+          f"{start:%H:%M:%S %Z}, in "
+          f"{str(max(start - now, datetime.timedelta(0))).split('.')[0]}")
     wait_until(start, verbose)
     spawn_at = time.monotonic() + (when - online_utc()).total_seconds()
     plan = mode_plan(spawn_at)
+    deadline = spawn_at + TIME_LIMIT
     prepare(verbose)
-    kill_boss(CHANNELS[0], spawn_at, plan, verbose,
-              spawn_at + BUFF_AFTER_SPAWN)
+    finished = kill_boss(CHANNELS[0], spawn_at, plan, deadline, verbose,
+                         spawn_at + BUFF_AFTER_SPAWN)
     for channel in CHANNELS[1:]:
+        if not finished or time.monotonic() >= deadline:
+            break
         start = quick_relog(channel, verbose) + KILL_DELAY
-        kill_boss(channel, start, plan, verbose, loop_from=start)
+        finished = kill_boss(channel, start, plan, deadline, verbose,
+                             loop_from=start)
     home = random.choice(HOME_CHANNELS)
     if verbose:
         print(f"the route is done; back to Channel {home}")

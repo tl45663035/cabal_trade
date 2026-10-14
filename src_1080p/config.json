@@ -578,6 +578,10 @@
     ]
   },
   "world_boss": {
+    "enabled": false,
+    "trading_lead": 300,
+    "resume_wait": 30.0,
+    "time_limit": 600,
     "timezone": "America/Los_Angeles",
     "stop_presses": 3,
     "stop_window": 1.5,
