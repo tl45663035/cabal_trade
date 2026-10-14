@@ -17,6 +17,10 @@ WINDOW = float(R["toggle_window"])
 PUMP_MS = int(R["pump_ms"])
 TIMER_MS = int(R["timer_resolution_ms"])
 SPIN_BELOW = float(R["spin_below"])
+SCREEN_FPS = float(R["screen_fps"])
+SCREEN_MONITOR = int(R["screen_monitor"])
+SCREEN_FOLDER = R["screen_folder"]
+SCREEN_INDEX = R["screen_index"]
 CTRL = {W["VK_CONTROL"], W["VK_LCONTROL"], W["VK_RCONTROL"]}
 KEY_DOWN = {W["WM_KEYDOWN"], W["WM_SYSKEYDOWN"]}
 KEY_UP = {W["WM_KEYUP"], W["WM_SYSKEYUP"]}
@@ -220,6 +224,34 @@ class Recording:
         self.recording, self.finished, self.said = False, True, "stopped"
 
 
+class Film:
+    def __init__(self, session, folder):
+        self.session, self.folder = session, folder
+        self.count = 0
+        self.stop = threading.Event()
+        self.worker = threading.Thread(target=self.roll, daemon=True)
+
+    def roll(self):
+        import mss
+        from PIL import Image
+        gap = 1.0 / SCREEN_FPS
+        with mss.MSS() as sct, open(self.folder / SCREEN_INDEX, "a",
+                                    encoding="utf-8", buffering=1) as index:
+            where = sct.monitors[SCREEN_MONITOR]
+            while not self.stop.is_set():
+                due = time.perf_counter() + gap
+                raw = sct.grab(where)
+                taken = round(time.perf_counter() - self.session.zero, 6)
+                at = datetime.datetime.now().isoformat(timespec="milliseconds")
+                self.count += 1
+                name = f"{self.count:05d}.png"
+                Image.frombytes("RGB", raw.size, raw.bgra, "raw",
+                                "BGRX").save(self.folder / name)
+                index.write(json.dumps({"n": self.count, "t": taken,
+                                        "at": at, "file": name}) + "\n")
+                self.stop.wait(max(0.0, due - time.perf_counter()))
+
+
 def hook(kind, handler, flag, struct):
     def proc(code, wparam, lparam):
         if code >= 0:
@@ -249,15 +281,27 @@ def pump(done, tick):
         user32.KillTimer(None, timer)
 
 
-def record():
+def record(filming=False):
     user32.SetProcessDPIAware()
     session = Recording()
     hooks = [hook(W["WH_KEYBOARD_LL"], session.key, W["LLKHF_INJECTED"],
                   KBDLLHOOKSTRUCT),
              hook(W["WH_MOUSE_LL"], session.mouse, W["LLMHF_INJECTED"],
                   MSLLHOOKSTRUCT)]
-    print(f"press Ctrl {TAPS} times within {WINDOW:g}s to start recording; "
-          f"the same again stops it", flush=True)
+    film = None
+    if filming:
+        session.toggle(time.perf_counter())
+        session.said = None
+        film = Film(session, OUT / f"{session.started:%Y-%m-%d_%H%M%S}_"
+                                   f"{SCREEN_FOLDER}")
+        film.folder.mkdir(parents=True, exist_ok=True)
+        film.worker.start()
+        print(f"recording the screen at {SCREEN_FPS:g} frames a second and "
+              f"every key and click since {session.started:%H:%M:%S}; press "
+              f"Ctrl {TAPS} times within {WINDOW:g}s to stop", flush=True)
+    else:
+        print(f"press Ctrl {TAPS} times within {WINDOW:g}s to start "
+              f"recording; the same again stops it", flush=True)
 
     def tick():
         if session.said == "started":
@@ -269,6 +313,11 @@ def record():
     finally:
         for handle, _callback in hooks:
             user32.UnhookWindowsHookEx(handle)
+        if film is not None:
+            film.stop.set()
+            film.worker.join()
+            print(f"saved {film.count} frame(s) in {film.folder}, indexed in "
+                  f"{SCREEN_INDEX}", flush=True)
     if not session.finished:
         print("stopped before a recording was finished; nothing saved")
         return 1
@@ -451,4 +500,4 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if args[:1] == ["replay"]:
         sys.exit(replay(args[1] if len(args) > 1 else None))
-    sys.exit(record())
+    sys.exit(record(filming=args[:1] == ["screen"]))
