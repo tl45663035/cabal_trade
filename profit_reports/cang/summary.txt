@@ -8,12 +8,12 @@ Sun 2026-10-11            17.10h   24.00h  160.66M    9.40M    5.27B   5.11B  10
 Mon 2026-10-12             9.32h   24.00h   77.46M    8.32M    6.86B   6.78B  12.42K    1.1%
 Tue 2026-10-13            17.08h   24.00h  118.98M    6.97M    8.90B   8.78B  14.19K    1.3%
 Wed 2026-10-14            18.69h   24.00h  112.54M    6.02M    5.52B   5.41B   8.33K    2.0%
-Thu 2026-10-15 (so far)   14.90h   17.13h  135.43M    9.09M    5.36B   5.22B   8.76K    2.5%
+Thu 2026-10-15 (so far)   15.15h   17.38h  135.43M    8.94M    5.36B   5.22B   8.76K    2.5%
 ============================================================================================
-7 DAYS                   111.89h  161.13h    1.09B    9.72M   58.06B  56.97B  93.78K    1.9%
+7 DAYS                   112.15h  161.38h    1.09B    9.70M   58.06B  56.97B  93.78K    1.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-15 00:00 Central (as of 17:07 Central)
+PROFIT SUMMARY -- sold since 2026-10-15 00:00 Central (as of 17:22 Central)
 
 item                   profit  revenue     cost  units  bought/u   sold/u  margin
 ---------------------------------------------------------------------------------
@@ -36,34 +36,37 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-15_151800_run_board.log, board during pass 38 at row 11, read 2026-10-15T17:07:38 (live)
+ROWS -- 2026-10-15_151800_run_board.log, board during pass 43 at row 25, read 2026-10-15T17:22:56 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Force Core(Highest                     x89   371.43K   371.43K        +0   371.43K    33.06M         0
     2  Force Core(Highest                      x5   371.43K   371.43K        +0   371.43K     1.86M         0
-    3  Wexp Saver                              x3         -     6.76M         -     6.76M         -         -
+    3  Wexp Saver                              x3         -     6.72M         -     6.72M         -         -
     4  Material Core (Bike) X 2                x1         -    10.00M         -    20.00M         -         -
-    5  Upgrade Core (Ultimate                x208   340.00K   348.96K    +8.96K   348.96K    70.72M     1.86M
-    6  Upgrade Core (Ultimate                x190   340.00K   348.96K    +8.96K   348.96K    64.60M     1.70M
-    7  Upgrade Core (Ultimate                x250   338.05K   348.96K   +10.91K   348.96K    84.51M     2.73M
-    8  Upgrade Core (Ultimate                x212   338.05K   348.96K   +10.91K   348.96K    71.67M     2.31M
-    11  (empty)                                           -          -       -              -               - <- here
+    5  Upgrade Core (Ultimate                x208   340.00K   348.94K    +8.94K   348.94K    70.72M     1.86M
+    6  Upgrade Core (Ultimate                x190   340.00K   348.94K    +8.94K   348.94K    64.60M     1.70M
+    7  Upgrade Core (Ultimate                x250   338.05K   348.94K   +10.88K   348.94K    84.51M     2.72M
+    8  Upgrade Core (Ultimate                x212   338.05K   348.93K   +10.88K   348.93K    71.67M     2.31M
+    9  Chaos Core Set X 99                     x1   719.01K   724.58K    +5.57K    71.73M    71.18M   551.63K
+   10  Chaos Core Set X 198                    x1   719.00K   724.58K    +5.58K   143.47M   142.36M     1.11M
+   11  Chaos Core Set X 249                    x1   718.00K   724.58K    +6.58K   180.42M   178.78M     1.64M
+    25  (empty)                                           -          -       -              -               - <- here
    26  Bike Option Scroll (High) X 1 —_—_        x1         -     2.60M         -     2.60M         -         -
    27  Time Reducer (3h) - Diamond Insign        x1         -     2.00M         -     2.00M         -         -
    28  Gold Insignia Elixir X 1                x5         -     6.90M         -     6.90M         -         -
    29  Time Reducer (10m) - Diamond Insig        x1         -   335.58K         -     1.01M         -         -
    30  Time Reducer (30m) - Diamond Insig        x1         -   440.00K         -     1.32M         -         -
-    balance now 2.24B, read 2026-10-15T17:07:31
-       stock at its listed price                                                                      375.30M
-       Alz, latest balance line                                                                         2.24B
+    balance now 1.85B, read 2026-10-15T17:21:59
+       stock at its listed price                                                                      770.78M
+       Alz, latest balance line                                                                         1.85B
        NET WORTH                                                                                        2.62B
 
 
-MARKET -- 2026-10-15_151800_run.log, pass 38, log last written 17:07 Central (live)
+MARKET -- 2026-10-15_151800_run.log, pass 43, log last written 17:22 Central (live)
 
-core                     rows    buy/u   sell/u   margin  margin %  wants   short?
----------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         2  370.00K  360.00K   -10.00K     -2.8%      0
-Chaos Core                  0  720.00K  724.60K    4.60K      0.6%      0
+core                     rows    buy/u   sell/u   margin  margin %  wants  short?
+--------------------------------------------------------------------------------------------------------------------
+Force Core(Highest)         2  370.00K  359.99K  -10.00K     -2.8%      0
+Chaos Core                  2  719.00K  724.59K    5.59K      0.8%     10  YES
 Divine Stone                0  780.00K  711.37K  -68.63K     -9.6%      0
-Force Core(High)            0  268.74K  269.20K      470      0.2%      0
-Upgrade Core (Ultimate)     4        -        -        -         -      -   holds the most it can want, 3; not priced
+Force Core(High)            0  268.74K  269.19K      453      0.2%      0
+Upgrade Core (Ultimate)     4        -        -        -         -      -  holds the most it can want, 3; not priced
