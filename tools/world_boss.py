@@ -88,8 +88,15 @@ BM_LEAD = float(_BOSS["bm_lead"])
 LOOP_GAP = float(_BOSS["loop_gap"])
 LOOPS = {"main": list(_BOSS["main_loop"]),
          "alternate": list(_BOSS["alternate_loop"])}
+WARMUP_FOR = float(_BOSS["warmup_for"])
+WARMUPS = {"main": list(_BOSS["main_warmup"]),
+           "alternate": list(_BOSS["alternate_warmup"])}
+LOOP_START = {phase: next((at for at, name in enumerate(cycle)
+                           if name not in WARMUPS[phase]), 0)
+              for phase, cycle in LOOPS.items()}
 LOOP_POINTS = {name: tuple(_BOSS[name])
-               for cycle in LOOPS.values() for name in cycle
+               for cycle in [*LOOPS.values(), *WARMUPS.values()]
+               for name in cycle
                if name not in BUFF_NAMES}
 LOOP_POINTS.update(OFFENSIVE_BUFFS)
 MODE_DURATION = float(_BOSS["mode_duration"])
@@ -422,7 +429,8 @@ def next_due(due, every):
 
 
 def mode_plan(spawn_at):
-    return {"phase": "main", "next": spawn_at - BM_LEAD, "index": 0,
+    return {"phase": "main", "next": spawn_at - BM_LEAD,
+            "index": LOOP_START["main"], "warm_index": 0, "warm_until": None,
             "timer": None, "cancelled": None, "spawn": spawn_at}
 
 
@@ -442,17 +450,28 @@ def switch_bm(plan, now, verbose=True):
         plan.update(phase="alternate", cancelled=now)
     else:
         plan.update(phase="main", timer=None)
-    plan.update(index=0, next=now + LOOP_GAP)
+    plan.update(index=LOOP_START[plan["phase"]], warm_index=0,
+                warm_until=None, next=now + LOOP_GAP)
     if verbose:
         print(f"  spawn {now - plan['spawn']:+.1f}s: {plan['phase']} loop: "
               f"{' -> '.join(LOOPS[plan['phase']])}, {LOOP_GAP:g}s apart")
 
 
 def loop_click(plan, now, buffs_from, count, verbose=True):
-    cycle = LOOPS[plan["phase"]]
+    phase = plan["phase"]
+    if plan["warm_until"] is None:
+        plan["warm_until"] = now + WARMUP_FOR
+        if verbose:
+            print(f"  spawn {now - plan['spawn']:+.1f}s: {phase} warm-up: "
+                  f"{' -> '.join(WARMUPS[phase])} until spawn "
+                  f"{plan['warm_until'] - plan['spawn']:+.1f}s, then the "
+                  f"{phase} loop from {LOOPS[phase][LOOP_START[phase]]}")
+    warming = now < plan["warm_until"]
+    stage, slot = ("warmup", "warm_index") if warming else ("loop", "index")
+    cycle = (WARMUPS if warming else LOOPS)[phase]
     for _ in cycle:
-        name = cycle[plan["index"] % len(cycle)]
-        plan["index"] += 1
+        name = cycle[plan[slot] % len(cycle)]
+        plan[slot] += 1
         if name not in BUFF_NAMES or now >= buffs_from:
             break
     if name == DEFENSIVE:
@@ -462,8 +481,9 @@ def loop_click(plan, now, buffs_from, count, verbose=True):
         point = LOOP_POINTS[name]
     right_click(point)
     count[name] = count.get(name, 0) + 1
-    if plan["index"] % len(cycle) == 1:
-        calibration.snap(f"{plan['phase']}_loop_{name}", alongside=True)
+    first = plan[slot] == 1 if warming else plan[slot] % len(cycle) == 1
+    if first:
+        calibration.snap(f"{phase}_{stage}_{name}", alongside=True)
     if name == "aura" and plan["timer"] is None:
         plan["timer"] = now
         if verbose:
