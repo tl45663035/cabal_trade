@@ -100,9 +100,10 @@ def board_costs():
     if _RUN is None:
         start()
     with sqlite3.connect(DB) as db:
-        return {int(row): (item, int(cost or 0), int(floor_at or 0))
-                for row, item, cost, floor_at
-                in db.execute("SELECT row, item, buy_cost, floor_at "
+        return {int(row): (item, int(price or 0), int(cost or 0),
+                           int(floor_at or 0))
+                for row, item, price, cost, floor_at
+                in db.execute("SELECT row, item, price, buy_cost, floor_at "
                               "FROM board")}
 
 

@@ -67,7 +67,7 @@ m.type_number = lambda value, clear: events.append(("type", value))
 ledger.bought = lambda *a, **k: events.append(("booked", a[0], a[1]))
 
 
-def offer(name, each, pack=1, qty=5):
+def offer(name, each, pack=1, qty=20):
     return {"name": name, "qty": qty, "price": each * pack, "unit_price": each}
 
 
@@ -143,13 +143,13 @@ try:
     check("a bundle offered to the special row is not exempt: refused",
           err is not None and "never paid" in str(err) and clicks == [], f"{err}; {clicks}")
 
-    out, err, clicks = buy_once("Chaos Core", 7, offer("Chaos Core", CAP + 1_375, qty=9),
+    out, err, clicks = buy_once("Chaos Core", 7, offer("Chaos Core", CAP + 1_375, qty=20),
                                 {"item": "Chaos Core", "price": 7 * (CAP + 1_375), "qty": 7, "qty_max": 9},
                                 7 * (CAP + 1_375), topping_up=True)
     check(f"a craft top-up buys over the {CAP:,} limit on both reads",
           err is None and out["bought"] == 7 and CONFIRM in clicks, f"{err}; {clicks}")
 
-    out, err, clicks = buy_once("Chaos Core", 7, offer("Chaos Core", CAP + 1_375, qty=9),
+    out, err, clicks = buy_once("Chaos Core", 7, offer("Chaos Core", CAP + 1_375, qty=20),
                                 {"item": "Chaos Core", "price": 7 * (CAP + 1_375), "qty": 7, "qty_max": 9},
                                 7 * (CAP + 1_375))
     check(f"the same order that is not a top-up is still refused over {CAP:,}",

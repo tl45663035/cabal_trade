@@ -254,7 +254,7 @@ calls = []
 saved = (buy.show_work_tab, get_alz.read_balance, buy.get_price.get_price)
 buy.show_work_tab = lambda: calls.append("tab 4")
 get_alz.read_balance = lambda: calls.append("balance") or 1000
-buy.get_price.get_price = lambda *a, **k: {"name": "Chaos Core", "qty": 5, "price": 729375,
+buy.get_price.get_price = lambda *a, **k: {"name": "Chaos Core", "qty": 20, "price": 729375,
                                            "unit_price": 729375}
 try:
     for given, want in ((None, ["tab 4", "balance"]), (500, [])):

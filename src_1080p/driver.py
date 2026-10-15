@@ -1,3 +1,4 @@
+import atexit
 import datetime
 import json
 import os
@@ -45,6 +46,7 @@ if __name__ == "__main__":
 import buy
 import cashshop
 import ledger
+import messaging
 import convert
 import craft
 import get_alz
@@ -89,6 +91,9 @@ _WORLD_BOSS = {"done": None, "clockless": False}
 _SINCE_PRICED = {}
 _PRICED_THIS_ROW = set()
 _FULL_SALES = 0
+_TURNS = None
+_TURN_EVERY = 0
+_SINCE_SPECIAL = 0
 _SELECTING = ThreadPoolExecutor(max_workers=1)
 
 
@@ -317,12 +322,40 @@ def price_by_voucher(row):
     return row
 
 
+def continues_crashed_run():
+    return SESSION_MEASURED or REPAIR
+
+
+def fresh_floors(verbose=True):
+    dropped = calibration.forget_verified_costs()
+    if verbose:
+        print("  a fresh start: a row this run did not buy is floored at the "
+              "market price read at start-up"
+              + ("; dropped the costs kept by earlier runs: "
+                 + ", ".join(f"{entry['item']} {int(entry['each']):,}"
+                             for entry in dropped.values())
+                 if dropped else ""))
+
+
+def carry_cost(row, kept):
+    if not kept:
+        return False
+    item, price, buy_cost, floor_at = kept
+    if (row_model.item_key(item) != row_model.item_key(row.name)
+            or price != row.price or not (buy_cost or floor_at)):
+        return False
+    row.buy_cost, row.floor_at = buy_cost, floor_at
+    return True
+
+
 def seed(verbose=True, rows=None):
     register_tab(verbose=verbose)
     last = CAPACITY if row_model.last_seat_placed() else row_model.MAX_TOP
     model = row_model.RowModel().seed({})
     model.home(verbose=verbose)
     found = {}
+    kept = ledger.board_costs() if continues_crashed_run() else {}
+    carried = 0
     if verbose:
         print(board_header())
     for index in rows or range(1, last + 1):
@@ -335,6 +368,7 @@ def seed(verbose=True, rows=None):
             if verbose:
                 print(f"    {index:2}  UNREAD {text!r}")
             continue
+        carried += carry_cost(row, kept.get(index))
         price_by_voucher(row)
         found[index] = row
         if verbose:
@@ -343,6 +377,9 @@ def seed(verbose=True, rows=None):
     model.tracked = True
     model.save()
     model.home(verbose=verbose)
+    if verbose and kept:
+        print(f"  {carried} row(s) keep the cost and floor the crashed run "
+              f"had for them")
     if verbose and rows:
         print(f"  read rows {list(rows)} only: {len(found)} hold something")
     elif verbose:
@@ -456,6 +493,12 @@ def cash_item_of(name):
 
 def restock_now(model, name, first, last, verbose=True):
     model.work_seen = None
+    core = next((core for core in turn_cores()
+                 if row_model.item_key(core) == row_model.item_key(name)),
+                None)
+    if core is not None and _TURNS is not None and _TURNS.named():
+        special_sold(core)
+        return
     if not calibration.load_shared()["resupply"]["enabled"]:
         return
     if alz_too_low():
@@ -1016,12 +1059,17 @@ def relist_one(model, index, verbose=True, first=None, last=None,
         floor, why = 0, ""
     special = special_of(row)
     under = None
+    named, market = special_price(special)
+    at = special_set_price(special, market)
     if special:
-        under = special_undercut(special, special_ordinal(model, special, index,
-                                                          first, last))
+        under = None if at else special_undercut(
+            special, special_ordinal(model, special, index, first, last))
         floor, why = 0, ""
         print(f"    row {index} is the {special} special row; listing at "
-              f"{under:,} under the market, no floor")
+              + (f"{at:,}, {market - at:,} under the latest {named} market "
+                 f"of {market:,}" if at
+                 else f"{under:,} under the market")
+              + ", no floor")
     try:
         with calibration.phase("list it back"):
             expect = dict(floor=floor, why=why, expect_item=row.name,
@@ -1033,7 +1081,7 @@ def relist_one(model, index, verbose=True, first=None, last=None,
             out = model.list_slot(*landing, verbose=verbose,
                                   lands_in=lands_in, overlap=True,
                                   weekly=lists_weekly(row.name),
-                                  **expect)
+                                  price=at or None, **expect)
     except row_model.SlotNeverFilled:
         seen, action = model.read_with_button()
         if action != row_model.RECEIPT_WORD:
@@ -1168,8 +1216,11 @@ def relist_pass(model, first, last, passes=0, verbose=True,
                   f"cancelled into that tab this pass, the next pass "
                   f"carries the job on first")
             break
-        if not collect_only and (out or _FULL_SALES > sold_before):
+        processed = bool(out or _FULL_SALES > sold_before)
+        if not collect_only and processed:
             urgent_check(model, first, last, verbose=verbose)
+        if not collect_only:
+            special_turn(model, first, last, processed, verbose=verbose)
     _WALK["at"] = None
     if not collect_only:
         special_pass(model, first, last, verbose=verbose)
@@ -1187,6 +1238,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     minutes = run["for_minutes"] if minutes is None else float(minutes)
     if first < 1 or last < first:
         raise NotReady(f"rows {first}-{last} is not a range to relist")
+    start_turns()
     if dungeon_on():
         calibration.close_everything(verbose=verbose)
         dungeon_turn(verbose=verbose)
@@ -1705,6 +1757,56 @@ def special_undercut(core=None, ordinal=0):
                                            if spread > 0 else 0)
 
 
+def special_price(core):
+    if not core:
+        return None, 0
+    table = special_conf().get("at_set_market") or False
+    on = (calibration._per_item_raw(table, core) if isinstance(table, dict)
+          else table)
+    slot = calibration.favourite_slot_of(core) if on else None
+    pair = calibration.pair_slot(slot) if slot is not None else None
+    if pair is None:
+        return None, 0
+    named = calibration.FAVOURITE_ITEMS[str(pair)]
+    return named, row_model.last_checked(named)
+
+
+def special_set_under(core):
+    table = special_conf().get("under_set_market") or 0
+    return int((calibration._per_item_raw(table, core)
+                if isinstance(table, dict) else table) or 0)
+
+
+def special_set_spread():
+    return int(special_conf().get("under_set_spread") or 0)
+
+
+def special_set_price(core, market):
+    if not market:
+        return 0
+    spread = special_set_spread()
+    return (market - special_set_under(core)
+            - (random.randint(-spread, spread) if spread > 0 else 0))
+
+
+def takes_turns(core, conf=None):
+    table = (special_conf() if conf is None else conf).get("takes_turns")
+    return bool(calibration._per_item_raw(table, core)
+                if isinstance(table, dict) else table)
+
+
+def turn_cores(conf=None):
+    conf = special_conf() if conf is None else conf
+    if not conf.get("enabled"):
+        return []
+    return [name for name in conf.get("cores") or []
+            if takes_turns(name, conf) and buying_enabled(name)]
+
+
+def holds_turn():
+    return _TURNS is not None and _TURNS.holds() > 0
+
+
 def special_names():
     conf = special_conf()
     if not conf.get("enabled"):
@@ -1712,6 +1814,8 @@ def special_names():
     out = {}
     for name in conf.get("cores") or []:
         if not buying_enabled(name):
+            continue
+        if takes_turns(name, conf) and not holds_turn():
             continue
         out[row_model.item_key(name)] = name
     return out
@@ -1807,13 +1911,27 @@ def special_list(model, landing, core, first, last, verbose=True, cost=0,
         raise NotReady(f"rows {first}-{last} are full; the {core} stays on "
                        f"tab {row_model.WORK_TAB}.")
     lands_in = min(empty)
+    turned = takes_turns(core) and not holds_turn()
+    named, market = (None, 0) if turned else special_price(core)
+    at = special_set_price(core, market)
+    if turned:
+        print(f"  the {core} special row's turn moved on while it was "
+              f"bought; the {core} goes out as a normal row at the market, "
+              f"no lower than the {cost:,} it cost")
+    elif at:
+        print(f"  the {core} special row goes out at {at:,}, {market - at:,} "
+              f"under the latest {named} market of {market:,}")
     try:
         with calibration.phase(f"list {core} from {landing}"):
             listed = model.list_slot(*landing, verbose=verbose,
-                                     lands_in=lands_in,
-                                     under=special_undercut(core, ordinal),
-                                     floor=0, why="", wait_fill=False,
-                                     expect_item=core, special=True,
+                                     lands_in=lands_in, price=at or None,
+                                     under=(None if at or turned else
+                                            special_undercut(core, ordinal)),
+                                     floor=cost if turned else 0,
+                                     why=(f"it cost {cost:,} each"
+                                          if turned and cost else ""),
+                                     wait_fill=False,
+                                     expect_item=core, special=not turned,
                                      expect_market=row_model.market_anchor(
                                          core) or None, resolve=False)
     except row_model.Divergence as exc:
@@ -1823,8 +1941,8 @@ def special_list(model, landing, core, first, last, verbose=True, cost=0,
     model.place(lands_in, row_model.Row(
         core, qty=listed["qty"], price=listed["price"],
         buy_cost=cost or None, units=listed.get("units")))
-    print(f"  the {core} special row is listed at {listed['price']:,} in row "
-          f"{lands_in}")
+    print(f"  the {core} {'row' if turned else 'special row'} is listed at "
+          f"{listed['price']:,} in row {lands_in}")
     return lands_in
 
 
@@ -1834,10 +1952,13 @@ def finish_special(model, job, first, last, verbose=True):
         with calibration.phase(f"read tab {row_model.WORK_TAB} before buying"):
             before = work_tab_slots(verbose=False)
         with calibration.phase(f"buy {want} {core}"):
-            taken = take_offers(job, want, 1, on_margin=False,
-                                verbose=verbose)
+            while job["bought"] < want and take_offers(
+                    job, want - job["bought"], 1, on_margin=False,
+                    verbose=verbose):
+                print(f"  {job['bought']}/{want} {core} held for the special "
+                      f"row")
         bought = int(job["bought"])
-        if not taken or bought <= 0:
+        if bought <= 0:
             raise buy.Refused(f"nothing was bought for the {core} special row.")
         job["step"] = "list"
         model.hold_work(job["landing"], core)
@@ -1890,14 +2011,20 @@ def resupply_special(model, first, last, verbose=True):
         steps_max = int(run["buy_scroll_limit"])
         take_all = int(run["buy_take_all_after"])
         priced = row_model.market_anchor(core)
+        named, market = special_price(core)
+        under, spread = special_set_under(core), special_set_spread()
         print(f"-- {core} special row {ordinal + 1} of "
               f"{special_rows(core)}"
               + (f" ({core} at {priced:,} a core)"
                  if calibration.special_ladder(core) and priced else "")
-              + f": {special_qty()} at "
-              f"{special_under(core, ordinal):,} to "
-              f"{special_under(core, ordinal) + special_spread():,} under "
-              f"the market --")
+              + (f": {special_qty()} at {under - spread:,} to "
+                 f"{under + spread:,} under the latest {named} market of "
+                 f"{market:,} --"
+                 if market else
+                 f": {special_qty()} at "
+                 f"{special_under(core, ordinal):,} to "
+                 f"{special_under(core, ordinal) + special_spread():,} under "
+                 f"the market --"))
         if leave:
             print(f"  {leave} stays behind on every row bought; an order "
                   f"{take_all} step(s) down with nothing spare takes the row "
@@ -1962,6 +2089,89 @@ def special_pass(model, first, last, verbose=True):
         if not back_to_the_shop(verbose=verbose):
             raise NotReady("the Agent Shop is not open after the special row.")
         register_tab(verbose=verbose)
+
+
+def start_turns():
+    global _TURNS, _TURN_EVERY
+    cores = turn_cores()
+    if _TURNS is not None or not cores:
+        return
+    _TURN_EVERY = int(calibration.urgent_check_rows(cores[0]) or 0)
+    _TURNS = messaging.start_participant(calibration.config_name(), True)
+    names = ", ".join(cores)
+    if _TURNS is None:
+        print(f"  the {names} special row takes turns between machines, and "
+              f"without messaging this machine never lists it")
+        return
+    atexit.register(stop_turns)
+    print(f"  the {names} special row takes turns between "
+          f"{', '.join(messaging.settings()['order'])}; this machine lists "
+          f"it only while it holds the right, and checks it every "
+          f"{_TURN_EVERY} processed row(s)")
+
+
+def stop_turns():
+    global _TURNS
+    link, _TURNS = _TURNS, None
+    if link is None:
+        return
+    try:
+        link.close(wait=float(messaging.settings()["close_wait"]))
+    except Exception as exc:
+        print(f"  messaging did not close cleanly: "
+              f"{type(exc).__name__}: {exc}")
+
+
+def special_sold(core):
+    turn = _TURNS.sold(core) if _TURNS is not None else 0
+    print(f"  the {core} special row sold out; "
+          + (f"every script is told, and the right passes on after turn "
+             f"{turn}" if turn else
+             "this machine no longer held its turn, so nothing is sent"))
+
+
+def check_special_rows(model, first, last, verbose=True):
+    cores = {row_model.item_key(core) for core in turn_cores()}
+    for name, rows in special_seats(model, first, last).items():
+        if row_model.item_key(name) not in cores:
+            continue
+        for index in rows:
+            if index == _WALK["at"]:
+                continue
+            print(f"  checking the {name} special row in row {index}")
+            sold_before = _FULL_SALES
+            out = relist_one(model, index, verbose=verbose, first=first,
+                             last=last, collect_only=True)
+            if out is not None:
+                continue
+            if _FULL_SALES > sold_before:
+                special_sold(name)
+            elif special_wanted(model, first, last):
+                print(f"  row {index} no longer holds the {name} special "
+                      f"row; listing it again")
+                special_pass(model, first, last, verbose=verbose)
+
+
+def special_turn(model, first, last, processed, verbose=True):
+    global _SINCE_SPECIAL
+    if _TURNS is None:
+        return
+    _TURNS.drain(print)
+    if processed:
+        _SINCE_SPECIAL += 1
+    if _TURNS.take_fresh():
+        _SINCE_SPECIAL = 0
+        if special_wanted(model, first, last):
+            print("  this machine holds the special row's turn; listing it "
+                  "now")
+            special_pass(model, first, last, verbose=verbose)
+        return
+    if _TURN_EVERY <= 0 or _SINCE_SPECIAL < _TURN_EVERY:
+        return
+    if not _TURNS.holds():
+        return
+    _SINCE_SPECIAL = 0
+    check_special_rows(model, first, last, verbose=verbose)
 
 
 def price_gap(slot, say=True, rows=None, from_register=False):
@@ -4870,6 +5080,8 @@ def main():
 def _dispatch(args):
     global REPAIR
     REPAIR = repair_command(args)
+    if not continues_crashed_run():
+        fresh_floors()
     if not args:
         do_relist()
         return

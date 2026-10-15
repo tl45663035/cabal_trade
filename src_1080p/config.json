@@ -129,14 +129,20 @@
       "under_market": 500,
       "under_random_range": 200,
       "rows": 1,
-      "rows_by_price": {
-        "Chaos Core": [
-          [0, 4],
-          [730000, 5],
-          [740000, 6]
-        ]
+      "qty": 10,
+      "takes_turns": {
+        "default": false,
+        "Chaos Core": true
       },
-      "qty": 1
+      "at_set_market": {
+        "default": false,
+        "Chaos Core": true
+      },
+      "under_set_market": {
+        "default": 0,
+        "Chaos Core": 7000
+      },
+      "under_set_spread": 200
     },
     "buy_random_range": 15,
     "buy_scroll_limit": 30,
@@ -146,6 +152,10 @@
       "default": 0,
       "Chaos Core": 1,
       "Divine Stone": 1
+    },
+    "buy_skip_rows_up_to": {
+      "default": 0,
+      "Chaos Core": 10
     },
     "buy_under_lister": {
       "default": 0,
@@ -184,7 +194,7 @@
     "for_minutes": 10000,
     "price_check_factor": 5.0,
     "item_check_factor": 0.3,
-    "stop_key_presses": 4,
+    "stop_key_presses": 2,
     "stop_key_window": 1.5,
     "stop_key_hold": 0.12,
     "floor_break_after": 10000,
@@ -1044,5 +1054,21 @@
     "server_utc_offset_hours": 2,
     "craft_collect_tab": 1,
     "register_columns": ["name", "qty", "price", "status", "button"]
+  },
+  "messaging": {
+    "library": "paho-mqtt==2.1.0",
+    "install_timeout": 180,
+    "host": "broker.emqx.io",
+    "port": 8883,
+    "topic_prefix": "cabal-dbe9f59e7c811917",
+    "secret": "e37cde0228cd11414aa1514a67a9aa5868a1c1c9b5d24aa90177eebee781c3df",
+    "keepalive": 10,
+    "reconnect_max": 10,
+    "order": ["bot", "trung", "cang"],
+    "orchestrator": "bot",
+    "poll_seconds": 60,
+    "pong_wait": 5,
+    "lease_polls": 3,
+    "close_wait": 2
   }
 }

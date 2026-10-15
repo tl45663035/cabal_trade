@@ -368,6 +368,7 @@ def _priced(row, slot, text, verbose):
     row["units"] = units
     row["unit_price"] = row["total"] // max(1, units)
     row["raw"] = text
+    row_model.note_checked(expected_item(slot), row["unit_price"])
     if verbose:
         print(f"  {row['name']}  qty {row['qty']}  pack {row['pack']}  "
               f"units {units}  total {row['total']:,}  "

@@ -2566,6 +2566,16 @@ def note_verified_cost(name, each):
     return True
 
 
+def forget_verified_costs():
+    global _VERIFIED
+    dropped = dict(_verified_book())
+    _VERIFIED = {}
+    spare = VERIFIED.with_name(VERIFIED.name + ".tmp")
+    spare.write_text(json.dumps(_VERIFIED, indent=2), encoding="utf-8")
+    spare.replace(VERIFIED)
+    return dropped
+
+
 def price_floor(name):
     item, ratio = voucher_floor_ratio(name)
     if ratio:
@@ -3276,6 +3286,10 @@ def buy_max(core_name):
 
 def buy_leave_behind(core_name):
     return _per_item("buy_leave_behind", core_name) or 0
+
+
+def buy_skip_rows_up_to(core_name):
+    return _per_item("buy_skip_rows_up_to", core_name) or 0
 
 
 def craft_min_cores(core_name):

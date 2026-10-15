@@ -45,6 +45,7 @@ if "--plan" not in sys.argv:
     hide_console()
 
 import convert
+import messaging
 import recovery
 import row_model
 from open_inventory import VK_ESCAPE, focus_game, press
@@ -56,6 +57,7 @@ DEAD = LOGS / "dead_runs"
 REELS = LOGS / "recovery_video"
 DRIVER = SRC / "driver.py"
 K = calibration.load_shared()["supervise"]
+STOP_PRESSES = int(calibration.load_shared()["run"]["stop_key_presses"])
 SESSION_STARTED = datetime.datetime.now()
 START_UP_DONE = re.compile(K["start_up_done"], re.M)
 MEASURED_FLAG = "--measured"
@@ -828,7 +830,7 @@ def recover(reason, text, plan=False, log=None, watched=True):
     if "interrupted from the keyboard" in reason and not plan:
         forget_dungeon()
     if watched and "interrupted from the keyboard" in reason:
-        raise Cancelled("cancelled with Ctrl x4")
+        raise Cancelled(f"cancelled with Ctrl x{STOP_PRESSES}")
     if log is not None and not plan:
         keep_evidence(log)
     get_in(plan)
@@ -1263,6 +1265,13 @@ def main():
         event(f"supervisor stopped: {exc}", "dead")
         return 1
     calibration.watch_for_stop()
+    orchestrator = None
+    try:
+        orchestrator = messaging.start_orchestrator(
+            lambda line: event(f"special row: {line}", "alive"))
+    except Exception as exc:
+        event(f"special row: the orchestrator did not start: "
+              f"{type(exc).__name__}: {exc}", "alive")
     try:
         pids = driver_pids()
         if pids:
@@ -1314,7 +1323,7 @@ def main():
             if args.once:
                 return 0
     except KeyboardInterrupt:
-        event("supervisor cancelled with Ctrl x4", "dead")
+        event(f"supervisor cancelled with Ctrl x{STOP_PRESSES}", "dead")
         return 0
     except Stop as exc:
         event(f"supervisor stopped: {exc}", "dead")
@@ -1324,6 +1333,13 @@ def main():
         traceback.print_exc()
         event(f"supervisor crashed: {type(exc).__name__}: {exc}"[:K['reason_width']], "dead")
         return 1
+    finally:
+        if orchestrator is not None:
+            try:
+                orchestrator.close(
+                    wait=float(messaging.settings()["close_wait"]))
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":

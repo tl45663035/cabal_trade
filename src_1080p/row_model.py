@@ -113,6 +113,7 @@ class WrongItem(Divergence):
 
 
 LAST_MARKET = {}
+LAST_CHECKED = {}
 WORK_TAB_STALE = False
 
 
@@ -124,11 +125,23 @@ def note_market(name, unit, sure=False):
     LAST_MARKET[item_key(name)] = int(unit)
 
 
+def note_checked(name, unit):
+    if not name or not unit or int(unit) < MIN_PLAUSIBLE_PRICE:
+        return
+    LAST_CHECKED[item_key(name)] = int(unit)
+
+
 def market_anchor(name):
     if not name:
         return 0
     known = LAST_MARKET.get(item_key(name))
     return int(known or calibration.market_unit(name) or 0)
+
+
+def last_checked(name):
+    if not name:
+        return 0
+    return int(LAST_CHECKED.get(item_key(name)) or market_anchor(name))
 
 
 def within(seen, expected):
@@ -1986,7 +1999,9 @@ class RowModel:
             want = floor
         want = self._hold_core_floor(want, hard_each, hard_set, hard_name,
                                      verbose)
-        priced = calibration.at_least_market(want, market, under)
+        priced = (want if special and price is not None
+                  and within(market, expect_market)
+                  else calibration.at_least_market(want, market, under))
         if priced != want:
             if verbose:
                 print(f"    {want:,} is under the {market:,} the panel prices "
@@ -2220,8 +2235,10 @@ class RowModel:
             print(f"  tab {WORK_TAB} read in {took:.0f} ms after the listing: "
                   f"{len(self.work_seen)} slot(s) held")
         if market:
-            note_market(expect_item,
-                        market if resolved else market // max(1, each))
+            unit = market // max(1, each)
+            note_market(expect_item, market if resolved else unit)
+            if meant and not resolved and within(market, expect_market):
+                note_checked(meant, unit)
         calibration.steps_table(f"list {qty} at {want:,}")
         if verbose:
             print(f"  listed {qty} at {want:,}"

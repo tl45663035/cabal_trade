@@ -1,4 +1,5 @@
 import contextlib
+import copy
 import io
 import os
 import sys
@@ -29,65 +30,70 @@ def check(label, ok, detail=""):
 
 
 CHAOS, DIVINE = "Chaos Core", "Divine Stone"
-FIXED = int(driver.special_conf().get("rows") or 1)
+REAL_SHARED = calibration.load_shared
+ON = copy.deepcopy(REAL_SHARED())
+ON["resupply"]["special_row"]["enabled"] = True
+calibration.load_shared = lambda: copy.deepcopy(ON)
+saved_turn = driver.holds_turn
+driver.holds_turn = lambda: True
 
 
 def priced(price):
     m.LAST_MARKET[m.item_key(CHAOS)] = price
 
 
-check("the special-row price table comes from config",
-      calibration.special_ladder(CHAOS) == [(0, 4), (730_000, 5), (740_000, 6)], str(calibration.special_ladder(CHAOS)))
-for price, rows in ((690_000, 4), (705_000, 4), (716_000, 4), (725_000, 4), (729_999, 4), (730_000, 5), (735_000, 5),
-                    (739_999, 5), (740_000, 6), (745_000, 6), (745_001, 6), (800_000, 6)):
-    priced(price)
-    got = driver.special_rows(CHAOS)
-    check(f"Chaos Core at {price:,}: {rows} special row(s)", got == rows, str(got))
-
-saved = m.market_anchor
-m.market_anchor = lambda name: 0
-try:
-    check(f"no Chaos Core price read yet: the fixed {FIXED} from config", driver.special_rows(CHAOS) == FIXED,
-          str(driver.special_rows(CHAOS)))
-finally:
-    m.market_anchor = saved
-priced(740_000)
-check(f"Divine Stone has no price table: always the fixed {FIXED}", driver.special_rows(DIVINE) == FIXED,
-      str(driver.special_rows(DIVINE)))
-
-
 def board(special, price):
     model = m.RowModel().seed({})
     for index in range(1, special + 1):
-        model._slots[index] = m.Row(CHAOS, qty=1, price=price)
+        model._slots[index] = m.Row(CHAOS, qty=10, price=price)
     return model
 
 
-for held, price, want in ((4, 725_000, 0), (4, 730_000, 1), (4, 740_000, 2), (5, 740_000, 1), (6, 725_000, 0),
-                          (6, 745_001, 0)):
-    priced(price)
-    model = board(held, price)
-    wanted = driver.special_wanted(model, 1, 30)
-    check(f"{held} special row(s) listed, Chaos Core at {price:,}: {want} more wanted", len(wanted) == want
-          and set(wanted) <= {CHAOS}, str(wanted))
-priced(740_000)
-model = board(4, 740_000)
-free = [i for i in model.empty() if 1 <= i <= 30]
-check("the free rows the table still wants are kept for the special rows, not for resupply",
-      len(driver.buying_rows(model, 1, 30)) == len(free) - 2, f"{len(free)} free")
-
-said = io.StringIO()
-saved = (driver.shop_ready, driver.war.avoid)
-driver.shop_ready = lambda *a, **k: False
-driver.war.avoid = lambda *a, **k: None
 try:
-    priced(731_000)
-    with contextlib.redirect_stdout(said):
-        driver.resupply_special(board(4, 731_000), 1, 30, verbose=True)
+    check("special rows have no price table any more", calibration.special_ladder(CHAOS) is None,
+          str(calibration.special_ladder(CHAOS)))
+    for price in (690_000, 725_000, 729_999, 730_000, 740_000, 745_001, 800_000):
+        priced(price)
+        check(f"Chaos Core at {price:,}: 1 special row", driver.special_rows(CHAOS) == 1, str(driver.special_rows(CHAOS)))
+    saved = m.market_anchor
+    m.market_anchor = lambda name: 0
+    try:
+        check("no Chaos Core price read yet: still 1", driver.special_rows(CHAOS) == 1, str(driver.special_rows(CHAOS)))
+    finally:
+        m.market_anchor = saved
+    check("Divine Stone: 1 as well", driver.special_rows(DIVINE) == 1, str(driver.special_rows(DIVINE)))
+
+    priced(740_000)
+    for held, want in ((0, 1), (1, 0), (3, 0)):
+        wanted = driver.special_wanted(board(held, 725_000), 1, 30)
+        check(f"{held} special row(s) listed: {want} more wanted", len(wanted) == want and set(wanted) <= {CHAOS},
+              str(wanted))
+    model = board(0, 725_000)
+    free = [i for i in model.empty() if 1 <= i <= 30]
+    check("one free row is kept for the special row, not for resupply",
+          len(driver.buying_rows(model, 1, 30)) == len(free) - 1, f"{len(free)} free")
+
+    said = io.StringIO()
+    saved = (driver.shop_ready, driver.war.avoid, driver.alz_too_low)
+    driver.shop_ready = lambda *a, **k: False
+    driver.war.avoid = lambda *a, **k: None
+    driver.alz_too_low = lambda: False
+    m.LAST_CHECKED[m.item_key("Chaos Core Set")] = 732_407
+    try:
+        with contextlib.redirect_stdout(said):
+            driver.resupply_special(board(0, 725_000), 1, 30, verbose=True)
+    finally:
+        driver.shop_ready, driver.war.avoid, driver.alz_too_low = saved
+    under = ON["resupply"]["special_row"]["under_set_market"][CHAOS]
+    spread = ON["resupply"]["special_row"]["under_set_spread"]
+    check("the header says 1 of 1 and the price it goes out at",
+          f"-- Chaos Core special row 1 of 1: {driver.special_qty()} at {under - spread:,} to {under + spread:,} under "
+          f"the latest Chaos Core Set market of 732,407 --" in said.getvalue(),
+          said.getvalue().strip().splitlines()[1] if len(said.getvalue().strip().splitlines()) > 1 else said.getvalue())
 finally:
-    driver.shop_ready, driver.war.avoid = saved
-check("the log names the price behind the count", "special row 5 of 5 (Chaos Core at 731,000 a core)"
-      in said.getvalue(), said.getvalue().strip().splitlines()[0] if said.getvalue().strip() else "")
+    calibration.load_shared = REAL_SHARED
+    driver.holds_turn = saved_turn
+
 check("no real input reached the game during the whole test", TRIPPED == [], f"{TRIPPED}")
 print(f"\n{fails} failure(s)")
 sys.exit(1 if fails else 0)
