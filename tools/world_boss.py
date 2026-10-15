@@ -85,6 +85,8 @@ DEFENSIVE_SWITCH = float(_BOSS["defensive_switch"])
 BUFF_NAMES = set(OFFENSIVE_BUFFS) | {DEFENSIVE}
 BM_ICON = tuple(_BOSS["bm_icon"])
 BM_LEAD = float(_BOSS["bm_lead"])
+POWERFUL_POT = tuple(_BOSS["powerful_pot"])
+POWERFUL_POT_AFTER = float(_BOSS["powerful_pot_after"])
 LOOP_GAP = float(_BOSS["loop_gap"])
 LOOPS = {"main": list(_BOSS["main_loop"]),
          "alternate": list(_BOSS["alternate_loop"])}
@@ -493,8 +495,8 @@ def loop_click(plan, now, buffs_from, count, verbose=True):
     plan["next"] = now + LOOP_GAP
 
 
-def kill_boss(channel, start, plan, deadline, verbose=True, buffs_from=None,
-              loop_from=None):
+def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
+              buffs_from=None, loop_from=None):
     buffs_from = start if buffs_from is None else buffs_from
     loop_from = plan["next"] if loop_from is None else loop_from
     due = {"target": start, "heal": start + HEAL_OFFSET}
@@ -503,7 +505,8 @@ def kill_boss(channel, start, plan, deadline, verbose=True, buffs_from=None,
         print(f"kill world boss in Channel {channel}: target and heal from "
               f"spawn {start - plan['spawn']:+.1f}s, buffs in the "
               f"{plan['phase']} loop from spawn "
-              f"{buffs_from - plan['spawn']:+.1f}s, until {REWARD_WORD!r} "
+              f"{buffs_from - plan['spawn']:+.1f}s, the powerful pot once from "
+              f"spawn {pot_at - plan['spawn']:+.1f}s, until {REWARD_WORD!r} "
               f"reads")
     while True:
         if reward_up():
@@ -534,8 +537,21 @@ def kill_boss(channel, start, plan, deadline, verbose=True, buffs_from=None,
         elif now >= plan["next"] and now >= loop_from:
             if switch_due(plan, now):
                 switch_bm(plan, now, verbose)
+            elif pot_at is not None and now >= pot_at:
+                use_powerful_pot(plan, now, channel, count, verbose)
+                pot_at = None
             else:
                 loop_click(plan, now, buffs_from, count, verbose)
+
+
+def use_powerful_pot(plan, now, channel, count, verbose=True):
+    right_click(POWERFUL_POT)
+    count["powerful_pot"] = 1
+    calibration.snap(f"powerful_pot_channel_{channel}", alongside=True)
+    plan["next"] = now + LOOP_GAP
+    if verbose:
+        print(f"  spawn {now - plan['spawn']:+.1f}s: powerful pot "
+              f"right-clicked at {list(POWERFUL_POT)}")
 
 
 def cancel_bm(verbose=True):
@@ -581,13 +597,16 @@ def run(verbose=True, when=None):
     plan = mode_plan(spawn_at)
     deadline = spawn_at + TIME_LIMIT
     prepare(verbose)
-    finished = kill_boss(CHANNELS[0], spawn_at, plan, deadline, verbose,
+    finished = kill_boss(CHANNELS[0], spawn_at, plan, deadline,
+                         spawn_at + POWERFUL_POT_AFTER, verbose,
                          spawn_at + BUFF_AFTER_SPAWN)
     for channel in CHANNELS[1:]:
         if not finished or time.monotonic() >= deadline:
             break
-        start = quick_relog(channel, verbose) + KILL_DELAY
-        finished = kill_boss(channel, start, plan, deadline, verbose,
+        clicked = quick_relog(channel, verbose)
+        start = clicked + KILL_DELAY
+        finished = kill_boss(channel, start, plan, deadline,
+                             clicked + POWERFUL_POT_AFTER, verbose,
                              loop_from=start)
     home = random.choice(HOME_CHANNELS)
     if verbose:
