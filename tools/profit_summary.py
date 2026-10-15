@@ -1004,6 +1004,51 @@ def report_dungeons():
     print(f"{'total':<8}{done:>6}{cap:>7}")
 
 
+def report_world_boss():
+    conf = SETTINGS["world_boss"]
+    path = LOGS / conf["history_file"]
+    if not path.exists():
+        return
+    kills = collections.defaultdict(list)
+    for entry in path.read_text(encoding="utf-8").splitlines():
+        try:
+            record = json.loads(entry)
+            kills[datetime.datetime.fromisoformat(record["spawn"])].append(
+                record)
+        except (ValueError, KeyError, TypeError):
+            continue
+    if not kills:
+        return
+    zone = zoneinfo.ZoneInfo(conf["timezone"])
+    now = (datetime.datetime.now(datetime.timezone.utc) + shift()).astimezone(
+        zone)
+    first = now.date() - datetime.timedelta(days=DAYS_BACK - 1)
+    spawns = sorted(
+        datetime.datetime.combine(first + datetime.timedelta(days=day),
+                                  datetime.time.fromisoformat(at), tzinfo=zone)
+        for day in range(DAYS_BACK) for at in conf["spawn_times"])
+    spawns = [spawn for spawn in spawns if min(kills) <= spawn <= now]
+    channels = len(conf["channels"])
+    print("WORLD BOSS")
+    print("")
+    print(f"{'spawn':<26}{'boss':<28}{'success':>8}{'avg damage':>12}")
+    for spawn in spawns:
+        mine = kills.get(spawn, [])
+        names = collections.Counter(record["boss"] for record in mine
+                                    if record.get("boss"))
+        boss = (max(names, key=lambda name: (names[name], len(name)))
+                if names else "-")
+        known = [record["reward"] for record in mine
+                 if record.get("reward") is not None]
+        success = (f"{sum(known)}/{channels}" if known or not mine else "?")
+        damages = [record["damage"] for record in mine
+                   if record.get("damage") is not None]
+        average = (short(round(sum(damages) / len(damages))) if damages
+                   else "?" if mine else "-")
+        print(f"{spawn:%a %Y-%m-%d %H:%M %Z}".ljust(26) + f"{boss:<28}"
+              + success.rjust(8) + average.rjust(12))
+
+
 RANGE = re.compile(r"^relisting rows (\d+)-(\d+) for ", re.M)
 
 
@@ -1053,6 +1098,11 @@ def main():
     dungeons = caught(report_dungeons)
     if dungeons:
         print(dungeons.rstrip("\n"))
+        print("")
+        print("")
+    bosses = caught(report_world_boss)
+    if bosses:
+        print(bosses.rstrip("\n"))
         print("")
         print("")
     book = open_book()

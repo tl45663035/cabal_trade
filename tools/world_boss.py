@@ -1,6 +1,7 @@
 import _thread
 import ctypes
 import datetime
+import json
 import os
 import random
 import re
@@ -41,6 +42,7 @@ if __name__ == "__main__":
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src_1080p"))
 
 import mss
+import numpy as np
 from PIL import Image
 
 import calibration
@@ -126,6 +128,26 @@ YES_WINDOW = tuple(_BOSS["yes_window"])
 YES_WORD = _BOSS["yes_word"]
 REWARD_WINDOW = tuple(_BOSS["reward_window"])
 REWARD_WORD = _BOSS["reward_word"]
+RAID_RESULT = tuple(_BOSS["raid_result_window"])
+REWARD_FRESH_FRAMES = int(_BOSS["reward_fresh_frames"])
+REWARD_SHOT_TIMEOUT = float(_BOSS["reward_shot_timeout"])
+DAMAGE_WINDOW = tuple(_BOSS["damage_window"])
+DAMAGE_TEXT = re.compile(_BOSS["damage_pattern"])
+REWARD_SLOT_WINDOW = tuple(_BOSS["reward_slot_window"])
+EMPTY_REWARD = np.asarray(Image.open(
+    calibration.HERE / _BOSS["reward_empty_image"]).convert("RGB")).astype(int)
+REWARD_PIXEL_DIFF = int(_BOSS["reward_pixel_diff"])
+REWARD_SHARE = float(_BOSS["reward_share"])
+BOSS_BAR = tuple(_BOSS["boss_bar"])
+BOSS_BAR_INK = int(_BOSS["boss_bar_ink"])
+INK_MARGIN = int(_BOSS["ink_margin"])
+BOSS_BAR_TEXT = re.compile(_BOSS["boss_bar_pattern"])
+BOSS_TITLE = tuple(_BOSS["boss_title"])
+BOSS_TITLE_INK = {name: int(value)
+                  for name, value in _BOSS["boss_title_ink"].items()}
+BOSS_WORD = re.compile(_BOSS["boss_word_pattern"])
+BOSS_STOP = re.compile(_BOSS["boss_stop_pattern"])
+HISTORY = calibration.LOG_DIR / _BOSS["history_file"]
 _ONLINE = {"asked": None, "at": None, "utc": None}
 _SCREEN = {"sct": None}
 _LAST_KEY = {"at": None}
@@ -433,16 +455,109 @@ def reward_up():
     return row_model._key(REWARD_WORD) in row_model._key(seen)
 
 
+def reward_shot():
+    calibration.halt_if_stopped()
+    shot = look(RAID_RESULT)
+    _user32.SetCursorPos(*TAB_TWO)
+    fresh, deadline = 0, time.monotonic() + REWARD_SHOT_TIMEOUT
+    while fresh < REWARD_FRESH_FRAMES and time.monotonic() < deadline:
+        seen = look(RAID_RESULT)
+        if seen.tobytes() != shot.tobytes():
+            fresh += 1
+        shot = seen
+    return shot, look(BOSS_BAR), look(BOSS_TITLE)
+
+
+def inked_text(image, ink):
+    inked = ink(np.asarray(image).astype(int))
+    rows = np.nonzero(inked.any(axis=1))[0]
+    cols = np.nonzero(inked.any(axis=0))[0]
+    if not len(rows):
+        return ""
+    mask = Image.fromarray(np.where(inked, 0, 255).astype(np.uint8))
+    return read_windows(mask.convert("RGB"), [(
+        max(0, cols[0] - INK_MARGIN), max(0, rows[0] - INK_MARGIN),
+        min(mask.width, cols[-1] + 1 + INK_MARGIN),
+        min(mask.height, rows[-1] + 1 + INK_MARGIN))])[0]
+
+
+def boss_name(bar_image, title_image):
+    bar = BOSS_BAR_TEXT.search(inked_text(
+        bar_image, lambda pixels: (pixels >= BOSS_BAR_INK).all(axis=2)))
+    if bar is not None:
+        return bar.group(1).strip()
+    ink = BOSS_TITLE_INK
+    words = []
+    for word in inked_text(title_image, lambda pixels: (
+            (pixels[..., 0] >= ink["red_min"])
+            & (pixels[..., 1] >= ink["green_min"])
+            & (pixels[..., 1] <= ink["green_max"])
+            & (pixels[..., 2] <= ink["blue_max"]))).split():
+        if BOSS_STOP.search(word):
+            break
+        if BOSS_WORD.fullmatch(word):
+            words.append(word)
+    return " ".join(words) or None
+
+
+def damage_done(shot):
+    found = DAMAGE_TEXT.search(
+        read_windows(shot, [DAMAGE_WINDOW], RAID_RESULT[:2])[0])
+    return int(found.group(1).replace(",", "")) if found else None
+
+
+def slot_change(shot):
+    box = REWARD_SLOT_WINDOW
+    region = np.asarray(shot.crop((
+        box[0] - RAID_RESULT[0], box[1] - RAID_RESULT[1],
+        box[2] - RAID_RESULT[0], box[3] - RAID_RESULT[1]))).astype(int)
+    high, wide = EMPTY_REWARD.shape[:2]
+    return min(
+        (np.abs(region[top:top + high, left:left + wide] - EMPTY_REWARD)
+         .max(axis=2) > REWARD_PIXEL_DIFF).mean()
+        for top in range(region.shape[0] - high + 1)
+        for left in range(region.shape[1] - wide + 1))
+
+
+def note_kill(plan, channel, boss, damage, reward):
+    with open(HISTORY, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps({"spawn": plan["when"], "channel": channel,
+                                 "boss": boss, "damage": damage,
+                                 "reward": reward}) + "\n")
+
+
+def analyse(plan, verbose=True):
+    if verbose and plan["kills"]:
+        print("world boss results, read off the Raid Result screenshots")
+    for channel, shot, bar, title in plan["kills"]:
+        change = slot_change(shot)
+        reward = bool(change > REWARD_SHARE)
+        try:
+            boss, damage = boss_name(bar, title), damage_done(shot)
+        except RuntimeError as exc:
+            print(f"  Channel {channel}: {exc}")
+            boss = damage = None
+        note_kill(plan, channel, boss, damage, reward)
+        if verbose:
+            print(f"  Channel {channel}: boss {boss!r}, contribution "
+                  + (f"{damage:,}" if damage is not None else "unread")
+                  + ", personal reward "
+                  + ("received" if reward else "none")
+                  + f" ({change * 100:.1f}% of the slot differs from the "
+                    f"empty one)")
+
+
 def next_due(due, every):
     later = due + every
     now = time.monotonic()
     return later if later > now else now + every
 
 
-def mode_plan(spawn_at):
+def mode_plan(spawn_at, when):
     return {"phase": "main", "next": spawn_at - BM_LEAD,
             "index": LOOP_START["main"], "warm_index": 0, "warm_until": None,
-            "timer": None, "cancelled": None, "spawn": spawn_at}
+            "timer": None, "cancelled": None, "spawn": spawn_at,
+            "when": when.isoformat(), "kills": []}
 
 
 def switch_due(plan, now):
@@ -519,10 +634,15 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
               f"reads")
     while True:
         if reward_up():
-            calibration.snap(f"reward_channel_{channel}", alongside=True)
+            seen_at = time.monotonic()
+            shot, bar, title = reward_shot()
+            calibration.snap(f"raid_result_channel_{channel}", image=shot)
+            plan["kills"].append((channel, shot, bar, title))
             if verbose:
                 print(f"  Channel {channel}: the reward window is up at spawn "
-                      f"{time.monotonic() - plan['spawn']:+.1f}s; "
+                      f"{seen_at - plan['spawn']:+.1f}s; Raid Result "
+                      f"screenshot with the cursor on tab II "
+                      f"{time.monotonic() - seen_at:.2f}s later; "
                       + ", ".join(f"{name} x{n}" for name, n in count.items()))
             return True
         now = time.monotonic()
@@ -603,24 +723,27 @@ def run(verbose=True, when=None):
           f"{str(max(start - now, datetime.timedelta(0))).split('.')[0]}")
     wait_until(start, verbose)
     spawn_at = time.monotonic() + (when - online_utc()).total_seconds()
-    plan = mode_plan(spawn_at)
+    plan = mode_plan(spawn_at, when)
     deadline = spawn_at + TIME_LIMIT
-    prepare(verbose)
-    finished = kill_boss(CHANNELS[0], spawn_at, plan, deadline,
-                         spawn_at + POWERFUL_POT_AFTER, verbose,
-                         spawn_at + BUFF_AFTER_SPAWN)
-    for channel in CHANNELS[1:]:
-        if not finished or time.monotonic() >= deadline:
-            break
-        clicked = quick_relog(channel, verbose)
-        start = clicked + KILL_DELAY
-        finished = kill_boss(channel, start, plan, deadline,
-                             clicked + POWERFUL_POT_AFTER, verbose,
-                             loop_from=start)
-    home = random.choice(HOME_CHANNELS)
-    if verbose:
-        print(f"the route is done; back to Channel {home}")
-    quick_relog(home, verbose)
+    try:
+        prepare(verbose)
+        finished = kill_boss(CHANNELS[0], spawn_at, plan, deadline,
+                             spawn_at + POWERFUL_POT_AFTER, verbose,
+                             spawn_at + BUFF_AFTER_SPAWN)
+        for channel in CHANNELS[1:]:
+            if not finished or time.monotonic() >= deadline:
+                break
+            clicked = quick_relog(channel, verbose)
+            start = clicked + KILL_DELAY
+            finished = kill_boss(channel, start, plan, deadline,
+                                 clicked + POWERFUL_POT_AFTER, verbose,
+                                 loop_from=start)
+        home = random.choice(HOME_CHANNELS)
+        if verbose:
+            print(f"the route is done; back to Channel {home}")
+        quick_relog(home, verbose)
+    finally:
+        analyse(plan, verbose)
 
 
 if __name__ == "__main__":
