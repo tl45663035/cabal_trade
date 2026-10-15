@@ -2144,19 +2144,6 @@ class RowModel:
             warned = underprice_warning()
         if warned:
             calibration.snap("underprice_warning")
-            if (expect_market and not within(want, expect_market)
-                    and (resolved is None
-                         or resolved["item"] in (None, meant))):
-                with calibration.step(f"click {DISMISS_WORD} on the question"):
-                    refuse = find_button(DISMISS_WORD)
-                    if refuse is not None:
-                        calibration.click(*refuse, settle=0.0)
-                        calibration.park()
-                raise WrongItem(
-                    f"the game says {want:,} is far under its own average, "
-                    f"and {meant!r} was expected to sell near "
-                    f"{int(expect_market):,}; the question was declined. "
-                    f"Nothing has been listed.")
             if verbose:
                 print(f"    the game asks again because {want:,} is at least "
                       f"25% under its average for this item; accepting")
