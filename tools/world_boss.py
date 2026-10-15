@@ -111,7 +111,8 @@ ESCAPE_TRIES = int(_BOSS["escape_tries"])
 ESCAPE_GAP = float(_BOSS["escape_gap"])
 MENU_WINDOW = tuple(_BOSS["menu_window"])
 MENU_WORD = _BOSS["menu_word"]
-ROW_WINDOWS = [tuple(box) for box in _BOSS["row_windows"]]
+LIST_WINDOW = tuple(_BOSS["list_window"])
+LINE_SLACK = int(_SHARED["detect"]["word_row_slack"])
 CHANNEL_TEXT = re.compile(_BOSS["channel_pattern"], re.IGNORECASE)
 LIST_TIMEOUT = float(_BOSS["list_timeout"])
 SCROLL_POINT = tuple(_BOSS["scroll_point"])
@@ -315,16 +316,34 @@ def open_menu(verbose=True):
             pressed = time.monotonic()
 
 
-def list_rows(deadline, before=None):
+def menu_up():
+    return row_model._key(MENU_WORD) in row_model._key(
+        read_screen([MENU_WINDOW])[0])
+
+
+def listed():
+    image = look(LIST_WINDOW)
+    lines = []
+    for text, _conf, point in calibration.ocr(
+            image, (0, 0, image.width, image.height)):
+        if lines and abs(point[1] - lines[-1][0][1]) <= LINE_SLACK:
+            lines[-1][1].append(text)
+        else:
+            lines.append((point, [text]))
     shown = {}
+    for point, words in lines:
+        number = channel_in(" ".join(words))
+        if number is not None:
+            shown[number] = (LIST_WINDOW[0] + point[0],
+                             LIST_WINDOW[1] + point[1])
+    return shown
+
+
+def list_rows(deadline, before=None):
     while True:
-        texts = read_screen(ROW_WINDOWS)
-        shown = {}
-        for box, text in zip(ROW_WINDOWS, texts):
-            number = channel_in(text)
-            if number is not None:
-                shown[number] = box
-        if (shown and shown != before) or time.monotonic() >= deadline:
+        shown = {} if menu_up() else listed()
+        if ((shown and set(shown) != set(before or {}))
+                or time.monotonic() >= deadline):
             return shown
 
 
@@ -340,18 +359,7 @@ def scroll_list():
 
 
 def find_channel(channel, verbose=True):
-    deadline = time.monotonic() + LIST_TIMEOUT
-    if 1 <= channel <= len(ROW_WINDOWS):
-        row = ROW_WINDOWS[channel - 1]
-        while True:
-            seen = channel_in(read_screen([row])[0])
-            if seen == channel:
-                if verbose:
-                    print(f"  row {channel} reads Channel {channel}")
-                return centre(row)
-            if seen is not None or time.monotonic() >= deadline:
-                break
-    shown = list_rows(deadline)
+    shown = list_rows(time.monotonic() + LIST_TIMEOUT)
     for scrolls in range(SCROLL_TRIES + 1):
         if not shown:
             calibration.snap("no_channel_list", alongside=True)
@@ -360,8 +368,9 @@ def find_channel(channel, verbose=True):
                 f"{LIST_TIMEOUT:g}s of Select Channel. Nothing clicked.")
         if channel in shown:
             if verbose:
-                print(f"  the list shows channels {sorted(shown)}")
-            return centre(shown[channel])
+                print(f"  the list shows channels {sorted(shown)}; Channel "
+                      f"{channel} at {list(shown[channel])}")
+            return shown[channel]
         if scrolls == SCROLL_TRIES:
             break
         if verbose:

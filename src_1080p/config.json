@@ -639,17 +639,7 @@
     "escape_gap": 0.25,
     "menu_window": [903, 501, 1014, 521],
     "menu_word": "Select Channel",
-    "row_windows": [
-      [801, 440, 935, 462],
-      [801, 465, 935, 487],
-      [801, 490, 935, 512],
-      [801, 515, 935, 537],
-      [801, 540, 935, 562],
-      [801, 565, 935, 587],
-      [801, 590, 935, 612],
-      [801, 615, 935, 637],
-      [801, 640, 935, 662]
-    ],
+    "list_window": [795, 432, 1000, 672],
     "channel_pattern": "Channel\\s*(\\d+)",
     "list_timeout": 3.0,
     "scroll_point": [868, 551],
@@ -791,6 +781,12 @@
     "VK_SHIFT": 16
   },
   "tools": {
+    "switch_chan_test": {
+      "config": "cang",
+      "channels": [1, 4, 5, 8, 9, 11, 12],
+      "wait": 3.0,
+      "rounds": 2
+    },
     "recorder": {
       "folder": "recordings",
       "toggle_taps": 2,
