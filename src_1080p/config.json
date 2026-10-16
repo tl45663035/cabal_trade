@@ -684,7 +684,9 @@
       {"name": "Ancient Destroyer Kelosus", "min_points": 2150000, "level": 5},
       {"name": "Ancient Vanguard Kargos", "min_points": 2150000, "level": 5}
     ],
-    "history_file": "world_boss_history.jsonl"
+    "history_file": "world_boss_history.jsonl",
+    "shots_dir": "world_boss_shots",
+    "shots_days": 7
   },
   "supervise": {
     "poll": 20,

@@ -157,6 +157,9 @@ SHARED_WORDS = {word for name, words in BOSS_WORDS.items() for word in words
 UNIQUE_WORDS = {name: words - SHARED_WORDS
                 for name, words in BOSS_WORDS.items()}
 HISTORY = calibration.LOG_DIR / _BOSS["history_file"]
+SHOTS = calibration.LOG_DIR / _BOSS["shots_dir"]
+SHOTS_DAYS = float(_BOSS["shots_days"])
+SHOTS_FOR = datetime.timedelta(days=SHOTS_DAYS)
 _ONLINE = {"asked": None, "at": None, "utc": None}
 _SCREEN = {"sct": None}
 _LAST_KEY = {"at": None}
@@ -556,6 +559,49 @@ def note_kill(plan, channel, boss, damage, reward):
                                  "reward": reward}) + "\n")
 
 
+def keep_shots(plan, verbose=True):
+    spawn = datetime.datetime.fromisoformat(plan["when"]).astimezone(ZONE)
+    kept, gone = [], []
+    for channel, shot, bar, title in plan["kills"]:
+        path = (SHOTS / f"{spawn:%Y-%m-%d}"
+                / f"{spawn:%H%M}_channel_{channel}.png")
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shot.save(path)
+            kept.append(path)
+        except OSError as exc:
+            print(f"  Channel {channel}: the Raid Result screenshot was not "
+                  f"saved to {path}: {exc}")
+    cut = online_utc() - SHOTS_FOR
+    for path in SHOTS.glob("*/*_channel_*.png"):
+        try:
+            taken = datetime.datetime.strptime(
+                f"{path.parent.name} {path.name.split('_')[0]}",
+                "%Y-%m-%d %H%M").replace(tzinfo=ZONE)
+        except ValueError:
+            continue
+        if taken.astimezone(UTC) > cut:
+            continue
+        try:
+            path.unlink()
+            gone.append(path)
+        except OSError as exc:
+            print(f"  {path} was not deleted: {exc}")
+    for folder in SHOTS.glob("*"):
+        try:
+            if folder.is_dir() and not any(folder.iterdir()):
+                folder.rmdir()
+        except OSError:
+            pass
+    if verbose and (kept or gone):
+        print(f"Raid Result screenshots, each kept until {SHOTS_DAYS:g} days "
+              f"after its spawn by the online clock")
+        for path in kept:
+            print(f"  saved {path}")
+        for path in gone:
+            print(f"  deleted {path}")
+
+
 def analyse(plan, verbose=True):
     if verbose and plan["kills"]:
         print("world boss results, read off the Raid Result screenshots")
@@ -803,6 +849,7 @@ def run(verbose=True, when=None):
             print(f"the route is done; back to Channel {home}")
         quick_relog(home, verbose)
     finally:
+        keep_shots(plan, verbose)
         analyse(plan, verbose)
 
 

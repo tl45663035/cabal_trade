@@ -1033,7 +1033,9 @@ def report_world_boss():
     print("WORLD BOSS")
     print("")
     print(f"{'spawn':<26}{'boss':<28}{'level':>6}{'success':>8}"
-          f"{'avg damage':>12}")
+          f"{'required':>11}"
+          + "".join(f"{f'channel {channel}':>11}"
+                    for channel in conf["channels"]))
     for spawn in spawns:
         mine = kills.get(spawn, [])
         names = collections.Counter(record["boss"] for record in mine
@@ -1047,12 +1049,16 @@ def report_world_boss():
         known = [verdict for verdict in verdicts if verdict is not None]
         success = (f"{sum(known)}/{channels}" if known or not mine else "?")
         level = str(entry["level"]) if entry else "?" if mine else "-"
-        damages = [record["damage"] for record in mine
-                   if record.get("damage") is not None]
-        average = (short(round(sum(damages) / len(damages))) if damages
-                   else "?" if mine else "-")
+        required = (short(entry["min_points"]) if entry
+                    else "?" if mine else "-")
+        done = {record.get("channel"): record.get("damage") for record in mine}
+        damage = "".join(
+            (short(done[channel]) if done.get(channel) is not None
+             else "?" if channel in done else "-").rjust(11)
+            for channel in conf["channels"])
         print(f"{spawn:%a %Y-%m-%d %H:%M %Z}".ljust(26) + f"{boss:<28}"
-              + level.rjust(6) + success.rjust(8) + average.rjust(12))
+              + level.rjust(6) + success.rjust(8) + required.rjust(11)
+              + damage)
 
 
 RANGE = re.compile(r"^relisting rows (\d+)-(\d+) for ", re.M)
