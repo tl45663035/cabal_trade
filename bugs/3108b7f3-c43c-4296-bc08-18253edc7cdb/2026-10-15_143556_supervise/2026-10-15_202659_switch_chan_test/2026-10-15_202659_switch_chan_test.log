@@ -1,0 +1,59 @@
+2026-10-15_202659  .\switch_chan_test.py
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-15_202659_switch_chan_test.log
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-15_202659_switch_chan_test, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 3 times within 1.5s to stop, from the game or anywhere else
+
+round 1 of 2: Channel 1
+quick relog to Channel 1
+  the menu is up after 1 Escape(s)
+  the list shows channels [1, 2, 3, 4, 5, 6, 7, 8, 9]; Channel 1 at [862, 457]
+  the dialog moves to 'Channel 1 (Trade'; Yes clicked
+  Channel 1: 5.00s from the first Escape to Yes
+
+round 1 of 2: Channel 4
+quick relog to Channel 4
+  the menu is up after 1 Escape(s)
+  the list shows channels [1, 2, 3, 4, 5, 6, 7, 8, 9]; Channel 4 at [835, 531]
+  the dialog moves to 'Channel4'; Yes clicked
+  Channel 4: 1.11s from the first Escape to Yes
+
+round 1 of 2: Channel 5
+quick relog to Channel 5
+  the menu is up after 1 Escape(s)
+  the list shows channels [1, 2, 3, 4, 5, 6, 7, 8, 9]; Channel 5 at [835, 556]
+  the dialog moves to 'Channel 5'; Yes clicked
+  Channel 5: 1.13s from the first Escape to Yes
+
+round 1 of 2: Channel 8
+quick relog to Channel 8
+  the menu is up after 1 Escape(s)
+  the list shows channels [1, 2, 3, 4, 5, 6, 7, 8, 9]; Channel 8 at [835, 631]
+  the dialog moves to 'channel8'; Yes clicked
+  Channel 8: 1.13s from the first Escape to Yes
+
+round 1 of 2: Channel 9
+quick relog to Channel 9
+  the menu is up after 1 Escape(s)
+  the list shows channels [1, 2, 3, 4, 5, 6, 7, 8, 9]; Channel 9 at [835, 656]
+  FAILED: the Move Channel dialog moves to 'Channely', not Channel 9. Yes not clicked.
+
+round 1 of 2: Channel 11
+quick relog to Channel 11
+  the menu is up after 2 Escape(s)
+  the list shows channels [1, 2, 3, 4, 5, 6, 7, 8, 9]; scrolling down
+  the list shows channels [2, 3, 4, 5, 6, 7, 8, 9, 11]; Channel 11 at [855, 657]
+  the dialog moves to 'Channel 11 [NA]'; Yes clicked
+  Channel 11: 1.65s from the first Escape to Yes
+
+  Ctrl 3 times: the world boss run stops; no more input is sent.
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\tools\switch_chan_test.py"[0m, line [35m56[0m, in [35m<module>[0m
+    report([31mrun[0m[1;31m()[0m)
+           [31m~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\tools\switch_chan_test.py"[0m, line [35m26[0m, in [35mrun[0m
+    [31mwb.pause[0m[1;31m(WAIT)[0m
+    [31m~~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\tools\world_boss.py"[0m, line [35m326[0m, in [35mpause[0m
+    [31mtime.sleep[0m[1;31m(max(0.0, min(WAIT_SLICE, until - time.monotonic())))[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1;35mKeyboardInterrupt[0m

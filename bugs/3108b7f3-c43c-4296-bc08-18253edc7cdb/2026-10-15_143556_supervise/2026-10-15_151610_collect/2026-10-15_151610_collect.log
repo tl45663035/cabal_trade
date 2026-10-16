@@ -1,0 +1,88 @@
+2026-10-15_151610  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang collect
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-15_151610_collect.log
+  code cc5d844f
+  screen 1920x1080
+  ledger C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\sales.db run 2026-10-15T15:16:10
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-15_151610_collect, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  a repair: not measuring the screen, using the calibration on file
+  calibrated for 1920x1080, measured 2026-10-15T14:37:53
+  server 22:16:10 by internet time; the next war quiet runs 22:32:00 to 22:34:00, in 15.8 min
+  the Trade window is shut; opening the Agent Shop.
+  inventory already open
+  tab 6 at (1718, 174)
+  right-clicking slot (1,7) at (1810, 229) (attempt 1/3)
+  tab 4 at (1610, 174), so whatever is bought or withdrawn lands there
+  scrolled to the top; row 1 is at position 1
+                                                   bought/u   listed/u  margin      row price
+  the Register columns were not measured; Register rows are read whole by Tesseract instead
+     2  Force Core(Highest                 x89      371,428    371,428   +0.0%        371,428
+     3  Force Core(Highest                 x5       371,428    371,428   +0.0%        371,428
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+     4  Wexp Saver                         x3             -  7,049,769       -      7,049,769
+     5  Material Core (Bike) X 2           x1             -  9,999,989       -     19,999,979
+     6  Force Core(High                    x3       194,200    259,916  +25.3%        259,916
+     7  Upgrade Core (Ultimate             x208     340,000    349,197   +2.6%        349,197
+     8  Upgrade Core (Ultimate             x250     340,000    349,196   +2.6%        349,196
+     9  Upgrade Core (Ultimate             x191     340,000    349,195   +2.6%        349,195
+    10  Force Core(High                    x123     194,200    259,915  +25.3%        259,915
+    11  Force Core(High                    x175     194,200    259,914  +25.3%        259,914
+    12  Chaos Core Set X 129               x1       719,014    724,709   +0.8%     93,487,589
+    13  Chaos Core Set X 210               x1       718,998    724,708   +0.8%    152,188,889
+    14  Chaos Core Set X 147               x1       718,998    724,707   +0.8%    106,532,075
+    15  Chaos Core Set X 102               x1       700,196    724,706   +3.4%     73,920,113
+    the quantity column read '—_—_—_—_——_—', which holds no digits, so it is the end of the name and not a count; reading the row as 'Bike Option Scroll (High) X 1 —_—_—_—_——_—' and letting the panel count what is there
+    the quantity column read '—_—_—_—_——_—', which holds no digits, so it is the end of the name and not a count; reading the row as 'Bike Option Scroll (High) X 1 —_—_—_—_——_—' and letting the panel count what is there
+    26  Bike Option Scroll (High) X 1 —_—_ x1             -  2,600,000       -      2,600,000
+    27  Time Reducer (3h) - Diamond Insign x1             -  1,999,998       -      1,999,998
+    28  Gold Insignia Elixir X 1           x5             -  6,900,000       -      6,900,000
+    29  Time Reducer (10m) - Diamond Insig x1             -    335,577       -      1,006,731
+    30  Time Reducer (30m) - Diamond Insig x1             -    440,000       -      1,320,000
+  scrolled to the top; row 1 is at position 1
+  3 row(s) keep the cost and floor the crashed run had for them
+  seeded 19 of rows 1-30
+  row 1 is empty; nothing to relist
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+  row 16 is empty; nothing to relist
+  row 17 is empty; nothing to relist
+  row 18 is empty; nothing to relist
+  row 19 is empty; nothing to relist
+  row 20 is empty; nothing to relist
+  row 21 is empty; nothing to relist
+  row 22 is empty; nothing to relist
+  row 23 is empty; nothing to relist
+  row 24 is empty; nothing to relist
+  row 25 is empty; nothing to relist
+
+  relisting rows 1-25: 0 relisted, 11 empty, 14 skipped
+    #          ms   share     n      each  phase
+    1    27,390.2   77.2%    25   1,095.6  scroll to the row and read it
+    2     8,089.1   22.8%    25     323.6  Refresh the table
+         35,479.3  100.0%
+  collected what sold in rows 1-25; 11 row(s) empty now
+
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  nothing has sold yet this run.
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 15:16:10, ended 15:17:35, ran for 1m 25s
+
+##############################################################################################
+
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+
+##############################################################################################
+

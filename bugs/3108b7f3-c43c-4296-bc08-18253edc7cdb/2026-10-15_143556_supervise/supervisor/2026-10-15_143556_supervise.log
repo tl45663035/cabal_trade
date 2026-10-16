@@ -1,0 +1,125 @@
+2026-10-15_143556  .\supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-15_143556_supervise.log
+  screen 1920x1080
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-10-15_142221_run.log ended: interrupted from the keyboard,14:35:56,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-15_142221_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-15_143605_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  Inventory already closed
+  frame 2026-10-15_143612_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-10-15_143616_reset.png
+   2026-10-15_143618  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-15_143618_run.log
+     code cc5d844f
+     screen 1920x1080
+* relaunched (pid 11636),14:36:21,alive
+watching pid 11636, 2026-10-15_143618_run.log
+* server lag: not answering,14:44:19,alive
+* server lag: the server stalled,14:44:40,alive
+* server lag: not answering,14:45:02,alive
+* server lag: the server stalled,14:45:22,alive
+* server lag: the server stalled,14:45:43,alive
+* pushed the profit report for cang and all,14:46:30,alive
+* pushed the profit report for cang and all,15:01:49,alive
+* server lag: not answering,15:14:36,alive
+* disconnected (run still up),15:14:58,alive
+  frame 2026-10-15_151458_disconnect_seen.png
+* disconnected 7s on; killing pid 11636,15:15:05,dead
+* ended without a reason line, exit code 1; nothing in driver.py exits without one, so it was stopped from outside,15:15:05,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-15_143618_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=[962, 433], failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-15_151511_found.png
+  case: disconnect / login / select screen -> recovery.py
+$ py src_1080p/recovery.py
+     the username field at [962, 602]
+     the password field at [962, 643]
+     typed; waiting 10s before Login
+     'Channel 12' at [1558, 631]; entering
+     'SoloCabalLevelin' at [1626, 470]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as SoloCabalLevelin, the balance reads
+* recovered: back in the world,15:15:54,dead
+  frame 2026-10-15_151602_after_login.png
+  interrupted: relist row 1: 'Force Core(Highest' x25 at 371,428 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Force Core(Highest'; nothing on screen is read to name it
+  frame 2026-10-15_151609_tab4_25slots.png
+  tab 4 holds 17 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     relisting rows 1-25: 0 relisted, 11 empty, 14 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 11 row(s) empty now
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 15:16:10, ended 15:17:35, ran for 1m 25s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Force Core(Highest' the log says is there,15:17:35,dead
+$ py src_1080p/driver.py --config cang list-named 1 1 0 4 Force Core(Highest
+     listed 25 at 359,999
+   DONE {"kind": "list", "tab": 4, "slot": [1, 1], "qty": 25, "price": 359999}
+     done in 6697 ms
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 15:17:36, ended 15:17:45, ran for 9s
+  frame 2026-10-15_151750_tab4_0slots.png
+* finished: list-named 1 1 0 4 Force Core(Highest (Force Core(Highest); 0 slot(s) left,15:17:50,dead
+  frame 2026-10-15_151755_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 1: 'Force Core(Highest' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-10-15_151758_reset.png
+   2026-10-15_151800  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang --measured
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-15_151800_run.log
+     code cc5d844f
+     screen 1920x1080
+* relaunched (pid 1656), reusing this session's calibration,15:18:03,alive
+watching pid 1656, 2026-10-15_151800_run.log
+* pushed the profit report for cang and all,15:21:58,alive
+* server lag: not answering,15:27:53,alive
+* server lag: the server stalled,15:28:13,alive
+* server lag: the server stalled,15:28:34,alive
+* pushed the profit report for cang and all,15:37:01,alive
+* pushed the profit report for cang and all,15:52:19,alive
+* server lag: not answering,15:55:06,alive
+* server lag: the server stalled,15:55:27,alive
+* pushed the profit report for cang and all,16:07:21,alive
+* server lag: not answering,16:10:48,alive
+* server lag: the server stalled,16:11:29,alive
+* server lag: not answering,16:13:34,alive
+* server lag: the server stalled,16:13:56,alive
+* server lag: the server stalled,16:14:17,alive
+* pushed the profit report for cang and all,16:22:41,alive
+* pushed the profit report for cang and all,16:37:41,alive
+* pushed the profit report for cang and all,16:52:41,alive
+* server lag: not answering,17:05:31,alive
+* server lag: the server stalled,17:05:52,alive
+* pushed the profit report for cang and all,17:07:42,alive
+* server lag: not answering,17:14:57,alive
+* server lag: the server stalled,17:15:18,alive
+* server lag: the server stalled,17:15:40,alive
+* pushed the profit report for cang and all,17:23:00,alive
+* pushed the profit report for cang and all,17:38:17,alive
+* pushed the profit report for cang and all,17:53:34,alive
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+* supervisor cancelled with Ctrl x2,17:59:05,dead

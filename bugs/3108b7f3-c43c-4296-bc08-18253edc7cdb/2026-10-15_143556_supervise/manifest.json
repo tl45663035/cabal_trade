@@ -1,0 +1,679 @@
+{
+  "supervisor": "2026-10-15_143556_supervise.log",
+  "supervisor_ended": "supervisor cancelled with Ctrl x2",
+  "since": "2026-10-15T14:35:56",
+  "machine": "DESKTOP-5CFR0IQ",
+  "machine_id": "3108b7f3-c43c-4296-bc08-18253edc7cdb",
+  "submitted_at": "2026-10-15T20:27:54",
+  "max_frames": 120,
+  "logs": [
+    {
+      "log": "2026-10-15_143618_run",
+      "kind": "run",
+      "code": "cc5d844f",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 120,
+        "indexed": 2195,
+        "sent": 34
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-10-15_151512_recovery",
+      "kind": "recovery",
+      "code": null,
+      "screen": null,
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 0,
+        "indexed": 0,
+        "sent": 0
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-10-15_151610_collect",
+      "kind": "collect",
+      "code": "cc5d844f",
+      "screen": "1920x1080",
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 0,
+        "indexed": 0,
+        "sent": 0
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-10-15_151800_run",
+      "kind": "run",
+      "code": "cc5d844f",
+      "screen": "1920x1080",
+      "reason": "stopped: interrupted from the keyboard",
+      "frames": {
+        "kept": 3016,
+        "indexed": 9066,
+        "sent": 34
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-10-15_202543_switch_chan_test",
+      "kind": "switch_chan_test",
+      "code": null,
+      "screen": null,
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 42,
+        "indexed": 42,
+        "sent": 34
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-10-15_202659_switch_chan_test",
+      "kind": "switch_chan_test",
+      "code": null,
+      "screen": null,
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 18,
+        "indexed": 18,
+        "sent": 18
+      },
+      "flagged": {
+        "Traceback": 1
+      },
+      "events": [
+        {
+          "pattern": "Traceback",
+          "line": "Traceback (most recent call last):",
+          "log": 2199,
+          "near": "2026-10-15T20:27:25.223"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "file": "2026-10-15_143618_run/2026-10-15_143618_run.log",
+      "mb": 0.6
+    },
+    {
+      "file": "2026-10-15_143618_run/2026-10-15_143618_run_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02162_click_839_758.png",
+      "mb": 1.38
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02163_click_839_758.png",
+      "mb": 1.39
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02164_click_839_758.png",
+      "mb": 1.4
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02165_click_839_758.png",
+      "mb": 1.4
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02166_click_839_758.png",
+      "mb": 1.41
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02167_click_839_758.png",
+      "mb": 1.42
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02168_click_839_758.png",
+      "mb": 1.4
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02169_click_839_758.png",
+      "mb": 1.4
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02170_click_839_758.png",
+      "mb": 1.39
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02171_click_291_80.png",
+      "mb": 1.38
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02172_press_escape.png",
+      "mb": 2.42
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02173_click_284_1001.png",
+      "mb": 1.65
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02174_click_1211_792.png",
+      "mb": 1.65
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02175_click_1442_496.png",
+      "mb": 1.65
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02176_click_1487_852.png",
+      "mb": 2.42
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02177_click_1718_174.png",
+      "mb": 2.21
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02178_rightclick_1810_229.png",
+      "mb": 1.55
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02179_click_1610_174.png",
+      "mb": 1.41
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02180_click_291_80.png",
+      "mb": 1.39
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02181_click_97_80.png",
+      "mb": 1.4
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02182_click_568_761.png",
+      "mb": 1.42
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02183_click_610_761.png",
+      "mb": 1.46
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02184_click_652_761.png",
+      "mb": 1.47
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02185_click_694_761.png",
+      "mb": 1.45
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02186_click_291_80.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02187_click_839_758.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02188_click_1610_174.png",
+      "mb": 1.46
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02189_click_1610_174.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02190_click_838_176.png",
+      "mb": 1.36
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02191_click_1103_640.png",
+      "mb": 1.35
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02192_click_968_640.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02193_server_busy.png",
+      "mb": 1.45
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02194_server_answered.png",
+      "mb": 1.39
+    },
+    {
+      "file": "2026-10-15_143618_run/frames/02195_press_escape.png",
+      "mb": 1.39
+    },
+    {
+      "file": "2026-10-15_151512_recovery/2026-10-15_151512_recovery.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-10-15_151610_collect/2026-10-15_151610_collect.log",
+      "mb": 0.01
+    },
+    {
+      "file": "2026-10-15_151610_collect/2026-10-15_151610_collect_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-10-15_151800_run/2026-10-15_151800_run.log",
+      "mb": 2.41
+    },
+    {
+      "file": "2026-10-15_151800_run/2026-10-15_151800_run_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09033_click_839_758.png",
+      "mb": 1.33
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09034_click_839_758.png",
+      "mb": 1.32
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09035_click_839_758.png",
+      "mb": 1.34
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09036_click_839_758.png",
+      "mb": 1.32
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09037_click_839_758.png",
+      "mb": 1.31
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09038_click_839_758.png",
+      "mb": 1.35
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09039_click_839_758.png",
+      "mb": 1.32
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09040_click_839_758.png",
+      "mb": 1.33
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09041_click_839_758.png",
+      "mb": 1.33
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09042_click_839_758.png",
+      "mb": 1.34
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09043_click_839_758.png",
+      "mb": 1.35
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09044_click_839_758.png",
+      "mb": 1.32
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09045_click_839_758.png",
+      "mb": 1.32
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09046_click_839_758.png",
+      "mb": 1.34
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09047_click_291_80.png",
+      "mb": 1.35
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09048_press_escape.png",
+      "mb": 2.26
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09049_click_284_1001.png",
+      "mb": 1.55
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09050_click_1211_792.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09051_click_1442_496.png",
+      "mb": 1.57
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09052_click_1487_852.png",
+      "mb": 2.27
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09053_click_1718_174.png",
+      "mb": 2.1
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09054_rightclick_1810_229.png",
+      "mb": 1.47
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09055_click_1610_174.png",
+      "mb": 1.33
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09056_click_291_80.png",
+      "mb": 1.33
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09057_click_97_80.png",
+      "mb": 1.37
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09058_click_484_761.png",
+      "mb": 1.35
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09059_click_526_761.png",
+      "mb": 1.41
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09060_click_568_761.png",
+      "mb": 1.4
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09061_click_610_761.png",
+      "mb": 1.39
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09062_click_652_761.png",
+      "mb": 1.41
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09063_click_694_761.png",
+      "mb": 1.39
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09064_click_736_761.png",
+      "mb": 1.4
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09065_click_778_761.png",
+      "mb": 1.41
+    },
+    {
+      "file": "2026-10-15_151800_run/frames/09066_click_291_80.png",
+      "mb": 1.68
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/2026-10-15_202543_switch_chan_test.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00009_yes_channel_5.png",
+      "mb": 2.87
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00010_select_channel.png",
+      "mb": 2.73
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00011_channel_8_double_click.png",
+      "mb": 2.78
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00012_yes_channel_8.png",
+      "mb": 2.78
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00013_select_channel.png",
+      "mb": 2.73
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00014_channel_9_double_click.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00015_move_dialog_wrong_channel.png",
+      "mb": 2.78
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00016_select_channel.png",
+      "mb": 2.73
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00017_channel_11_double_click.png",
+      "mb": 2.78
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00018_yes_channel_11.png",
+      "mb": 2.89
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00019_select_channel.png",
+      "mb": 2.73
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00020_channel_12_double_click.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00021_yes_channel_12.png",
+      "mb": 2.88
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00022_select_channel.png",
+      "mb": 2.74
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00023_channel_1_double_click.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00024_yes_channel_1.png",
+      "mb": 2.89
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00025_select_channel.png",
+      "mb": 2.74
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00026_channel_4_double_click.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00027_yes_channel_4.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00028_select_channel.png",
+      "mb": 2.74
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00029_channel_5_double_click.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00030_yes_channel_5.png",
+      "mb": 2.89
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00031_select_channel.png",
+      "mb": 2.74
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00032_channel_8_double_click.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00033_yes_channel_8.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00034_select_channel.png",
+      "mb": 2.74
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00035_channel_9_double_click.png",
+      "mb": 2.8
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00036_move_dialog_wrong_channel.png",
+      "mb": 2.8
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00037_select_channel.png",
+      "mb": 2.74
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00038_channel_11_double_click.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00039_yes_channel_11.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00040_select_channel.png",
+      "mb": 2.83
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00041_channel_12_double_click.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202543_switch_chan_test/frames/00042_yes_channel_12.png",
+      "mb": 2.89
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/2026-10-15_202659_switch_chan_test.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00001_select_channel.png",
+      "mb": 2.74
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00002_channel_1_double_click.png",
+      "mb": 2.79
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00003_yes_channel_1.png",
+      "mb": 2.9
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00004_select_channel.png",
+      "mb": 2.71
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00005_channel_4_double_click.png",
+      "mb": 2.77
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00006_yes_channel_4.png",
+      "mb": 2.88
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00007_select_channel.png",
+      "mb": 2.72
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00008_channel_5_double_click.png",
+      "mb": 2.76
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00009_yes_channel_5.png",
+      "mb": 2.87
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00010_select_channel.png",
+      "mb": 2.72
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00011_channel_8_double_click.png",
+      "mb": 2.77
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00012_yes_channel_8.png",
+      "mb": 2.87
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00013_select_channel.png",
+      "mb": 2.72
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00014_channel_9_double_click.png",
+      "mb": 2.78
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00015_move_dialog_wrong_channel.png",
+      "mb": 2.78
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00016_select_channel.png",
+      "mb": 2.73
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00017_channel_11_double_click.png",
+      "mb": 2.77
+    },
+    {
+      "file": "2026-10-15_202659_switch_chan_test/frames/00018_yes_channel_11.png",
+      "mb": 2.88
+    },
+    {
+      "file": "supervisor/2026-10-15_143556_supervise.log",
+      "mb": 0.01
+    },
+    {
+      "file": "supervisor/supervise.log",
+      "mb": 0.32
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-15_143605_found.png",
+      "mb": 2.44
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-15_143612_tab4_0slots.png",
+      "mb": 2.09
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-15_143616_reset.png",
+      "mb": 2.47
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-15_151458_disconnect_seen.png",
+      "mb": 1.39
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-15_151511_found.png",
+      "mb": 1.39
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-15_151602_after_login.png",
+      "mb": 2.27
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-15_151609_tab4_25slots.png",
+      "mb": 2.17
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-15_151750_tab4_0slots.png",
+      "mb": 1.37
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-15_151755_tab4_0slots.png",
+      "mb": 1.37
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-15_151758_reset.png",
+      "mb": 2.44
+    },
+    {
+      "file": "config.json",
+      "mb": 0.03
+    },
+    {
+      "file": "calibration.json",
+      "mb": 0.05
+    }
+  ],
+  "skipped_over_max_file_mb": []
+}
