@@ -90,6 +90,8 @@ BM_LEAD = float(_BOSS["bm_lead"])
 POWERFUL_POT = tuple(_BOSS["powerful_pot"])
 POWERFUL_POT_AFTER = float(_BOSS["powerful_pot_after"])
 POWERFUL_LEVELS = {int(level) for level in _BOSS["powerful_levels"]}
+BURST_LEVELS = {int(level) for level in _BOSS["burst_levels"]}
+BURST_CHANNEL = int(_BOSS["burst_channel"])
 LOOP_GAP = float(_BOSS["loop_gap"])
 LOOPS = {"main": list(_BOSS["main_loop"]),
          "alternate": list(_BOSS["alternate_loop"])}
@@ -514,13 +516,17 @@ def spot_boss(plan, verbose=True):
     boss = recognise(read)
     if boss is None:
         return
-    plan.update(boss=boss, powerful=boss["level"] in POWERFUL_LEVELS)
+    plan.update(boss=boss, powerful=boss["level"] in POWERFUL_LEVELS,
+                burst=boss["level"] in BURST_LEVELS)
     calibration.snap("boss_recognised", alongside=True)
     if verbose:
         print(f"  spawn {time.monotonic() - plan['spawn']:+.1f}s: read "
               f"{read!r}: the world boss is {boss['name']}, level "
-              f"{boss['level']}; powerful pots "
-              + ("on" if plan["powerful"] else "off")
+              f"{boss['level']}; "
+              + ("the powerful pot in every channel" if plan["powerful"]
+                 else f"the offensive buffs and the powerful pot only in "
+                      f"Channel {BURST_CHANNEL}" if plan["burst"]
+                 else "no powerful pot")
               + " for this session, and no more name reads")
 
 
@@ -600,7 +606,7 @@ def mode_plan(spawn_at, when):
             "index": LOOP_START["main"], "warm_index": 0, "warm_until": None,
             "timer": None, "cancelled": None, "spawn": spawn_at,
             "when": when.isoformat(), "kills": [], "boss": None,
-            "powerful": False}
+            "powerful": False, "burst": False}
 
 
 def switch_due(plan, now):
@@ -626,7 +632,7 @@ def switch_bm(plan, now, verbose=True):
               f"{' -> '.join(LOOPS[plan['phase']])}, {LOOP_GAP:g}s apart")
 
 
-def loop_click(plan, now, buffs_from, count, verbose=True):
+def loop_click(plan, now, buffs_from, count, saving, verbose=True):
     phase = plan["phase"]
     if plan["warm_until"] is None:
         plan["warm_until"] = now + WARMUP_FOR
@@ -643,6 +649,9 @@ def loop_click(plan, now, buffs_from, count, verbose=True):
         plan[slot] += 1
         if name not in BUFF_NAMES or now >= buffs_from:
             break
+    if saving and name in OFFENSIVE_BUFFS:
+        plan["next"] = now + LOOP_GAP
+        return
     if name == DEFENSIVE:
         name, point = DEFENSIVE_BUFFS[int((now - buffs_from) // DEFENSIVE_SWITCH)
                                       % len(DEFENSIVE_BUFFS)]
@@ -674,7 +683,9 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
               f"{plan['phase']} loop from spawn "
               f"{buffs_from - plan['spawn']:+.1f}s, the powerful pot once from "
               f"spawn {pot_at - plan['spawn']:+.1f}s for a level "
-              f"{'/'.join(map(str, sorted(POWERFUL_LEVELS)))} boss, until "
+              f"{'/'.join(map(str, sorted(POWERFUL_LEVELS)))} boss (a level "
+              f"{'/'.join(map(str, sorted(BURST_LEVELS)))} boss gets it and "
+              f"the offensive buffs only in Channel {BURST_CHANNEL}), until "
               f"{REWARD_WORD!r} reads")
     while True:
         if plan["boss"] is None:
@@ -710,13 +721,16 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
             count["heal"] = count.get("heal", 0) + 1
             due["heal"] = next_due(due["heal"], HEAL_EVERY)
         elif now >= plan["next"] and now >= loop_from:
+            burst_here = channel == BURST_CHANNEL
             if switch_due(plan, now):
                 switch_bm(plan, now, verbose)
-            elif pot_at is not None and now >= pot_at and plan["powerful"]:
+            elif (pot_at is not None and now >= pot_at
+                  and (plan["powerful"] or (plan["burst"] and burst_here))):
                 use_powerful_pot(plan, now, channel, count, verbose)
                 pot_at = None
             else:
-                loop_click(plan, now, buffs_from, count, verbose)
+                loop_click(plan, now, buffs_from, count,
+                           plan["burst"] and not burst_here, verbose)
 
 
 def use_powerful_pot(plan, now, channel, count, verbose=True):
