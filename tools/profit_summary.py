@@ -1029,24 +1029,30 @@ def report_world_boss():
         for day in range(DAYS_BACK) for at in conf["spawn_times"])
     spawns = [spawn for spawn in spawns if min(kills) <= spawn <= now]
     channels = len(conf["channels"])
+    bosses = {boss["name"]: boss for boss in conf["bosses"]}
     print("WORLD BOSS")
     print("")
-    print(f"{'spawn':<26}{'boss':<28}{'success':>8}{'avg damage':>12}")
+    print(f"{'spawn':<26}{'boss':<28}{'level':>6}{'success':>8}"
+          f"{'avg damage':>12}")
     for spawn in spawns:
         mine = kills.get(spawn, [])
         names = collections.Counter(record["boss"] for record in mine
                                     if record.get("boss"))
         boss = (max(names, key=lambda name: (names[name], len(name)))
                 if names else "-")
-        known = [record["reward"] for record in mine
-                 if record.get("reward") is not None]
+        entry = bosses.get(boss)
+        verdicts = [record["damage"] >= entry["min_points"]
+                    if entry and record.get("damage") is not None
+                    else record.get("reward") for record in mine]
+        known = [verdict for verdict in verdicts if verdict is not None]
         success = (f"{sum(known)}/{channels}" if known or not mine else "?")
+        level = str(entry["level"]) if entry else "?" if mine else "-"
         damages = [record["damage"] for record in mine
                    if record.get("damage") is not None]
         average = (short(round(sum(damages) / len(damages))) if damages
                    else "?" if mine else "-")
         print(f"{spawn:%a %Y-%m-%d %H:%M %Z}".ljust(26) + f"{boss:<28}"
-              + success.rjust(8) + average.rjust(12))
+              + level.rjust(6) + success.rjust(8) + average.rjust(12))
 
 
 RANGE = re.compile(r"^relisting rows (\d+)-(\d+) for ", re.M)

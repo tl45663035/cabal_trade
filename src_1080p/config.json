@@ -624,6 +624,7 @@
     "bm_pot": [1187, 940],
     "powerful_pot": [1237, 940],
     "powerful_pot_after": 5.0,
+    "powerful_levels": [3, 4, 5],
     "loop_gap": 0.5,
     "main_loop": ["main_bm", "aura", "bm_pot", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
     "alternate_loop": ["alternate_bm", "bm_pot", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
@@ -670,6 +671,19 @@
     "boss_title_ink": {"red_min": 200, "green_min": 40, "green_max": 140, "blue_max": 60},
     "boss_word_pattern": "[A-Za-z][A-Za-z']{2,}",
     "boss_stop_pattern": "[\\d%/]",
+    "bosses": [
+      {"name": "Volcanic Heart Margonos", "min_points": 950000, "level": 1},
+      {"name": "Attacker Ragno", "min_points": 1000000, "level": 1},
+      {"name": "Mark of Destruction Reims", "min_points": 1100000, "level": 1},
+      {"name": "Deadly Horn Uhorn", "min_points": 1150000, "level": 2},
+      {"name": "Wandring Spirit Seth", "min_points": 1250000, "level": 2},
+      {"name": "Guardian of Altar Zaken", "min_points": 1300000, "level": 3},
+      {"name": "Future Weapon Gustav-Zg", "min_points": 1400000, "level": 3},
+      {"name": "Punisher of Flame Hellrider", "min_points": 1600000, "level": 4},
+      {"name": "Wrath of Arcane Golem", "min_points": 1800000, "level": 4},
+      {"name": "Ancient Destroyer Kelosus", "min_points": 2150000, "level": 5},
+      {"name": "Ancient Vanguard Kargos", "min_points": 2150000, "level": 5}
+    ],
     "history_file": "world_boss_history.jsonl"
   },
   "supervise": {

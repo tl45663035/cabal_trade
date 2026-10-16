@@ -89,6 +89,7 @@ BM_ICON = tuple(_BOSS["bm_icon"])
 BM_LEAD = float(_BOSS["bm_lead"])
 POWERFUL_POT = tuple(_BOSS["powerful_pot"])
 POWERFUL_POT_AFTER = float(_BOSS["powerful_pot_after"])
+POWERFUL_LEVELS = {int(level) for level in _BOSS["powerful_levels"]}
 LOOP_GAP = float(_BOSS["loop_gap"])
 LOOPS = {"main": list(_BOSS["main_loop"]),
          "alternate": list(_BOSS["alternate_loop"])}
@@ -147,6 +148,14 @@ BOSS_TITLE_INK = {name: int(value)
                   for name, value in _BOSS["boss_title_ink"].items()}
 BOSS_WORD = re.compile(_BOSS["boss_word_pattern"])
 BOSS_STOP = re.compile(_BOSS["boss_stop_pattern"])
+BOSSES = list(_BOSS["bosses"])
+BOSS_WORDS = {boss["name"]: set(BOSS_WORD.findall(boss["name"].casefold()))
+              for boss in BOSSES}
+SHARED_WORDS = {word for name, words in BOSS_WORDS.items() for word in words
+                if any(word in other for rival, other in BOSS_WORDS.items()
+                       if rival != name)}
+UNIQUE_WORDS = {name: words - SHARED_WORDS
+                for name, words in BOSS_WORDS.items()}
 HISTORY = calibration.LOG_DIR / _BOSS["history_file"]
 _ONLINE = {"asked": None, "at": None, "utc": None}
 _SCREEN = {"sct": None}
@@ -500,6 +509,28 @@ def boss_name(bar_image, title_image):
     return " ".join(words) or None
 
 
+def recognise(text):
+    seen = (text or "").casefold()
+    found = [boss for boss in BOSSES
+             if any(word in seen for word in UNIQUE_WORDS[boss["name"]])]
+    return found[0] if len(found) == 1 else None
+
+
+def spot_boss(plan, verbose=True):
+    read = boss_name(look(BOSS_BAR), look(BOSS_TITLE))
+    boss = recognise(read)
+    if boss is None:
+        return
+    plan.update(boss=boss, powerful=boss["level"] in POWERFUL_LEVELS)
+    calibration.snap("boss_recognised", alongside=True)
+    if verbose:
+        print(f"  spawn {time.monotonic() - plan['spawn']:+.1f}s: read "
+              f"{read!r}: the world boss is {boss['name']}, level "
+              f"{boss['level']}; powerful pots "
+              + ("on" if plan["powerful"] else "off")
+              + " for this session, and no more name reads")
+
+
 def damage_done(shot):
     found = DAMAGE_TEXT.search(
         read_windows(shot, [DAMAGE_WINDOW], RAID_RESULT[:2])[0])
@@ -529,22 +560,40 @@ def note_kill(plan, channel, boss, damage, reward):
 def analyse(plan, verbose=True):
     if verbose and plan["kills"]:
         print("world boss results, read off the Raid Result screenshots")
+    boss = plan["boss"]
+    for channel, shot, bar, title in plan["kills"]:
+        if boss is not None:
+            break
+        try:
+            boss = recognise(boss_name(bar, title))
+        except RuntimeError as exc:
+            print(f"  Channel {channel}: {exc}")
     for channel, shot, bar, title in plan["kills"]:
         change = slot_change(shot)
         reward = bool(change > REWARD_SHARE)
         try:
-            boss, damage = boss_name(bar, title), damage_done(shot)
+            damage = damage_done(shot)
         except RuntimeError as exc:
             print(f"  Channel {channel}: {exc}")
-            boss = damage = None
-        note_kill(plan, channel, boss, damage, reward)
-        if verbose:
-            print(f"  Channel {channel}: boss {boss!r}, contribution "
-                  + (f"{damage:,}" if damage is not None else "unread")
-                  + ", personal reward "
-                  + ("received" if reward else "none")
-                  + f" ({change * 100:.1f}% of the slot differs from the "
-                    f"empty one)")
+            damage = None
+        note_kill(plan, channel, boss and boss["name"], damage, reward)
+        if not verbose:
+            continue
+        enough = (None if boss is None or damage is None
+                  else damage >= boss["min_points"])
+        print(f"  Channel {channel}: "
+              + (f"{boss['name']}, level {boss['level']}, needs "
+                 f"{boss['min_points']:,}" if boss else "boss unknown")
+              + "; contribution "
+              + (f"{damage:,}" if damage is not None else "unread")
+              + ("" if enough is None else ", enough" if enough
+                 else ", short")
+              + "; personal reward "
+              + ("received" if reward else "none")
+              + f" ({change * 100:.1f}% of the slot differs from the empty "
+                f"one)"
+              + ("" if enough is None or enough == reward
+                 else "; the reward slot and the contribution DISAGREE"))
 
 
 def next_due(due, every):
@@ -557,7 +606,8 @@ def mode_plan(spawn_at, when):
     return {"phase": "main", "next": spawn_at - BM_LEAD,
             "index": LOOP_START["main"], "warm_index": 0, "warm_until": None,
             "timer": None, "cancelled": None, "spawn": spawn_at,
-            "when": when.isoformat(), "kills": []}
+            "when": when.isoformat(), "kills": [], "boss": None,
+            "powerful": False}
 
 
 def switch_due(plan, now):
@@ -630,9 +680,12 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
               f"spawn {start - plan['spawn']:+.1f}s, buffs in the "
               f"{plan['phase']} loop from spawn "
               f"{buffs_from - plan['spawn']:+.1f}s, the powerful pot once from "
-              f"spawn {pot_at - plan['spawn']:+.1f}s, until {REWARD_WORD!r} "
-              f"reads")
+              f"spawn {pot_at - plan['spawn']:+.1f}s for a level "
+              f"{'/'.join(map(str, sorted(POWERFUL_LEVELS)))} boss, until "
+              f"{REWARD_WORD!r} reads")
     while True:
+        if plan["boss"] is None:
+            spot_boss(plan, verbose)
         if reward_up():
             seen_at = time.monotonic()
             shot, bar, title = reward_shot()
@@ -666,7 +719,7 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
         elif now >= plan["next"] and now >= loop_from:
             if switch_due(plan, now):
                 switch_bm(plan, now, verbose)
-            elif pot_at is not None and now >= pot_at:
+            elif pot_at is not None and now >= pot_at and plan["powerful"]:
                 use_powerful_pot(plan, now, channel, count, verbose)
                 pot_at = None
             else:
