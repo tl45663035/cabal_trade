@@ -105,7 +105,6 @@ LOOP_POINTS = {name: tuple(_BOSS[name])
                if name not in BUFF_NAMES}
 LOOP_POINTS.update(OFFENSIVE_BUFFS)
 MODE_DURATION = float(_BOSS["mode_duration"])
-CANCEL_BEFORE = float(_BOSS["cancel_before"])
 MAIN_BM_COOLDOWN = float(_BOSS["main_bm_cooldown"])
 ONLINE_EVERY = float(_BOSS["online_every"])
 FINAL_SYNC = float(_BOSS["final_sync"])
@@ -607,7 +606,7 @@ def mode_plan(spawn_at, when):
 def switch_due(plan, now):
     if plan["phase"] == "main":
         return (plan["timer"] is not None
-                and now >= plan["timer"] + MODE_DURATION - CANCEL_BEFORE)
+                and now >= plan["timer"] + MODE_DURATION)
     return now >= plan["cancelled"] + MAIN_BM_COOLDOWN
 
 
@@ -659,7 +658,7 @@ def loop_click(plan, now, buffs_from, count, verbose=True):
         if verbose:
             print(f"  spawn {now - plan['spawn']:+.1f}s: aura clicked; timer "
                   f"started, main BM cancel at "
-                  f"+{MODE_DURATION - CANCEL_BEFORE:g}s")
+                  f"+{MODE_DURATION:g}s")
     plan["next"] = now + LOOP_GAP
 
 
