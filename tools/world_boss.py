@@ -124,7 +124,6 @@ HOVER_SETTLE = float(_BOSS["hover_settle"])
 CLICK_HOLD = float(_BOSS["click_hold"])
 DOUBLE_GAP = float(_BOSS["double_gap"])
 DIALOG_TIMEOUT = float(_BOSS["dialog_timeout"])
-MOVE_WINDOW = tuple(_BOSS["move_window"])
 YES_WINDOW = tuple(_BOSS["yes_window"])
 YES_WORD = _BOSS["yes_word"]
 REWARD_WINDOW = tuple(_BOSS["reward_window"])
@@ -418,7 +417,7 @@ def find_channel(channel, verbose=True):
 def confirm_move(channel, verbose=True):
     deadline = time.monotonic() + DIALOG_TIMEOUT
     while True:
-        target, yes = read_screen([MOVE_WINDOW, YES_WINDOW])
+        yes = read_screen([YES_WINDOW])[0]
         if row_model._key(YES_WORD) in row_model._key(yes):
             break
         if time.monotonic() >= deadline:
@@ -427,16 +426,11 @@ def confirm_move(channel, verbose=True):
                 f"no Move Channel dialog within {DIALOG_TIMEOUT:g}s of the "
                 f"double-click; {list(YES_WINDOW)} reads {yes!r}. Nothing "
                 f"clicked.")
-    if channel_in(target) != channel:
-        calibration.snap("move_dialog_wrong_channel", alongside=True)
-        raise RuntimeError(
-            f"the Move Channel dialog moves to {target!r}, not Channel "
-            f"{channel}. Yes not clicked.")
     click(centre(YES_WINDOW))
     clicked = time.monotonic()
     calibration.snap(f"yes_channel_{channel}", alongside=True)
     if verbose:
-        print(f"  the dialog moves to {target!r}; {YES_WORD} clicked")
+        print(f"  {YES_WORD} clicked")
     return clicked
 
 
