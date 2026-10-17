@@ -29,6 +29,7 @@ CONFIRM_WORD = _R["confirm_word"]
 YES_WORD = _R["yes_word"]
 ENTER_WORD = _R["enter_word"]
 PREVIOUS_WORD = _R["previous_word"]
+HOME_CHANNEL = _R["channel_label"].format(_SHARED["run"]["home_channel"])
 MENU_WORD = _R["menu_word"]
 MENU_TRIES = _R["menu_tries"]
 MENU_WAIT = _R["menu_wait"]
@@ -89,7 +90,7 @@ def account():
                          or held.get("sub_password")),
         "character": (os.environ.get("CABAL_CHARACTER")
                       or held.get("character")),
-        "channel": os.environ.get("CABAL_CHANNEL") or held.get("channel"),
+        "channel": HOME_CHANNEL,
     }
     missing = [k for k, v in out.items() if not v]
     if missing:
@@ -421,7 +422,7 @@ def recover(verbose=True):
             calibration.snap("recovery_character_list_up")
             if verbose:
                 print("  no login screen; the character list is already up")
-            return _pick_character(who, verbose=verbose)
+            return _enter_home(who, verbose=verbose)
         if server_list(who=who) is not None:
             calibration.snap("recovery_server_list_up")
             if verbose:
@@ -593,13 +594,14 @@ def relog(verbose=True):
     return recover(verbose=verbose)
 
 
-def relog_to(channel, verbose=True):
-    logout(verbose=verbose)
-    who = account()
+def _enter_home(who, verbose=True):
+    if verbose:
+        print(f"  back to the server list for the home channel, "
+              f"{who['channel']!r}")
     calibration.click(*_needed(PREVIOUS_WORD, verbose=verbose,
                                region=ENTER_BUTTON_F))
     calibration.snap("relog_previous_screen")
-    _pick_channel(dict(who, channel=channel), verbose=verbose)
+    _pick_channel(who, verbose=verbose)
     return _pick_character(who, verbose=verbose)
 
 

@@ -140,7 +140,6 @@ BUY_SETTLE = float(_DUNGEON["buy_settle"])
 TRANSFER_TIMEOUT = float(_DUNGEON["transfer_timeout"])
 INVENTORY_TAB = int(_DUNGEON["inventory_tab"])
 KEY_TAB = int(_DUNGEON["key_tab"])
-RELOG_CHANNELS = list(_DUNGEON["relog_channels"])
 LOCK = {"boss": None, "reading": None, "cleared": False, "level": ORDER[0],
         "killed": False, "watching": False, "reads": 0}
 ENDED = threading.Event()
@@ -300,10 +299,9 @@ def use_key(before, verbose=True):
 
 def relog(verbose=True):
     import recovery
-    channel = random.choice(RELOG_CHANNELS)
     if verbose:
-        print(f"  relogging into {channel}")
-    recovery.relog_to(channel, verbose=verbose)
+        print(f"  relogging into {recovery.HOME_CHANNEL}")
+    recovery.relog(verbose=verbose)
 
 
 def buy_key(level, verbose=True):

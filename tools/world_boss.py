@@ -3,7 +3,6 @@ import ctypes
 import datetime
 import json
 import os
-import random
 import re
 import sys
 import threading
@@ -62,7 +61,7 @@ STOP_PRESSES = int(_BOSS["stop_presses"])
 STOP_WINDOW = float(_BOSS["stop_window"])
 SPAWNS = sorted(datetime.time.fromisoformat(at) for at in _BOSS["spawn_times"])
 CHANNELS = [int(channel) for channel in _BOSS["channels"]]
-HOME_CHANNELS = [int(channel) for channel in _BOSS["home_channels"]]
+HOME_CHANNEL = int(_SHARED["run"]["home_channel"])
 POT_DELAY = float(_BOSS["pot_delay"])
 POT_GAP = float(_BOSS["pot_gap"])
 BUFF_AFTER_SPAWN = float(_BOSS["buff_after_spawn"])
@@ -862,10 +861,10 @@ def run(verbose=True, when=None):
             finished = kill_boss(channel, start, plan, deadline,
                                  clicked + POWERFUL_POT_AFTER, verbose,
                                  loop_from=start)
-        home = random.choice(HOME_CHANNELS)
         if verbose:
-            print(f"the route is done; back to Channel {home}")
-        quick_relog(home, verbose)
+            print(f"the route is done; back to the home channel, Channel "
+                  f"{HOME_CHANNEL}")
+        quick_relog(HOME_CHANNEL, verbose)
     finally:
         keep_shots(plan, verbose)
         analyse(plan, verbose)
