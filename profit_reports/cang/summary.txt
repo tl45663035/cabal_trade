@@ -15,12 +15,12 @@ Mon 2026-10-12             9.32h   24.00h   77.46M    8.32M    6.86B   6.78B  12
 Tue 2026-10-13            17.08h   24.00h  118.98M    6.97M    8.90B   8.78B  14.19K    1.3%
 Wed 2026-10-14            18.69h   24.00h  112.54M    6.02M    5.52B   5.41B   8.33K    2.0%
 Thu 2026-10-15            16.09h   24.00h  138.17M    8.59M    5.68B   5.55B   9.21K    2.4%
-Fri 2026-10-16 (so far)   13.68h   21.26h  110.41M    8.07M    3.05B   2.94B   5.72K    3.6%
+Fri 2026-10-16 (so far)   13.93h   21.51h  110.41M    7.92M    3.05B   2.94B   5.72K    3.6%
 ============================================================================================
-7 DAYS                   107.88h  165.26h  942.49M    8.74M   48.10B  47.16B  79.56K    2.0%
+7 DAYS                   108.13h  165.51h  942.49M    8.72M   48.10B  47.16B  79.56K    2.0%
 
 
-PROFIT SUMMARY -- sold since 2026-10-16 00:00 Central (as of 21:15 Central)
+PROFIT SUMMARY -- sold since 2026-10-16 00:00 Central (as of 21:30 Central)
 
 item                          profit  revenue     cost  units  bought/u   sold/u  margin
 ----------------------------------------------------------------------------------------
@@ -44,32 +44,32 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-16_185416_run_board.log, board during pass 32 at row 9, read 2026-10-16T21:15:20 (live)
+ROWS -- 2026-10-16_185416_run_board.log, board during pass 38 at row 2, read 2026-10-16T21:30:23 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Wexp Saver                              x3         -     5.50M         -     5.50M         -         -
-    2  Material Core (Bike) X 2                x1         -    10.00M         -    20.00M         -         -
-    3  Upgrade Core (Ultimate                x208   315.79K   327.86K   +12.07K   327.86K    65.68M     2.51M
-    4  Chaos Core Set X 81                     x1   708.00K   711.92K    +3.92K    57.67M    57.35M   317.84K
-    5  Time Reducer (7d) - Diamond Insign        x1         -    54.90M         -    54.90M         -         -
+    2  Material Core (Bike) X 2                x1         -    10.00M         -    20.00M         -         - <- here
+    3  Upgrade Core (Ultimate                x208   315.79K   327.85K   +12.06K   327.85K    65.68M     2.51M
+    4  Chaos Core Set X 81                     x1   708.00K   711.87K    +3.87K    57.66M    57.35M   313.71K
+    5  Time Reducer (7d) - Diamond Insign        x1         -    54.87M         -    54.87M         -         -
     6  Wexp Saver                              x2         -     5.50M         -     5.50M         -         -
-    7  Wexp Saver                              x3         -     4.90M         -     4.90M         -         -
-    8  Chaos Core Set X 249                    x1   704.34K   711.92K    +7.58K   177.27M   175.38M     1.89M
-    9  Astral Board Card - Zero Black          x1         -    24.00M         -    24.00M         -         - <- here
-   10  Chaos Core Set X 249                    x1   708.00K   711.94K    +3.94K   177.27M   176.29M   981.06K
-   11  Chaos Core Set X 249                    x1   702.60K   711.94K    +9.34K   177.27M   174.95M     2.32M
-   12  Chaos Core Set X 231                    x1   700.00K   711.94K   +11.94K   164.46M   161.70M     2.76M
-   13  Chaos Core Set X 198                    x1   706.59K   711.94K    +5.35K   140.96M   139.90M     1.06M
-   14  Chaos Core Set X 249                    x1   708.00K   711.94K    +3.94K   177.27M   176.29M   980.06K
-   15  Chaos Core Set X 249                    x1   708.00K   711.93K    +3.94K   177.27M   176.29M   979.82K
-   16  Chaos Core Set X 249                    x1   706.78K   711.93K    +5.15K   177.27M   175.99M     1.28M
-   17  Chaos Core Set X 249                    x1   708.00K   711.93K    +3.94K   177.27M   176.29M   980.06K
-   18  Upgrade Core (Ultimate                 x13   315.79K   327.86K   +12.07K   327.86K     4.11M   156.94K
+    7  Wexp Saver                              x3         -     4.87M         -     4.87M         -         -
+    8  Chaos Core Set X 249                    x1   704.34K   711.87K    +7.53K   177.26M   175.38M     1.88M
+    9  Astral Board Card - Zero Black          x1         -    24.00M         -    24.00M         -         -
+   10  Chaos Core Set X 249                    x1   708.00K   711.87K    +3.87K   177.26M   176.29M   963.63K
+   11  Chaos Core Set X 249                    x1   702.60K   711.87K    +9.27K   177.26M   174.95M     2.31M
+   12  Chaos Core Set X 231                    x1   700.00K   711.87K   +11.87K   164.44M   161.70M     2.74M
+   13  Chaos Core Set X 198                    x1   706.59K   711.87K    +5.28K   140.95M   139.90M     1.05M
+   14  Chaos Core Set X 249                    x1   708.00K   711.87K    +3.87K   177.25M   176.29M   962.63K
+   15  Chaos Core Set X 249                    x1   708.00K   711.87K    +3.87K   177.25M   176.29M   962.38K
+   16  Chaos Core Set X 249                    x1   706.78K   711.86K    +5.08K   177.25M   175.99M     1.26M
+   17  Chaos Core Set X 249                    x1   708.00K   711.86K    +3.87K   177.25M   176.29M   962.63K
+   18  Upgrade Core (Ultimate                 x13   315.79K   327.84K   +12.05K   327.84K     4.11M   156.70K
    26  Siena's Unbinding Stone                 x1    77.00M     4.50M   -72.50M     4.50M    77.00M   -72.50M
    27  Minesta's Chaos Sage Belt + 15          x1         -   300.00M         -   300.00M         -         -
    28  Time Reducer (12h) - Diamond Insig        x1         -     3.40M         -     6.80M         -         -
    29  Palladium Coat(FA) i                    x1         -     8.40M         -     8.40M         -         -
    30  Gold Insignia Elixir X 1                x6         -     6.90M         -     6.90M         -         -
-    balance now 45.90M, read 2026-10-16T21:13:37
+    balance now 45.90M, read 2026-10-16T21:29:54
        stock at its listed price                                                                        1.82B
        Alz, latest balance line                                                                        45.90M
        Cash at the voucher price                                                                       77.00M
@@ -77,7 +77,7 @@ ROWS -- 2026-10-16_185416_run_board.log, board during pass 32 at row 9, read 202
        NET WORTH                                                                                        1.98B
 
 
-MARKET -- 2026-10-16_185416_run.log, pass 1, log last written 21:15 Central (live); pass 32 is under way and has not priced the cores yet, so this is the last table it printed
+MARKET -- 2026-10-16_185416_run.log, pass 1, log last written 21:30 Central (live); pass 38 is under way and has not priced the cores yet, so this is the last table it printed
 
 core                     rows    buy/u   sell/u    margin  margin %  wants  short?
 ---------------------------------------------------------------------------------------------------------------------
