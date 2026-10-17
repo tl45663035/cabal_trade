@@ -28,12 +28,12 @@ Tue 2026-10-13            19.48h   24.00h  245.46M   12.60M   10.75B  10.51B  16
 Wed 2026-10-14            19.31h   24.00h  164.30M    8.51M    7.19B   7.03B  10.65K    2.3%
 Thu 2026-10-15            19.92h   24.00h  111.88M    5.62M    4.82B   4.71B   7.72K    2.3%
 Fri 2026-10-16            11.68h   24.00h  129.36M   11.08M    4.72B   4.60B   7.04K    2.7%
-Sat 2026-10-17 (so far)    7.75h    7.79h   67.40M    8.70M    2.52B   2.46B   3.69K    2.7%
+Sat 2026-10-17 (so far)    8.00h    8.04h   67.40M    8.42M    2.52B   2.46B   3.69K    2.7%
 ============================================================================================
-7 DAYS                    87.32h  151.79h  865.98M    9.92M   34.93B  34.06B  55.43K    2.5%
+7 DAYS                    87.57h  152.04h  865.98M    9.89M   34.93B  34.06B  55.43K    2.5%
 
 
-PROFIT SUMMARY -- sold since 2026-10-17 00:00 Central (as of 07:47 Central)
+PROFIT SUMMARY -- sold since 2026-10-17 00:00 Central (as of 08:02 Central)
 
 item                         profit  revenue     cost  units  bought/u   sold/u  margin
 ---------------------------------------------------------------------------------------
@@ -61,34 +61,36 @@ item            profit  bought  bought/u  listed/u  held
 Stock up Chaos       0   2.56K   728.13K         0     0
 
 
-ROWS -- 2026-10-17_003641_run_board.log, board during pass 85 at row 12, read 2026-10-17T04:47:13 (live)
+ROWS -- 2026-10-17_003641_run_board.log, board during pass 90 at row 10, read 2026-10-17T05:02:35 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Wexp Saver                              x8         -     5.42M         -     5.42M         -         -
+    1  Wexp Saver                              x8         -     5.40M         -     5.40M         -         -
     2  Force Core (Ultimate                   x80   450.00K   450.00K        +0   450.00K    36.00M         0
     3  Force Core (Ultimate                  x151   450.00K   450.00K        +0   450.00K    67.95M         0
     4  Armor Account bind Seal Stone           x1   194.50M   198.40M    +3.90M   198.40M   194.50M     3.90M
-    5  Blessing Bead - Superior                x1   169.99M   208.00M   +38.01M   208.00M   169.99M    38.01M
+    5  Blessing Bead - Superior                x1   169.99M   205.00M   +35.01M   205.00M   169.99M    35.01M
     6  Arionell                                x1   292.43M   300.00M    +7.57M   300.00M   292.43M     7.57M
     7  Force Core (Ultimate                   x20   450.00K   450.00K        +0   450.00K     9.00M         0
     8  Armor Account bind Unseal Stone         x1   194.50M   198.40M    +3.90M   198.40M   194.50M     3.90M
-    9  Upgrade Core (Ultimate                 x35   300.00K   315.94K   +15.95K   315.94K    10.50M   558.11K
-   10  Upgrade Core (Ultimate                 x31    31.48K   315.94K  +284.46K   315.94K   976.00K     8.82M
-   11  Force Core(High                       x248   277.21K   289.99K   +12.78K   289.99K    68.75M     3.17M
-   12  Force Core(High                       x249   277.21K   289.99K   +12.78K   289.99K    69.03M     3.18M <- here
-   13  Force Core(High)                      x250   277.21K   290.00K   +12.78K   290.00K    69.30M     3.20M
-   14  Force Core(High)                       x21   277.21K   289.99K   +12.78K   289.99K     5.82M   268.38K
-    balance now 1.81B, read 2026-10-17T04:46:31
-       stock at its listed price                                                                        1.30B
-       Alz, latest balance line                                                                         1.81B
-       NET WORTH                                                                                        3.11B
+    9  Upgrade Core (Ultimate                 x35   300.00K   305.94K    +5.94K   305.94K    10.50M   207.90K
+   10  Upgrade Core (Ultimate                 x31    31.48K   305.94K  +274.45K   305.94K   976.00K     8.51M <- here
+   11  Force Core(High                       x248   277.21K   289.97K   +12.76K   289.97K    68.75M     3.16M
+   12  Force Core(High                       x249   277.21K   289.97K   +12.76K   289.97K    69.03M     3.18M
+   13  Force Core(High                       x250   277.21K   289.97K   +12.76K   289.97K    69.30M     3.19M
+   14  Force Core(High                        x21   277.21K   289.97K   +12.75K   289.97K     5.82M   267.83K
+   15  Force Core(Highest                    x250   333.33K   354.99K   +21.66K   354.99K    83.33M     5.41M
+   16  Force Core(Highest                    x158   333.33K   354.99K   +21.66K   354.99K    52.67M     3.42M
+    balance now 1.67B, read 2026-10-17T05:02:10
+       stock at its listed price                                                                        1.45B
+       Alz, latest balance line                                                                         1.67B
+       NET WORTH                                                                                        3.12B
 
 
-MARKET -- 2026-10-17_003641_run.log, pass 85, log last written 07:47 Central (live)
+MARKET -- 2026-10-17_003641_run.log, pass 90, log last written 08:02 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  366.68K  355.00K  -11.68K     -3.3%      0
+Force Core(Highest)         2  366.68K  354.99K  -11.69K     -3.3%      0
 Chaos Core                  0  710.00K  700.70K   -9.30K     -1.3%      0
 Force Core (Ultimate)       3        -        -        -         -      -  holds the most it can want, 3; not priced
-Force Core(High)            0  277.21K  290.00K   12.79K      4.4%      3  YES
-Upgrade Core (Ultimate)     2  311.11K  315.95K    4.84K      1.5%      0
+Force Core(High)            4        -        -        -         -      -  holds the most it can want, 3; not priced
+Upgrade Core (Ultimate)     2  311.11K  305.94K   -5.17K     -1.7%      0
