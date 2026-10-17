@@ -133,7 +133,6 @@ RAID_RESULT = tuple(_BOSS["raid_result_window"])
 REWARD_FRESH_FRAMES = int(_BOSS["reward_fresh_frames"])
 REWARD_SHOT_TIMEOUT = float(_BOSS["reward_shot_timeout"])
 DAMAGE_WINDOW = tuple(_BOSS["damage_window"])
-DAMAGE_TEXT = re.compile(_BOSS["damage_pattern"])
 REWARD_SLOT_WINDOW = tuple(_BOSS["reward_slot_window"])
 EMPTY_REWARD = np.asarray(Image.open(
     calibration.HERE / _BOSS["reward_empty_image"]).convert("RGB")).astype(int)
@@ -533,10 +532,22 @@ def spot_boss(plan, verbose=True):
               + " for this session, and no more name reads")
 
 
-def damage_done(shot):
-    found = DAMAGE_TEXT.search(
-        read_windows(shot, [DAMAGE_WINDOW], RAID_RESULT[:2])[0])
-    return int(found.group(1).replace(",", "")) if found else None
+def damage_reads(shot):
+    box = DAMAGE_WINDOW
+    box = (box[0] - RAID_RESULT[0], box[1] - RAID_RESULT[1],
+           box[2] - RAID_RESULT[0], box[3] - RAID_RESULT[1])
+    paddle = row_model._backup_texts(
+        [calibration.isolate_digits(shot, box, row_model.BACKUP_SCALE)])
+    digits = calibration.isolate_digits(shot, box)
+    return {"Paddle": (paddle or [None])[0],
+            "Tesseract": None if digits is None else calibration._tesseract(
+                digits, calibration.ROW_PSM,
+                calibration.DIGIT_WHITELIST).strip()}
+
+
+def damage_done(reads):
+    known = {calibration._digits(text) for text in reads.values()} - {None}
+    return known.pop() if len(known) == 1 else None
 
 
 def slot_change(shot):
@@ -616,11 +627,8 @@ def analyse(plan, verbose=True):
     for channel, shot, bar, title in plan["kills"]:
         change = slot_change(shot)
         reward = bool(change > REWARD_SHARE)
-        try:
-            damage = damage_done(shot)
-        except RuntimeError as exc:
-            print(f"  Channel {channel}: {exc}")
-            damage = None
+        reads = damage_reads(shot)
+        damage = damage_done(reads)
         note_kill(plan, channel, boss and boss["name"], damage, reward)
         if not verbose:
             continue
@@ -631,6 +639,12 @@ def analyse(plan, verbose=True):
                  f"{boss['min_points']:,}" if boss else "boss unknown")
               + "; contribution "
               + (f"{damage:,}" if damage is not None else "unread")
+              + ("" if damage is not None and all(
+                     calibration._digits(text) == damage
+                     for text in reads.values())
+                 else " (" + ", ".join(f"{reader} read {text!r}"
+                                       for reader, text in reads.items())
+                 + ")")
               + ("" if enough is None else ", enough" if enough
                  else ", short")
               + "; personal reward "
