@@ -180,7 +180,10 @@ def convert(core_name, verbose=True):
 
         point = dialog_button(CONFIRM_WORD)
         if point is None:
-            _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
+            why = f"no {CONFIRM_WORD} button on the dialog"
+            if attempt == RETRIES:
+                _cancel(f"{why} in {RETRIES} attempt(s). Nothing converted.")
+            continue
         with calibration.step(f"select inventory tab {INVENTORY_TAB}"):
             calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB),
                               settle=0.0)
