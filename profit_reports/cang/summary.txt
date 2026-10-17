@@ -15,12 +15,12 @@ Mon 2026-10-12             9.32h   24.00h   77.46M    8.32M    6.86B   6.78B  12
 Tue 2026-10-13            17.08h   24.00h  118.98M    6.97M    8.90B   8.78B  14.19K    1.3%
 Wed 2026-10-14            18.69h   24.00h  112.54M    6.02M    5.52B   5.41B   8.33K    2.0%
 Thu 2026-10-15            16.09h   24.00h  138.17M    8.59M    5.68B   5.55B   9.21K    2.4%
-Fri 2026-10-16 (so far)   11.91h   19.48h   90.72M    7.62M    2.78B   2.69B   5.15K    3.3%
+Fri 2026-10-16 (so far)   12.16h   19.74h   90.72M    7.46M    2.78B   2.69B   5.15K    3.3%
 ============================================================================================
-7 DAYS                   106.10h  163.48h  922.79M    8.70M   47.82B  46.90B  79.00K    1.9%
+7 DAYS                   106.36h  163.74h  922.79M    8.68M   47.82B  46.90B  79.00K    1.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-16 00:00 Central (as of 19:28 Central)
+PROFIT SUMMARY -- sold since 2026-10-16 00:00 Central (as of 19:44 Central)
 
 item                         profit  revenue     cost  units  bought/u   sold/u  margin
 ---------------------------------------------------------------------------------------
@@ -44,44 +44,45 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-16_185416_run_board.log, board during pass 5 at row 7, read 2026-10-16T19:28:48 (live)
+ROWS -- 2026-10-16_185416_run_board.log, board during pass 8 at row 25, read 2026-10-16T19:43:55 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Wexp Saver                              x3         -     5.65M         -     5.65M         -         -
+    1  Wexp Saver                              x3         -     5.62M         -     5.62M         -         -
     2  Material Core (Bike) X 2                x1         -    10.00M         -    20.00M         -         -
-    3  Upgrade Core (Ultimate                x208   315.79K   327.98K   +12.19K   327.98K    65.68M     2.54M
-    4  Upgrade Core (Ultimate                x164   315.79K   327.98K   +12.19K   327.98K    51.79M     2.00M
-    5  Force Core(Highest                     x56   253.72K   348.98K   +95.26K   348.98K    14.21M     5.33M
-    6  Time Reducer (7d) - Diamond Insign        x1         -    55.16M         -    55.16M         -         -
-    7  Wexp Saver                              x2         -     5.65M         -     5.65M         -         - <- here
-    8  Wexp Saver                              x3         -     5.17M         -     5.17M         -         -
-    9  Force Core(Highest                     x50   253.72K   348.99K   +95.27K   348.99K    12.69M     4.76M
-   10  Chaos Core Set X 249                    x1   704.34K   713.93K    +9.60K   177.77M   175.38M     2.39M
-   11  Force Core(Highest                     x37   253.72K   348.99K   +95.26K   348.99K     9.39M     3.52M
-   12  Force Core(Highest                     x33   253.72K   348.98K   +95.26K   348.98K     8.37M     3.14M
+    3  Upgrade Core (Ultimate                x208   315.79K   327.97K   +12.18K   327.97K    65.68M     2.53M
+    4  Upgrade Core (Ultimate                x164   315.79K   327.97K   +12.18K   327.97K    51.79M     2.00M
+    5  Force Core(Highest                     x56   253.72K   348.00K   +94.27K   348.00K    14.21M     5.28M
+    6  Time Reducer (7d) - Diamond Insign        x1         -    55.13M         -    55.13M         -         -
+    7  Wexp Saver                              x2         -     5.62M         -     5.62M         -         -
+    8  Wexp Saver                              x3         -     5.13M         -     5.13M         -         -
+    9  Force Core(Highest                     x50   253.72K   347.99K   +94.27K   347.99K    12.69M     4.71M
+   10  Chaos Core Set X 249                    x1   704.34K   713.88K    +9.54K   177.76M   175.38M     2.38M
+   11  Force Core(Highest                     x37   253.72K   347.99K   +94.27K   347.99K     9.39M     3.49M
+   12  Force Core(Highest                     x33   253.72K   347.99K   +94.27K   347.99K     8.37M     3.11M
    13  Astral Board Card - Zero Black          x1         -    24.00M         -    24.00M         -         -
-   14  Chaos Core Set X 249                    x1   708.00K   713.93K    +5.93K   177.77M   176.29M     1.48M
-   15  Chaos Core Set X 249                    x1   702.60K   713.93K   +11.33K   177.77M   174.95M     2.82M
-   16  Chaos Core Set X 231                    x1   700.00K   713.93K   +13.93K   164.92M   161.70M     3.22M
-   17  Chaos Core Set X 198                    x1   706.59K   713.93K    +7.34K   141.36M   139.90M     1.45M
-   18  Chaos Core Set X 249                    x1   708.00K   713.93K    +5.93K   177.77M   176.29M     1.48M
-   19  Chaos Core Set X 249                    x1   708.00K   713.93K    +5.93K   177.77M   176.29M     1.48M
-   20  Chaos Core Set                          x1   706.78K   713.92K    +7.14K   177.77M   175.99M     1.78M
-   21  Chaos Core Set X 225                    x1   708.00K   713.92K    +5.92K   160.63M   159.30M     1.33M
-   22  Upgrade Core (Ultimate                 x13   315.79K   327.98K   +12.19K   327.98K     4.11M   158.52K
+   14  Chaos Core Set X 249                    x1   708.00K   713.88K    +5.88K   177.76M   176.29M     1.46M
+   15  Chaos Core Set X 249                    x1   702.60K   713.88K   +11.27K   177.76M   174.95M     2.81M
+   16  Chaos Core Set X 231                    x1   700.00K   713.88K   +13.88K   164.91M   161.70M     3.21M
+   17  Chaos Core Set X 198                    x1   706.59K   713.88K    +7.29K   141.35M   139.90M     1.44M
+   18  Chaos Core Set X 249                    x1   708.00K   713.87K    +5.87K   177.75M   176.29M     1.46M
+   19  Chaos Core Set X 249                    x1   708.00K   713.87K    +5.87K   177.75M   176.29M     1.46M
+   20  Chaos Core Set X 249                    x1   706.78K   713.87K    +7.09K   177.75M   175.99M     1.76M
+   21  Chaos Core Set X 225                    x1   708.00K   713.87K    +5.87K   160.62M   159.30M     1.32M
+   22  Upgrade Core (Ultimate                 x13   315.79K   327.97K   +12.18K   327.97K     4.11M   158.34K
+    25  (empty)                                           -          -       -              -               - <- here
    26  Siena's Unbinding Stone                 x1    77.00M     4.50M   -72.50M     4.50M    77.00M   -72.50M
    27  Minesta's Chaos Sage Belt + 15          x1         -   300.00M         -   300.00M         -         -
    28  Time Reducer (12h) - Diamond Insig        x1         -     3.40M         -     6.80M         -         -
    29  Palladium Coat(FA) i                    x1         -     8.40M         -     8.40M         -         -
    30  Gold Insignia Elixir X 1                x6         -     6.90M         -     6.90M         -         -
-    balance now 4.10M, read 2026-10-16T19:28:37
+    balance now 4.10M, read 2026-10-16T19:43:52
        stock at its listed price                                                                        1.86B
        Alz, latest balance line                                                                         4.10M
        Cash at the voucher price                                                                       77.00M
        gems at the voucher price                                                                       39.94M
-       NET WORTH                                                                                        1.99B
+       NET WORTH                                                                                        1.98B
 
 
-MARKET -- 2026-10-16_185416_run.log, pass 1, log last written 19:28 Central (live); pass 5 is under way and has not priced the cores yet, so this is the last table it printed
+MARKET -- 2026-10-16_185416_run.log, pass 1, log last written 19:44 Central (live); pass 8 is under way and has not priced the cores yet, so this is the last table it printed
 
 core                     rows    buy/u   sell/u    margin  margin %  wants  short?
 ---------------------------------------------------------------------------------------------------------------------
