@@ -16,12 +16,12 @@ Tue 2026-10-13            17.08h   24.00h  118.98M    6.97M    8.90B   8.78B  14
 Wed 2026-10-14            18.69h   24.00h  112.54M    6.02M    5.52B   5.41B   8.33K    2.0%
 Thu 2026-10-15            16.09h   24.00h  138.17M    8.59M    5.68B   5.55B   9.21K    2.4%
 Fri 2026-10-16            16.40h   24.00h  119.79M    7.30M    5.38B   5.26B   9.26K    2.2%
-Sat 2026-10-17 (so far)    2.85h    3.78h    4.48M    1.57M   34.44M  29.96M     136   13.0%
+Sat 2026-10-17 (so far)    3.11h    4.04h    4.48M    1.44M   34.44M  29.96M     136   13.0%
 ============================================================================================
-7 DAYS                    97.52h  147.78h  732.08M    7.51M   37.65B  36.92B  63.65K    1.9%
+7 DAYS                    97.77h  148.04h  732.08M    7.49M   37.65B  36.92B  63.65K    1.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-17 00:00 Central (as of 03:46 Central)
+PROFIT SUMMARY -- sold since 2026-10-17 00:00 Central (as of 04:02 Central)
 
 item                 profit  revenue    cost  units  bought/u   sold/u  margin
 ------------------------------------------------------------------------------
@@ -41,36 +41,36 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-17_033620_run_board.log, board during pass 4 at row 1, read 2026-10-17T03:46:49 (live)
+ROWS -- 2026-10-17_033620_run_board.log, board during pass 9 at row 3, read 2026-10-17T04:02:03 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Wexp Saver                              x3         -     5.50M         -     5.50M         -         - <- here
+    1  Wexp Saver                              x3         -     5.50M         -     5.50M         -         -
     2  Material Core (Bike) X 2                x1         -    10.00M         -    20.00M         -         -
-    3  Time Reducer (7d) - Diamond Insign        x1         -    54.00M         -    54.00M         -         -
+    3  Time Reducer (7d) - Diamond Insign        x1         -    53.94M         -    53.94M         -         - <- here
     4  Wexp Saver                              x2         -     5.50M         -     5.50M         -         -
-    5  Wexp Saver                              x3         -     4.02M         -     4.02M         -         -
+    5  Wexp Saver                              x3         -     4.00M         -     4.00M         -         -
     6  Chaos Core Set X 249                    x1   709.00K   709.00K        +0   176.54M   176.54M         0
     7  Astral Board Card - Zero Black          x1         -    24.00M         -    24.00M         -         -
     8  Chaos Core Set X 249                    x1   709.00K   709.00K        +0   176.54M   176.54M         0
-    9  Upgrade Core (Ultimate                 x13   323.17K   315.97K    -7.20K   315.97K     4.20M   -93.57K
+    9  Upgrade Core (Ultimate                 x13   323.17K   315.96K    -7.21K   315.96K     4.20M   -93.70K
    10  Force Core(Highest                     x15   368.96K   368.96K        +0   368.96K     5.53M         0
-   11  Upgrade Core (Ultimate                 x37   306.51K   315.97K    +9.46K   315.97K    11.34M   349.91K
+   11  Upgrade Core (Ultimate                 x37   306.51K   315.96K    +9.45K   315.96K    11.34M   349.54K
    26  Siena's Unbinding Stone                 x1    77.96M     4.50M   -73.46M     4.50M    77.96M   -73.46M
    27  Minesta's Chaos Sage Belt + 15          x1         -   270.00M         -   270.00M         -         -
    28  Time Reducer (12h) - Diamond Insig        x1         -     3.40M         -     6.80M         -         -
    29  Palladium Coat(FA) i                    x1         -     8.40M         -     8.40M         -         -
    30  Gold Insignia Elixir X 1                x6         -     6.90M         -     6.90M         -         -
-    balance now 1.35B, read 2026-10-17T03:46:15
-       stock at its listed price                                                                      511.97M
+    balance now 1.35B, read 2026-10-17T04:01:10
+       stock at its listed price                                                                      511.85M
        Alz, latest balance line                                                                         1.35B
        NET WORTH                                                                                        1.86B
 
 
-MARKET -- 2026-10-17_033620_run.log, pass 4, log last written 03:46 Central (live)
+MARKET -- 2026-10-17_033620_run.log, pass 9, log last written 04:02 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 ---------------------------------------------------------------------------------
 Force Core(Highest)         1  368.96K  349.00K  -19.96K     -5.7%      0
 Chaos Core                  2  711.99K  700.70K  -11.29K     -1.6%      0
 Divine Stone                0  780.00K  711.37K  -68.63K     -9.6%      0
-Force Core(High)            0  277.21K  261.72K  -15.49K     -5.9%      0
-Upgrade Core (Ultimate)     2  315.97K  315.97K       -1     -0.0%      0
+Force Core(High)            0  277.21K  261.71K  -15.50K     -5.9%      0
+Upgrade Core (Ultimate)     2  315.97K  315.96K      -11     -0.0%      0
