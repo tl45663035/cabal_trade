@@ -94,10 +94,12 @@ BURST_LEVELS = {int(level) for level in _BOSS["burst_levels"]}
 BURST_CHANNEL = int(_BOSS["burst_channel"])
 LOOP_GAP = float(_BOSS["loop_gap"])
 LOOPS = {"main": list(_BOSS["main_loop"]),
-         "alternate": list(_BOSS["alternate_loop"])}
+         "alternate": list(_BOSS["alternate_loop"]),
+         "burst_alternate": list(_BOSS["burst_alternate_loop"])}
 WARMUP_FOR = float(_BOSS["warmup_for"])
 WARMUPS = {"main": list(_BOSS["main_warmup"]),
-           "alternate": list(_BOSS["alternate_warmup"])}
+           "alternate": list(_BOSS["alternate_warmup"]),
+           "burst_alternate": list(_BOSS["burst_alternate_warmup"])}
 LOOP_START = {phase: next((at for at, name in enumerate(cycle)
                            if name not in WARMUPS[phase]), 0)
               for phase, cycle in LOOPS.items()}
@@ -106,7 +108,8 @@ LOOP_POINTS = {name: tuple(_BOSS[name])
                for name in cycle
                if name not in BUFF_NAMES}
 LOOP_POINTS.update(OFFENSIVE_BUFFS)
-MODE_DURATION = float(_BOSS["mode_duration"])
+AURA_DURATIONS = {"main": float(_BOSS["mode_duration"]),
+                  "burst_alternate": float(_BOSS["burst_alternate_duration"])}
 MAIN_BM_COOLDOWN = float(_BOSS["main_bm_cooldown"])
 ONLINE_EVERY = float(_BOSS["online_every"])
 FINAL_SYNC = float(_BOSS["final_sync"])
@@ -670,9 +673,9 @@ def mode_plan(spawn_at, when):
 
 
 def switch_due(plan, now):
-    if plan["phase"] == "main":
+    if plan["phase"] in AURA_DURATIONS:
         return (plan["timer"] is not None
-                and now >= plan["timer"] + MODE_DURATION)
+                and now >= plan["timer"] + AURA_DURATIONS[plan["phase"]])
     return now >= plan["cancelled"] + MAIN_BM_COOLDOWN
 
 
@@ -682,10 +685,11 @@ def switch_bm(plan, now, verbose=True):
               f"BM")
     cancel_bm(verbose)
     if plan["phase"] == "main":
-        plan.update(phase="alternate", cancelled=now)
+        plan.update(phase="burst_alternate" if plan["burst"] else "alternate",
+                    cancelled=now)
     else:
-        plan.update(phase="main", timer=None)
-    plan.update(index=LOOP_START[plan["phase"]], warm_index=0,
+        plan.update(phase="main")
+    plan.update(timer=None, index=LOOP_START[plan["phase"]], warm_index=0,
                 warm_until=None, next=now + LOOP_GAP)
     if verbose:
         print(f"  spawn {now - plan['spawn']:+.1f}s: {plan['phase']} loop: "
@@ -726,8 +730,8 @@ def loop_click(plan, now, buffs_from, count, saving, verbose=True):
         plan["timer"] = now
         if verbose:
             print(f"  spawn {now - plan['spawn']:+.1f}s: aura clicked; timer "
-                  f"started, main BM cancel at "
-                  f"+{MODE_DURATION:g}s")
+                  f"started, {phase} BM cancel at "
+                  f"+{AURA_DURATIONS[phase]:g}s")
     plan["next"] = now + LOOP_GAP
 
 
