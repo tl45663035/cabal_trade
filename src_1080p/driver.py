@@ -86,7 +86,8 @@ REPAIR_FLOOR = next((int(arg.split("=", 1)[1]) for arg in sys.argv[1:]
                      if arg.startswith("--floor=")), 0)
 _PENDING = None
 _WALK = {"at": None}
-_DUNGEON = {"due": None, "spent": False, "off": False, "resume_checked": False}
+_DUNGEON = {"due": None, "spent": False, "off": False, "resume_checked": False,
+            "closed": False}
 _WORLD_BOSS = {"done": None, "clockless": False}
 _SINCE_PRICED = {}
 _PRICED_THIS_ROW = set()
@@ -1197,6 +1198,8 @@ def relist_pass(model, first, last, passes=0, verbose=True,
             continue
         if world_boss_turn(verbose=verbose):
             reopen_after_world_boss(model, verbose=verbose)
+        if dungeon_pause(verbose=verbose):
+            reopen_after_dungeon(model, verbose=verbose)
         _WALK["at"] = index
         _PRICED_THIS_ROW.clear()
         sold_before = _FULL_SALES
@@ -4608,23 +4611,44 @@ def dungeon_turn(verbose=True, report_wait=True):
         dungeon.kill_and_finish(verbose=verbose)
         _DUNGEON["due"] = None
         acted = True
-    level = dungeon.next_level(dungeon.server_day())
-    if level is None:
-        if not _DUNGEON["spent"]:
-            print("  dungeon: every level is at its daily limit for this "
-                  "server day; trading only")
-        _DUNGEON["spent"] = True
-        return acted
-    _DUNGEON["spent"] = False
-    print(f"  dungeon: buying the level {level} key and starting the next "
-          f"one")
-    try:
-        _DUNGEON["due"] = dungeon.start(level, verbose=verbose, rotate=True)
-    except dungeon.NotAtStorm as exc:
-        print(f"  dungeon: {exc} We are not at the storm, so no more "
-              f"dungeons this run; trading only")
-        _DUNGEON["off"] = True
-    return True
+    while True:
+        if not dungeon.dungeon_open():
+            if not _DUNGEON["closed"]:
+                print(f"  dungeon: CAs start at {dungeon.START_AT} "
+                      f"{dungeon.RESET_ZONE.key} time each day; trading until "
+                      f"then")
+            _DUNGEON["closed"] = True
+            return acted
+        _DUNGEON["closed"] = False
+        if dungeon.off_today(dungeon.server_day()):
+            if not _DUNGEON["spent"]:
+                print("  dungeon: a CA ran past its time limit today, so no "
+                      "more dungeons until the next reset; trading only")
+            _DUNGEON["spent"] = True
+            return acted
+        level = dungeon.next_level(dungeon.server_day())
+        if level is None:
+            if not _DUNGEON["spent"]:
+                print("  dungeon: every level is at its daily limit for this "
+                      "server day; trading only")
+            _DUNGEON["spent"] = True
+            return acted
+        _DUNGEON["spent"] = False
+        print(f"  dungeon: buying the level {level} key and starting the "
+              f"next one")
+        acted = True
+        try:
+            _DUNGEON["due"] = dungeon.start(level, verbose=verbose,
+                                            rotate=True)
+        except dungeon.NotAtStorm as exc:
+            print(f"  dungeon: {exc} We are not at the storm, so no more "
+                  f"dungeons this run; trading only")
+            _DUNGEON["off"] = True
+            return True
+        if _DUNGEON["due"] is not None:
+            return True
+        print(f"  dungeon: level {level} ended before its wait; on to the "
+              f"next one")
 
 
 def dungeon_in_war(verbose=True):
@@ -4632,8 +4656,38 @@ def dungeon_in_war(verbose=True):
         calibration.close_everything(verbose=verbose)
 
 
+def dungeon_due():
+    due = _DUNGEON["due"]
+    return (due is not None and not _DUNGEON["off"]
+            and time.monotonic() >= due and dungeon_on())
+
+
+def dungeon_pause(verbose=True):
+    if not dungeon_due():
+        return False
+    print("")
+    print("DUNGEON: the boss is due; trading stops here and the dungeon "
+          "runs")
+    calibration.close_everything(verbose=verbose)
+    with calibration.phase("dungeon"):
+        dungeon_turn(verbose=verbose)
+    calibration.close_everything(verbose=verbose)
+    calibration.table_lost()
+    print("DUNGEON: over; trading resumes with every row, cost and floor it "
+          "held before")
+    return True
+
+
+def reopen_after_dungeon(model, verbose=True):
+    if not back_to_the_shop(verbose=verbose):
+        raise NotReady("the Agent Shop would not reopen after the dungeon.")
+    register_tab(verbose=verbose)
+    model.home(verbose=False)
+
+
 def avoid_war(verbose=True):
     world_boss_turn(verbose=verbose)
+    dungeon_pause(verbose=verbose)
     return war.avoid(allowance=PASS_ALLOWANCE, verbose=verbose,
                      waiting=lambda: dungeon_in_war(verbose))
 
@@ -5047,6 +5101,9 @@ def main():
         _dispatch(args)
     except KeyboardInterrupt:
         outcome, note = "STOPPED", "interrupted from the keyboard"
+        if dungeon_on():
+            import dungeon
+            dungeon.forget_active()
     except row_model.Divergence as exc:
         outcome, note = "STOPPED", f"{exc}"
     except BaseException as exc:

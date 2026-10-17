@@ -1093,7 +1093,7 @@ def balance_box():
             max(band[2], measured[2]), max(band[3], measured[3]))
 
 
-def read_balance_from(image):
+def read_balance_from(image, tesseract=True):
     import row_model
     box = balance_box()
     prepared = isolate_digits(image, box, row_model.BACKUP_SCALE)
@@ -1102,6 +1102,9 @@ def read_balance_from(image):
     if prepared is None:
         return None
     texts = row_model._backup_texts([prepared])
+    if texts is None and not tesseract:
+        raise RuntimeError("the Paddle reader did not answer; the Alz "
+                           "balance was not read.")
     seen = texts[0] if texts is not None else read_line(image, box)
     value = _digits(seen)
     if value is None or value < MIN_PLAUSIBLE_BALANCE:

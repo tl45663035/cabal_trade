@@ -462,8 +462,12 @@
   },
   "dungeon": {
     "enabled": false,
-    "order": [7, 6, 5, 4, 3, 2, 1],
+    "order": [3, 2, 1],
+    "reset_timezone": "America/Los_Angeles",
+    "reset_hour": 15,
+    "start_at": "15:30",
     "rotate_count": 2,
+    "trading_dungeon": "chaos_arena",
     "daily_limits": {"1": 5, "2": 5, "3": 5, "4": 7, "5": 7, "6": 10, "7": 15},
     "state_file": "dungeon_next.json",
     "storm": [738, 305],
@@ -487,7 +491,7 @@
       [506, 414, 741, 432]
     ],
     "enter_window": [1092, 878, 1131, 892],
-    "challenge_window": [785, 752, 850, 770],
+    "challenge_window": [781, 750, 855, 771],
     "exit_window": [1086, 753, 1113, 767],
     "level_pattern": "Chaos\\s*Arena\\s*Lv\\.?\\s*(\\d+)",
     "enter_word": "Enter",
@@ -498,13 +502,19 @@
     "challenge_settle": 1.0,
     "boss_wait": 360.0,
     "time_limit_seconds": 1200,
-    "keys": {"W": 87, "E": 69, "A": 65, "S": 83, "`": 192, "3": 51, "4": 52, "=": 187, "Enter": 13},
+    "hard_limit_seconds": 600,
+    "keys": {"W": 87, "E": 69, "A": 65, "S": 83, "`": 192, "3": 51, "4": 52, "5": 53, "7": 55, "8": 56, "0": 48, "=": 187, "Enter": 13},
     "shout_phrases": [],
     "inventory_tab": 1,
     "key_tab": 3,
     "relog_channels": ["Channel 11", "Channel 12"],
     "chat_icon": [19, 905],
     "shout_option": [44, 812],
+    "sequences_dir": "dungeon",
+    "trade_tabs": [
+      {"window": [68, 69, 137, 89], "word": "Purchase"},
+      {"window": [256, 69, 321, 89], "word": "Register"}
+    ],
     "shout": [
       ["tap", "Enter", 0.5],
       ["click", "chat_icon", 0.2],
@@ -555,10 +565,43 @@
       ["target", "`", 0.1],
       ["tap", "4", 0.5]
     ],
+    "kill_target_key": "`",
+    "kill_combo": [
+      ["tap", "3", 2.0],
+      ["tap", "8", 2.0],
+      ["tap", "4", 2.0],
+      ["tap", "7", 2.0],
+      ["tap", "5", 2.0]
+    ],
+    "main_bm": [837, 940],
+    "aura": [937, 940],
+    "bm_pot": [1187, 940],
+    "slots": {"A+1": [687, 940], "A+2": [737, 940]},
+    "bm_aura": ["main_bm", "aura"],
+    "bm_aura_for": 5.0,
+    "heal_key": "0",
+    "heal_every": 0.5,
+    "end_wait": 3.0,
+    "end_timeout": 60.0,
+    "chat_open": 0.5,
+    "target_every": 0.3,
+    "exit": [
+      ["button", "confirmation", 0.0],
+      ["button", "leave", 0.0]
+    ],
+    "defeat": [
+      ["button", "revive", 0.0]
+    ],
+    "offensive_buffs": {"C+1": [837, 882], "C+3": [937, 882], "C+4": [987, 882], "C+5": [1037, 882]},
+    "defensive_buffs": {"C+6": [1087, 882], "C+7": [1137, 882], "C+8": [1187, 882]},
+    "defensive_switch": 15.0,
+    "loop_gap": 0.5,
+    "use_gap": 1.5,
+    "bm_loop": ["main_bm", "aura", "C+1", "C+3", "C+4", "C+5", "defensive_buffs", "bm_pot"],
     "target_window": [810, 45, 1100, 58],
     "target_text_min": 150,
     "bosses": {
-      "1": "Chaotic Zidgris Faello",
+      "1": "Chaotic Zigdris Faello",
       "2": "Chaotic Mergaheph",
       "3": "Chaotic Killian Grausten",
       "4": "Chaotic Balrog",
@@ -579,7 +622,41 @@
       "key_cancel": {"window": [1075, 668, 1121, 684], "word": "Cancel"},
       "confirmation": {"window": [924, 313, 1058, 334], "word": "Confirmation"},
       "roll_dice": {"window": [395, 709, 464, 724], "word": "Roll a Dice"},
-      "final_exit": {"window": [322, 709, 352, 724], "word": "Exit"}
+      "final_exit": {"window": [322, 709, 352, 724], "word": "Exit"},
+      "warp_yes": {"window": [944, 601, 982, 620], "word": "Yes"},
+      "leave": {"window": [845, 805, 895, 826], "word": "Leave"},
+      "revive": {"window": [905, 678, 1021, 700], "word": "Confirmation"}
+    },
+    "dungeons": {
+      "chaos_arena": {
+        "locations": {
+          "CA1": {"entry": [41, 202], "name": "Chaos Arena Lv.1", "boss": "Chaotic Zigdris Faello"},
+          "CA2": {"entry": [88, 202], "name": "Chaos Arena Lv.2", "boss": "Chaotic Mergaheph"},
+          "CA3": {"entry": [136, 202], "name": "Chaos Arena Lv.3", "boss": "Chaotic Killian Grausten"},
+          "CA4": {"entry": [185, 202], "name": "Chaos Arena Lv.4", "boss": "Chaotic Balrog"},
+          "CA5": {"entry": [234, 202], "name": "Chaos Arena Lv.5", "boss": "Chaotic Orca"},
+          "CA6": {"entry": [282, 202], "name": "Chaos Arena Lv.6", "boss": "Chaotic Leth Tyrant"},
+          "CA7": {"entry": [330, 202], "name": "Chaos Arena Lv.7", "boss": "Dr.Mazel of Chaos"}
+        },
+        "targets": {
+          "Gate of Chaos": ["gate"],
+          "Chaotic Zigdris Faello": ["faello", "zigdris"],
+          "Chaotic Mergaheph": ["mergaheph"],
+          "Chaotic Killian Grausten": ["grausten", "killian"],
+          "Chaotic Balrog": ["balrog"],
+          "Chaotic Orca": ["orca"],
+          "Chaotic Leth Tyrant": ["leth", "tyrant"],
+          "Dr.Mazel of Chaos": ["mazel"]
+        },
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
+                     "get_to_gate", ["kill", "Gate of Chaos"], ["timer", 360],
+                     ["use", "A+1", "A+2"], "shout", ["wait_timer", 5],
+                     "inventory", "wait_timer", "bm_aura",
+                     ["kill_bm", "Gate of Chaos", "bm_aura"], "kill_phase",
+                     "get_to_middle", ["kill_bm", "boss"]],
+        "after_exit": [["wait", 3], "after_exit"],
+        "manual_exit": ["exit_dungeon"]
+      }
     },
     "finish": [
       ["button", "confirmation", 1.0],

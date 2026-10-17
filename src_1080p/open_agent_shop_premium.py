@@ -29,7 +29,7 @@ def grab():
     return Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
 
 
-def panel_open(image=None, verbose: bool = True) -> bool:
+def panel_open(image=None, verbose: bool = True, tesseract=True) -> bool:
     image = image if image is not None else grab()
     rules = calibration.grid_rules(image)
     if rules is not None and rules < calibration.GRID_RULES_MIN:
@@ -37,7 +37,7 @@ def panel_open(image=None, verbose: bool = True) -> bool:
             print(f"  Inventory shut: slot grid {rules:.2f}, "
                   f"needs {calibration.GRID_RULES_MIN}")
         return False
-    value = calibration.read_balance_from(image)
+    value = calibration.read_balance_from(image, tesseract)
     if value is None:
         return False
     if value < MIN_PLAUSIBLE_BALANCE:
@@ -93,8 +93,8 @@ def right_click(x: int, y: int, settle: float = None) -> None:
     calibration.right_click(x, y, settle=settle)
 
 
-def ensure_inventory_open(verbose: bool = True) -> None:
-    if panel_open():
+def ensure_inventory_open(verbose: bool = True, tesseract=True) -> None:
+    if panel_open(tesseract=tesseract):
         if verbose:
             print("  inventory already open")
         return
@@ -102,7 +102,7 @@ def ensure_inventory_open(verbose: bool = True) -> None:
     for attempt in range(1, TOGGLE_TRIES + 1):
         press(VK_I)
         time.sleep(ACTION_GAP)
-        if panel_open(verbose=(attempt == TOGGLE_TRIES)):
+        if panel_open(verbose=(attempt == TOGGLE_TRIES), tesseract=tesseract):
             if verbose:
                 print("  inventory opened"
                       + ("  (took more than one press -- it had been left "

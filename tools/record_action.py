@@ -100,6 +100,7 @@ user32.SetTimer.restype = ctypes.c_size_t
 user32.KillTimer.argtypes = [wintypes.HWND, ctypes.c_size_t]
 user32.GetKeyNameTextW.argtypes = [ctypes.c_long, wintypes.LPWSTR, ctypes.c_int]
 user32.SendInput.argtypes = [wintypes.UINT, ctypes.POINTER(INPUT), ctypes.c_int]
+user32.GetCursorPos.argtypes = [ctypes.POINTER(wintypes.POINT)]
 kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
 kernel32.GetModuleHandleW.restype = wintypes.HMODULE
 
@@ -114,6 +115,12 @@ def desktop():
             user32.GetSystemMetrics(W["SM_YVIRTUALSCREEN"]),
             user32.GetSystemMetrics(W["SM_CXVIRTUALSCREEN"]),
             user32.GetSystemMetrics(W["SM_CYVIRTUALSCREEN"])]
+
+
+def cursor_position():
+    point = wintypes.POINT()
+    user32.GetCursorPos(ctypes.byref(point))
+    return [point.x, point.y]
 
 
 def key_name(scan, extended):
@@ -163,6 +170,7 @@ class Recording:
         self.recording = False
         self.finished = False
         self.said = None
+        self.cursor = None
 
     def stamp(self, now, event):
         return {"t": round(now - self.zero, 6), **event}
@@ -215,6 +223,7 @@ class Recording:
     def toggle(self, now):
         if not self.recording:
             self.recording, self.zero, self.events = True, now, []
+            self.cursor = cursor_position()
             self.started = datetime.datetime.now()
             self.said = "started"
             self.gesture.reset()
@@ -326,7 +335,7 @@ def record(filming=False):
     width, height = screen()
     lines = [json.dumps({"kind": "start", "at": session.started.isoformat(
         timespec="seconds"), "screen": [width, height],
-        "desktop": desktop()})]
+        "desktop": desktop(), "cursor": session.cursor})]
     lines += [json.dumps(event) for event in session.events]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     counts = {}
