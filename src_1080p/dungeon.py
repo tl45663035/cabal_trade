@@ -1064,7 +1064,15 @@ def _state():
         known = json.loads(STATE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
-    return known if isinstance(known, dict) else {}
+    if not isinstance(known, dict):
+        return {}
+    if not known.get("server_dated"):
+        for key in ("day", "off_day"):
+            if known.get(key):
+                known[key] = (datetime.date.fromisoformat(known[key])
+                              + datetime.timedelta(days=1)).isoformat()
+        _save(known)
+    return known
 
 
 def internet_now():
@@ -1078,7 +1086,8 @@ def internet_now():
 def day_of(when):
     if when is None:
         return None
-    return (when.astimezone(RESET_ZONE) - RESET_HOUR).date().isoformat()
+    return ((when.astimezone(RESET_ZONE) - RESET_HOUR).date()
+            + datetime.timedelta(days=1)).isoformat()
 
 
 def server_day():
@@ -1095,6 +1104,7 @@ def dungeon_open():
 
 
 def _save(state):
+    state["server_dated"] = True
     STATE.write_text(json.dumps(state), encoding="utf-8")
 
 
@@ -1174,7 +1184,7 @@ def count_entry(level, rotate, today):
     if rotate:
         state.pop("next", None)
         state["last"] = level
-    STATE.write_text(json.dumps(state), encoding="utf-8")
+    _save(state)
     return ran[level], next_level(today)
 
 
