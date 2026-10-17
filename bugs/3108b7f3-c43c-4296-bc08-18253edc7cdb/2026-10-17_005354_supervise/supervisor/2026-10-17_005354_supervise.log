@@ -1,0 +1,194 @@
+2026-10-17_005354  .\supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_005354_supervise.log
+  screen 1920x1080
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-10-16_231627_run.log ended: interrupted from the keyboard,00:53:54,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-16_231627_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_005403_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-10-17_005411_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-10-17_005416_reset.png
+   2026-10-17_005417  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_005417_run.log
+     code 27a1176b
+     screen 1920x1080
+* relaunched (pid 6896),00:54:21,alive
+watching pid 6896, 2026-10-17_005417_run.log
+  pruned 45 frame(s), reel(s) and dead run(s) from before 2026-10-17
+* pushed the profit report for cang and all,00:59:43,alive
+* server lag: not answering,01:04:54,alive
+* server lag: the server stalled,01:05:16,alive
+* server lag: the server stalled,01:05:36,alive
+* pushed the profit report for cang and all,01:14:43,alive
+* server lag: not answering,01:16:26,alive
+* server lag: the server stalled,01:17:08,alive
+* pushed the profit report for cang and all,01:30:04,alive
+* server lag: not answering,01:43:34,alive
+* server lag: the server stalled,01:43:56,alive
+* server lag: the server stalled,01:44:16,alive
+* pushed the profit report for cang and all,01:45:24,alive
+* pushed the profit report for cang and all,02:00:25,alive
+* pushed the profit report for cang and all,02:15:45,alive
+* pushed the profit report for cang and all,02:30:48,alive
+* pushed the profit report for cang and all,02:45:58,alive
+* server lag: not answering,03:01:13,alive
+* pushed the profit report for cang and all,03:01:19,alive
+* server lag: the server stalled,03:01:40,alive
+* pushed the profit report for cang and all,03:16:39,alive
+* pushed the profit report for cang and all,03:31:41,alive
+* server lag: not answering,03:35:09,dead
+* stop condition: the panel still holds the item, priced 23,999,990, 3s after Confirmation and 21s of the server not answering; the registration did not go through. Not,03:35:09,dead
+* the panel still holds the item, priced 23,999,990, 3s after Confirmation and 21s of the server not answering; the registration did not go through. Not,03:35:09,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-17_005417_run
+  screen: disconnect=[962, 433], failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_033516_found.png
+  case: disconnect / login / select screen -> recovery.py
+$ py src_1080p/recovery.py
+     the username field at [962, 602]
+     the password field at [962, 643]
+     typed; waiting 10s before Login
+     'Channel 12' at [1558, 631]; entering
+     'SoloCabalLevelin' at [1626, 470]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as SoloCabalLevelin, the balance reads
+* recovered: back in the world,03:35:59,dead
+  frame 2026-10-17_033607_after_login.png
+  interrupted: relist row 7: 'Astral Board Card - Zero Black' x1 at 23,999,990 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Astral Board Card - Zero Black'; nothing on screen is read to name it
+  frame 2026-10-17_033614_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 7: 'Astral Board Card - Zero Black' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-10-17_033618_reset.png
+   2026-10-17_033620  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang --measured
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_033620_run.log
+     code 27a1176b
+     screen 1920x1080
+* relaunched (pid 8748), reusing this session's calibration,03:36:23,alive
+watching pid 8748, 2026-10-17_033620_run.log
+* pushed the profit report for cang and all,03:46:54,alive
+* pushed the profit report for cang and all,04:02:13,alive
+* pushed the profit report for cang and all,04:17:33,alive
+* the profit report was written but not pushed: git fetch origin main gave no answer in 30s,04:33:22,alive
+* pushed the profit report for cang and all,04:48:00,alive
+* pushed the profit report for cang and all,05:03:21,alive
+* pushed the profit report for cang and all,05:18:40,alive
+* NotReady: the Agent Shop would not reopen after resting.,05:31:52,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-17_033620_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_053201_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-10-17_053208_tab4_59slots.png
+  tab 4 holds 52 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 05:32:09, ended 05:32:29, ran for 19s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: NotReady: the Trade window would not open.
+* collect failed: driver.py --config cang collect exited 1: NotReady: the Trade window would not open.; carrying on,05:32:29,dead
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, whatever it is,05:32:29,dead
+$ py src_1080p/driver.py --config cang list 1 1 0 4
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 05:32:29, ended 05:32:49, ran for 19s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: NotReady: the Trade window would not open.
+* recovery attempt 1 failed: driver.py --config cang list 1 1 0 4 exited 1: NotReady: the Trade window would not open.; attempt 2 in 60s,05:32:49,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-17_033620_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_053358_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-10-17_053405_tab4_59slots.png
+  tab 4 holds 52 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 05:34:06, ended 05:34:25, ran for 19s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: NotReady: the Trade window would not open.
+* collect failed: driver.py --config cang collect exited 1: NotReady: the Trade window would not open.; carrying on,05:34:25,dead
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, whatever it is,05:34:25,dead
+$ py src_1080p/driver.py --config cang list 1 1 0 4
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 05:34:26, ended 05:34:46, ran for 19s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: NotReady: the Trade window would not open.
+* recovery attempt 2 failed: driver.py --config cang list 1 1 0 4 exited 1: NotReady: the Trade window would not open.; attempt 3 in 60s,05:34:46,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-17_033620_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_053554_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-10-17_053602_tab4_60slots.png
+  tab 4 holds 53 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 05:36:03, ended 05:36:22, ran for 19s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: NotReady: the Trade window would not open.
+* collect failed: driver.py --config cang collect exited 1: NotReady: the Trade window would not open.; carrying on,05:36:22,dead
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, whatever it is,05:36:22,dead
+$ py src_1080p/driver.py --config cang list 1 1 0 4
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 05:36:23, ended 05:36:43, ran for 19s
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ########      ######      ########  ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     ########  ##      ##  ##      ##  ########    ##      ##  ##########  ########  
+     crashed: NotReady: the Trade window would not open.
+* recovery failed 3 times: driver.py --config cang list 1 1 0 4 exited 1: NotReady: the Trade window would not open.; relogging (1 of 1),05:36:43,dead
+$ py src_1080p/recovery.py --relog
+     File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 592, in relog
+       logout(verbose=verbose)
+       ~~~~~~^^^^^^^^^^^^^^^^^
+     File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 566, in logout
+       raise Refused(
+           f"no {MENU_WORD!r} in the menu after {MENU_TRIES} Escape(s). "
+           f"Nothing clicked.")
+   Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.
+* the relog was refused too: relog refused: Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.,05:36:54,dead
+* supervisor stopped: driver.py --config cang list 1 1 0 4 exited 1: NotReady: the Trade window would not open.,05:36:54,dead

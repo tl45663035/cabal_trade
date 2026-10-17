@@ -1,0 +1,1109 @@
+{
+  "resupply": {
+    "enabled": true,
+    "stop_below_alz": 50000000,
+    "enable_buying": {
+      "Force Core(Highest)": false,
+      "Chaos Core": true,
+      "Divine Stone": false,
+      "Force Core (Ultimate)": false,
+      "Force Core(High)": false,
+      "Upgrade Core (Ultimate)": false
+    },
+    "cash_shop": {
+      "tabs": {
+        "default": "Useable"
+      },
+      "rows": {
+        "Yekaterina VIP Membership": 0,
+        "Force Gem Package": 0,
+        "Epic Booster (Highest)": 0,
+        "Armor Account bind Unseal Stone": 0,
+        "Armor Account bind Seal Stone": 0,
+        "Siena's Unbinding Stone": 0,
+        "Blessing Bead - Superior": 0,
+        "Arionell": 0
+      },
+      "scroll_limit": 45,
+      "currency": {
+        "Epic Booster (Highest)": {
+          "from": "Force Gem Package",
+          "per": 400
+        },
+        "Blessing Bead - Superior": {
+          "from": "Force Gem Package",
+          "per": 400
+        }
+      }
+    },
+    "rows_by_price": {
+      "Chaos Core": [
+        [0, 10],
+        [710000, 10],
+        [720000, 8],
+        [730000, 5],
+        [740000, 2],
+        [750000, 0]
+      ]
+    },
+    "rows_by_margin": {
+      "step": 5000,
+      "default": [
+        3
+      ],
+      "Force Core (Ultimate)": [
+        2
+      ],
+      "Upgrade Core (Ultimate)": [
+        2
+      ],
+      "Force Core(High)": [
+        2
+      ],
+      "Force Core(Highest)": [
+        2
+      ],
+      "Chaos Core": [
+        3,
+        5
+      ],
+      "Divine Stone": [
+        3
+      ]
+    },
+    "rows_by_margin_on": {
+      "days": [
+        "Fri",
+        "Sat",
+        "Sun"
+      ],
+      "Chaos Core": [
+        3,
+        5
+      ]
+    },
+    "buy_min": {
+      "default": 200,
+      "Yekaterina VIP Membership": 1,
+      "Chaos Core": 150,
+      "Divine Stone": 150,
+      "Force Gem Package": 1,
+      "Epic Booster (Highest)": 4,
+      "Armor Account bind Unseal Stone": 1,
+      "Armor Account bind Seal Stone": 1,
+      "Siena's Unbinding Stone": 1,
+      "Blessing Bead - Superior": 1,
+      "Arionell": 1
+    },
+    "craft_min_cores": {
+      "default": 0,
+      "Chaos Core": 18,
+      "Divine Stone": 18
+    },
+    "craft_alz_cores": {
+      "default": 0,
+      "Chaos Core": 30,
+      "Divine Stone": 30
+    },
+    "urgent_check": {
+      "default": 0,
+      "Chaos Core": 4,
+      "Divine Stone": 0
+    },
+    "buy_max": {
+      "default": 500,
+      "Chaos Core": 249,
+      "Divine Stone": 249
+    },
+    "buy_whole_row": {
+      "default": false,
+      "Chaos Core": true,
+      "Divine Stone": false
+    },
+    "special_row": {
+      "enabled": true,
+      "cores": [
+        "Chaos Core",
+        "Divine Stone"
+      ],
+      "under_market": 500,
+      "under_random_range": 200,
+      "rows": 1,
+      "qty": 10,
+      "takes_turns": {
+        "default": false,
+        "Chaos Core": true
+      },
+      "at_set_market": {
+        "default": false,
+        "Chaos Core": true
+      },
+      "under_set_market": {
+        "default": 0,
+        "Chaos Core": 7000
+      },
+      "under_set_spread": 200
+    },
+    "buy_random_range": 15,
+    "buy_scroll_limit": 30,
+    "buy_take_all_after": 10,
+    "core_offer_rows": 5,
+    "buy_leave_behind": {
+      "default": 0,
+      "Chaos Core": 1,
+      "Divine Stone": 1
+    },
+    "buy_skip_rows_up_to": {
+      "default": 0,
+      "Chaos Core": 10
+    },
+    "buy_under_lister": {
+      "default": 0,
+      "Chaos Core": 0,
+      "Divine Stone": 0
+    },
+    "buy_under_gap": {
+      "default": 5000
+    },
+    "buy_retries": 3,
+    "order": [
+      "Yekaterina VIP Membership",
+      "Chaos Core",
+      "Force Core(High)",
+      "Force Core(Highest)",
+      "Upgrade Core (Ultimate)",
+      "Force Core (Ultimate)"
+    ]
+  },
+  "run": {
+    "relist_from": 1,
+    "relist_to": 30,
+    "undercut_by": 1,
+    "max_drop": {
+      "default": 10000,
+      "Yekaterina VIP Membership": 1000000,
+      "Force Gem Package": 1000000,
+      "Epic Booster (Highest)": 1000000,
+      "Armor Account bind Unseal Stone": 1000000,
+      "Armor Account bind Seal Stone": 1000000,
+      "Siena's Unbinding Stone": 1000000,
+      "Blessing Bead - Superior": 1000000,
+      "Arionell": 1000000
+    },
+    "home_notches": 30,
+    "for_minutes": 10000,
+    "price_check_factor": 5.0,
+    "item_check_factor": 0.3,
+    "stop_key_presses": 2,
+    "stop_key_window": 1.5,
+    "stop_key_hold": 0.12,
+    "floor_break_after": 10000,
+    "game_wait_retries": 3,
+    "voucher_default": 380000000,
+    "voucher_floor": {
+      "Yekaterina VIP Membership": {
+        "ratio": 300,
+        "any": [
+          "Yekaterina",
+          "Membership",
+          [
+            "Yekaterina",
+            "VIP"
+          ],
+          [
+            "VIP",
+            "Membership"
+          ],
+          [
+            "Yekaterina",
+            "Membership"
+          ]
+        ]
+      },
+      "Force Gem Package": {
+        "ratio": 500,
+        "any": [
+          "Force Gem",
+          "Gem Package",
+          [
+            "Force",
+            "Gem"
+          ],
+          [
+            "Gem",
+            "Package"
+          ],
+          [
+            "Force",
+            "Package"
+          ]
+        ]
+      },
+      "Epic Booster (Highest)": {
+        "ratio": 125,
+        "any": [
+          [
+            "Epic",
+            "Booster",
+            "Highest"
+          ],
+          [
+            "Booster",
+            "Highest"
+          ]
+        ]
+      },
+      "Armor Account bind Unseal Stone": {
+        "ratio": 500,
+        "any": [
+          [
+            "Armor",
+            "Unseal"
+          ]
+        ]
+      },
+      "Armor Account bind Seal Stone": {
+        "ratio": 500,
+        "any": [
+          [
+            "Armor",
+            "Seal"
+          ]
+        ]
+      },
+      "Siena's Unbinding Stone": {
+        "ratio": 200,
+        "any": [
+          [
+            "Siena",
+            "Unbinding"
+          ],
+          "Siena"
+        ]
+      },
+      "Blessing Bead - Superior": {
+        "ratio": 437,
+        "any": [
+          [
+            "Blessing",
+            "Superior"
+          ]
+        ]
+      },
+      "Arionell": {
+        "ratio": 750,
+        "any": [
+          "Arionell"
+        ]
+      }
+    },
+    "hard_min_per_unit": {
+      "Chaos Core Set": 650000,
+      "Divine Stone Set": 650000,
+      "Upgrade Core (Ultimate)": 1000,
+      "Force Core (Ultimate)": 1000,
+      "Force Core(Highest)": 1000,
+      "Force Core(High)": 1000
+    },
+    "never_buy_above": {
+      "Chaos Core": 750000,
+      "Chaos Core Set": 750000
+    },
+    "never_list_below": {
+      "Chaos Core": 650000,
+      "Chaos Core Set": 650000
+    },
+    "price_trust_multiple": 10,
+    "screen": "1920x1080",
+    "first_list_price": {
+      "Arionell": 320000000,
+      "Blessing Bead - Superior": 194000000,
+      "Armor Account bind Seal Stone": 200000000,
+      "Armor Account bind Unseal Stone": 200000000,
+      "Force Gem Package": 200000000,
+      "Siena's Unbinding Stone": 100000000
+    }
+  },
+  "debug": {
+    "frames": true,
+    "video": false,
+    "board_trace": true,
+    "keep_frames": 3000,
+    "frames_queued": 64,
+    "video_fps": 15,
+    "video_seconds": 180,
+    "keep_videos": 5,
+    "video_scale": 0.5,
+    "prune_every": 50,
+    "min_free_mb": 3072,
+    "banner_scale": 2,
+    "banner_colours": {
+      "FINISHED": "32",
+      "STOPPED": "33",
+      "CRASHED": "31"
+    },
+    "frame_index": "frames.jsonl"
+  },
+  "timing": {
+    "action_gap": 0.5,
+    "key_hold": 0.02,
+    "key_gap": 0.05,
+    "focus_settle": 0.35,
+    "wheel_gap": 0.12,
+    "park_settle": 0.25,
+    "withdraw_settle": 0.5,
+    "tab_settle": 0.6,
+    "poll_gap": 0.0,
+    "search_timeout": 3.0,
+    "search_retries": 20,
+    "dialog_timeout": 3.0,
+    "buy_dialog_timeout": 3.0,
+    "craft_window_timeout": 8.0,
+    "cash_confirm_timeout": 8.0,
+    "retry_gap": 1.0,
+    "hover_settle": 0.15,
+    "modifier_settle": 0.25,
+    "click_hold": 0.12,
+    "receipt_settle": 0.5,
+    "panel_reread_gap": 1.0,
+    "shop_check_gap": 1.0,
+    "field_settle": 0.05,
+    "clear_gap": 0.02,
+    "server_lag_idle": 30.0,
+    "server_lag_budget": 600.0,
+    "server_lag_poll": 5.0,
+    "craft_settle_max": 300.0,
+    "craft_poll": 0.5,
+    "craft_finish_settle": 5.0,
+    "stop_key_poll": 0.03,
+    "gift_gap": 0.5,
+    "gift_open_tries": 2,
+    "search_settle": 1.5,
+    "favourite_gap": 1.0,
+    "convert_grid_settle": 2.0,
+    "refresh_settle": 0.05,
+    "stale_sweep": 1.0,
+    "git_timeout": 5,
+    "toggle_tries": 2,
+    "change_retries": 1,
+    "cash_measure_timeout": 2.0,
+    "panel_load_timeout": 2.0,
+    "panel_poll_gap": 0.1
+  },
+  "war": {
+    "enabled": true,
+    "start_hours": [
+      1,
+      4,
+      7,
+      10,
+      13,
+      16,
+      19,
+      22
+    ],
+    "war_minutes": 30,
+    "quiet_from_end": 120,
+    "quiet_seconds": 120,
+    "pass_allowance": 60,
+    "online_every": 60
+  },
+  "recovery": {
+    "screen_timeout": 25.0,
+    "world_timeout": 120.0,
+    "sub_password_wait": 12.0,
+    "after_typing_wait": 10.0,
+    "failed_retry_wait": 5.0,
+    "reconnect_settle": 60.0,
+    "character_wait": 90.0,
+    "login_tries": 6,
+    "reconnect_tries": 4,
+    "notice_tries": 3,
+    "clear_keys": 32,
+    "double_gap": 0.08,
+    "phrase_gap_x": 260,
+    "phrase_gap_y": 16,
+    "password_above_login": 86,
+    "username_above_login": 127,
+    "panel_reach": 0.16,
+    "near_above": 10,
+    "keypad_columns": 6,
+    "keypad_rows": 2,
+    "notice_ok_wait": 2.0,
+    "disconnect_ok_wait": 10.0,
+    "dual_yes_wait": 2.0,
+    "failed_confirm_wait": 2.0,
+    "disconnect_words": [
+      "disconnect",
+      "disconnected",
+      "log-out",
+      "logged"
+    ],
+    "failed_words": [
+      "failed to connect",
+      "try later"
+    ],
+    "dual_words": [
+      "dual login",
+      "already in use",
+      "like to reconnect"
+    ],
+    "login_word": "login",
+    "ok_word": "ok",
+    "confirm_word": "confirmation",
+    "yes_word": "yes",
+    "enter_word": "enter server",
+    "previous_word": "previous screen",
+    "menu_word": "select character",
+    "menu_tries": 3,
+    "menu_wait": 3.0,
+    "logout_yes_wait": 5.0,
+    "logout_wait": 30.0
+  },
+  "dungeon": {
+    "enabled": false,
+    "order": [7, 6, 5, 4, 3, 2, 1],
+    "rotate_count": 2,
+    "daily_limits": {"1": 5, "2": 5, "3": 5, "4": 7, "5": 7, "6": 10, "7": 15},
+    "state_file": "dungeon_next.json",
+    "storm": [738, 305],
+    "storm_settle": 3.0,
+    "park": [1400, 600],
+    "tab_one": [692, 900],
+    "tab_two": [727, 900],
+    "slot_above_5": [887, 940],
+    "slot_above_6": [937, 940],
+    "slot_c1": [837, 882],
+    "slot_c3": [937, 882],
+    "slot_c4": [987, 882],
+    "slot_c5": [1037, 882],
+    "level_windows": [
+      [506, 264, 741, 282],
+      [506, 289, 741, 307],
+      [506, 314, 741, 332],
+      [506, 339, 741, 357],
+      [506, 364, 741, 382],
+      [506, 389, 741, 407],
+      [506, 414, 741, 432]
+    ],
+    "enter_window": [1092, 878, 1131, 892],
+    "challenge_window": [785, 752, 850, 770],
+    "exit_window": [1086, 753, 1113, 767],
+    "level_pattern": "Chaos\\s*Arena\\s*Lv\\.?\\s*(\\d+)",
+    "enter_word": "Enter",
+    "challenge_word": "Challenge",
+    "exit_word": "Exit",
+    "select_settle": 0.5,
+    "enter_settle": 2.0,
+    "challenge_settle": 1.0,
+    "boss_wait": 360.0,
+    "time_limit_seconds": 1200,
+    "keys": {"W": 87, "E": 69, "A": 65, "S": 83, "`": 192, "3": 51, "4": 52, "=": 187, "Enter": 13},
+    "shout_phrases": [],
+    "inventory_tab": 1,
+    "key_tab": 3,
+    "relog_channels": ["Channel 11", "Channel 12"],
+    "chat_icon": [19, 905],
+    "shout_option": [44, 812],
+    "shout": [
+      ["tap", "Enter", 0.5],
+      ["click", "chat_icon", 0.2],
+      ["click", "shout_option", 0.1],
+      ["type", "shout_phrases", 0.0],
+      ["tap", "Enter", 0.0]
+    ],
+    "arrive": [
+      ["hold", "W", 9.0],
+      ["wait", null, 1.0],
+      ["hold", "E", 7.5],
+      ["wait", null, 1.0],
+      ["tap", "A", 1.0],
+      ["tap", "A", 1.0],
+      ["hold", "W", 10.0],
+      ["do", "break_gate", 0.0],
+      ["click", "tab_two", 0.5],
+      ["tap", "=", 0.0],
+      ["hold", "E", 0.75],
+      ["tap", "S", 0.0]
+    ],
+    "break_gate": [
+      ["inventory", null, 0.0],
+      ["click", "tab_one", 0.5],
+      ["tap", "`", 0.5],
+      ["tap", "3", 3.0],
+      ["tap", "4", 0.0]
+    ],
+    "kill_boss": [
+      ["do", "break_gate", 0.0],
+      ["click", "tab_two", 0.5],
+      ["hold", "W", 7.0],
+      ["do", "hit_boss", 0.0]
+    ],
+    "hit_boss": [
+      ["rightclick", "slot_above_5", 0.5],
+      ["rightclick", "slot_c1", 1.0],
+      ["rightclick", "slot_c3", 1.0],
+      ["rightclick", "slot_c4", 1.0],
+      ["rightclick", "slot_c5", 0.5],
+      ["repeat", "boss_combo", 80.0],
+      ["rightclick", "slot_above_6", 0.5],
+      ["repeat", "boss_combo", 50.0]
+    ],
+    "boss_combo": [
+      ["target", "`", 0.1],
+      ["tap", "3", 0.5],
+      ["target", "`", 0.1],
+      ["tap", "4", 0.5]
+    ],
+    "target_window": [810, 45, 1100, 58],
+    "target_text_min": 150,
+    "bosses": {
+      "1": "Chaotic Zidgris Faello",
+      "2": "Chaotic Mergaheph",
+      "3": "Chaotic Killian Grausten",
+      "4": "Chaotic Balrog",
+      "5": "Chaotic Orca",
+      "6": "Chaotic Leth Tyrant",
+      "7": "Dr.Mazel of Chaos"
+    },
+    "cleared_window": [791, 267, 1168, 293],
+    "cleared_pattern": "Cleared\\s*dungeon",
+    "key_cells": [[41, 202], [88, 202], [136, 202], [185, 202], [234, 202], [282, 202], [330, 202]],
+    "key_window": [757, 405, 893, 426],
+    "key_pattern": "Key\\s*of\\s*Chaos\\s*Lv\\.?\\s*(\\d+)",
+    "buy_settle": 1.0,
+    "transfer_timeout": 20.0,
+    "buttons": {
+      "shop_dungeon": {"window": [110, 149, 176, 166], "word": "Dungeon"},
+      "key_ok": {"window": [953, 669, 976, 684], "word": "OK"},
+      "key_cancel": {"window": [1075, 668, 1121, 684], "word": "Cancel"},
+      "confirmation": {"window": [924, 313, 1058, 334], "word": "Confirmation"},
+      "roll_dice": {"window": [395, 709, 464, 724], "word": "Roll a Dice"},
+      "final_exit": {"window": [322, 709, 352, 724], "word": "Exit"}
+    },
+    "finish": [
+      ["button", "confirmation", 1.0],
+      ["button", "roll_dice", 1.0],
+      ["button", "final_exit", 2.0]
+    ]
+  },
+  "world_boss": {
+    "enabled": false,
+    "trading_lead": 120,
+    "resume_wait": 30.0,
+    "time_limit": 600,
+    "timezone": "America/Los_Angeles",
+    "stop_presses": 3,
+    "stop_window": 1.5,
+    "spawn_times": ["00:32", "12:32"],
+    "channels": [4, 5, 8, 9],
+    "home_channels": [11, 12],
+    "prepare_lead": 30,
+    "prepare_channel": 1,
+    "prepare_wait": 5.0,
+    "tab_two": [727, 900],
+    "pot_slots": [[1037, 940], [1087, 940], [1137, 940], [1187, 940]],
+    "pot_delay": 3.0,
+    "pot_gap": 1.0,
+    "kill_delay": 1.0,
+    "target_vk": 192,
+    "target_every": 1.0,
+    "heal_vk": 48,
+    "heal_every": 1.0,
+    "heal_offset": 0.1,
+    "key_spacing": 0.1,
+    "buff_after_spawn": 5.0,
+    "offensive_buffs": {"C+1": [837, 882], "C+3": [937, 882], "C+4": [987, 882], "C+5": [1037, 882]},
+    "defensive_buffs": {"C+6": [1087, 882], "C+7": [1137, 882], "C+8": [1187, 882]},
+    "defensive_switch": 15.0,
+    "bm_icon": [254, 148],
+    "bm_lead": 5.0,
+    "main_bm": [837, 940],
+    "alternate_bm": [887, 940],
+    "aura": [937, 940],
+    "bm_pot": [1187, 940],
+    "powerful_pot": [1237, 940],
+    "powerful_pot_after": 5.0,
+    "powerful_levels": [3, 4, 5],
+    "burst_levels": [1, 2],
+    "burst_channel": 9,
+    "loop_gap": 0.5,
+    "main_loop": ["main_bm", "aura", "bm_pot", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
+    "alternate_loop": ["alternate_bm", "bm_pot", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
+    "warmup_for": 10.0,
+    "main_warmup": ["main_bm", "aura"],
+    "alternate_warmup": ["alternate_bm"],
+    "mode_duration": 97.0,
+    "main_bm_cooldown": 30.0,
+    "online_every": 60,
+    "final_sync": 10,
+    "escape_tries": 8,
+    "escape_gap": 0.25,
+    "menu_window": [903, 501, 1014, 521],
+    "menu_word": "Select Channel",
+    "list_window": [795, 432, 1000, 672],
+    "channel_pattern": "Channel\\s*(\\d+)",
+    "list_timeout": 3.0,
+    "scroll_point": [868, 551],
+    "scroll_tries": 3,
+    "hover_settle": 0.05,
+    "click_hold": 0.06,
+    "double_gap": 0.08,
+    "dialog_timeout": 3.0,
+    "yes_window": [944, 601, 982, 620],
+    "yes_word": "Yes",
+    "reward_window": [1079, 340, 1224, 363],
+    "reward_word": "Participation Reward",
+    "raid_result_window": [609, 241, 1306, 816],
+    "reward_fresh_frames": 2,
+    "reward_shot_timeout": 0.2,
+    "damage_window": [755, 692, 1000, 725],
+    "damage_pattern": "Contribution\\s*[:：]?\\s*([\\d,]+)",
+    "reward_slot_window": [1114, 393, 1236, 513],
+    "reward_empty_image": "reference/raid_reward_empty.png",
+    "reward_pixel_diff": 40,
+    "reward_share": 0.03,
+    "boss_bar": [802, 106, 1198, 131],
+    "boss_bar_ink": 170,
+    "ink_margin": 4,
+    "boss_bar_pattern": "^(.+?)\\s*\\d[\\d,]*\\s*/\\s*[\\d,]+$",
+    "boss_title": [780, 44, 1140, 82],
+    "boss_title_ink": {"red_min": 200, "green_min": 40, "green_max": 140, "blue_max": 60},
+    "boss_word_pattern": "[A-Za-z][A-Za-z']{2,}",
+    "boss_stop_pattern": "[\\d%/]",
+    "bosses": [
+      {"name": "Volcanic Heart Margonos", "min_points": 950000, "level": 1},
+      {"name": "Attacker Ragno", "min_points": 1000000, "level": 1},
+      {"name": "Mark of Destruction Reims", "min_points": 1100000, "level": 1},
+      {"name": "Deadly Horn Uhorn", "min_points": 1150000, "level": 2},
+      {"name": "Wandring Spirit Seth", "min_points": 1250000, "level": 2},
+      {"name": "Guardian of Altar Zaken", "min_points": 1300000, "level": 3},
+      {"name": "Future Weapon Gustav-Zg", "min_points": 1400000, "level": 3},
+      {"name": "Punisher of Flame Hellrider", "min_points": 1600000, "level": 4},
+      {"name": "Wrath of Arcane Golem", "min_points": 1800000, "level": 4},
+      {"name": "Ancient Destroyer Kelosus", "min_points": 2150000, "level": 5},
+      {"name": "Ancient Vanguard Kargos", "min_points": 2150000, "level": 5}
+    ],
+    "history_file": "world_boss_history.jsonl",
+    "shots_dir": "world_boss_shots",
+    "shots_days": 7
+  },
+  "supervise": {
+    "poll": 20,
+    "quiet_after": 150,
+    "screen_gap": 60,
+    "disconnect_kill": 5,
+    "command_timeout": 1800,
+    "login_timeout": 900,
+    "tool_timeout": 30,
+    "launch_wait": 40,
+    "launch_settle": 3,
+    "short_run": 300,
+    "short_runs": 3,
+    "relog_tries": 1,
+    "task_cap": 8,
+    "dialog_settle": 5,
+    "dialog_tries": 3,
+    "tooltip_settle": 1.2,
+    "hover_cap": 40,
+    "slot_reads": 3,
+    "slot_read_gap": 1.0,
+    "keep_frames": 120,
+    "keep_reels": 1,
+    "keep_dead_runs": 5,
+    "escape_settle": 1,
+    "stall_wait": 60,
+    "stall_retries": 2,
+    "held_reasons": [
+      "ServerStalled",
+      "the dialog stayed open"
+    ],
+    "held_wait": 180,
+    "held_retries": 20,
+    "recover_wait": 60,
+    "recover_retries": 2,
+    "record": {
+      "fps": 4,
+      "pre": 45,
+      "tail": 45,
+      "abandon": 240,
+      "cap": 1800,
+      "scale": 0.5,
+      "quality": 80,
+      "codec": [
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "26",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart"
+      ],
+      "on": [
+        "disconnect"
+      ],
+      "done": [
+        "relaunched",
+        "supervisor stopped",
+        "supervisor crashed",
+        "supervisor cancelled"
+      ]
+    },
+    "launch_poll": 1,
+    "run_pointer": "latest_run.txt",
+    "tail_lines": 8,
+    "head_lines": 4,
+    "line_width": 140,
+    "reason_width": 150,
+    "report_every": 900,
+    "report_dir": "profit_reports",
+    "report_name": "summary.txt",
+    "report_tool": "tools/profit_summary.py",
+    "networth_every": 300,
+    "networth_name": "networth.txt",
+    "networth_graph": "networth.svg",
+    "networth_tool": "tools/networth_log.py",
+    "networth_history": "networth_history_{config}.csv",
+    "networth_history_report": "networth_history.csv",
+    "artifacts_dir": "artifacts",
+    "networth_timeout": 60,
+    "report_branch": "main",
+    "report_index": "report_index",
+    "report_mode": "100644",
+    "report_tries": 3,
+    "report_timeout": 300,
+    "report_message": "profit report for {config} at {at}",
+    "all_dir": "all",
+    "all_configs": [
+      "bot",
+      "cang",
+      "trung"
+    ],
+    "all_tool": "tools/profit_all.py",
+    "all_networth_tool": "tools/networth_all.py",
+    "ledger_tool": "tools/ledger_export.py",
+    "ledger_tables": [
+      "sales",
+      "purchases",
+      "board"
+    ],
+    "all_for": "bot",
+    "report_ready": "relisting rows \\d+-\\d+: \\d+ relisted",
+    "start_up_done": "^relisting rows \\d+-\\d+ for "
+  },
+  "stock_up": {
+    "enabled": false,
+    "item": "Chaos Core Set",
+    "below_fallback": 727000,
+    "below_override": 0,
+    "budget": 1000000000,
+    "ledger_note": "stock up",
+    "buy_gap": 1,
+    "weekly_above": 500,
+    "set_max": 999,
+    "full_row_from_end": 0,
+    "rest_row_from_end": 1
+  },
+  "divide": {
+    "window": [924, 583, 1016, 602],
+    "word": "Confirmation"
+  },
+  "input": {
+    "VK_SHIFT": 16
+  },
+  "tools": {
+    "switch_chan_test": {
+      "config": "cang",
+      "channels": [1, 4, 5, 8, 9, 11, 12],
+      "wait": 3.0,
+      "rounds": 2
+    },
+    "recorder": {
+      "folder": "recordings",
+      "toggle_taps": 2,
+      "toggle_window": 0.8,
+      "pump_ms": 50,
+      "timer_resolution_ms": 1,
+      "spin_below": 0.002,
+      "screen_fps": 5,
+      "screen_monitor": 1,
+      "screen_folder": "screen",
+      "screen_index": "frames.jsonl",
+      "win": {
+        "WH_KEYBOARD_LL": 13,
+        "WH_MOUSE_LL": 14,
+        "WM_KEYDOWN": 256,
+        "WM_KEYUP": 257,
+        "WM_SYSKEYDOWN": 260,
+        "WM_SYSKEYUP": 261,
+        "WM_MOUSEMOVE": 512,
+        "WM_LBUTTONDOWN": 513,
+        "WM_LBUTTONUP": 514,
+        "WM_RBUTTONDOWN": 516,
+        "WM_RBUTTONUP": 517,
+        "WM_MBUTTONDOWN": 519,
+        "WM_MBUTTONUP": 520,
+        "WM_MOUSEWHEEL": 522,
+        "WM_XBUTTONDOWN": 523,
+        "WM_XBUTTONUP": 524,
+        "WM_MOUSEHWHEEL": 526,
+        "LLKHF_EXTENDED": 1,
+        "LLKHF_INJECTED": 16,
+        "LLMHF_INJECTED": 1,
+        "VK_CONTROL": 17,
+        "VK_LCONTROL": 162,
+        "VK_RCONTROL": 163,
+        "INPUT_MOUSE": 0,
+        "INPUT_KEYBOARD": 1,
+        "INPUT_STRUCT_SIZE": 40,
+        "KEYEVENTF_EXTENDEDKEY": 1,
+        "KEYEVENTF_KEYUP": 2,
+        "KEYEVENTF_SCANCODE": 8,
+        "MOUSEEVENTF_MOVE": 1,
+        "MOUSEEVENTF_LEFTDOWN": 2,
+        "MOUSEEVENTF_LEFTUP": 4,
+        "MOUSEEVENTF_RIGHTDOWN": 8,
+        "MOUSEEVENTF_RIGHTUP": 16,
+        "MOUSEEVENTF_MIDDLEDOWN": 32,
+        "MOUSEEVENTF_MIDDLEUP": 64,
+        "MOUSEEVENTF_XDOWN": 128,
+        "MOUSEEVENTF_XUP": 256,
+        "MOUSEEVENTF_WHEEL": 2048,
+        "MOUSEEVENTF_HWHEEL": 4096,
+        "MOUSEEVENTF_ABSOLUTE": 32768,
+        "XBUTTON1": 1,
+        "XBUTTON2": 2,
+        "SM_CXSCREEN": 0,
+        "SM_CYSCREEN": 1,
+        "SM_XVIRTUALSCREEN": 76,
+        "SM_YVIRTUALSCREEN": 77,
+        "SM_CXVIRTUALSCREEN": 78,
+        "SM_CYVIRTUALSCREEN": 79,
+        "MOUSEEVENTF_VIRTUALDESK": 16384,
+        "ABSOLUTE_SPAN": 65536,
+        "HIGH_WORD_SHIFT": 16,
+        "KEY_NAME_SCAN_SHIFT": 16,
+        "KEY_NAME_EXTENDED_SHIFT": 24,
+        "KEY_NAME_CHARS": 64
+      }
+    },
+    "online_clock": {
+      "servers": [
+        "time.windows.com",
+        "pool.ntp.org"
+      ],
+      "port": 123,
+      "timeout": 3,
+      "every": 3600,
+      "cache": "online_clock.json",
+      "epoch": "1900-01-01",
+      "request": 27,
+      "packet": 48,
+      "received_at": 32,
+      "transmitted_at": 40,
+      "fraction_bits": 32
+    },
+    "profit_days_back": 7,
+    "live_within": 600,
+    "log_tail_lines": 40,
+    "calib_repeats": 100,
+    "calib_fail_limit": 3,
+    "launch_slack": 90,
+    "short_b": 1000000000,
+    "short_m": 1000000,
+    "short_k": 1000,
+    "short_gap": 2,
+    "short_field": 10,
+    "short_head": 32,
+    "short_board_fields": 7,
+    "short_item_fields": 4,
+    "short_indent": 7,
+    "short_places": 2,
+    "networth_field": 16,
+    "networth_graph": {
+      "width": 1200,
+      "margin": 20,
+      "gap": 20,
+      "card_height": 470,
+      "radius": 12,
+      "pad": 24,
+      "eyebrow_y": 32,
+      "eyebrow_spacing": 1.4,
+      "eyebrow_font": 18,
+      "title_y": 60,
+      "detail_y": 84,
+      "big_y": 62,
+      "big_font": 30,
+      "big_note_y": 84,
+      "title_font": 21,
+      "font": 13,
+      "small": 11,
+      "axis_room": 116,
+      "plot_bottom": 42,
+      "label_pad": 10,
+      "tick": 5,
+      "hour_label_y": 20,
+      "base_width": 1.5,
+      "dash": "3 4",
+      "line": 2.25,
+      "dot": 5,
+      "dot_ring": 2.5,
+      "area_opacity": 0.15,
+      "char_w": 0.6,
+      "end": {
+        "gap": 12,
+        "line": 17,
+        "lift": 4,
+        "halo": 4,
+        "font": 15,
+        "slope": 30
+      },
+      "ticks": 5,
+      "steps": [
+        1,
+        2,
+        2.5,
+        5,
+        10
+      ],
+      "flat_span": 10000000,
+      "today": {
+        "plot_top": 112,
+        "hours": 2,
+        "guides": 6
+      },
+      "week": {
+        "plot_top": 150,
+        "hours": 12,
+        "day_label_y": 116,
+        "change_y": 134,
+        "every": 3
+      },
+      "colors": {
+        "page": "#eef2ef",
+        "card": "#ffffff",
+        "edge": "#dbe3de",
+        "ink": "#16211b",
+        "muted": "#5f6b65",
+        "grid": "#e3e9e5",
+        "base": "#16211b",
+        "stripe": "#f5f8f6",
+        "gain": "#1d8a53",
+        "loss": "#c4402b",
+        "accent": "#2b5d87",
+        "title": "#6741d9"
+      },
+      "flow_colors": {
+        "page": "#eef2ef",
+        "card": "#152131",
+        "edge": "#24364a",
+        "ink": "#eaf1f8",
+        "muted": "#93a6ba",
+        "grid": "#243548",
+        "base": "#eaf1f8",
+        "stripe": "#1b2b3d",
+        "gain": "#3ddc84",
+        "loss": "#ff6b6b",
+        "accent": "#7cc4ff",
+        "title": "#ffd166"
+      },
+      "face": "Segoe UI, Helvetica Neue, Arial, sans-serif"
+    }
+  },
+  "bugs": {
+    "folder": "bugs",
+    "remote": "origin",
+    "branch": "main",
+    "push_retries": 3,
+    "max_file_mb": 95,
+    "frames_before": 8,
+    "frames_after": 8,
+    "events_per_pattern": 4,
+    "max_frames": 120,
+    "keep_reports": 6,
+    "event_patterns": [
+      "Traceback",
+      "crashed:",
+      "the price places must agree",
+      "too far apart for the read",
+      "was typed but the panel shows",
+      "refusing to list",
+      "is the price of nothing",
+      "the question was declined",
+      "under the hard minimum",
+      "this is not '",
+      "nothing came out of tab",
+      "would not read"
+    ]
+  },
+  "ocr": {
+    "backup_python": "../.paddle/Scripts/python.exe",
+    "backup_python_version": "3.13",
+    "backup_packages": [
+      "paddlepaddle==3.3.1",
+      "paddleocr==3.7.0"
+    ],
+    "backup_reader": "paddle_reader.py",
+    "backup_model": "PP-OCRv5_mobile_rec",
+    "backup_scale": 4,
+    "backup_start_timeout": 60,
+    "backup_timeout": 10,
+    "backup_check": {
+      "sample": "1,729,428,170",
+      "font": "arial.ttf",
+      "size": 40,
+      "margin": 20
+    },
+    "parallel_reads": 4
+  },
+  "regions": {
+    "craft_material_line": [0.0964, 0.4539, 0.2813, 0.4797]
+  },
+  "detect": {
+    "craft_warm_level": 128,
+    "craft_warm_margin": 80,
+    "craft_warm_pixels": 100,
+    "slot_inset": 6,
+    "slot_occupied_brightness": 42,
+    "price_box_widen_left": 23,
+    "qty_read_left": 27,
+    "qty_read_right": 23,
+    "panel_item_half": 24,
+    "panel_diff_threshold": 40,
+    "price_rechecks": 2,
+    "panel_price_inset": 25,
+    "panel_price_lift": 3,
+    "panel_alz_gap": 2,
+    "price_agree_slack": 2,
+    "price_witnesses": 3,
+    "register_box_margin": 3,
+    "register_line_share": 0.9,
+    "register_line_contrast": 5,
+    "register_line_reach": 2,
+    "register_interior_max": 20
+  },
+  "game_facts": {
+    "server_utc_offset_hours": 2,
+    "craft_collect_tab": 1,
+    "register_columns": ["name", "qty", "price", "status", "button"]
+  },
+  "messaging": {
+    "library": "paho-mqtt==2.1.0",
+    "install_timeout": 180,
+    "host": "broker.emqx.io",
+    "port": 8883,
+    "topic_prefix": "cabal-dbe9f59e7c811917",
+    "secret": "e37cde0228cd11414aa1514a67a9aa5868a1c1c9b5d24aa90177eebee781c3df",
+    "keepalive": 10,
+    "reconnect_max": 10,
+    "order": ["bot", "trung", "cang"],
+    "orchestrator": "bot",
+    "poll_seconds": 60,
+    "pong_wait": 5,
+    "lease_polls": 3,
+    "close_wait": 2
+  }
+}
