@@ -8,12 +8,12 @@ Tue 2026-10-13            23.05h   24.00h  285.20M   12.37M   10.96B  10.67B  16
 Wed 2026-10-14            23.16h   24.00h  508.78M   21.97M   10.09B   9.58B  10.99K    5.0%
 Thu 2026-10-15            20.58h   24.00h  395.59M   19.22M   12.49B  12.09B  11.42K    3.2%
 Fri 2026-10-16            21.22h   24.00h  431.54M   20.34M    9.42B   8.98B  11.54K    4.6%
-Sat 2026-10-17 (so far)    5.69h    5.69h   68.64M   12.06M    2.59B   2.52B   2.33K    2.7%
+Sat 2026-10-17 (so far)    5.95h    5.95h   68.64M   11.54M    2.59B   2.52B   2.33K    2.7%
 ============================================================================================
-7 DAYS                   129.46h  149.69h    2.31B   17.81M   64.08B  61.77B  84.15K    3.6%
+7 DAYS                   129.71h  149.95h    2.31B   17.78M   64.08B  61.77B  84.15K    3.6%
 
 
-PROFIT SUMMARY -- sold since 2026-10-17 00:00 Central (as of 05:41 Central)
+PROFIT SUMMARY -- sold since 2026-10-17 00:00 Central (as of 05:56 Central)
 
 item                     profit  revenue     cost  units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------
@@ -39,7 +39,7 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-16_222839_run_board.log, board during pass 100 at row 8, read 2026-10-17T05:41:28 (live)
+ROWS -- 2026-10-16_222839_run_board.log, board during pass 105 at row 8, read 2026-10-17T05:56:51 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    77.80M    97.50M   +19.70M    97.50M    77.80M    19.70M
     2  Force Core (Ultimate                  x250   450.00K   450.00K        +0   450.00K   112.50M         0
@@ -51,20 +51,20 @@ ROWS -- 2026-10-16_222839_run_board.log, board during pass 100 at row 8, read 20
     8  Force Core(High                       x210   261.73K   261.73K        +0   261.73K    54.96M         0 <- here
     9  Force Core(High                       x122   277.78K   277.78K        +0   277.78K    33.89M         0
    10  Yekaterina VIP Membership               x1   116.70M   125.00M    +8.30M   125.00M   116.70M     8.30M
-   11  Force Core(High                         x1   209.88K   261.62K   +51.74K   261.62K   209.88K    51.74K
-    balance now 2.12B, read 2026-10-17T05:40:32
+   11  Force Core(High                         x1   209.88K   261.60K   +51.72K   261.60K   209.88K    51.72K
+    balance now 2.12B, read 2026-10-17T05:55:56
        stock at its listed price                                                                      925.23M
        Alz, latest balance line                                                                         2.12B
        Cash at the voucher price                                                                       79.78M
        NET WORTH                                                                                        3.12B
 
 
-MARKET -- 2026-10-16_222839_run.log, pass 100, log last written 05:41 Central (live)
+MARKET -- 2026-10-16_222839_run.log, pass 105, log last written 05:56 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  368.96K  348.96K  -20.00K     -5.7%      0
-Chaos Core                  0  708.00K  700.70K   -7.30K     -1.0%      0
+Force Core(Highest)         0  368.95K  348.96K  -20.00K     -5.7%      0
+Chaos Core                  0  711.98K  700.70K  -11.28K     -1.6%      0
 Force Core (Ultimate)       3        -        -        -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            3        -        -        -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     1  315.97K  316.00K       28      0.0%      0
+Upgrade Core (Ultimate)     1  315.97K  316.00K       30      0.0%      0
