@@ -18,6 +18,7 @@ INVENTORY_TAB = calibration.CONVERT_INVENTORY_TAB
 MAX_STACK = _SHARED["game_facts"]["max_stack"]
 ARRIVAL_SETTLE = _SHARED["detect"]["panel_rereads"]
 GRID = _SHARED["game_facts"]["grid_size"]
+RETRIES = _SHARED["resupply"]["convert_retries"]
 
 
 class Refused(Exception):
@@ -135,47 +136,65 @@ def convert(core_name, verbose=True):
     calibration.steps_reset()
     x, y = entry["point"]
     say(f"  {entry['cell']} at ({x}, {y}): {entry['costs']} -> {core_name}")
-    with calibration.step(f"alt-click the cell at ({x}, {y})"):
-        calibration.alt_click(x, y, settle=0.0)
-    with calibration.step("await the Purchase Item dialog"):
-        appeared = await_dialog()
-    if not appeared:
-        raise NoOffer(
-            "no Purchase Item dialog appeared after Alt+click; nothing "
-            "confirmed.")
+    for attempt in range(1, RETRIES + 1):
+        if attempt > 1:
+            say(f"    attempt {attempt - 1}/{RETRIES}: {why}; clicking "
+                f"inventory tab {INVENTORY_TAB} and converting again")
+            with calibration.step(f"select inventory tab {INVENTORY_TAB} "
+                                  f"again"):
+                calibration.click(
+                    *calibration.inventory_tab_point(INVENTORY_TAB),
+                    settle=0.0)
+                time.sleep(TAB_SETTLE)
+            with calibration.step("open the vendor again"):
+                open_vendor(verbose=verbose)
+        with calibration.step(f"alt-click the cell at ({x}, {y})"):
+            calibration.alt_click(x, y, settle=0.0)
+        with calibration.step("await the Purchase Item dialog"):
+            appeared = await_dialog()
+        if not appeared:
+            why = "no Purchase Item dialog appeared after Alt+click"
+            if attempt == RETRIES:
+                raise NoOffer(f"{why} in {RETRIES} attempt(s); nothing "
+                              f"confirmed.")
+            continue
 
-    with calibration.step("read what the dialog offers"):
-        offering = calibration.read_line(
-            calibration.grab(),
-            calibration._box(tuple(calibration._REG["convert_dialog_item"])))
-    say(f"    dialog offers {offering!r}")
-    want = re.sub(r"[^a-z0-9]", "", core_name.lower())
-    seen = re.sub(r"[^a-z0-9]", "", (offering or "").lower())
-    if want not in seen:
-        _cancel(f"the dialog offers {offering!r}, not {core_name!r}. "
-                f"Cancelled without converting.")
+        with calibration.step("read what the dialog offers"):
+            offering = calibration.read_line(
+                calibration.grab(),
+                calibration._box(
+                    tuple(calibration._REG["convert_dialog_item"])))
+        say(f"    dialog offers {offering!r}")
+        want = re.sub(r"[^a-z0-9]", "", core_name.lower())
+        seen = re.sub(r"[^a-z0-9]", "", (offering or "").lower())
+        if want not in seen:
+            _cancel(f"the dialog offers {offering!r}, not {core_name!r}. "
+                    f"Cancelled without converting.")
 
-    with calibration.step(f"type the quantity {MAX_STACK}"):
-        calibration.click(*calibration._centre(
-            tuple(calibration._REG["convert_dialog_qty"])),
-            settle=FIELD_SETTLE)
-        row_model.type_number(MAX_STACK, CLEAR_PRESSES_QTY)
-    say(f"    typed {MAX_STACK}; the dialog clamps it to what is held")
+        with calibration.step(f"type the quantity {MAX_STACK}"):
+            calibration.click(*calibration._centre(
+                tuple(calibration._REG["convert_dialog_qty"])),
+                settle=FIELD_SETTLE)
+            row_model.type_number(MAX_STACK, CLEAR_PRESSES_QTY)
+        say(f"    typed {MAX_STACK}; the dialog clamps it to what is held")
 
-    point = dialog_button(CONFIRM_WORD)
-    if point is None:
-        _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
-    with calibration.step(f"select inventory tab {INVENTORY_TAB}"):
-        calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB),
-                          settle=0.0)
-        time.sleep(TAB_SETTLE)
-    with calibration.step(f"read tab {INVENTORY_TAB} before converting"):
-        before = calibration.occupied_slots()
-    say(f"    inventory tab {INVENTORY_TAB} holds {len(before)} slot(s) and "
-        f"is showing, so the {core_name} lands there")
-    if not dialog_open():
-        _cancel(f"the dialog closed while selecting inventory tab "
-                f"{INVENTORY_TAB}. Nothing converted.")
+        point = dialog_button(CONFIRM_WORD)
+        if point is None:
+            _cancel(f"no {CONFIRM_WORD} button on the dialog. Cancelled.")
+        with calibration.step(f"select inventory tab {INVENTORY_TAB}"):
+            calibration.click(*calibration.inventory_tab_point(INVENTORY_TAB),
+                              settle=0.0)
+            time.sleep(TAB_SETTLE)
+        with calibration.step(f"read tab {INVENTORY_TAB} before converting"):
+            before = calibration.occupied_slots()
+        say(f"    inventory tab {INVENTORY_TAB} holds {len(before)} slot(s) "
+            f"and is showing, so the {core_name} lands there")
+        if dialog_open():
+            break
+        why = (f"the dialog closed while selecting inventory tab "
+               f"{INVENTORY_TAB}")
+        if attempt == RETRIES:
+            _cancel(f"{why} in {RETRIES} attempt(s). Nothing converted.")
     point = dialog_button(CONFIRM_WORD) or point
     with calibration.step(f"click {CONFIRM_WORD}"):
         calibration.click(*point, settle=0.0)
