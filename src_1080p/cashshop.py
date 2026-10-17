@@ -64,8 +64,7 @@ def in_reading_order():
     known = _cal()
     wanted = [name for name in items() if rows_wanted(name) > 0]
     for name in list(wanted):
-        rule = currency_of(name) or {}
-        pays = rule.get("from")
+        pays = payer_of(name)
         if pays and pays not in wanted:
             wanted.append(pays)
     return sorted(wanted, key=lambda name: (
@@ -177,6 +176,11 @@ def read_gems(image=None):
 def currency_of(item):
     rule = calibration._per_item_raw(_cash().get("currency") or {}, item)
     return rule if isinstance(rule, dict) else None
+
+
+def payer_of(item):
+    pays = (currency_of(item) or {}).get("from")
+    return pays if pays in items() else None
 
 
 def cc_now(verbose=True):

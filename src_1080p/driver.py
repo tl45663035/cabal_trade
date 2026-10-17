@@ -3850,6 +3850,10 @@ def cash_buy_step(job, confirm=True, verbose=True):
         if held < need and not paid:
             whole = (f"the {need:,} that {want} of them cost" if want > 1
                      else f"the {job['price']:,} it costs")
+            if funds and not cashshop.payer_of(item):
+                raise NotReady(f"{held:,} gem(s) held is under {whole}, and "
+                               f"the Cash Shop sells no {funds['from']} to "
+                               f"top them up; not buying.")
             if funds:
                 print(f"  {held:,} is under {whole}; buying a "
                       f"{funds['from']} and using it first, so the row goes "

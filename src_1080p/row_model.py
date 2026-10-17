@@ -86,6 +86,7 @@ POLL_GAP = _T["poll_gap"]
 CHANGE_RETRIES = int(_T["change_retries"])
 _CHANGE_STALLS = {}
 GAME_WAIT_RETRIES = int(_SHARED["run"]["game_wait_retries"])
+PRICE_RETYPES = int(_SHARED["run"]["price_retypes"])
 
 _NOT_ALNUM = re.compile(r"[^a-z0-9]")
 
@@ -2035,11 +2036,28 @@ class RowModel:
             calibration.park()
         with calibration.step("take the quantity from the net sales"):
             qty = panel_quantity(want, verbose)
+        for retype in range(1, PRICE_RETYPES + 1):
+            if qty is not None:
+                break
+            calibration.snap("panel_will_not_confirm")
+            if verbose:
+                print(f"    retype {retype}/{PRICE_RETYPES}: the net sales are "
+                      f"no whole number of {want:,}; clearing the price box "
+                      f"and typing {want:,} again")
+            with calibration.step(f"clear the price box and type {want:,} "
+                                  f"again"):
+                calibration.click(*panel["price_point"], settle=FIELD_SETTLE)
+                type_number(want, CLEAR_PRESSES_PRICE)
+                calibration.park()
+            with calibration.step("take the quantity from the net sales "
+                                  "after the retype"):
+                qty = panel_quantity(want, verbose)
         if qty is None:
             calibration.snap("panel_will_not_confirm")
             raise Divergence(
                 f"the panel will not price {want:,} against its net sales "
-                f"after typing {MAX_STACK}. Nothing has been listed.")
+                f"after typing {MAX_STACK} and retyping the price "
+                f"{PRICE_RETYPES} time(s). Nothing has been listed.")
         if verbose:
             print(f"  typed {MAX_STACK}; the net sales make it {qty}")
         if expect_qty and qty < int(expect_qty) and resolved is None:
