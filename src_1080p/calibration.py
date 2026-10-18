@@ -2926,40 +2926,42 @@ def calibrate_craft(verbose=True):
             f"the craft window did not open from tab {CRAFT_TAB} slot "
             f"{CRAFT_KEY_SLOT}. Nothing written.")
 
-    image = grab()
-    tiers = ocr(image, _box(tuple(_REG["craft_tiers"])))
-    rows = {}
-    for text, _conf, point in tiers:
-        digits = re.sub(r"[^0-9]", "", text)
-        if digits:
-            rows.setdefault(point[1], []).append(digits)
-    tier_y = None
-    for y, digits in sorted(rows.items()):
-        if all(any(w in d for d in digits) for w in CRAFT_TIER_WORDS):
-            tier_y = y
-            break
-    if tier_y is None:
-        raise RuntimeError(
-            f"no tier row reads {CRAFT_TIER_WORDS} in "
-            f"{_box(tuple(_REG['craft_tiers']))}; it read "
-            f"{[t for t, _c, _p in tiers]}. Nothing written.")
-    span = [p[0] for _t, _c, p in tiers if p[1] == tier_y]
-    left = (min(span) + max(span)) // 2
-
-    click(left, tier_y)
-    time.sleep(TAB_SETTLE)
-    recipes = ocr(grab(), _box(tuple(_REG["craft_recipes"])))
-    lines = []
-    for text, _conf, point in sorted(recipes, key=lambda w: w[2][1]):
-        if point[1] <= tier_y + TIER_ROW_SLACK:
-            continue
-        for line in lines:
-            if abs(line["y"] - point[1]) <= WORD_ROW_SLACK:
-                line["words"].append((point[0], text))
+    def open_tier():
+        tiers = ocr(grab(), _box(tuple(_REG["craft_tiers"])))
+        rows = {}
+        for text, _conf, point in tiers:
+            digits = re.sub(r"[^0-9]", "", text)
+            if digits:
+                rows.setdefault(point[1], []).append(digits)
+        tier_y = None
+        for y, digits in sorted(rows.items()):
+            if all(any(w in d for d in digits) for w in CRAFT_TIER_WORDS):
+                tier_y = y
                 break
-        else:
-            lines.append({"y": point[1], "words": [(point[0], text)]})
-    def locate(words):
+        if tier_y is None:
+            raise RuntimeError(
+                f"no tier row reads {CRAFT_TIER_WORDS} in "
+                f"{_box(tuple(_REG['craft_tiers']))}; it read "
+                f"{[t for t, _c, _p in tiers]}. Nothing written.")
+        span = [p[0] for _t, _c, p in tiers if p[1] == tier_y]
+        left = (min(span) + max(span)) // 2
+
+        click(left, tier_y)
+        time.sleep(TAB_SETTLE)
+        recipes = ocr(grab(), _box(tuple(_REG["craft_recipes"])))
+        lines = []
+        for text, _conf, point in sorted(recipes, key=lambda w: w[2][1]):
+            if point[1] <= tier_y + TIER_ROW_SLACK:
+                continue
+            for line in lines:
+                if abs(line["y"] - point[1]) <= WORD_ROW_SLACK:
+                    line["words"].append((point[0], text))
+                    break
+            else:
+                lines.append({"y": point[1], "words": [(point[0], text)]})
+        return left, tier_y, recipes, lines
+
+    def locate(lines, words):
         for line in lines:
             flat = re.sub(r"[^a-z0-9]", "",
                           " ".join(t for _x, t in sorted(line["words"])).lower())
@@ -2968,11 +2970,20 @@ def calibrate_craft(verbose=True):
                 return [(min(xs) + max(xs)) // 2, line["y"]]
         return None
 
-    cores = craft_cores() or [None]
+    wanted = [(core, recipe_words(core) if core else CRAFT_RECIPE_WORDS)
+              for core in craft_cores() or [None]]
+    left, tier_y, recipes, lines = open_tier()
+    missing = [words for _core, words in wanted if locate(lines, words) is None]
+    if missing:
+        only = _centre(tuple(_REG["craft_requestable"]))
+        say(f"  no {' '.join(missing[0])} in the list; View only requestable "
+            f"products at {list(only)}, then the tier again")
+        click(*only)
+        time.sleep(TAB_SETTLE)
+        left, tier_y, recipes, lines = open_tier()
     found = {}
-    for core in cores:
-        words = recipe_words(core) if core else CRAFT_RECIPE_WORDS
-        point = locate(words)
+    for core, words in wanted:
+        point = locate(lines, words)
         if point is None:
             raise RuntimeError(
                 f"no recipe under the {'-'.join(CRAFT_TIER_WORDS)} tier reads "
