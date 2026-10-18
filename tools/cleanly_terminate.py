@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 import time
@@ -18,6 +19,13 @@ WINDOW = float(_S["run"]["stop_key_window"])
 HOLD = float(_S["run"]["stop_key_hold"])
 CALL_TIMEOUT = float(_S["timing"]["dialog_timeout"])
 GIFT_MARKER = "the gift box at"
+ARENA_START = re.compile(
+    r"^  dungeon: (?:buying the level \d+ key|resuming level \d+)", re.M)
+ARENA_END = re.compile(
+    r"^  (?:\S+ \S+: (?:the dungeon is over|left the dungeon by hand"
+    r"|past its \S+; left it by hand|the dungeon is failed; left it by hand)"
+    r"\r?$|dungeon: .*We are not at the storm|dungeon: level \d+ ended "
+    r"before its wait)", re.M)
 
 
 def newest_log():
@@ -40,24 +48,45 @@ def live_pid():
     return found[0] if found else None
 
 
-def gifts_opened(log):
+def read_log(log):
     try:
-        return log.read_text(encoding="utf-8", errors="replace").count(GIFT_MARKER)
+        return log.read_text(encoding="utf-8", errors="replace")
     except OSError:
-        return 0
+        return ""
 
 
-def wait_for_gift_box(log, was, verbose=True):
+def open_arena(text):
+    starts = [found.end() for found in ARENA_START.finditer(text)]
+    if not starts or ARENA_END.search(text, starts[-1]):
+        return None
+    return starts[-1]
+
+
+def wait_until_quiet(log, verbose=True):
+    was = read_log(log).count(GIFT_MARKER)
+    arena = None
     while True:
         if live_pid() is None:
-            print("  the run ended on its own before the gift box")
+            print("  the run ended on its own before it could be stopped")
             return False
-        now = gifts_opened(log)
-        if now > was:
-            if verbose:
-                print(f"  the gift box is open ({now} this run); "
-                      f"the shop is shut and the character parked")
-            return True
+        text = read_log(log)
+        if arena is None:
+            arena = open_arena(text)
+            if arena is not None and verbose:
+                print("  it is in an arena; the arena is finished first")
+        if arena is not None:
+            if ARENA_END.search(text, arena):
+                if verbose:
+                    print("  the arena is over; stopping before the next one "
+                          "gets going")
+                return True
+        else:
+            now = text.count(GIFT_MARKER)
+            if now > was:
+                if verbose:
+                    print(f"  the gift box is open ({now} this run); "
+                          f"the shop is shut and the character parked")
+                return True
         time.sleep(POLL)
 
 
@@ -92,8 +121,9 @@ def cleanly_terminate(verbose=True):
         print("  no run is live; nothing to terminate")
         return False
     print("")
-    print(f"stopping pid {pid} at the next gift box:")
-    if not wait_for_gift_box(log, gifts_opened(log), verbose=verbose):
+    print(f"stopping pid {pid} at the next gift box, or as soon as the arena "
+          f"it is in is over:")
+    if not wait_until_quiet(log, verbose=verbose):
         return False
     press_the_stop_key(verbose=verbose)
     if not wait_for_exit(pid, verbose=verbose):

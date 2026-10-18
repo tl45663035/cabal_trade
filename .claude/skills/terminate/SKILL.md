@@ -1,6 +1,6 @@
 ---
 name: terminate
-description: Stop the live trading run cleanly at the next gift box, then put the game back to its default state. Use when asked to stop, terminate, halt or cancel the run, especially before relaunching on new code.
+description: Stop the live trading run cleanly at the next gift box, or right after the dungeon arena it is in ends, then put the game back to its default state. Use when asked to stop, terminate, halt or cancel the run, especially before relaunching on new code.
 ---
 
 # Terminate the live run
@@ -15,11 +15,23 @@ It finds the running `driver.py` itself, so it takes no arguments.
 
 ## What it does, and why in that order
 
-1. **Waits for the next gift box.** The run collects gifts inside
-   `rest_the_game()`, which calls `close_everything()` *first* -- so when the
-   gift box opens the Trade window is already shut and the character is
-   parked. It is the quietest moment in the cycle. Stopping mid-listing can
-   leave an item cancelled and un-relisted, which no later cycle picks up.
+1. **Waits for a quiet moment.**
+   - **In a dungeon arena** (the run log's last "dungeon: buying the level N
+     key" or "dungeon: resuming level N" has no end after it): it finishes
+     that arena first. Gift boxes during the arena's timer are passed over,
+     and the stop comes the moment the log says the arena is over ("CAn: the
+     dungeon is over", "left it by hand", "We are not at the storm"), before
+     the next arena gets going. Stopping inside an arena counts its entry as
+     spent and leaves the character in it. An arena that starts while the
+     tool waits is finished the same way.
+   - **Not in an arena:** it waits for the next gift box. The run collects
+     gifts inside `rest_the_game()`, which calls `close_everything()`
+     *first* -- so when the gift box opens the Trade window is already shut
+     and the character is parked. It is the quietest moment in the cycle.
+     Stopping mid-listing can leave an item cancelled and un-relisted, which
+     no later cycle picks up.
+
+   It never turns the dungeon off to get there.
 2. **Presses Ctrl four times inside the stop window.** That is the mechanism
    the run advertises at startup, and it unwinds through
    `_thread.interrupt_main()` exactly as Ctrl+C would: profit summary,
@@ -50,14 +62,23 @@ a relaunch.
 ## Reading the result
 
 - `no run is live; nothing to terminate` -- nothing was running. Not an error.
-- `the run ended on its own before the gift box` -- it stopped or crashed
-  while waiting. Check the log it names; do not assume it stopped cleanly.
+- `it is in an arena; the arena is finished first` -- the stop waits for
+  the arena; `the arena is over; stopping before the next one gets going`
+  follows when it ends.
+- `the run ended on its own before it could be stopped` -- it stopped or
+  crashed while waiting. Check the log it names; do not assume it stopped
+  cleanly.
 - `pid N is still up after 120s` -- the stop key did not take. The tool
   deliberately does **not** restore the state in this case, because the run
   may still be clicking. Investigate before doing anything else.
 
 A pass takes roughly nine minutes, so waiting for the gift box can take that
-long. That wait is the point; do not shorten it by killing the process.
+long, and an arena can take up to about ten minutes from its Challenge click.
+That wait is the point; do not shorten it by killing the process, and do not
+mark the dungeon day off to skip the arena.
+
+Every supervisor launch clears the dungeon day-off mark (`allow_dungeons`
+in `tools/supervise.py`), so a relaunch starts with arenas allowed.
 
 ## Do not
 

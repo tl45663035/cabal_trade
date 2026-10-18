@@ -94,6 +94,8 @@ TAB_TWO = tuple(_DUNGEON["tab_two"])
 TRADE_TABS = [(tuple(tab["window"]), tab["word"])
               for tab in _DUNGEON["trade_tabs"]]
 SEQUENCES = calibration.HERE / _DUNGEON["sequences_dir"]
+WALK_FRAMES = {name: float(every)
+               for name, every in (_DUNGEON.get("walk_frames") or {}).items()}
 TARGET_KEY = _DUNGEON["kill_target_key"]
 KILL_COMBO = [tuple(step) for step in _DUNGEON["kill_combo"]]
 MAIN_BM = tuple(_DUNGEON["main_bm"])
@@ -480,6 +482,15 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
         print(f"  entered {location}; the entry note is cleared")
 
 
+def snap_every(name, every, stop):
+    started, shot = time.monotonic(), 0
+    while True:
+        calibration.snap(f"{name}_{shot * every:g}s")
+        shot += 1
+        if stop.wait(max(0.0, started + shot * every - time.monotonic())):
+            return
+
+
 def play(dungeon_name, sequence, verbose=True):
     import record_action
     path = SEQUENCES / dungeon_name / f"{sequence}.jsonl"
@@ -512,8 +523,15 @@ def play(dungeon_name, sequence, verbose=True):
         print(f"  {dungeon_name}/{path.name}: {len(events)} events over "
               f"{events[-1]['t']:.1f}s, the cursor first put at {begin}"
               + (" (where the recording began)" if head.get("cursor")
-                 else " (the recording's first mouse point)"))
+                 else " (the recording's first mouse point)")
+              + (f"; a frame every {WALK_FRAMES[sequence]:g}s while it plays"
+                 if sequence in WALK_FRAMES else ""))
     keys, buttons, played = {}, {}, 0
+    shooting = threading.Event()
+    if sequence in WALK_FRAMES:
+        threading.Thread(target=snap_every,
+                         args=(sequence, WALK_FRAMES[sequence], shooting),
+                         daemon=True).start()
     record_action.winmm.timeBeginPeriod(record_action.TIMER_MS)
     zero = time.perf_counter()
     try:
@@ -547,6 +565,7 @@ def play(dungeon_name, sequence, verbose=True):
                         buttons.pop(button, None)
             played += 1
     finally:
+        shooting.set()
         for event in list(keys.values()):
             record_action.send(record_action.key_input(event, True))
         for button in list(buttons):
@@ -802,6 +821,14 @@ def off_for_the_day(verbose=True):
 
 def off_today(today):
     return today is not None and _state().get("off_day") == today
+
+
+def allow_today():
+    state = _state()
+    gone = state.pop("off_day", None)
+    if gone is not None:
+        _save(state)
+    return gone
 
 
 def run_dungeon(dungeon_name, location, verbose=True, steps=None,

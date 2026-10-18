@@ -348,6 +348,14 @@ def forget_dungeon():
     dungeon.forget_active()
 
 
+def allow_dungeons():
+    import dungeon
+    gone = dungeon.allow_today()
+    if gone:
+        print(f"  cleared the dungeon day-off mark for {gone}; dungeons may "
+              f"run from this launch")
+
+
 def recover_login():
     no_driver_alive()
     forget_dungeon()
@@ -1265,6 +1273,7 @@ def main():
         event(f"supervisor stopped: {exc}", "dead")
         return 1
     calibration.watch_for_stop()
+    allow_dungeons()
     orchestrator = None
     try:
         orchestrator = messaging.start_orchestrator(
