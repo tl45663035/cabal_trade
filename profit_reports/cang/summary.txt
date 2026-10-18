@@ -18,12 +18,12 @@ Wed 2026-10-14            18.69h   24.00h  112.54M    6.02M    5.52B   5.41B   8
 Thu 2026-10-15            16.09h   24.00h  138.17M    8.59M    5.68B   5.55B   9.21K    2.4%
 Fri 2026-10-16            16.40h   24.00h  119.79M    7.30M    5.38B   5.26B   9.26K    2.2%
 Sat 2026-10-17             8.80h   24.00h   48.93M    5.56M    2.09B   2.04B   2.55K    2.3%
-Sun 2026-10-18 (so far)    4.13h    4.79h    9.64M    2.34M    2.95B   2.94B   4.36K    0.3%
+Sun 2026-10-18 (so far)    4.38h    5.04h    9.64M    2.20M    2.95B   2.94B   4.36K    0.3%
 ============================================================================================
-7 DAYS                    90.49h  148.79h  625.52M    6.91M   37.38B  36.76B  60.30K    1.7%
+7 DAYS                    90.75h  149.04h  625.52M    6.89M   37.38B  36.76B  60.30K    1.7%
 
 
-PROFIT SUMMARY -- sold since 2026-10-18 00:00 Central (as of 04:47 Central)
+PROFIT SUMMARY -- sold since 2026-10-18 00:00 Central (as of 05:02 Central)
 
 item                 profit  revenue     cost  units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------
@@ -46,38 +46,41 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-18_003932_run_board.log, board during pass 60 at row 7, read 2026-10-18T04:47:06 (live)
+ROWS -- 2026-10-18_003932_run_board.log, board during pass 65 at row 1, read 2026-10-18T05:02:10 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Upgrade Core (Ultimate                 x24   333.33K   397.92K   +64.59K   397.92K     8.00M     1.55M
+    1  Upgrade Core (Ultimate                 x24   333.33K   397.88K   +64.55K   397.88K     8.00M     1.55M <- here
     2  Material Core (Bike) X 2                x1         -     8.33M         -    16.67M         -         -
     3  Force Core(Highest                      x2   350.00K   350.00K        +0   350.00K   699.99K         0
-    4  Upgrade Core (Ultimate                x234   333.33K   397.92K   +64.59K   397.92K    78.00M    15.11M
-    5  Astral Board Card - Zero Black          x1         -    22.95M         -    22.95M         -         -
+    4  Upgrade Core (Ultimate                x234   333.33K   397.89K   +64.55K   397.89K    78.00M    15.11M
+    5  Astral Board Card - Zero Black          x1         -    22.91M         -    22.91M         -         -
     6  Force Core(Highest                    x100   350.00K   350.00K        +0   350.00K    35.00M         0
-    7  Upgrade Core (Ultimate                  x8   333.33K   397.92K   +64.59K   397.92K     2.67M   516.69K <- here
+    7  Upgrade Core (Ultimate                  x8   333.33K   397.88K   +64.55K   397.88K     2.67M   516.42K
     8  Force Core(Highest                    x250   350.00K   350.00K        +0   350.00K    87.50M         0
     9  Force Core(Highest                    x237   350.00K   350.00K        +0   350.00K    82.95M         0
-   10  Upgrade Core (Ultimate                x250   333.33K   397.93K   +64.59K   397.93K    83.33M    16.15M
-   11  Chaos Core Set X 42                     x1   709.02K   714.76K    +5.73K    30.02M    29.78M   240.83K
+   10  Upgrade Core (Ultimate                x250   333.33K   397.88K   +64.55K   397.88K    83.33M    16.14M
+   11  Chaos Core Set X 42                     x1   709.02K   714.74K    +5.71K    30.02M    29.78M   239.99K
+   12  Force Core(High                       x186   262.29K   284.65K   +22.36K   284.65K    48.79M     4.16M
+   13  Force Core(High                       x250   262.60K   284.65K   +22.05K   284.65K    65.65M     5.51M
+   14  Force Core(High                       x142   262.60K   284.65K   +22.05K   284.65K    37.29M     3.13M
    26  Palladium Coat(FA) i                    x1         -     7.00M         -     7.00M         -         -
    27  Artifact of Midnight +3                 x1         -    30.00M         -    30.00M         -         -
    28  Wexp Saver                              x5         -     5.00M         -     5.00M         -         -
    29  Time Reducer (12h) - Diamond Insig        x1         -     2.59M         -     5.19M         -         -
    30  Time Reducer (12h) - Diamond Insig        x1         -     2.59M         -     7.78M         -         -
-    balance now 3.13B, read 2026-10-18T04:46:34
-       stock at its listed price                                                                      481.11M
-       Alz, latest balance line                                                                         3.13B
+    balance now 2.98B, read 2026-10-18T05:01:47
+       stock at its listed price                                                                      645.58M
+       Alz, latest balance line                                                                         2.98B
        Cash at the voucher price                                                                       79.00M
        gems at the voucher price                                                                       17.77M
-       NET WORTH                                                                                        3.71B
+       NET WORTH                                                                                        3.72B
 
 
-MARKET -- 2026-10-18_003932_run.log, pass 60, log last written 04:47 Central (live)
+MARKET -- 2026-10-18_003932_run.log, pass 65, log last written 05:02 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         4        -        -        -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  1  710.00K  714.76K    4.76K      0.7%      0
+Chaos Core                  1  710.00K  714.74K    4.74K      0.7%      0
 Divine Stone                0  750.00K  719.72K  -30.28K     -4.2%      0
-Force Core(High)            0  262.60K  228.99K  -33.61K    -14.7%      0
+Force Core(High)            3        -        -        -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     4        -        -        -         -      -  holds the most it can want, 3; not priced
