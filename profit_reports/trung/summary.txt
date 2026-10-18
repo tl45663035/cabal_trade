@@ -30,17 +30,17 @@ Wed 2026-10-14            19.31h   24.00h  164.30M    8.51M    7.19B   7.03B  10
 Thu 2026-10-15            19.92h   24.00h  111.88M    5.62M    4.82B   4.71B   7.72K    2.3%
 Fri 2026-10-16            11.68h   24.00h  129.36M   11.08M    4.72B   4.60B   7.04K    2.7%
 Sat 2026-10-17            19.48h   24.00h  161.20M    8.27M    5.76B   5.60B  11.37K    2.8%
-Sun 2026-10-18 (so far)   12.38h   12.55h  176.84M   14.28M    5.29B   5.12B   7.97K    3.3%
+Sun 2026-10-18 (so far)   12.65h   12.80h  195.97M   15.49M    5.40B   5.20B   8.24K    3.6%
 ============================================================================================
-7 DAYS                   104.93h  156.55h    1.01B    9.58M   40.37B  39.36B  64.24K    2.5%
+7 DAYS                   105.20h  156.80h    1.02B    9.74M   40.47B  39.45B  64.51K    2.5%
 
 
-PROFIT SUMMARY -- sold since 2026-10-18 00:00 Central (as of 12:32 Central)
+PROFIT SUMMARY -- sold since 2026-10-18 00:00 Central (as of 12:48 Central)
 
 item                        profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------------
-upgradecoreultimate         62.61M  341.03M  278.41M    863   322.61K  395.16K   18.4%
-forcecorehighest            42.69M  407.85M  365.15M  1.20K   303.28K  338.74K   10.5%
+upgradecoreultimate         78.90M  427.08M  348.17M  1.08K   322.08K  395.07K   18.5%
+forcecorehighest            45.53M  425.25M  379.71M  1.25K   302.80K  339.11K   10.7%
 chaoscore                   29.64M    2.95B    2.92B  4.14K   704.01K  711.17K    1.0%
 forcecoreultimate           16.44M  280.48M  264.04M    644   410.01K  435.53K    5.9%
 forcecorehigh               11.15M  295.85M  284.70M  1.11K   256.95K  267.01K    3.8%
@@ -48,11 +48,11 @@ armoraccountbindsealstone    9.30M  396.80M  387.50M      2   193.75M  198.40M  
 arionell                     5.00M  590.00M  585.00M      2   292.50M  295.00M    0.8%
 wexpsaver                        0   35.56M   35.56M      8     4.44M    4.44M    0.0%
 --------------------------------------------------------------------------------------
-Cores                      132.90M    1.36B    1.23B  3.83K   320.84K  355.57K    9.8%
+Cores                      152.03M    1.46B    1.31B  4.09K   320.44K  357.56K   10.4%
 Chaos                       29.64M    2.95B    2.92B  4.14K   704.01K  711.17K    1.0%
 Cash                        14.30M  986.80M  972.50M      4   243.12M  246.70M    1.4%
 ======================================================================================
-TOTAL                      176.84M    5.29B    5.12B  7.97K   641.72K  663.90K    3.3%
+TOTAL                      195.97M    5.40B    5.20B  8.24K   631.09K  654.86K    3.6%
 
 
 
@@ -63,37 +63,32 @@ item            profit  bought  bought/u  listed/u  held
 Stock up Chaos       0   2.56K   728.13K         0     0
 
 
-ROWS -- 2026-10-18_092738_run.log, board after pass 1 (live)
+ROWS -- 2026-10-18_092738_run_board.log, board during pass 5 at row 17, read 2026-10-18T09:47:59 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Blessing Bead - Superior                x1   170.43M   170.43M        +0   170.43M   170.43M         0
     2  Armor Account bind Unseal Stone         x1   197.50M   197.50M        +0   197.50M   197.50M         0
     3  Arionell                                x1   292.50M   306.17M   +13.67M   306.17M   292.50M    13.67M
     4  Armor Account bind Seal Stone           x1   195.00M   196.00M    +1.00M   196.00M   195.00M     1.00M
-    5  Force Core(High                        x77   262.63K   262.63K        +0    20.22M    20.22M         0
-    6  Force Core(High                       x129   260.35K   260.35K        +0    33.58M    33.58M         0
-    7  Force Core(High                       x171   265.00K   265.00K        +0    45.31M    45.31M         0
-    8  Upgrade Core (Ultimate                x250   320.00K   394.73K   +74.73K    98.68M    80.00M    18.68M
-    9  Upgrade Core (Ultimate                 x10   320.00K   394.73K   +74.73K     3.95M     3.20M   747.26K
-   10  Upgrade Core (Ultimate                x208   320.00K   394.73K   +74.72K    82.10M    66.56M    15.54M
-   11  Force Core(Highest                     x90   291.64K   347.98K   +56.34K    31.32M    26.25M     5.07M
-   12  Force Core(Highest                    x161   291.15K   347.98K   +56.83K    56.02M    46.88M     9.15M
-   13  Chaos Core Set X 249                    x1   710.00K   719.53K    +9.53K   179.16M   176.79M     2.37M
-   14  Chaos Core Set X 201                    x1   710.00K   719.53K    +9.53K   144.63M   142.71M     1.92M
-   15  Chaos Core Set X 249                    x1   710.00K   719.53K    +9.53K   179.16M   176.79M     2.37M
-   16  Chaos Core Set X 249                    x1   710.00K   719.53K    +9.53K   179.16M   176.79M     2.37M
-   17  Chaos Core Set X 207                    x1   710.00K   719.53K    +9.53K   148.94M   146.97M     1.97M
-   18  Chaos Core Set X 213                    x1   710.00K   719.53K    +9.53K   153.26M   151.23M     2.03M
-   19  Chaos Core Set X 141                    x1   710.00K   719.53K    +9.53K   101.45M   100.11M     1.34M
+    5  Force Core(High                        x77   262.63K   262.63K        +0   262.63K    20.22M         0
+    6  Force Core(High                       x129   260.35K   260.35K        +0   260.35K    33.58M         0
+    7  Force Core(High                       x171   265.00K   265.00K        +0   265.00K    45.31M         0
+    8  Upgrade Core (Ultimate                x250   320.00K   394.70K   +74.70K   394.70K    80.00M    18.68M
+    9  Chaos Core Set X 117                    x1   710.00K   710.00K        +0    83.07M    83.07M         0
+   10  Force Core(Highest                     x90   291.64K   347.97K   +56.34K   347.97K    26.25M     5.07M
+   11  Force Core(Highest                    x111   291.15K   347.97K   +56.82K   347.97K    32.32M     6.31M
+   12  Chaos Core Set X 249                    x1   710.00K   710.00K        +0   176.79M   176.79M         0
+   13  Chaos Core Set X 201                    x1   710.00K   710.00K        +0   142.71M   142.71M         0
+   14  Chaos Core Set X 249                    x1   710.00K   710.00K        +0   176.79M   176.79M         0
+   15  Chaos Core Set X 249                    x1   710.00K   710.00K        +0   176.79M   176.79M         0
+   16  Chaos Core Set X 207                    x1   710.00K   710.00K        +0   146.97M   146.97M         0
+    17  (empty)                                           -          -       -              -               - <- here
+   18  Chaos Core Set X 213                    x1   710.00K   719.48K    +9.48K   153.25M   151.23M     2.02M
+   19  Chaos Core Set X 141                    x1   710.00K   719.48K    +9.48K   101.45M   100.11M     1.34M
    29  Stain Clone X 127                       x1         -     1.43M         -   181.84M         -         -
-    balance now 1.99M
-  pass 1: 19 relisted, 9 empty, 0 skipped; 9996.6 minute(s) left
-WAR LAG: a war ended 1.8 min ago (server 19:31:50). Going to the default state and waiting 2.2 min, until server 19:34:00.
-restoring the default state:
-  Escape: window closed
-  Inventory already closed
-       stock at its listed price                                                                        2.51B
-       Alz, latest balance line                                                                         1.99M
-       NET WORTH                                                                                        2.51B
+    balance now 22.37M, read 2026-10-18T09:47:51
+       stock at its listed price                                                                        2.48B
+       Alz, latest balance line                                                                        22.37M
+       NET WORTH                                                                                        2.50B
 
 
-MARKET -- 2026-10-18_092738_run.log: no pass has printed a core table yet (newest is pass 1)
+MARKET -- 2026-10-18_092738_run.log: no pass has printed a core table yet (newest is pass 5)
