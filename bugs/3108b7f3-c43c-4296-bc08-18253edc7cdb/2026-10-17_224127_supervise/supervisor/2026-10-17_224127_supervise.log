@@ -1,0 +1,292 @@
+2026-10-17_224127  .\supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_224127_supervise.log
+  screen 1920x1080
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-10-17_180423_run.log ended: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:41:27,dead
+  kept 18 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-17_180423_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=False, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_224136_found.png
+  interrupted: relist row 1: 'Wexp Saver' x5 at 4,999,995 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Wexp Saver'; nothing on screen is read to name it
+  frame 2026-10-17_224143_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  relist row 1: 'Wexp Saver' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-10-17_224148_reset.png
+   2026-10-17_224149  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_224149_run.log
+     code 27a1176b
+     screen 1920x1080
+* relaunched (pid 3712),22:41:53,alive
+watching pid 3712, 2026-10-17_224149_run.log
+* stop condition: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:44:20,dead
+* tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:44:20,dead
+  kept 73 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-17_224149_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_224426_found.png
+  interrupted: relist row 2: 'Material Core (Bike) X 2' x1 at 19,998,977 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Material Core (Bike) X 2'; nothing on screen is read to name it
+  frame 2026-10-17_224433_tab4_25slots.png
+  tab 4 holds 18 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 4 row(s) empty now
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     item                              profit   units  margin        revenue           cost
+     ------------------------------------------------------------------------------------
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                        10,244   (10,244 realised, +0 assumed)
+     started 22:44:34, ended 22:46:08, ran for 1m 34s
+* listing tab 4 slot (1,2) at the panel's price and the full quantity, the 'Material Core (Bike) X 2' the log says is there,22:46:08,dead
+$ py src_1080p/driver.py --config cang list-named 1 2 0 4 Material Core (Bike) X 2
+     listed 24 at 398,610
+   DONE {"kind": "list", "tab": 4, "slot": [1, 2], "qty": 24, "price": 398610}
+     done in 6729 ms
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 22:46:09, ended 22:46:18, ran for 9s
+  frame 2026-10-17_224623_tab4_1slots.png
+  tab 4 holds 1 slot(s) below row 1, from (4, 2); the run never puts anything there, so they are not touched
+* finished: list-named 1 2 0 4 Material Core (Bike) X 2 (Material Core (Bike) X 2); 0 slot(s) left,22:46:23,dead
+  frame 2026-10-17_224628_tab4_1slots.png
+  tab 4 holds 1 slot(s) below row 1, from (4, 2); the run never puts anything there, so they are not touched
+  verified: row 1 of tab 4 is clear
+  relist row 2: 'Material Core (Bike) X 2' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-10-17_224631_reset.png
+   2026-10-17_224632  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang --measured
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_224632_run.log
+     code 27a1176b
+     screen 1920x1080
+* relaunched (pid 1928), reusing this session's calibration,22:46:36,alive
+watching pid 1928, 2026-10-17_224632_run.log
+* stop condition: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:48:01,dead
+* tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:48:01,dead
+  kept 18 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-17_224632_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_224807_found.png
+  interrupted: relist row 1: 'Upgrade Core (Ultimate' x24 at 398,610 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Upgrade Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-10-17_224814_tab4_25slots.png
+  tab 4 holds 18 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     relisting rows 1-25: 0 relisted, 4 empty, 21 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 4 row(s) empty now
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 22:48:15, ended 22:49:44, ran for 1m 29s
+* listing tab 4 slot (1,2) at the panel's price and the full quantity, the 'Upgrade Core (Ultimate' the log says is there,22:49:44,dead
+$ py src_1080p/driver.py --config cang list-named 1 2 0 4 Upgrade Core (Ultimate
+     listed 24 at 398,608
+   DONE {"kind": "list", "tab": 4, "slot": [1, 2], "qty": 24, "price": 398608}
+     done in 6746 ms
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 22:49:44, ended 22:49:54, ran for 9s
+  frame 2026-10-17_224959_tab4_1slots.png
+  tab 4 holds 1 slot(s) below row 1, from (4, 2); the run never puts anything there, so they are not touched
+* finished: list-named 1 2 0 4 Upgrade Core (Ultimate (Upgrade Core (Ultimate); 0 slot(s) left,22:49:59,dead
+  frame 2026-10-17_225003_tab4_1slots.png
+  tab 4 holds 1 slot(s) below row 1, from (4, 2); the run never puts anything there, so they are not touched
+  verified: row 1 of tab 4 is clear
+  relist row 1: 'Upgrade Core (Ultimate' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-10-17_225007_reset.png
+   2026-10-17_225008  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang --measured
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_225008_run.log
+     code 27a1176b
+     screen 1920x1080
+* relaunched (pid 8292), reusing this session's calibration,22:50:12,alive
+watching pid 8292, 2026-10-17_225008_run.log
+* stop condition: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:51:37,dead
+* tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:51:37,dead
+* 3 runs in a row died within 300s of launch; relogging (1 of 1),22:51:37,dead
+  kept 18 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-17_225008_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_225143_found.png
+  interrupted: relist row 1: 'Upgrade Core (Ultimate' x24 at 398,608 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Upgrade Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-10-17_225150_tab4_25slots.png
+  tab 4 holds 18 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     relisting rows 1-25: 0 relisted, 4 empty, 21 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 4 row(s) empty now
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 22:51:51, ended 22:53:20, ran for 1m 28s
+* listing tab 4 slot (1,2) at the panel's price and the full quantity, the 'Upgrade Core (Ultimate' the log says is there,22:53:20,dead
+$ py src_1080p/driver.py --config cang list-named 1 2 0 4 Upgrade Core (Ultimate
+     listed 24 at 398,600
+   DONE {"kind": "list", "tab": 4, "slot": [1, 2], "qty": 24, "price": 398600}
+     done in 6743 ms
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 22:53:20, ended 22:53:30, ran for 9s
+  frame 2026-10-17_225334_tab4_1slots.png
+  tab 4 holds 1 slot(s) below row 1, from (4, 2); the run never puts anything there, so they are not touched
+* finished: list-named 1 2 0 4 Upgrade Core (Ultimate (Upgrade Core (Ultimate); 0 slot(s) left,22:53:35,dead
+  frame 2026-10-17_225339_tab4_1slots.png
+  tab 4 holds 1 slot(s) below row 1, from (4, 2); the run never puts anything there, so they are not touched
+  verified: row 1 of tab 4 is clear
+  relist row 1: 'Upgrade Core (Ultimate' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-10-17_225343_reset.png
+$ py src_1080p/recovery.py --relog
+     the character list is up
+     Inventory shut; pressing I (attempt 1)
+     Inventory shut; pressing I (attempt 2)
+     no login screen; the character list is already up
+     'SoloCabalLevelin' at [1626, 470]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as SoloCabalLevelin, the balance reads
+* relogged: back in the world,22:54:04,dead
+   2026-10-17_225404  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang --measured
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_225404_run.log
+     code 27a1176b
+     screen 1920x1080
+* relaunched (pid 4464), reusing this session's calibration,22:54:08,alive
+watching pid 4464, 2026-10-17_225404_run.log
+* stop condition: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:55:33,dead
+* tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:55:33,dead
+  kept 18 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-17_225404_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_225540_found.png
+  interrupted: relist row 1: 'Upgrade Core (Ultimate' x24 at 398,600 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Upgrade Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-10-17_225546_tab4_25slots.png
+  tab 4 holds 18 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     relisting rows 1-25: 0 relisted, 4 empty, 21 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 4 row(s) empty now
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 22:55:47, ended 22:57:16, ran for 1m 29s
+* listing tab 4 slot (1,2) at the panel's price and the full quantity, the 'Upgrade Core (Ultimate' the log says is there,22:57:16,dead
+$ py src_1080p/driver.py --config cang list-named 1 2 0 4 Upgrade Core (Ultimate
+     listed 24 at 398,596
+   DONE {"kind": "list", "tab": 4, "slot": [1, 2], "qty": 24, "price": 398596}
+     done in 6736 ms
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 22:57:17, ended 22:57:26, ran for 9s
+  frame 2026-10-17_225731_tab4_1slots.png
+  tab 4 holds 1 slot(s) below row 1, from (4, 2); the run never puts anything there, so they are not touched
+* finished: list-named 1 2 0 4 Upgrade Core (Ultimate (Upgrade Core (Ultimate); 0 slot(s) left,22:57:31,dead
+  frame 2026-10-17_225736_tab4_1slots.png
+  tab 4 holds 1 slot(s) below row 1, from (4, 2); the run never puts anything there, so they are not touched
+  verified: row 1 of tab 4 is clear
+  relist row 1: 'Upgrade Core (Ultimate' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-10-17_225739_reset.png
+   2026-10-17_225741  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang --measured
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_225741_run.log
+     code 27a1176b
+     screen 1920x1080
+* relaunched (pid 11960), reusing this session's calibration,22:57:44,alive
+watching pid 11960, 2026-10-17_225741_run.log
+* stop condition: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:59:09,dead
+* tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,22:59:10,dead
+  kept 18 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-17_225741_run
+  cleared 1 older dead run(s); the newest 5 are kept
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-17_225916_found.png
+  interrupted: relist row 1: 'Upgrade Core (Ultimate' x24 at 398,596 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Upgrade Core (Ultimate'; nothing on screen is read to name it
+  frame 2026-10-17_225922_tab4_25slots.png
+  tab 4 holds 18 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     relisting rows 1-25: 0 relisted, 4 empty, 21 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 4 row(s) empty now
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 22:59:23, ended 23:00:52, ran for 1m 28s
+* listing tab 4 slot (1,2) at the panel's price and the full quantity, the 'Upgrade Core (Ultimate' the log says is there,23:00:52,dead
+$ py src_1080p/driver.py --config cang list-named 1 2 0 4 Upgrade Core (Ultimate
+     listed 24 at 398,592
+   DONE {"kind": "list", "tab": 4, "slot": [1, 2], "qty": 24, "price": 398592}
+     done in 6784 ms
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 23:00:53, ended 23:01:02, ran for 9s
+  frame 2026-10-17_230107_tab4_1slots.png
+  tab 4 holds 1 slot(s) below row 1, from (4, 2); the run never puts anything there, so they are not touched
+* finished: list-named 1 2 0 4 Upgrade Core (Ultimate (Upgrade Core (Ultimate); 0 slot(s) left,23:01:07,dead
+  frame 2026-10-17_230112_tab4_1slots.png
+  tab 4 holds 1 slot(s) below row 1, from (4, 2); the run never puts anything there, so they are not touched
+  verified: row 1 of tab 4 is clear
+  relist row 1: 'Upgrade Core (Ultimate' is handled above if it came back to tab 4; otherwise the row kept it, it sold, or it was listed by hand. The next run reads the board.
+  no gift box open; not clicking Close
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  frame 2026-10-17_230116_reset.png
+   2026-10-17_230117  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang --measured
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_230117_run.log
+     code 27a1176b
+     screen 1920x1080
+* relaunched (pid 4540), reusing this session's calibration,23:01:21,alive
+watching pid 4540, 2026-10-17_230117_run.log
+* stop condition: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,23:02:45,dead
+* tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,23:02:46,dead
+* supervisor stopped: 3 runs in a row died within 300s of launch after 1 relog(s); last: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.,23:02:46,dead

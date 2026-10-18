@@ -1,0 +1,86 @@
+2026-10-17_224815  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang collect
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_224815_collect.log
+  code 27a1176b
+  screen 1920x1080
+  ledger C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\sales.db run 2026-10-17T22:48:15
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-17_224815_collect, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  a repair: not measuring the screen, using the calibration on file
+  calibrated for 1920x1080, measured 2026-10-17T22:43:11
+  server 05:48:20 by internet time; the next war quiet runs 07:32:00 to 07:34:00, in 103.7 min
+  the Trade window is shut; opening the Agent Shop.
+  inventory already open
+  tab 6 at (1718, 174)
+  right-clicking slot (1,7) at (1810, 229) (attempt 1/3)
+  tab 4 at (1610, 174), so whatever is bought or withdrawn lands there
+  scrolled to the top; row 1 is at position 1
+                                                   bought/u   listed/u  margin      row price
+  the Register columns were not measured; Register rows are read whole by Tesseract instead
+     3  Force Core(Highest                 x2       349,998    354,772   +1.3%        354,772
+     4  Upgrade Core (Ultimate             x250     333,333    399,036  +16.5%        399,036
+    the quantity column read 'Black', which holds no digits, so it is the end of the name and not a count; reading the row as 'Astral Board Card - Zero Black' and letting the panel count what is there
+     5  Astral Board Card - Zero Black     x1             - 23,519,987       -     23,519,987
+     6  Force Core(High                    x173     265,644    265,713   +0.0%        265,713
+     7  Force Core(High                    x19      265,644    265,712   +0.0%        265,712
+     8  Force Core(High                    x24      265,644    265,711   +0.0%        265,711
+     9  Force Core(Highest                 x100     349,998    354,771   +1.3%        354,771
+    11  Chaos Core Set X 168               x1       714,999    720,000   +0.7%    120,960,000
+    12  Chaos Core Set X 195               x1       714,999    720,000   +0.7%    140,400,000
+    13  Chaos Core Set X 168               x1       714,999    720,000   +0.7%    120,960,000
+    14  Chaos Core Set X 249               x1       714,999    720,000   +0.7%    179,280,000
+    15  Chaos Core Set X 249               x1       714,999    720,000   +0.7%    179,280,000
+    16  Chaos Core Set X 192               x1       714,999    720,000   +0.7%    138,240,000
+    17  Chaos Core Set X 249               x1       714,999    720,000   +0.7%    179,280,000
+    18  Chaos Core Set X 207               x1       714,999    720,000   +0.7%    149,040,000
+    19  Chaos Core Set X 249               x1       714,999    720,000   +0.7%    179,280,000
+    20  Chaos Core Set X 174               x1       714,999    720,000   +0.7%    125,280,000
+    21  Upgrade Core (Ultimate             x13      333,333    399,031  +16.5%        399,031
+    22  Force Core(Highest                 x250     349,998    354,768   +1.3%        354,768
+    23  Force Core(Highest                 x237     349,998    354,767   +1.3%        354,767
+    24  Upgrade Core (Ultimate             x250     333,333    399,029  +16.5%        399,029
+    27  Artifact of Midnight +3            x1             - 30,000,000       -     30,000,000
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+    28  Wexp Saver                         x5             -  4,999,885       -      4,999,885
+    29  Time Reducer (12h) - Diamond Insig x1             -  2,592,592       -      5,185,184
+    30  Time Reducer (12h) - Diamond Insig x1             -  2,592,500       -      7,777,500
+  scrolled to the top; row 1 is at position 1
+  0 row(s) keep the cost and floor the crashed run had for them
+  seeded 25 of rows 1-30
+  row 1 is empty; nothing to relist
+  row 2 is empty; nothing to relist
+    the quantity column read 'Black', which holds no digits, so it is the end of the name and not a count; reading the row as 'Astral Board Card - Zero Black' and letting the panel count what is there
+  row 10 is empty; nothing to relist
+  row 25 is empty; nothing to relist
+
+  relisting rows 1-25: 0 relisted, 4 empty, 21 skipped
+    #          ms   share     n      each  phase
+    1    32,366.2   80.0%    25   1,294.6  scroll to the row and read it
+    2     8,105.9   20.0%    25     324.2  Refresh the table
+         40,472.1  100.0%
+  collected what sold in rows 1-25; 4 row(s) empty now
+
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  nothing has sold yet this run.
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 22:48:15, ended 22:49:44, ran for 1m 29s
+
+##############################################################################################
+
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+
+##############################################################################################
+

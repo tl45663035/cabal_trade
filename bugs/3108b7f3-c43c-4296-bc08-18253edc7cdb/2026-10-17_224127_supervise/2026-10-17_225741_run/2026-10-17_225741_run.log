@@ -1,0 +1,124 @@
+2026-10-17_225741  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang --measured
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-17_225741_run.log
+  code 27a1176b
+  screen 1920x1080
+  ledger C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\sales.db run 2026-10-17T22:57:41
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-17_225741_run, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  the supervisor measured this screen earlier in its session; using that calibration instead of measuring again
+  calibrated for 1920x1080, measured 2026-10-17T22:43:11
+  server 05:57:46 by internet time; the next war quiet runs 07:32:00 to 07:34:00, in 94.2 min
+  the Trade window is shut; opening the Agent Shop.
+  Inventory shut: slot grid 0.03, needs 0.33
+  inventory opened
+  tab 6 at (1718, 174)
+  right-clicking slot (1,7) at (1810, 229) (attempt 1/3)
+  tab 4 at (1610, 174), so whatever is bought or withdrawn lands there
+  scrolled to the top; row 1 is at position 1
+                                                   bought/u   listed/u  margin      row price
+  the Register columns were not measured; Register rows are read whole by Tesseract instead
+     1  Upgrade Core (Ultimate             x24      333,333    398,596  +16.4%        398,596
+     3  Force Core(Highest                 x2       349,998    354,772   +1.3%        354,772
+     4  Upgrade Core (Ultimate             x250     333,333    399,036  +16.5%        399,036
+    the quantity column read 'Black', which holds no digits, so it is the end of the name and not a count; reading the row as 'Astral Board Card - Zero Black' and letting the panel count what is there
+     5  Astral Board Card - Zero Black     x1             - 23,519,987       -     23,519,987
+     6  Force Core(High                    x173     265,644    265,713   +0.0%        265,713
+     7  Force Core(High                    x19      265,644    265,712   +0.0%        265,712
+     8  Force Core(High                    x24      265,644    265,711   +0.0%        265,711
+     9  Force Core(Highest                 x100     349,998    354,771   +1.3%        354,771
+    11  Chaos Core Set X 168               x1       714,999    720,000   +0.7%    120,960,000
+    12  Chaos Core Set X 195               x1       714,999    720,000   +0.7%    140,400,000
+    13  Chaos Core Set X 168               x1       714,999    720,000   +0.7%    120,960,000
+    14  Chaos Core Set X 249               x1       714,999    720,000   +0.7%    179,280,000
+    15  Chaos Core Set X 249               x1       714,999    720,000   +0.7%    179,280,000
+    16  Chaos Core Set X 192               x1       714,999    720,000   +0.7%    138,240,000
+    17  Chaos Core Set X 249               x1       714,999    720,000   +0.7%    179,280,000
+    18  Chaos Core Set X 207               x1       714,999    720,000   +0.7%    149,040,000
+    19  Chaos Core Set X 249               x1       714,999    720,000   +0.7%    179,280,000
+    20  Chaos Core Set X 174               x1       714,999    720,000   +0.7%    125,280,000
+    21  Upgrade Core (Ultimate             x13      333,333    399,031  +16.5%        399,031
+    22  Force Core(Highest                 x250     349,998    354,768   +1.3%        354,768
+    23  Force Core(Highest                 x237     349,998    354,767   +1.3%        354,767
+    24  Upgrade Core (Ultimate             x250     333,333    399,029  +16.5%        399,029
+    27  Artifact of Midnight +3            x1             - 30,000,000       -     30,000,000
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+    28  Wexp Saver                         x5             -  4,999,885       -      4,999,885
+    29  Time Reducer (12h) - Diamond Insig x1             -  2,592,592       -      5,185,184
+    30  Time Reducer (12h) - Diamond Insig x1             -  2,592,500       -      7,777,500
+  scrolled to the top; row 1 is at position 1
+  0 row(s) keep the cost and floor the crashed run had for them
+  seeded 26 of rows 1-30
+relisting rows 1-25 for 10000 minute(s)
+
+-- pass 1 --
+
+  resupply order: Chaos Core, Force Core(High), Force Core(Highest), Upgrade Core (Ultimate), Divine Stone
+
+  counting only rows 1-25; rows outside it are not repriced and do not count; 3 row(s) free
+  core                            rows     buy/u    sell/u    margin  wants   short?
+  Force Core(Highest)                4         -         -         -      -   holds the most it can want, 3; not priced
+  Chaos Core                        10         -         -         -      -   holds the most it can want, 10; not priced
+  Divine Stone                       0   819,000   710,710  -108,290      0   
+  Force Core(High)                   3         -         -         -      -   holds the most it can want, 3; not priced
+  Upgrade Core (Ultimate)            4         -         -         -      -   holds the most it can want, 3; not priced
+
+  nothing inside rows 1-25 holds fewer rows than its margin is worth.
+  tab 4 read from the screen in 1600 ms: 1 slot(s) held, [(4, 2)] the run did not know of
+    the run still holds tab 4 slot(s) [(4, 2)] from earlier work, so a withdrawal lands past them
+  row 1: 'Upgrade Core (Ultimate' x24 at 398,596 -> tab 4 slot (1, 1)
+    floor 333,333 (333,333 x 1) from Upgrade Core Set (Ultimate); listed at 398,596, above it
+TASK {"kind": "relist", "row": 1, "item": "Upgrade Core (Ultimate", "qty": 24, "price": 398596, "tab": 4, "slot": [1, 1], "lands_in": 1}
+
+  cancel row 1
+    #         ms   share  step
+    1      324.4    4.1%  click Refresh
+    2        0.0    0.0%  scroll to the row
+    3        0.0    0.0%  read the button of a row the run holds empty
+    4      193.0    2.5%  read the row and its button
+    5      527.9    6.7%  finish selecting inventory tab 4
+    6     1600.3   20.4%  check tab 4 before the withdrawal
+    7        5.4    0.1%  work out the row, its floor and where it lands
+    8       25.2    0.3%  check the shop slot is empty
+    9      107.0    1.4%  read the button again before Change
+   10        0.0    0.0%  scroll to the row again
+   11        0.0    0.0%  check the row is the one the run listed
+   12      353.5    4.5%  click Change and park
+   13      131.7    1.7%  find Cancel
+   14      195.6    2.5%  click Cancel
+   15      143.1    1.8%  find Confirmation
+   16      188.9    2.4%  click Confirmation and park
+   17      178.0    2.3%  wait for the dialog to close
+   18     3010.0   38.3%  wait for the item to land in tab 4
+   19      874.6   11.1%  select inventory tab 4 after the withdrawal
+          7858.7  100.0%  TOTAL
+  inventory slot (1,1) at (1471, 229)
+  STOPPED: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.
+
+1 pass(es), 0 relisted, 0 empty, 0 skipped in 22s
+
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  nothing has sold yet this run.
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 22:57:41, ended 22:58:50, ran for 1m 9s
+
+##################################################################################
+
+  ########  ##########    ######    ########    ########    ##########  ########  
+  ########  ##########    ######    ########    ########    ##########  ########  
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+##              ##      ##      ##  ##      ##  ##      ##  ##          ##      ##
+  ######        ##      ##      ##  ########    ########    ########    ##      ##
+  ######        ##      ##      ##  ########    ########    ########    ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+        ##      ##      ##      ##  ##          ##          ##          ##      ##
+########        ##        ######    ##          ##          ##########  ########  
+########        ##        ######    ##          ##          ##########  ########  
+
+##################################################################################
+  stopped: tab 4 slot (1,1) is still empty 3s after the withdrawal. Nothing listed.
+
