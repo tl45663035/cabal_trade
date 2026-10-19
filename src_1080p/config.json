@@ -582,7 +582,7 @@
     "bm_icon": [254, 148],
     "cancel_bm_clicks": 3,
     "cancel_bm_gap": 0.5,
-    "slots": {"A+1": [687, 940], "A+2": [737, 940], "A+9": [1087, 940], "A+0": [1137, 940]},
+    "slots": {"A+1": [687, 940], "A+2": [737, 940], "A+7": [987, 940], "A+9": [1087, 940], "A+0": [1137, 940]},
     "bm_aura": ["main_bm", "aura"],
     "bm_aura_for": 5.0,
     "heal_key": "0",
@@ -711,7 +711,7 @@
           "Legendary Box": ["legendary", "box"]
         },
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["spam", "bm", "aura", 5],
+                     ["spam", "bm", "A+7", 5],
                      "move_to_A",
                      ["kill_bm", "Fire Guardian Manticore", "bm_only"],
                      ["kill_bm", "Treasure Chest", "bm_only"],

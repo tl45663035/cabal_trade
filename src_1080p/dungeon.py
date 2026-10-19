@@ -133,6 +133,7 @@ BM_AURA_FOR = float(_DUNGEON["bm_aura_for"])
 LOOP_POINTS = {"main_bm": MAIN_BM, "alternate_bm": ALTERNATE_BM, "aura": AURA,
                "bm_pot": BM_POT, **OFFENSIVE_BUFFS}
 SLOTS = {name: tuple(point) for name, point in _DUNGEON["slots"].items()}
+CLICK_POINTS = {**LOOP_POINTS, **SLOTS}
 HEAL_KEY = _DUNGEON["heal_key"]
 HEAL_EVERY = float(_DUNGEON["heal_every"])
 END_WAIT = float(_DUNGEON["end_wait"])
@@ -806,7 +807,7 @@ def click_round(names, since):
                 int((started - since) // DEFENSIVE_SWITCH)
                 % len(DEFENSIVE_BUFFS)]
         else:
-            point = LOOP_POINTS[entry]
+            point = CLICK_POINTS[entry]
         right_click(*point, 0.0)
         ENDED.wait(max(0.0, started + LOOP_GAP - time.monotonic()))
 
