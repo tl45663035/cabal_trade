@@ -351,7 +351,10 @@ def carry_cost(row, kept):
 
 def seed(verbose=True, rows=None):
     register_tab(verbose=verbose)
-    last = CAPACITY if row_model.last_seat_placed() else row_model.MAX_TOP
+    run = calibration.load_shared()["run"]
+    first, upto = int(run["relist_from"]), int(run["relist_to"])
+    last = min(upto, CAPACITY if row_model.last_seat_placed()
+               else row_model.MAX_TOP)
     model = row_model.RowModel().seed({})
     model.home(verbose=verbose)
     found = {}
@@ -359,7 +362,7 @@ def seed(verbose=True, rows=None):
     carried = 0
     if verbose:
         print(board_header())
-    for index in rows or range(1, last + 1):
+    for index in rows or range(first, last + 1):
         model.scroll_to(index, verbose=False)
         text, button = model.read_with_button()
         if button == row_model.REGISTER_WORD or model.is_empty(text):
@@ -384,9 +387,10 @@ def seed(verbose=True, rows=None):
     if verbose and rows:
         print(f"  read rows {list(rows)} only: {len(found)} hold something")
     elif verbose:
-        print(f"  seeded {len(found)} of rows 1-{last}")
-        if last < CAPACITY:
-            print(f"  rows {last + 1}-{CAPACITY} were not read; the last "
+        print(f"  seeded {len(found)} of rows {first}-{last}; rows outside "
+              f"{first}-{upto} are not read")
+        if last < upto:
+            print(f"  rows {last + 1}-{upto} were not read; the last "
                   f"row is not placed in calibration.json, so position "
                   f"{VISIBLE} cannot be read")
     return model
