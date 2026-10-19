@@ -1,0 +1,589 @@
+{
+  "supervisor": "2026-10-18_222836_supervise.log",
+  "supervisor_ended": "supervisor cancelled with Ctrl x2",
+  "since": "2026-10-18T22:28:36",
+  "machine": "DESKTOP-5CFR0IQ",
+  "machine_id": "3108b7f3-c43c-4296-bc08-18253edc7cdb",
+  "submitted_at": "2026-10-18T22:57:07",
+  "max_frames": 120,
+  "logs": [
+    {
+      "log": "2026-10-18_222858_run",
+      "kind": "run",
+      "code": "da656b6e",
+      "screen": "1920x1080",
+      "reason": "stopped: interrupted from the keyboard",
+      "frames": {
+        "kept": 963,
+        "indexed": 963,
+        "sent": 104
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-10-18_225028_dungeon",
+      "kind": "dungeon",
+      "code": null,
+      "screen": null,
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 0,
+        "indexed": 0,
+        "sent": 0
+      },
+      "flagged": {},
+      "events": []
+    },
+    {
+      "log": "2026-10-18_225601_dungeon",
+      "kind": "dungeon",
+      "code": null,
+      "screen": null,
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 16,
+        "indexed": 16,
+        "sent": 16
+      },
+      "flagged": {
+        "Traceback": 1
+      },
+      "events": [
+        {
+          "pattern": "Traceback",
+          "line": "Traceback (most recent call last):",
+          "log": 1569,
+          "near": "2026-10-18T22:56:34.793"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "file": "2026-10-18_222858_run/2026-10-18_222858_run.log",
+      "mb": 0.29
+    },
+    {
+      "file": "2026-10-18_222858_run/2026-10-18_222858_run_board.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00860_click_59_490.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00861_click_132_760.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00862_click_968_640.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00863_click_839_758.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00864_click_1610_174.png",
+      "mb": 1.55
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00865_click_838_176.png",
+      "mb": 1.55
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00866_click_1103_640.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00867_click_968_640.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00868_click_1610_174.png",
+      "mb": 1.52
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00869_ctrlclick_1471_229.png",
+      "mb": 1.5
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00870_click_36_387.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00871_click_114_428.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00872_click_59_490.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00873_click_132_760.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00874_click_968_640.png",
+      "mb": 1.46
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00875_click_839_758.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00876_click_1610_174.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00877_click_838_176.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00878_click_1103_640.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00879_click_968_640.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00880_click_1610_174.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00881_ctrlclick_1471_229.png",
+      "mb": 1.76
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00882_click_36_387.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00883_click_114_428.png",
+      "mb": 1.77
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00884_click_59_490.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00885_click_132_760.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00886_click_968_640.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00887_click_839_758.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00888_click_1610_174.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00889_click_838_176.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00890_click_1103_640.png",
+      "mb": 1.45
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00891_click_968_640.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00892_click_1610_174.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00893_ctrlclick_1471_229.png",
+      "mb": 1.51
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00894_click_36_387.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00895_click_114_428.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00896_click_59_490.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00897_click_132_760.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00898_click_968_640.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00899_click_839_758.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00900_click_1610_174.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00901_click_838_176.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00902_click_1103_640.png",
+      "mb": 1.45
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00903_click_968_640.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00904_click_1610_174.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00905_ctrlclick_1471_229.png",
+      "mb": 1.77
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00906_click_36_387.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00907_click_114_428.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00908_click_59_490.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00909_click_132_760.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00910_click_968_640.png",
+      "mb": 1.7
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00911_click_839_758.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00912_click_1610_174.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00913_click_838_176.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00914_click_1103_640.png",
+      "mb": 1.45
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00915_click_968_640.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00916_click_1610_174.png",
+      "mb": 1.62
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00917_ctrlclick_1471_229.png",
+      "mb": 1.61
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00918_click_36_387.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00919_click_114_428.png",
+      "mb": 1.65
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00920_click_59_490.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00921_click_132_760.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00922_click_968_640.png",
+      "mb": 1.64
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00923_click_839_758.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00924_click_1610_174.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00925_click_838_176.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00926_click_1103_640.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00927_click_968_640.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00928_click_1610_174.png",
+      "mb": 1.76
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00929_ctrlclick_1471_229.png",
+      "mb": 1.72
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00930_click_36_387.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00931_click_114_428.png",
+      "mb": 1.75
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00932_click_59_490.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00933_click_132_760.png",
+      "mb": 1.74
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00934_click_968_640.png",
+      "mb": 1.76
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00935_click_839_758.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00936_click_1610_174.png",
+      "mb": 1.57
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00937_click_838_176.png",
+      "mb": 1.57
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00938_click_1103_640.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00939_click_968_640.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00940_click_1610_174.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00941_ctrlclick_1471_229.png",
+      "mb": 1.47
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00942_click_36_387.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00943_click_114_428.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00944_click_59_490.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00945_click_132_760.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00946_click_968_640.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00947_click_839_758.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00948_click_1610_174.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00949_click_838_176.png",
+      "mb": 1.45
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00950_click_1103_640.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00951_click_968_640.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00952_click_1610_174.png",
+      "mb": 1.77
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00953_ctrlclick_1471_229.png",
+      "mb": 1.75
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00954_click_36_387.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00955_click_114_428.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00956_click_59_490.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00957_click_132_760.png",
+      "mb": 1.78
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00958_click_968_640.png",
+      "mb": 1.69
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00959_click_839_758.png",
+      "mb": 1.53
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00960_click_1610_174.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00961_click_838_176.png",
+      "mb": 1.54
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00962_click_1103_640.png",
+      "mb": 1.45
+    },
+    {
+      "file": "2026-10-18_222858_run/frames/00963_click_968_640.png",
+      "mb": 1.44
+    },
+    {
+      "file": "2026-10-18_225028_dungeon/2026-10-18_225028_dungeon.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/2026-10-18_225601_dungeon.log",
+      "mb": 0.0
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00001_click_727_900.png",
+      "mb": 2.58
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00002_rightclick_1087_940.png",
+      "mb": 2.57
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00003_rightclick_1137_940.png",
+      "mb": 2.57
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00004_click_1454_181.png",
+      "mb": 2.7
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00005_click_51_157.png",
+      "mb": 2.35
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00006_altclick_380_450.png",
+      "mb": 2.14
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00007_click_964_676.png",
+      "mb": 2.16
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00008_click_1560_181.png",
+      "mb": 2.46
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00009_click_143_157.png",
+      "mb": 2.27
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00010_altclick_185_401.png",
+      "mb": 2.08
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00011_click_964_676.png",
+      "mb": 2.09
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00012_no_dungeon_list.png",
+      "mb": 2.89
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00013_click_1560_181.png",
+      "mb": 2.46
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00014_rightclick_1531_292.png",
+      "mb": 2.32
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00015_click_963_610.png",
+      "mb": 2.32
+    },
+    {
+      "file": "2026-10-18_225601_dungeon/frames/00016_no_dungeon_list.png",
+      "mb": 1.94
+    },
+    {
+      "file": "supervisor/2026-10-18_222836_supervise.log",
+      "mb": 0.0
+    },
+    {
+      "file": "supervisor/supervise.log",
+      "mb": 0.35
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-18_222844_found.png",
+      "mb": 2.2
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-18_222851_tab4_0slots.png",
+      "mb": 2.21
+    },
+    {
+      "file": "supervisor/supervise_frames/2026-10-18_222856_reset.png",
+      "mb": 2.57
+    },
+    {
+      "file": "config.json",
+      "mb": 0.04
+    },
+    {
+      "file": "calibration.json",
+      "mb": 0.05
+    }
+  ],
+  "skipped_over_max_file_mb": []
+}

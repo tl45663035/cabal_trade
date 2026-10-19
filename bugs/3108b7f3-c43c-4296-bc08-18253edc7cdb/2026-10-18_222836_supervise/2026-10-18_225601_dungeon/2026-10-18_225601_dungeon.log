@@ -1,0 +1,54 @@
+2026-10-18_225601  .\dungeon.py fire --runs 3 --config cang --frames
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-18_225601_dungeon.log
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-18_225601_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  fire: the start of a block of runs
+fire Fire: tab_two
+  hotbar tab II at [727, 900]
+fire Fire: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+fire Fire: get_entry
+  0 fire run(s) so far today; difficulty 5 takes 1x Gemstone of Transcendence x100 every 4 runs: buying it now
+  inventory already open
+  inventory tab 1 at [1454, 181]
+  N for the shop
+  Normal at [51, 157]
+  Alt+click Gemstone of Transcendence x100 at [380, 450]
+  OK at [964, 676]
+  bought 1x Gemstone of Transcendence x100 into inventory tab 1; N closed the shop
+  Inventory shut: slot grid 0.11, needs 0.33
+  inventory opened
+  inventory tab 3 at [1560, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 401]
+  OK at [964, 676]
+  bought; N closed the shop
+  the entry landed in tab 3 slot (2, 2) at [1531, 292]; noted in dungeon_next.json
+fire Fire: open_dungeon_key
+  Inventory shut: slot grid 0.11, needs 0.33
+  inventory opened
+  inventory tab 3 at [1560, 181]
+  right-click the entry in tab 3 slot (2, 2) at [1531, 292]
+  Yes at [963, 610]
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m1797[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m1776[0m, in [35mcommand[0m
+    if [31mrun_dungeon[0m[1;31m(args[0], location)[0m is False:
+       [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m943[0m, in [35mrun_dungeon[0m
+    [31mrun_sequence[0m[1;31m(dungeon_name, location, phase, verbose, steps,[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31mtimer=timer)[0m
+                 [1;31m^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m1077[0m, in [35mrun_sequence[0m
+    [31mopen_dungeon_key[0m[1;31m(dungeon_name, location, verbose)[0m
+    [31m~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m525[0m, in [35mopen_dungeon_key[0m
+    raise RuntimeError(
+    ...<2 lines>...
+        f"on tab II {list(TAB_TWO)}; {seen}. Nothing more clicked.")
+[1;35mRuntimeError[0m: [35mno 'Lava Hellfire (Awakened)' in the dungeon list within 20s of Yes, read with the cursor on tab II [727, 900]; the Enter window [1092, 878, 1131, 892] reads 'Entor', so the list never opened. Nothing more clicked.[0m

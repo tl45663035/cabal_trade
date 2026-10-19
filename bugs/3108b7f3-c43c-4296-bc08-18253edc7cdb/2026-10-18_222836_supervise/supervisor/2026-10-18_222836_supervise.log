@@ -1,0 +1,29 @@
+2026-10-18_222836  .\supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-18_222836_supervise.log
+  screen 1920x1080
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-10-18_215021_run.log ended: interrupted from the keyboard,22:28:36,dead
+  kept 120 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-18_215021_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-18_222844_found.png
+  the log shows no task cut short
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-10-18_222851_tab4_0slots.png
+  verified: row 1 of tab 4 is clear
+  no gift box open; not clicking Close
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  frame 2026-10-18_222856_reset.png
+   2026-10-18_222858  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang
+     logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-18_222858_run.log
+     code da656b6e
+     screen 1920x1080
+* relaunched (pid 5904),22:29:01,alive
+watching pid 5904, 2026-10-18_222858_run.log
+* pushed the profit report for cang and all,22:41:16,alive
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+* supervisor cancelled with Ctrl x2,22:47:30,dead
