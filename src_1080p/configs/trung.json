@@ -60,8 +60,9 @@
     "home_channel": 11
   },
   "dungeon": {
-    "enabled": false,
-    "trading_dungeon": "fire",
+    "enabled": true,
+    "trading_dungeon": "chaos_arena",
+    "order": [7, 6],
     "kill_combo": [
       ["use", "A+2", 2.0],
       ["tap", "7", 2.0],
@@ -69,12 +70,12 @@
     ],
     "aura": [987, 940],
     "bm_aura": ["alternate_bm"],
-    "bm_loop": ["alternate_bm", "aura", "C+1", "C+3", "C+4", "C+5", "defensive_buffs", "bm_pot"],
+    "bm_loop": ["alternate_bm", "aura", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
     "dungeons": {
       "chaos_arena": {
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
                      ["wait", 3], "get_to_gate", ["kill", "Gate of Chaos"],
-                     ["timer", 330],
+                     ["timer", 330], ["tap", "="],
                      ["use", "A+2"], ["wait_timer", 5],
                      "inventory", "wait_timer", ["kill", "Gate of Chaos"],
                      "bm_aura", "kill_phase",

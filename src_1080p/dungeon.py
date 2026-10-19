@@ -1254,6 +1254,14 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 if index:
                     time.sleep(USE_GAP)
                 use_slot(slot, verbose)
+        elif name == "tap":
+            if not focus_game():
+                raise RuntimeError("could not bring the game to the "
+                                   "foreground.")
+            for key in rest:
+                if verbose:
+                    print(f"  tap {key}")
+                tap(KEYS[key])
         elif name == "shout":
             shout(verbose)
         elif name == "play":

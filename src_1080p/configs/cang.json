@@ -69,8 +69,9 @@
     "6": "Divine Stone Set"
   },
   "dungeon": {
-    "enabled": false,
-    "trading_dungeon": "fire",
+    "enabled": true,
+    "trading_dungeon": "chaos_arena",
+    "order": [7, 6],
     "level_windows": [
       [502, 266, 737, 284],
       [502, 291, 737, 309],
@@ -86,7 +87,7 @@
       "chaos_arena": {
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
                      ["wait", 3], "get_to_gate", ["kill", "Gate of Chaos"],
-                     ["timer", 330],
+                     ["timer", 330], ["tap", "="],
                      ["use", "A+2"], ["wait_timer", 5],
                      "inventory", "wait_timer", ["kill", "Gate of Chaos"],
                      "bm_aura", "kill_phase",
