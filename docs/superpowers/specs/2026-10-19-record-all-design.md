@@ -201,3 +201,34 @@ These were checked against the dry-run file and found sound:
 That last point is left open. If camera turning (right drag) turns out
 not to replay, the game is reading raw mouse deltas, and the recorder
 would also need Raw Input.
+
+## Revision: long replays and camera turns (2026-10-19)
+
+Long hand recordings drifted off course. Short ones stayed close. The
+recordings show why: each 4-5 minute run turns the camera with the right
+button 67-86 times, some turns lasting 3-7 seconds. Games turn the camera
+by the mouse's raw counts, before Windows applies pointer speed and
+acceleration, not by where the cursor lands. Replaying cursor positions
+turns the camera by a different amount. Each turn leaves the facing a
+little off, so W and ground clicks go somewhere else, and the errors add
+up over a long run.
+
+- **The recorder also listens to Raw Input.** It uses a message-only
+  window with `RIDEV_INPUTSINK`. Each physical relative movement is saved
+  as `{"action": "raw", "dx", "dy"}`. The bot's input (no device) and
+  absolute movement are left out.
+- **Turns replay from the raw counts.** While a turn button
+  (`all_turn_buttons`, default `["right"]`) is held, replay sends the raw
+  counts as relative moves and skips the cursor positions. On release it
+  lets go of the button without moving, then puts the cursor back where
+  the recording had it. Outside a turn, positions are used as before.
+- **Older recordings still play as before.** A recording without raw
+  counts replays drags from cursor positions.
+- **Special keys (Esc, Enter, arrows, F-keys, Alt, Win, Tab, Backspace)**
+  were already recorded and replayed. Replay sends the scan code plus the
+  extended flag, the same way the bot sends Esc. The tests now cover them.
+
+Still unverified in the game: whether Cabal turns by raw counts (likely)
+or by cursor movement. If by cursor, a relative move still moves the
+cursor, with the same pointer speed applied, so the turn stays close
+either way.

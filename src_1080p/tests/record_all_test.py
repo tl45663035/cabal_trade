@@ -544,6 +544,8 @@ ra.OUT = saved_out
 
 saved_hook, saved_pump = ra.hook, ra.pump
 ra.hook = lambda *a, **k: (None, None)
+saved_listen = record_all.listen_raw
+record_all.listen_raw = lambda session: None
 
 
 def pump(done, tick):
@@ -559,12 +561,141 @@ try:
         missing = record_all.record(["no-such-program-xyz"])
 finally:
     ra.hook, ra.pump = saved_hook, saved_pump
+    record_all.listen_raw = saved_listen
 check(code == 3, f"run mode returns the command's exit code, got {code}")
 check(missing == 1, f"a command that can't start fails, got {missing}")
 heads = [json.loads(p.read_text(encoding="utf-8").splitlines()[0])
          for p in SCRATCH.glob(f"20*{record_all.SUFFIX}")]
 check(any(h.get("command") and h["command"][0] == sys.executable for h in heads),
       "the recording notes the command it ran")
+
+# ---- raw mouse counts: recorded from the mouse itself, used for camera turns ----
+
+session = record_all.Everything()
+session.raw(0, 5, -3, True)
+session.raw(0, 0, 0, True)
+session.raw(0, 4, 4, False)
+session.raw(W["MOUSE_MOVE_ABSOLUTE"], 30000, 30000, True)
+raws = [e for e in session.events if e["action"] == "raw"]
+check([(e["dx"], e["dy"]) for e in raws] == [(5, -3)],
+      f"only the mouse's own non-zero relative counts are kept, got {raws}")
+idle = record_all.Everything(armed=True)
+idle.raw(0, 5, 5, True)
+check(idle.events == [], "raw counts before the start are not kept")
+
+M = W["MOUSEEVENTF_MOVE"]
+ABS = W["MOUSEEVENTF_ABSOLUTE"]
+
+
+def described(item):
+    if item.type == W["INPUT_KEYBOARD"]:
+        k = item.u.ki
+        return ("key", k.wScan, bool(k.dwFlags & W["KEYEVENTF_EXTENDEDKEY"]),
+                bool(k.dwFlags & W["KEYEVENTF_KEYUP"]))
+    mi = item.u.mi
+    flags = mi.dwFlags
+    if flags & ABS:
+        what = "abs"
+        where = as_point(item)
+    elif flags & M:
+        what, where = "rel", (mi.dx, mi.dy)
+    else:
+        what, where = "button", None
+    buttons = [name for name, flag in (("rdown", W["MOUSEEVENTF_RIGHTDOWN"]),
+                                       ("rup", W["MOUSEEVENTF_RIGHTUP"]),
+                                       ("ldown", W["MOUSEEVENTF_LEFTDOWN"]),
+                                       ("lup", W["MOUSEEVENTF_LEFTUP"])) if flags & flag]
+    return (what, where, tuple(buttons))
+
+
+turn = [
+    {"t": 0.000, "kind": "mouse", "action": "move", "x": 50, "y": 50, "injected": False},
+    {"t": 0.001, "kind": "mouse", "action": "raw", "dx": 1, "dy": 0},
+    {"t": 0.010, "kind": "mouse", "action": "down", "button": "right", "x": 50, "y": 50,
+     "injected": False},
+    {"t": 0.011, "kind": "mouse", "action": "move", "x": 58, "y": 49, "injected": False},
+    {"t": 0.0112, "kind": "mouse", "action": "raw", "dx": 6, "dy": -1},
+    {"t": 0.012, "kind": "mouse", "action": "move", "x": 70, "y": 47, "injected": False},
+    {"t": 0.0122, "kind": "mouse", "action": "raw", "dx": 9, "dy": -2},
+    {"t": 0.013, "kind": "mouse", "action": "move", "x": 72, "y": 47, "source": "poll"},
+    {"t": 0.020, "kind": "mouse", "action": "up", "button": "right", "x": 72, "y": 47,
+     "injected": False},
+    {"t": 0.021, "kind": "mouse", "action": "move", "x": 80, "y": 60, "injected": False},
+    {"t": 0.0212, "kind": "mouse", "action": "raw", "dx": 5, "dy": 9},
+]
+ra.send = lambda item: sent.append(item)
+try:
+    sent.clear()
+    player = record_all.Replay(turn, None, {})
+    player.play()
+    got = [described(i) for i in sent]
+    check(got == [("abs", (50, 50), ()),
+                  ("abs", (50, 50), ("rdown",)),
+                  ("rel", (6, -1), ()),
+                  ("rel", (9, -2), ()),
+                  ("button", None, ("rup",)),
+                  ("abs", (72, 47), ()),
+                  ("abs", (80, 60), ())],
+          f"a right drag turns by the raw counts and the cursor lands back where "
+          f"it was; outside a drag, positions are used. Got {got}")
+
+    sent.clear()
+    no_raw = [e for e in turn if e["action"] != "raw"]
+    record_all.Replay(no_raw, None, {}).play()
+    got = [described(i) for i in sent]
+    check([g for g in got if g[0] == "rel"] == [] and ("abs", (70, 47), ()) in got,
+          "an older recording without raw counts still drags by cursor positions")
+
+    sent.clear()
+    bot_drag = [{**e, "injected": True} if e.get("button") else e for e in turn]
+    record_all.Replay(bot_drag, None, {}).play()
+    got = [described(i) for i in sent]
+    check([g for g in got if g[0] == "rel"] == [],
+          "the bot's own right click doesn't switch to raw counts")
+
+    sent.clear()
+    held = turn[:7] + [{"t": 30.0, "kind": "mouse", "action": "move", "x": 1, "y": 1,
+                        "injected": False}]
+    player = record_all.Replay(held, None, {})
+    worker = threading.Thread(target=player.play)
+    worker.start()
+    deadline = time.time() + 5
+    while player.played < 7 and time.time() < deadline:
+        time.sleep(0.01)
+    player.stop.set()
+    worker.join(5)
+    check(described(sent[-1]) == ("button", None, ("rup",)),
+          f"stopping mid-turn lets go of the right button without moving, got "
+          f"{described(sent[-1])}")
+
+    # ---- special keys record and replay like any other key ----
+    sent.clear()
+    special = [("Esc", 27, 1, False, False), ("Enter", 13, 28, False, False),
+               ("Num Enter", 13, 28, True, False), ("Up", 38, 72, True, False),
+               ("Delete", 46, 83, True, False), ("F1", 112, 59, False, False),
+               ("Alt", 164, 56, False, True), ("Win", 91, 91, True, False),
+               ("Tab", 9, 15, False, False), ("Backspace", 8, 14, False, False)]
+    with fake_clock() as clock:
+        session = record_all.Everything()
+        session.open()
+        for name, vk, scan, extended, system in special:
+            clock.step(0.01)
+            key(session, vk, True, scan=scan, extended=extended, system=system)
+            clock.step(0.01)
+            key(session, vk, False, scan=scan, extended=extended, system=system)
+        session.finish({})
+    head, events, refused = prepared(session.path)
+    check(refused is None and len(events) == 2 * len(special),
+          f"every special key is recorded, got {len(events or [])}")
+    record_all.Replay(events, None, {}).play()
+    got = [described(i) for i in sent]
+    want = []
+    for name, vk, scan, extended, system in special:
+        want += [("key", scan, extended, False), ("key", scan, extended, True)]
+    check(got == want, f"special keys replay with their scan code and extended flag, "
+                       f"got {got}")
+finally:
+    ra.send = real_send
 
 check(not TRIPPED, f"tests sent input: {TRIPPED}")
 print(f"{checks} checks, {len(failures)} failed")

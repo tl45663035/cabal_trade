@@ -27,6 +27,114 @@ TITLE = json.loads((ra.SRC / "calibration.json").read_text(
     encoding="utf-8"))["game"]["title_hint"]
 SECRETS = {"username": "CABAL_USERNAME", "password": "CABAL_PASSWORD"}
 EXPLAINED = 0.1
+TURN = set(ra.R["all_turn_buttons"])
+
+LRESULT = ctypes.c_ssize_t
+WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wintypes.HWND, wintypes.UINT,
+                             wintypes.WPARAM, wintypes.LPARAM)
+
+
+class WNDCLASSW(ctypes.Structure):
+    _fields_ = [("style", wintypes.UINT), ("lpfnWndProc", WNDPROC),
+                ("cbClsExtra", ctypes.c_int), ("cbWndExtra", ctypes.c_int),
+                ("hInstance", wintypes.HINSTANCE), ("hIcon", wintypes.HICON),
+                ("hCursor", wintypes.HANDLE), ("hbrBackground", wintypes.HBRUSH),
+                ("lpszMenuName", wintypes.LPCWSTR),
+                ("lpszClassName", wintypes.LPCWSTR)]
+
+
+class RAWINPUTDEVICE(ctypes.Structure):
+    _fields_ = [("usUsagePage", wintypes.USHORT), ("usUsage", wintypes.USHORT),
+                ("dwFlags", wintypes.DWORD), ("hwndTarget", wintypes.HWND)]
+
+
+class RAWINPUTHEADER(ctypes.Structure):
+    _fields_ = [("dwType", wintypes.DWORD), ("dwSize", wintypes.DWORD),
+                ("hDevice", wintypes.HANDLE), ("wParam", wintypes.WPARAM)]
+
+
+class RAWMOUSE(ctypes.Structure):
+    _fields_ = [("usFlags", wintypes.USHORT), ("ulButtons", wintypes.ULONG),
+                ("ulRawButtons", wintypes.ULONG), ("lLastX", wintypes.LONG),
+                ("lLastY", wintypes.LONG), ("ulExtraInformation", wintypes.ULONG)]
+
+
+class RAWINPUT(ctypes.Structure):
+    _fields_ = [("header", RAWINPUTHEADER), ("mouse", RAWMOUSE)]
+
+
+ra.user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT,
+                                     wintypes.WPARAM, wintypes.LPARAM]
+ra.user32.DefWindowProcW.restype = LRESULT
+ra.user32.CreateWindowExW.argtypes = [
+    wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.HWND,
+    wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID]
+ra.user32.CreateWindowExW.restype = wintypes.HWND
+ra.user32.GetRawInputData.argtypes = [wintypes.HANDLE, wintypes.UINT,
+                                      wintypes.LPVOID, ctypes.POINTER(wintypes.UINT),
+                                      wintypes.UINT]
+ra.user32.GetRawInputData.restype = wintypes.UINT
+
+
+class RawMouse:
+    """Raw mouse counts, before Windows turns them into cursor moves. The
+    game turns its camera by these, so a replayed turn needs them."""
+
+    def __init__(self, handler):
+        self.handler = handler
+        self.proc = WNDPROC(self.message)
+        instance = ra.kernel32.GetModuleHandleW(None)
+        name = f"record_all_raw_{os.getpid()}_{id(self)}"
+        self.cls = WNDCLASSW(lpfnWndProc=self.proc, hInstance=instance,
+                             lpszClassName=name)
+        if not ra.user32.RegisterClassW(ctypes.byref(self.cls)):
+            raise OSError(ctypes.get_last_error(), "RegisterClassW refused")
+        self.hwnd = ra.user32.CreateWindowExW(
+            0, name, None, 0, 0, 0, 0, 0, wintypes.HWND(W["HWND_MESSAGE"]),
+            None, instance, None)
+        if not self.hwnd:
+            raise OSError(ctypes.get_last_error(), "CreateWindowExW refused")
+        self.register(W["RIDEV_INPUTSINK"], self.hwnd)
+
+    def register(self, flags, hwnd):
+        device = RAWINPUTDEVICE(W["HID_USAGE_PAGE_GENERIC"],
+                                W["HID_USAGE_GENERIC_MOUSE"], flags, hwnd)
+        if not ra.user32.RegisterRawInputDevices(
+                ctypes.byref(device), 1, ctypes.sizeof(device)):
+            raise OSError(ctypes.get_last_error(),
+                          "RegisterRawInputDevices refused")
+
+    def message(self, hwnd, msg, wparam, lparam):
+        if msg == W["WM_INPUT"]:
+            try:
+                data = RAWINPUT()
+                size = wintypes.UINT(ctypes.sizeof(data))
+                got = ra.user32.GetRawInputData(
+                    lparam, W["RID_INPUT"], ctypes.byref(data),
+                    ctypes.byref(size), ctypes.sizeof(RAWINPUTHEADER))
+                if (got not in (0, 0xFFFFFFFF)
+                        and data.header.dwType == W["RIM_TYPEMOUSE"]):
+                    self.handler(data.mouse.usFlags, data.mouse.lLastX,
+                                 data.mouse.lLastY, bool(data.header.hDevice))
+            except Exception:
+                pass
+        return ra.user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+
+    def close(self):
+        try:
+            self.register(W["RIDEV_REMOVE"], None)
+        finally:
+            ra.user32.DestroyWindow(self.hwnd)
+
+
+def listen_raw(session):
+    try:
+        return RawMouse(session.raw)
+    except OSError as exc:
+        print(f"  raw mouse counts are not available ({exc}); camera turns "
+              f"will replay from cursor positions only", flush=True)
+        return None
 
 
 def credentials():
@@ -249,6 +357,14 @@ class Everything:
             self.add(now, {**event, "injected": injected})
             self.hooked.append(((x, y), now))
 
+    def raw(self, flags, dx, dy, physical):
+        if (not self.recording or not physical or not (dx or dy)
+                or flags & W["MOUSE_MOVE_ABSOLUTE"]):
+            return
+        now = time.perf_counter()
+        with self.lock:
+            self.add(now, {"kind": "mouse", "action": "raw", "dx": dx, "dy": dy})
+
     def poll(self, where):
         if not self.recording:
             return False
@@ -359,6 +475,7 @@ def record(command=None):
         open_session(session)
     hooks = [ra.hook(W["WH_KEYBOARD_LL"], session.key, 0, ra.KBDLLHOOKSTRUCT),
              ra.hook(W["WH_MOUSE_LL"], session.mouse, 0, ra.MSLLHOOKSTRUCT)]
+    raw = listen_raw(session)
     stop = threading.Event()
     ra.winmm.timeBeginPeriod(ra.TIMER_MS)
     workers = [_every(POLL, stop, lambda: session.poll(tuple(ra.cursor_position()))),
@@ -411,6 +528,8 @@ def record(command=None):
         for handle, _callback in hooks:
             if handle:
                 ra.user32.UnhookWindowsHookEx(handle)
+        if raw is not None:
+            raw.close()
         stop.set()
         for worker in workers:
             worker.join()
@@ -434,13 +553,47 @@ def typed_input(char, up):
         ki=ra.KEYBDINPUT(0, ord(char), flags, 0, 0)))
 
 
-def play_event(event, keys, buttons, creds):
+def relative_input(dx, dy):
+    return ra.INPUT(type=W["INPUT_MOUSE"], u=ra.INPUTUNION(mi=ra.MOUSEINPUT(
+        dx, dy, 0, W["MOUSEEVENTF_MOVE"], 0, 0)))
+
+
+def button_input(button, action):
+    return ra.INPUT(type=W["INPUT_MOUSE"], u=ra.INPUTUNION(mi=ra.MOUSEINPUT(
+        0, 0, ctypes.c_ulong(ra.X_DATA.get(button, 0)).value,
+        ra.BUTTON_FLAGS[(action, button)], 0, 0)))
+
+
+def play_event(event, keys, buttons, creds, turning=None):
+    """turning is None for a recording without raw counts. Otherwise it holds
+    the turn buttons down right now; while one is down, the raw counts stand in
+    for the cursor positions, so the camera turns by what the mouse really did."""
     if "secret" in event:
         text = creds.get(event["secret"]) if event["secret"] else None
         if text is None or event.get("i", 0) >= len(str(text)):
             return False
         ra.send(typed_input(str(text)[event["i"]], event["action"] == "up"))
         return True
+    action = event["action"]
+    if action == "raw":
+        if turning:
+            ra.send(relative_input(event["dx"], event["dy"]))
+            return True
+        return False
+    if event["kind"] == "mouse" and turning is not None:
+        button = event.get("button")
+        if action == "move" and turning:
+            return False
+        if button in TURN and action == "down" and not event.get("injected"):
+            ra.play_one(event, keys, buttons)
+            turning.add(button)
+            return True
+        if button in TURN and action == "up" and button in turning:
+            turning.discard(button)
+            ra.send(button_input(button, "up"))
+            buttons.pop(button, None)
+            ra.send(ra.mouse_input(event, 0))
+            return True
     ra.play_one(event, keys, buttons)
     return True
 
@@ -454,6 +607,7 @@ class Replay(ra.Replay):
         self.base = base
         self.late = []
         self.refused = None
+        self.turning = set() if any(e["action"] == "raw" for e in events) else None
 
     def ready(self):
         if not self.head.get("window"):
@@ -491,14 +645,17 @@ class Replay(ra.Replay):
                 if self.stop.is_set():
                     break
                 self.late.append(time.perf_counter() - due)
-                play_event(event, keys, buttons, self.creds)
+                play_event(event, keys, buttons, self.creds, self.turning)
                 self.played += 1
         finally:
             for event in list(keys.values()):
                 ra.send(ra.key_input(event, True))
             for button, event in list(buttons.items()):
-                ra.send(ra.mouse_input(event, ra.BUTTON_FLAGS[("up", button)],
-                                       ra.X_DATA.get(button, 0)))
+                if self.turning and button in self.turning:
+                    ra.send(button_input(button, "up"))
+                else:
+                    ra.send(ra.mouse_input(event, ra.BUTTON_FLAGS[("up", button)],
+                                           ra.X_DATA.get(button, 0)))
             ra.winmm.timeEndPeriod(ra.TIMER_MS)
             self.finished = True
 

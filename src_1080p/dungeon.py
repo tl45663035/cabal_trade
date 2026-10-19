@@ -660,6 +660,59 @@ def play(dungeon_name, sequence, verbose=True):
               f"held down")
 
 
+def replay_recording(name=None, times=None, rest=None):
+    from pathlib import Path
+    import record_all
+    settings = _DUNGEON.get("replay") or {}
+    name = name or settings.get("file")
+    if not name:
+        raise SystemExit("no recording to replay: set dungeon.replay.file in "
+                         "the config or pass one; nothing replayed.")
+    path = Path(name) if Path(name).exists() else record_all.ra.OUT / name
+    times = int(times if times is not None else settings.get("times", 1))
+    rest = float(rest if rest is not None else settings.get("break_seconds", 0))
+    if not path.exists():
+        raise SystemExit(f"no recording {path}; nothing replayed.")
+    head, events, refused = record_all.prepare(path)
+    if refused:
+        raise SystemExit(refused)
+    creds = (record_all.credentials()
+             if any(event.get("secret") for event in events) else {})
+    ctrl = record_all.ra.CTRL
+    presses = sum(1 for event in events if event["kind"] == "key"
+                  and event["action"] == "down" and event.get("vk") in ctrl)
+    print(f"  {path.name}: {len(events)} events over {events[-1]['t']:.1f}s, "
+          f"{times} time(s) with {rest:g}s between")
+    if presses:
+        print(f"  it presses Ctrl {presses} time(s), which the Ctrl stop may "
+              f"read as a stop")
+    stop = threading.Event()
+    threading.Thread(target=lambda: (calibration.STOPPED.wait(), stop.set()),
+                     daemon=True).start()
+    done = 0
+    for number in range(1, times + 1):
+        if stop.is_set():
+            break
+        player = record_all.Replay(events, head.get("cursor"), creds, head,
+                                   path.parent)
+        player.stop = stop
+        print(f"  replay {number} of {times} from "
+              f"{datetime.datetime.now():%H:%M:%S}", flush=True)
+        player.play()
+        if player.refused:
+            raise SystemExit(player.refused)
+        print(f"    {player.played} of {len(events)} events; "
+              f"{player.timing()}", flush=True)
+        if player.played == len(events):
+            done += 1
+        if number < times and not stop.is_set():
+            print(f"    resting {rest:g}s", flush=True)
+            stop.wait(rest)
+    print(f"  {done} of {times} replay(s) played to the end"
+          + ("; stopped by the Ctrl stop" if stop.is_set() else ""))
+    return done
+
+
 def _mouse_input(flags, data=0):
     import record_action
     return record_action.INPUT(
@@ -1790,6 +1843,8 @@ def command(args):
         start_dungeon()
     elif args[:1] == ["play"] and len(args) > 2:
         play(args[1], args[2])
+    elif args[:1] == ["replay"]:
+        replay_recording(args[1] if len(args) > 1 else None)
     elif args[:1] == ["kill"] and len(args) > 2:
         name = " ".join(args[2:])
         kill(name, target_words(args[1], name))
@@ -1823,7 +1878,8 @@ def command(args):
                          f"DUNGEON [LOCATION] ({', '.join(sorted(DUNGEONS))}), "
                          f"run N, buy N, get_entry X Y, "
                          f"open_dungeon_key DUNGEON LOCATION, start_dungeon, "
-                         f"play DUNGEON SEQUENCE, kill DUNGEON NAME, bm_aura, "
+                         f"play DUNGEON SEQUENCE, replay [FILE], "
+                         f"kill DUNGEON NAME, bm_aura, "
                          f"kill_bm DUNGEON NAME, "
                          f"enter N, arrive, "
                          f"calibrate, shout or do ACTION")
