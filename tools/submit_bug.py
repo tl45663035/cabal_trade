@@ -386,13 +386,9 @@ def resolve_rebase(work, mine):
 
 
 def publish(name, manifest_of):
-    remote, branch = K["remote"], K["branch"]
-    upstream = f"{remote}/{branch}"
     mine = f"{K['folder']}/{machine_id()}"
-    git("fetch", "-q", remote, branch)
-    work = Path(tempfile.mkdtemp(prefix="submit_bug_"))
-    git("worktree", "add", "-q", "--detach", str(work), upstream)
-    try:
+
+    def fill(work):
         base = work / mine
         folder = base / name
         if base.exists():
@@ -407,17 +403,32 @@ def publish(name, manifest_of):
                          if p.is_dir() and REPORT_FOLDER.fullmatch(p.name))
         for old in reports[:-K["keep_reports"]]:
             shutil.rmtree(old)
-        git("add", "-A", "-f", "--", mine, cwd=work)
         final = (manifest["logs"][-1]["reason"] if manifest["logs"]
                  else manifest["supervisor_ended"])
-        message = (f"bug: {name} on {manifest['machine']}: "
-                   f"{len(manifest['logs'])} log(s); last: {final}")
+        return manifest, (f"bug: {name} on {manifest['machine']}: "
+                          f"{len(manifest['logs'])} log(s); last: {final}")
+
+    return submit(mine, fill)
+
+
+def submit(mine, fill):
+    remote, branch = K["remote"], K["branch"]
+    upstream = f"{remote}/{branch}"
+    git("fetch", "-q", remote, branch)
+    work = Path(tempfile.mkdtemp(prefix="submit_bug_"))
+    git("worktree", "add", "-q", "--detach", str(work), upstream)
+    try:
+        result, message = fill(work)
+        git("add", "-A", "-f", "--", mine, cwd=work)
+        if git("diff", "--cached", "--quiet", cwd=work,
+               check=False).returncode == 0:
+            return None, result
         git("commit", "-q", "-m", message, cwd=work)
         for attempt in range(1, K["push_retries"] + 1):
             pushed = git("push", "-q", remote, f"HEAD:{branch}", cwd=work,
                          check=False)
             if pushed.returncode == 0:
-                return git("rev-parse", "--short", "HEAD", cwd=work).stdout.strip(), manifest
+                return git("rev-parse", "--short", "HEAD", cwd=work).stdout.strip(), result
             said = pushed.stderr.strip().splitlines()
             last = said[-1] if said else ""
             if not_allowed(pushed.stderr):

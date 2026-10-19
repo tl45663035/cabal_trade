@@ -13,6 +13,7 @@ SRC = ROOT / "src_1080p"
 R = json.loads((SRC / "config.json").read_text(encoding="utf-8"))["tools"]["recorder"]
 W = R["win"]
 OUT = SRC / "logs" / R["folder"]
+SUBMIT_FOLDER = R["submit_folder"]
 TAPS = int(R["toggle_taps"])
 WINDOW = float(R["toggle_window"])
 PUMP_MS = int(R["pump_ms"])
@@ -638,8 +639,46 @@ def replay(name=None):
     return 0
 
 
+def submit():
+    import platform
+    import submit_bug
+    files = sorted(OUT.glob("*_actions.jsonl"))
+    if not files:
+        print(f"no recordings in {OUT}; nothing to submit")
+        return 1
+    mine = f"{SUBMIT_FOLDER}/{submit_bug.machine_id()}"
+
+    def fill(work):
+        base = work / mine
+        base.mkdir(parents=True, exist_ok=True)
+        new = [f for f in files if not (base / f.name).exists()
+               or (base / f.name).read_bytes() != f.read_bytes()]
+        for f in new:
+            shutil.copy2(str(f), str(base / f.name))
+        return new, (f"recordings: {len(new)} from {platform.node()}, "
+                     f"{new[0].name} to {new[-1].name}" if new else "")
+
+    print(f"submitting the recordings in {OUT} from {platform.node()} "
+          f"({submit_bug.machine_id()})")
+    try:
+        commit, new = submit_bug.submit(mine, fill)
+    except submit_bug.Fail as exc:
+        print(f"  {exc}")
+        return 1
+    if commit is None:
+        print(f"  all {len(files)} are already in {mine}; nothing pushed")
+        return 0
+    print(f"  pushed {commit} to {submit_bug.K['remote']}/"
+          f"{submit_bug.K['branch']}: {len(new)} new in {mine}")
+    for f in new:
+        print(f"    {f.name}")
+    return 0
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     if args[:1] == ["replay"]:
         sys.exit(replay(args[1] if len(args) > 1 else None))
+    if args[:1] == ["submit"]:
+        sys.exit(submit())
     sys.exit(record(filming=args[:1] == ["screen"]))
