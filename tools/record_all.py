@@ -4,10 +4,12 @@ import datetime
 import json
 import os
 import signal
+import statistics
 import subprocess
 import sys
 import threading
 import time
+from ctypes import wintypes
 from pathlib import Path
 
 import record_action as ra
@@ -16,9 +18,13 @@ W = ra.W
 SUFFIX = ra.R["all_suffix"]
 POLL = float(ra.R["all_poll_ms"]) / 1000.0
 FLUSH = float(ra.R["all_flush_seconds"])
+SETTLE = float(ra.R["all_focus_settle"])
+SHOT_SIZE = tuple(ra.R["all_shot_compare"])
 VK_PACKET = W["VK_PACKET"]
 UNICODE = W["KEYEVENTF_UNICODE"]
 ACCOUNT = ra.SRC / "account.json"
+TITLE = json.loads((ra.SRC / "calibration.json").read_text(
+    encoding="utf-8"))["game"]["title_hint"]
 SECRETS = {"username": "CABAL_USERNAME", "password": "CABAL_PASSWORD"}
 EXPLAINED = 0.1
 
@@ -36,6 +42,82 @@ def credentials():
 
 def recording_path(started):
     return ra.OUT / f"{started:%Y-%m-%d_%H%M%S}{SUFFIX}"
+
+
+def shot_path(path):
+    return path.with_name(path.name[:-len(SUFFIX)] + "_start.png")
+
+
+def find_game():
+    found = []
+    proto = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+
+    def each(hwnd, _lparam):
+        if not ra.user32.IsWindowVisible(hwnd):
+            return True
+        length = ra.user32.GetWindowTextLengthW(hwnd)
+        if not length:
+            return True
+        buf = ctypes.create_unicode_buffer(length + 1)
+        ra.user32.GetWindowTextW(hwnd, buf, length + 1)
+        if TITLE.casefold() in buf.value.casefold():
+            found.append(hwnd)
+            return False
+        return True
+
+    ra.user32.EnumWindows(proto(each), 0)
+    return found[0] if found else None
+
+
+def game_rect():
+    hwnd = find_game()
+    if hwnd is None:
+        return None
+    rect = wintypes.RECT()
+    ra.user32.GetWindowRect(hwnd, ctypes.byref(rect))
+    return [rect.left, rect.top, rect.right, rect.bottom]
+
+
+def focus_game():
+    hwnd = find_game()
+    if hwnd is None:
+        return False
+    if ra.user32.GetForegroundWindow() == hwnd:
+        return True
+    if ra.user32.IsIconic(hwnd):
+        ra.user32.ShowWindow(hwnd, W["SW_RESTORE"])
+    current = ra.kernel32.GetCurrentThreadId()
+    threads = {ra.user32.GetWindowThreadProcessId(hwnd, None),
+               ra.user32.GetWindowThreadProcessId(
+                   ra.user32.GetForegroundWindow(), None)} - {current, 0}
+    for thread in threads:
+        ra.user32.AttachThreadInput(current, thread, True)
+    try:
+        ra.user32.BringWindowToTop(hwnd)
+        ra.user32.SetForegroundWindow(hwnd)
+    finally:
+        for thread in threads:
+            ra.user32.AttachThreadInput(current, thread, False)
+    time.sleep(SETTLE)
+    return ra.user32.GetForegroundWindow() == hwnd
+
+
+def grab(rect):
+    import mss
+    from PIL import Image
+    x, y, width, height = ra.desktop()
+    left, top = max(rect[0], x), max(rect[1], y)
+    right, bottom = min(rect[2], x + width), min(rect[3], y + height)
+    with mss.MSS() as sct:
+        raw = sct.grab({"left": left, "top": top, "width": right - left,
+                        "height": bottom - top})
+    return Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
+
+
+def difference(a, b):
+    small = [image.convert("L").resize(SHOT_SIZE) for image in (a, b)]
+    pairs = zip(small[0].getdata(), small[1].getdata())
+    return sum(abs(p - q) for p, q in pairs) / (255.0 * SHOT_SIZE[0] * SHOT_SIZE[1])
 
 
 def label_typed(events, typed, creds):
@@ -64,23 +146,36 @@ def label_typed(events, typed, creds):
 
 
 class Everything:
-    def __init__(self, control=True, command=None):
+    def __init__(self, control=True, command=None, armed=False):
         self.control = control
         self.command = command
         self.gesture = ra.Gesture()
         self.lock = threading.Lock()
         self.held = set()
-        self.events = []
         self.typed = {}
         self.dropped = set()
-        self.zero = time.perf_counter()
+        self.hooked = collections.deque(maxlen=256)
+        self.finished = False
+        self.opened = False
+        self.opener = None
+        self.window = None
+        self.shot = None
+        self.written = 0
+        self.recording = False
+        if armed:
+            self.started = self.path = None
+            self.events = []
+        else:
+            self.start(time.perf_counter())
+
+    def start(self, now):
+        self.zero = now
         self.started = datetime.datetime.now()
         self.cursor = ra.cursor_position()
         self.last = tuple(self.cursor)
-        self.hooked = collections.deque(maxlen=256)
-        self.finished = False
         self.path = recording_path(self.started)
-        self.written = 0
+        self.events = []
+        self.recording = True
 
     def add(self, now, event):
         stamped = {"t": round(now - self.zero, 6), **event}
@@ -88,39 +183,48 @@ class Everything:
         return stamped
 
     def key(self, message, info):
+        now = time.perf_counter()
         down = message in ra.KEY_DOWN
         if not down and message not in ra.KEY_UP:
             return
         injected = bool(info.flags & W["LLKHF_INJECTED"])
         vk = info.vkCode
         action = "down" if down else "up"
+        event = None
         if vk == VK_PACKET:
-            with self.lock:
-                event = self.add(time.perf_counter(), {
-                    "kind": "key", "action": action, "vk": vk,
-                    "secret": None, "injected": injected})
-                self.typed[id(event)] = chr(info.scanCode)
+            if self.recording:
+                with self.lock:
+                    event = self.add(now, {
+                        "kind": "key", "action": action, "vk": vk,
+                        "secret": None, "injected": injected})
+                    self.typed[id(event)] = chr(info.scanCode)
             return
         extended = bool(info.flags & W["LLKHF_EXTENDED"])
-        name = ra.key_name(info.scanCode, extended)
         with self.lock:
-            now = time.perf_counter()
             repeat = down and vk in self.held
             if down:
                 self.held.add(vk)
             else:
                 self.held.discard(vk)
-            event = self.add(now, {
-                "kind": "key", "action": action, "vk": vk,
-                "scan": info.scanCode, "extended": extended, "name": name,
-                "repeat": repeat, "injected": injected})
+            if self.recording:
+                event = self.add(now, {
+                    "kind": "key", "action": action, "vk": vk,
+                    "scan": info.scanCode, "extended": extended,
+                    "name": ra.key_name(info.scanCode, extended),
+                    "repeat": repeat, "injected": injected})
         if injected or repeat or not self.control:
             return
         if self.gesture.key(vk, down, now, event):
-            self.dropped = {id(e) for e in self.gesture.events}
-            self.finished = True
+            if self.recording:
+                self.dropped = {id(e) for e in self.gesture.events}
+                self.finished = True
+            else:
+                self.gesture.reset()
+                with self.lock:
+                    self.start(now)
 
     def mouse(self, message, info):
+        now = time.perf_counter()
         injected = bool(info.flags & W["LLMHF_INJECTED"])
         x, y = info.pt.x, info.pt.y
         high = ctypes.c_short(info.mouseData >> W["HIGH_WORD_SHIFT"]).value
@@ -139,12 +243,15 @@ class Everything:
             event = {"kind": "mouse", "action": "move", "x": x, "y": y}
         else:
             return
+        if not self.recording:
+            return
         with self.lock:
-            now = time.perf_counter()
             self.add(now, {**event, "injected": injected})
             self.hooked.append(((x, y), now))
 
     def poll(self, where):
+        if not self.recording:
+            return False
         with self.lock:
             if where == self.last:
                 return False
@@ -163,13 +270,25 @@ class Everything:
         return {"kind": "start", "at": self.started.isoformat(timespec="seconds"),
                 "screen": [width, height], "desktop": ra.desktop(),
                 "cursor": self.cursor, "command": self.command,
+                "window": self.window, "start_shot": self.shot,
                 "recorder": "record_all"}
 
-    def begin_file(self):
+    def open(self, window=None, picture=None):
+        self.window = window
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        stem, again = self.path.name[:-len(SUFFIX)], 1
+        while self.path.exists():
+            again += 1
+            self.path = self.path.with_name(f"{stem}_{again}{SUFFIX}")
+        if picture is not None:
+            picture.save(shot_path(self.path))
+            self.shot = shot_path(self.path).name
         self.path.write_text(json.dumps(self.header()) + "\n", encoding="utf-8")
+        self.opened = True
 
     def flush(self):
+        if not self.opened:
+            return
         with self.lock:
             batch = self.events[self.written:]
             self.written = len(self.events)
@@ -179,8 +298,11 @@ class Everything:
                 out.write("\n".join(lines) + "\n")
 
     def finish(self, creds):
+        if not self.opened:
+            return ["stopped before recording began; nothing saved"]
         with self.lock:
-            events = [e for e in self.events if id(e) not in self.dropped]
+            events = sorted((e for e in self.events if id(e) not in self.dropped),
+                            key=lambda e: e["t"])
             label_typed(events, self.typed, creds)
             lines = [json.dumps(self.header())]
             lines += [json.dumps(event) for event in events]
@@ -218,17 +340,52 @@ def _every(gap, stop, work):
     return thread
 
 
+def open_session(session):
+    window = game_rect()
+    picture = None
+    if window is not None:
+        try:
+            picture = grab(window)
+        except Exception as exc:
+            print(f"  no start picture: {exc}", flush=True)
+    session.open(window, picture)
+
+
 def record(command=None):
     ra.user32.SetProcessDPIAware()
-    session = Everything(control=command is None, command=command)
-    session.begin_file()
+    session = Everything(control=command is None, command=command,
+                         armed=command is None)
+    if command:
+        open_session(session)
     hooks = [ra.hook(W["WH_KEYBOARD_LL"], session.key, 0, ra.KBDLLHOOKSTRUCT),
-             hook_mouse(session)]
+             ra.hook(W["WH_MOUSE_LL"], session.mouse, 0, ra.MSLLHOOKSTRUCT)]
     stop = threading.Event()
     ra.winmm.timeBeginPeriod(ra.TIMER_MS)
     workers = [_every(POLL, stop, lambda: session.poll(tuple(ra.cursor_position()))),
                _every(FLUSH, stop, session.flush)]
     child, code, previous = None, 0, None
+    signal_box = ra.Signal() if command is None else None
+    shown = {"state": None}
+
+    def tick():
+        if session.recording and session.opener is None and not session.opened:
+            session.opener = threading.Thread(target=open_session,
+                                              args=(session,), daemon=True)
+            session.opener.start()
+        state = session.recording
+        if signal_box is not None and state != shown["state"] and not session.finished:
+            shown["state"] = state
+            if state:
+                signal_box.paint("recording", [
+                    f"recording every key, click and cursor move since "
+                    f"{session.started:%H:%M:%S}; press Ctrl {ra.TAPS} times "
+                    f"within {ra.WINDOW:g}s to stop and save"])
+            else:
+                signal_box.paint("paused", [
+                    f"ready: click into the game, set it up the way the run "
+                    f"should start, then press Ctrl {ra.TAPS} times within "
+                    f"{ra.WINDOW:g}s to start recording"])
+
     try:
         if command:
             print(f"recording everything since {session.started:%H:%M:%S} "
@@ -242,13 +399,10 @@ def record(command=None):
                 code = 1
             done = (lambda: child.poll() is not None) if child else (lambda: True)
         else:
-            ra.Signal().paint("recording", [
-                f"recording every key, click and cursor move, the bot's too, "
-                f"since {session.started:%H:%M:%S}; press Ctrl {ra.TAPS} "
-                f"times within {ra.WINDOW:g}s to stop and save"])
             done = lambda: session.finished
+        tick()
         try:
-            ra.pump(done, lambda: None)
+            ra.pump(done, tick)
         except KeyboardInterrupt:
             code = 1
         if child is not None:
@@ -263,16 +417,15 @@ def record(command=None):
         ra.winmm.timeEndPeriod(ra.TIMER_MS)
         if previous is not None:
             signal.signal(signal.SIGINT, previous)
-        if command is None:
-            ra.Signal().close()
+        if signal_box is not None:
+            signal_box.close()
+        if session.opener is not None:
+            session.opener.join()
+        session.flush()
         print("\n".join(session.finish(credentials())), flush=True)
     if child is not None:
         print(f"{' '.join(command)} exited with {code}")
     return code
-
-
-def hook_mouse(session):
-    return ra.hook(W["WH_MOUSE_LL"], session.mouse, 0, ra.MSLLHOOKSTRUCT)
 
 
 def typed_input(char, up):
@@ -293,23 +446,51 @@ def play_event(event, keys, buttons, creds):
 
 
 class Replay(ra.Replay):
-    def __init__(self, events, cursor, creds):
+    def __init__(self, events, cursor, creds, head=None, base=None):
         super().__init__(events)
         self.cursor = cursor
         self.creds = creds
+        self.head = head or {}
+        self.base = base
+        self.late = []
+        self.refused = None
+
+    def ready(self):
+        if not self.head.get("window"):
+            return True
+        if not focus_game():
+            self.refused = "could not bring the game to the front; nothing replayed"
+            return False
+        if self.base is not None and self.head.get("start_shot"):
+            picture = self.base / self.head["start_shot"]
+            if picture.exists():
+                try:
+                    from PIL import Image
+                    gap = difference(Image.open(picture), grab(self.head["window"]))
+                    print(f"  the game now differs from the recording's start "
+                          f"by {gap:.0%}; the closer to 0%, the closer the "
+                          f"replay follows", flush=True)
+                except Exception as exc:
+                    print(f"  could not compare the start picture: {exc}",
+                          flush=True)
+        return True
 
     def play(self):
         keys, buttons = {}, {}
         ra.winmm.timeBeginPeriod(ra.TIMER_MS)
         try:
+            if not self.ready():
+                return
             if self.cursor:
                 ra.send(ra.mouse_input({"x": self.cursor[0],
                                         "y": self.cursor[1]}, 0))
             zero = time.perf_counter()
             for event in self.events:
-                ra.wait_until(zero + event["t"], self.stop)
+                due = zero + event["t"]
+                ra.wait_until(due, self.stop)
                 if self.stop.is_set():
                     break
+                self.late.append(time.perf_counter() - due)
                 play_event(event, keys, buttons, self.creds)
                 self.played += 1
         finally:
@@ -321,11 +502,33 @@ class Replay(ra.Replay):
             ra.winmm.timeEndPeriod(ra.TIMER_MS)
             self.finished = True
 
+    def timing(self):
+        if not self.late:
+            return "no events were sent"
+        ms = sorted(late * 1000 for late in self.late)
+        return (f"each event went out on average {statistics.mean(ms):.2f}ms "
+                f"after its recorded moment (median {statistics.median(ms):.2f}ms, "
+                f"worst {ms[-1]:.1f}ms)")
+
 
 def prepare(path):
     lines = [line for line in path.read_text(encoding="utf-8").splitlines()
              if line.strip()]
-    head, events = json.loads(lines[0]), [json.loads(l) for l in lines[1:]]
+    if not lines:
+        return None, None, f"{path.name} is empty; nothing to replay"
+    try:
+        head, events = json.loads(lines[0]), [json.loads(l) for l in lines[1:]]
+    except ValueError:
+        good = []
+        for line in lines:
+            try:
+                good.append(json.loads(line))
+            except ValueError:
+                break
+        head, events = good[0] if good else {}, good[1:]
+    if head.get("kind") != "start":
+        return None, None, f"{path.name} has no start line; nothing replayed"
+    events.sort(key=lambda e: e["t"])
     here, layout = list(ra.screen()), ra.desktop()
     if head.get("screen") != here or head.get("desktop", layout) != layout:
         return None, None, (
@@ -335,6 +538,16 @@ def prepare(path):
             f"Nothing replayed.")
     if not events:
         return None, None, f"{path.name} holds no events; nothing to replay"
+    if head.get("window"):
+        now = game_rect()
+        if now is None:
+            return None, None, (f"{path.name} was recorded in the game and no "
+                                f"{TITLE} window is open; nothing replayed.")
+        if now != head["window"]:
+            return None, None, (
+                f"the game window was at {head['window']} when recorded and is "
+                f"at {now} now; every click would land off by the difference. "
+                f"Put it back and replay again. Nothing replayed.")
     needed = sorted({e["secret"] for e in events if e.get("secret")})
     creds = credentials() if needed else {}
     missing = [field for field in needed if not creds.get(field)]
@@ -365,11 +578,16 @@ def replay(name=None):
     if unknown:
         print(f"  {unknown} typed character(s) were not matched to the account "
               f"when recorded and will be skipped")
-    print(f"switch to the game and press Ctrl {ra.TAPS} times within "
-          f"{ra.WINDOW:g}s to start; the cursor goes to {head.get('cursor')} "
-          f"first, and the same again stops it early", flush=True)
-    session = Replay(events, head.get("cursor"), credentials()
-                     if any(e.get("secret") for e in events) else {})
+    if head.get("start_shot"):
+        print(f"  set the game up like {path.parent / head['start_shot']} "
+              f"(same spot, facing, camera and zoom) before starting")
+    print(f"press Ctrl {ra.TAPS} times within {ra.WINDOW:g}s to start; the "
+          f"game is brought to the front and the cursor goes to "
+          f"{head.get('cursor')} first. The same again stops it early. Leave "
+          f"the mouse and keyboard alone while it plays.", flush=True)
+    session = Replay(events, head.get("cursor"),
+                     credentials() if any(e.get("secret") for e in events) else {},
+                     head, path.parent)
     handle, _callback = ra.hook(W["WH_KEYBOARD_LL"], session.key,
                                 W["LLKHF_INJECTED"], ra.KBDLLHOOKSTRUCT)
 
@@ -385,26 +603,37 @@ def replay(name=None):
         session.stop.set()
         if session.worker is not None:
             session.worker.join()
-        ra.user32.UnhookWindowsHookEx(handle)
+        if handle:
+            ra.user32.UnhookWindowsHookEx(handle)
+    if session.refused:
+        print(session.refused)
+        return 1
     whole = session.played == len(events)
     print(f"{'replayed' if whole else 'stopped after'} {session.played} of "
           f"{len(events)} events; nothing is left held down")
+    print(f"  {session.timing()}")
     return 0
 
 
-USAGE = ("use: record_all.py            record until Ctrl is pressed "
-         f"{ra.TAPS} times\n"
+USAGE = ("use: record_all.py            record by hand: Ctrl "
+         f"{ra.TAPS} times starts, the same again stops\n"
          "     record_all.py run CMD... record while CMD runs\n"
          "     record_all.py replay [FILE]")
 
-if __name__ == "__main__":
-    args = sys.argv[1:]
+
+def main(args):
     if args[:1] == ["replay"]:
-        sys.exit(replay(args[1] if len(args) > 1 else None))
+        if len(args) > 2:
+            return USAGE
+        return replay(args[1] if len(args) > 1 else None)
     if args[:1] == ["run"]:
         if len(args) < 2:
-            sys.exit(USAGE)
-        sys.exit(record(args[1:]))
+            return USAGE
+        return record(args[1:])
     if args:
-        sys.exit(USAGE)
-    sys.exit(record())
+        return USAGE
+    return record()
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

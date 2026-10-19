@@ -157,3 +157,47 @@ My calls (the user hasn't confirmed these, so they can overrule them):
   whichever matches the existing pattern. The hooks themselves are
   checked by hand on the real machine: record `dungeon.py fire --runs 1`,
   replay it, and check the game does the same.
+
+## Revision after the first dry run (2026-10-19)
+
+The first hand recording (`2026-10-19_154052_all.jsonl`, 73 s, 5,513
+events) replayed inaccurately. It began with the cursor on another
+monitor (where the terminal was), and its first click, a right click at
+(1114, 518), was the click that brought the game to the front. On replay
+the game was already in front, so that click reached the game as a real
+action, and everything after it started from a different state. Fixes:
+
+- **A hand recording starts on Ctrl x2, not at launch.** The user clicks
+  into the game, sets it up, then presses Ctrl twice. The focusing click
+  and the start gesture are never recorded.
+- **The game window is part of the recording.** The header stores the
+  `PlayCabal` window rectangle (title from `calibration.json`). Replay
+  refuses if the game is closed or the window has moved, because every
+  click would land off by the difference. Replay brings the game to the
+  front itself before sending anything, and sends nothing if it can't.
+- **A start picture.** A screenshot of the game is saved as
+  `<name>_start.png` when recording starts. Replay names it so the user
+  can set up the same spot, facing, camera and zoom. Just before playing,
+  replay prints how much the screen differs from it. A blind replay only
+  follows if the game starts in the same state.
+- **Timing report.** Replay measures how late each event went out against
+  its recorded moment, and prints the mean, median and worst.
+- Smaller fixes:
+  - Events are stamped the moment the hook sees them.
+  - The final file is sorted by time.
+  - A file cut off mid-line by a crash still replays.
+  - Two recordings in the same second get separate files.
+  - The start screenshot is taken off the hook thread, so input never
+    stalls (Windows drops a low-level hook that is too slow).
+
+These were checked against the dry-run file and found sound:
+- Positions map back to the same pixel on the 5360x1440 three-monitor
+  desktop.
+- Auto-repeat key downs are kept and replayed.
+- Moves with no pixel change (13% of free moves; sub-pixel mouse motion)
+  are harmless.
+- No evidence was found that the game pins the cursor during a drag.
+
+That last point is left open. If camera turning (right drag) turns out
+not to replay, the game is reading raw mouse deltas, and the recorder
+would also need Raw Input.
