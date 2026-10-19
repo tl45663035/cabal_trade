@@ -4594,6 +4594,8 @@ def dungeon_turn(verbose=True, report_wait=True):
     if not dungeon_on() or _DUNGEON["off"]:
         return False
     import dungeon
+    if dungeon.DUNGEONS[dungeon.TRADING_DUNGEON].get("back_to_back"):
+        return back_to_back_turn(dungeon, verbose)
     if _DUNGEON["due"] is None and not _DUNGEON["resume_checked"]:
         _DUNGEON["resume_checked"] = True
         found = dungeon.resume()
@@ -4655,6 +4657,62 @@ def dungeon_turn(verbose=True, report_wait=True):
               f"next one")
 
 
+def back_to_back_turn(dungeon, verbose=True):
+    name = dungeon.TRADING_DUNGEON
+    place = dungeon.DUNGEONS[name]
+    limit = int(place["daily_limit"])
+    start = place.get("start_at", dungeon.START_AT)
+    acted, rested = False, None
+    while True:
+        wait = dungeon.until_open(name)
+        if wait is None:
+            print(f"  dungeon: the online clock did not answer, so {name} "
+                  f"waits; trading on")
+            return acted
+        if wait > 0:
+            _DUNGEON["due"] = time.monotonic() + wait
+            if not _DUNGEON["closed"]:
+                print(f"  dungeon: {name} runs back to back from {start} "
+                      f"{dungeon.RESET_ZONE.key} time each day, {wait:.0f}s "
+                      f"from now; trading until then")
+            _DUNGEON["closed"] = True
+            return acted
+        _DUNGEON["closed"] = False
+        done = dungeon.runs_today(name)
+        if done >= limit or dungeon.off_today(dungeon.server_day()):
+            later = dungeon.until_next_day(name)
+            _DUNGEON["due"] = (None if later is None
+                               else time.monotonic() + later)
+            if not _DUNGEON["spent"]:
+                print(f"  dungeon: {name} ran {done} of {limit} this dungeon "
+                      f"day; trading until {start} on the next one")
+            _DUNGEON["spent"] = True
+            return acted
+        _DUNGEON["spent"] = False
+        _DUNGEON["due"] = None
+        if acted and world_boss_turn(verbose=verbose):
+            calibration.close_everything(verbose=verbose)
+        if rested is not None:
+            dungeon.cool_down(name, rested, verbose)
+        print(f"  dungeon: {name} run {done + 1} of {limit} this dungeon day")
+        first, acted = not acted, True
+        try:
+            if first:
+                dungeon.start_block(name, dungeon.only_location(name), verbose)
+            dungeon.run_dungeon(name, dungeon.only_location(name), verbose)
+            rested = time.monotonic()
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            calibration.snap("dungeon_failed")
+            _DUNGEON["off"] = True
+            print(f"  dungeon: {name} run {done + 1} failed "
+                  f"({type(exc).__name__}: {exc}); no more {name} this "
+                  f"trading run, and trading carries on with every row, cost "
+                  f"and floor it held")
+            return True
+
+
 def dungeon_in_war(verbose=True):
     if dungeon_turn(verbose=verbose, report_wait=False):
         calibration.close_everything(verbose=verbose)
@@ -4670,7 +4728,7 @@ def dungeon_pause(verbose=True):
     if not dungeon_due():
         return False
     print("")
-    print("DUNGEON: the boss is due; trading stops here and the dungeon "
+    print("DUNGEON: the dungeon is due; trading stops here and the dungeon "
           "runs")
     calibration.close_everything(verbose=verbose)
     with calibration.phase("dungeon"):

@@ -1,6 +1,7 @@
 import ctypes
 import datetime
 import json
+import shutil
 import sys
 import threading
 import time
@@ -21,7 +22,12 @@ SCREEN_FPS = float(R["screen_fps"])
 SCREEN_MONITOR = int(R["screen_monitor"])
 SCREEN_FOLDER = R["screen_folder"]
 SCREEN_INDEX = R["screen_index"]
-CTRL = {W["VK_CONTROL"], W["VK_LCONTROL"], W["VK_RCONTROL"]}
+BANNER = R["banner"]
+GLYPHS = BANNER["glyphs"]
+GLYPH_ROWS = len(next(iter(GLYPHS.values())))
+ESC = chr(27)
+CTRL ={W["VK_CONTROL"], W["VK_LCONTROL"], W["VK_RCONTROL"]}
+CUT = W["VK_Z"]
 KEY_DOWN = {W["WM_KEYDOWN"], W["WM_SYSKEYDOWN"]}
 KEY_UP = {W["WM_KEYUP"], W["WM_SYSKEYUP"]}
 BUTTON_MESSAGES = {
@@ -103,6 +109,10 @@ user32.SendInput.argtypes = [wintypes.UINT, ctypes.POINTER(INPUT), ctypes.c_int]
 user32.GetCursorPos.argtypes = [ctypes.POINTER(wintypes.POINT)]
 kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
 kernel32.GetModuleHandleW.restype = wintypes.HMODULE
+kernel32.GetStdHandle.argtypes = [wintypes.DWORD]
+kernel32.GetStdHandle.restype = wintypes.HANDLE
+kernel32.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+kernel32.SetConsoleMode.argtypes = [wintypes.HANDLE, wintypes.DWORD]
 
 
 def screen():
@@ -161,7 +171,7 @@ class Gesture:
 
 
 class Recording:
-    def __init__(self):
+    def __init__(self, segments=False):
         self.gesture = Gesture()
         self.held = set()
         self.events = []
@@ -169,8 +179,13 @@ class Recording:
         self.started = None
         self.recording = False
         self.finished = False
-        self.said = None
+        self.kept = False
         self.cursor = None
+        self.segments = segments
+        self.number = 0
+        self.saved = []
+        self.writers = []
+        self.reports = []
 
     def stamp(self, now, event):
         return {"t": round(now - self.zero, 6), **event}
@@ -186,6 +201,14 @@ class Recording:
             self.held.add(vk)
         else:
             self.held.discard(vk)
+        if self.segments and vk == CUT:
+            self.gesture.reset()
+            if down and not repeat:
+                if self.recording:
+                    self.cut()
+                else:
+                    self.begin(now)
+            return
         event = None
         if self.recording:
             extended = bool(info.flags & W["LLKHF_EXTENDED"])
@@ -220,17 +243,36 @@ class Recording:
         if self.recording:
             self.events.append(self.stamp(now, event))
 
+    def begin(self, now):
+        self.recording, self.zero, self.events = True, now, []
+        self.cursor = cursor_position()
+        self.started = datetime.datetime.now()
+        self.number += 1
+        self.gesture.reset()
+
+    def cut(self):
+        path = recording_path(self.started)
+        self.saved.append(path)
+        writer = threading.Thread(target=self.write, args=(
+            path, self.started, self.cursor, self.events,
+            f"recording {self.number} cut"))
+        self.writers.append(writer)
+        writer.start()
+        self.recording, self.events = False, []
+
+    def write(self, path, started, cursor, events, said):
+        self.reports.append(save(path, started, cursor, events, said))
+
     def toggle(self, now):
         if not self.recording:
-            self.recording, self.zero, self.events = True, now, []
-            self.cursor = cursor_position()
-            self.started = datetime.datetime.now()
-            self.said = "started"
-            self.gesture.reset()
+            if self.saved:
+                self.finished = True
+            else:
+                self.begin(now)
             return
         gesture = {id(event) for event in self.gesture.events}
         self.events = [e for e in self.events if id(e) not in gesture]
-        self.recording, self.finished, self.said = False, True, "stopped"
+        self.recording, self.finished, self.kept = False, True, True
 
 
 class Film:
@@ -290,9 +332,85 @@ def pump(done, tick):
         user32.KillTimer(None, timer)
 
 
+def recording_path(started):
+    return OUT / f"{started:%Y-%m-%d_%H%M%S}_actions.jsonl"
+
+
+def save(path, started, cursor, events, said):
+    OUT.mkdir(parents=True, exist_ok=True)
+    width, height = screen()
+    lines = [json.dumps({"kind": "start", "at": started.isoformat(
+        timespec="seconds"), "screen": [width, height],
+        "desktop": desktop(), "cursor": cursor})]
+    lines += [json.dumps(event) for event in events]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    counts = {}
+    for event in events:
+        name = f"{event['kind']} {event['action']}"
+        counts[name] = counts.get(name, 0) + 1
+    length = events[-1]["t"] if events else 0.0
+    report = [f"{said}: {len(events)} events over {length:.1f}s"]
+    report += [f"  {name}: {count}" for name, count in sorted(counts.items())]
+    return report + [f"saved {path}"]
+
+
+def console_colours():
+    if not sys.stdout.isatty():
+        return False
+    handle = kernel32.GetStdHandle(W["STD_OUTPUT_HANDLE"])
+    mode = wintypes.DWORD()
+    if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+        return False
+    return bool(kernel32.SetConsoleMode(
+        handle, mode.value | W["ENABLE_VIRTUAL_TERMINAL_PROCESSING"]))
+
+
+class Signal:
+    def __init__(self):
+        self.colour = console_colours()
+        self.said = None
+
+    def paint(self, state, lines):
+        if not self.colour:
+            if lines[0] != self.said:
+                self.said = lines[0]
+                print(lines[0], flush=True)
+            return
+        look = BANNER[state]
+        word = [letter for letter in look["word"] if letter in GLYPHS]
+        cell = len(GLYPHS[word[0]][0])
+        gap, margin = int(BANNER["letter_gap"]), int(BANNER["margin"])
+        width, height = shutil.get_terminal_size()
+        span = len(word) * cell + (len(word) - 1) * gap
+        room = height - len(lines) - 3 * margin
+        scale = max(1, min((width - 2 * margin) // span, room // GLYPH_ROWS))
+        paper = f"{ESC}[0;{look['background']}m"
+        ink = f"{ESC}[{BANNER['ink']}m"
+        out = [f"{paper}{ESC}[2J{ESC}[H" + "\n" * margin]
+        for row in range(GLYPH_ROWS):
+            line = paper + " " * margin
+            for at, letter in enumerate(word):
+                if at:
+                    line += paper + " " * (gap * scale)
+                for pixel in GLYPHS[letter][row]:
+                    line += (paper if pixel == " " else ink) + " " * scale
+            out += [line + paper + "\n"] * scale
+        text = f"{paper}{ESC}[{BANNER['text']}m"
+        out.append("\n" * margin)
+        out += [text + " " * margin + line + "\n" for line in lines]
+        sys.stdout.write("".join(out))
+        sys.stdout.flush()
+
+    def close(self):
+        if self.colour:
+            sys.stdout.write(f"{ESC}[0m{ESC}[2J{ESC}[H")
+            sys.stdout.flush()
+
+
 def record(filming=False):
     user32.SetProcessDPIAware()
-    session = Recording()
+    session = Recording(segments=not filming)
+    signal = Signal()
     hooks = [hook(W["WH_KEYBOARD_LL"], session.key, W["LLKHF_INJECTED"],
                   KBDLLHOOKSTRUCT),
              hook(W["WH_MOUSE_LL"], session.mouse, W["LLMHF_INJECTED"],
@@ -300,24 +418,39 @@ def record(filming=False):
     film = None
     if filming:
         session.toggle(time.perf_counter())
-        session.said = None
         film = Film(session, OUT / f"{session.started:%Y-%m-%d_%H%M%S}_"
                                    f"{SCREEN_FOLDER}")
         film.folder.mkdir(parents=True, exist_ok=True)
         film.worker.start()
-        print(f"recording the screen at {SCREEN_FPS:g} frames a second and "
-              f"every key and click since {session.started:%H:%M:%S}; press "
-              f"Ctrl {TAPS} times within {WINDOW:g}s to stop", flush=True)
-    else:
-        print(f"press Ctrl {TAPS} times within {WINDOW:g}s to start "
-              f"recording; the same again stops it", flush=True)
+
+    def status():
+        if filming:
+            return [f"recording the screen at {SCREEN_FPS:g} frames a second "
+                    f"and every key and click since "
+                    f"{session.started:%H:%M:%S}; press Ctrl {TAPS} times "
+                    f"within {WINDOW:g}s to stop"]
+        if session.recording:
+            return [f"recording {session.number} since "
+                    f"{session.started:%H:%M:%S}; Z saves it and pauses, Ctrl "
+                    f"{TAPS} times within {WINDOW:g}s saves it and stops"]
+        if not session.saved:
+            return [f"paused: Z or Ctrl {TAPS} times within {WINDOW:g}s starts "
+                    f"recording 1"]
+        return ([f"paused: Z starts recording {session.number + 1}, Ctrl "
+                 f"{TAPS} times within {WINDOW:g}s stops", ""]
+                + (session.reports[-1] if session.reports else []))
+
+    shown = {"state": None}
 
     def tick():
-        if session.said == "started":
-            print(f"recording since {session.started:%H:%M:%S}", flush=True)
-            session.said = None
+        state = (session.recording, session.number, len(session.reports))
+        if state != shown["state"] and not session.finished:
+            shown["state"] = state
+            signal.paint("recording" if session.recording else "paused",
+                         status())
 
     try:
+        tick()
         pump(lambda: session.finished, tick)
     finally:
         for handle, _callback in hooks:
@@ -325,28 +458,28 @@ def record(filming=False):
         if film is not None:
             film.stop.set()
             film.worker.join()
+        for writer in session.writers:
+            writer.join()
+        signal.close()
+        if film is not None:
             print(f"saved {film.count} frame(s) in {film.folder}, indexed in "
                   f"{SCREEN_INDEX}", flush=True)
+        for report in session.reports:
+            print("\n".join(report), flush=True)
     if not session.finished:
         print("stopped before a recording was finished; nothing saved")
         return 1
-    OUT.mkdir(parents=True, exist_ok=True)
-    path = OUT / f"{session.started:%Y-%m-%d_%H%M%S}_actions.jsonl"
-    width, height = screen()
-    lines = [json.dumps({"kind": "start", "at": session.started.isoformat(
-        timespec="seconds"), "screen": [width, height],
-        "desktop": desktop(), "cursor": session.cursor})]
-    lines += [json.dumps(event) for event in session.events]
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    counts = {}
-    for event in session.events:
-        name = f"{event['kind']} {event['action']}"
-        counts[name] = counts.get(name, 0) + 1
-    length = session.events[-1]["t"] if session.events else 0.0
-    print(f"stopped: {len(session.events)} events over {length:.1f}s")
-    for name, count in sorted(counts.items()):
-        print(f"  {name}: {count}")
-    print(f"saved {path}")
+    if session.kept:
+        path = recording_path(session.started)
+        session.saved.append(path)
+        print("\n".join(save(path, session.started, session.cursor,
+                             session.events, "stopped" if filming
+                             else f"recording {session.number} stopped")),
+              flush=True)
+    if session.writers:
+        print("saved this run, in order:")
+        for path in session.saved:
+            print(f"  {path.name}")
     return 0
 
 
