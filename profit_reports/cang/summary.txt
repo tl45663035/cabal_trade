@@ -29,12 +29,12 @@ Thu 2026-10-15            16.09h   24.00h  138.17M    8.59M    5.68B   5.55B   9
 Fri 2026-10-16            16.40h   24.00h  119.79M    7.30M    5.38B   5.26B   9.26K    2.2%
 Sat 2026-10-17             8.80h   24.00h   48.93M    5.56M    2.09B   2.04B   2.55K    2.3%
 Sun 2026-10-18            19.14h   24.00h  134.71M    7.04M    6.68B   6.55B  10.83K    2.0%
-Mon 2026-10-19 (so far)    5.47h    7.10h    8.83M    1.61M    2.11B   2.11B   3.36K    0.4%
+Mon 2026-10-19 (so far)    5.73h    7.36h    8.83M    1.54M    2.11B   2.11B   3.36K    0.4%
 ============================================================================================
-7 DAYS                   101.66h  151.10h  681.96M    6.71M   36.37B  35.69B  57.73K    1.9%
+7 DAYS                   101.92h  151.36h  681.96M    6.69M   36.37B  35.69B  57.73K    1.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-19 00:00 Central (as of 07:06 Central)
+PROFIT SUMMARY -- sold since 2026-10-19 00:00 Central (as of 07:21 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
@@ -57,13 +57,13 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-19_031247_run_board.log, board during pass 62 at row 4, read 2026-10-19T07:05:46 (live)
+ROWS -- 2026-10-19_031247_run_board.log, board during pass 66 at row 1, read 2026-10-19T07:21:11 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Astral Board Card - Zero Black          x1         -    19.49M         -    19.49M         -         -
-    2  Upgrade Core (Ultimate                 x33   292.00K   319.66K   +27.66K   319.66K     9.64M   912.78K
-    3  Upgrade Core (Ultimate                 x73   292.00K   319.66K   +27.66K   319.66K    21.32M     2.02M
-    4  Upgrade Core (Ultimate                x150   292.00K   319.66K   +27.66K   319.66K    43.80M     4.15M <- here
-    5  Upgrade Core (Ultimate                 x28   292.00K   319.67K   +27.67K   319.67K     8.18M   774.68K
+    1  Astral Board Card - Zero Black          x1         -    19.45M         -    19.45M         -         - <- here
+    2  Upgrade Core (Ultimate                 x33   292.00K   319.64K   +27.64K   319.64K     9.64M   911.99K
+    3  Upgrade Core (Ultimate                 x73   292.00K   319.63K   +27.64K   319.63K    21.32M     2.02M
+    4  Upgrade Core (Ultimate                x150   292.00K   319.63K   +27.63K   319.63K    43.80M     4.15M
+    5  Upgrade Core (Ultimate                 x28   292.00K   319.63K   +27.63K   319.63K     8.18M   773.72K
     6  Chaos Core Set X 210                    x1   700.00K   700.00K        +0   147.00M   147.00M         0
     7  Chaos Core Set X 225                    x1   705.00K   705.00K        +0   158.62M   158.62M         0
     8  Chaos Core Set X 249                    x1   706.00K   706.00K        +0   175.79M   175.79M         0
@@ -79,18 +79,15 @@ ROWS -- 2026-10-19_031247_run_board.log, board during pass 62 at row 4, read 202
    18  Force Core(High                         x1   265.70K   265.70K        +0   265.70K   265.70K         0
    29  Time Reducer (12h) - Diamond Insig        x1         -     2.59M         -     5.19M         -         -
    30  Time Reducer (12h) - Diamond Insig        x1         -     2.59M         -     7.78M         -         -
-    balance now 1.91B, read 2026-10-19T07:04:52
+    balance now 1.91B, read 2026-10-19T07:20:16
        stock at its listed price                                                                        1.47B
        Alz, latest balance line                                                                         1.91B
        NET WORTH                                                                                        3.38B
 
 
-MARKET -- 2026-10-19_031247_run.log, pass 62, log last written 07:06 Central (live)
+MARKET -- 2026-10-19_031247_run.log, pass 66, log last written 07:21 Central (live)
 
-core                     rows    buy/u   sell/u   margin  margin %  wants  short?
---------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  344.39K  344.67K      287      0.1%      0
-Chaos Core                  9  698.87K  680.00K  -18.87K     -2.8%      0
-Divine Stone                0  726.00K  720.68K   -5.32K     -0.7%      0
-Force Core(High)            4        -        -        -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     4        -        -        -         -      -  holds the most it can want, 3; not priced
+core                 rows    buy/u   sell/u   margin  margin %  wants  short?
+-----------------------------------------------------------------------------
+Force Core(Highest)     0  344.39K  344.67K      286      0.1%      0
+Chaos Core              9  698.87K  680.00K  -18.87K     -2.8%      0
