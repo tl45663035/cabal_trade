@@ -976,6 +976,9 @@
       "screen_monitor": 1,
       "screen_folder": "screen",
       "screen_index": "frames.jsonl",
+      "all_suffix": "_all.jsonl",
+      "all_poll_ms": 1,
+      "all_flush_seconds": 1.0,
       "banner": {
         "recording": {"word": "RECORDING", "background": "101"},
         "paused": {"word": "PAUSED", "background": "102"},
@@ -1031,6 +1034,8 @@
         "KEYEVENTF_EXTENDEDKEY": 1,
         "KEYEVENTF_KEYUP": 2,
         "KEYEVENTF_SCANCODE": 8,
+        "KEYEVENTF_UNICODE": 4,
+        "VK_PACKET": 231,
         "MOUSEEVENTF_MOVE": 1,
         "MOUSEEVENTF_LEFTDOWN": 2,
         "MOUSEEVENTF_LEFTUP": 4,

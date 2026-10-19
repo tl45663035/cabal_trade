@@ -1,0 +1,410 @@
+import collections
+import ctypes
+import datetime
+import json
+import os
+import signal
+import subprocess
+import sys
+import threading
+import time
+from pathlib import Path
+
+import record_action as ra
+
+W = ra.W
+SUFFIX = ra.R["all_suffix"]
+POLL = float(ra.R["all_poll_ms"]) / 1000.0
+FLUSH = float(ra.R["all_flush_seconds"])
+VK_PACKET = W["VK_PACKET"]
+UNICODE = W["KEYEVENTF_UNICODE"]
+ACCOUNT = ra.SRC / "account.json"
+SECRETS = {"username": "CABAL_USERNAME", "password": "CABAL_PASSWORD"}
+EXPLAINED = 0.1
+
+
+def credentials():
+    held = {}
+    if ACCOUNT.exists():
+        try:
+            held = json.loads(ACCOUNT.read_text(encoding="utf-8"))
+        except ValueError:
+            held = {}
+    return {field: os.environ.get(env) or held.get(field)
+            for field, env in SECRETS.items()}
+
+
+def recording_path(started):
+    return ra.OUT / f"{started:%Y-%m-%d_%H%M%S}{SUFFIX}"
+
+
+def label_typed(events, typed, creds):
+    runs, run = [], []
+    for event in events:
+        if event["kind"] != "key":
+            continue
+        if id(event) in typed:
+            run.append(event)
+        elif run:
+            runs.append(run)
+            run = []
+    if run:
+        runs.append(run)
+    for run in runs:
+        text = "".join(typed[id(e)] for e in run if e["action"] == "down")
+        field = next((name for name, value in creds.items()
+                      if value and str(value) == text), None)
+        if field is None:
+            continue
+        index = -1
+        for event in run:
+            if event["action"] == "down":
+                index += 1
+            event["secret"], event["i"] = field, max(index, 0)
+
+
+class Everything:
+    def __init__(self, control=True, command=None):
+        self.control = control
+        self.command = command
+        self.gesture = ra.Gesture()
+        self.lock = threading.Lock()
+        self.held = set()
+        self.events = []
+        self.typed = {}
+        self.dropped = set()
+        self.zero = time.perf_counter()
+        self.started = datetime.datetime.now()
+        self.cursor = ra.cursor_position()
+        self.last = tuple(self.cursor)
+        self.hooked = collections.deque(maxlen=256)
+        self.finished = False
+        self.path = recording_path(self.started)
+        self.written = 0
+
+    def add(self, now, event):
+        stamped = {"t": round(now - self.zero, 6), **event}
+        self.events.append(stamped)
+        return stamped
+
+    def key(self, message, info):
+        down = message in ra.KEY_DOWN
+        if not down and message not in ra.KEY_UP:
+            return
+        injected = bool(info.flags & W["LLKHF_INJECTED"])
+        vk = info.vkCode
+        action = "down" if down else "up"
+        if vk == VK_PACKET:
+            with self.lock:
+                event = self.add(time.perf_counter(), {
+                    "kind": "key", "action": action, "vk": vk,
+                    "secret": None, "injected": injected})
+                self.typed[id(event)] = chr(info.scanCode)
+            return
+        extended = bool(info.flags & W["LLKHF_EXTENDED"])
+        name = ra.key_name(info.scanCode, extended)
+        with self.lock:
+            now = time.perf_counter()
+            repeat = down and vk in self.held
+            if down:
+                self.held.add(vk)
+            else:
+                self.held.discard(vk)
+            event = self.add(now, {
+                "kind": "key", "action": action, "vk": vk,
+                "scan": info.scanCode, "extended": extended, "name": name,
+                "repeat": repeat, "injected": injected})
+        if injected or repeat or not self.control:
+            return
+        if self.gesture.key(vk, down, now, event):
+            self.dropped = {id(e) for e in self.gesture.events}
+            self.finished = True
+
+    def mouse(self, message, info):
+        injected = bool(info.flags & W["LLMHF_INJECTED"])
+        x, y = info.pt.x, info.pt.y
+        high = ctypes.c_short(info.mouseData >> W["HIGH_WORD_SHIFT"]).value
+        if message in ra.BUTTON_MESSAGES:
+            action, button = ra.BUTTON_MESSAGES[message]
+            if button == "x":
+                button = "x1" if high == W["XBUTTON1"] else "x2"
+            if not injected:
+                self.gesture.reset()
+            event = {"kind": "mouse", "action": action, "button": button,
+                     "x": x, "y": y}
+        elif message in ra.WHEELS:
+            event = {"kind": "mouse", "action": ra.WHEELS[message],
+                     "delta": high, "x": x, "y": y}
+        elif message == W["WM_MOUSEMOVE"]:
+            event = {"kind": "mouse", "action": "move", "x": x, "y": y}
+        else:
+            return
+        with self.lock:
+            now = time.perf_counter()
+            self.add(now, {**event, "injected": injected})
+            self.hooked.append(((x, y), now))
+
+    def poll(self, where):
+        with self.lock:
+            if where == self.last:
+                return False
+            self.last = where
+            now = time.perf_counter()
+            for at, (pos, when) in enumerate(self.hooked):
+                if pos == where and now - when <= EXPLAINED:
+                    del self.hooked[at]
+                    return False
+            self.add(now, {"kind": "mouse", "action": "move", "x": where[0],
+                           "y": where[1], "source": "poll"})
+            return True
+
+    def header(self):
+        width, height = ra.screen()
+        return {"kind": "start", "at": self.started.isoformat(timespec="seconds"),
+                "screen": [width, height], "desktop": ra.desktop(),
+                "cursor": self.cursor, "command": self.command,
+                "recorder": "record_all"}
+
+    def begin_file(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(json.dumps(self.header()) + "\n", encoding="utf-8")
+
+    def flush(self):
+        with self.lock:
+            batch = self.events[self.written:]
+            self.written = len(self.events)
+            lines = [json.dumps(event) for event in batch]
+        if lines:
+            with open(self.path, "a", encoding="utf-8") as out:
+                out.write("\n".join(lines) + "\n")
+
+    def finish(self, creds):
+        with self.lock:
+            events = [e for e in self.events if id(e) not in self.dropped]
+            label_typed(events, self.typed, creds)
+            lines = [json.dumps(self.header())]
+            lines += [json.dumps(event) for event in events]
+        spare = self.path.with_name(self.path.name + ".part")
+        spare.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        os.replace(spare, self.path)
+        return report(self.path, events)
+
+
+def report(path, events):
+    counts = collections.Counter(f"{e['kind']} {e['action']}" for e in events)
+    bot = sum(1 for e in events if e.get("injected") is True)
+    you = sum(1 for e in events if e.get("injected") is False)
+    polled = sum(1 for e in events if e.get("source") == "poll")
+    typed = [e for e in events if "secret" in e and e["action"] == "down"]
+    unknown = sum(1 for e in typed if e["secret"] is None)
+    length = events[-1]["t"] if events else 0.0
+    lines = [f"{len(events)} events over {length:.1f}s: {bot} sent by software, "
+             f"{you} by hand, {polled} cursor moves seen by polling"]
+    lines += [f"  {name}: {count}" for name, count in sorted(counts.items())]
+    if typed:
+        lines.append(f"  {len(typed)} typed character(s) kept off disk"
+                     + (f", {unknown} not matched to the account and not "
+                        f"replayable" if unknown else ""))
+    return lines + [f"saved {path}"]
+
+
+def _every(gap, stop, work):
+    def loop():
+        while not stop.is_set():
+            work()
+            stop.wait(gap)
+    thread = threading.Thread(target=loop, daemon=True)
+    thread.start()
+    return thread
+
+
+def record(command=None):
+    ra.user32.SetProcessDPIAware()
+    session = Everything(control=command is None, command=command)
+    session.begin_file()
+    hooks = [ra.hook(W["WH_KEYBOARD_LL"], session.key, 0, ra.KBDLLHOOKSTRUCT),
+             hook_mouse(session)]
+    stop = threading.Event()
+    ra.winmm.timeBeginPeriod(ra.TIMER_MS)
+    workers = [_every(POLL, stop, lambda: session.poll(tuple(ra.cursor_position()))),
+               _every(FLUSH, stop, session.flush)]
+    child, code, previous = None, 0, None
+    try:
+        if command:
+            print(f"recording everything since {session.started:%H:%M:%S} "
+                  f"while {' '.join(command)} runs; it stops when that ends",
+                  flush=True)
+            previous = signal.signal(signal.SIGINT, lambda *a: None)
+            try:
+                child = subprocess.Popen(command)
+            except OSError as exc:
+                print(f"could not start {' '.join(command)}: {exc}")
+                code = 1
+            done = (lambda: child.poll() is not None) if child else (lambda: True)
+        else:
+            ra.Signal().paint("recording", [
+                f"recording every key, click and cursor move, the bot's too, "
+                f"since {session.started:%H:%M:%S}; press Ctrl {ra.TAPS} "
+                f"times within {ra.WINDOW:g}s to stop and save"])
+            done = lambda: session.finished
+        try:
+            ra.pump(done, lambda: None)
+        except KeyboardInterrupt:
+            code = 1
+        if child is not None:
+            code = child.wait()
+    finally:
+        for handle, _callback in hooks:
+            if handle:
+                ra.user32.UnhookWindowsHookEx(handle)
+        stop.set()
+        for worker in workers:
+            worker.join()
+        ra.winmm.timeEndPeriod(ra.TIMER_MS)
+        if previous is not None:
+            signal.signal(signal.SIGINT, previous)
+        if command is None:
+            ra.Signal().close()
+        print("\n".join(session.finish(credentials())), flush=True)
+    if child is not None:
+        print(f"{' '.join(command)} exited with {code}")
+    return code
+
+
+def hook_mouse(session):
+    return ra.hook(W["WH_MOUSE_LL"], session.mouse, 0, ra.MSLLHOOKSTRUCT)
+
+
+def typed_input(char, up):
+    flags = UNICODE | (W["KEYEVENTF_KEYUP"] if up else 0)
+    return ra.INPUT(type=W["INPUT_KEYBOARD"], u=ra.INPUTUNION(
+        ki=ra.KEYBDINPUT(0, ord(char), flags, 0, 0)))
+
+
+def play_event(event, keys, buttons, creds):
+    if "secret" in event:
+        text = creds.get(event["secret"]) if event["secret"] else None
+        if text is None or event.get("i", 0) >= len(str(text)):
+            return False
+        ra.send(typed_input(str(text)[event["i"]], event["action"] == "up"))
+        return True
+    ra.play_one(event, keys, buttons)
+    return True
+
+
+class Replay(ra.Replay):
+    def __init__(self, events, cursor, creds):
+        super().__init__(events)
+        self.cursor = cursor
+        self.creds = creds
+
+    def play(self):
+        keys, buttons = {}, {}
+        ra.winmm.timeBeginPeriod(ra.TIMER_MS)
+        try:
+            if self.cursor:
+                ra.send(ra.mouse_input({"x": self.cursor[0],
+                                        "y": self.cursor[1]}, 0))
+            zero = time.perf_counter()
+            for event in self.events:
+                ra.wait_until(zero + event["t"], self.stop)
+                if self.stop.is_set():
+                    break
+                play_event(event, keys, buttons, self.creds)
+                self.played += 1
+        finally:
+            for event in list(keys.values()):
+                ra.send(ra.key_input(event, True))
+            for button, event in list(buttons.items()):
+                ra.send(ra.mouse_input(event, ra.BUTTON_FLAGS[("up", button)],
+                                       ra.X_DATA.get(button, 0)))
+            ra.winmm.timeEndPeriod(ra.TIMER_MS)
+            self.finished = True
+
+
+def prepare(path):
+    lines = [line for line in path.read_text(encoding="utf-8").splitlines()
+             if line.strip()]
+    head, events = json.loads(lines[0]), [json.loads(l) for l in lines[1:]]
+    here, layout = list(ra.screen()), ra.desktop()
+    if head.get("screen") != here or head.get("desktop", layout) != layout:
+        return None, None, (
+            f"{path.name} was recorded on a {head.get('screen')} screen "
+            f"(desktop {head.get('desktop', 'not noted')}) and this one is "
+            f"{here} (desktop {layout}); the positions would not line up. "
+            f"Nothing replayed.")
+    if not events:
+        return None, None, f"{path.name} holds no events; nothing to replay"
+    needed = sorted({e["secret"] for e in events if e.get("secret")})
+    creds = credentials() if needed else {}
+    missing = [field for field in needed if not creds.get(field)]
+    if missing:
+        return None, None, (
+            f"{path.name} types the account's {' and '.join(missing)}, and "
+            f"there is none in {ACCOUNT.name} or the environment. Nothing "
+            f"replayed.")
+    return head, events, None
+
+
+def replay(name=None):
+    ra.user32.SetProcessDPIAware()
+    path = Path(name) if name else max(ra.OUT.glob(f"*{SUFFIX}"), default=None)
+    if path is None or not path.exists():
+        print(f"no recording to replay in {ra.OUT}")
+        return 1
+    head, events, refused = prepare(path)
+    if refused:
+        print(refused)
+        return 1
+    unknown = sum(1 for e in events if "secret" in e and e["secret"] is None
+                  and e["action"] == "down")
+    print(f"{path.name}: {len(events)} events over {events[-1]['t']:.1f}s, "
+          f"recorded {head.get('at')}"
+          + (f" while running {' '.join(head['command'])}"
+             if head.get("command") else ""))
+    if unknown:
+        print(f"  {unknown} typed character(s) were not matched to the account "
+              f"when recorded and will be skipped")
+    print(f"switch to the game and press Ctrl {ra.TAPS} times within "
+          f"{ra.WINDOW:g}s to start; the cursor goes to {head.get('cursor')} "
+          f"first, and the same again stops it early", flush=True)
+    session = Replay(events, head.get("cursor"), credentials()
+                     if any(e.get("secret") for e in events) else {})
+    handle, _callback = ra.hook(W["WH_KEYBOARD_LL"], session.key,
+                                W["LLKHF_INJECTED"], ra.KBDLLHOOKSTRUCT)
+
+    def tick():
+        if session.said == "started":
+            print(f"replaying from {datetime.datetime.now():%H:%M:%S}",
+                  flush=True)
+            session.said = None
+
+    try:
+        ra.pump(lambda: session.finished, tick)
+    finally:
+        session.stop.set()
+        if session.worker is not None:
+            session.worker.join()
+        ra.user32.UnhookWindowsHookEx(handle)
+    whole = session.played == len(events)
+    print(f"{'replayed' if whole else 'stopped after'} {session.played} of "
+          f"{len(events)} events; nothing is left held down")
+    return 0
+
+
+USAGE = ("use: record_all.py            record until Ctrl is pressed "
+         f"{ra.TAPS} times\n"
+         "     record_all.py run CMD... record while CMD runs\n"
+         "     record_all.py replay [FILE]")
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    if args[:1] == ["replay"]:
+        sys.exit(replay(args[1] if len(args) > 1 else None))
+    if args[:1] == ["run"]:
+        if len(args) < 2:
+            sys.exit(USAGE)
+        sys.exit(record(args[1:]))
+    if args:
+        sys.exit(USAGE)
+    sys.exit(record())
