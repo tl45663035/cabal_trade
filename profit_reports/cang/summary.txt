@@ -29,12 +29,12 @@ Thu 2026-10-15            16.09h   24.00h  138.17M    8.59M    5.68B   5.55B   9
 Fri 2026-10-16            16.40h   24.00h  119.79M    7.30M    5.38B   5.26B   9.26K    2.2%
 Sat 2026-10-17             8.80h   24.00h   48.93M    5.56M    2.09B   2.04B   2.55K    2.3%
 Sun 2026-10-18            19.14h   24.00h  134.71M    7.04M    6.68B   6.55B  10.83K    2.0%
-Mon 2026-10-19 (so far)    2.93h    4.56h    5.73M    1.95M    2.07B   2.07B   3.22K    0.3%
+Mon 2026-10-19 (so far)    3.19h    4.82h    5.73M    1.80M    2.07B   2.07B   3.22K    0.3%
 ============================================================================================
-7 DAYS                    99.12h  148.56h  678.86M    6.85M   36.33B  35.65B  57.58K    1.9%
+7 DAYS                    99.38h  148.82h  678.86M    6.83M   36.33B  35.65B  57.58K    1.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-19 00:00 Central (as of 04:33 Central)
+PROFIT SUMMARY -- sold since 2026-10-19 00:00 Central (as of 04:48 Central)
 
 item                    profit  revenue     cost  units  bought/u   sold/u  margin
 ----------------------------------------------------------------------------------
@@ -57,14 +57,14 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-19_031247_run_board.log, board during pass 22 at row 6, read 2026-10-19T04:33:31 (live)
+ROWS -- 2026-10-19_031247_run_board.log, board during pass 26 at row 6, read 2026-10-19T04:48:53 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Astral Board Card - Zero Black          x1         -    19.86M         -    19.86M         -         -
-    2  Upgrade Core (Ultimate                 x33   292.00K   319.96K   +27.96K   319.96K     9.64M   922.81K
-    3  Upgrade Core (Ultimate                 x73   292.00K   319.96K   +27.96K   319.96K    21.32M     2.04M
-    4  Upgrade Core (Ultimate                x150   292.00K   319.96K   +27.96K   319.96K    43.80M     4.19M
-    5  Upgrade Core (Ultimate                 x28   292.00K   319.96K   +27.96K   319.96K     8.18M   782.91K
-    6  Chaos Core Set X 210                    x1   700.00K   704.53K    +4.54K   147.95M   147.00M   952.35K <- here
+    1  Astral Board Card - Zero Black          x1         -    19.82M         -    19.82M         -         -
+    2  Upgrade Core (Ultimate                 x33   292.00K   319.94K   +27.94K   319.94K     9.64M   921.89K
+    3  Upgrade Core (Ultimate                 x73   292.00K   319.94K   +27.93K   319.94K    21.32M     2.04M
+    4  Upgrade Core (Ultimate                x150   292.00K   319.93K   +27.93K   319.93K    43.80M     4.19M
+    5  Upgrade Core (Ultimate                 x28   292.00K   319.93K   +27.93K   319.93K     8.18M   782.12K
+    6  Chaos Core Set X 210                    x1   700.00K   700.00K        +0   147.00M   147.00M         0 <- here
     7  Chaos Core Set X 225                    x1   705.00K   705.00K        +0   158.62M   158.62M         0
     8  Chaos Core Set X 249                    x1   706.00K   706.00K        +0   175.79M   175.79M         0
     9  Chaos Core Set X 186                    x1   706.00K   706.00K        +0   131.32M   131.32M         0
@@ -73,24 +73,24 @@ ROWS -- 2026-10-19_031247_run_board.log, board during pass 22 at row 6, read 202
    12  Chaos Core Set X 105                    x1   706.00K   706.00K        +0    74.13M    74.13M         0
    13  Chaos Core Set X 240                    x1   709.95K   709.95K        +0   170.39M   170.39M         0
    14  Chaos Core Set X 165                    x1   709.95K   709.95K        +0   117.14M   117.14M         0
-   15  Force Core(High                       x205   249.92K   289.74K   +39.81K   289.74K    51.23M     8.16M
-   16  Force Core(High                       x109   265.65K   289.74K   +24.09K   289.74K    28.96M     2.63M
-   17  Force Core(High                       x250   265.70K   289.73K   +24.04K   289.73K    66.42M     6.01M
-   18  Force Core(High                         x1   265.70K   289.73K   +24.04K   289.73K   265.70K    24.04K
+   15  Force Core(High                       x205   249.92K   289.71K   +39.78K   289.71K    51.23M     8.16M
+   16  Force Core(High                       x109   265.65K   289.70K   +24.06K   289.70K    28.96M     2.62M
+   17  Force Core(High                       x250   265.70K   289.70K   +24.01K   289.70K    66.42M     6.00M
+   18  Force Core(High                         x1   265.70K   289.70K   +24.01K   289.70K   265.70K    24.01K
    29  Time Reducer (12h) - Diamond Insig        x1         -     2.59M         -     5.19M         -         -
    30  Time Reducer (12h) - Diamond Insig        x1         -     2.59M         -     7.78M         -         -
-    balance now 1.88B, read 2026-10-19T04:33:08
+    balance now 1.88B, read 2026-10-19T04:48:30
        stock at its listed price                                                                        1.52B
        Alz, latest balance line                                                                         1.88B
        NET WORTH                                                                                        3.40B
 
 
-MARKET -- 2026-10-19_031247_run.log, pass 22, log last written 04:33 Central (live)
+MARKET -- 2026-10-19_031247_run.log, pass 26, log last written 04:48 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0  344.82K  344.67K    -150     -0.0%      0
-Chaos Core                  9  700.00K  704.54K   4.54K      0.6%      0
+Force Core(Highest)         0  344.82K  344.68K    -144     -0.0%      0
+Chaos Core                  9  700.00K  704.52K   4.52K      0.6%      0
 Divine Stone                0  729.00K  720.68K  -8.32K     -1.2%      0
 Force Core(High)            4        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     4        -        -       -         -      -  holds the most it can want, 3; not priced
