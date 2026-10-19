@@ -29,24 +29,24 @@ Thu 2026-10-15            16.09h   24.00h  138.17M    8.59M    5.68B   5.55B   9
 Fri 2026-10-16            16.40h   24.00h  119.79M    7.30M    5.38B   5.26B   9.26K    2.2%
 Sat 2026-10-17             8.80h   24.00h   48.93M    5.56M    2.09B   2.04B   2.55K    2.3%
 Sun 2026-10-18            19.14h   24.00h  134.71M    7.04M    6.68B   6.55B  10.83K    2.0%
-Mon 2026-10-19 (so far)    4.71h    6.34h    8.49M    1.80M    2.10B   2.10B   3.33K    0.4%
+Mon 2026-10-19 (so far)    4.97h    6.59h    8.83M    1.78M    2.11B   2.11B   3.36K    0.4%
 ============================================================================================
-7 DAYS                   100.90h  150.34h  681.62M    6.76M   36.36B  35.68B  57.70K    1.9%
+7 DAYS                   101.16h  150.59h  681.96M    6.74M   36.37B  35.69B  57.73K    1.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-19 00:00 Central (as of 06:20 Central)
+PROFIT SUMMARY -- sold since 2026-10-19 00:00 Central (as of 06:35 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
-forcecorehighest       4.03M  120.70M  116.67M    350   333.33K  344.86K    3.3%
+forcecorehighest       4.38M  131.04M  126.67M    380   333.33K  344.85K    3.3%
 chaoscore              2.69M    1.89B    1.89B  2.70K   700.79K  701.79K    0.1%
 forcecorehigh          1.77M   73.00M   71.22M    279   255.28K  261.63K    2.4%
 astralbikecardtyperw       0   16.00M   16.00M      1    16.00M   16.00M    0.0%
 --------------------------------------------------------------------------------
-Cores                  5.81M  209.70M  203.89M    630   323.64K  332.85K    2.8%
+Cores                  6.15M  220.04M  213.89M    660   324.08K  333.39K    2.8%
 Chaos                  2.69M    1.89B    1.89B  2.70K   700.79K  701.79K    0.1%
 ================================================================================
-TOTAL                  8.49M    2.10B    2.10B  3.33K   629.44K  631.99K    0.4%
+TOTAL                  8.83M    2.11B    2.11B  3.36K   626.80K  629.43K    0.4%
 
 
 
@@ -57,16 +57,16 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-19_031247_run_board.log, board during pass 50 at row 8, read 2026-10-19T06:20:03 (live)
+ROWS -- 2026-10-19_031247_run_board.log, board during pass 54 at row 7, read 2026-10-19T06:35:31 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Astral Board Card - Zero Black          x1         -    19.60M         -    19.60M         -         -
-    2  Upgrade Core (Ultimate                 x33   292.00K   319.75K   +27.75K   319.75K     9.64M   915.72K
-    3  Upgrade Core (Ultimate                 x73   292.00K   319.75K   +27.75K   319.75K    21.32M     2.03M
-    4  Upgrade Core (Ultimate                x150   292.00K   319.75K   +27.75K   319.75K    43.80M     4.16M
-    5  Upgrade Core (Ultimate                 x28   292.00K   319.75K   +27.75K   319.75K     8.18M   776.89K
+    1  Astral Board Card - Zero Black          x1         -    19.57M         -    19.57M         -         -
+    2  Upgrade Core (Ultimate                 x33   292.00K   319.72K   +27.72K   319.72K     9.64M   914.89K
+    3  Upgrade Core (Ultimate                 x73   292.00K   319.72K   +27.72K   319.72K    21.32M     2.02M
+    4  Upgrade Core (Ultimate                x150   292.00K   319.72K   +27.72K   319.72K    43.80M     4.16M
+    5  Upgrade Core (Ultimate                 x28   292.00K   319.72K   +27.72K   319.72K     8.18M   776.19K
     6  Chaos Core Set X 210                    x1   700.00K   700.00K        +0   147.00M   147.00M         0
-    7  Chaos Core Set X 225                    x1   705.00K   705.00K        +0   158.62M   158.62M         0
-    8  Chaos Core Set X 249                    x1   706.00K   706.00K        +0   175.79M   175.79M         0 <- here
+    7  Chaos Core Set X 225                    x1   705.00K   705.00K        +0   158.62M   158.62M         0 <- here
+    8  Chaos Core Set X 249                    x1   706.00K   706.00K        +0   175.79M   175.79M         0
     9  Chaos Core Set X 186                    x1   706.00K   706.00K        +0   131.32M   131.32M         0
    10  Chaos Core Set X 228                    x1   706.00K   706.00K        +0   160.97M   160.97M         0
    11  Chaos Core Set X 153                    x1   706.00K   706.00K        +0   108.02M   108.02M         0
@@ -77,21 +77,20 @@ ROWS -- 2026-10-19_031247_run_board.log, board during pass 50 at row 8, read 202
    16  Force Core(High                        x99   265.65K   265.65K        +0   265.65K    26.30M         0
    17  Force Core(High                       x166   265.70K   265.70K        +0   265.70K    44.11M         0
    18  Force Core(High                         x1   265.70K   265.70K        +0   265.70K   265.70K         0
-   19  Force Core(Highest                     x30   333.33K   344.67K   +11.34K   344.67K    10.00M   340.20K
    29  Time Reducer (12h) - Diamond Insig        x1         -     2.59M         -     5.19M         -         -
    30  Time Reducer (12h) - Diamond Insig        x1         -     2.59M         -     7.78M         -         -
-    balance now 1.90B, read 2026-10-19T06:19:21
-       stock at its listed price                                                                        1.48B
-       Alz, latest balance line                                                                         1.90B
+    balance now 1.91B, read 2026-10-19T06:34:59
+       stock at its listed price                                                                        1.47B
+       Alz, latest balance line                                                                         1.91B
        NET WORTH                                                                                        3.38B
 
 
-MARKET -- 2026-10-19_031247_run.log, pass 50, log last written 06:20 Central (live)
+MARKET -- 2026-10-19_031247_run.log, pass 54, log last written 06:35 Central (live)
 
-core                     rows    buy/u   sell/u  margin  margin %  wants  short?
--------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         1  344.39K  344.68K     288      0.1%      0
-Chaos Core                  9  698.89K  700.00K   1.11K      0.2%      0
-Divine Stone                0  726.00K  720.68K  -5.32K     -0.7%      0
-Force Core(High)            4        -        -       -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     4        -        -       -         -      -  holds the most it can want, 3; not priced
+core                     rows    buy/u   sell/u   margin  margin %  wants  short?
+--------------------------------------------------------------------------------------------------------------------
+Force Core(Highest)         0  344.39K  344.68K      288      0.1%      0
+Chaos Core                  9  698.87K  680.00K  -18.87K     -2.8%      0
+Divine Stone                0  726.00K  720.68K   -5.32K     -0.7%      0
+Force Core(High)            4        -        -        -         -      -  holds the most it can want, 3; not priced
+Upgrade Core (Ultimate)     4        -        -        -         -      -  holds the most it can want, 3; not priced
