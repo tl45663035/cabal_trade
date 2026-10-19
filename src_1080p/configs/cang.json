@@ -72,6 +72,11 @@
     "enabled": true,
     "trading_dungeon": "chaos_arena",
     "order": [7, 6],
+    "kill_combo": [
+      ["use", "A+2", 2.0],
+      ["tap", "7", 2.0],
+      ["tap", "6", 2.0]
+    ],
     "level_windows": [
       [502, 266, 737, 284],
       [502, 291, 737, 309],
