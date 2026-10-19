@@ -139,6 +139,7 @@ HEAL_EVERY = float(_DUNGEON["heal_every"])
 END_WAIT = float(_DUNGEON["end_wait"])
 END_TIMEOUT = float(_DUNGEON["end_timeout"])
 OVER = threading.Event()
+HUNTING = threading.Event()
 END = {"at": None, "defeated": False, "overtime": False}
 EXIT = [tuple(step) for step in _DUNGEON["exit"]]
 MANUAL_EXIT = _DUNGEON["manual_exit"]
@@ -720,6 +721,7 @@ def hunt(name, words, attack, label, plan, verbose=True):
     presses, rounds, started = 0, 0, time.monotonic()
     watcher.start()
     try:
+        HUNTING.set()
         first.wait(limit)
         since = None
         while not ENDED.is_set() and time.monotonic() - started < limit:
@@ -746,6 +748,7 @@ def hunt(name, words, attack, label, plan, verbose=True):
             print(f"  {presses} {TARGET_KEY} press(es); {name!r} was never "
                   f"targeted")
     finally:
+        HUNTING.clear()
         stop.set()
         watcher.join()
         killed = LOCK["killed"]
@@ -807,17 +810,24 @@ def click_round(names, since):
             entry, point = DEFENSIVE_BUFFS[
                 int((started - since) // DEFENSIVE_SWITCH)
                 % len(DEFENSIVE_BUFFS)]
+            right_click(*point, 0.0)
+        elif entry in CLICK_POINTS:
+            right_click(*CLICK_POINTS[entry], 0.0)
         else:
-            point = CLICK_POINTS[entry]
-        right_click(*point, 0.0)
+            tap(KEYS[entry])
         ENDED.wait(max(0.0, started + LOOP_GAP - time.monotonic()))
 
 
 def loop_plan(names):
     defensive = "/".join(name for name, _point in DEFENSIVE_BUFFS)
+    keys = [entry for entry in names
+            if entry != DEFENSIVE and entry not in CLICK_POINTS]
     return (" -> ".join(f"{defensive} (switching every {DEFENSIVE_SWITCH:g}s)"
                         if entry == DEFENSIVE else entry for entry in names)
-            + f" right-clicked {LOOP_GAP:g}s apart")
+            + (f" pressed {LOOP_GAP:g}s apart" if len(keys) == len(names)
+               else f" one every {LOOP_GAP:g}s, keys {'/'.join(keys)} pressed "
+               f"and the rest right-clicked" if keys else
+               f" right-clicked {LOOP_GAP:g}s apart"))
 
 
 def kill_bm(name, words, verbose=True, loop=None):
@@ -838,10 +848,11 @@ def kill_bm(name, words, verbose=True, loop=None):
                 if loop else None, verbose)
 
 
-def heal_loop(stop):
+def heal_loop(stop, kills_only):
     while (not stop.is_set() and not OVER.is_set()
            and not calibration.STOPPED.is_set()):
-        tap(KEYS[HEAL_KEY])
+        if not kills_only or HUNTING.is_set():
+            tap(KEYS[HEAL_KEY])
         stop.wait(HEAL_EVERY)
 
 
@@ -943,8 +954,11 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             return False
     stop, failed, killing = threading.Event(), {}, threading.Event()
     phase = {"killing": killing,
-             "healer": threading.Thread(target=heal_loop, args=(stop,),
-                                        daemon=True),
+             "healer": threading.Thread(
+                 target=heal_loop,
+                 args=(stop, bool(DUNGEONS[dungeon_name].get("heal_kills_only",
+                                                             False))),
+                 daemon=True),
              "ender": threading.Thread(target=watch_end,
                                        args=(stop, failed, killing, timer,
                                              verbose),
@@ -1132,7 +1146,11 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         elif name == "kill_phase":
             if verbose:
                 print(f"  kill phase: heal ({HEAL_KEY}) every {HEAL_EVERY:g}s "
-                      f"and the end screen read all the time, until the end "
+                      + ("while a kill is on (not in the recordings or the "
+                         "opening), "
+                         if DUNGEONS[dungeon_name].get("heal_kills_only")
+                         else "")
+                      + f"and the end screen read all the time, until the end "
                       f"screen has been up {end_wait(dungeon_name):g}s")
             phase["healer"].start()
             phase["killing"].set()
