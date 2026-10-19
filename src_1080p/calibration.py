@@ -565,22 +565,26 @@ _TAPE = None
 
 
 class _Tape:
-    def __init__(self, knobs):
+    def __init__(self, knobs, path=None):
         import threading
         self.fps = max(1, int(knobs["video_fps"]))
         self.seconds = max(1, int(knobs["video_seconds"]))
         self.keep = max(1, int(knobs["keep_videos"]))
         self.scale = float(knobs["video_scale"])
+        self.path = path
         self.stop = threading.Event()
         self.thread = threading.Thread(target=self._roll, daemon=True)
         self.reel = 0
 
     def start(self):
-        VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+        (VIDEO_DIR if self.path is None else self.path.parent).mkdir(
+            parents=True, exist_ok=True)
         self.thread.start()
         return self
 
     def _prune(self):
+        if self.path is not None:
+            return
         reels = sorted(VIDEO_DIR.glob("*.mp4"), key=lambda f: f.name)
         for spent in reels[:max(0, len(reels) - self.keep)]:
             try:
@@ -591,7 +595,8 @@ class _Tape:
     def _open(self, size):
         import cv2
         self.reel += 1
-        out = VIDEO_DIR / f"{self.reel:04d}_{time.strftime('%H%M%S')}.mp4"
+        out = self.path or (VIDEO_DIR
+                            / f"{self.reel:04d}_{time.strftime('%H%M%S')}.mp4")
         return cv2.VideoWriter(str(out), cv2.VideoWriter_fourcc(*"mp4v"),
                                self.fps, size)
 
@@ -612,7 +617,8 @@ class _Tape:
                         frame = cv2.resize(frame, None, fx=self.scale,
                                            fy=self.scale,
                                            interpolation=cv2.INTER_AREA)
-                    if writer is None or (time.monotonic() - started
+                    if writer is None or (self.path is None
+                                          and time.monotonic() - started
                                           >= self.seconds):
                         if writer is not None:
                             writer.release()
@@ -670,6 +676,19 @@ def recording_off() -> None:
     _TAPE.stop.set()
     _TAPE.thread.join(timeout=load_shared()["timing"]["dialog_timeout"])
     _TAPE = None
+
+
+def film(path):
+    try:
+        return _Tape(load_shared()["debug"], path).start()
+    except Exception as exc:
+        print(f"  no screen recording: {type(exc).__name__}: {exc}")
+        return None
+
+
+def film_done(tape) -> None:
+    tape.stop.set()
+    tape.thread.join(timeout=load_shared()["timing"]["dialog_timeout"])
 
 
 def _frame_age(frame):

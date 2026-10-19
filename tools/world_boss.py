@@ -586,7 +586,8 @@ def keep_shots(plan, verbose=True):
             print(f"  Channel {channel}: the Raid Result screenshot was not "
                   f"saved to {path}: {exc}")
     cut = online_utc() - SHOTS_FOR
-    for path in SHOTS.glob("*/*_channel_*.png"):
+    for path in [*SHOTS.glob("*/*_channel_*.png"),
+                 *SHOTS.glob("*/*_video.mp4")]:
         try:
             taken = datetime.datetime.strptime(
                 f"{path.parent.name} {path.name.split('_')[0]}",
@@ -607,12 +608,28 @@ def keep_shots(plan, verbose=True):
         except OSError:
             pass
     if verbose and (kept or gone):
-        print(f"Raid Result screenshots, each kept until {SHOTS_DAYS:g} days "
-              f"after its spawn by the online clock")
+        print(f"Raid Result screenshots and world boss videos, each kept "
+              f"until {SHOTS_DAYS:g} days after its spawn by the online clock")
         for path in kept:
             print(f"  saved {path}")
         for path in gone:
             print(f"  deleted {path}")
+
+
+def film_path(when):
+    spawn = when.astimezone(ZONE)
+    return SHOTS / f"{spawn:%Y-%m-%d}" / f"{spawn:%H%M}_video.mp4"
+
+
+def end_film(film, verbose=True):
+    if film is None:
+        return None
+    calibration.film_done(film)
+    if verbose:
+        print(f"  world boss video "
+              + (f"saved to {film.path}" if film.path.exists()
+                 else f"not written to {film.path}"))
+    return None
 
 
 def analyse(plan, verbose=True):
@@ -848,6 +865,10 @@ def run(verbose=True, when=None):
     spawn_at = time.monotonic() + (when - online_utc()).total_seconds()
     plan = mode_plan(spawn_at, when)
     deadline = spawn_at + TIME_LIMIT
+    film = calibration.film(film_path(when))
+    if verbose and film is not None:
+        print(f"  recording the prep and Channels "
+              f"{', '.join(map(str, CHANNELS))} to {film.path}")
     try:
         prepare(verbose)
         finished = kill_boss(CHANNELS[0], spawn_at, plan, deadline,
@@ -861,11 +882,13 @@ def run(verbose=True, when=None):
             finished = kill_boss(channel, start, plan, deadline,
                                  clicked + POWERFUL_POT_AFTER, verbose,
                                  loop_from=start)
+        film = end_film(film, verbose)
         if verbose:
             print(f"the route is done; back to the home channel, Channel "
                   f"{HOME_CHANNEL}")
         quick_relog(HOME_CHANNEL, verbose)
     finally:
+        end_film(film, verbose)
         keep_shots(plan, verbose)
         analyse(plan, verbose)
 
