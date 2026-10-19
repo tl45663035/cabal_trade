@@ -95,6 +95,9 @@ START_AFTER = datetime.timedelta(
     minutes=int(START_AT.split(":")[1])) - RESET_HOUR
 TIME_LIMIT = datetime.timedelta(seconds=float(_DUNGEON["time_limit_seconds"]))
 HARD_LIMIT = float(_DUNGEON["hard_limit_seconds"])
+WAR_QUIET = datetime.timedelta(minutes=float(_DUNGEON["war_quiet_minutes"]))
+WAR_LEAD = datetime.timedelta(
+    seconds=HARD_LIMIT + float(_DUNGEON["war_margin_seconds"]))
 sys.path.append(str(calibration.HERE.parent / "tools"))
 CLEARED_WINDOW = tuple(_DUNGEON["cleared_window"])
 CLEARED_TEXT = re.compile(_DUNGEON["cleared_pattern"], re.IGNORECASE)
@@ -130,6 +133,9 @@ USE_GAP = float(_DUNGEON["use_gap"])
 BM_LOOP = list(_DUNGEON["bm_loop"])
 BM_AURA = list(_DUNGEON["bm_aura"])
 BM_AURA_FOR = float(_DUNGEON["bm_aura_for"])
+AURA_AFTER = float(_DUNGEON["aura_after"])
+AURA_DUE = {"at": None}
+LAST_KILL = {"name": None, "words": None, "loop": None}
 LOOP_POINTS = {"main_bm": MAIN_BM, "alternate_bm": ALTERNATE_BM, "aura": AURA,
                "bm_pot": BM_POT, **OFFENSIVE_BUFFS}
 SLOTS = {name: tuple(point) for name, point in _DUNGEON["slots"].items()}
@@ -392,10 +398,8 @@ def get_entry(x, y, verbose=True):
         arrived = calibration.occupied_slots() - before
     landed = sorted(arrived)
     press(_INPUT["VK_N"])
-    if wait_for(tuple(tab["window"]), tab["word"], 0)[0]:
-        raise RuntimeError("the shop is still open after N.")
     if verbose:
-        print("  bought; N closed the shop")
+        print("  bought; N to close the shop")
     if len(landed) != 1:
         raise RuntimeError(
             f"tab {KEY_TAB} gained {landed or 'no slot'} with the purchase, "
@@ -502,6 +506,11 @@ def end_wait(dungeon_name):
 
 def manual_exit(dungeon_name):
     return DUNGEONS[dungeon_name].get("manual_exit", MANUAL_EXIT)
+
+
+def cancel_bm_clicks(dungeon_name):
+    return int(DUNGEONS[dungeon_name].get("cancel_bm_clicks",
+                                          CANCEL_BM_CLICKS))
 
 
 def open_dungeon_key(dungeon_name, location, verbose=True):
@@ -729,6 +738,7 @@ def hunt(name, words, attack, label, plan, verbose=True):
                 if not focus_game():
                     raise RuntimeError(f"the game is not in the foreground; "
                                        f"the {label} stopped.")
+                aura_when_due(verbose)
                 tap(KEYS[TARGET_KEY])
                 presses += 1
                 pressed_at = LOCK["reads"]
@@ -781,14 +791,18 @@ def kill(name, words, verbose=True):
 
 
 def bm_aura(verbose=True, names=None, seconds=None):
+    aura = names is None
     names = BM_AURA if names is None else names
     seconds = BM_AURA_FOR if seconds is None else seconds
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     if verbose:
         print(f"  {' -> '.join(names)} right-clicked {LOOP_GAP:g}s apart, "
-              f"over and over for {seconds:g}s from the first click")
+              f"over and over for {seconds:g}s from the first click"
+              + (f"; aura {AURA_AFTER:g}s after the first" if aura else ""))
     started = time.monotonic()
+    if aura:
+        AURA_DUE["at"] = started + AURA_AFTER
     rounds = 0
     while time.monotonic() < started + seconds and not ENDED.is_set():
         click_round(names, started)
@@ -798,6 +812,17 @@ def bm_aura(verbose=True, names=None, seconds=None):
               f"{time.monotonic() - started:.1f}s")
 
 
+def aura_when_due(verbose=True):
+    due = AURA_DUE["at"]
+    if due is None or OVER.is_set() or time.monotonic() < due:
+        return
+    AURA_DUE["at"] = None
+    right_click(*AURA, LOOP_GAP)
+    if verbose:
+        print(f"  {AURA_AFTER:g}s since BM: aura right-clicked at "
+              f"{list(AURA)}")
+
+
 def click_round(names, since):
     for entry in names:
         if ENDED.is_set():
@@ -805,6 +830,9 @@ def click_round(names, since):
         if not focus_game():
             raise RuntimeError("the game is not in the foreground; the "
                                "right-click loop stopped.")
+        aura_when_due()
+        if entry == "aura" and AURA_DUE["at"] is not None:
+            continue
         started = time.monotonic()
         if entry == DEFENSIVE:
             entry, point = DEFENSIVE_BUFFS[
@@ -832,6 +860,7 @@ def loop_plan(names):
 
 def kill_bm(name, words, verbose=True, loop=None):
     loop = BM_LOOP if loop is None else loop
+    LAST_KILL.update(name=name, words=words, loop=loop)
     start = next((at for at, entry in enumerate(loop)
                   if entry not in BM_AURA), 0) if loop is BM_LOOP else 0
     rounds = {"next": loop[start:]}
@@ -845,7 +874,27 @@ def kill_bm(name, words, verbose=True, loop=None):
 
     return hunt(name, words, attack, "kill_bm",
                 f"{loop_plan(loop)}, the first round from {loop[start]}"
+                + (f"; aura only from {AURA_AFTER:g}s after BM"
+                   if AURA_DUE["at"] is not None else "")
                 if loop else None, verbose)
+
+
+def boss_again(verbose=True):
+    name = LAST_KILL["name"]
+    if name is None or OVER.is_set():
+        return False
+    image = calibration.grab()
+    seen = read_crops([white_text(image, TARGET_WINDOW)])[0]
+    hits = [word for word in LAST_KILL["words"]
+            if word.casefold() in seen.casefold()]
+    if not hits:
+        return False
+    calibration.snap("target_again", image)
+    if verbose:
+        print(f"  the HP bar reads {seen!r}: {name} is targeted again "
+              f"({', '.join(hits)}), so kill_bm again")
+    kill_bm(name, LAST_KILL["words"], verbose, LAST_KILL["loop"])
+    return True
 
 
 def heal_loop(stop, kills_only):
@@ -975,10 +1024,14 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
         run_sequence(dungeon_name, location, phase, verbose, steps,
                      timer=timer)
         if killing.is_set() and not OVER.is_set():
+            again = bool(DUNGEONS[dungeon_name].get("kill_again"))
             if verbose:
                 print(f"  the sequence is done; {TARGET_KEY} every "
                       f"{TARGET_EVERY:g}s until the dungeon end screen, up to "
-                      f"{END_TIMEOUT:g}s")
+                      f"{END_TIMEOUT:g}s"
+                      + (f"; {LAST_KILL['name']!r} is killed again whenever "
+                         f"the HP bar shows it"
+                         if again and LAST_KILL["name"] else ""))
             until, presses = time.monotonic() + END_TIMEOUT, 0
             while not OVER.is_set():
                 calibration.halt_if_stopped()
@@ -987,6 +1040,10 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 if not focus_game():
                     raise RuntimeError("the game is not in the foreground; "
                                        "the wait for the end screen stopped.")
+                if again and boss_again(verbose):
+                    until = time.monotonic() + END_TIMEOUT
+                    continue
+                aura_when_due(verbose)
                 tap(KEYS[TARGET_KEY])
                 presses += 1
                 OVER.wait(TARGET_EVERY)
@@ -1032,6 +1089,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                max(0.0, END["at"] + timer["end_wait"]
                                    - time.monotonic())))
             exit_dungeon(dungeon_name, verbose)
+            count_success(dungeon_name, location, verbose)
             ENDED.clear()
             run_sequence(dungeon_name, location, phase, verbose,
                          DUNGEONS[dungeon_name].get("after_exit", []), False)
@@ -1051,6 +1109,8 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 print(f"  {dungeon_name} {location}: left the dungeon by hand")
     finally:
         stop.set()
+        AURA_DUE["at"] = None
+        LAST_KILL.update(name=None, words=None, loop=None)
         for thread in (phase["healer"], phase["ender"], phase["limit"]):
             if thread.is_alive():
                 thread.join()
@@ -1137,11 +1197,12 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             if not focus_game():
                 raise RuntimeError("could not bring the game to the "
                                    "foreground.")
-            for _click in range(CANCEL_BM_CLICKS):
+            clicks = cancel_bm_clicks(dungeon_name)
+            for _click in range(clicks):
                 right_click(*BM_ICON, CANCEL_BM_GAP)
             calibration.snap("cancel_bm")
             if verbose:
-                print(f"  BM icon right-clicked {CANCEL_BM_CLICKS} times at "
+                print(f"  BM icon right-clicked {clicks} times at "
                       f"{list(BM_ICON)}, {CANCEL_BM_GAP:g}s after each")
         elif name == "kill_phase":
             if verbose:
@@ -1323,6 +1384,19 @@ def dungeon_open():
                               seconds=since.second) >= START_AFTER
 
 
+def war_hold():
+    import war
+    at = war.now()
+    if at is None:
+        return None
+    start = war.next_war(at, WAR_QUIET)
+    if at + WAR_LEAD <= start:
+        return None
+    return tuple((when - war.SERVER_UTC_OFFSET).replace(
+        tzinfo=datetime.timezone.utc).astimezone(RESET_ZONE)
+        for when in (start - WAR_LEAD, start, start + WAR_QUIET))
+
+
 def _save(state):
     state["server_dated"] = True
     STATE.write_text(json.dumps(state), encoding="utf-8")
@@ -1374,11 +1448,11 @@ def resume():
     return level, due
 
 
-def ran_today(state, today):
+def ran_today(state, today, key="ran"):
     if today is not None and state.get("day") != today:
         return {}
     return {int(level): int(count)
-            for level, count in (state.get("ran") or {}).items()}
+            for level, count in (state.get(key) or {}).items()}
 
 
 def next_level(today):
@@ -1399,6 +1473,9 @@ def count_entry(level, rotate, today):
     ran = ran_today(state, today)
     ran[level] = ran.get(level, 0) + 1
     state["ran"] = {str(lv): count for lv, count in sorted(ran.items())}
+    state["successful"] = {
+        str(lv): count for lv, count
+        in sorted(ran_today(state, today, "successful").items())}
     if today is not None:
         state["day"] = today
     if rotate:
@@ -1560,6 +1637,21 @@ def count_challenge(dungeon_name, location, timer, verbose=True):
               f"this server day"
               + (f"; the rotation goes on at level {after}" if rotate
                  else ""))
+
+
+def count_success(dungeon_name, location, verbose=True):
+    found = LEVEL_TEXT.search(location_of(dungeon_name, location)["name"])
+    if found is None:
+        return
+    level, state = int(found.group(1)), _state()
+    won = ran_today(state, None, "successful")
+    won[level] = won.get(level, 0) + 1
+    state["successful"] = {str(lv): count for lv, count in sorted(won.items())}
+    _save(state)
+    if verbose:
+        print(f"  level {level}: {won[level]} of "
+              f"{ran_today(state, None).get(level, 0)} entered were successful "
+              f"on this server day")
 
 
 def start(level, verbose=True, rotate=False):

@@ -58,6 +58,18 @@ def quiet_window(after):
     return best
 
 
+def next_war(after, lasts):
+    best = None
+    for day in (-1, 0, 1):
+        midnight = (after + datetime.timedelta(days=day)).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        for hour in START_HOURS:
+            start = midnight + datetime.timedelta(hours=hour)
+            if start + lasts > after and (best is None or start < best):
+                best = start
+    return best
+
+
 def avoid(allowance=0.0, verbose=True, waiting=None):
     say = print if verbose else (lambda *a: None)
     if not ENABLED:

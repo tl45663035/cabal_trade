@@ -992,16 +992,18 @@ def report_dungeons():
     today = (now + datetime.timedelta(
         hours=float(SETTINGS["game_facts"]["server_utc_offset_hours"]))).date().isoformat()
     ran = (state.get("ran") or {}) if state.get("day") == today else {}
+    won = (state.get("successful") or {}) if state.get("day") == today else {}
     limits = conf["daily_limits"]
     print(f"DUNGEONS -- Chaos Arena entries on server day {today}")
     print("")
-    print(f"{'level':<8}{'done':>6}{'limit':>7}")
-    done = cap = 0
-    for level in conf["order"]:
-        count, most = int(ran.get(str(level), 0)), int(limits[str(level)])
-        done, cap = done + count, cap + most
-        print(f"{f'CA{level}':<8}{count:>6}{most:>7}")
-    print(f"{'total':<8}{done:>6}{cap:>7}")
+    print(f"{'level':<8}{'done':>6}{'limit':>7}{'successful':>12}")
+    done = cap = cleared = 0
+    for level in sorted(limits, key=int):
+        count, most = int(ran.get(level, 0)), int(limits[level])
+        good = int(won.get(level, 0))
+        done, cap, cleared = done + count, cap + most, cleared + good
+        print(f"{f'CA{level}':<8}{count:>6}{most:>7}{good:>12}")
+    print(f"{'total':<8}{done:>6}{cap:>7}{cleared:>12}")
 
 
 def report_world_boss():

@@ -87,7 +87,7 @@ REPAIR_FLOOR = next((int(arg.split("=", 1)[1]) for arg in sys.argv[1:]
 _PENDING = None
 _WALK = {"at": None}
 _DUNGEON = {"due": None, "spent": False, "off": False, "resume_checked": False,
-            "closed": False}
+            "closed": False, "war": None}
 _WORLD_BOSS = {"done": None, "clockless": False}
 _SINCE_PRICED = {}
 _PRICED_THIS_ROW = set()
@@ -4644,6 +4644,15 @@ def dungeon_turn(verbose=True, report_wait=True):
             _DUNGEON["spent"] = True
             return acted
         _DUNGEON["spent"] = False
+        hold = dungeon.war_hold()
+        if hold is not None:
+            held, war_at, until = hold
+            if _DUNGEON["war"] != war_at:
+                print(f"  dungeon: no CA from {held:%H:%M} until {until:%H:%M} "
+                      f"{dungeon.RESET_ZONE.key} time, around the "
+                      f"{war_at:%H:%M} war; trading until then")
+            _DUNGEON["war"] = war_at
+            return acted
         print(f"  dungeon: buying the level {level} key and starting the "
               f"next one")
         acted = True
