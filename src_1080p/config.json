@@ -605,10 +605,8 @@
     "loop_gap": 0.5,
     "use_gap": 1.5,
     "bm_loop": ["main_bm", "aura", "C+1", "C+3", "C+4", "C+5", "defensive_buffs", "bm_pot"],
-    "alt_bm_loop": ["alternate_bm", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
-    "main_bm_loop": ["main_bm", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
-    "alt_bm_only": ["alternate_bm"],
-    "main_bm_only": ["main_bm"],
+    "buff_loop": ["C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
+    "no_clicks": [],
     "replay_modifiers": [16, 17, 18, 160, 161, 162, 163, 164, 165],
     "target_window": [810, 45, 1100, 58],
     "target_text_min": 150,
@@ -684,8 +682,7 @@
       "fire": {
         "locations": {
           "Fire": {"entry": [185, 401], "name": "Lava Hellfire (Awakened)",
-                   "bm": "alternate_bm", "bm_loop": "alt_bm_loop",
-                   "bm_only": "alt_bm_only"}
+                   "bm": "alternate_bm"}
         },
         "daily_limit": 30,
         "start_at": "01:40",
@@ -695,7 +692,7 @@
         "block_start": ["tab_two", ["use", "A+9", "A+0"]],
         "before_exit": ["cancel_bm"],
         "difficulty": 5,
-        "hard_limit_seconds": 300,
+        "hard_limit_seconds": 180,
         "end_wait": 2,
         "exit": [
           ["button", "confirmation", 0.0],
@@ -713,16 +710,16 @@
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      ["spam", "bm", "A+7", 5],
                      "move_to_A",
-                     ["kill_bm", "Fire Guardian Manticore", "bm_only"],
-                     ["kill_bm", "Treasure Chest", "bm_only"],
+                     ["kill_bm", "Fire Guardian Manticore", "no_clicks"],
+                     ["kill_bm", "Treasure Chest", "no_clicks"],
                      "move_to_B",
-                     ["kill_bm", "Fire Guard Dark Archer", "bm_only"],
+                     ["kill_bm", "Fire Guard Dark Archer", "no_clicks"],
                      "move_to_C",
-                     ["kill_bm", "Fire Gatekeeper Demonic Jason", "bm_only"],
+                     ["kill_bm", "Fire Gatekeeper Demonic Jason", "no_clicks"],
                      "move_to_D",
-                     ["kill_bm", "Lava Gate", "bm_only"],
+                     ["kill_bm", "Lava Gate", "no_clicks"],
                      "move_to_E",
-                     ["kill_bm", "Master of Fire Eurostia", "bm_loop"]]
+                     ["kill_bm", "Master of Fire Eurostia", "buff_loop"]]
       }
     },
     "finish": [

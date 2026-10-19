@@ -714,8 +714,9 @@ def hunt(name, words, attack, label, plan, verbose=True):
     if verbose:
         print(f"  {label} {name!r}: the HP bar is read all the time; "
               f"{TARGET_KEY} until it shows {' or '.join(map(repr, words))}, "
-              f"then {plan} over and over, stopped the moment none of them "
-              f"shows")
+              + (f"then {plan} over and over, " if plan else
+                 "then nothing clicked, ")
+              + "stopped the moment none of them shows")
     presses, rounds, started = 0, 0, time.monotonic()
     watcher.start()
     try:
@@ -826,12 +827,15 @@ def kill_bm(name, words, verbose=True, loop=None):
     rounds = {"next": loop[start:]}
 
     def attack(since):
+        if not loop:
+            ENDED.wait(LOOP_GAP)
+            return
         click_round(rounds["next"], since)
         rounds["next"] = loop
 
     return hunt(name, words, attack, "kill_bm",
-                f"{loop_plan(loop)}, the first round from {loop[start]}",
-                verbose)
+                f"{loop_plan(loop)}, the first round from {loop[start]}"
+                if loop else None, verbose)
 
 
 def heal_loop(stop):
