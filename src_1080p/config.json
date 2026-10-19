@@ -580,6 +580,8 @@
     "aura": [937, 940],
     "bm_pot": [1187, 940],
     "bm_icon": [254, 148],
+    "cancel_bm_clicks": 3,
+    "cancel_bm_gap": 0.5,
     "slots": {"A+1": [687, 940], "A+2": [737, 940], "A+9": [1087, 940], "A+0": [1137, 940]},
     "bm_aura": ["main_bm", "aura"],
     "bm_aura_for": 5.0,
@@ -593,6 +595,7 @@
       ["button", "confirmation", 0.0],
       ["button", "leave", 0.0]
     ],
+    "manual_exit": [["play", "chaos_arena", "exit_dungeon"]],
     "defeat": [
       ["button", "revive", 0.0]
     ],
@@ -609,6 +612,7 @@
     "replay_modifiers": [16, 17, 18, 160, 161, 162, 163, 164, 165],
     "target_window": [810, 45, 1100, 58],
     "target_text_min": 150,
+    "target_hp_pattern": "\\d[\\d,]*\\s*/\\s*[\\d,]+",
     "bosses": {
       "1": "Chaotic Zigdris Faello",
       "2": "Chaotic Mergaheph",
@@ -689,7 +693,7 @@
         "cooldown": 35,
         "cooldown_loop": ["bm_pot"],
         "block_start": ["tab_two", ["use", "A+9", "A+0"]],
-        "after_exit": ["cancel_bm"],
+        "before_exit": ["cancel_bm"],
         "difficulty": 5,
         "hard_limit_seconds": 300,
         "end_wait": 2,
@@ -698,16 +702,16 @@
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
-          "Fire Guardian Manticore": ["guardian", "manticore"],
+          "Fire Guardian Manticore": ["fire", "guardian", "manticore"],
           "Treasure Chest": ["treasure", "chest"],
-          "Fire Guard Dark Archer": ["dark", "archer"],
-          "Fire Gatekeeper Demonic Jason": ["gatekeeper", "demonic", "jason"],
-          "Lava Gate": ["gate"],
-          "Master of Fire Eurostia": ["master", "eurostia"],
+          "Fire Guard Dark Archer": ["fire", "guard", "dark", "archer"],
+          "Fire Gatekeeper Demonic Jason": ["fire", "gatekeeper", "demonic", "jason"],
+          "Lava Gate": ["lava", "gate"],
+          "Master of Fire Eurostia": ["master", "fire", "eurostia"],
           "Legendary Box": ["legendary", "box"]
         },
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["spam", "bm", 5],
+                     ["spam", "bm", "aura", 5],
                      "move_to_A",
                      ["kill_bm", "Fire Guardian Manticore", "bm_only"],
                      ["kill_bm", "Treasure Chest", "bm_only"],

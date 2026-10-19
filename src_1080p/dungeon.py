@@ -80,6 +80,7 @@ KEYS = _DUNGEON["keys"]
 ARRIVE = [tuple(step) for step in _DUNGEON["arrive"]]
 TARGET_WINDOW = tuple(_DUNGEON["target_window"])
 TARGET_TEXT_MIN = int(_DUNGEON["target_text_min"])
+TARGET_HP = re.compile(_DUNGEON["target_hp_pattern"])
 BOSSES = _DUNGEON["bosses"]
 ORDER = [int(level) for level in _DUNGEON["order"]]
 ROTATE_COUNT = int(_DUNGEON["rotate_count"])
@@ -114,6 +115,8 @@ KILL_COMBO = [tuple(step) for step in _DUNGEON["kill_combo"]]
 MAIN_BM = tuple(_DUNGEON["main_bm"])
 ALTERNATE_BM = tuple(_DUNGEON["alternate_bm"])
 BM_ICON = tuple(_DUNGEON["bm_icon"])
+CANCEL_BM_CLICKS = int(_DUNGEON["cancel_bm_clicks"])
+CANCEL_BM_GAP = float(_DUNGEON["cancel_bm_gap"])
 AURA = tuple(_DUNGEON["aura"])
 BM_POT = tuple(_DUNGEON["bm_pot"])
 OFFENSIVE_BUFFS = {name: tuple(point)
@@ -137,6 +140,7 @@ END_TIMEOUT = float(_DUNGEON["end_timeout"])
 OVER = threading.Event()
 END = {"at": None, "defeated": False, "overtime": False}
 EXIT = [tuple(step) for step in _DUNGEON["exit"]]
+MANUAL_EXIT = _DUNGEON["manual_exit"]
 DEFEAT = [tuple(step) for step in _DUNGEON["defeat"]]
 DEFEAT_SIGN = BUTTONS[DEFEAT[0][1]]
 CHAT_OPEN = float(_DUNGEON["chat_open"])
@@ -455,17 +459,14 @@ def find_in_list(name, timeout):
     deadline = time.monotonic() + timeout
     while True:
         image = calibration.grab()
-        shown = read_windows(image, [ENTER_WINDOW])[0]
-        reads = None
-        if row_model._key(ENTER_WORD) in row_model._key(shown):
-            reads = read_windows(image, LEVEL_WINDOWS)
-            for box, seen in zip(LEVEL_WINDOWS, reads):
-                if names(seen, name):
-                    calibration.snap("dungeon_list", image)
-                    return box, reads, shown
+        reads = read_windows(image, LEVEL_WINDOWS)
+        for box, seen in zip(LEVEL_WINDOWS, reads):
+            if names(seen, name):
+                calibration.snap("dungeon_list", image)
+                return box, reads
         if time.monotonic() >= deadline:
             calibration.snap("no_dungeon_list", image)
-            return None, reads, shown
+            return None, reads
         time.sleep(WAIT_SLICE)
 
 
@@ -497,6 +498,10 @@ def end_wait(dungeon_name):
     return float(DUNGEONS[dungeon_name].get("end_wait", END_WAIT))
 
 
+def manual_exit(dungeon_name):
+    return DUNGEONS[dungeon_name].get("manual_exit", MANUAL_EXIT)
+
+
 def open_dungeon_key(dungeon_name, location, verbose=True):
     name = location_of(dungeon_name, location)["name"]
     entry = _state().get("entry")
@@ -507,7 +512,7 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
         raise RuntimeError("could not bring the game to the foreground.")
     yes = BUTTONS["warp_yes"]
     ctypes.windll.user32.SetCursorPos(*TAB_TWO)
-    box, reads, shown = find_in_list(name, 0)
+    box, reads = find_in_list(name, 0)
     if box is None:
         if not wait_for(tuple(yes["window"]), yes["word"], 0)[0]:
             prepare(verbose, entry["tab"])
@@ -517,15 +522,13 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
             right_click(*entry["point"], 0.0)
         press_button("warp_yes", 0.0, verbose)
         ctypes.windll.user32.SetCursorPos(*TAB_TWO)
-        box, reads, shown = find_in_list(name, TRANSFER_TIMEOUT)
+        box, reads = find_in_list(name, TRANSFER_TIMEOUT)
         if box is None:
-            seen = (f"its rows read {reads}" if reads is not None else
-                    f"the {ENTER_WORD} window {list(ENTER_WINDOW)} reads "
-                    f"{shown!r}, so the list never opened")
             raise RuntimeError(
                 f"no {name!r} in the dungeon list within "
                 f"{TRANSFER_TIMEOUT:g}s of {yes['word']}, read with the cursor "
-                f"on tab II {list(TAB_TWO)}; {seen}. Nothing more clicked.")
+                f"on tab II {list(TAB_TWO)}; its rows read {reads}. Nothing "
+                f"more clicked.")
     point = centre(box)
     if verbose:
         print(f"  with the cursor on tab II {list(TAB_TWO)} the dungeon list "
@@ -677,6 +680,13 @@ def watch_target(name, words, stop, first, failed):
                 calibration.snap("target_found", image)
                 print(f"  the HP bar reads {seen!r}: {name} is targeted "
                       f"({', '.join(hits)}), so no more auto target")
+            elif (not hits and LOCK["boss"] is not None
+                  and TARGET_HP.search(seen)):
+                LOCK["boss"] = None
+                calibration.snap("target_switched", image)
+                print(f"  the HP bar reads {seen!r}: another monster is "
+                      f"targeted, not {name}, so {TARGET_KEY} again until it "
+                      f"shows {' or '.join(map(repr, words))}")
             elif not hits and LOCK["boss"] is not None:
                 LOCK["killed"] = True
                 calibration.snap("target_gone", image)
@@ -709,27 +719,30 @@ def hunt(name, words, attack, label, plan, verbose=True):
     watcher.start()
     try:
         first.wait(limit)
-        while (LOCK["boss"] is None and not ENDED.is_set()
-               and time.monotonic() - started < limit):
-            if not focus_game():
-                raise RuntimeError(f"the game is not in the foreground; the "
-                                   f"{label} stopped.")
-            tap(KEYS[TARGET_KEY])
-            presses += 1
-            pressed_at = LOCK["reads"]
-            while (LOCK["reads"] < pressed_at + 2 and LOCK["boss"] is None
-                   and not ENDED.is_set()):
-                ENDED.wait(WAIT_SLICE)
-        if verbose:
-            print(f"  {presses} {TARGET_KEY} press(es) before {name!r} was "
-                  f"targeted" if LOCK["boss"] is not None else
-                  f"  {presses} {TARGET_KEY} press(es); {name!r} was never "
-                  f"targeted")
-        since = time.monotonic()
+        since = None
         while not ENDED.is_set() and time.monotonic() - started < limit:
+            if LOCK["boss"] is None:
+                if not focus_game():
+                    raise RuntimeError(f"the game is not in the foreground; "
+                                       f"the {label} stopped.")
+                tap(KEYS[TARGET_KEY])
+                presses += 1
+                pressed_at = LOCK["reads"]
+                while (LOCK["reads"] < pressed_at + 2 and LOCK["boss"] is None
+                       and not ENDED.is_set()):
+                    ENDED.wait(WAIT_SLICE)
+                continue
+            if since is None:
+                since = time.monotonic()
+                if verbose:
+                    print(f"  {presses} {TARGET_KEY} press(es) before "
+                          f"{name!r} was targeted")
             attack(since)
             rounds += 1
             calibration.snap(f"{label}_{rounds}")
+        if since is None and verbose:
+            print(f"  {presses} {TARGET_KEY} press(es); {name!r} was never "
+                  f"targeted")
     finally:
         stop.set()
         watcher.join()
@@ -969,7 +982,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             if thread.is_alive():
                 thread.join()
         if END["overtime"]:
-            manual = DUNGEONS[dungeon_name].get("manual_exit")
+            manual = manual_exit(dungeon_name)
             if not manual:
                 raise RuntimeError(f"the dungeon ran past its "
                                    f"{hard_limit(dungeon_name):g}s and has no "
@@ -981,7 +994,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 print(f"  {dungeon_name} {location}: past its "
                       f"{hard_limit(dungeon_name):g}s; left it by hand")
         elif END["defeated"]:
-            manual = DUNGEONS[dungeon_name].get("manual_exit")
+            manual = manual_exit(dungeon_name)
             if not manual:
                 raise RuntimeError("the dungeon is failed and has no manual "
                                    "exit.")
@@ -992,6 +1005,8 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 print(f"  {dungeon_name} {location}: the dungeon is failed; "
                       f"left it by hand")
         elif END["at"] is not None:
+            run_sequence(dungeon_name, location, phase, verbose,
+                         DUNGEONS[dungeon_name].get("before_exit", []), False)
             while time.monotonic() < END["at"] + timer["end_wait"]:
                 calibration.halt_if_stopped()
                 time.sleep(min(WAIT_SLICE,
@@ -1004,7 +1019,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             if verbose:
                 print(f"  {dungeon_name} {location}: the dungeon is over")
         elif killing.is_set():
-            manual = DUNGEONS[dungeon_name].get("manual_exit")
+            manual = manual_exit(dungeon_name)
             if not manual:
                 raise RuntimeError(f"no dungeon end screen within "
                                    f"{END_TIMEOUT:g}s of the last step.")
@@ -1103,10 +1118,12 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             if not focus_game():
                 raise RuntimeError("could not bring the game to the "
                                    "foreground.")
-            right_click(*BM_ICON, 0.0)
+            for _click in range(CANCEL_BM_CLICKS):
+                right_click(*BM_ICON, CANCEL_BM_GAP)
             calibration.snap("cancel_bm")
             if verbose:
-                print(f"  BM icon right-clicked at {list(BM_ICON)}")
+                print(f"  BM icon right-clicked {CANCEL_BM_CLICKS} times at "
+                      f"{list(BM_ICON)}, {CANCEL_BM_GAP:g}s after each")
         elif name == "kill_phase":
             if verbose:
                 print(f"  kill phase: heal ({HEAL_KEY}) every {HEAL_EVERY:g}s "
@@ -1143,6 +1160,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 use_slot(slot, verbose)
         elif name == "shout":
             shout(verbose)
+        elif name == "play":
+            play(rest[0], rest[1], verbose)
         else:
             play(dungeon_name, name, verbose)
 
