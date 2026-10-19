@@ -110,7 +110,8 @@ ACTIVE = {"level": None, "until": None, "deadline": None}
 TAB_TWO = tuple(_DUNGEON["tab_two"])
 TRADE_TABS = [(tuple(tab["window"]), tab["word"])
               for tab in _DUNGEON["trade_tabs"]]
-SEQUENCES = calibration.HERE / _DUNGEON["sequences_dir"]
+SEQUENCES = (calibration.HERE / _DUNGEON["sequences_dir"]
+             / calibration.config_name())
 WALK_FRAMES = {name: float(every)
                for name, every in (_DUNGEON.get("walk_frames") or {}).items()}
 TARGET_KEY = _DUNGEON["kill_target_key"]
@@ -146,6 +147,7 @@ END_WAIT = float(_DUNGEON["end_wait"])
 END_TIMEOUT = float(_DUNGEON["end_timeout"])
 OVER = threading.Event()
 HUNTING = threading.Event()
+PLAYING = threading.Event()
 END = {"at": None, "defeated": False, "overtime": False}
 EXIT = [tuple(step) for step in _DUNGEON["exit"]]
 MANUAL_EXIT = _DUNGEON["manual_exit"]
@@ -513,6 +515,10 @@ def cancel_bm_clicks(dungeon_name):
                                           CANCEL_BM_CLICKS))
 
 
+def setting(dungeon_name, key):
+    return DUNGEONS[dungeon_name].get(key, _DUNGEON[key])
+
+
 def open_dungeon_key(dungeon_name, location, verbose=True):
     name = location_of(dungeon_name, location)["name"]
     entry = _state().get("entry")
@@ -606,7 +612,8 @@ def play(dungeon_name, sequence, verbose=True):
               + (" (where the recording began)" if head.get("cursor")
                  else " (the recording's first mouse point)")
               + (f"; a frame every {WALK_FRAMES[sequence]:g}s while it plays"
-                 if sequence in WALK_FRAMES else ""))
+                 if sequence in WALK_FRAMES else "")
+              + "; nothing else is pressed until it ends")
     keys, buttons, played = {}, {}, 0
     holding = False
     shooting = threading.Event()
@@ -615,6 +622,8 @@ def play(dungeon_name, sequence, verbose=True):
                          args=(sequence, WALK_FRAMES[sequence], shooting),
                          daemon=True).start()
     record_action.winmm.timeBeginPeriod(record_action.TIMER_MS)
+    with KEY_LOCK:
+        PLAYING.set()
     zero = time.perf_counter()
     try:
         for event in events:
@@ -662,6 +671,7 @@ def play(dungeon_name, sequence, verbose=True):
                 record_action.X_DATA.get(button, 0)))
         if holding:
             KEY_LOCK.release()
+        PLAYING.clear()
         record_action.winmm.timeEndPeriod(record_action.TIMER_MS)
     calibration.snap(f"played_{sequence}")
     if verbose:
@@ -901,7 +911,9 @@ def heal_loop(stop, kills_only):
     while (not stop.is_set() and not OVER.is_set()
            and not calibration.STOPPED.is_set()):
         if not kills_only or HUNTING.is_set():
-            tap(KEYS[HEAL_KEY])
+            with KEY_LOCK:
+                if not PLAYING.is_set():
+                    press(KEYS[HEAL_KEY])
         stop.wait(HEAL_EVERY)
 
 
@@ -1082,7 +1094,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                       f"left it by hand")
         elif END["at"] is not None:
             run_sequence(dungeon_name, location, phase, verbose,
-                         DUNGEONS[dungeon_name].get("before_exit", []), False)
+                         setting(dungeon_name, "before_exit"), False)
             while time.monotonic() < END["at"] + timer["end_wait"]:
                 calibration.halt_if_stopped()
                 time.sleep(min(WAIT_SLICE,
@@ -1210,7 +1222,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                       + ("while a kill is on (not in the recordings or the "
                          "opening), "
                          if DUNGEONS[dungeon_name].get("heal_kills_only")
-                         else "")
+                         else "except while a recording plays, ")
                       + f"and the end screen read all the time, until the end "
                       f"screen has been up {end_wait(dungeon_name):g}s")
             phase["healer"].start()
@@ -1276,7 +1288,7 @@ def chat(text, verbose=True):
 
 
 def start_block(dungeon_name, location, verbose=True):
-    steps = DUNGEONS[dungeon_name].get("block_start")
+    steps = setting(dungeon_name, "block_start")
     if steps:
         if verbose:
             print(f"  {dungeon_name}: the start of a block of runs")
@@ -1284,12 +1296,11 @@ def start_block(dungeon_name, location, verbose=True):
 
 
 def cool_down(dungeon_name, rested, verbose=True):
-    place = DUNGEONS[dungeon_name]
-    cooldown = float(place.get("cooldown", 0))
+    cooldown = float(setting(dungeon_name, "cooldown"))
     left = rested + cooldown - time.monotonic()
     if left <= 0:
         return
-    pops = list(place.get("cooldown_loop", []))
+    pops = list(setting(dungeon_name, "cooldown_loop"))
     if verbose:
         print(f"  {dungeon_name}: {cooldown:g}s cooldown after the BM cancel; "
               f"{left:.1f}s to go before the next run"
@@ -1733,6 +1744,12 @@ def move(steps, verbose=True, frames=True):
             if verbose:
                 print(f"  tap {key}, then wait {seconds:g}s")
             tap(KEYS[key])
+            ENDED.wait(seconds)
+        elif action == "use":
+            if verbose:
+                print(f"  right-click {key} at {list(CLICK_POINTS[key])}, then "
+                      f"wait {seconds:g}s")
+            right_click(*CLICK_POINTS[key], 0.0)
             ENDED.wait(seconds)
         elif action == "wait":
             if verbose:

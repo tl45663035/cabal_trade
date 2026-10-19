@@ -81,19 +81,22 @@
       [502, 416, 737, 434]
     ],
     "enter_window": [1092, 885, 1131, 899],
-    "shout_phrases": [
-      "WTB DU15 gloves 2.5B. Mail me semi AFK",
-      "WTB 300DP 60M. mail price if deal. AFK",
-      "WTB voucher cheap price 350M. Mail me price . Semi AFK",
-      "Wtb DU15 Suit HH 2.5B. Mail me semi AFK yo !",
-      "Wtb DU15 Glove Highest 2.5B. GOOD DEAL MAIL ME",
-      "Wtb Eval merit medal x1000. Buying in bulk. Mail me price AFK",
-      "WTB WI PALLAD 3SLOT HELMET 3B MAIL MEEEE",
-      "WTB PALLAD WI 3S BOOTY FOR 3B MAIL ME NOW !",
-      "WTB DU15 SUIT GLOVE 2.5B EACH WHAT YOU WAITING FOR ??",
-      "WTB DU 15 HELM BOOT 2.5B YUP YOU HEARD THAT RIGHT"
-    ],
+    "aura": [987, 940],
     "dungeons": {
+      "chaos_arena": {
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
+                     ["wait", 3], "get_to_gate", ["kill", "Gate of Chaos"],
+                     ["timer", 330],
+                     ["use", "A+2"], ["wait_timer", 5],
+                     "inventory", "wait_timer", ["kill", "Gate of Chaos"],
+                     "bm_aura", "kill_phase",
+                     "get_to_middle", ["kill_bm", "boss"]],
+        "exit": [
+          ["button", "confirmation", 0.0],
+          ["button", "fire_leave", 0.0]
+        ],
+        "after_exit": [["wait", 3], "after_exit"]
+      },
       "fire": {
         "locations": {
           "Fire": {"bm": "main_bm"}
