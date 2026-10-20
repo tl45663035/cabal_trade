@@ -71,36 +71,36 @@
   "dungeon": {
     "recorded": {
       "fire": {
-        "enabled": true,
+        "enabled": false,
         "recording": "cang_fire_run.jsonl",
         "start_timer": "00:01:29",
         "timeout_seconds": 300
       },
       "eop": {
-        "enabled": true,
+        "enabled": false,
         "recording": "cang_eop_run.jsonl",
         "start_timer": "00:04:59",
         "timeout_seconds": 300
       },
       "steamer": {
-        "enabled": true,
+        "enabled": false,
         "recording": "cang_steamer_run.jsonl",
         "start_timer": "00:09:59",
         "timeout_seconds": 300
       },
       "ice": {
-        "enabled": true,
+        "enabled": false,
         "recording": "cang_ice_run.jsonl",
         "timeout_seconds": 300
       },
       "valley": {
-        "enabled": true,
+        "enabled": false,
         "recording": "cang_valley_run.jsonl",
         "start_timer": "00:04:58",
         "timeout_seconds": 300
       }
     },
-    "enabled": true,
+    "enabled": false,
     "trading_dungeon": "fire",
     "level_windows": [
       [502, 266, 737, 284],
