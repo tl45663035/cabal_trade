@@ -2178,6 +2178,8 @@ def command(args):
 if __name__ == "__main__":
     args = _plain_argv()
     row_model.start_backup_reader()
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(errors="backslashreplace")
     calibration.log_to_file("dungeon")
     calibration.frames_on(True if "--frames" in sys.argv else None)
     calibration.watch_for_stop()
