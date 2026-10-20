@@ -21,7 +21,7 @@ import record_all
 import row_model
 
 SEQUENCES = dungeon.SEQUENCES
-OVERRIDES = ("daily_limit", "start_at", "cooldown", "end_wait", "before_exit",
+OVERRIDES = ("daily_limit", "start_at", "cooldown", "end_wait", "before_exit", "manual_exit",
              "after_exit")
 JOIN_SLICE = 0.1
 
@@ -65,17 +65,70 @@ def problem(name):
     if place.get("daily_limit") is None:
         return (f"{name} has no daily_limit; without one its recorded runs would go "
                 f"on back to back and trading would never resume")
-    for key, what in (("recording", "recording"), ("exit_recording", "exit recording")):
-        path = find(name, place.get(key))
-        if path is None:
-            return (f"{name}: no {what} {place.get(key)!r} in "
-                    f"{SEQUENCES / name} or {ra.OUT}")
+    path = find(name, place.get("recording"))
+    if path is None:
+        return (f"{name}: no recording {place.get('recording')!r} in "
+                f"{SEQUENCES / name} or {ra.OUT}")
+    clips = [("recording", path, record_all.prepare)]
+    for step in exit_steps(name):
+        clip = exit_clip(name, step)
+        if clip is not None:
+            if not clip.exists():
+                return f"{name}: its manual exit plays {clip}, which is not there"
+            clips.append(("manual exit clip", clip, on_main_screen))
+    for what, clip, check in clips:
         try:
-            _head, _events, refused = record_all.prepare(path)
+            _head, _events, refused = check(clip)
         except Exception as exc:
-            return f"{name}: the {what} {path.name} can't be read ({type(exc).__name__}: {exc})"
+            return f"{name}: the {what} {clip.name} can't be read ({type(exc).__name__}: {exc})"
         if refused:
-            return f"{name}: the {what} {path.name} is refused: {refused}"
+            return f"{name}: the {what} {clip.name} is refused: {refused}"
+    return None
+
+
+def on_main_screen(path):
+    """A manual exit clip checked the way dungeon.play checks it: the same
+    main screen size, and every click and wheel turn on the main screen. The
+    other monitors may be laid out differently (Chaos Arena's exit clip was
+    recorded with monitors to the left), so cursor moves are kept on the main
+    screen too. Returns (head, events, refused) like record_all.prepare."""
+    head, events, refused = record_all.read_recording(path)
+    if refused:
+        return None, None, refused
+    width, height = ra.screen()
+    if head.get("screen") != [width, height]:
+        return None, None, (f"{path.name} was recorded on a {head.get('screen')} main "
+                            f"screen and this one is {[width, height]}")
+    off = [e for e in events if e["kind"] == "mouse" and e["action"] not in ("move", "raw")
+           and not (0 <= e["x"] < width and 0 <= e["y"] < height)]
+    if off:
+        return None, None, (f"{len(off)} of its clicks or wheel turns are off the main "
+                            f"screen, the first at {[off[0]['x'], off[0]['y']]}")
+    for e in events:
+        if e["kind"] == "mouse" and "x" in e:
+            e["x"] = min(max(e["x"], 0), width - 1)
+            e["y"] = min(max(e["y"], 0), height - 1)
+    head = {**head, "desktop": ra.desktop()}
+    if head.get("cursor"):
+        head["cursor"] = [min(max(head["cursor"][0], 0), width - 1),
+                          min(max(head["cursor"][1], 0), height - 1)]
+    return head, events, None
+
+
+def exit_steps(name):
+    """How the dungeon is left by hand, as dungeon.py leaves it after its time
+    limit: its own manual_exit, or the shared one (Chaos Arena's exit clip)."""
+    return settings(name).get("manual_exit", dungeon.MANUAL_EXIT)
+
+
+def exit_clip(name, step):
+    """The recording a manual exit step plays, or None for any other step
+    (a button, a wait), which goes through dungeon.run_sequence."""
+    part, *rest = step if isinstance(step, list) else [step]
+    if part == "play":
+        return SEQUENCES / rest[0] / f"{rest[1]}.jsonl"
+    if not rest and (SEQUENCES / name / f"{part}.jsonl").exists():
+        return SEQUENCES / name / f"{part}.jsonl"
     return None
 
 
@@ -197,15 +250,30 @@ def play(recording, stop):
 
 
 def leave(name, place, verbose=True):
-    """The recorded exit clip, played to its end, stopped the moment the game
-    goes away or loses focus."""
-    path = find(name, place.get("exit_recording"))
-    if path is None:
-        raise RuntimeError(f"{name}: the exit recording {place.get('exit_recording')!r} "
-                           f"is gone; the character may still be in the dungeon")
-    recording = load(path)
+    """Leaves the dungeon by its manual exit, as dungeon.py does after its time
+    limit. Its clips are played with the game watched: they stop the moment
+    the game goes away or loses focus."""
+    location = dungeon.only_location(name)
     if verbose:
-        print(f"  {name}: leaving by the exit recording {path.name}")
+        print(f"  {name}: leaving by the manual exit")
+    for step in exit_steps(name):
+        clip = exit_clip(name, step)
+        if clip is None:
+            dungeon.run_sequence(name, location, {}, verbose, [step], False)
+        else:
+            if not clip.exists():
+                raise RuntimeError(f"{name}: the manual exit clip {clip.name} is gone; "
+                                   f"the character may still be in the dungeon")
+            head, events, refused = on_main_screen(clip)
+            if refused:
+                raise RuntimeError(f"{name}: the manual exit clip {clip.name} is refused: "
+                                   f"{refused}")
+            play_watched(name, (head, events, clip.parent), verbose)
+        calibration.halt_if_stopped()
+
+
+def play_watched(name, recording, verbose=True):
+    """A clip played with the game watched (no end screen read)."""
     stop, outcome = threading.Event(), {"end": None}
     every = float(dungeon._DUNGEON.get("end_check_every", 0.5))
     guard = threading.Thread(target=watch, args=(stop, outcome, float("inf"), every, False),
@@ -219,7 +287,7 @@ def leave(name, place, verbose=True):
     calibration.halt_if_stopped()
     if outcome["end"] in ("lost_game", "lost_focus"):
         raise GameLost(f"{name}: the game {'went away' if outcome['end'] == 'lost_game' else 'lost focus'} "
-                       f"during the exit recording; it stopped there")
+                       f"during the manual exit; it stopped there")
     if outcome["end"] == "error":
         raise outcome["error"]
 
@@ -274,7 +342,7 @@ def run(name, verbose=True):
                 raise GameLost("the game lost focus during the replay and would not "
                                "come back to the front; the replay stopped there")
             print(f"  {name}: the game lost focus during the replay; it is back in "
-                  f"front, and the run leaves by the exit recording")
+                  f"front, and the run leaves by the manual exit")
         if end == "cleared":
             if place.get("before_exit"):
                 dungeon.run_sequence(name, location, {}, verbose, place["before_exit"], False)
@@ -305,7 +373,7 @@ def run(name, verbose=True):
             try:
                 leave(name, place, verbose)
             except Exception as exc:
-                print(f"  {name}: the exit recording failed too: {exc}")
+                print(f"  {name}: the manual exit failed too: {exc}")
         raise
     finally:
         print(f"  RECORDED RUN end {name} ({result})", flush=True)

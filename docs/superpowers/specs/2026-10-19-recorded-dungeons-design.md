@@ -241,3 +241,24 @@ lines.
 - **`after_exit` can be set per recorded dungeon,** like `before_exit`.
 - **The input probe** stops the moment its black screen loses the
   foreground, and skips Alt as well as Win keys.
+
+## Revision: leave by the dungeon's manual exit (2026-10-19)
+
+The user decided that recorded runs leave mid-dungeon the way `dungeon.py`
+does after its time limit: the dungeon's `manual_exit`, or the shared
+default `[["play", "chaos_arena", "exit_dungeon"]]` (press 1, click the
+exit icon at the top right, confirm). There is no per-dungeon
+`exit_recording` any more, and nothing to record besides the run itself.
+
+- **What uses it:** a timeout, a defeat (after revive), and a lost focus
+  that the bot recovered from. A recorded entry may set its own
+  `manual_exit`.
+- **Clips are guarded.** Clips in the manual exit are played with the game
+  watched, so they stop the moment it loses focus or goes away. Other
+  steps (buttons, waits) go through `dungeon.run_sequence`.
+- **Clips are checked the way `dungeon.play` checks them:** the same main
+  screen size, and every click and wheel turn on the main screen. Cursor
+  moves are kept on the main screen. Chaos Arena's exit clip was recorded
+  with monitors to the left (desktop `[-3840, 0, 5760, 1440]`), which the
+  strict `record_all.prepare` check would refuse on this PC (`[0, 0, 5360,
+  1440]`). The run recording itself keeps the strict check.

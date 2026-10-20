@@ -77,6 +77,7 @@ DUNGEONS = {
              "daily_limit": 30, "start_at": "01:40", "cooldown": 35, "end_wait": 2,
              "before_exit": ["cancel_bm"],
              "exit": [["button", "confirmation", 0.0], ["button", "fire_leave", 0.0]],
+             "manual_exit": [["play", "fire", "out"]],
              "after_exit": []},
     "ice": {"locations": {"Ice": {"entry": [10, 10], "name": "Ice"}},
             "daily_limit": 5, "cooldown": 0},
@@ -96,12 +97,11 @@ head["desktop"] = [0, 0, 5360, 1440]
 elsewhere.write_text("\n".join([json.dumps(head)] + lines[1:]) + "\n", encoding="utf-8")
 
 RECORDED = {
-    "fire": {"enabled": True, "recording": "run.jsonl", "exit_recording": "out.jsonl",
+    "fire": {"enabled": True, "recording": "run.jsonl",
              "timeout_seconds": 30, "cooldown": 10},
-    "arena": {"enabled": False, "recording": "run.jsonl", "exit_recording": "out.jsonl",
+    "arena": {"enabled": False, "recording": "run.jsonl",
               "timeout_seconds": 30},
-    "ice": {"enabled": True, "recording": "ice_run.jsonl",
-            "exit_recording": "ice_out.jsonl", "timeout_seconds": 30},
+    "ice": {"enabled": True, "recording": "ice_run.jsonl", "timeout_seconds": 30},
 }
 
 
@@ -111,6 +111,7 @@ def world(recorded=None, dungeons=None):
     with patched((dungeon, "DUNGEONS", dict(dungeons or DUNGEONS)),
                  (dungeon, "_DUNGEON", {**dungeon._DUNGEON,
                                         "recorded": dict(recorded or RECORDED)}),
+                 (dungeon, "MANUAL_EXIT", [["play", "fire", "out"]]),
                  (rd, "SEQUENCES", SEQ), (ra, "OUT", OUT),
                  (ra, "screen", lambda: [1920, 1080]),
                  (ra, "desktop", lambda: list(LAYOUT)),
@@ -141,7 +142,8 @@ with world():
 cases = [
     ("arena", {"arena": {**RECORDED["arena"], "enabled": True}}, "one location"),
     ("fire", {"fire": {**RECORDED["fire"], "recording": "nope.jsonl"}}, "recording"),
-    ("fire", {"fire": {**RECORDED["fire"], "exit_recording": "nope.jsonl"}}, "exit"),
+    ("fire", {"fire": {**RECORDED["fire"], "manual_exit": [["play", "fire", "nope"]]}},
+     "exit"),
     ("fire", {"fire": {k: v for k, v in RECORDED["fire"].items()
                        if k != "timeout_seconds"}}, "timeout"),
     ("fire", {"fire": {**RECORDED["fire"], "recording": "elsewhere.jsonl"}},
@@ -239,8 +241,8 @@ def play_run(scene, recorded=None, every=0.05, fake=None, real_count=False):
         fake.send(item)
 
     out = io.StringIO()
-    entry = dict(RECORDED["fire"], recording="walk.jsonl", exit_recording="leave.jsonl",
-                 timeout_seconds=20)
+    entry = dict(RECORDED["fire"], recording="walk.jsonl",
+                 manual_exit=[["play", "fire", "leave"]], timeout_seconds=20)
     entry.update(recorded or {})
     counting = ([(dungeon, "count_dungeon",
                   lambda name, day: scene.calls.append(("counted", day)) or 1)]
@@ -646,6 +648,51 @@ with world({"fire": dict(RECORDED["fire"])},
     said = rd.problem("fire") or ""
 check("daily_limit" in said, f"a recorded dungeon needs a daily limit, got {said!r}")
 
+# ================= leaving by the dungeon's manual exit =================
+
+with world():
+    check(rd.exit_steps("fire") == [["play", "fire", "out"]],
+          "a dungeon with its own manual exit leaves by it")
+    check(rd.exit_steps("ice") == [["play", "fire", "out"]],
+          "a dungeon without one leaves by the shared default (Chaos Arena's exit clip)")
+    check(rd.problem("ice") is None, f"no exit recording is needed, got {rd.problem('ice')}")
+
+elsewhere_exit = SEQ / "fire" / "leave_other_layout.jsonl"
+lines = EXIT_FILE.read_text(encoding="utf-8").splitlines()
+head = json.loads(lines[0])
+head["desktop"] = [-3840, 0, 5760, 1440]
+moved_off = json.loads(lines[1])
+elsewhere_exit.write_text("\n".join([json.dumps(head),
+                                     json.dumps({**moved_off, "kind": "mouse", "action": "move",
+                                                 "x": -2000, "y": 300, "injected": False})]
+                                    + lines[1:]) + "\n", encoding="utf-8")
+off_screen = SEQ / "fire" / "leave_off_screen.jsonl"
+off_screen.write_text("\n".join([json.dumps(head)] + lines[1:] + [json.dumps(
+    {"t": 9.0, "kind": "mouse", "action": "down", "button": "left", "x": -2000, "y": 300,
+     "injected": False})]) + "\n", encoding="utf-8")
+with world({"fire": {**RECORDED["fire"], "manual_exit": [["play", "fire", "leave_other_layout"]]}}):
+    check(rd.problem("fire") is None,
+          f"a manual exit clip from another monitor layout, its clicks on the main screen, "
+          f"is accepted as dungeon.py accepts it, got {rd.problem('fire')}")
+with world({"fire": {**RECORDED["fire"], "manual_exit": [["play", "fire", "leave_off_screen"]]}}):
+    said = rd.problem("fire") or ""
+check("main screen" in said, f"one with a click off the main screen is refused, got {said!r}")
+r = play_run(Scene(), {"timeout_seconds": 0.5,
+                       "manual_exit": [["play", "fire", "leave_other_layout"]]})
+moves = [d for _t, k, d in r.fake.game.log if k == "move"]
+check(r.result == "timeout" and len(r.exit_keys) == 2 * 2
+      and all(0 <= x < 1920 and 0 <= y < 1080 for x, y in moves),
+      f"it plays, its cursor kept on the main screen, got {r.result!r} {len(r.exit_keys)} "
+      f"{[m for m in moves if not (0 <= m[0] < 1920)][:3]}")
+
+r = play_run(Scene(), {"timeout_seconds": 0.5,
+                       "manual_exit": [["button", "confirmation", 0.0],
+                                       ["play", "fire", "leave"]]})
+check(r.result == "timeout" and ("seq", (("button", "confirmation", 0.0),)) in r.calls
+      and len(r.exit_keys) == 2 * 2,
+      f"a manual exit's button steps go through the dungeon's steps and its clips are "
+      f"played, got {r.result!r} {r.calls} {len(r.exit_keys)}")
+
 # ============================== Task 4 ==============================
 
 ran_one = []
@@ -665,8 +712,9 @@ for profile in ("cang", "trung", "bot"):
     entry = json.loads((SRC / "configs" / f"{profile}.json").read_text(encoding="utf-8"))[
         "dungeon"]["recorded"]["fire"]
     check(entry == {"enabled": False, "recording": f"{profile}_fire_run.jsonl",
-                    "exit_recording": f"{profile}_fire_exit.jsonl", "timeout_seconds": 300},
-          f"{profile} lists fire as a recorded dungeon, off until its recordings exist")
+                    "timeout_seconds": 300},
+          f"{profile} lists fire as a recorded dungeon, off until its recording exists; it "
+          f"leaves by the dungeon's manual exit, so there is no exit recording, got {entry}")
 
 # ============================== the end ==============================
 
