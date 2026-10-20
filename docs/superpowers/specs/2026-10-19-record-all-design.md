@@ -232,3 +232,60 @@ Still unverified in the game: whether Cabal turns by raw counts (likely)
 or by cursor movement. If by cursor, a relative move still moves the
 cursor, with the same pointer speed applied, so the turn stays close
 either way.
+
+## Revision: deep check of recorder against replayer (2026-10-19)
+
+The new recording (`2026-10-19_185612_all.jsonl`, 282.6 s, 37,683
+events), the 30-run log and the code were checked against each other.
+
+**Checked and sound:**
+- **Raw counts line up with cursor moves.** Every physical cursor move has
+  its raw count (18,330 of each). The raw count arrives 0.09 ms later
+  (median; worst 1.3 ms). None fall on the wrong side of a button press
+  or release.
+- **Pointer acceleration is off on this machine.** "Enhance pointer
+  precision" is off and pointer speed is 8, so the cursor moves at 0.75x
+  the raw counts with no curve. A replayed turn therefore turns the camera
+  by the same raw counts and moves the cursor by the same pixels.
+- **Replay timing is tight.** Events are sent a median of 0.00 ms after
+  their recorded moment, worst 2-5 ms.
+
+**Defects found and fixed:**
+1. **The Ctrl stop could leave keys and buttons held.** The stop
+   interrupts the main thread (`interrupt_main`), and the 19:01 log shows
+   that interruption landing inside the replay's release. `dungeon.py`
+   now plays on a worker thread, and the main thread only waits on it.
+2. **The Ctrl stop reads the key state, which includes the replay's own
+   Ctrl.** The recording uses Ctrl+1 and Ctrl+2. While the replay holds
+   Ctrl, and for 0.1 s after (`OWN_GRACE`) while the key state catches
+   up, it is marked as the bot's own (`calibration._OWN_CTRL`).
+3. **The PaddleOCR reader loaded in the background during
+   `dungeon.py replay`.** It took CPU from the game and the replay while
+   reading nothing. It is no longer started for `replay`.
+4. **`record_all.py replay` had a keyboard hook in the input path.** It
+   watched for Ctrl, and every replayed key waited for that Python
+   callback, which needed the GIL while the play thread was busy-waiting
+   (up to about 5 ms). Ctrl is now read from the key state on a 10 ms
+   poll (`CtrlTaps`), ignoring the replay's own Ctrl.
+5. **Lateness was measured before sending.** It is now measured after.
+6. **A turn's press went out with an absolute move in the same event.**
+   The cursor now moves first, and the button is pressed with no movement
+   of its own, so the game never sees an absolute jump while the button
+   is held.
+7. **`compare RECORDING CAPTURE` measures what the game actually got.**
+   Make the capture with run mode, for example
+   `record_all.py run py src_1080p\dungeon.py replay --runs 1 --config cang`.
+   The two files are lined up by their keys, clicks and wheel turns. It
+   reports anything missing or extra, timing spread with the start offset
+   taken out, drift from start to end, and clicks landing more than
+   `all_compare_click_px` away. Turn releases are reported separately.
+   `dungeon.py replay` also takes `--runs N`.
+
+**What input fidelity cannot fix.** The game reads input once per frame,
+so a key held 100 ms is seen for 6 or 7 frames depending on where the
+frames fall. Every walk, cast and turn can be off by one frame, and over
+hundreds of presses that wanders. Monsters, other players and server lag
+also differ between runs, and each loop starts where the last one ended.
+If `compare` shows the input arriving intact and runs still differ, the
+difference is the game's. Closing it means the replay watches the screen
+and corrects course, which is a different design from replaying a tape.

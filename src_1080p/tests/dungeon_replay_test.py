@@ -114,12 +114,98 @@ try:
     done, said = run()
     check("presses Ctrl 1 time(s)" in said, "a recording that presses Ctrl is flagged")
 
+    # The Ctrl stop interrupts the main thread; the replay must still let go
+    # of what it holds, all of it.
+    import _thread
+    held = [{**events[0], "t": 0.0},
+            {"t": 0.0, "kind": "mouse", "action": "down", "button": "left",
+             "x": 9, "y": 9},
+            {**events[1], "t": 60.0}]
+    (SCRATCH / "held_all.jsonl").write_text(
+        "\n".join(json.dumps(x) for x in [head] + held) + "\n", encoding="utf-8")
+    dungeon._DUNGEON["replay"] = {"file": "held_all.jsonl", "times": 3,
+                                  "break_seconds": 0}
+    sent.clear()
+    calibration.STOPPED.clear()
+    interrupted = []
+
+    def send_and_get_interrupted(item):
+        # The Ctrl stop's interruption lands exactly while the replay is
+        # letting go: the moment the old code lost the rest of the release.
+        sent.append(item)
+        if (calibration.STOPPED.is_set() and not interrupted
+                and item.type == ra.W["INPUT_KEYBOARD"]
+                and item.u.ki.dwFlags & ra.W["KEYEVENTF_KEYUP"]):
+            interrupted.append(True)
+            _thread.interrupt_main()
+            time.sleep(0.2)
+
+    ra.send = send_and_get_interrupted
+    threading.Timer(0.4, calibration.STOPPED.set).start()
+    started = time.monotonic()
+    try:
+        done, said = run()
+    except KeyboardInterrupt:
+        done, said = None, "the interruption escaped"
+    took = time.monotonic() - started
+    calibration.STOPPED.clear()
+    ra.send = lambda item: sent.append(item)
+    check(interrupted, "the interruption landed during the release")
+    ups = [i for i in sent if (i.type == ra.W["INPUT_KEYBOARD"]
+                               and i.u.ki.dwFlags & ra.W["KEYEVENTF_KEYUP"])
+           or (i.type == ra.W["INPUT_MOUSE"]
+               and i.u.mi.dwFlags & ra.W["MOUSEEVENTF_LEFTUP"])]
+    check(took < 5 and done == 0, f"the stop ends the loop at once, got {done} in {took:.2f}s")
+    check(len(ups) == 2, f"both the held key and the held button are let go, got {len(ups)}")
+    check("stopped by the Ctrl stop" in said, "the stop is reported")
+
+    # The replay's own Ctrl is kept from the Ctrl stop, and given back after.
+    ctrl_rec = [{**events[0], "vk": 162, "scan": 29, "t": 0.0},
+                {**events[1], "vk": 162, "scan": 29, "t": 0.05}]
+    (SCRATCH / "own_ctrl_all.jsonl").write_text(
+        "\n".join(json.dumps(x) for x in [head] + ctrl_rec) + "\n", encoding="utf-8")
+    dungeon._DUNGEON["replay"] = {"file": "own_ctrl_all.jsonl", "times": 1}
+    while_sending = []
+    ra.send = lambda item: (sent.append(item),
+                            while_sending.append(calibration._OWN_CTRL))
+    before = calibration._OWN_CTRL
+    run()
+    check(while_sending and all(n == before + 1 for n in while_sending[1:]),
+          f"while the replay holds Ctrl, the Ctrl stop ignores it, got {while_sending}")
+    time.sleep(record_all.OWN_GRACE + 0.2)
+    check(calibration._OWN_CTRL == before,
+          f"and it is given back shortly after, got {calibration._OWN_CTRL}")
+    ra.send = lambda item: sent.append(item)
+
+    # --runs on the command line overrides the config.
+    dungeon._DUNGEON["replay"] = {"file": "loop_all.jsonl", "times": 30,
+                                  "break_seconds": 0}
+    saved_argv = sys.argv
+    sys.argv = ["dungeon.py", "replay", "--runs", "2", "--config", "bot"]
+    try:
+        check(dungeon._runs_given() == 2 and dungeon._plain_argv() == ["replay"],
+              "--runs is read and kept out of the command")
+        with contextlib.redirect_stdout(io.StringIO()) as said:
+            dungeon.command(dungeon._plain_argv())
+        check("2 of 2 replay(s) played to the end" in said.getvalue(),
+              f"--runs 2 plays twice, got {said.getvalue()[-200:]!r}")
+        sys.argv = ["dungeon.py", "replay", "--config", "bot"]
+        check(dungeon._runs_given() is None and dungeon._runs() == 1,
+              "without --runs the config decides, and other commands still default to 1")
+    finally:
+        sys.argv = saved_argv
+
+    check(not dungeon.needs_reader(["replay"]) and dungeon.needs_reader(["fire"])
+          and dungeon.needs_reader([]),
+          "a replay skips loading the screen reader; everything else still loads it")
+
     loaded = calibration.load_shared()["dungeon"]
     check(loaded["replay"]["times"] == 1, "the default config replays once")
     cang = json.loads((SRC / "configs" / "cang.json").read_text(encoding="utf-8"))
-    check(cang["dungeon"]["replay"] == {"file": "2026-10-19_165954_all.jsonl",
-                                        "times": 30, "break_seconds": 30},
-          "Cang replays its recording 30 times with 30s between")
+    chosen = cang["dungeon"]["replay"]
+    check(chosen["times"] == 30 and chosen["break_seconds"] == 30
+          and chosen["file"].endswith(record_all.SUFFIX),
+          f"Cang replays a recording 30 times with 30s between, got {chosen}")
 finally:
     ra.OUT, ra.send, record_all.game_rect = saved[:3]
     dungeon._DUNGEON.clear()

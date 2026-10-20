@@ -27,6 +27,8 @@ TITLE = json.loads((ra.SRC / "calibration.json").read_text(
     encoding="utf-8"))["game"]["title_hint"]
 SECRETS = {"username": "CABAL_USERNAME", "password": "CABAL_PASSWORD"}
 EXPLAINED = 0.1
+POLL_GAP = float(ra.R["all_stop_poll"])
+OWN_GRACE = 0.1
 TURN = set(ra.R["all_turn_buttons"])
 
 LRESULT = ctypes.c_ssize_t
@@ -585,7 +587,9 @@ def play_event(event, keys, buttons, creds, turning=None):
         if action == "move" and turning:
             return False
         if button in TURN and action == "down" and not event.get("injected"):
-            ra.play_one(event, keys, buttons)
+            ra.send(ra.mouse_input(event, 0))
+            ra.send(button_input(button, "down"))
+            buttons[button] = event
             turning.add(button)
             return True
         if button in TURN and action == "up" and button in turning:
@@ -599,7 +603,8 @@ def play_event(event, keys, buttons, creds, turning=None):
 
 
 class Replay(ra.Replay):
-    def __init__(self, events, cursor, creds, head=None, base=None):
+    def __init__(self, events, cursor, creds, head=None, base=None,
+                 on_ctrl=None):
         super().__init__(events)
         self.cursor = cursor
         self.creds = creds
@@ -608,6 +613,14 @@ class Replay(ra.Replay):
         self.late = []
         self.refused = None
         self.turning = set() if any(e["action"] == "raw" for e in events) else None
+        self.own_ctrl = False
+        self.on_ctrl = on_ctrl
+
+    def holding_ctrl(self, held):
+        if held != self.own_ctrl:
+            self.own_ctrl = held
+            if self.on_ctrl is not None:
+                self.on_ctrl(held)
 
     def ready(self):
         if not self.head.get("window"):
@@ -644,9 +657,14 @@ class Replay(ra.Replay):
                 ra.wait_until(due, self.stop)
                 if self.stop.is_set():
                     break
-                self.late.append(time.perf_counter() - due)
+                ctrl = event["kind"] == "key" and event.get("vk") in ra.CTRL
+                if ctrl and event["action"] == "down":
+                    self.holding_ctrl(True)
                 play_event(event, keys, buttons, self.creds, self.turning)
+                self.late.append(time.perf_counter() - due)
                 self.played += 1
+                if ctrl and not any(vk in ra.CTRL for vk in keys):
+                    self.holding_ctrl(False)
         finally:
             for event in list(keys.values()):
                 ra.send(ra.key_input(event, True))
@@ -656,6 +674,7 @@ class Replay(ra.Replay):
                 else:
                     ra.send(ra.mouse_input(event, ra.BUTTON_FLAGS[("up", button)],
                                            ra.X_DATA.get(button, 0)))
+            self.holding_ctrl(False)
             ra.winmm.timeEndPeriod(ra.TIMER_MS)
             self.finished = True
 
@@ -663,12 +682,54 @@ class Replay(ra.Replay):
         if not self.late:
             return "no events were sent"
         ms = sorted(late * 1000 for late in self.late)
-        return (f"each event went out on average {statistics.mean(ms):.2f}ms "
+        return (f"each event was sent on average {statistics.mean(ms):.2f}ms "
                 f"after its recorded moment (median {statistics.median(ms):.2f}ms, "
                 f"worst {ms[-1]:.1f}ms)")
 
 
-def prepare(path):
+class CtrlTaps:
+    """Ctrl pressed TAPS times within WINDOW, read from the key state rather
+    than a hook, so nothing sits in the path of the input a replay sends.
+    While the replay itself holds Ctrl, the key state is its, not the
+    user's, so it doesn't count."""
+
+    def __init__(self, own=lambda: False, state=None):
+        self.own = own
+        self.state = state or (lambda: bool(
+            ra.user32.GetAsyncKeyState(W["VK_CONTROL"]) & W["KEY_STATE_DOWN"]))
+        self.seen = []
+        self.held = False
+        self.quiet_until = 0.0
+
+    def step(self, now):
+        if self.own():
+            self.seen, self.held = [], True
+            self.quiet_until = now + OWN_GRACE
+            return False
+        if now < self.quiet_until:
+            self.held = self.state()
+            return False
+        down = self.state()
+        tapped = down and not self.held
+        self.held = down
+        if not tapped:
+            return False
+        self.seen = [at for at in self.seen if now - at <= ra.WINDOW] + [now]
+        if len(self.seen) >= ra.TAPS:
+            self.seen = []
+            return True
+        return False
+
+
+def wait_for_taps(taps, gap, until=lambda: False):
+    while not until():
+        if taps.step(time.perf_counter()):
+            return True
+        time.sleep(gap)
+    return False
+
+
+def read_recording(path):
     lines = [line for line in path.read_text(encoding="utf-8").splitlines()
              if line.strip()]
     if not lines:
@@ -686,6 +747,13 @@ def prepare(path):
     if head.get("kind") != "start":
         return None, None, f"{path.name} has no start line; nothing replayed"
     events.sort(key=lambda e: e["t"])
+    return head, events, None
+
+
+def prepare(path):
+    head, events, refused = read_recording(path)
+    if refused:
+        return None, None, refused
     here, layout = list(ra.screen()), ra.desktop()
     if head.get("screen") != here or head.get("desktop", layout) != layout:
         return None, None, (
@@ -745,23 +813,22 @@ def replay(name=None):
     session = Replay(events, head.get("cursor"),
                      credentials() if any(e.get("secret") for e in events) else {},
                      head, path.parent)
-    handle, _callback = ra.hook(W["WH_KEYBOARD_LL"], session.key,
-                                W["LLKHF_INJECTED"], ra.KBDLLHOOKSTRUCT)
-
-    def tick():
-        if session.said == "started":
-            print(f"replaying from {datetime.datetime.now():%H:%M:%S}",
-                  flush=True)
-            session.said = None
-
+    taps = CtrlTaps(own=lambda: session.own_ctrl)
     try:
-        ra.pump(lambda: session.finished, tick)
-    finally:
+        wait_for_taps(taps, POLL_GAP)
+    except KeyboardInterrupt:
+        print("nothing replayed")
+        return 1
+    print(f"replaying from {datetime.datetime.now():%H:%M:%S}", flush=True)
+    session.worker = threading.Thread(target=session.play, daemon=True)
+    session.worker.start()
+    try:
+        if wait_for_taps(taps, POLL_GAP, until=lambda: session.finished):
+            session.stop.set()
+    except KeyboardInterrupt:
         session.stop.set()
-        if session.worker is not None:
-            session.worker.join()
-        if handle:
-            ra.user32.UnhookWindowsHookEx(handle)
+    finally:
+        session.worker.join()
     if session.refused:
         print(session.refused)
         return 1
@@ -772,13 +839,137 @@ def replay(name=None):
     return 0
 
 
+def _signature(event):
+    if event["kind"] == "key":
+        return ("key", event.get("vk"), event["action"])
+    if event["action"] in ("down", "up"):
+        return ("button", event["button"], event["action"])
+    return ("wheel", event["action"], event.get("delta"))
+
+
+def _turn_releases(events):
+    held, releases = set(), set()
+    raw = any(e["action"] == "raw" for e in events)
+    for index, event in enumerate(events):
+        button = event.get("button")
+        if not raw or button not in TURN or event.get("injected"):
+            continue
+        if event["action"] == "down":
+            held.add(button)
+        elif event["action"] == "up" and button in held:
+            held.discard(button)
+            releases.add(index)
+    return releases
+
+
+def _spread(values):
+    ordered = sorted(values)
+    return (statistics.median(ordered), ordered[int(0.95 * (len(ordered) - 1))],
+            ordered[-1])
+
+
+def compare(original, capture):
+    """Line a recording up with a capture of its replay (made with run mode)
+    and measure what the game was actually sent: what went missing or came
+    extra, how far each event's timing moved, and where clicks landed."""
+    head_a, a, refused = read_recording(original)
+    if refused:
+        return {"refused": refused}
+    head_b, b, refused = read_recording(capture)
+    if refused:
+        return {"refused": refused}
+    injected = [e for e in b if e.get("injected")]
+    sent = injected or b
+    by_hand = sum(1 for e in b if e.get("injected") is False) if injected else 0
+    wanted = [e for e in a if e["kind"] in ("key", "mouse")
+              and e["action"] not in ("move", "raw")]
+    got = [e for e in sent if e["kind"] in ("key", "mouse")
+           and e["action"] not in ("move", "raw")]
+    releases = _turn_releases(a)
+    release_ids = {id(a[i]) for i in releases}
+    import difflib
+    matcher = difflib.SequenceMatcher(None, [_signature(e) for e in wanted],
+                                      [_signature(e) for e in got], autojunk=False)
+    pairs = [(wanted[block.a + k], got[block.b + k])
+             for block in matcher.get_matching_blocks() for k in range(block.size)]
+    out = {"wanted": len(wanted), "got": len(got), "matched": len(pairs),
+           "missing": len(wanted) - len(pairs), "extra": len(got) - len(pairs),
+           "by_hand": by_hand, "first_missing": None, "clicks_off": [],
+           "turn_ends_off": []}
+    matched_ids = {id(x) for x, _y in pairs}
+    out["first_missing"] = next((x for x in wanted if id(x) not in matched_ids), None)
+    if pairs:
+        shift = [y["t"] - x["t"] for x, y in pairs]
+        offset = statistics.median(shift)
+        jitter = [abs(s - offset) * 1000 for s in shift]
+        out["offset"] = offset
+        out["jitter_ms"] = _spread(jitter)
+        tenth = max(1, len(shift) // 10)
+        out["drift_ms"] = (statistics.median(shift[-tenth:])
+                           - statistics.median(shift[:tenth])) * 1000
+        for x, y in pairs:
+            if x["kind"] != "mouse" or "x" not in x or "x" not in y:
+                continue
+            off = max(abs(x["x"] - y["x"]), abs(x["y"] - y["y"]))
+            if off > ra.R["all_compare_click_px"]:
+                (out["turn_ends_off"] if id(x) in release_ids
+                 else out["clicks_off"]).append((x["t"], off))
+    out["moves"] = (sum(1 for e in a if e["action"] == "move"),
+                    sum(1 for e in sent if e["action"] == "move"))
+    return out
+
+
+def compare_report(original, capture):
+    found = compare(original, capture)
+    if "refused" in found:
+        return [found["refused"]]
+    lines = [f"{original.name} against {capture.name}: {found['matched']} of "
+             f"{found['wanted']} keys, clicks and wheel turns arrived in order"]
+    if found["missing"] or found["extra"]:
+        first = found["first_missing"]
+        lines.append(f"  {found['missing']} missing and {found['extra']} extra"
+                     + (f"; the first missing is {_signature(first)} at "
+                        f"{first['t']:.3f}s" if first else ""))
+    if "offset" in found:
+        median, p95, worst = found["jitter_ms"]
+        lines.append(f"  timing: each arrived within {median:.2f}ms of its "
+                     f"place (95% within {p95:.2f}ms, worst {worst:.1f}ms); "
+                     f"the end drifted {found['drift_ms']:+.1f}ms against the start")
+    lines.append(f"  clicks off by more than {ra.R['all_compare_click_px']}px: "
+                 f"{len(found['clicks_off'])}"
+                 + (f", the first at {found['clicks_off'][0][0]:.3f}s by "
+                    f"{found['clicks_off'][0][1]}px" if found["clicks_off"] else ""))
+    if found["turn_ends_off"]:
+        lines.append(f"  camera turns whose cursor ended elsewhere before being "
+                     f"put back: {len(found['turn_ends_off'])} (expected: the turn "
+                     f"itself follows the raw counts)")
+    lines.append(f"  cursor moves: {found['moves'][0]} recorded, "
+                 f"{found['moves'][1]} replayed")
+    if found["by_hand"]:
+        lines.append(f"  {found['by_hand']} input(s) were made by hand during the "
+                     f"replay and are left out")
+    return lines
+
+
 USAGE = ("use: record_all.py            record by hand: Ctrl "
          f"{ra.TAPS} times starts, the same again stops\n"
          "     record_all.py run CMD... record while CMD runs\n"
-         "     record_all.py replay [FILE]")
+         "     record_all.py replay [FILE]\n"
+         "     record_all.py compare RECORDING CAPTURE")
 
 
 def main(args):
+    if args[:1] == ["compare"]:
+        if len(args) != 3:
+            return USAGE
+        paths = [Path(name) if Path(name).exists() else ra.OUT / name
+                 for name in args[1:]]
+        missing = [str(p) for p in paths if not p.exists()]
+        if missing:
+            print(f"no recording {', '.join(missing)}")
+            return 1
+        print("\n".join(compare_report(*paths)))
+        return 0
     if args[:1] == ["replay"]:
         if len(args) > 2:
             return USAGE

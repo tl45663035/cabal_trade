@@ -630,7 +630,8 @@ try:
     player.play()
     got = [described(i) for i in sent]
     check(got == [("abs", (50, 50), ()),
-                  ("abs", (50, 50), ("rdown",)),
+                  ("abs", (50, 50), ()),
+                  ("button", None, ("rdown",)),
                   ("rel", (6, -1), ()),
                   ("rel", (9, -2), ()),
                   ("button", None, ("rup",)),
@@ -696,6 +697,252 @@ try:
                        f"got {got}")
 finally:
     ra.send = real_send
+
+# ---- Ctrl taps from the key state, not a hook ----
+
+class Keys:
+    def __init__(self):
+        self.down = False
+
+    def __call__(self):
+        return self.down
+
+
+state, own = Keys(), {"on": False}
+taps = record_all.CtrlTaps(own=lambda: own["on"], state=state)
+
+
+def press(at, hold=0.05):
+    state.down = True
+    first = taps.step(at)
+    state.down = False
+    second = taps.step(at + hold)
+    return first or second
+
+
+check(not press(10.0), "one tap is not enough")
+check(press(10.3), "a second tap within the window counts")
+check(not press(11.0) and not press(13.0), "taps further apart than the window don't")
+state.down = True
+check(not taps.step(20.0) and not taps.step(20.05) and not taps.step(20.5),
+      "a key held down counts once, not every poll")
+state.down = False
+taps.step(20.6)
+taps = record_all.CtrlTaps(own=lambda: own["on"], state=state)
+own["on"] = True
+state.down = True
+check(not taps.step(30.0), "the replay's own Ctrl is not a tap")
+state.down = False
+taps.step(30.1)
+own["on"] = False
+state.down = True
+check(not taps.step(30.15), "nor is the key state catching up just after it")
+state.down = False
+taps.step(30.16)
+check(not press(30.3 + record_all.OWN_GRACE) and press(30.5 + record_all.OWN_GRACE),
+      "after the grace, two real taps count again")
+check(record_all.wait_for_taps(types.SimpleNamespace(step=lambda now: True), 0.001),
+      "waiting returns once the taps come")
+check(not record_all.wait_for_taps(types.SimpleNamespace(step=lambda now: False), 0.001,
+                                   until=lambda: True),
+      "waiting gives up when told to")
+
+# ---- the replay knows when it holds Ctrl ----
+
+ra.send = lambda item: sent.append(item)
+try:
+    calls = []
+    ctrl_events = [
+        {"t": 0.0, "kind": "key", "action": "down", "vk": 162, "scan": 29,
+         "extended": False, "name": "Ctrl", "repeat": False},
+        {"t": 0.001, "kind": "key", "action": "down", "vk": 49, "scan": 2,
+         "extended": False, "name": "1", "repeat": False},
+        {"t": 0.002, "kind": "key", "action": "up", "vk": 49, "scan": 2,
+         "extended": False, "name": "1", "repeat": False},
+        {"t": 0.003, "kind": "key", "action": "up", "vk": 162, "scan": 29,
+         "extended": False, "name": "Ctrl", "repeat": False},
+        {"t": 0.004, "kind": "key", "action": "down", "vk": 65, "scan": 30,
+         "extended": False, "name": "A", "repeat": False},
+        {"t": 0.005, "kind": "key", "action": "up", "vk": 65, "scan": 30,
+         "extended": False, "name": "A", "repeat": False},
+    ]
+    seen_own = []
+    player = record_all.Replay(ctrl_events, None, {}, on_ctrl=calls.append)
+    real_play_event = record_all.play_event
+
+    def watching(event, *a, **k):
+        seen_own.append((event.get("name"), event["action"], player.own_ctrl))
+        return real_play_event(event, *a, **k)
+
+    record_all.play_event = watching
+    try:
+        player.play()
+    finally:
+        record_all.play_event = real_play_event
+    check(calls == [True, False], f"Ctrl held, then let go, is reported once each, got {calls}")
+    check(seen_own[0] == ("Ctrl", "down", True) and seen_own[3] == ("Ctrl", "up", True)
+          and seen_own[4] == ("A", "down", False),
+          f"the replay marks its Ctrl before pressing it and clears it after, got {seen_own}")
+
+    calls.clear()
+    held_ctrl = ctrl_events[:2] + [{**ctrl_events[4], "t": 30.0}]
+    player = record_all.Replay(held_ctrl, None, {}, on_ctrl=calls.append)
+    worker = threading.Thread(target=player.play)
+    worker.start()
+    deadline = time.time() + 5
+    while player.played < 2 and time.time() < deadline:
+        time.sleep(0.01)
+    player.stop.set()
+    worker.join(5)
+    check(calls == [True, False], f"a stop while Ctrl is held still clears it, got {calls}")
+
+    calls.clear()
+    record_all.Replay(ctrl_events[4:], None, {}, on_ctrl=calls.append).play()
+    check(calls == [], "a replay that never presses Ctrl says nothing")
+
+    # Timing is measured once the event has gone out.
+    ra.send = lambda item: (sent.append(item), time.sleep(0.02))
+    player = record_all.Replay(ctrl_events[4:5], None, {})
+    player.play()
+    check(player.late and player.late[0] >= 0.02,
+          f"the lateness includes the send itself, got {player.late}")
+finally:
+    ra.send = real_send
+
+# ---- replay from the command line: Ctrl taps start and stop, no hook ----
+
+saved_taps, saved_hook = record_all.CtrlTaps, ra.hook
+ra.hook = lambda *a, **k: (_ for _ in ()).throw(AssertionError("replay installed a hook"))
+
+
+class Script:
+    def __init__(self, own=None, state=None):
+        self.calls = 0
+
+    def step(self, now):
+        self.calls += 1
+        return self.calls == 1
+
+
+record_all.CtrlTaps = Script
+ra.send = lambda item: sent.append(item)
+sent.clear()
+cli_file = write(SCRATCH / "cli_all.jsonl", HEAD, [
+    {**a_down, "t": 0.01}, {**a_down, "t": 0.02, "action": "up"}])
+try:
+    said = io.StringIO()
+    with contextlib.redirect_stdout(said):
+        code = record_all.main(["replay", str(cli_file)])
+    check(code == 0 and "replayed 2 of 2 events" in said.getvalue(),
+          f"replay starts on the taps and plays everything, got {code} {said.getvalue()!r}")
+    check(len(sent) == 3, f"the start cursor and both events are sent, got {len(sent)}")
+
+    class StopSoon(Script):
+        def step(self, now):
+            self.calls += 1
+            return self.calls in (1, 3)
+
+    record_all.CtrlTaps = StopSoon
+    long_file = write(SCRATCH / "long_all.jsonl", HEAD, [
+        {**a_down, "t": 0.0}, {**a_down, "t": 60.0, "action": "up"}])
+    sent.clear()
+    started = time.monotonic()
+    with contextlib.redirect_stdout(io.StringIO()) as said:
+        code = record_all.main(["replay", str(long_file)])
+    check(time.monotonic() - started < 10 and "stopped after 1 of 2" in said.getvalue(),
+          f"taps during the replay stop it, got {said.getvalue()!r}")
+    check(any(i.type == W["INPUT_KEYBOARD"] and i.u.ki.dwFlags & W["KEYEVENTF_KEYUP"]
+              for i in sent[-1:]), "the key held when stopped is let go")
+finally:
+    record_all.CtrlTaps, ra.hook, ra.send = saved_taps, saved_hook, real_send
+
+# ---- compare: what the game was actually sent ----
+
+def recorded(name, events, head=None):
+    return write(SCRATCH / name, head or HEAD, events)
+
+
+def ev(t, kind, action, **more):
+    return {"t": t, "kind": kind, "action": action, **more}
+
+
+original = [ev(0.5, "key", "down", vk=87), ev(0.9, "key", "up", vk=87),
+            ev(1.0, "mouse", "move", x=10, y=10, injected=False),
+            ev(1.1, "mouse", "down", button="left", x=10, y=10, injected=False),
+            ev(1.2, "mouse", "up", button="left", x=10, y=10, injected=False),
+            ev(2.0, "mouse", "down", button="right", x=50, y=50, injected=False),
+            ev(2.01, "mouse", "raw", dx=5, dy=0),
+            ev(2.3, "mouse", "up", button="right", x=60, y=50, injected=False),
+            ev(3.0, "mouse", "wheel", delta=-120, x=10, y=10, injected=False),
+            ev(4.0, "key", "down", vk=49), ev(4.1, "key", "up", vk=49)]
+for e in original:
+    if e["kind"] == "key":
+        e["injected"] = False
+orig_path = recorded("orig_all.jsonl", original)
+
+
+def shifted(events, by, wobble=0.0, **change):
+    out = []
+    for n, e in enumerate(events):
+        if e["action"] == "raw":
+            continue
+        moved = {**e, "t": e["t"] + by + (wobble if n % 2 else -wobble), "injected": True}
+        out.append(moved)
+    return out
+
+
+same = recorded("same_cap.jsonl", shifted(original, 2.0, wobble=0.0005))
+found = record_all.compare(orig_path, same)
+check(found["matched"] == found["wanted"] == 9 and found["missing"] == found["extra"] == 0,
+      f"a faithful capture matches every key, click and wheel turn, got {found}")
+check(abs(found["offset"] - 2.0) < 1e-3 and found["jitter_ms"][2] < 1.01,
+      f"the start offset is taken out and only the wobble is left, got {found}")
+check(abs(found["drift_ms"]) < 1.5 and not found["clicks_off"],
+      f"no drift and every click in place, got {found}")
+
+lost = shifted(original, 1.0)
+del lost[-2]
+found = record_all.compare(orig_path, recorded("lost_cap.jsonl", lost))
+check(found["missing"] == 1 and record_all._signature(found["first_missing"])
+      == ("key", 49, "down"), f"a missing key is found and named, got {found}")
+
+off = shifted(original, 1.0)
+off[3] = {**off[3], "x": 14}
+off[6] = {**off[6], "x": 75}
+found = record_all.compare(orig_path, recorded("off_cap.jsonl", off))
+check(len(found["clicks_off"]) == 1 and found["clicks_off"][0][1] == 4,
+      f"a click 4px off is reported, got {found['clicks_off']}")
+check(len(found["turn_ends_off"]) == 1,
+      f"a turn's release elsewhere is reported apart from clicks, got {found}")
+
+drifting = [{**e, "t": e["t"] * 1.01} for e in shifted(original, 0.0)]
+found = record_all.compare(orig_path, recorded("drift_cap.jsonl", drifting))
+check(found["drift_ms"] > 20, f"a capture running slow shows drift, got {found['drift_ms']}")
+
+handy = shifted(original, 0.5) + [ev(1.5, "key", "down", vk=65, injected=False)]
+found = record_all.compare(orig_path, recorded("hand_cap.jsonl", handy))
+check(found["by_hand"] == 1 and found["extra"] == 0,
+      f"keys pressed by hand during the replay are left out, got {found}")
+
+found = record_all.compare(orig_path, orig_path)
+check(found["missing"] == 0 and found["by_hand"] == 0,
+      f"a capture with nothing sent by software is used whole, not called 'by hand', "
+      f"got {found}")
+
+lines_out = record_all.compare_report(orig_path, recorded("lost2_cap.jsonl", lost))
+check(any("1 missing" in l for l in lines_out) and any("timing:" in l for l in lines_out),
+      f"the report says what's missing and how the timing went, got {lines_out}")
+check(record_all.compare_report(orig_path, empty) == [f"{empty.name} is empty; nothing to replay"],
+      "comparing against an empty file says so")
+with contextlib.redirect_stdout(io.StringIO()) as said:
+    check(record_all.main(["compare", str(orig_path), str(same)]) == 0,
+          "compare runs from the command line")
+check("9 of 9" in said.getvalue(), f"and prints the report, got {said.getvalue()!r}")
+with contextlib.redirect_stdout(io.StringIO()):
+    check(record_all.main(["compare", str(orig_path), "nope_all.jsonl"]) == 1,
+          "a missing capture fails cleanly")
+check(record_all.main(["compare", str(orig_path)]) == record_all.USAGE,
+      "compare needs two files")
 
 check(not TRIPPED, f"tests sent input: {TRIPPED}")
 print(f"{checks} checks, {len(failures)} failed")

@@ -38,13 +38,18 @@ def _plain_argv():
     return out
 
 
-def _runs():
+def _runs_given():
     for index, arg in enumerate(sys.argv):
         if arg.startswith("--runs="):
             return int(arg.split("=", 1)[1])
         if arg == "--runs" and index + 1 < len(sys.argv):
             return int(sys.argv[index + 1])
-    return 1
+    return None
+
+
+def _runs():
+    given = _runs_given()
+    return 1 if given is None else given
 
 
 if __name__ == "__main__":
@@ -689,28 +694,65 @@ def replay_recording(name=None, times=None, rest=None):
     stop = threading.Event()
     threading.Thread(target=lambda: (calibration.STOPPED.wait(), stop.set()),
                      daemon=True).start()
-    done = 0
-    for number in range(1, times + 1):
-        if stop.is_set():
-            break
-        player = record_all.Replay(events, head.get("cursor"), creds, head,
-                                   path.parent)
-        player.stop = stop
-        print(f"  replay {number} of {times} from "
-              f"{datetime.datetime.now():%H:%M:%S}", flush=True)
-        player.play()
-        if player.refused:
-            raise SystemExit(player.refused)
-        print(f"    {player.played} of {len(events)} events; "
-              f"{player.timing()}", flush=True)
-        if player.played == len(events):
-            done += 1
-        if number < times and not stop.is_set():
-            print(f"    resting {rest:g}s", flush=True)
-            stop.wait(rest)
+    done, number = 0, 0
+    try:
+        for number in range(1, times + 1):
+            if stop.is_set():
+                break
+            player = record_all.Replay(events, head.get("cursor"), creds, head,
+                                       path.parent, on_ctrl=_replay_holds_ctrl)
+            player.stop = stop
+            print(f"  replay {number} of {times} from "
+                  f"{datetime.datetime.now():%H:%M:%S}", flush=True)
+            _play_out(player, stop)
+            if player.refused:
+                raise SystemExit(player.refused)
+            print(f"    {player.played} of {len(events)} events; "
+                  f"{player.timing()}", flush=True)
+            if player.played == len(events):
+                done += 1
+            if number < times and not stop.is_set():
+                print(f"    resting {rest:g}s", flush=True)
+                stop.wait(rest)
+    except KeyboardInterrupt:
+        stop.set()
     print(f"  {done} of {times} replay(s) played to the end"
           + ("; stopped by the Ctrl stop" if stop.is_set() else ""))
     return done
+
+
+def needs_reader(args):
+    """A replay reads nothing off the screen, and loading the reader takes CPU
+    away from the game while the replay plays."""
+    return args[:1] != ["replay"]
+
+
+def _play_out(player, stop):
+    """Plays on its own thread. The Ctrl stop interrupts the main thread,
+    and that interruption must not land inside the replay while it lets go
+    of the keys and buttons it holds."""
+    worker = threading.Thread(target=player.play, daemon=True)
+    worker.start()
+    while worker.is_alive():
+        try:
+            worker.join(0.1)
+        except KeyboardInterrupt:
+            stop.set()
+
+
+def _replay_holds_ctrl(held):
+    """The Ctrl stop reads the key state, which can't tell the replay's Ctrl
+    from the user's. While the replay holds Ctrl (and briefly after, while
+    the key state catches up), the stop leaves it alone."""
+    import record_all
+    if held:
+        calibration._OWN_CTRL += 1
+    else:
+        threading.Timer(record_all.OWN_GRACE, _drop_own_ctrl).start()
+
+
+def _drop_own_ctrl():
+    calibration._OWN_CTRL -= 1
 
 
 def _mouse_input(flags, data=0):
@@ -1844,7 +1886,7 @@ def command(args):
     elif args[:1] == ["play"] and len(args) > 2:
         play(args[1], args[2])
     elif args[:1] == ["replay"]:
-        replay_recording(args[1] if len(args) > 1 else None)
+        replay_recording(args[1] if len(args) > 1 else None, _runs_given())
     elif args[:1] == ["kill"] and len(args) > 2:
         name = " ".join(args[2:])
         kill(name, target_words(args[1], name))
@@ -1887,7 +1929,8 @@ def command(args):
 
 if __name__ == "__main__":
     args = _plain_argv()
-    row_model.start_backup_reader()
+    if needs_reader(args):
+        row_model.start_backup_reader()
     calibration.log_to_file("dungeon")
     calibration.frames_on(True if "--frames" in sys.argv else None)
     calibration.watch_for_stop()

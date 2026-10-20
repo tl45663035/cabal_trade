@@ -983,6 +983,8 @@
       "all_focus_settle": 0.35,
       "all_shot_compare": [160, 90],
       "all_turn_buttons": ["right"],
+      "all_stop_poll": 0.01,
+      "all_compare_click_px": 1,
       "banner": {
         "recording": {"word": "RECORDING", "background": "101"},
         "paused": {"word": "PAUSED", "background": "102"},
@@ -1050,6 +1052,7 @@
         "HID_USAGE_GENERIC_MOUSE": 2,
         "HWND_MESSAGE": -3,
         "MOUSE_MOVE_ABSOLUTE": 1,
+        "KEY_STATE_DOWN": 32768,
         "MOUSEEVENTF_MOVE": 1,
         "MOUSEEVENTF_LEFTDOWN": 2,
         "MOUSEEVENTF_LEFTUP": 4,
