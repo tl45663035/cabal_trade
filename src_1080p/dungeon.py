@@ -755,7 +755,8 @@ def watch_target(name, words, stop, first, failed):
                 print(f"  the HP bar reads {seen!r}: another monster is "
                       f"targeted, not {name}, so {TARGET_KEY} again until it "
                       f"shows {' or '.join(map(repr, words))}")
-            elif not hits and LOCK["boss"] is not None:
+            elif (not hits and LOCK["boss"] is not None
+                  and (dead or not any(bars))):
                 LOCK["killed"] = True
                 calibration.snap("target_gone", image)
                 print(f"  the HP bar reads {seen!r}: {name} is gone, so it is "
