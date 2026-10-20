@@ -153,8 +153,7 @@
                      ["kill_bm", "Treasure Chest", "fire_kill_loop"],
                      "move_to_D",
                      ["kill_bm", "Awakened Nazabrum", "fire_boss_loop"],
-                     ["kill_bm", "Legendary Box", "fire_kill_loop"],
-                     ["wait", 2],
+                     ["kill_all", "any monster", "fire_kill_loop", 3.0],
                      "final_sequence"]
       }
     }

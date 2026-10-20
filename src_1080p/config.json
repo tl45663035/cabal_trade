@@ -914,7 +914,8 @@
           "Awakened Ice Guardian": ["awakened", "ice", "guardian"],
           "Treasure Chest": ["treasure", "chest"],
           "Awakened Nazabrum": ["awakened", "nazabrum"],
-          "Legendary Box": ["legendary", "box"]
+          "Legendary Box": ["legendary", "box"],
+          "any monster": []
         },
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      ["spam", "bm", "A+7", 5],
@@ -935,8 +936,7 @@
                      "move_to_D",
                      ["wait", 0.5], ["use", "A+1"], ["wait", 0.5],
                      ["kill_bm", "Awakened Nazabrum", "fire_boss_loop"],
-                     ["kill_bm", "Legendary Box", "fire_kill_loop"],
-                     ["wait", 2],
+                     ["kill_all", "any monster", "fire_kill_loop", 3.0],
                      "final_sequence"]
       }
     },
