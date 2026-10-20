@@ -716,6 +716,21 @@ check(first_w != float("inf") and abs(first_w - want) < 0.05,
       f"{first_w - r.t0:.3f}s after it, wanted {want - r.t0:.3f}s")
 check("lined up with the Challenge click" in r.said, "the log says it lined up")
 
+r = play_run(Scene(banner_at=RUN_LENGTH + 1.5), {"start_delay": 0.6})
+first_w = min((t for t, item in r.sends if item.type == ra.W["INPUT_KEYBOARD"]
+               and item.u.ki.wScan == W_SCAN), default=float("inf"))
+want = r.t0 + walk_events[1][0]["t"] + 0.6
+check(r.result == "cleared" and first_w != float("inf") and abs(first_w - want) < 0.05,
+      f"start_delay: a recording begun after Challenge starts that long after the bot's "
+      f"click, got {first_w - r.t0:.3f}s, wanted {want - r.t0:.3f}s")
+check("0.6s after the Challenge click" in r.said, "the log says how long it waited")
+r = play_run(Scene(banner_at=RUN_LENGTH + 0.5),
+             {"recording": "with_challenge.jsonl", "start_delay": 5.0})
+first_w = min((t for t, item in r.sends if item.type == ra.W["INPUT_KEYBOARD"]
+               and item.u.ki.wScan == W_SCAN), default=float("inf"))
+check(abs(first_w - (r.t0 + 3.0 + walk_events[1][0]["t"] - 2.9)) < 0.05,
+      "a recording with its own Challenge click ignores start_delay")
+
 # ================= leaving by the dungeon's manual exit =================
 
 with world():
@@ -779,10 +794,17 @@ check("recorded DUNGEON" in usage, f"the help names the recorded command, got {u
 for profile in ("cang", "trung", "bot"):
     entry = json.loads((SRC / "configs" / f"{profile}.json").read_text(encoding="utf-8"))[
         "dungeon"]["recorded"]["fire"]
-    check(entry == {"enabled": False, "recording": f"{profile}_fire_run.jsonl",
-                    "timeout_seconds": 300},
+    check(entry.get("enabled") is False and entry.get("recording") == f"{profile}_fire_run.jsonl"
+          and entry.get("timeout_seconds") == 300 and "exit_recording" not in entry,
           f"{profile} lists fire as a recorded dungeon, off until its recording exists; it "
           f"leaves by the dungeon's manual exit, so there is no exit recording, got {entry}")
+
+for profile in ("cang", "trung", "bot"):
+    entries = json.loads((SRC / "configs" / f"{profile}.json").read_text(encoding="utf-8"))[
+        "dungeon"].get("recorded", {})
+    check(all(entry.get("timeout_seconds") == 300 for entry in entries.values()),
+          f"{profile}: every recorded dungeon has 300s per run, got "
+          f"{ {name: e.get('timeout_seconds') for name, e in entries.items()} }")
 
 # ============================== the end ==============================
 

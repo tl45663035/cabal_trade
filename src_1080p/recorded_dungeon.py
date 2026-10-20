@@ -22,6 +22,7 @@ import row_model
 
 SEQUENCES = dungeon.SEQUENCES
 OVERRIDES = ("daily_limit", "start_at", "cooldown", "end_wait", "before_exit", "manual_exit",
+             "start_delay",
              "after_exit")
 JOIN_SLICE = 0.1
 
@@ -336,6 +337,11 @@ def run(name, verbose=True):
         if at is not None:
             print(f"  {name}: the replay is lined up with the Challenge click "
                   f"{at:.2f}s into the recording")
+        elif float(place.get("start_delay", 0) or 0) > 0:
+            delay = float(place["start_delay"])
+            events = [dict(e, t=round(e["t"] + delay, 6)) for e in events]
+            print(f"  {name}: the recording began after Challenge; the replay starts "
+                  f"{delay:g}s after the Challenge click")
         recording = ({**head, "cursor": cursor}, events, base)
         dungeon.run_sequence(name, location, {}, verbose,
                              ["get_entry", "open_dungeon_key"], False)
