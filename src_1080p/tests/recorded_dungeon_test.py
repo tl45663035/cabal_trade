@@ -695,6 +695,23 @@ ground_first = ([{"t": 0.3, "kind": "mouse", "action": "down", "button": "left",
 check(rd.align(ground_first, [5, 5])[2] is None,
       "align: only the recording's first left click can be Challenge; a later click that "
       "lands on the button's spot (a ground click mid-run) is never taken for it")
+EW = dungeon.ENTER_WINDOW
+ex, ey = (EW[0] + EW[2]) // 2, (EW[1] + EW[3]) // 2
+entry_first = ([{"t": 0.3, "kind": "mouse", "action": "down", "button": "left", "x": 144,
+                 "y": 410, "injected": False},
+                {"t": 0.35, "kind": "mouse", "action": "up", "button": "left", "x": 144,
+                 "y": 410, "injected": False},
+                {"t": 1.5, "kind": "mouse", "action": "down", "button": "left", "x": ex,
+                 "y": ey, "injected": False},
+                {"t": 1.6, "kind": "mouse", "action": "up", "button": "left", "x": ex,
+                 "y": ey, "injected": False}] + with_click)
+events, cursor, at = rd.align(entry_first, [5, 5])
+check(at == 2.0 and [e.get("name") for e in events] == ["1", "1"],
+      f"align: a recording of the whole entry (shop, entry, Enter, then Challenge) lines "
+      f"up on the Challenge click after Enter, got {at}")
+check(rd.align(ground_first + [{"t": 9.0, "kind": "mouse", "action": "down", "button": "left",
+                                "x": cx, "y": cy, "injected": False}], [5, 5])[2] is None,
+      "align: without an Enter click, a later click on the button's spot still doesn't count")
 
 click_file = SEQ / "fire" / "with_challenge.jsonl"
 walk_events = record_all.read_recording(RUN_FILE)
