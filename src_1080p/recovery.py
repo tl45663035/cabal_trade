@@ -21,6 +21,7 @@ KEYEVENTF_KEYUP = _IN["KEYEVENTF_KEYUP"]
 INPUT_KEYBOARD = _IN["INPUT_KEYBOARD"]
 
 DISCONNECT_WORDS = tuple(_R["disconnect_words"])
+UNFINISHED_WORDS = tuple(_R["unfinished_words"])
 FAILED_WORDS = tuple(_R["failed_words"])
 DUAL_WORDS = tuple(_R["dual_words"])
 LOGIN_WORD = _R["login_word"]
@@ -298,6 +299,17 @@ def _notice(phrases, image=None, words=None):
 
 def disconnected(image=None, words=None):
     return _notice(DISCONNECT_WORDS, image, words)
+
+
+def unfinished_dungeon(image=None, words=None):
+    return _notice(UNFINISHED_WORDS, image, words)
+
+
+def logged_out():
+    image = calibration.grab()
+    return (disconnected(image) is not None
+            or _find_in(LOGIN_WORD, LOGIN_PANEL_F, whole=True,
+                        image=image) is not None)
 
 
 def failed_to_connect(image=None, words=None):
@@ -661,6 +673,19 @@ def _pick_character(who, verbose=True):
 
     deadline = time.monotonic() + WORLD_TIMEOUT
     while time.monotonic() < deadline:
+        unfinished = unfinished_dungeon()
+        if unfinished is not None:
+            shut = (_find_near(OK_WORD, unfinished, timeout=NOTICE_OK_WAIT,
+                               verbose=False)
+                    or _point(DIALOG_BUTTON_F))
+            calibration.snap("recovery_unfinished_dungeon")
+            if verbose:
+                print(f"  an unfinished dungeon notice at "
+                      f"{list(unfinished)}; {OK_WORD} at {list(shut)}, so "
+                      f"that dungeon is not entered again")
+            calibration.click(*shut)
+            time.sleep(ACTION_GAP)
+            continue
         if calibration.await_inventory(timeout=ACTION_GAP) is not None:
             calibration.snap("recovery_back_in_world")
             if verbose:

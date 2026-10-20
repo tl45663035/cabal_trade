@@ -2067,11 +2067,22 @@ def level_left(level):
 
 
 def run_in_turn(dungeon_name, location, after, verbose=True):
+    import recovery
     if after is None:
         start_block(dungeon_name, location, verbose)
     else:
         cool_down(*after, verbose)
-    run_dungeon(dungeon_name, location, verbose)
+    try:
+        run_dungeon(dungeon_name, location, verbose)
+    except RuntimeError as exc:
+        if not recovery.logged_out():
+            raise
+        calibration.snap("dungeon_logged_out")
+        if verbose:
+            print(f"  {exc} The game is logged out, so a relog into "
+                  f"{recovery.HOME_CHANNEL}, then the next run")
+        recovery.recover(verbose=verbose)
+        return None
     return dungeon_name, time.monotonic()
 
 
