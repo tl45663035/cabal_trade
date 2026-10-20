@@ -21,11 +21,8 @@ FLUSH = float(ra.R["all_flush_seconds"])
 SETTLE = float(ra.R["all_focus_settle"])
 SHOT_SIZE = tuple(ra.R["all_shot_compare"])
 VK_PACKET = W["VK_PACKET"]
-UNICODE = W["KEYEVENTF_UNICODE"]
-ACCOUNT = ra.SRC / "account.json"
 TITLE = json.loads((ra.SRC / "calibration.json").read_text(
     encoding="utf-8"))["game"]["title_hint"]
-SECRETS = {"username": "CABAL_USERNAME", "password": "CABAL_PASSWORD"}
 EXPLAINED = 0.1
 POLL_GAP = float(ra.R["all_stop_poll"])
 OWN_GRACE = 0.1
@@ -139,17 +136,6 @@ def listen_raw(session):
         return None
 
 
-def credentials():
-    held = {}
-    if ACCOUNT.exists():
-        try:
-            held = json.loads(ACCOUNT.read_text(encoding="utf-8"))
-        except ValueError:
-            held = {}
-    return {field: os.environ.get(env) or held.get(field)
-            for field, env in SECRETS.items()}
-
-
 def recording_path(started):
     return ra.OUT / f"{started:%Y-%m-%d_%H%M%S}{SUFFIX}"
 
@@ -230,31 +216,6 @@ def difference(a, b):
     return sum(abs(p - q) for p, q in pairs) / (255.0 * SHOT_SIZE[0] * SHOT_SIZE[1])
 
 
-def label_typed(events, typed, creds):
-    runs, run = [], []
-    for event in events:
-        if event["kind"] != "key":
-            continue
-        if id(event) in typed:
-            run.append(event)
-        elif run:
-            runs.append(run)
-            run = []
-    if run:
-        runs.append(run)
-    for run in runs:
-        text = "".join(typed[id(e)] for e in run if e["action"] == "down")
-        field = next((name for name, value in creds.items()
-                      if value and str(value) == text), None)
-        if field is None:
-            continue
-        index = -1
-        for event in run:
-            if event["action"] == "down":
-                index += 1
-            event["secret"], event["i"] = field, max(index, 0)
-
-
 class Everything:
     def __init__(self, control=True, command=None, armed=False):
         self.control = control
@@ -262,8 +223,8 @@ class Everything:
         self.gesture = ra.Gesture()
         self.lock = threading.Lock()
         self.held = set()
-        self.typed = {}
         self.dropped = set()
+        self.ctrl_taps = []
         self.hooked = collections.deque(maxlen=256)
         self.finished = False
         self.opened = False
@@ -302,12 +263,8 @@ class Everything:
         action = "down" if down else "up"
         event = None
         if vk == VK_PACKET:
-            if self.recording:
-                with self.lock:
-                    event = self.add(now, {
-                        "kind": "key", "action": action, "vk": vk,
-                        "secret": None, "injected": injected})
-                    self.typed[id(event)] = chr(info.scanCode)
+            # Text typed by software (a login, say) is not a key press; it is
+            # never recorded and so never replayed.
             return
         extended = bool(info.flags & W["LLKHF_EXTENDED"])
         with self.lock:
@@ -324,9 +281,11 @@ class Everything:
                     "repeat": repeat, "injected": injected})
         if injected or repeat or not self.control:
             return
+        if vk in ra.CTRL and event is not None:
+            self.ctrl_taps = (self.ctrl_taps + [event])[-2 * ra.TAPS:]
         if self.gesture.key(vk, down, now, event):
             if self.recording:
-                self.dropped = {id(e) for e in self.gesture.events}
+                self.dropped = {id(e) for e in self.ctrl_taps}
                 self.finished = True
             else:
                 self.gesture.reset()
@@ -377,7 +336,8 @@ class Everything:
             now = time.perf_counter()
             for at, (pos, when) in enumerate(self.hooked):
                 if pos == where and now - when <= EXPLAINED:
-                    del self.hooked[at]
+                    for _ in range(at + 1):
+                        self.hooked.popleft()
                     return False
             self.add(now, {"kind": "mouse", "action": "move", "x": where[0],
                            "y": where[1], "source": "poll"})
@@ -415,13 +375,12 @@ class Everything:
             with open(self.path, "a", encoding="utf-8") as out:
                 out.write("\n".join(lines) + "\n")
 
-    def finish(self, creds):
+    def finish(self):
         if not self.opened:
             return ["stopped before recording began; nothing saved"]
         with self.lock:
             events = sorted((e for e in self.events if id(e) not in self.dropped),
                             key=lambda e: e["t"])
-            label_typed(events, self.typed, creds)
             lines = [json.dumps(self.header())]
             lines += [json.dumps(event) for event in events]
         spare = self.path.with_name(self.path.name + ".part")
@@ -435,16 +394,10 @@ def report(path, events):
     bot = sum(1 for e in events if e.get("injected") is True)
     you = sum(1 for e in events if e.get("injected") is False)
     polled = sum(1 for e in events if e.get("source") == "poll")
-    typed = [e for e in events if "secret" in e and e["action"] == "down"]
-    unknown = sum(1 for e in typed if e["secret"] is None)
     length = events[-1]["t"] if events else 0.0
     lines = [f"{len(events)} events over {length:.1f}s: {bot} sent by software, "
              f"{you} by hand, {polled} cursor moves seen by polling"]
     lines += [f"  {name}: {count}" for name, count in sorted(counts.items())]
-    if typed:
-        lines.append(f"  {len(typed)} typed character(s) kept off disk"
-                     + (f", {unknown} not matched to the account and not "
-                        f"replayable" if unknown else ""))
     return lines + [f"saved {path}"]
 
 
@@ -543,16 +496,10 @@ def record(command=None):
         if session.opener is not None:
             session.opener.join()
         session.flush()
-        print("\n".join(session.finish(credentials())), flush=True)
+        print("\n".join(session.finish()), flush=True)
     if child is not None:
         print(f"{' '.join(command)} exited with {code}")
     return code
-
-
-def typed_input(char, up):
-    flags = UNICODE | (W["KEYEVENTF_KEYUP"] if up else 0)
-    return ra.INPUT(type=W["INPUT_KEYBOARD"], u=ra.INPUTUNION(
-        ki=ra.KEYBDINPUT(0, ord(char), flags, 0, 0)))
 
 
 def relative_input(dx, dy):
@@ -566,16 +513,13 @@ def button_input(button, action):
         ra.BUTTON_FLAGS[(action, button)], 0, 0)))
 
 
-def play_event(event, keys, buttons, creds, turning=None):
+def play_event(event, keys, buttons, turning=None):
     """turning is None for a recording without raw counts. Otherwise it holds
     the turn buttons down right now; while one is down, the raw counts stand in
     for the cursor positions, so the camera turns by what the mouse really did."""
-    if "secret" in event:
-        text = creds.get(event["secret"]) if event["secret"] else None
-        if text is None or event.get("i", 0) >= len(str(text)):
-            return False
-        ra.send(typed_input(str(text)[event["i"]], event["action"] == "up"))
-        return True
+    if "secret" in event or event.get("vk") == VK_PACKET:
+        # Typed text from an older recording: never replayed.
+        return False
     action = event["action"]
     if action == "raw":
         if turning:
@@ -584,7 +528,7 @@ def play_event(event, keys, buttons, creds, turning=None):
         return False
     if event["kind"] == "mouse" and turning is not None:
         button = event.get("button")
-        if action == "move" and turning:
+        if action == "move" and turning and event.get("injected") is False:
             return False
         if button in TURN and action == "down" and not event.get("injected"):
             ra.send(ra.mouse_input(event, 0))
@@ -603,11 +547,9 @@ def play_event(event, keys, buttons, creds, turning=None):
 
 
 class Replay(ra.Replay):
-    def __init__(self, events, cursor, creds, head=None, base=None,
-                 on_ctrl=None):
+    def __init__(self, events, cursor, head=None, base=None, on_ctrl=None):
         super().__init__(events)
         self.cursor = cursor
-        self.creds = creds
         self.head = head or {}
         self.base = base
         self.late = []
@@ -660,7 +602,7 @@ class Replay(ra.Replay):
                 ctrl = event["kind"] == "key" and event.get("vk") in ra.CTRL
                 if ctrl and event["action"] == "down":
                     self.holding_ctrl(True)
-                play_event(event, keys, buttons, self.creds, self.turning)
+                play_event(event, keys, buttons, self.turning)
                 self.late.append(time.perf_counter() - due)
                 self.played += 1
                 if ctrl and not any(vk in ra.CTRL for vk in keys):
@@ -773,14 +715,6 @@ def prepare(path):
                 f"the game window was at {head['window']} when recorded and is "
                 f"at {now} now; every click would land off by the difference. "
                 f"Put it back and replay again. Nothing replayed.")
-    needed = sorted({e["secret"] for e in events if e.get("secret")})
-    creds = credentials() if needed else {}
-    missing = [field for field in needed if not creds.get(field)]
-    if missing:
-        return None, None, (
-            f"{path.name} types the account's {' and '.join(missing)}, and "
-            f"there is none in {ACCOUNT.name} or the environment. Nothing "
-            f"replayed.")
     return head, events, None
 
 
@@ -794,15 +728,15 @@ def replay(name=None):
     if refused:
         print(refused)
         return 1
-    unknown = sum(1 for e in events if "secret" in e and e["secret"] is None
-                  and e["action"] == "down")
+    typed = sum(1 for e in events if ("secret" in e or e.get("vk") == VK_PACKET)
+                and e["action"] == "down")
     print(f"{path.name}: {len(events)} events over {events[-1]['t']:.1f}s, "
           f"recorded {head.get('at')}"
           + (f" while running {' '.join(head['command'])}"
              if head.get("command") else ""))
-    if unknown:
-        print(f"  {unknown} typed character(s) were not matched to the account "
-              f"when recorded and will be skipped")
+    if typed:
+        print(f"  {typed} character(s) typed by software in this older "
+              f"recording are skipped; only key presses and the mouse replay")
     if head.get("start_shot"):
         print(f"  set the game up like {path.parent / head['start_shot']} "
               f"(same spot, facing, camera and zoom) before starting")
@@ -810,9 +744,7 @@ def replay(name=None):
           f"game is brought to the front and the cursor goes to "
           f"{head.get('cursor')} first. The same again stops it early. Leave "
           f"the mouse and keyboard alone while it plays.", flush=True)
-    session = Replay(events, head.get("cursor"),
-                     credentials() if any(e.get("secret") for e in events) else {},
-                     head, path.parent)
+    session = Replay(events, head.get("cursor"), head, path.parent)
     taps = CtrlTaps(own=lambda: session.own_ctrl)
     try:
         wait_for_taps(taps, POLL_GAP)

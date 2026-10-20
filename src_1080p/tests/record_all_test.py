@@ -147,7 +147,7 @@ with fake_clock() as clock:
     tap(session, CTRL)
     check(session.finished, "Ctrl x2 again stops it")
     session.open()
-    session.finish({})
+    session.finish()
     saved = lines(session.path)
     check([e.get("name") for e in saved[1:]] == ["A", "A"],
           f"the stop gesture is dropped and the rest kept, got {saved[1:]}")
@@ -196,51 +196,31 @@ tap(session, CTRL)
 tap(session, CTRL)
 check(not session.finished, "run mode ignores the Ctrl gesture")
 
-# ---- typed text never reaches disk ----
+# ---- text typed by software (a login) is never recorded ----
 
 session = record_all.Everything()
 session.open()
-for ch in "bob":
+tap(session, VK_A, injected=True, scan=30)
+for ch in "bob pw1":
     tap(session, record_all.VK_PACKET, injected=True, scan=ord(ch))
 tap(session, VK_END, injected=True)
-for ch in "pw1":
-    tap(session, record_all.VK_PACKET, injected=True, scan=ord(ch))
-    mouse(session, W["WM_MOUSEMOVE"], 5, 5, injected=True)
-tap(session, VK_END, injected=True)
-for ch in "zz":
-    tap(session, record_all.VK_PACKET, injected=True, scan=ord(ch))
 session.flush()
 streamed = session.path.read_text(encoding="utf-8")
-check("pw1" not in streamed and '"p"' not in streamed and "bob" not in streamed,
-      "the stream holds no typed characters")
-session.finish({"username": "bob", "password": "pw1"})
-finished = session.path.read_text(encoding="utf-8")
-check('"p"' not in finished and '"w"' not in finished and "pw1" not in finished,
-      "the final file holds no typed characters")
-typed = [e for e in lines(session.path)[1:] if "secret" in e]
-check([(e["secret"], e["i"], e["action"]) for e in typed[:6]]
-      == [("username", 0, "down"), ("username", 0, "up"), ("username", 1, "down"),
-          ("username", 1, "up"), ("username", 2, "down"), ("username", 2, "up")],
-      f"the username run is labelled by index, got {typed[:6]}")
-check([e["secret"] for e in typed[6:12]] == ["password"] * 6,
-      "a run with mouse moves in between is still one run")
-check(all(e["secret"] is None for e in typed[12:]), "unmatched text stays unlabelled")
+session.finish()
+saved = lines(session.path)
+check(all(e.get("vk") != record_all.VK_PACKET for e in saved[1:]),
+      "no typed character is saved, streamed or final")
+check("bob" not in streamed and '"p"' not in streamed and "pw1" not in streamed,
+      "the stream holds no typed text")
+check([e.get("vk") for e in saved[1:]] == [65, 65, VK_END, VK_END],
+      f"key presses around the typing are kept, got {saved[1:]}")
 check(not session.path.with_name(session.path.name + ".part").exists(),
       "the rewrite leaves no spare file")
-
-events = [{"t": 0, "kind": "key", "action": "up", "vk": 231, "secret": None},
-          {"t": 1, "kind": "key", "action": "down", "vk": 231, "secret": None},
-          {"t": 2, "kind": "key", "action": "up", "vk": 231, "secret": None}]
-record_all.label_typed(events, {id(events[0]): "x", id(events[1]): "q",
-                                id(events[2]): "q"}, {"password": "q"})
-check([e.get("i") for e in events] == [0, 0, 0] and events[0]["secret"] == "password",
-      "an up with no down before it still gets a valid index")
-events = [{"t": 0, "kind": "key", "action": "down", "vk": 231, "secret": None}]
-record_all.label_typed(events, {id(events[0]): "s"}, {"username": "s", "password": "s"})
-check(events[0]["secret"] == "username", "same username and password: the first wins")
-events = [{"t": 0, "kind": "key", "action": "down", "vk": 231, "secret": None}]
-record_all.label_typed(events, {id(events[0]): "s"}, {"username": None, "password": ""})
-check(events[0]["secret"] is None, "blank credentials never match")
+check(not hasattr(record_all, "credentials") and not hasattr(record_all, "ACCOUNT"),
+      "the recorder has no way to read the account")
+source = (SRC.parent / "tools" / "record_all.py").read_text(encoding="utf-8")
+check("account.json" not in source and "CABAL_PASSWORD" not in source,
+      "nothing in the recorder or replayer reads logins")
 
 # ---- cursor moves the hook missed are picked up by polling, once ----
 
@@ -288,13 +268,13 @@ session.flush()
 check(len(lines(session.path)) == 5, f"each event is streamed once, got {len(lines(session.path))}")
 session.events.insert(0, {"t": 99.0, "kind": "key", "action": "up", "vk": 1, "scan": 0,
                           "extended": False, "name": "", "repeat": False})
-said = session.finish({})
+said = session.finish()
 ts = [e["t"] for e in lines(session.path)[1:]]
 check(ts == sorted(ts), "the final file is in time order")
 check(said[-1] == f"saved {session.path}" and any("key down: 2" in l for l in said),
       f"the report counts events and names the file, got {said}")
 idle = record_all.Everything(armed=True)
-check(idle.finish({}) == ["stopped before recording began; nothing saved"],
+check(idle.finish() == ["stopped before recording began; nothing saved"],
       "stopping before the start saves nothing")
 
 # ---- replay: what it refuses ----
@@ -329,23 +309,10 @@ check("off by the difference" in (prepared(in_game)[2] or ""), "a moved game win
 record_all.game_rect = lambda: [0, 0, 800, 600]
 check(prepared(in_game)[2] is None, "the game where it was is accepted")
 record_all.game_rect = lambda: None
-secret = {"t": 0.1, "kind": "key", "action": "down", "vk": 231, "secret": "password", "i": 0}
-needs = write(SCRATCH / "needs_all.jsonl", HEAD, [secret])
-saved_account, saved_env = record_all.ACCOUNT, os.environ.pop("CABAL_PASSWORD", None)
-record_all.ACCOUNT = SCRATCH / "no_account.json"
-try:
-    check("password" in (prepared(needs)[2] or ""), "a missing password is refused")
-    os.environ["CABAL_PASSWORD"] = "env-pw"
-    check(prepared(needs)[2] is None, "the password from the environment is enough")
-    os.environ.pop("CABAL_PASSWORD")
-    record_all.ACCOUNT.write_text(json.dumps({"password": "file-pw"}), encoding="utf-8")
-    check(record_all.credentials()["password"] == "file-pw", "the account file is read")
-    record_all.ACCOUNT.write_text("{not json", encoding="utf-8")
-    check(record_all.credentials()["password"] is None, "a broken account file reads as empty")
-finally:
-    record_all.ACCOUNT = saved_account
-    if saved_env is not None:
-        os.environ["CABAL_PASSWORD"] = saved_env
+legacy = {"t": 0.1, "kind": "key", "action": "down", "vk": 231, "secret": "password", "i": 0}
+older = write(SCRATCH / "older_all.jsonl", HEAD, [legacy, a_down])
+check(prepared(older)[2] is None,
+      "an older recording with typed characters in it is still accepted")
 
 # ---- replay: what it sends ----
 
@@ -382,17 +349,17 @@ try:
         {"t": 0.007, "kind": "key", "action": "down", "vk": VK_W, "scan": 17,
          "extended": False, "name": "W", "repeat": False},
     ]
-    player = record_all.Replay(events, [5, 5], {"password": "xy"})
+    player = record_all.Replay(events, [5, 5])
     player.play()
     check(player.finished and player.played == len(events),
           f"every event is played, got {player.played}")
     check(sent[0].type == W["INPUT_MOUSE"] and as_point(sent[0]) == (5, 5),
           "the cursor goes to the start position first")
-    unicode = [item.u.ki for item in sent if item.type == W["INPUT_KEYBOARD"]
-               and item.u.ki.dwFlags & record_all.UNICODE]
-    check([(k.wScan, bool(k.dwFlags & W["KEYEVENTF_KEYUP"])) for k in unicode]
-          == [(ord("y"), False), (ord("y"), True)],
-          "only the password's known character is typed, from the account")
+    unicode = [item for item in sent if item.type == W["INPUT_KEYBOARD"]
+               and item.u.ki.dwFlags & W["KEYEVENTF_UNICODE"]]
+    keyed = [item.u.ki.wScan for item in sent if item.type == W["INPUT_KEYBOARD"]]
+    check(unicode == [] and 0 not in keyed and 231 not in keyed,
+          "typed characters in an older recording are never sent")
     tail = sent[-2:]
     check(any(i.type == W["INPUT_KEYBOARD"] and i.u.ki.wScan == 17
               and i.u.ki.dwFlags & W["KEYEVENTF_KEYUP"] for i in tail),
@@ -402,7 +369,7 @@ try:
     check(len(player.late) == len(events) and all(late >= 0 for late in player.late),
           "every event's lateness is measured")
     check("after its recorded moment" in player.timing(), "the timing report reads")
-    check(record_all.Replay([], None, {}).timing() == "no events were sent",
+    check(record_all.Replay([], None).timing() == "no events were sent",
           "an empty replay reports nothing sent")
 
     # Stopping part way still lets go of everything held.
@@ -411,7 +378,7 @@ try:
                    {"t": 0.0, "kind": "mouse", "action": "down", "button": "right",
                     "x": 9, "y": 9},
                    {**a_down, "t": 30.0}]
-    player = record_all.Replay(long_events, None, {})
+    player = record_all.Replay(long_events, None)
     worker = threading.Thread(target=player.play)
     worker.start()
     deadline = time.time() + 5
@@ -431,7 +398,7 @@ try:
     sent.clear()
     saved_focus = record_all.focus_game
     record_all.focus_game = lambda: False
-    player = record_all.Replay([a_down], [1, 1], {}, {"window": [0, 0, 10, 10]})
+    player = record_all.Replay([a_down], [1, 1], {"window": [0, 0, 10, 10]})
     player.play()
     check(player.refused and sent == [] and player.played == 0,
           "if the game can't be brought to the front, nothing is sent")
@@ -444,7 +411,7 @@ try:
     record_all.grab = lambda rect: Image.new("RGB", (32, 18), (255, 255, 255))
     said = io.StringIO()
     with contextlib.redirect_stdout(said):
-        player = record_all.Replay([a_down], None, {},
+        player = record_all.Replay([a_down], None,
                                    {"window": [0, 0, 10, 10], "start_shot": "start.png"},
                                    pictures)
         player.play()
@@ -502,10 +469,10 @@ try:
         key(session, VK_W, True, scan=17)
         clock.step(0.2)
         key(session, VK_W, False, scan=17)
-        session.finish({})
+        session.finish()
     head, events, refused = prepared(session.path)
     check(refused is None, f"the new recording is accepted, got {refused}")
-    player = record_all.Replay(events, head["cursor"], {})
+    player = record_all.Replay(events, head["cursor"])
     player.play()
     played = sent[1:]
     moves = [as_point(i) for i in played
@@ -626,7 +593,7 @@ turn = [
 ra.send = lambda item: sent.append(item)
 try:
     sent.clear()
-    player = record_all.Replay(turn, None, {})
+    player = record_all.Replay(turn, None)
     player.play()
     got = [described(i) for i in sent]
     check(got == [("abs", (50, 50), ()),
@@ -634,22 +601,24 @@ try:
                   ("button", None, ("rdown",)),
                   ("rel", (6, -1), ()),
                   ("rel", (9, -2), ()),
+                  ("abs", (72, 47), ()),
                   ("button", None, ("rup",)),
                   ("abs", (72, 47), ()),
                   ("abs", (80, 60), ())],
-          f"a right drag turns by the raw counts and the cursor lands back where "
-          f"it was; outside a drag, positions are used. Got {got}")
+          f"a right drag turns by the raw counts (a cursor move nothing physical "
+          f"made still goes out), the cursor lands back where it was, and "
+          f"outside a drag positions are used. Got {got}")
 
     sent.clear()
     no_raw = [e for e in turn if e["action"] != "raw"]
-    record_all.Replay(no_raw, None, {}).play()
+    record_all.Replay(no_raw, None).play()
     got = [described(i) for i in sent]
     check([g for g in got if g[0] == "rel"] == [] and ("abs", (70, 47), ()) in got,
           "an older recording without raw counts still drags by cursor positions")
 
     sent.clear()
     bot_drag = [{**e, "injected": True} if e.get("button") else e for e in turn]
-    record_all.Replay(bot_drag, None, {}).play()
+    record_all.Replay(bot_drag, None).play()
     got = [described(i) for i in sent]
     check([g for g in got if g[0] == "rel"] == [],
           "the bot's own right click doesn't switch to raw counts")
@@ -657,7 +626,7 @@ try:
     sent.clear()
     held = turn[:7] + [{"t": 30.0, "kind": "mouse", "action": "move", "x": 1, "y": 1,
                         "injected": False}]
-    player = record_all.Replay(held, None, {})
+    player = record_all.Replay(held, None)
     worker = threading.Thread(target=player.play)
     worker.start()
     deadline = time.time() + 5
@@ -684,11 +653,11 @@ try:
             key(session, vk, True, scan=scan, extended=extended, system=system)
             clock.step(0.01)
             key(session, vk, False, scan=scan, extended=extended, system=system)
-        session.finish({})
+        session.finish()
     head, events, refused = prepared(session.path)
     check(refused is None and len(events) == 2 * len(special),
           f"every special key is recorded, got {len(events or [])}")
-    record_all.Replay(events, None, {}).play()
+    record_all.Replay(events, None).play()
     got = [described(i) for i in sent]
     want = []
     for name, vk, scan, extended, system in special:
@@ -767,7 +736,7 @@ try:
          "extended": False, "name": "A", "repeat": False},
     ]
     seen_own = []
-    player = record_all.Replay(ctrl_events, None, {}, on_ctrl=calls.append)
+    player = record_all.Replay(ctrl_events, None, on_ctrl=calls.append)
     real_play_event = record_all.play_event
 
     def watching(event, *a, **k):
@@ -786,7 +755,7 @@ try:
 
     calls.clear()
     held_ctrl = ctrl_events[:2] + [{**ctrl_events[4], "t": 30.0}]
-    player = record_all.Replay(held_ctrl, None, {}, on_ctrl=calls.append)
+    player = record_all.Replay(held_ctrl, None, on_ctrl=calls.append)
     worker = threading.Thread(target=player.play)
     worker.start()
     deadline = time.time() + 5
@@ -797,12 +766,12 @@ try:
     check(calls == [True, False], f"a stop while Ctrl is held still clears it, got {calls}")
 
     calls.clear()
-    record_all.Replay(ctrl_events[4:], None, {}, on_ctrl=calls.append).play()
+    record_all.Replay(ctrl_events[4:], None, on_ctrl=calls.append).play()
     check(calls == [], "a replay that never presses Ctrl says nothing")
 
     # Timing is measured once the event has gone out.
     ra.send = lambda item: (sent.append(item), time.sleep(0.02))
-    player = record_all.Replay(ctrl_events[4:5], None, {})
+    player = record_all.Replay(ctrl_events[4:5], None)
     player.play()
     check(player.late and player.late[0] >= 0.02,
           f"the lateness includes the send itself, got {player.late}")

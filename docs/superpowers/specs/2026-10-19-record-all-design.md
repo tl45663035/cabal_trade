@@ -289,3 +289,122 @@ also differ between runs, and each loop starts where the last one ended.
 If `compare` shows the input arriving intact and runs still differ, the
 difference is the game's. Closing it means the replay watches the screen
 and corrects course, which is a different design from replaying a tape.
+
+## Revision: input only, no logins; test-first scenario suite (2026-10-19)
+
+**Input only.** The user decided that the recorder and replayer record
+and replay window input only: keys, mouse buttons, drags, the wheel,
+cursor moves and raw counts. They hold no logins.
+- Text typed by software (`VK_PACKET`, the bot's relog) is not recorded,
+  so it is never replayed.
+- `credentials()`, `account.json` and `CABAL_USERNAME`/`CABAL_PASSWORD`
+  are gone, along with typed-text labelling.
+- `Replay(events, cursor, head, base, on_ctrl)` no longer takes
+  credentials.
+- Older recordings with typed placeholders still play, with those events
+  skipped.
+- Keys pressed by hand are recorded as keys, like any other, so don't log
+  in by hand while recording.
+
+**The simulator** (`src_1080p/tests/fake_input.py`) is a stand-in for
+Windows and the game.
+- **FakeInput:**
+  - pointer speed with its sub-pixel remainder and the screen edges
+  - absolute and relative SendInput
+  - scan codes and extended keys
+  - typed characters
+  - buttons, X buttons and both wheels
+  - `SetCursorPos`, which no hook sees
+  - the low-level hooks, and raw counts carrying a device flag
+- **Game:** logs what the game is told: keys by scan code, typed
+  characters, cursor moves, buttons, wheel turns, camera turns from raw
+  counts while the right button is held, and cursor jumps while it is
+  held.
+
+A scripted hand (and bot) plays a session through the real `record()`.
+The file is replayed through the real `Replay`, `record_all.py replay`
+and `dungeon.py replay`, all on one microsecond clock. The two game logs
+must match:
+- Keys, buttons, wheel turns, camera turns and jumps match exactly.
+- The cursor matches exactly, except while turning (up to 1 px, from the
+  sub-pixel remainder, and put back on release) and up to one cursor
+  check after a `SetCursorPos` move.
+
+**Scenarios** (`src_1080p/tests/record_replay_test.py`)
+
+Happy paths:
+- H1 walk with a held key and its repeats
+- H2 skill and number keys
+- H3 cursor moves (sub-pixel too), clicks, a long press
+- H4 camera turns
+- H5 zoom with the wheel
+- H6 click-to-move (left button held)
+- H7 walk while turning
+- H8 a bot run: keys, clicks, hovers, Ctrl+click
+- H9 hand and bot together
+- H10 the three replay paths agree
+- H11 `compare` passes a faithful capture
+- H12 `dungeon.py` loops, each run identical
+
+Edge cases:
+- E1 every special key
+- E2 modifier combos never stop the recording
+- E3 a Ctrl release just before the stop is kept
+- E4 stopping while still holding a key
+- E5 middle and side buttons, both buttons held
+- E6 turning into the screen edge
+- E7 very fast and very slow turns
+- E8 the bot moves the cursor during a turn
+- E9 a hover back to a spot the cursor check missed
+- E10 a hover under 1 ms
+- E11 several monitors, negative coordinates
+- E12 starting with the cursor on another monitor
+- E13 a relog is never recorded or replayed
+- E14 a long session
+- E15 inputs in the same microsecond keep their order
+- E16 older recordings without raw counts
+- E17 older recordings with typed characters
+- E18 random sessions (`RECORD_REPLAY_SEEDS`, default 40)
+
+Failure paths:
+- F1 nothing before the start gesture is kept
+- F2 the bot's Ctrl neither starts nor stops a hand recording
+- F3 slow Ctrl taps don't stop it
+- F4 a recorder crash keeps what was streamed, and it replays
+- F5 a session never started saves nothing
+- F6 another monitor layout is refused, nothing sent
+- F7 a moved or closed game is refused, nothing sent
+- F8 a game that can't be focused gets nothing
+- F9 stopping mid-replay leaves nothing held (all three paths)
+- F10 stopping mid-turn or with Ctrl held lets go cleanly
+
+Broken, empty and missing files are covered in `record_all_test.py`.
+
+**Defects the suite found and fixed:**
+1. **During a turn, replay dropped every cursor move**, including the
+   bot's SendInput and `SetCursorPos` moves (E8). Only the mouse's own
+   moves are carried by the raw counts, so only those are skipped now.
+2. **Old hooked positions could explain a later hover.** When the cursor
+   check matched a hooked position, older positions it had passed stayed
+   in the queue. A hover back to one of them within 0.1 s was taken as
+   already seen and dropped (E9). Matching now clears everything up to
+   the match.
+3. **A Ctrl release could be dropped with the stop gesture.** A release
+   left over from a modifier use (Ctrl+click, Ctrl+1) was dropped from the
+   file along with the gesture, so the replay held Ctrl to the end (E2,
+   E3). Only the gesture's own taps (the last `2 x TAPS` Ctrl events) are
+   dropped now.
+4. **Back-to-back logins merged into one run** and went unlabelled. This
+   is moot now that typed text is not recorded.
+
+**Each defect and key behaviour was put back to check it is caught.**
+The suite fails for all of these:
+- each of the defects above
+- raw counts not recorded
+- typed text recorded
+- a turn's press or release sent together with an absolute move
+- held keys not let go at the end
+- a hand recording starting at launch
+
+**Known limit (by design).** A `SetCursorPos` move lasting under one
+cursor check (1 ms) can be replayed up to 1 ms late (E10).

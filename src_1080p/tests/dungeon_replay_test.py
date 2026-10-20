@@ -112,7 +112,8 @@ try:
         "\n".join(json.dumps(x) for x in [head] + ctrl) + "\n", encoding="utf-8")
     dungeon._DUNGEON["replay"] = {"file": "ctrl_all.jsonl", "times": 1}
     done, said = run()
-    check("presses Ctrl 1 time(s)" in said, "a recording that presses Ctrl is flagged")
+    check(done == 1 and "Ctrl" not in said,
+          f"a recording that presses Ctrl plays through, with no warning, got {done}")
 
     # The Ctrl stop interrupts the main thread; the replay must still let go
     # of what it holds, all of it.

@@ -681,16 +681,8 @@ def replay_recording(name=None, times=None, rest=None):
     head, events, refused = record_all.prepare(path)
     if refused:
         raise SystemExit(refused)
-    creds = (record_all.credentials()
-             if any(event.get("secret") for event in events) else {})
-    ctrl = record_all.ra.CTRL
-    presses = sum(1 for event in events if event["kind"] == "key"
-                  and event["action"] == "down" and event.get("vk") in ctrl)
     print(f"  {path.name}: {len(events)} events over {events[-1]['t']:.1f}s, "
           f"{times} time(s) with {rest:g}s between")
-    if presses:
-        print(f"  it presses Ctrl {presses} time(s), which the Ctrl stop may "
-              f"read as a stop")
     stop = threading.Event()
     threading.Thread(target=lambda: (calibration.STOPPED.wait(), stop.set()),
                      daemon=True).start()
@@ -699,7 +691,7 @@ def replay_recording(name=None, times=None, rest=None):
         for number in range(1, times + 1):
             if stop.is_set():
                 break
-            player = record_all.Replay(events, head.get("cursor"), creds, head,
+            player = record_all.Replay(events, head.get("cursor"), head,
                                        path.parent, on_ctrl=_replay_holds_ctrl)
             player.stop = stop
             print(f"  replay {number} of {times} from "
