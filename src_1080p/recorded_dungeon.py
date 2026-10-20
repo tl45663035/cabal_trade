@@ -216,6 +216,27 @@ def watch(stop, outcome, deadline, every, read=True):
     stop.set()
 
 
+def align(events, cursor):
+    """A run recorded from before Challenge: finds the left click on the
+    Challenge button, drops everything up to it (the bot clicks Challenge
+    itself), and counts time from that click's press, so the replay lines up
+    with the bot's own click. Returns (events, start cursor, the click's time
+    in the recording, or None when there is no such click and the recording
+    is used as it is)."""
+    left, top, right, bottom = dungeon.CHALLENGE_WINDOW
+    for n, e in enumerate(events):
+        if (e["kind"] == "mouse" and e["action"] == "down" and e.get("button") == "left"
+                and left <= e["x"] <= right and top <= e["y"] <= bottom):
+            at = e["t"]
+            rest = events[n + 1:]
+            release = next((k for k, x in enumerate(rest) if x["kind"] == "mouse"
+                            and x["action"] == "up" and x.get("button") == "left"), None)
+            if release is not None:
+                rest = rest[release + 1:]
+            return ([dict(x, t=round(x["t"] - at, 6)) for x in rest], [e["x"], e["y"]], at)
+    return events, cursor, None
+
+
 def load(path):
     """A recording, checked and parsed before any input goes out."""
     head, events, refused = record_all.prepare(path)
@@ -310,7 +331,12 @@ def run(name, verbose=True):
     print(f"  RECORDED RUN start {name}", flush=True)
     result, inside = "failed", False
     try:
-        recording = load(find(name, place["recording"]))
+        head, events, base = load(find(name, place["recording"]))
+        events, cursor, at = align(events, head.get("cursor"))
+        if at is not None:
+            print(f"  {name}: the replay is lined up with the Challenge click "
+                  f"{at:.2f}s into the recording")
+        recording = ({**head, "cursor": cursor}, events, base)
         dungeon.run_sequence(name, location, {}, verbose,
                              ["get_entry", "open_dungeon_key"], False)
         calibration.halt_if_stopped()

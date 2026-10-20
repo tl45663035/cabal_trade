@@ -654,6 +654,68 @@ with world(None, no_entry):
     said = rd.problem("fire") or ""
 check("entry" in said, f"a dungeon whose entry isn't known yet is refused, got {said!r}")
 
+# ============ lining the replay up with the Challenge click ============
+
+CW = dungeon.CHALLENGE_WINDOW
+cx, cy = (CW[0] + CW[2]) // 2, (CW[1] + CW[3]) // 2
+with_click = [
+    {"t": 0.5, "kind": "mouse", "action": "move", "x": 100, "y": 100, "injected": False},
+    {"t": 1.0, "kind": "key", "action": "down", "vk": 87, "scan": 17, "extended": False,
+     "name": "W", "repeat": False, "injected": False},
+    {"t": 1.1, "kind": "key", "action": "up", "vk": 87, "scan": 17, "extended": False,
+     "name": "W", "repeat": False, "injected": False},
+    {"t": 2.0, "kind": "mouse", "action": "down", "button": "left", "x": cx, "y": cy,
+     "injected": False},
+    {"t": 2.1, "kind": "mouse", "action": "up", "button": "left", "x": cx, "y": cy,
+     "injected": False},
+    {"t": 2.6, "kind": "key", "action": "down", "vk": 49, "scan": 2, "extended": False,
+     "name": "1", "repeat": False, "injected": False},
+    {"t": 2.7, "kind": "key", "action": "up", "vk": 49, "scan": 2, "extended": False,
+     "name": "1", "repeat": False, "injected": False},
+]
+events, cursor, at = rd.align(with_click, [5, 5])
+check(at == 2.0 and cursor == [cx, cy],
+      f"align: finds the Challenge click at 2.0s and starts the cursor on it, got {at} {cursor}")
+check([(round(e["t"], 6), e.get("name") or e.get("button"), e["action"]) for e in events]
+      == [(0.6, "1", "down"), (0.7, "1", "up")],
+      f"align: drops everything up to and including the click; times count from the "
+      f"click's press, got {events}")
+same_events, same_cursor, none_at = rd.align(with_click[:3], [5, 5])
+check(none_at is None and same_events == with_click[:3] and same_cursor == [5, 5],
+      "align: a recording that starts after Challenge is used as it is")
+outside = [dict(e, x=10, y=10) if e.get("button") else e for e in with_click]
+check(rd.align(outside, [5, 5])[2] is None,
+      "align: a left click elsewhere is not taken for Challenge")
+right = [dict(e, button="right") if e.get("button") else e for e in with_click]
+check(rd.align(right, [5, 5])[2] is None, "align: a right click on the button doesn't count")
+
+click_file = SEQ / "fire" / "with_challenge.jsonl"
+walk_events = record_all.read_recording(RUN_FILE)
+head = dict(walk_events[0])
+shifted = [dict(e, t=e["t"] + 3.0) for e in walk_events[1]]
+lead = [{"t": 0.2, "kind": "key", "action": "down", "vk": 69, "scan": 18, "extended": False,
+         "name": "E", "repeat": False, "injected": False},
+        {"t": 0.3, "kind": "key", "action": "up", "vk": 69, "scan": 18, "extended": False,
+         "name": "E", "repeat": False, "injected": False},
+        {"t": 2.9, "kind": "mouse", "action": "down", "button": "left", "x": cx, "y": cy,
+         "injected": False},
+        {"t": 2.95, "kind": "mouse", "action": "up", "button": "left", "x": cx, "y": cy,
+         "injected": False}]
+click_file.write_text("\n".join(json.dumps(x) for x in [head] + lead + shifted) + "\n",
+                      encoding="utf-8")
+r = play_run(Scene(banner_at=RUN_LENGTH + 0.5), {"recording": "with_challenge.jsonl"})
+first_w = min((t for t, item in r.sends if item.type == ra.W["INPUT_KEYBOARD"]
+               and item.u.ki.wScan == W_SCAN), default=float("inf"))
+want = r.t0 + 3.0 + walk_events[1][0]["t"] - 2.9
+check(r.result == "cleared" and not any(d[0] == 18 for d in r.run_keys + [
+          d for _t, k, d in r.fake.game.log if k == "key"]),
+      f"a run recorded from before Challenge: what came before the click is not played, "
+      f"got {r.result!r}")
+check(first_w != float("inf") and abs(first_w - want) < 0.05,
+      f"and the rest lines up with the bot's own Challenge click: first W "
+      f"{first_w - r.t0:.3f}s after it, wanted {want - r.t0:.3f}s")
+check("lined up with the Challenge click" in r.said, "the log says it lined up")
+
 # ================= leaving by the dungeon's manual exit =================
 
 with world():
