@@ -31,12 +31,12 @@ Fri 2026-10-16            16.40h   24.00h  119.79M    7.30M    5.38B    5.26B   
 Sat 2026-10-17             8.80h   24.00h   48.93M    5.56M    2.09B    2.04B   2.55K    2.3%
 Sun 2026-10-18            19.14h   24.00h  134.71M    7.04M    6.68B    6.55B  10.83K    2.0%
 Mon 2026-10-19            11.64h   24.00h   55.49M    4.77M    4.54B    4.49B   8.04K    1.2%
-Tue 2026-10-20 (so far)    3.67h    4.10h   25.50M    6.94M  453.62M  428.12M   1.07K    5.6%
+Tue 2026-10-20 (so far)    3.92h    4.35h   25.50M    6.50M  453.62M  428.12M   1.07K    5.6%
 =============================================================================================
-7 DAYS                    94.43h  148.10h  635.14M    6.73M   30.35B   29.72B  49.29K    2.1%
+7 DAYS                    94.68h  148.35h  635.14M    6.71M   30.35B   29.72B  49.29K    2.1%
 
 
-PROFIT SUMMARY -- sold since 2026-10-20 00:00 Central (as of 04:05 Central)
+PROFIT SUMMARY -- sold since 2026-10-20 00:00 Central (as of 04:20 Central)
 
 item                          profit  revenue     cost  units  bought/u   sold/u  margin
 ----------------------------------------------------------------------------------------
@@ -61,40 +61,42 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-20_002525_run_board.log, board during pass 60 at row 4, read 2026-10-20T04:05:52 (live)
+ROWS -- 2026-10-20_002525_run_board.log, board during pass 63 at row 1, read 2026-10-20T04:17:43 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Astral Board Card - Zero Black          x1         -    17.62M         -    17.62M         -         -
-    2  Upgrade Core (Ultimate                 x16   309.81K   316.81K    +7.00K   316.81K     4.96M   112.02K
-    3  Upgrade Core (Ultimate                  x3   309.81K   316.81K    +7.00K   316.81K   929.43K    21.00K
-    4  Upgrade Core (Ultimate                 x11   309.81K   316.81K    +7.00K   316.81K     3.41M    76.99K <- here
+    1  Astral Board Card - Zero Black          x1         -    17.60M         -    17.60M         -         - <- here
+    2  Upgrade Core (Ultimate                 x16   309.81K   316.80K    +6.99K   316.80K     4.96M   111.84K
+    3  Upgrade Core (Ultimate                  x3   309.81K   316.80K    +6.99K   316.80K   929.43K    20.97K
+    4  Upgrade Core (Ultimate                 x11   309.81K   316.80K    +6.99K   316.80K     3.41M    76.87K
     5  Force Core(High                        x90   262.03K   262.03K        +0   262.03K    23.58M         0
     6  Force Core(High                       x200   262.03K   262.03K        +0   262.03K    52.41M         0
     7  Force Core(High                       x213   262.03K   262.03K        +0   262.03K    55.81M         0
     8  Wexp Saver                              x1         -     4.50M         -     4.50M         -         -
     9  Wexp Saver                              x5         -     4.44M         -     4.44M         -         -
    10  Wexp Saver                              x3         -     2.48M         -     2.48M         -         -
-   11  Force Core(Highest                     x12   275.00K   332.77K   +57.77K   332.77K     3.30M   693.26K
-   12  Force Core(Highest                    x113   323.21K   332.77K    +9.56K   332.77K    36.52M     1.08M
-   13  Force Core(Highest                     x79   323.21K   332.77K    +9.55K   332.77K    25.53M   754.85K
-   14  Divine Stone Set X 141                  x1   700.00K   720.57K   +20.57K   101.60M    98.70M     2.90M
-   15  Divine Stone Set X 141                  x1   700.00K   720.57K   +20.57K   101.60M    98.70M     2.90M
-   16  Divine Stone Set X 108                  x1   700.29K   720.57K   +20.27K    77.82M    75.63M     2.19M
-   17  Divine Stone Set X 138                  x1   710.00K   720.57K   +10.56K    99.44M    97.98M     1.46M
-   18  Divine Stone Set X 147                  x1   710.00K   720.56K   +10.56K   105.92M   104.37M     1.55M
-    balance now 1.28B, read 2026-10-20T04:05:03
-       stock at its listed price                                                                      747.35M
-       Alz, latest balance line                                                                         1.28B
+   11  Force Core(Highest                     x12   275.00K   332.76K   +57.76K   332.76K     3.30M   693.12K
+   12  Force Core(Highest                    x113   323.21K   332.76K    +9.54K   332.76K    36.52M     1.08M
+   13  Force Core(Highest                     x79   323.21K   332.76K    +9.54K   332.76K    25.53M   753.90K
+   14  Divine Stone Set X 141                  x1   700.00K   720.56K   +20.56K   101.60M    98.70M     2.90M
+   15  Divine Stone Set X 141                  x1   700.00K   720.56K   +20.56K   101.60M    98.70M     2.90M
+   16  Divine Stone Set X 108                  x1   700.29K   720.56K   +20.26K    77.82M    75.63M     2.19M
+   17  Divine Stone Set X 138                  x1   710.00K   720.55K   +10.55K    99.44M    97.98M     1.46M
+   18  Divine Stone Set X 147                  x1   710.00K   720.55K   +10.55K   105.92M   104.37M     1.55M
+   19  Chaos Core Set                          x1   705.00K   715.00K   +10.00K   122.26M   120.56M     1.71M
+   20  Chaos Core Set                          x1   705.00K   715.00K   +10.00K   124.41M   122.67M     1.74M
+    balance now 1.03B, read 2026-10-20T04:16:58
+       stock at its listed price                                                                      994.00M
+       Alz, latest balance line                                                                         1.03B
        Cash at the voucher price                                                                       76.00M
        gems at the voucher price                                                                        8.55M
        NET WORTH                                                                                        2.11B
 
 
-MARKET -- 2026-10-20_002525_run.log, pass 60, log last written 04:05 Central (live)
+MARKET -- 2026-10-20_002525_run.log, pass 63, log last written 04:20 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  0  705.00K  707.87K   2.87K      0.4%      0
+Chaos Core                  2  705.00K  715.00K  10.00K      1.4%     10  YES
 Divine Stone                5        -        -       -         -      -  holds the most it can want, 5; not priced
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
