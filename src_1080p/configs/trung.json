@@ -106,6 +106,24 @@
                      ["kill_bm", "Legendary Box", "fire_kill_loop"],
                      ["wait", 2],
                      "final_sequence"]
+      },
+      "fire": {
+        "difficulty": 5,
+        "bm_aura_for": 5.0,
+        "aura_after": 90.0,
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     "bm_aura",
+                     "move_to_A",
+                     ["kill_bm", "Fire Guardian Manticore", "fire_kill_loop"],
+                     ["kill_bm", "Treasure Chest", "fire_kill_loop"],
+                     "move_to_B",
+                     ["kill_bm", "Fire Guard Dark Archer", "fire_kill_loop"],
+                     "move_to_C",
+                     ["kill_bm", "Fire Gatekeeper Demonic Jason", "fire_kill_loop"],
+                     "move_to_D",
+                     ["kill_bm", "Lava Gate", "fire_kill_loop"],
+                     "move_to_E",
+                     ["kill_bm", "Master of Fire Eurostia", "fire_boss_loop"]]
       }
     }
   },

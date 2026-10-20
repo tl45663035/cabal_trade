@@ -108,6 +108,26 @@
         "locations": {
           "Fire": {"bm": "main_bm"}
         }
+      },
+      "ice": {
+        "difficulty": 5,
+        "bm_aura_for": 5.0,
+        "aura_after": 90.0,
+        "after_exit": [["wait", 3], "cancel_bm"],
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     "bm_aura",
+                     "move_to_A",
+                     ["kill_bm", "Awakened Monarch Akenaph", "fire_kill_loop"],
+                     "move_to_B",
+                     ["kill_bm", "Frozen Bone Stack", "fire_kill_loop"],
+                     "move_to_C",
+                     ["kill_bm", "Awakened Ice Guardian", "fire_kill_loop"],
+                     ["kill_bm", "Treasure Chest", "fire_kill_loop"],
+                     "move_to_D",
+                     ["kill_bm", "Awakened Nazabrum", "fire_boss_loop"],
+                     ["kill_bm", "Legendary Box", "fire_kill_loop"],
+                     ["wait", 2],
+                     "final_sequence"]
       }
     }
   },
