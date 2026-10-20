@@ -40,7 +40,14 @@ def board(names):
 
 sizes = {}
 base = {"mb": 0}
-saved = (calibration.FRAME_DIR, calibration.RUN_FRAMES, calibration.free_mb, calibration._NOTHING_TO_CLEAR)
+
+
+def free_at(mb):
+    base["mb"] += mb - calibration.free_mb()
+
+
+saved = (calibration.FRAME_DIR, calibration.RUN_FRAMES, calibration.free_mb, calibration._NOTHING_TO_CLEAR,
+         calibration._TRIMMING)
 calibration.free_mb = lambda: base["mb"] + sum(mb for name, mb in sizes.items()
                                                if not (calibration.FRAME_DIR / name).exists())
 try:
@@ -64,18 +71,59 @@ try:
           left == names[2:], f"left {left}")
     check("and it says what it cleared", "cleared the debug frames of 2 earlier run(s)" in said.getvalue(),
           said.getvalue().strip())
+    check("the run's own frames stay while clearing earlier runs is enough",
+          (calibration.RUN_FRAMES / "00001_click.png").exists())
 
-    base["mb"] = floor - 5000
+    shots = [calibration.RUN_FRAMES / f"{n:05d}_click.png" for n in range(1, 11)]
+    for age, shot in enumerate(shots):
+        shot.write_bytes(b"x")
+        os.utime(shot, (age, age))
+    frame_mb = 100
+    by_folder = calibration.free_mb
+    calibration.free_mb = lambda: by_folder() + frame_mb * sum(not shot.exists() for shot in shots)
+
+    free_at(floor - sizes[names[2]] - 350)
+    said = io.StringIO()
+    with contextlib.redirect_stdout(said):
+        calibration.make_room()
+    left = sorted(p.name for p in calibration.FRAME_DIR.iterdir())
+    kept = [shot.exists() for shot in shots]
+    check("with no earlier run left, the run's own oldest frames are cleared, oldest first, until the floor is met",
+          left == [names[-1]] and kept == [False] * 4 + [True] * 6, f"left {left}, kept {kept}")
+    check("and it says what it cleared", "cleared this run's 4 oldest frames" in said.getvalue(),
+          said.getvalue().strip())
+
+    free_at(floor - 200)
+    said = io.StringIO()
+    with contextlib.redirect_stdout(said):
+        calibration.make_room()
+    kept = [shot.exists() for shot in shots]
+    check("each later call under the floor clears the next oldest ones", kept == [False] * 6 + [True] * 4,
+          f"kept {kept}")
+    check("without saying it again", said.getvalue() == "", said.getvalue().strip())
+
+    free_at(floor - 2000)
     said = io.StringIO()
     with contextlib.redirect_stdout(said):
         calibration.make_room()
         calibration.make_room()
-    left = sorted(p.name for p in calibration.FRAME_DIR.iterdir())
-    check("the current run's frames are never cleared", left == [names[-1]], f"left {left}")
-    check("when nothing earlier is left it says so once, not every time",
-          said.getvalue().count("are left to clear") == 1, said.getvalue().strip())
+    check("when no frame is left and the disk is still under the floor it says so once, not every time",
+          not any(shot.exists() for shot in shots) and said.getvalue().count("are left to clear") == 1,
+          said.getvalue().strip())
+
+    free_at(floor + frame_mb // 2)
+    with contextlib.redirect_stdout(io.StringIO()):
+        calibration.make_room()
+    shots[0].write_bytes(b"x")
+    said = io.StringIO()
+    with contextlib.redirect_stdout(said):
+        calibration.make_room()
+    check("once the disk was back over the floor, the next clearing of the run's frames is said again",
+          not shots[0].exists() and "cleared this run's 1 oldest frames" in said.getvalue(),
+          said.getvalue().strip())
 finally:
-    calibration.FRAME_DIR, calibration.RUN_FRAMES, calibration.free_mb, calibration._NOTHING_TO_CLEAR = saved
+    (calibration.FRAME_DIR, calibration.RUN_FRAMES, calibration.free_mb, calibration._NOTHING_TO_CLEAR,
+     calibration._TRIMMING) = saved
 
 calls = []
 saved = (calibration.make_room, calibration.RUN_FRAMES, calibration.FRAME_DIR, calibration.FRAMES_ON,

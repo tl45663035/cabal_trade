@@ -537,6 +537,7 @@ def _log_offset():
 PRUNE_EVERY = int(_S["debug"]["prune_every"])
 MIN_FREE_MB = int(_S["debug"]["min_free_mb"])
 _NOTHING_TO_CLEAR = False
+_TRIMMING = False
 
 
 def frames_on(enabled: "bool | None" = None) -> bool:
@@ -703,13 +704,14 @@ def free_mb() -> int:
 
 
 def make_room() -> None:
-    global _NOTHING_TO_CLEAR
+    global _NOTHING_TO_CLEAR, _TRIMMING
     try:
         started = free_mb()
     except OSError:
         return
     if started >= MIN_FREE_MB or not FRAME_DIR.is_dir():
         _NOTHING_TO_CLEAR = False
+        _TRIMMING = False
         return
     earlier = sorted((p for p in FRAME_DIR.iterdir()
                       if p.is_dir() and p != RUN_FRAMES), key=lambda p: p.name)
@@ -725,10 +727,29 @@ def make_room() -> None:
               f"{MIN_FREE_MB:,} floor; cleared the debug frames of "
               f"{len(cleared)} earlier run(s), oldest first, and it has "
               f"{now:,} free now")
+    if now < MIN_FREE_MB:
+        short, trimmed = now, 0
+        for shot in sorted(FRAME_DIR.rglob("*.png"), key=_frame_age):
+            if now >= MIN_FREE_MB:
+                break
+            try:
+                shot.unlink()
+            except OSError:
+                continue
+            trimmed += 1
+            now = free_mb()
+        if trimmed and not _TRIMMING:
+            print(f"  the disk had {short:,} megabytes free, under the "
+                  f"{MIN_FREE_MB:,} floor, with no earlier run's debug "
+                  f"frames left; cleared this run's {trimmed:,} oldest "
+                  f"frames, and it has {now:,} free now; from here on its "
+                  f"oldest frames are cleared whenever the disk is under "
+                  f"the floor")
+        _TRIMMING = _TRIMMING or trimmed > 0
     if now < MIN_FREE_MB and not _NOTHING_TO_CLEAR:
         print(f"  the disk has {now:,} megabytes free, under the "
-              f"{MIN_FREE_MB:,} floor, and no earlier run's debug frames "
-              f"are left to clear")
+              f"{MIN_FREE_MB:,} floor, and no debug frames are left to "
+              f"clear")
     _NOTHING_TO_CLEAR = now < MIN_FREE_MB
 
 
