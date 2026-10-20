@@ -71,18 +71,29 @@
   "dungeon": {
     "recorded": {
       "fire": {
-        "enabled": false,
+        "enabled": true,
         "recording": "cang_fire_run.jsonl",
         "start_delay": 0.5,
         "timeout_seconds": 300
       },
       "eop": {
-        "enabled": false,
+        "enabled": true,
         "recording": "cang_eop_run.jsonl",
+        "timeout_seconds": 300
+      },
+      "steamer": {
+        "enabled": true,
+        "recording": "cang_steamer_run.jsonl",
+        "start_delay": 0.5,
+        "timeout_seconds": 300
+      },
+      "ice": {
+        "enabled": true,
+        "recording": "cang_ice_run.jsonl",
         "timeout_seconds": 300
       }
     },
-    "enabled": false,
+    "enabled": true,
     "trading_dungeon": "fire",
     "level_windows": [
       [502, 266, 737, 284],
@@ -114,9 +125,22 @@
       },
       "eop": {
         "locations": {
-          "EoP": {"name": "Edge of Phantom"}
+          "EoP": {"entry": [136, 597], "name": "Edge of Phantom"}
         },
-        "daily_limit": 30
+        "daily_limit": 30,
+        "end_wait": 2,
+        "cooldown": 35,
+        "before_exit": ["cancel_bm"]
+      },
+      "steamer": {
+        "locations": {
+          "Steamer": {"entry": [87, 401], "name": "Steamer Crazy (Awakened)"}
+        },
+        "daily_limit": 30,
+        "difficulty": 5,
+        "end_wait": 2,
+        "cooldown": 35,
+        "before_exit": ["cancel_bm"]
       }
     },
     "replay": {

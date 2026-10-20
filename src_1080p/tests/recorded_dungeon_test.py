@@ -801,9 +801,11 @@ check("recorded DUNGEON" in usage, f"the help names the recorded command, got {u
 for profile in ("cang", "trung", "bot"):
     entry = json.loads((SRC / "configs" / f"{profile}.json").read_text(encoding="utf-8"))[
         "dungeon"]["recorded"]["fire"]
-    check(entry.get("enabled") is False and entry.get("recording") == f"{profile}_fire_run.jsonl"
+    # cang has its fire recording and runs it; the others are off until theirs exists
+    check(entry.get("enabled") is (profile == "cang")
+          and entry.get("recording") == f"{profile}_fire_run.jsonl"
           and entry.get("timeout_seconds") == 300 and "exit_recording" not in entry,
-          f"{profile} lists fire as a recorded dungeon, off until its recording exists; it "
+          f"{profile} lists fire as a recorded dungeon, on only for cang; it "
           f"leaves by the dungeon's manual exit, so there is no exit recording, got {entry}")
 
 for profile in ("cang", "trung", "bot"):
