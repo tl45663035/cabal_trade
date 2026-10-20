@@ -173,8 +173,9 @@ class Scene:
     """The bot's own steps (logged, not sent) and the screen as the run goes."""
 
     def __init__(self, banner_at=None, defeat_at=None, lose_at=None, broken_at=None,
-                 during=None, unfocus_at=None, refocus_ok=True, clock=None):
+                 during=None, unfocus_at=None, refocus_ok=True, clock=None, timer=None):
         self.calls, self.reads, self.t0 = [], 0, None
+        self.timer = timer
         self.banner_at, self.defeat_at = banner_at, defeat_at
         self.lose_at, self.broken_at, self.during = lose_at, broken_at, during or {}
         self.unfocus_at, self.refocus_ok, self.clock = unfocus_at, refocus_ok, clock
@@ -223,6 +224,12 @@ class Scene:
             return "defeated"
         return None
 
+    def read_timer(self):
+        """The dungeon timer: timer(seconds since Challenge) gives what it shows."""
+        seconds = None if self.timer is None else self.timer(self.since())
+        return seconds, "" if seconds is None else (
+            f"00:{seconds // 60:02d}:{seconds % 60:02d}")
+
     def front(self):
         at = self.since()
         if self.unfocus_wall is not None and time.monotonic() >= self.unfocus_wall:
@@ -263,6 +270,7 @@ def play_run(scene, recorded=None, every=0.05, fake=None, real_count=False):
                     (dungeon, "internet_now", scene.now),
                     (rd, "challenge", scene.challenge),
                     (rd, "screen_says", scene.screen),
+                    (rd, "read_timer", scene.read_timer),
                     (rd, "game_in_front", scene.front),
                     (rd, "game_present", scene.present),
                     (dungeon, "focus_game", scene.refocus),
@@ -737,6 +745,111 @@ first_w = min((t for t, item in r.sends if item.type == ra.W["INPUT_KEYBOARD"]
                and item.u.ki.wScan == W_SCAN), default=float("inf"))
 check(abs(first_w - (r.t0 + 3.0 + walk_events[1][0]["t"] - 2.9)) < 0.05,
       "a recording with its own Challenge click ignores start_delay")
+
+# ============ starting the replay from the dungeon's timer ============
+
+for text, want in [("00:04:58", 298), ("00:01.29", 89), ("00.09.59", 599),
+                   ("0 0:04:58", 298), ("00:00:00", 0), ("", None), ("ny", None),
+                   ("00:04", None)]:
+    check(rd.timer_seconds(text) == want,
+          f"timer_seconds: {text!r} is {want}, got {rd.timer_seconds(text)!r}")
+
+
+def timer_wait(readings, target=298, timeout=5.0):
+    """until_timer on a pretend clock: each read takes 0.1s and shows the next
+    reading (None for nothing readable)."""
+    clock = {"t": 0.0}
+    left = list(readings)
+
+    def read():
+        clock["t"] += 0.1
+        seconds = left.pop(0) if left else None
+        return seconds, "" if seconds is None else str(seconds)
+
+    def sleep(seconds):
+        clock["t"] += seconds
+
+    return rd.until_timer(target, timeout, read, clock=lambda: clock["t"], sleep=sleep,
+                          every=0.0)
+
+
+start, seen = timer_wait([None, 0, 300, 299, 299, 298, 298])
+check(seen == 298 and start is not None and abs(start - (0.45 + 0.5)) < 1e-6,
+      f"until_timer: the tick into the start value is between the last read above it "
+      f"(0.4s) and the first at it (0.5s); the replay starts half a second after, "
+      f"got {start!r} {seen!r}")
+start, seen = timer_wait([0, 0, 0, 300, 298, 298], target=298)
+check(seen == 298 and abs(start - (0.35 + 0.5)) < 1e-6,
+      f"until_timer: 00:00:00 while loading is not the timer, got {start!r} {seen!r}")
+start, seen = timer_wait([290, 290, 289])
+check(seen == 290 and abs(start - 0.0) < 1e-6,
+      f"until_timer: a timer already past the start value starts the replay at once "
+      f"(from the first read), got {start!r} {seen!r}")
+start, seen = timer_wait([300, 299, 28, 299, 298, 298])
+check(seen == 298 and abs(start - (0.35 + 0.5)) < 1e-6,
+      f"until_timer: one misread below the start value is not taken, got "
+      f"{start!r} {seen!r}")
+start, seen = timer_wait([None] * 100, timeout=1.0)
+check(start is None, f"until_timer: no timer within the timeout is None, got {start!r}")
+
+with world({"fire": {**RECORDED["fire"], "start_timer": "nonsense"}}):
+    said = rd.problem("fire") or ""
+check("start_timer" in said, f"problem: an unreadable start_timer is one, got {said!r}")
+
+
+def counting_down(starts_at, shows):
+    """A timer that reads 00:00:00 until starts_at seconds after Challenge,
+    then shows `shows` and counts down a second at a time."""
+    def timer(since):
+        if since is None or since < starts_at:
+            return 0
+        return shows - int(since - starts_at)
+    return timer
+
+
+r = play_run(Scene(banner_at=RUN_LENGTH + 2.5, timer=counting_down(0.2, 300)),
+             {"start_timer": "00:04:59", "start_delay": 5.0})
+first_w = min((t for t, item in r.sends if item.type == ra.W["INPUT_KEYBOARD"]
+               and item.u.ki.wScan == W_SCAN), default=float("inf"))
+want = r.t0 + 1.2 + 0.5 + walk_events[1][0]["t"]
+check(r.result == "cleared" and abs(first_w - want) < 0.12,
+      f"start_timer: the replay starts half a second after the timer ticks to the "
+      f"recording's start value (start_delay is not used), first W "
+      f"{first_w - r.t0:.3f}s after Challenge, wanted {want - r.t0:.3f}s; {r.result!r}")
+check("00:04:59" in r.said, f"the log says it waited for the timer, got {r.said!r}")
+
+r = play_run(Scene(banner_at=RUN_LENGTH + 1.0, timer=counting_down(0.0, 290)),
+             {"start_timer": "00:04:58"})
+first_w = min((t for t, item in r.sends if item.type == ra.W["INPUT_KEYBOARD"]
+               and item.u.ki.wScan == W_SCAN), default=float("inf"))
+check(r.result == "cleared" and first_w - r.t0 < walk_events[1][0]["t"] + 0.15,
+      f"start_timer_late: a timer already past the start value starts the replay at "
+      f"once, first W {first_w - r.t0:.3f}s after Challenge; {r.result!r}")
+check("late" in r.said, f"start_timer_late: the log says it is late, got {r.said!r}")
+
+r = play_run(Scene(banner_at=30, timer=lambda since: None),
+             {"start_timer": "00:04:58", "timer_timeout": 0.4})
+check(r.result == "no_timer", f"no_timer: returns 'no_timer', got {r.result!r}")
+check(r.calls[-1] == BEFORE and "exit" not in r.calls and not r.run_keys
+      and len(r.exit_keys) == 2 * 2,
+      f"no_timer: no replay; BM cancel, then the manual exit; got {r.calls} "
+      f"{len(r.run_keys)} run keys")
+
+calibration.STOPPED.clear()
+threading.Timer(0.3, calibration.STOPPED.set).start()
+r = play_run(Scene(banner_at=30, timer=lambda since: 0), {"start_timer": "00:04:58"})
+calibration.STOPPED.clear()
+check(isinstance(r.result, KeyboardInterrupt) and not r.run_keys,
+      f"ctrl_stop_waiting_for_timer: stops before any replay, got {r.result!r}")
+
+r = play_run(Scene(banner_at=RUN_LENGTH + 0.5, timer=lambda since: 0),
+             {"recording": "with_challenge.jsonl", "start_timer": "00:04:58"})
+first_w = min((t for t, item in r.sends if item.type == ra.W["INPUT_KEYBOARD"]
+               and item.u.ki.wScan == W_SCAN), default=float("inf"))
+check(r.result == "cleared"
+      and abs(first_w - (r.t0 + 3.0 + walk_events[1][0]["t"] - 2.9)) < 0.05,
+      f"a recording with its own Challenge click lines up on it, not the timer; "
+      f"{r.result!r}")
 
 # ================= leaving by the dungeon's manual exit =================
 

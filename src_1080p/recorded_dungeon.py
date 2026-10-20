@@ -9,6 +9,7 @@ key, the difficulty, the daily limit, the start time, the BM cooldown, the
 BM cancel before leaving, and the claim-and-leave buttons."""
 
 import datetime
+import re
 import threading
 import time
 import traceback
@@ -25,6 +26,8 @@ OVERRIDES = ("daily_limit", "start_at", "cooldown", "end_wait", "before_exit", "
              "start_delay",
              "after_exit")
 JOIN_SLICE = 0.1
+TIMER = re.compile(r"(\d{2})\D(\d{2})\D(\d{2})")
+TIMER_SLICE = 0.02
 
 
 def recorded():
@@ -69,6 +72,9 @@ def problem(name):
                     f"get in")
     if not place.get("timeout_seconds"):
         return f"{name} has no timeout_seconds for its recorded run"
+    if place.get("start_timer") is not None and not timer_seconds(str(place["start_timer"])):
+        return (f"{name}: its start_timer {place['start_timer']!r} is not a timer "
+                f"reading like \"00:04:58\"")
     if place.get("daily_limit") is None:
         return (f"{name} has no daily_limit; without one its recorded runs would go "
                 f"on back to back and trading would never resume")
@@ -164,6 +170,75 @@ def challenge(verbose=True):
         print(f"  {dungeon.CHALLENGE_WORD} at {point}")
     dungeon.click(*point, 0.0)
     return time.monotonic()
+
+
+def timer_seconds(text):
+    """The dungeon timer's reading ("00:04:58", or OCR's "00.04.58") in
+    seconds, or None when it isn't one."""
+    found = TIMER.search((text or "").replace(" ", ""))
+    if not found:
+        return None
+    hours, minutes, seconds = (int(part) for part in found.groups())
+    return hours * 3600 + minutes * 60 + seconds
+
+
+def read_timer(image=None):
+    """What the dungeon timer at the top of the screen shows: (seconds or
+    None, the text read)."""
+    box = tuple(dungeon._DUNGEON["timer_window"])
+    text = dungeon.read_windows(calibration.grab() if image is None else image, [box])[0]
+    return timer_seconds(text), text
+
+
+def start_timer(place, head, base):
+    """The timer reading the recording starts at: the recorded entry's
+    start_timer, or what the timer shows in the recording's start picture.
+    None when neither gives one."""
+    if place.get("start_timer") is not None:
+        return timer_seconds(str(place["start_timer"]))
+    shot = head.get("start_shot")
+    if shot and (Path(base) / shot).exists():
+        from PIL import Image
+        with Image.open(Path(base) / shot) as image:
+            seconds, _text = read_timer(image.convert("RGB"))
+        return seconds or None
+    return None
+
+
+def until_timer(target, timeout, read, clock=time.monotonic, sleep=time.sleep,
+                every=TIMER_SLICE):
+    """Watches the dungeon timer count down to target (seconds). The recording
+    began somewhere inside the second the timer showed target, so the replay
+    starts half a second after the tick into it: halfway between the last
+    read above target and the first at it. A reading at or below target only
+    counts once the next read agrees (one misread is not the tick).
+    00:00:00 (still loading) is no reading. A timer already below target
+    when first seen starts the replay at once. Returns (when to start on
+    clock, the reading it went by), or (None, the last text) when no timer
+    shows within timeout."""
+    deadline = clock() + timeout
+    above, pending, text = None, None, ""
+    while True:
+        calibration.halt_if_stopped()
+        at = clock()
+        seconds, text = read()
+        if seconds:
+            if seconds > target:
+                above, pending = at, None
+            elif pending is None or seconds > pending[1]:
+                pending = (at, seconds, above)
+            else:
+                first, value, before = pending
+                if value == target and before is not None:
+                    return (before + first) / 2 + 0.5, value
+                return first, value
+        if clock() >= deadline:
+            return None, text
+        sleep(every)
+
+
+def clock_text(seconds):
+    return f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
 
 
 def screen_says():
@@ -338,9 +413,13 @@ def run(name, verbose=True):
     try:
         head, events, base = load(find(name, place["recording"]))
         events, cursor, at = align(events, head.get("cursor"))
+        target = None
         if at is not None:
             print(f"  {name}: the replay is lined up with the Challenge click "
                   f"{at:.2f}s into the recording")
+        elif (target := start_timer(place, head, base)) is not None:
+            print(f"  {name}: the recording began with the dungeon timer at "
+                  f"{clock_text(target)}; the replay waits for it after Challenge")
         elif float(place.get("start_delay", 0) or 0) > 0:
             delay = float(place["start_delay"])
             events = [dict(e, t=round(e["t"] + delay, 6)) for e in events]
@@ -354,6 +433,32 @@ def run(name, verbose=True):
         clicked = challenge(verbose)
         inside = True
         count_run(name, day, verbose)
+        if target is not None:
+            wait = float(place.get("timer_timeout", dungeon._DUNGEON.get("timer_timeout", 30)))
+            start, seen = until_timer(target, wait, read_timer)
+            if start is None:
+                print(f"  {name}: no dungeon timer within {wait:g}s of "
+                      f"{dungeon.CHALLENGE_WORD} (it reads {seen!r}); nothing replayed, "
+                      f"the run leaves by the manual exit")
+                if place.get("before_exit"):
+                    dungeon.run_sequence(name, location, {}, verbose, place["before_exit"],
+                                         False)
+                calibration.halt_if_stopped()
+                inside = False
+                leave(name, place, verbose)
+                result = "no_timer"
+                return result
+            if seen < target:
+                print(f"  {name}: the timer was already at {clock_text(seen)}, "
+                      f"{target - seen}s past the recording's start; the replay starts "
+                      f"now, late")
+            else:
+                print(f"  {name}: the timer reached {clock_text(seen)} "
+                      f"{time.monotonic() - clicked:.1f}s after {dungeon.CHALLENGE_WORD}; "
+                      f"the replay starts {max(0.0, start - time.monotonic()):.2f}s from now")
+            while time.monotonic() < start:
+                calibration.halt_if_stopped()
+                time.sleep(min(TIMER_SLICE, max(0.0, start - time.monotonic())))
         every = float(dungeon._DUNGEON.get("end_check_every", 0.5))
         stop, outcome = threading.Event(), {"end": None}
         watcher = threading.Thread(
