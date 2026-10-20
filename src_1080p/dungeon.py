@@ -163,6 +163,7 @@ HEAL_KEY = _DUNGEON["heal_key"]
 HEAL_EVERY = float(_DUNGEON["heal_every"])
 END_WAIT = float(_DUNGEON["end_wait"])
 END_TIMEOUT = float(_DUNGEON["end_timeout"])
+END_POLL = float(_DUNGEON["end_poll"])
 OVER = threading.Event()
 HUNTING = threading.Event()
 PLAYING = threading.Event()
@@ -723,11 +724,20 @@ def hp_left(text):
             else int(re.sub(r"\D", "", found.group().split("/")[0]) or 0))
 
 
+def read_inked(crops):
+    inked = [ImageChops.invert(crop).getbbox() is not None for crop in crops]
+    texts = iter(read_crops([crop for crop, ink in zip(crops, inked) if ink])
+                 if any(inked) else [])
+    return [next(texts) if ink else "" for ink in inked]
+
+
 def target_bars(image):
-    centre, *pair = read_crops([white_text(image, box)
-                                for box in TARGET_WINDOWS])
-    if (TARGET_HP.search(centre) is None
-            and all(TWO_TARGET_TEXT.search(bar) for bar in pair)):
+    centre_box, *pair_boxes = TARGET_WINDOWS
+    centre = read_inked([white_text(image, centre_box)])[0]
+    if TARGET_HP.search(centre) is not None:
+        return [centre]
+    pair = read_inked([white_text(image, box) for box in pair_boxes])
+    if all(TWO_TARGET_TEXT.search(bar) for bar in pair):
         return pair
     return [centre]
 
@@ -876,14 +886,16 @@ def bm_aura(verbose=True, names=None, seconds=None, after=None, spam=None,
     if verbose:
         print(f"  {' -> '.join(names)} right-clicked {LOOP_GAP:g}s apart, "
               f"over and over for {seconds:g}s from the first click"
-              + (f"; aura {after:g}s after the first"
-                 + (f", right-clicked over and over for {spam:g}s" if spam else "")
+              + ((f"; aura {after:g}s after the first"
+                  + (f", right-clicked over and over for {spam:g}s" if spam
+                     else "") if after else "; no aura")
                  + (f"; main BM {main:g}s after the first, right-clicked over "
                     f"and over for {seconds:g}s" if main else "")
                  if aura else ""))
     started = time.monotonic()
     if aura:
-        AURA_DUE.update(at=started + after, after=after, **{"for": spam})
+        AURA_DUE.update(at=started + after if after else None, after=after,
+                        **{"for": spam})
         MAIN_BM_DUE.update(at=started + main if main else None, after=main,
                            **{"for": seconds})
     rounds = 0
@@ -902,14 +914,17 @@ def aura_when_due(verbose=True):
     AURA_DUE["at"] = None
     started, clicks = time.monotonic(), 0
     while not OVER.is_set():
-        right_click(*AURA, LOOP_GAP)
+        slot = time.monotonic()
+        right_click(*AURA, 0.0)
+        tap(KEYS[TARGET_KEY])
         clicks += 1
         if time.monotonic() >= started + AURA_DUE["for"]:
             break
+        OVER.wait(max(0.0, slot + LOOP_GAP - time.monotonic()))
     if verbose:
         print(f"  {AURA_DUE['after']:g}s since BM: aura right-clicked "
               f"{clicks} time(s) in {time.monotonic() - started:.1f}s at "
-              f"{list(AURA)}")
+              f"{list(AURA)}, {TARGET_KEY} after each")
 
 
 def main_bm_when_due(verbose=True):
@@ -1047,6 +1062,7 @@ def watch_end(stop, failed, killing, timer, verbose=True):
                           f"{' -> '.join(key for _action, key, _wait in DEFEAT)}"
                           f" and the manual exit")
                 return
+            stop.wait(END_POLL)
     except Exception as exc:
         failed["error"] = exc
         OVER.set()
@@ -1178,6 +1194,8 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                          setting(dungeon_name, "before_exit"), False)
             run_sequence(dungeon_name, location, phase, verbose, manual, False)
             off_for_the_day(verbose)
+            run_sequence(dungeon_name, location, phase, verbose,
+                         DUNGEONS[dungeon_name].get("after_exit", []), False)
             if verbose:
                 print(f"  {dungeon_name} {location}: past its "
                       f"{hard_limit(dungeon_name):g}s; left it by hand")
@@ -1191,6 +1209,8 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
             run_sequence(dungeon_name, location, phase, verbose, manual, False)
+            run_sequence(dungeon_name, location, phase, verbose,
+                         DUNGEONS[dungeon_name].get("after_exit", []), False)
             if verbose:
                 print(f"  {dungeon_name} {location}: the dungeon is failed; "
                       f"left it by hand")
@@ -1772,8 +1792,8 @@ def open_after(dungeon_name):
             % datetime.timedelta(days=1))
 
 
-def since_reset():
-    now = internet_now()
+def since_reset(now=None):
+    now = internet_now() if now is None else now
     if now is None:
         return None
     shifted = now.astimezone(RESET_ZONE) - RESET_HOUR
@@ -2133,8 +2153,12 @@ def get_to_wb_area(verbose=True):
     return True
 
 
+def world_boss_on():
+    return bool((_SHARED.get("world_boss") or {}).get("enabled"))
+
+
 def world_boss_turn(dungeon_name, verbose=True):
-    if not (_SHARED.get("world_boss") or {}).get("enabled"):
+    if not world_boss_on():
         return False
     import recovery
     import world_boss
@@ -2146,15 +2170,19 @@ def world_boss_turn(dungeon_name, verbose=True):
         return False
     when = world_boss.next_spawn(now)
     left = (when - now).total_seconds()
-    room = (hard_limit(dungeon_name) + float(setting(dungeon_name, "cooldown"))
-            + world_boss.TRADING_LEAD)
+    room = world_boss.TRADING_LEAD
+    if dungeon_name is not None:
+        room += (hard_limit(dungeon_name)
+                 + float(setting(dungeon_name, "cooldown")))
     if WORLD_BOSS["done"] == when or left > room:
         return False
     WORLD_BOSS["done"] = when
     print("")
     print(f"WORLD BOSS: {when:%H:%M:%S %Z} is {left:.0f}s away, inside the "
-          f"{room:g}s a {dungeon_name} run and the lead need; the dungeons "
-          f"stop here and the world boss run starts")
+          + (f"{room:g}s lead; the idle ends here" if dungeon_name is None
+             else f"{room:g}s a {dungeon_name} run and the lead need; "
+                  f"the dungeons stop here")
+          + " and the world boss run starts")
     calibration.close_everything(verbose=verbose)
     try:
         get_to_wb_area(verbose)
@@ -2166,9 +2194,49 @@ def world_boss_turn(dungeon_name, verbose=True):
             recovery.recover(verbose=verbose)
     world_boss.pause(world_boss.RESUME_WAIT)
     calibration.close_everything(verbose=verbose)
-    cancel_bm(dungeon_name, verbose)
-    print("WORLD BOSS: over; the dungeons go on")
+    cancel_bm(dungeon_name or TRADING_DUNGEON, verbose)
+    print("WORLD BOSS: over; " + ("back to the idle" if dungeon_name is None
+                                   else "the dungeons go on"))
     return True
+
+
+def idle(verbose=True):
+    import world_boss
+    day, told = None, None
+    while True:
+        try:
+            now = world_boss.online_utc()
+        except RuntimeError as exc:
+            if told != str(exc):
+                print(f"  idle: {exc}")
+                told = str(exc)
+            wait_timer(world_boss.ONLINE_EVERY, False)
+            continue
+        day = day_of(now) if day is None else day
+        if day_of(now) != day:
+            print(f"idle over: server day {day_of(now)} has begun, so the "
+                  f"dungeons have runs again")
+            return
+        if world_boss_turn(None, verbose):
+            continue
+        wake = (datetime.timedelta(days=1)
+                - since_reset(now)).total_seconds()
+        target = "the server-day reset"
+        if world_boss_on():
+            when = world_boss.next_spawn(now)
+            boss = (when - now).total_seconds()
+            if WORLD_BOSS["done"] != when:
+                boss -= world_boss.TRADING_LEAD
+            if boss < wake:
+                wake = boss
+                target = f"the world boss turn for {when:%H:%M:%S %Z}"
+        at = (now + datetime.timedelta(seconds=wake)).astimezone(
+            world_boss.ZONE)
+        line = f"idle: nothing left to run; {target} at {at:%H:%M:%S %Z}"
+        if line != told:
+            print(f"{line}, {wake:.0f}s from now")
+            told = line
+        wait_timer(max(0.0, wake), False)
 
 
 def run_in_turn(dungeon_name, location, after, verbose=True):
@@ -2212,20 +2280,26 @@ def rotate(names, after=None, verbose=True):
 
 
 def run_all(verbose=True):
-    after = rotate(ROTATION, None, verbose) if ROTATION else None
-    for level in ORDER:
-        location = level_location(level)
-        while level_left(level) > 0:
+    after = None
+    while True:
+        after = rotate(ROTATION, after, verbose) if ROTATION else after
+        for level in ORDER:
+            location = level_location(level)
+            while level_left(level) > 0:
+                if verbose:
+                    print(f"{location}: "
+                          f"{LIMITS[level] - level_left(level)} of "
+                          f"{LIMITS[level]} entered on this server day; "
+                          f"the next one idles through its wait")
+                after = run_in_turn(TRADING_DUNGEON, location, after,
+                                    verbose)
             if verbose:
-                print(f"{location}: {LIMITS[level] - level_left(level)} "
-                      f"of {LIMITS[level]} entered on this server day; "
-                      f"the next one idles through its wait")
-            after = run_in_turn(TRADING_DUNGEON, location, after, verbose)
+                print(f"{location}: {LIMITS[level]} of {LIMITS[level]} "
+                      f"entered on this server day")
         if verbose:
-            print(f"{location}: {LIMITS[level]} of {LIMITS[level]} "
-                  f"entered on this server day")
-    if verbose:
-        print("every dungeon in the loop is at its daily limit")
+            print("every dungeon in the loop is at its daily limit")
+        idle(verbose)
+        after = None
 
 
 def command(args):

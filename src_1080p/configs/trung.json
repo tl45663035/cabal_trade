@@ -113,6 +113,9 @@
       "valley": {
         "after_exit": [["wait", 3], "disenchant_all"]
       },
+      "eop": {
+        "after_exit": [["wait", 3], "disenchant_all"]
+      },
       "fire": {
         "difficulty": 5,
         "bm_aura_for": 3.0,
