@@ -135,7 +135,7 @@ BM_LOOP = list(_DUNGEON["bm_loop"])
 BM_AURA = list(_DUNGEON["bm_aura"])
 BM_AURA_FOR = float(_DUNGEON["bm_aura_for"])
 AURA_AFTER = float(_DUNGEON["aura_after"])
-AURA_DUE = {"at": None}
+AURA_DUE = {"at": None, "after": None}
 LAST_KILL = {"name": None, "words": None, "loop": None}
 LOOP_POINTS = {"main_bm": MAIN_BM, "alternate_bm": ALTERNATE_BM, "aura": AURA,
                "bm_pot": BM_POT, **OFFENSIVE_BUFFS}
@@ -800,19 +800,20 @@ def kill(name, words, verbose=True):
                 verbose)
 
 
-def bm_aura(verbose=True, names=None, seconds=None):
+def bm_aura(verbose=True, names=None, seconds=None, after=None):
     aura = names is None
     names = BM_AURA if names is None else names
     seconds = BM_AURA_FOR if seconds is None else seconds
+    after = AURA_AFTER if after is None else after
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     if verbose:
         print(f"  {' -> '.join(names)} right-clicked {LOOP_GAP:g}s apart, "
               f"over and over for {seconds:g}s from the first click"
-              + (f"; aura {AURA_AFTER:g}s after the first" if aura else ""))
+              + (f"; aura {after:g}s after the first" if aura else ""))
     started = time.monotonic()
     if aura:
-        AURA_DUE["at"] = started + AURA_AFTER
+        AURA_DUE.update(at=started + after, after=after)
     rounds = 0
     while time.monotonic() < started + seconds and not ENDED.is_set():
         click_round(names, started)
@@ -829,7 +830,7 @@ def aura_when_due(verbose=True):
     AURA_DUE["at"] = None
     right_click(*AURA, LOOP_GAP)
     if verbose:
-        print(f"  {AURA_AFTER:g}s since BM: aura right-clicked at "
+        print(f"  {AURA_DUE['after']:g}s since BM: aura right-clicked at "
               f"{list(AURA)}")
 
 
@@ -884,7 +885,7 @@ def kill_bm(name, words, verbose=True, loop=None):
 
     return hunt(name, words, attack, "kill_bm",
                 f"{loop_plan(loop)}, the first round from {loop[start]}"
-                + (f"; aura only from {AURA_AFTER:g}s after BM"
+                + (f"; aura only from {AURA_DUE['after']:g}s after BM"
                    if AURA_DUE["at"] is not None else "")
                 if loop else None, verbose)
 
@@ -1195,7 +1196,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         elif name == "kill":
             kill(rest[0], target_words(dungeon_name, rest[0]), verbose)
         elif name == "bm_aura":
-            bm_aura(verbose)
+            bm_aura(verbose, seconds=float(setting(dungeon_name, "bm_aura_for")),
+                    after=float(setting(dungeon_name, "aura_after")))
         elif name == "spam":
             bm_aura(verbose, list(rest[:-1]), float(rest[-1]))
         elif name == "tab_two":
