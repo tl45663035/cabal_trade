@@ -682,22 +682,6 @@
         "after_exit": [["wait", 3], "after_exit"],
         "manual_exit": ["exit_dungeon"]
       },
-      "ice": {
-        "locations": {
-          "Ice": {"entry": [136, 401], "name": "Catacomb Frost (Awakened)",
-                  "bm": "alternate_bm"}
-        },
-        "daily_limit": 30,
-        "difficulty": 5,
-        "hard_limit_seconds": 180,
-        "end_wait": 2,
-        "cooldown": 35,
-        "before_exit": ["cancel_bm"],
-        "exit": [
-          ["button", "confirmation", 0.0],
-          ["button", "fire_leave", 0.0]
-        ]
-      },
       "fire": {
         "locations": {
           "Fire": {"entry": [185, 401], "name": "Lava Hellfire (Awakened)",

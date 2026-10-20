@@ -224,21 +224,14 @@ def align(events, cursor):
     with the bot's own click. Returns (events, start cursor, the click's time
     in the recording, or None when there is no such click and the recording
     is used as it is)."""
-    def inside(box, e):
-        return box[0] <= e["x"] <= box[2] and box[1] <= e["y"] <= box[3]
-
-    entered, first = False, True
+    left, top, right, bottom = dungeon.CHALLENGE_WINDOW
     for n, e in enumerate(events):
         if not (e["kind"] == "mouse" and e["action"] == "down" and e.get("button") == "left"):
             continue
-        # Challenge is either the recording's first left click, or the first
-        # click on its button after the Enter button (a recording of the whole
-        # entry). Any other click on that spot is a ground click mid-run.
-        on_button = inside(dungeon.CHALLENGE_WINDOW, e)
-        if not (on_button and (first or entered)):
-            entered = entered or inside(dungeon.ENTER_WINDOW, e)
-            first = False
-            continue
+        # Only the recording's first left click can be Challenge: a later one on
+        # the same spot is a ground click mid-run.
+        if not (left <= e["x"] <= right and top <= e["y"] <= bottom):
+            break
         at = e["t"]
         rest = events[n + 1:]
         release = next((k for k, x in enumerate(rest) if x["kind"] == "mouse"
