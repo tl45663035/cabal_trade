@@ -62,7 +62,8 @@
   "dungeon": {
     "enabled": true,
     "trading_dungeon": "chaos_arena",
-    "order": [1, 2, 3, 4, 5, 6, 7],
+    "order": [4, 5, 6, 7],
+    "rotation": ["fire", "ice", "train"],
     "kill_combo": [
       ["use", "A+2", 2.0],
       ["tap", "7", 2.0],
@@ -89,8 +90,10 @@
       },
       "ice": {
         "difficulty": 5,
-        "bm_aura_for": 5.0,
+        "bm_aura_for": 3.0,
         "aura_after": 90.0,
+        "aura_for": 5.0,
+        "main_bm_after": 143.0,
         "after_exit": [["wait", 3], "cancel_bm"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      "bm_aura",
@@ -109,8 +112,10 @@
       },
       "fire": {
         "difficulty": 5,
-        "bm_aura_for": 5.0,
+        "bm_aura_for": 3.0,
         "aura_after": 90.0,
+        "aura_for": 5.0,
+        "main_bm_after": 143.0,
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      "bm_aura",
                      "move_to_A",

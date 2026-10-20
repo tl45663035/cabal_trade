@@ -994,7 +994,12 @@ def report_dungeons():
     ran = (state.get("ran") or {}) if state.get("day") == today else {}
     won = (state.get("successful") or {}) if state.get("day") == today else {}
     limits = conf["daily_limits"]
-    print(f"DUNGEONS -- Chaos Arena entries on server day {today}")
+    entered = state.get("dungeon_ran") or {}
+    entered = (entered.get("counts") or {}) if entered.get("day") == today else {}
+    cleared_by = state.get("dungeon_successful") or {}
+    cleared_by = ((cleared_by.get("counts") or {})
+                  if cleared_by.get("day") == today else {})
+    print(f"DUNGEONS -- entries on server day {today}")
     print("")
     print(f"{'level':<8}{'done':>6}{'limit':>7}{'successful':>12}")
     done = cap = cleared = 0
@@ -1003,6 +1008,12 @@ def report_dungeons():
         good = int(won.get(level, 0))
         done, cap, cleared = done + count, cap + most, cleared + good
         print(f"{f'CA{level}':<8}{count:>6}{most:>7}{good:>12}")
+    for name in conf["report_dungeons"]:
+        count = int(entered.get(name, 0))
+        most = int(conf["dungeons"][name]["daily_limit"])
+        good = int(cleared_by.get(name, 0))
+        done, cap, cleared = done + count, cap + most, cleared + good
+        print(f"{name.upper():<8}{count:>6}{most:>7}{good:>12}")
     print(f"{'total':<8}{done:>6}{cap:>7}{cleared:>12}")
 
 

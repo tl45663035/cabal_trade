@@ -465,6 +465,7 @@
   "dungeon": {
     "enabled": false,
     "order": [3, 2, 1],
+    "rotation": [],
     "reset_timezone": "America/Los_Angeles",
     "reset_hour": 15,
     "start_at": "15:30",
@@ -472,6 +473,8 @@
     "trading_dungeon": "chaos_arena",
     "daily_limits": {"1": 5, "2": 5, "3": 5, "4": 7, "5": 7, "6": 10, "7": 15},
     "state_file": "dungeon_next.json",
+    "entry_retries": 2,
+    "report_dungeons": ["ice", "fire", "train"],
     "storm": [738, 305],
     "storm_settle": 3.0,
     "park": [1400, 600],
@@ -588,6 +591,9 @@
     "bm_aura": ["main_bm"],
     "bm_aura_for": 5.0,
     "aura_after": 80.0,
+    "aura_for": 0.0,
+    "main_bm_after": 0.0,
+    "kill_all_search": 1.0,
     "heal_key": "0",
     "heal_every": 0.5,
     "end_wait": 3.0,
@@ -602,7 +608,7 @@
     "before_exit": ["cancel_bm"],
     "block_start": ["tab_two", ["use", "A+9", "A+0"]],
     "cooldown": 35,
-    "cooldown_loop": ["bm_pot"],
+    "cooldown_loop": ["bm_pot", "bm_icon"],
     "defeat": [
       ["button", "revive", 0.0]
     ],
@@ -616,6 +622,8 @@
     "fire_boss_loop": ["3", "4", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
     "replay_modifiers": [16, 17, 18, 160, 161, 162, 163, 164, 165],
     "target_window": [810, 45, 1100, 58],
+    "two_target_windows": [[584, 45, 934, 58], [978, 45, 1328, 58]],
+    "two_target_pattern": "[A-Za-z]{3}.*[0-9]",
     "target_text_min": 150,
     "target_hp_pattern": "\\d[\\d,]*\\s*/\\s*[\\d,]+",
     "bosses": {
@@ -729,6 +737,99 @@
                      ["kill_bm", "Lava Gate", "fire_kill_loop"],
                      "move_to_E",
                      ["kill_bm", "Master of Fire Eurostia", "fire_boss_loop"]]
+      },
+      "eop": {
+        "locations": {
+          "EOP": {"entry": [136, 600], "name": "Edge of Phantom",
+                  "bm": "alternate_bm"}
+        },
+        "daily_limit": 30,
+        "start_at": "01:40",
+        "back_to_back": true,
+        "difficulty": 0,
+        "heal_kills_only": true,
+        "hard_limit_seconds": 180,
+        "end_wait": 2,
+        "bm_aura_for": 3.0,
+        "aura_after": 90.0,
+        "aura_for": 5.0,
+        "main_bm_after": 143.0,
+        "exit": [
+          ["button", "confirmation", 0.0],
+          ["button", "fire_leave", 0.0]
+        ],
+        "targets": {
+          "Enhanced Zombie Lady": ["zombie", "lady"],
+          "Phantom Dark Slayer": ["phantom", "dark"],
+          "Relic Chest": ["relic", "chest"],
+          "Devil Wing Hyperion": ["devil", "wing", "hyperion"],
+          "Skeleton Mage of Hate": ["mage", "hate"],
+          "Zehgo of Ambition": ["zehgo", "ambition"],
+          "Frozen Slayer of Ice": ["frozen", "ice"],
+          "Etherno Calligo Thanatos": ["etherno", "calligo", "thanatos"],
+          "any monster": []
+        },
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     "bm_aura",
+                     "move_to_A",
+                     ["kill_all", "Enhanced Zombie Lady", "fire_kill_loop"],
+                     "move_to_B",
+                     ["kill_all", "Phantom Dark Slayer", "fire_kill_loop"],
+                     ["kill_bm", "Relic Chest", "fire_kill_loop"],
+                     "move_to_C",
+                     ["kill_bm", "Devil Wing Hyperion", "fire_kill_loop"],
+                     ["kill_all", "Skeleton Mage of Hate", "fire_kill_loop"],
+                     ["kill_all", "any monster", "fire_kill_loop"],
+                     "move_to_D",
+                     ["kill_bm", "Phantom Dark Slayer", "fire_kill_loop"],
+                     "move_to_E",
+                     ["kill_bm", "Zehgo of Ambition", "fire_kill_loop"],
+                     ["kill_all", "Frozen Slayer of Ice", "fire_kill_loop"],
+                     "move_to_F",
+                     ["kill_bm", "Etherno Calligo Thanatos", "fire_boss_loop"]]
+      },
+      "train": {
+        "locations": {
+          "TRAIN": {"entry": [88, 401], "name": "Steamer Crazy (Awakened)",
+                    "bm": "alternate_bm"}
+        },
+        "daily_limit": 30,
+        "start_at": "01:40",
+        "back_to_back": true,
+        "difficulty": 5,
+        "heal_kills_only": true,
+        "hard_limit_seconds": 180,
+        "end_wait": 2,
+        "bm_aura_for": 3.0,
+        "aura_after": 90.0,
+        "aura_for": 5.0,
+        "main_bm_after": 143.0,
+        "exit": [
+          ["button", "confirmation", 0.0],
+          ["button", "fire_leave", 0.0]
+        ],
+        "targets": {
+          "Sentry Mechape, Sentry Mechape Archer": ["sentry", "mechape"],
+          "Armun Rutil, Armun Ater, Armun Pallida": ["armun", "rutil", "pallida"],
+          "Awakened TA-01 Gravis Rota": ["gravis", "rota", "ta-01", "ta01"],
+          "Treasure Chest": ["treasure", "chest"],
+          "Tricktor KH, Tricktor R, Tricrus": ["tricktor", "tricrus"],
+          "Awakened Steamer LHJ-G30": ["steamer", "lhj", "g30"],
+          "any monster": []
+        },
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     "bm_aura",
+                     "move_to_A",
+                     ["kill_all", "any monster", "fire_kill_loop"],
+                     "move_to_B",
+                     ["kill_all", "any monster", "fire_kill_loop"],
+                     "move_to_C",
+                     ["kill_bm", "Awakened TA-01 Gravis Rota", "fire_kill_loop"],
+                     ["kill_bm", "Treasure Chest", "fire_kill_loop"],
+                     "move_to_D",
+                     ["kill_all", "any monster", "fire_kill_loop"],
+                     "move_to_E",
+                     ["kill_bm", "Awakened Steamer LHJ-G30", "fire_boss_loop"]]
       },
       "ice": {
         "locations": {

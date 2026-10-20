@@ -111,8 +111,9 @@
       },
       "ice": {
         "difficulty": 5,
-        "bm_aura_for": 5.0,
+        "bm_aura_for": 3.0,
         "aura_after": 90.0,
+        "aura_for": 5.0,
         "after_exit": [["wait", 3], "cancel_bm"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      "bm_aura",
