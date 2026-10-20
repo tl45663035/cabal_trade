@@ -152,6 +152,203 @@ for name, recorded, word in cases:
         said = rd.problem(name) or ""
     check(word in said, f"problem_reasons: {word!r} expected, got {said!r}")
 
+# ============================== Task 2 ==============================
+
+def taps(name, seconds, step=200):
+    s = Script().ctrl_twice("start")
+    for _ in range(int(seconds * 1000 / step)):
+        s.tap(name, hold=40, gap=step - 40)
+    return s.ctrl_twice("stop")
+
+
+RUN_FILE = make_recording(SEQ / "fire" / "walk.jsonl", taps("W", 1.0))
+EXIT_FILE = make_recording(SEQ / "fire" / "leave.jsonl", taps("Esc", 0.4))
+RUN_LENGTH = record_all.read_recording(RUN_FILE)[1][-1]["t"]
+W_SCAN, ESC_SCAN = 17, 1
+
+
+class Scene:
+    """The bot's own steps (logged, not sent) and the screen as the run goes."""
+
+    def __init__(self, banner_at=None, defeat_at=None, lose_at=None, broken_at=None,
+                 during=None):
+        self.calls, self.reads, self.t0 = [], 0, None
+        self.banner_at, self.defeat_at = banner_at, defeat_at
+        self.lose_at, self.broken_at, self.during = lose_at, broken_at, during or {}
+
+    def since(self):
+        return None if self.t0 is None else time.monotonic() - self.t0
+
+    def sequence(self, name, location, phase, verbose=True, steps=None,
+                 stop_when_over=True, timer=None):
+        steps = tuple(s if isinstance(s, str) else tuple(s) for s in steps)
+        self.calls.append(("seq", steps))
+        if steps in self.during:
+            self.during[steps]()
+
+    def challenge(self, verbose=True):
+        self.calls.append("challenge")
+        self.t0 = time.monotonic()
+        return self.t0
+
+    def screen(self):
+        self.reads += 1
+        at = self.since()
+        if self.broken_at is not None and at >= self.broken_at:
+            raise RuntimeError("the screen could not be read")
+        if self.banner_at is not None and at >= self.banner_at:
+            return "cleared"
+        if self.defeat_at is not None and at >= self.defeat_at:
+            return "defeated"
+        return None
+
+    def front(self):
+        at = self.since()
+        return self.lose_at is None or at is None or at < self.lose_at
+
+
+def play_run(scene, recorded=None, every=0.05, fake=None):
+    fake = fake or FakeInput(layout=LAYOUT, cursor=(3, 3))
+    sends = []
+
+    def send(item):
+        sends.append((time.monotonic(), item))
+        fake.send(item)
+
+    out = io.StringIO()
+    entry = dict(RECORDED["fire"], recording="walk.jsonl", exit_recording="leave.jsonl",
+                 timeout_seconds=20)
+    entry.update(recorded or {})
+    with world({"fire": entry}), \
+            patched((dungeon, "_DUNGEON", {**dungeon._DUNGEON, "recorded": {"fire": entry},
+                                           "end_check_every": every}),
+                    (dungeon, "run_sequence", scene.sequence),
+                    (dungeon, "count_challenge",
+                     lambda *a, **k: scene.calls.append("count")),
+                    (dungeon, "exit_dungeon", lambda *a, **k: scene.calls.append("exit")),
+                    (dungeon, "press_buttons",
+                     lambda label, *a, **k: scene.calls.append(("buttons", label))),
+                    (dungeon, "wait_timer",
+                     lambda seconds, verbose=True: scene.calls.append(("wait", seconds))),
+                    (dungeon, "off_for_the_day",
+                     lambda *a, **k: scene.calls.append("off_for_the_day")),
+                    (dungeon, "internet_now", lambda: None),
+                    (rd, "challenge", scene.challenge),
+                    (rd, "screen_says", scene.screen),
+                    (rd, "game_in_front", scene.front),
+                    (record_all, "focus_game", lambda: True),
+                    (ra, "send", send)), \
+            contextlib.redirect_stdout(out):
+        try:
+            result = rd.run("fire")
+        except BaseException as exc:
+            result = exc
+    keys = [d for _t, k, d in fake.game.log if k == "key"]
+    return types.SimpleNamespace(result=result, calls=scene.calls, fake=fake, sends=sends,
+                                 said=out.getvalue(), reads=scene.reads, t0=scene.t0,
+                                 run_keys=[d for d in keys if d[0] == W_SCAN],
+                                 exit_keys=[d for d in keys if d[0] == ESC_SCAN])
+
+
+ENTRY = ("seq", ("get_entry", "open_dungeon_key"))
+BEFORE = ("seq", ("cancel_bm",))
+
+r = play_run(Scene(banner_at=0.5))
+check(r.result == "cleared", f"cleared: returns 'cleared', got {r.result!r}")
+check(r.calls == [ENTRY, "challenge", "count", BEFORE, ("wait", 2), "exit"],
+      f"cleared: entry, Challenge, then BM cancel, end wait, claim and leave; got {r.calls}")
+late = [t for t, _item in r.sends if t > r.t0 + 0.5 + 0.05 + 0.15]
+check(not late, f"cleared: no input after the banner, got {len(late)} late sends")
+check(not r.fake.game.keys and not r.fake.game.buttons, "cleared: nothing held")
+check(r.sends and r.sends[0][1].type == ra.W["INPUT_MOUSE"]
+      and r.sends[0][1].u.mi.dwFlags & ra.W["MOUSEEVENTF_ABSOLUTE"],
+      "cleared: the only input before the recording's own is the start cursor")
+check(not r.exit_keys, "cleared: the exit clip is not played")
+
+r = play_run(Scene(banner_at=RUN_LENGTH + 0.05))
+check(r.result == "cleared" and r.calls.count("exit") == 1,
+      f"cleared_right_at_the_end: one exit, got {r.result!r} {r.calls}")
+
+r = play_run(Scene(banner_at=RUN_LENGTH + 1.0))
+last = max(t for t, _item in r.sends)
+check(r.result == "cleared" and last < r.t0 + RUN_LENGTH + 0.3,
+      f"replay_ends_first: cleared, with nothing sent while waiting for the banner")
+check(len(r.run_keys) == 2 * 5, f"replay_ends_first: the whole recording played, got "
+                                f"{len(r.run_keys)} W events")
+
+r = play_run(Scene(), {"timeout_seconds": 0.6})
+check(r.result == "timeout", f"timeout: returns 'timeout', got {r.result!r}")
+check(r.calls[-1] == BEFORE and "exit" not in r.calls and "off_for_the_day" not in r.calls,
+      f"timeout: BM cancel, then the exit clip; no claim, no day off; got {r.calls}")
+check(len(r.exit_keys) == 2 * 2, f"timeout: the exit clip plays, got {r.exit_keys}")
+check(len(r.run_keys) < 2 * 5, "timeout: the run recording is cut short")
+check(not r.fake.game.keys and not r.fake.game.buttons, "timeout: nothing held")
+
+r = play_run(Scene(defeat_at=0.4))
+check(r.result == "defeated" and r.calls[-1] == ("buttons", "defeat") and r.exit_keys,
+      f"defeated: revive, then the exit clip; got {r.result!r} {r.calls}")
+
+r = play_run(Scene(lose_at=0.4))
+check(isinstance(r.result, RuntimeError) and "game" in str(r.result),
+      f"lost_game: raises about the game, got {r.result!r}")
+check(not r.exit_keys and not r.fake.game.keys, "lost_game: no exit clip, nothing held")
+
+calibration.STOPPED.clear()
+threading.Timer(0.4, calibration.STOPPED.set).start()
+r = play_run(Scene(banner_at=5))
+calibration.STOPPED.clear()
+check(isinstance(r.result, KeyboardInterrupt), f"ctrl_stop_mid_replay: stops, got {r.result!r}")
+check(not r.exit_keys and not r.fake.game.keys and "exit" not in r.calls,
+      "ctrl_stop_mid_replay: nothing held, no exit clip, no claim")
+
+r = play_run(Scene(banner_at=0.3, during={("cancel_bm",): calibration.STOPPED.set}))
+calibration.STOPPED.clear()
+check(isinstance(r.result, KeyboardInterrupt) and "exit" not in r.calls and not r.exit_keys,
+      f"ctrl_stop_after_the_replay: stops before the claim, got {r.result!r} {r.calls}")
+
+r = play_run(Scene(broken_at=0.3))
+check(isinstance(r.result, RuntimeError) and "screen" in str(r.result) and r.exit_keys,
+      f"raises_after_challenge: the exit clip plays, then it raises; got {r.result!r}")
+
+moved = SCRATCH / "leave_moved.jsonl"
+r = play_run(Scene(during={("cancel_bm",): lambda: EXIT_FILE.rename(moved)}),
+             {"timeout_seconds": 0.5})
+moved.rename(EXIT_FILE)
+check(isinstance(r.result, RuntimeError) and "leave.jsonl" in str(r.result),
+      f"exit_clip_fails: raises naming the exit recording, got {r.result!r}")
+
+r = play_run(Scene(banner_at=0.5))
+check("  RECORDED RUN start fire\n" in r.said and "  RECORDED RUN end fire (cleared)\n" in r.said,
+      f"log_lines: start and end lines, got {r.said[-300:]!r}")
+r = play_run(Scene(lose_at=0.3))
+check("  RECORDED RUN end fire (failed)\n" in r.said, "log_lines: a failed run says so")
+
+r = play_run(Scene(), {"timeout_seconds": 3.0}, every=0.5)
+check(5 <= r.reads <= 7, f"checks_at_its_rate: 3s at 0.5s is about 6 reads, got {r.reads}")
+
+clicks = []
+with patched((dungeon, "focus_game", lambda: True),
+             (dungeon, "wait_for", lambda window, word, timeout: (True, word)),
+             (dungeon, "click", lambda x, y, settle: clicks.append((x, y)))), \
+        contextlib.redirect_stdout(io.StringIO()):
+    at = rd.challenge()
+check(clicks == [tuple(dungeon.centre(dungeon.CHALLENGE_WINDOW))] and at > 0,
+      f"challenge: only Challenge is clicked (no hotbar tab II), got {clicks}")
+with patched((dungeon, "focus_game", lambda: True),
+             (dungeon, "wait_for", lambda window, word, timeout: (False, "Loading")),
+             (dungeon, "click", lambda x, y, settle: clicks.append((x, y)))):
+    try:
+        rd.challenge(False)
+        said = None
+    except RuntimeError as exc:
+        said = str(exc)
+check(said and "Nothing clicked" in said and len(clicks) == 1,
+      f"challenge: no Challenge button, nothing clicked, got {said!r}")
+
+r = play_run(Scene(), {"recording": "nope.jsonl"})
+check(isinstance(r.result, RuntimeError) and not r.sends and r.calls == [],
+      f"a missing recording fails before any input, got {r.result!r} {r.calls}")
+
 # ============================== the end ==============================
 
 check(not TRIPPED, f"tests sent real input: {TRIPPED}")
