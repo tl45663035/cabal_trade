@@ -71,36 +71,56 @@
   "dungeon": {
     "recorded": {
       "fire": {
-        "enabled": false,
+        "enabled": true,
+        "daily_limit": null,
+        "start_at": "15:00",
         "recording": "cang_fire_run.jsonl",
-        "start_timer": "00:01:29",
         "timeout_seconds": 300
       },
       "eop": {
         "enabled": false,
+        "daily_limit": null,
+        "start_at": "15:00",
         "recording": "cang_eop_run.jsonl",
-        "start_timer": "00:04:59",
         "timeout_seconds": 300
       },
       "steamer": {
-        "enabled": false,
+        "enabled": true,
+        "daily_limit": null,
+        "start_at": "15:00",
         "recording": "cang_steamer_run.jsonl",
-        "start_timer": "00:09:59",
         "timeout_seconds": 300
       },
       "ice": {
         "enabled": false,
+        "daily_limit": null,
+        "start_at": "15:00",
         "recording": "cang_ice_run.jsonl",
         "timeout_seconds": 300
       },
       "valley": {
         "enabled": false,
+        "daily_limit": null,
+        "start_at": "15:00",
         "recording": "cang_valley_run.jsonl",
-        "start_timer": "00:04:58",
+        "timeout_seconds": 300
+      },
+      "panic": {
+        "enabled": false,
+        "daily_limit": null,
+        "start_at": "15:00",
+        "recording": "cang_panic_run.jsonl",
+        "timeout_seconds": 300
+      },
+      "illusion": {
+        "enabled": true,
+        "daily_limit": null,
+        "start_at": "15:00",
+        "recording": "cang_illusion_run.jsonl",
         "timeout_seconds": 300
       }
     },
-    "enabled": false,
+    "enabled": true,
     "trading_dungeon": "fire",
     "level_windows": [
       [502, 266, 737, 284],
@@ -154,6 +174,25 @@
           "Valley": {"entry": [234, 401], "name": "Hazardous Valley (Awakened)"}
         },
         "daily_limit": 30,
+        "difficulty": 0,
+        "end_wait": 2,
+        "cooldown": 35,
+        "before_exit": ["cancel_bm"]
+      },
+      "panic": {
+        "locations": {
+          "Panic": {"entry": [38, 401], "name": "Panic Cave (Awakened)"}
+        },
+        "daily_limit": 30,
+        "difficulty": 5,
+        "end_wait": 2,
+        "cooldown": 35,
+        "before_exit": ["cancel_bm"]
+      },
+      "illusion": {
+        "locations": {
+          "Illusion": {"entry": [185, 548], "name": "Illusion Castle Radiant Hall(Apocrypha)"}
+        },
         "difficulty": 0,
         "end_wait": 2,
         "cooldown": 35,

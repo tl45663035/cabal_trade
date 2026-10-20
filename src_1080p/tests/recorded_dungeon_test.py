@@ -173,9 +173,10 @@ class Scene:
     """The bot's own steps (logged, not sent) and the screen as the run goes."""
 
     def __init__(self, banner_at=None, defeat_at=None, lose_at=None, broken_at=None,
-                 during=None, unfocus_at=None, refocus_ok=True, clock=None, timer=None):
+                 during=None, unfocus_at=None, refocus_ok=True, clock=None, timer=None,
+                 hp=None):
         self.calls, self.reads, self.t0 = [], 0, None
-        self.timer = timer
+        self.timer, self.hp, self.hp_reads = timer, hp, 0
         self.banner_at, self.defeat_at = banner_at, defeat_at
         self.lose_at, self.broken_at, self.during = lose_at, broken_at, during or {}
         self.unfocus_at, self.refocus_ok, self.clock = unfocus_at, refocus_ok, clock
@@ -224,11 +225,19 @@ class Scene:
             return "defeated"
         return None
 
-    def read_timer(self):
-        """The dungeon timer: timer(seconds since Challenge) gives what it shows."""
-        seconds = None if self.timer is None else self.timer(self.since())
+    def read_timer(self, image=None):
+        """The dungeon timer: timer(seconds since Challenge) gives what it shows
+        (timer(None) for a picture read before Challenge)."""
+        since = None if image is not None else self.since()
+        seconds = None if self.timer is None else self.timer(since)
         return seconds, "" if seconds is None else (
             f"00:{seconds // 60:02d}:{seconds % 60:02d}")
+
+    def health(self):
+        """The character's HP as a fraction: hp(seconds since Challenge, how
+        many reads so far) gives it (None: unreadable)."""
+        self.hp_reads += 1
+        return None if self.hp is None else self.hp(self.since(), self.hp_reads)
 
     def front(self):
         at = self.since()
@@ -239,7 +248,7 @@ class Scene:
         return self.present()
 
 
-def play_run(scene, recorded=None, every=0.05, fake=None, real_count=False):
+def play_run(scene, recorded=None, every=0.05, fake=None, real_count=False, hp_every=0.05):
     fake = fake or FakeInput(layout=LAYOUT, cursor=(3, 3))
     sends = []
 
@@ -257,7 +266,8 @@ def play_run(scene, recorded=None, every=0.05, fake=None, real_count=False):
                 [(rd, "count_run", lambda *a, **k: scene.calls.append("count"))])
     with world({"fire": entry}), \
             patched((dungeon, "_DUNGEON", {**dungeon._DUNGEON, "recorded": {"fire": entry},
-                                           "end_check_every": every}),
+                                           "end_check_every": every,
+                                           "hp_check_every": hp_every}),
                     (dungeon, "run_sequence", scene.sequence),
                     *counting,
                     (dungeon, "exit_dungeon", lambda *a, **k: scene.calls.append("exit")),
@@ -271,6 +281,7 @@ def play_run(scene, recorded=None, every=0.05, fake=None, real_count=False):
                     (rd, "challenge", scene.challenge),
                     (rd, "screen_says", scene.screen),
                     (rd, "read_timer", scene.read_timer),
+                    (rd, "health", scene.health),
                     (rd, "game_in_front", scene.front),
                     (rd, "game_present", scene.present),
                     (dungeon, "focus_game", scene.refocus),
@@ -425,6 +436,8 @@ class Rotation:
         self.ran.append(name)
         self.counts[name] = self.counts.get(name, 0) + 1
         result = self.outcomes.get(name, "cleared")
+        if isinstance(result, list):
+            result = result.pop(0) if result else "cleared"
         if isinstance(result, Exception):
             raise result
         return result
@@ -508,6 +521,33 @@ check(first == (False, None) and not rot.ran and out.getvalue().count("a is brok
       f"all_refused_goes_back_to_trading: no runs, each reason once, got {first} "
       f"{out.getvalue()!r}")
 check(second == (False, None), "all_refused_goes_back_to_trading: and stays quiet after")
+
+LONG = {"a": {**ROT["a"], "daily_limit": 10, "cooldown": 0}, "b": ROT["b"]}
+rot = Rotation(outcomes={"a": "low_hp"})
+(acted, due), said, off = rotate(both, rot, dungeons=LONG)
+check(rot.ran.count("a") == 3 and "a" in off and rot.ran.count("b") == 3,
+      f"fail_streak_turns_one_off: 3 runs in a row that don't clear turn a off, b "
+      f"carries on, got {rot.ran} {off}")
+check("3 runs in a row" in said, f"fail_streak_turns_one_off: the log says why, got {said!r}")
+
+rot = Rotation(outcomes={"a": ["timeout", "low_hp", "cleared", "timeout", "defeated",
+                               "cleared", "timeout", "cleared", "cleared", "cleared"]})
+(acted, due), said, off = rotate(both, rot, dungeons=LONG)
+check(rot.ran.count("a") == 10 and "a" not in off,
+      f"fail_streak_resets_on_a_clear: a clear in between keeps a on, got {rot.ran} {off}")
+
+rested = {}
+rot = Rotation(outcomes={"a": ["timeout", "timeout"]})
+rotate({"a": {"enabled": True, "daily_limit": 2}}, rot, rested=rested, dungeons=LONG)
+rot.counts = {}
+rot.outcomes = {"a": ["timeout"]}
+(acted, due), said, off = rotate({"a": {"enabled": True, "daily_limit": 3}}, rot,
+                                 rested=rested, dungeons=LONG)
+check(rot.ran == ["a", "a", "a"] and "a" in off,
+      f"fail_streak_carries_between_turns: the streak is kept in rested, got {rot.ran} "
+      f"{off}")
+
+
 
 calls = []
 rot = Rotation()
@@ -653,8 +693,216 @@ check(rot.ran == ["a"] and result == (None, None) and "GameLost" in said,
 
 with world({"fire": dict(RECORDED["fire"])},
            {"fire": {k: v for k, v in DUNGEONS["fire"].items() if k != "daily_limit"}}):
-    said = rd.problem("fire") or ""
-check("daily_limit" in said, f"a recorded dungeon needs a daily limit, got {said!r}")
+    said = rd.problem("fire")
+check(said is None, f"no daily_limit is fine: the game's entries-left count says when "
+                    f"a dungeon is done, got {said!r}")
+
+# ===== a long dungeon name cut short at the edge of the list's read =====
+
+IC = "Illusion Castle Radiant Hall(Apocrypha)"
+for row, want in [("Illusion Castle Radiant Hall(Apocr", True),
+                  ("Illusion Castle Radiant Hall(Apocrypha)(26/30)[New", True),
+                  ("Illusion Castle Radiant Hall (Apoc)", True),
+                  ("Illusion Castle Radiant Hall(30/30)[New Entry]", False),
+                  ("Illusion Castle Radiant Hall(Ap", False),
+                  ("Illusion Castle Underworld(Apocr", False),
+                  ("Illusion Castle Radiant Hall(Apocx", False)]:
+    check(dungeon.names(row, IC) is want,
+          f"names: {row!r} {'is' if want else 'is not'} {IC!r}")
+for row, name, want in [("Steamer Crazy (Awakened)(30/30)L", "Steamer Crazy (Awakened)", True),
+                        ("Steamer Crazy (Normal)(10/10)", "Steamer Crazy (Awakened)", False),
+                        ("Steamer Crazy (Aw", "Steamer Crazy (Awakened)", False),
+                        ("Edge of Phantom(8/30)", "Edge of Phantom", True),
+                        ("Edge of Phan", "Edge of Phantom", True),
+                        ("Edge of Phantoms", "Edge of Phantom", False)]:
+    check(dungeon.names(row, name) is want,
+          f"names: {row!r} {'is' if want else 'is not'} {name!r}")
+
+# ======== the game's own count of entries left decides the day ========
+
+for row, want in [("Panic Cave (Awakened)(15/30)[New", (15, 30)),
+                  ("Hazardous Valley (Awakened)(29/3)", (29, 3)),
+                  ("Steamer Crazy (Awakened)(0/30)L", (0, 30)),
+                  ("Edge of Phantom(8/30)[New Entry]", (8, 30)),
+                  ("Panic Cave (Awakened)( 7 / 30)", (7, 30)),
+                  ("(Elite)Panic Cave (Premium)(5/", (5, None)),
+                  ("Panic Cave (Awakened)", None), ("", None)]:
+    got = dungeon.entries_left(row)
+    check(got == want, f"entries_left: {row!r} is {want}, got {got!r}")
+
+ROW = 3
+
+
+def open_key(rows_seen):
+    """open_dungeon_key with the list already up; each read shows the next
+    rows (the dungeon's row is ROW). Selecting the row stops it."""
+    class Selected(Exception):
+        pass
+    seen, pressed = list(rows_seen), []
+
+    def find(name, timeout):
+        rows = seen.pop(0) if len(seen) > 1 else seen[0]
+        return dungeon.LEVEL_WINDOWS[ROW], rows
+
+    def selected(*a, **k):
+        raise Selected()
+
+    with patched((dungeon, "_state", lambda: {"entry": {"tab": 3, "slot": [1, 1],
+                                                         "point": [1, 1]}}),
+                 (dungeon, "focus_game", lambda: True),
+                 (dungeon, "find_in_list", find),
+                 (dungeon, "press_button", lambda key, *a, **k: pressed.append(key)),
+                 (dungeon, "click", selected),
+                 (dungeon.ctypes.windll.user32, "SetCursorPos", lambda *a: 1)),             contextlib.redirect_stdout(io.StringIO()) as out:
+        try:
+            dungeon.open_dungeon_key("fire", "Fire")
+            result = "went on"
+        except Selected:
+            result = "selected"
+        except BaseException as exc:
+            result = exc
+    return result, pressed, out.getvalue()
+
+
+def rows_with(text):
+    rows = [""] * len(dungeon.LEVEL_WINDOWS)
+    rows[ROW] = text
+    return rows
+
+
+FIRE = {**dungeon.DUNGEONS, "fire": {**dungeon.DUNGEONS["fire"],
+                                     "locations": {"Fire": {"entry": [1, 1],
+                                                            "name": "Lava Hellfire"}}}}
+with patched((dungeon, "DUNGEONS", FIRE)):
+    result, pressed, said = open_key([rows_with("Lava Hellfire(0/30)[New Entry]")])
+    check(isinstance(result, dungeon.NoEntriesLeft) and pressed == ["list_close"],
+          f"no_entries_left: 0 left closes the list, selects nothing, got {result!r} "
+          f"{pressed}")
+    result, pressed, said = open_key([rows_with("Lava Hellfire(0/30)[New Entry]"),
+                                      rows_with("Lava Hellfire(10/30)[New Entry]")])
+    check(result == "selected" and pressed == [],
+          f"no_entries_left: a 0 the second read doesn't agree with is not taken, got "
+          f"{result!r} {pressed}")
+    result, pressed, said = open_key([rows_with("Lava Hellfire(12/30)[New Entry]")])
+    check(result == "selected" and "12 of 30 entries left" in said,
+          f"entries left: some left goes on and says how many, got {result!r} {said!r}")
+    result, pressed, said = open_key([rows_with("Lava Hellfire[New Entry]")])
+    check(result == "selected", f"an unreadable count goes on, got {result!r}")
+
+TODAY = "2026-10-21"
+store = {}
+with patched((dungeon, "_state", lambda: dict(store)),
+             (dungeon, "_save", lambda state: store.update(state)),
+             (dungeon, "server_day", lambda: TODAY)):
+    r = play_run(Scene(banner_at=30, during={("get_entry", "open_dungeon_key"): lambda: (
+        _ for _ in ()).throw(dungeon.NoEntriesLeft("Lava Hellfire has 0 of 30 left"))}))
+check(r.result == "no_entries_left" and "challenge" not in r.calls and not r.run_keys
+      and not r.exit_keys,
+      f"no_entries_left run: nothing more is done, got {r.result!r} {r.calls}")
+check(store.get("recorded_spent", {}).get("fire") == TODAY,
+      f"no_entries_left run: fire is done for the dungeon day, got {store}")
+
+
+class SpendingRotation(Rotation):
+    """Each dungeon has `left` entries; at 0 a run reports no entries left and
+    marks the dungeon done for the day, as run() does."""
+
+    def __init__(self, left, **kw):
+        super().__init__(**kw)
+        self.left = dict(left)
+
+    def run(self, name, verbose=True):
+        if self.left.get(name, 0) <= 0:
+            if len(self.ran) >= 40:
+                raise Runaway(f"still running after {self.ran}")
+            self.ran.append(name)
+            spent = dict(self.state.get("recorded_spent", {}), **{name: TODAY})
+            self.state = dict(self.state, recorded_spent=spent)
+            return "no_entries_left"
+        self.left[name] -= 1
+        return super().run(name, verbose)
+
+
+NOLIMIT = {"a": {**ROT["a"], "cooldown": 0}, "b": {**ROT["b"]}}
+for d in NOLIMIT.values():
+    d.pop("daily_limit")
+rot = SpendingRotation({"a": 2, "b": 4})
+with patched((dungeon, "server_day", lambda: TODAY)):
+    (acted, due), said, off = rotate(both, rot, dungeons=NOLIMIT)
+check(rot.ran == ["a", "b", "a", "b", "a", "b", "b", "b"] and not off,
+      f"the game's count ends each dungeon's day (no daily_limit), got {rot.ran} {off}")
+check(due is not None and due > time.monotonic() + 3600,
+      f"and then back to trading until the next day, got {due}")
+check("didn't clear" not in said, "no entries left is not a failed run")
+
+rot = SpendingRotation({"a": 5, "b": 5})
+rot.state = {"recorded_spent": {"a": TODAY}}
+with patched((dungeon, "server_day", lambda: TODAY)):
+    rotate(both, rot, dungeons=NOLIMIT)
+check("a" not in rot.ran[:5], f"a dungeon done today is skipped, got {rot.ran}")
+rot = SpendingRotation({"a": 1, "b": 0})
+rot.state = {"recorded_spent": {"a": "2026-10-20"}}
+with patched((dungeon, "server_day", lambda: TODAY)):
+    rotate(both, rot, dungeons=NOLIMIT)
+check(rot.ran[0] == "a", f"done on an earlier day is open again, got {rot.ran}")
+
+turned, slept = [], []
+done = {"a": False}
+answers = [(True, time.monotonic() + 60.0), (True, time.monotonic() + 86000.0)]
+
+
+def fake_turn(off, rested, verbose=True, between=None):
+    turned.append(set(off))
+    if len(turned) == 2:
+        done["a"] = True
+    return answers[len(turned) - 1]
+
+
+out = io.StringIO()
+with patched((rd, "turn", fake_turn), (rd, "enabled", lambda: ["a"]),
+             (rd, "done_today", lambda name: done[name]),
+             (dungeon, "wait_timer", lambda seconds, verbose=True: slept.append(seconds))),         contextlib.redirect_stdout(out):
+    dungeon.command(["recorded", "all"])
+check(len(turned) == 2 and len(slept) == 1 and 55 < slept[0] <= 60,
+      f"recorded_all: waits for a dungeon that opens later, then goes on until every "
+      f"enabled one is done for the day; got turns {turned}, waits {slept}")
+check("done for the day" in out.getvalue(),
+      f"recorded_all: says how it ended, got {out.getvalue()!r}")
+
+turned.clear()
+with patched((rd, "turn", lambda *a, **k: turned.append(1) or (False, None)),
+             (rd, "enabled", lambda: ["a"]), (rd, "done_today", lambda name: False)),         contextlib.redirect_stdout(io.StringIO()):
+    dungeon.command(["recorded", "all"])
+check(turned == [1], f"recorded_all: no clock answer (no next time) ends it, got {turned}")
+
+turned.clear()
+out = io.StringIO()
+with patched((rd, "turn", lambda off, rested, verbose=True, between=None:
+              turned.append(set(off)) or (True, time.monotonic() + 86000.0)),
+             (rd, "enabled", lambda: ["a", "b"]), (rd, "done_today", lambda name: True)),         contextlib.redirect_stdout(out):
+    dungeon.command([])
+check(turned == [set()] and "done for the day" in out.getvalue(),
+      f"no command: runs the profile's enabled recorded dungeons in turns, as recorded "
+      f"all does, got {turned} {out.getvalue()!r}")
+
+with patched((rd, "enabled", lambda: [])), contextlib.redirect_stdout(io.StringIO()):
+    try:
+        dungeon.command([])
+        said = ""
+    except SystemExit as exc:
+        said = str(exc)
+check("no recorded dungeon is enabled" in said,
+      f"no command and nothing enabled: says so instead of running, got {said!r}")
+
+with world({"a": {"enabled": True}, "b": {"enabled": True, "daily_limit": 2}}, ROT),         patched((dungeon, "_state", lambda: {"recorded_spent": {"a": TODAY}}),
+                (dungeon, "server_day", lambda: TODAY),
+                (dungeon, "runs_today", lambda name: 2)):
+    check(rd.done_today("a") and rd.done_today("b"),
+          "done_today: no entries left, or the bot's own count at a daily_limit")
+with world({"a": {"enabled": True}}, NOLIMIT),         patched((dungeon, "_state", lambda: {}), (dungeon, "server_day", lambda: TODAY),
+                (dungeon, "runs_today", lambda name: 50)):
+    check(not rd.done_today("a"), "done_today: without a daily_limit, only the game's "
+                                  "count ends the day")
 
 no_entry = {**DUNGEONS, "fire": {**DUNGEONS["fire"],
                                  "locations": {"Fire": {"name": "Lava Hellfire"}}}}
@@ -842,6 +1090,22 @@ calibration.STOPPED.clear()
 check(isinstance(r.result, KeyboardInterrupt) and not r.run_keys,
       f"ctrl_stop_waiting_for_timer: stops before any replay, got {r.result!r}")
 
+pictured = SEQ / "fire" / "pictured.jsonl"
+picture_head = dict(walk_events[0], start_shot="pictured_start.png")
+pictured.write_text("\n".join(json.dumps(x) for x in [picture_head] + walk_events[1])
+                    + "\n", encoding="utf-8")
+from PIL import Image as _Image
+_Image.new("RGB", (1920, 1080)).save(SEQ / "fire" / "pictured_start.png")
+r = play_run(Scene(banner_at=RUN_LENGTH + 0.5,
+                   timer=lambda since: 298 if since is None else 0),
+             {"recording": "pictured.jsonl"})
+first_w = min((t for t, item in r.sends if item.type == ra.W["INPUT_KEYBOARD"]
+               and item.u.ki.wScan == W_SCAN), default=float("inf"))
+check(r.result == "cleared" and abs(first_w - (r.t0 + walk_events[1][0]["t"])) < 0.05,
+      f"no start_timer: the replay starts right at the Challenge click, even with a "
+      f"start picture showing a timer; got {r.result!r}, first W "
+      f"{first_w - r.t0:.3f}s after Challenge")
+
 r = play_run(Scene(banner_at=RUN_LENGTH + 0.5, timer=lambda since: 0),
              {"recording": "with_challenge.jsonl", "start_timer": "00:04:58"})
 first_w = min((t for t, item in r.sends if item.type == ra.W["INPUT_KEYBOARD"]
@@ -850,6 +1114,40 @@ check(r.result == "cleared"
       and abs(first_w - (r.t0 + 3.0 + walk_events[1][0]["t"] - 2.9)) < 0.05,
       f"a recording with its own Challenge click lines up on it, not the timer; "
       f"{r.result!r}")
+
+# ============ watching HP: leaving before the character dies ============
+
+for text, want in [("11223/11223", 1.0), ("5000/10000", 0.5), ("0/11223", 0.0),
+                   ("11 223/11223", 1.0), ("12000/11223", None), ("abc", None),
+                   ("", None), ("11223/0", None)]:
+    got = rd.hp_fraction(text)
+    check(got == want, f"hp_fraction: {text!r} is {want}, got {got!r}")
+
+r = play_run(Scene(banner_at=30, hp=lambda since, n: 1.0 if since < 0.4 else 0.2),
+             {"timeout_seconds": 20})
+check(r.result == "low_hp", f"low_hp: HP under the line ends the run, got {r.result!r}")
+check(r.calls[-1] == BEFORE and "exit" not in r.calls and len(r.exit_keys) == 2 * 2,
+      f"low_hp: BM cancel, then the manual exit (no claim); got {r.calls}")
+check(len(r.run_keys) < 2 * 5, f"low_hp: the replay is cut short, got {len(r.run_keys)}")
+check(not r.fake.game.keys and not r.fake.game.buttons, "low_hp: nothing held")
+check("HP" in r.said, f"low_hp: the log says why, got {r.said!r}")
+
+r = play_run(Scene(banner_at=RUN_LENGTH + 0.3, hp=lambda since, n: 0.1 if n == 3 else 0.9))
+check(r.result == "cleared", f"one low HP read is checked again before leaving, got "
+                             f"{r.result!r}")
+
+r = play_run(Scene(banner_at=RUN_LENGTH + 0.3, hp=lambda since, n: None))
+check(r.result == "cleared", f"unreadable HP doesn't end the run, got {r.result!r}")
+
+r = play_run(Scene(banner_at=RUN_LENGTH + 0.3, hp=lambda since, n: 0.5))
+check(r.result == "cleared", f"HP above the line doesn't end the run, got {r.result!r}")
+
+scene = Scene(banner_at=RUN_LENGTH + 0.3, hp=lambda since, n: 1.0)
+r = play_run(scene, hp_every=0.4)
+want = (RUN_LENGTH + 0.3) / 0.4
+check(abs(scene.hp_reads - want) <= 2,
+      f"hp_check_every: HP is read that often, got {scene.hp_reads} reads, wanted "
+      f"about {want:.0f}")
 
 # ================= leaving by the dungeon's manual exit =================
 
@@ -910,14 +1208,15 @@ try:
 except SystemExit as exc:
     usage = str(exc)
 check("recorded DUNGEON" in usage, f"the help names the recorded command, got {usage!r}")
+check("recorded all" in usage, f"the help names recorded all, got {usage!r}")
 
 for profile in ("cang", "trung", "bot"):
     entry = json.loads((SRC / "configs" / f"{profile}.json").read_text(encoding="utf-8"))[
         "dungeon"]["recorded"]["fire"]
-    check(entry.get("enabled") is False
+    check(entry.get("enabled") is (profile == "cang")
           and entry.get("recording") == f"{profile}_fire_run.jsonl"
           and entry.get("timeout_seconds") == 300 and "exit_recording" not in entry,
-          f"{profile} lists fire as a recorded dungeon, off for now; it "
+          f"{profile} lists fire as a recorded dungeon, on only for cang; it "
           f"leaves by the dungeon's manual exit, so there is no exit recording, got {entry}")
 
 for profile in ("cang", "trung", "bot"):

@@ -517,6 +517,9 @@
     "end_check_every": 0.5,
     "timer_window": [850, 126, 1082, 178],
     "timer_timeout": 30,
+    "hp_window": [80, 28, 290, 46],
+    "hp_check_every": 2.0,
+    "hp_leave_below": 0.35,
     "walk_frames": {"get_to_gate": 1.0},
     "trade_tabs": [
       {"window": [68, 69, 137, 89], "word": "Purchase"},
@@ -647,6 +650,7 @@
       "confirmation": {"window": [924, 313, 1058, 334], "word": "Confirmation"},
       "roll_dice": {"window": [395, 709, 464, 724], "word": "Roll a Dice"},
       "final_exit": {"window": [322, 709, 352, 724], "word": "Exit"},
+      "list_close": {"window": [1366, 884, 1416, 900], "word": "Close"},
       "warp_yes": {"window": [944, 601, 982, 620], "word": "Yes"},
       "leave": {"window": [845, 805, 895, 826], "word": "Leave"},
       "fire_leave": {"window": [312, 805, 362, 826], "word": "Leave"},

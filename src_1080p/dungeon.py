@@ -73,6 +73,7 @@ ENTER_WINDOW = tuple(_DUNGEON["enter_window"])
 CHALLENGE_WINDOW = tuple(_DUNGEON["challenge_window"])
 EXIT_WINDOW = tuple(_DUNGEON["exit_window"])
 LEVEL_TEXT = re.compile(_DUNGEON["level_pattern"], re.IGNORECASE)
+ENTRIES = re.compile(r"\(\s*(\d+)\s*/\s*(\d*)")
 ENTER_WORD = _DUNGEON["enter_word"]
 CHALLENGE_WORD = _DUNGEON["challenge_word"]
 EXIT_WORD = _DUNGEON["exit_word"]
@@ -456,10 +457,32 @@ def forget_entry():
 
 
 def names(text, name):
-    words = r"\W*".join(re.escape(word)
-                        for word in re.findall(r"[0-9A-Za-z]+", name))
-    return re.search(words + r"(?![0-9A-Za-z])", text,
-                     re.IGNORECASE) is not None
+    """The list row text is the dungeon name. A long name runs past the read
+    window's edge, so a row that ends inside the name's last word still
+    counts when at least 3 of that word's letters show."""
+    words = re.findall(r"[0-9A-Za-z]+", name)
+    full = r"\W*".join(re.escape(word) for word in words)
+    if re.search(full + r"(?![0-9A-Za-z])", text, re.IGNORECASE):
+        return True
+    if len(words) < 2:
+        return False
+    head = r"\W*".join(re.escape(word) for word in words[:-1])
+    cut = re.search(head + r"\W*([0-9A-Za-z]{3,})\W*$", text, re.IGNORECASE)
+    return cut is not None and words[-1].lower().startswith(cut.group(1).lower())
+
+
+class NoEntriesLeft(RuntimeError):
+    """The dungeon list says the dungeon has no entries left today."""
+
+
+def entries_left(seen):
+    """A dungeon list row's "(15/30)": (entries left today, the most a day),
+    the most None when the row is cut short; None without a count."""
+    found = ENTRIES.findall(seen or "")
+    if not found:
+        return None
+    left, most = found[-1]
+    return int(left), int(most) if most else None
 
 
 def find_in_list(name, timeout):
@@ -540,6 +563,19 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
     if verbose:
         print(f"  with the cursor on tab II {list(TAB_TWO)} the dungeon list "
               f"reads {reads}")
+    left = entries_left(reads[LEVEL_WINDOWS.index(box)])
+    if left is not None and left[0] == 0:
+        again, reads = find_in_list(name, 0)
+        left = entries_left(reads[LEVEL_WINDOWS.index(again)]) if again else left
+    if left is not None:
+        most = "" if left[1] is None else f" of {left[1]}"
+        if verbose:
+            print(f"  {name}: {left[0]}{most} entries left today")
+        if left[0] == 0:
+            press_button("list_close", 0.0, verbose)
+            raise NoEntriesLeft(f"{name} has 0{most} entries left today; the list is "
+                                f"closed and nothing was selected")
+    if verbose:
         print(f"  {location} {name!r} at {point}")
     click(*point, 0.0)
     level = DUNGEONS[dungeon_name].get("difficulty")
@@ -1859,8 +1895,39 @@ def _calibrate_list(rows, verbose=True):
     return levels
 
 
+def recorded_all():
+    """The profile's enabled recorded dungeons taking turns, one run each, as
+    the trading run does between trades, until each is done for the day (the
+    game's list shows no entries left) or off. Waits through the hours a
+    dungeon isn't open yet."""
+    import recorded_dungeon
+    if not recorded_dungeon.enabled():
+        raise SystemExit("no recorded dungeon is enabled in this profile's "
+                         "dungeon.recorded; nothing to run")
+    off, rested = set(), {}
+    while True:
+        acted, due = recorded_dungeon.turn(off, rested, True)
+        left = [name for name in recorded_dungeon.enabled() if name not in off
+                and not recorded_dungeon.done_today(name)]
+        if not left:
+            print("  recorded all: every enabled dungeon is done for the day "
+                  "(no entries left) or off")
+            return
+        if due is None:
+            print(f"  recorded all: {', '.join(left)} can't run now (the online "
+                  f"clock is not answering); stopping")
+            return
+        wait = max(0.0, due - time.monotonic())
+        print(f"  recorded all: {', '.join(left)} not open yet; waiting "
+              f"{wait / 60:.0f} min")
+        wait_timer(wait, False)
+
+
 def command(args):
-    if args[:1] == ["calibrate"]:
+    if not args:
+        # No command: the profile's enabled recorded dungeons, in turns.
+        recorded_all()
+    elif args[:1] == ["calibrate"]:
         calibrate()
     elif args[:1] == ["enter"] and len(args) > 1:
         enter_dungeon(int(args[1]))
@@ -1879,6 +1946,8 @@ def command(args):
         play(args[1], args[2])
     elif args[:1] == ["replay"]:
         replay_recording(args[1] if len(args) > 1 else None, _runs_given())
+    elif args[:2] == ["recorded", "all"]:
+        recorded_all()
     elif args[:1] == ["recorded"] and len(args) > 1:
         # One recorded run of dungeon.recorded.<NAME> from the config. Record
         # the run with tools/record_all.py: click Challenge, Ctrl twice, play
@@ -1920,7 +1989,7 @@ def command(args):
                          f"run N, buy N, get_entry X Y, "
                          f"open_dungeon_key DUNGEON LOCATION, start_dungeon, "
                          f"play DUNGEON SEQUENCE, replay [FILE], "
-                         f"recorded DUNGEON, "
+                         f"recorded DUNGEON, recorded all, "
                          f"kill DUNGEON NAME, bm_aura, "
                          f"kill_bm DUNGEON NAME, "
                          f"enter N, arrive, "

@@ -27,6 +27,7 @@ OVERRIDES = ("daily_limit", "start_at", "cooldown", "end_wait", "before_exit", "
              "after_exit")
 JOIN_SLICE = 0.1
 TIMER = re.compile(r"(\d{2})\D(\d{2})\D(\d{2})")
+HP = re.compile(r"(\d+)/(\d+)")
 TIMER_SLICE = 0.02
 
 
@@ -75,9 +76,6 @@ def problem(name):
     if place.get("start_timer") is not None and not timer_seconds(str(place["start_timer"])):
         return (f"{name}: its start_timer {place['start_timer']!r} is not a timer "
                 f"reading like \"00:04:58\"")
-    if place.get("daily_limit") is None:
-        return (f"{name} has no daily_limit; without one its recorded runs would go "
-                f"on back to back and trading would never resume")
     path = find(name, place.get("recording"))
     if path is None:
         return (f"{name}: no recording {place.get('recording')!r} in "
@@ -191,17 +189,11 @@ def read_timer(image=None):
 
 
 def start_timer(place, head, base):
-    """The timer reading the recording starts at: the recorded entry's
-    start_timer, or what the timer shows in the recording's start picture.
-    None when neither gives one."""
+    """The timer reading to wait for before the replay: the recorded entry's
+    start_timer, or None (no start_timer: the replay starts right at the
+    Challenge click)."""
     if place.get("start_timer") is not None:
         return timer_seconds(str(place["start_timer"]))
-    shot = head.get("start_shot")
-    if shot and (Path(base) / shot).exists():
-        from PIL import Image
-        with Image.open(Path(base) / shot) as image:
-            seconds, _text = read_timer(image.convert("RGB"))
-        return seconds or None
     return None
 
 
@@ -241,6 +233,39 @@ def clock_text(seconds):
     return f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
 
 
+def hp_fraction(text):
+    """The HP bar's "11223/11223" as a fraction, or None when it isn't one."""
+    found = HP.search((text or "").replace(" ", ""))
+    if not found:
+        return None
+    now, most = (int(part) for part in found.groups())
+    if most <= 0 or now > most:
+        return None
+    return now / most
+
+
+def health():
+    """The character's HP as a fraction (None when unreadable). Each read is
+    kept as a debug frame named for the HP and the dungeon timer, so a run
+    can be compared with its recording afterwards."""
+    image = calibration.grab()
+    text = dungeon.read_windows(image, [tuple(dungeon._DUNGEON["hp_window"])])[0]
+    fraction = hp_fraction(text)
+    _seconds, timer = read_timer(image)
+    calibration.snap(f"replay_hp{'_' if fraction is None else round(fraction * 100)}"
+                     f"_timer{timer}", image)
+    return fraction
+
+
+def hp_low(line):
+    """HP under line, read twice so one misread doesn't end a run."""
+    first = health()
+    if first is None or first >= line:
+        return False
+    again = health()
+    return again is not None and again < line
+
+
 def screen_says():
     image = calibration.grab()
     defeat, banner = dungeon.read_windows(
@@ -271,7 +296,12 @@ def game_present():
 def watch(stop, outcome, deadline, every, read=True):
     """Checks the game (and, with read, the end screen) every `every`
     seconds until something ends the run; says what in outcome["end"], then
-    sets stop. A banner up at the deadline still counts as the end screen."""
+    sets stop. A banner up at the deadline still counts as the end screen.
+    With read, HP is checked every hp_check_every seconds too: under
+    hp_leave_below the run ends as "low_hp", before the character dies."""
+    hp_every = float(dungeon._DUNGEON.get("hp_check_every", 2.0))
+    hp_line = float(dungeon._DUNGEON.get("hp_leave_below", 0.35))
+    next_hp = time.monotonic()
     try:
         while not stop.is_set():
             if calibration.STOPPED.is_set():
@@ -282,6 +312,10 @@ def watch(stop, outcome, deadline, every, read=True):
                 outcome["end"] = "lost_focus"
             else:
                 outcome["end"] = screen_says() if read else None
+                if read and not outcome["end"] and time.monotonic() >= next_hp:
+                    next_hp = time.monotonic() + hp_every
+                    if hp_low(hp_line):
+                        outcome["end"] = "low_hp"
                 if not outcome["end"] and time.monotonic() >= deadline:
                     outcome["end"] = "timeout"
             if outcome["end"]:
@@ -426,8 +460,14 @@ def run(name, verbose=True):
             print(f"  {name}: the recording began after Challenge; the replay starts "
                   f"{delay:g}s after the Challenge click")
         recording = ({**head, "cursor": cursor}, events, base)
-        dungeon.run_sequence(name, location, {}, verbose,
-                             ["get_entry", "open_dungeon_key"], False)
+        try:
+            dungeon.run_sequence(name, location, {}, verbose,
+                                 ["get_entry", "open_dungeon_key"], False)
+        except dungeon.NoEntriesLeft as exc:
+            spend(name)
+            print(f"  {name}: {exc}; it is done until the next reset")
+            result = "no_entries_left"
+            return result
         calibration.halt_if_stopped()
         day = dungeon.day_of(dungeon.internet_now())
         clicked = challenge(verbose)
@@ -483,6 +523,10 @@ def run(name, verbose=True):
         if verbose:
             print(f"  {name}: {end} {time.monotonic() - clicked:.1f}s after "
                   f"{dungeon.CHALLENGE_WORD}")
+        if end == "low_hp":
+            print(f"  {name}: HP fell under "
+                  f"{float(dungeon._DUNGEON.get('hp_leave_below', 0.35)):.0%}; the replay "
+                  f"stopped there and the run leaves before the character dies")
         if end == "lost_focus":
             if not dungeon.focus_game():
                 inside = False
@@ -575,12 +619,38 @@ def pick(open_names, order, last):
     return None
 
 
+def spend(name):
+    """Notes that the game's dungeon list showed name with no entries left on
+    this dungeon day."""
+    state = dungeon._state()
+    state["recorded_spent"] = dict(state.get("recorded_spent") or {},
+                                   **{name: dungeon.server_day()})
+    dungeon._save(state)
+
+
+def spent_today(name):
+    day = (dungeon._state().get("recorded_spent") or {}).get(name)
+    return day is not None and day == dungeon.server_day()
+
+
+def done_today(name):
+    """No more runs of name on this dungeon day: the game's list showed no
+    entries left, or (with a daily_limit) the bot's own count reached it."""
+    if spent_today(name):
+        return True
+    limit = settings(name).get("daily_limit")
+    return limit is not None and dungeon.runs_today(name) >= int(limit)
+
+
 def _waiting(name):
     """Seconds until name can run (0 now), or None if the online clock is
-    not answering."""
+    not answering. Done for the day when the game's list showed no entries
+    left, or (with a daily_limit) when the bot's own count reached it."""
     wait = until_open(name)
     if wait is None or wait > 0:
         return wait
+    if spent_today(name):
+        return until_next_day(name)
     limit = settings(name).get("daily_limit")
     if limit is not None and dungeon.runs_today(name) >= int(limit):
         return until_next_day(name)
@@ -626,6 +696,14 @@ def turn(off, rested, verbose=True, between=None):
             outcome = run(name, verbose)
             if verbose:
                 print(f"  dungeon: recorded {name} ended: {outcome}")
+            streak = rested.setdefault("streak", {})
+            if outcome != "no_entries_left":
+                streak[name] = 0 if outcome == "cleared" else streak.get(name, 0) + 1
+            most = int(dungeon._DUNGEON.get("recorded_fail_streak", 3))
+            if streak.get(name, 0) >= most:
+                off.add(name)
+                print(f"  dungeon: recorded {name} didn't clear {streak[name]} runs in a "
+                      f"row; it is off for this trading run, the others carry on")
         except (KeyboardInterrupt, GameLost):
             raise
         except Exception as exc:
