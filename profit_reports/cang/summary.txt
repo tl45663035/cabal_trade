@@ -30,12 +30,12 @@ Thu 2026-10-15            16.09h   24.00h  138.17M    8.59M    5.68B   5.55B   9
 Fri 2026-10-16            16.40h   24.00h  119.79M    7.30M    5.38B   5.26B   9.26K    2.2%
 Sat 2026-10-17             8.80h   24.00h   48.93M    5.56M    2.09B   2.04B   2.55K    2.3%
 Sun 2026-10-18            19.14h   24.00h  134.71M    7.04M    6.68B   6.55B  10.83K    2.0%
-Mon 2026-10-19 (so far)   10.59h   19.68h   55.36M    5.23M    4.52B   4.47B   7.96K    1.2%
+Mon 2026-10-19 (so far)   10.85h   19.94h   55.36M    5.10M    4.52B   4.47B   7.96K    1.2%
 ============================================================================================
-7 DAYS                   106.78h  163.68h  728.49M    6.82M   38.78B  38.05B  62.33K    1.9%
+7 DAYS                   107.04h  163.94h  728.49M    6.81M   38.78B  38.05B  62.33K    1.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-19 00:00 Central (as of 19:41 Central)
+PROFIT SUMMARY -- sold since 2026-10-19 00:00 Central (as of 19:56 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
@@ -60,26 +60,26 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-19_190501_run_board.log, board during pass 15 at row 1, read 2026-10-19T19:40:51 (live)
+ROWS -- 2026-10-19_190501_run_board.log, board during pass 22 at row 1, read 2026-10-19T19:56:18 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Astral Board Card - Zero Black          x1         -    18.45M         -    18.45M         -         - <- here
-    2  Upgrade Core (Ultimate                x250   310.31K   318.50K    +8.20K   318.50K    77.58M     2.05M
-    3  Upgrade Core (Ultimate                 x60   310.31K   318.50K    +8.19K   318.50K    18.62M   491.64K
-    4  Upgrade Core (Ultimate                 x13   310.31K   318.50K    +8.19K   318.50K     4.03M   106.51K
+    1  Astral Board Card - Zero Black          x1         -    18.37M         -    18.37M         -         - <- here
+    2  Upgrade Core (Ultimate                x250   310.31K   318.48K    +8.17K   318.48K    77.58M     2.04M
+    3  Upgrade Core (Ultimate                 x60   310.31K   318.48K    +8.17K   318.48K    18.62M   490.02K
+    4  Upgrade Core (Ultimate                 x13   310.31K   318.48K    +8.17K   318.48K     4.03M   106.16K
     5  Force Core(Highest                     x68   339.62K   339.62K        +0   339.62K    23.09M         0
     6  Force Core(Highest                     x36   339.62K   339.62K        +0   339.62K    12.23M         0
-    7  Force Core(High                       x193   253.58K   279.95K   +26.37K   279.95K    48.94M     5.09M
-    8  Force Core(High                       x200   260.00K   279.95K   +19.95K   279.95K    52.00M     3.99M
-    9  Force Core(High                       x213   260.01K   279.94K   +19.93K   279.94K    55.38M     4.25M
-    balance now 35.52M, read 2026-10-19T19:40:51
-       stock at its listed price                                                                      326.29M
+    7  Force Core(High                       x193   253.58K   253.58K        +0   253.58K    48.94M         0
+    8  Force Core(High                       x200   260.00K   260.00K        +0   260.00K    52.00M         0
+    9  Force Core(High                       x213   260.01K   260.01K        +0   260.01K    55.38M         0
+    balance now 35.52M, read 2026-10-19T19:56:00
+       stock at its listed price                                                                      312.88M
        Alz, latest balance line                                                                        35.52M
        Cash at the voucher price                                                                       77.80M
        gems at the voucher price                                                                       13.62M
-       NET WORTH                                                                                      453.22M
+       NET WORTH                                                                                      439.81M
 
 
-MARKET -- 2026-10-19_190501_run.log, pass 2, log last written 19:40 Central (live); pass 15 is under way and has not priced the cores yet, so this is the last table it printed
+MARKET -- 2026-10-19_190501_run.log, pass 2, log last written 19:56 Central (live); pass 22 is under way and has not priced the cores yet, so this is the last table it printed
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
