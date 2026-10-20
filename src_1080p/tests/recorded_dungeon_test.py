@@ -648,6 +648,12 @@ with world({"fire": dict(RECORDED["fire"])},
     said = rd.problem("fire") or ""
 check("daily_limit" in said, f"a recorded dungeon needs a daily limit, got {said!r}")
 
+no_entry = {**DUNGEONS, "fire": {**DUNGEONS["fire"],
+                                 "locations": {"Fire": {"name": "Lava Hellfire"}}}}
+with world(None, no_entry):
+    said = rd.problem("fire") or ""
+check("entry" in said, f"a dungeon whose entry isn't known yet is refused, got {said!r}")
+
 # ================= leaving by the dungeon's manual exit =================
 
 with world():

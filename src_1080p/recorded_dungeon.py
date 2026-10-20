@@ -60,6 +60,12 @@ def problem(name):
     if len(place.get("locations") or {}) != 1:
         return (f"{name} has {len(place.get('locations') or {})} locations; a "
                 f"recorded run needs a dungeon with exactly one location")
+    location = next(iter(place["locations"].values()))
+    for need in ("entry", "name"):
+        if not location.get(need):
+            return (f"{name}: its location has no {need!r} yet (the shop entry to "
+                    f"Alt+click, and its name in the dungeon list), so the bot can't "
+                    f"get in")
     if not place.get("timeout_seconds"):
         return f"{name} has no timeout_seconds for its recorded run"
     if place.get("daily_limit") is None:
