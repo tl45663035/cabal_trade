@@ -8,8 +8,10 @@ Challenge click. The dungeon's own settings supply the rest: the entry, the
 key, the difficulty, the daily limit, the start time, the BM cooldown, the
 BM cancel before leaving, and the claim-and-leave buttons."""
 
+import datetime
 import threading
 import time
+import traceback
 from pathlib import Path
 
 import calibration
@@ -184,8 +186,7 @@ def run(name, verbose=True):
         calibration.halt_if_stopped()
         clicked = challenge(verbose)
         inside = True
-        dungeon.count_challenge(name, location, {"started": dungeon.internet_now()},
-                                verbose)
+        count_run(name, verbose)
         every = float(dungeon._DUNGEON.get("end_check_every", 0.5))
         stop, outcome = threading.Event(), {"end": None}
         watcher = threading.Thread(
@@ -240,3 +241,111 @@ def run(name, verbose=True):
         raise
     finally:
         print(f"  RECORDED RUN end {name} ({result})", flush=True)
+
+
+def count_run(name, verbose=True):
+    """Counts a run toward its dungeon's daily limit at the Challenge click,
+    whether the limit comes from the dungeon or only from its recorded entry."""
+    ran = dungeon.count_dungeon(name, dungeon.day_of(dungeon.internet_now()))
+    limit = settings(name).get("daily_limit")
+    if verbose:
+        print(f"  {name}: {ran}" + (f" of {limit}" if limit is not None else "")
+              + " entered on this dungeon day")
+    return ran
+
+
+def _opens_after(name):
+    hours, minutes = (int(part) for part in str(
+        settings(name).get("start_at", dungeon.START_AT)).split(":"))
+    return ((datetime.timedelta(hours=hours, minutes=minutes) - dungeon.RESET_HOUR)
+            % datetime.timedelta(days=1))
+
+
+def until_open(name):
+    since = dungeon.since_reset()
+    if since is None:
+        return None
+    return max(0.0, (_opens_after(name) - since).total_seconds())
+
+
+def until_next_day(name):
+    since = dungeon.since_reset()
+    if since is None:
+        return None
+    return (datetime.timedelta(days=1) - since + _opens_after(name)).total_seconds()
+
+
+def pick(open_names, order, last):
+    """The open dungeon after `last` in `order`, wrapping round."""
+    start = order.index(last) + 1 if last in order else 0
+    for step in range(len(order)):
+        name = order[(start + step) % len(order)]
+        if name in open_names:
+            return name
+    return None
+
+
+def _waiting(name):
+    """Seconds until name can run (0 now), or None if the online clock is
+    not answering."""
+    wait = until_open(name)
+    if wait is None or wait > 0:
+        return wait
+    limit = settings(name).get("daily_limit")
+    if limit is not None and dungeon.runs_today(name) >= int(limit):
+        return until_next_day(name)
+    return 0.0
+
+
+def turn(off, rested, verbose=True, between=None):
+    """Recorded runs back to back, taking turns, while any enabled dungeon is
+    open. off: dungeons turned off for this trading run. rested["at"]: when
+    the last run ended (the BM cooldown counts from it). between: called
+    between runs (the world boss). Returns (acted, monotonic time of the next
+    check, or None)."""
+    acted, order = False, enabled()
+    while True:
+        calibration.halt_if_stopped()
+        for name in order:
+            if name in off:
+                continue
+            trouble = problem(name)
+            if trouble:
+                off.add(name)
+                print(f"  dungeon: {name} is off for this trading run: {trouble}")
+        waits = {name: _waiting(name) for name in order if name not in off}
+        ready = {name for name, wait in waits.items() if wait == 0.0}
+        if not ready:
+            later = [wait for wait in waits.values() if wait]
+            return acted, (time.monotonic() + min(later)) if later else None
+        name = pick(ready, order, dungeon._state().get("recorded_last"))
+        if acted and between is not None:
+            between()
+        if rested.get("at") is not None:
+            left = rested["at"] + float(settings(name).get("cooldown", 0)) - time.monotonic()
+            if left > 0:
+                if verbose:
+                    print(f"  dungeon: {left:.1f}s of BM cooldown before {name}")
+                dungeon.wait_timer(left, False)
+        print(f"  dungeon: recorded {name}, run {dungeon.runs_today(name) + 1}"
+              + (f" of {settings(name)['daily_limit']}"
+                 if settings(name).get("daily_limit") is not None else "")
+              + " this dungeon day")
+        acted = True
+        try:
+            outcome = run(name, verbose)
+            if verbose:
+                print(f"  dungeon: recorded {name} ended: {outcome}")
+        except KeyboardInterrupt:
+            raise
+        except Exception as exc:
+            traceback.print_exc()
+            calibration.snap("recorded_dungeon_failed")
+            off.add(name)
+            print(f"  dungeon: recorded {name} failed ({type(exc).__name__}: {exc}); "
+                  f"it is off for this trading run, the others carry on")
+        finally:
+            rested["at"] = time.monotonic()
+            state = dungeon._state()
+            state["recorded_last"] = name
+            dungeon._save(state)

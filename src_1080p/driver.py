@@ -4598,6 +4598,9 @@ def dungeon_turn(verbose=True, report_wait=True):
     if not dungeon_on() or _DUNGEON["off"]:
         return False
     import dungeon
+    import recorded_dungeon
+    if recorded_dungeon.enabled():
+        return recorded_turn(verbose)
     if dungeon.DUNGEONS[dungeon.TRADING_DUNGEON].get("back_to_back"):
         return back_to_back_turn(dungeon, verbose)
     if _DUNGEON["due"] is None and not _DUNGEON["resume_checked"]:
@@ -4659,6 +4662,26 @@ def dungeon_turn(verbose=True, report_wait=True):
             return True
         print(f"  dungeon: level {level} ended before its wait; on to the "
               f"next one")
+
+
+def recorded_turn(verbose=True):
+    """The profile's recorded dungeons, taking turns (recorded_dungeon.turn);
+    trading carries on between their start times and after their limits."""
+    import recorded_dungeon
+    off = _DUNGEON.setdefault("recorded_off", set())
+    rested = _DUNGEON.setdefault("recorded_rested", {})
+
+    def between():
+        if world_boss_turn(verbose=verbose):
+            calibration.close_everything(verbose=verbose)
+
+    acted, due = recorded_dungeon.turn(off, rested, verbose, between)
+    _DUNGEON["due"] = due
+    if due is None and not acted and not _DUNGEON["spent"]:
+        print("  dungeon: no recorded dungeon can run (all off or the online clock "
+              "is not answering); trading only")
+    _DUNGEON["spent"] = due is None and not acted
+    return acted
 
 
 def back_to_back_turn(dungeon, verbose=True):

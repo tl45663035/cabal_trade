@@ -223,7 +223,7 @@ def play_run(scene, recorded=None, every=0.05, fake=None):
             patched((dungeon, "_DUNGEON", {**dungeon._DUNGEON, "recorded": {"fire": entry},
                                            "end_check_every": every}),
                     (dungeon, "run_sequence", scene.sequence),
-                    (dungeon, "count_challenge",
+                    (rd, "count_run",
                      lambda *a, **k: scene.calls.append("count")),
                     (dungeon, "exit_dungeon", lambda *a, **k: scene.calls.append("exit")),
                     (dungeon, "press_buttons",
@@ -348,6 +348,173 @@ check(said and "Nothing clicked" in said and len(clicks) == 1,
 r = play_run(Scene(), {"recording": "nope.jsonl"})
 check(isinstance(r.result, RuntimeError) and not r.sends and r.calls == [],
       f"a missing recording fails before any input, got {r.result!r} {r.calls}")
+
+# ============================== Task 3 ==============================
+
+import datetime
+
+check(rd.pick({"a", "b", "c"}, ["a", "b", "c"], "a") == "b", "pick_rotates: after a, b")
+check(rd.pick({"a", "b", "c"}, ["a", "b", "c"], "c") == "a", "pick_rotates: wraps to a")
+check(rd.pick({"a", "c"}, ["a", "b", "c"], "a") == "c", "pick_rotates: skips the closed")
+check(rd.pick({"b"}, ["a", "b", "c"], None) == "b", "pick_rotates: no last, first open")
+check(rd.pick(set(), ["a", "b"], None) is None, "pick_rotates: nothing open")
+check(rd.pick({"a"}, ["a", "b"], "gone") == "a", "pick_rotates: an unknown last starts over")
+
+ROT = {
+    "a": {"locations": {"A": {"entry": [1, 1], "name": "A"}}, "daily_limit": 2,
+          "start_at": "16:00", "cooldown": 10},
+    "b": {"locations": {"B": {"entry": [2, 2], "name": "B"}}, "daily_limit": 3,
+          "start_at": "16:00", "cooldown": 0},
+}
+
+
+class Runaway(BaseException):
+    """A rotation that never stops; it escapes turn()'s error handling."""
+
+
+class Rotation:
+    """Pretend clock-of-day, run counts and runs for the rotation."""
+
+    def __init__(self, since_reset_h=2.0, outcomes=None):
+        self.ran, self.counts, self.waits, self.snaps = [], {}, [], []
+        self.state = {}
+        self.since = datetime.timedelta(hours=since_reset_h)
+        self.outcomes = outcomes or {}
+
+    def run(self, name, verbose=True):
+        if len(self.ran) >= 40:
+            raise Runaway(f"still running after {self.ran}")
+        self.ran.append(name)
+        self.counts[name] = self.counts.get(name, 0) + 1
+        result = self.outcomes.get(name, "cleared")
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    def save(self, state):
+        self.state = dict(state)
+
+
+def rotate(recorded, rot, off=None, rested=None, between=None, dungeons=None):
+    off = set() if off is None else off
+    rested = {} if rested is None else rested
+    out = io.StringIO()
+    with world(recorded, dungeons or ROT), \
+            patched((rd, "run", rot.run), (rd, "problem", lambda name: None),
+                    (dungeon, "since_reset", lambda: rot.since),
+                    (dungeon, "runs_today", lambda name: rot.counts.get(name, 0)),
+                    (dungeon, "_state", lambda: dict(rot.state)),
+                    (dungeon, "_save", rot.save),
+                    (dungeon, "wait_timer",
+                     lambda seconds, verbose=True: rot.waits.append(seconds)),
+                    (calibration, "snap", lambda *a, **k: rot.snaps.append(a))), \
+            contextlib.redirect_stdout(out):
+        try:
+            result = rd.turn(off, rested, between=between)
+        except (Runaway, Exception) as exc:
+            print(f"the rotation broke: {exc!r}")
+            result = (None, None)
+    return result, out.getvalue(), off
+
+
+both = {"a": {"enabled": True}, "b": {"enabled": True}}
+rot = Rotation()
+(acted, due), said, off = rotate(both, rot)
+check(rot.ran == ["a", "b", "a", "b", "b"], f"rotation_runs_by_turns: got {rot.ran}")
+check(acted and due is not None and due > time.monotonic() + 3600,
+      f"rotation_runs_by_turns: back to trading until the next day, got {acted} {due}")
+check(rot.state.get("recorded_last") == "b", "rotation_runs_by_turns: the last is saved")
+
+rot = Rotation()
+rot.state = {"recorded_last": "a"}
+rotate(both, rot)
+check(rot.ran[0] == "b", f"rotation_survives_restart: picks up after a, got {rot.ran}")
+
+later = {"a": {"enabled": True}, "b": {"enabled": True, "start_at": "18:10"}}
+rot = Rotation(since_reset_h=3.0)
+(acted, due), said, off = rotate(later, rot)
+check(rot.ran == ["a", "a"], f"start_times_gate_each_dungeon: only a runs, got {rot.ran}")
+check(due is not None and abs(due - time.monotonic() - 600) < 5,
+      f"start_times_gate_each_dungeon: b is due in 600s, got "
+      f"{None if due is None else round(due - time.monotonic())}s")
+
+rot = Rotation()
+rotate(both, rot)
+check(len(rot.waits) == 1 and 9 < rot.waits[0] <= 10,
+      f"shared_cooldown: a waits its 10s after the run before it, b waits none, got "
+      f"{rot.waits}")
+
+rot = Rotation(outcomes={"a": "timeout"})
+rotate(both, rot)
+check(rot.ran.count("a") == 2 and rot.ran.count("b") == 3,
+      f"timeout_counts_and_continues: timeouts still count and the loop goes on, got "
+      f"{rot.ran}")
+
+rot = Rotation(outcomes={"a": RuntimeError("the screen could not be read")})
+(acted, due), said, off = rotate(both, rot)
+check(rot.ran == ["a", "b", "b", "b"] and off == {"a"} and rot.snaps,
+      f"failure_turns_one_off: a is off for the trading run, b carries on, got "
+      f"{rot.ran} {off}")
+check("the screen could not be read" in said, "failure_turns_one_off: the reason is logged")
+
+rot = Rotation()
+out = io.StringIO()
+with world(both, ROT), patched((rd, "run", rot.run),
+                               (rd, "problem", lambda name: f"{name} is broken"),
+                               (dungeon, "since_reset", lambda: rot.since)), \
+        contextlib.redirect_stdout(out):
+    first = rd.turn(set(), {})
+    off = set(ROT)
+    second = rd.turn(off, {})
+check(first == (False, None) and not rot.ran and out.getvalue().count("a is broken") == 1,
+      f"all_refused_goes_back_to_trading: no runs, each reason once, got {first} "
+      f"{out.getvalue()!r}")
+check(second == (False, None), "all_refused_goes_back_to_trading: and stays quiet after")
+
+calls = []
+rot = Rotation()
+rotate(both, rot, between=lambda: calls.append(len(rot.ran)))
+check(calls == [1, 2, 3, 4], f"between runs (world boss), not before the first, got {calls}")
+
+ran = {"n": 0}
+with world({"b": {"enabled": True, "daily_limit": 1}},
+           {"b": {"locations": {"B": {"entry": [2, 2], "name": "B"}}}}), \
+        patched((dungeon, "_state", lambda: {}), (dungeon, "_save", lambda s: None),
+                (dungeon, "count_dungeon",
+                 lambda name, day: ran.__setitem__("n", ran["n"] + 1) or ran["n"]),
+                (dungeon, "internet_now", lambda: None)), \
+        contextlib.redirect_stdout(io.StringIO()):
+    rd.count_run("b")
+check(ran["n"] == 1, "a run counts toward a daily limit set only on the recorded entry")
+
+# The driver hands its dungeon turn to the rotation when a recorded dungeon is on.
+os.environ.setdefault("CABAL_SALES_DB", str(SCRATCH / "sales.db"))
+import driver
+picked = []
+with patched((driver, "dungeon_on", lambda: True),
+             (driver, "recorded_turn", lambda verbose=True: picked.append("recorded") or True),
+             (driver, "back_to_back_turn", lambda *a, **k: picked.append("b2b") or True),
+             (rd, "enabled", lambda: ["fire"])):
+    driver.dungeon_turn()
+with patched((driver, "dungeon_on", lambda: True),
+             (driver, "recorded_turn", lambda verbose=True: picked.append("recorded") or True),
+             (driver, "back_to_back_turn", lambda *a, **k: picked.append("b2b") or True),
+             (rd, "enabled", lambda: []),
+             (dungeon, "DUNGEONS", {**dungeon.DUNGEONS,
+                                    dungeon.TRADING_DUNGEON: {"back_to_back": True}})):
+    driver.dungeon_turn()
+check(picked == ["recorded", "b2b"],
+      f"driver_picks_recorded: recorded when on, today's path when not, got {picked}")
+
+state = {"due": None, "off": False}
+with patched((driver, "_DUNGEON", dict(driver._DUNGEON)),
+             (rd, "turn", lambda off, rested, verbose=True, between=None:
+              (True, time.monotonic() + 600))), \
+        contextlib.redirect_stdout(io.StringIO()):
+    acted = driver.recorded_turn()
+    due = driver._DUNGEON["due"]
+check(acted is True and due is not None and abs(due - time.monotonic() - 600) < 5,
+      f"recorded_turn: the next check is due when the rotation says, got {acted} {due}")
 
 # ============================== the end ==============================
 
