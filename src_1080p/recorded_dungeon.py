@@ -151,9 +151,10 @@ def checked(name):
         return f"{name} could not be checked ({type(exc).__name__}: {exc})"
 
 
-def challenge(verbose=True):
+def challenge(verbose=True, wait=0.0):
     """dungeon.start_dungeon without its hotbar tab II click: from here on the
-    recording is the only input."""
+    recording is the only input. wait: seconds after the button shows before
+    it is clicked, for a dungeon that is still loading (challenge_wait)."""
     if not dungeon.focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     up, seen = dungeon.wait_for(dungeon.CHALLENGE_WINDOW, dungeon.CHALLENGE_WORD,
@@ -164,6 +165,12 @@ def challenge(verbose=True):
             f"{list(dungeon.CHALLENGE_WINDOW)} within {dungeon.TRANSFER_TIMEOUT:g}s; "
             f"it reads {seen!r}. Nothing clicked.")
     point = dungeon.centre(dungeon.CHALLENGE_WINDOW)
+    if wait > 0:
+        if verbose:
+            print(f"  waiting {wait:g}s for the dungeon to load before "
+                  f"{dungeon.CHALLENGE_WORD}")
+        dungeon.wait_timer(wait, False)
+        calibration.halt_if_stopped()
     if verbose:
         print(f"  {dungeon.CHALLENGE_WORD} at {point}")
     dungeon.click(*point, 0.0)
@@ -470,7 +477,7 @@ def run(name, verbose=True):
             return result
         calibration.halt_if_stopped()
         day = dungeon.day_of(dungeon.internet_now())
-        clicked = challenge(verbose)
+        clicked = challenge(verbose, float(place.get("challenge_wait", 0) or 0))
         inside = True
         count_run(name, day, verbose)
         if target is not None:

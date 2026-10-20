@@ -209,8 +209,9 @@ class Scene:
         if steps in self.during:
             self.during[steps]()
 
-    def challenge(self, verbose=True):
+    def challenge(self, verbose=True, wait=0.0):
         self.calls.append("challenge")
+        self.challenge_wait = wait
         self.t0 = time.monotonic()
         return self.t0
 
@@ -286,7 +287,9 @@ def play_run(scene, recorded=None, every=0.05, fake=None, real_count=False, hp_e
                     (rd, "game_present", scene.present),
                     (dungeon, "focus_game", scene.refocus),
                     (record_all, "focus_game", lambda: True),
-                    (ra, "send", send)), \
+                    (ra, "send", send),
+                    (record_all, "cursor_now", lambda: tuple(fake.cursor)),
+                    (record_all, "set_cursor", fake.set_cursor)), \
             contextlib.redirect_stdout(out):
         try:
             result = rd.run("fire")
@@ -393,6 +396,37 @@ with patched((dungeon, "focus_game", lambda: True),
         said = str(exc)
 check(said and "Nothing clicked" in said and len(clicks) == 1,
       f"challenge: no Challenge button, nothing clicked, got {said!r}")
+
+order = []
+with patched((dungeon, "focus_game", lambda: True),
+             (dungeon, "wait_for",
+              lambda window, word, timeout: order.append("button seen") or (True, word)),
+             (dungeon, "wait_timer",
+              lambda seconds, verbose=True: order.append(("wait", seconds))),
+             (dungeon, "click", lambda x, y, settle: order.append("click"))),         contextlib.redirect_stdout(io.StringIO()):
+    rd.challenge(wait=3.0)
+check(order == ["button seen", ("wait", 3.0), "click"],
+      f"challenge_wait: the button shows, then the wait for the dungeon to load, then "
+      f"the click; got {order}")
+order.clear()
+with patched((dungeon, "focus_game", lambda: True),
+             (dungeon, "wait_for",
+              lambda window, word, timeout: order.append("button seen") or (True, word)),
+             (dungeon, "wait_timer",
+              lambda seconds, verbose=True: order.append(("wait", seconds))),
+             (dungeon, "click", lambda x, y, settle: order.append("click"))),         contextlib.redirect_stdout(io.StringIO()):
+    rd.challenge()
+check(order == ["button seen", "click"], f"no challenge_wait: no wait, got {order}")
+
+scene = Scene(banner_at=0.5)
+play_run(scene, {"challenge_wait": 3})
+check(getattr(scene, "challenge_wait", None) == 3.0,
+      f"challenge_wait: the run passes the dungeon's own wait to the Challenge click, "
+      f"got {getattr(scene, 'challenge_wait', None)!r}")
+scene = Scene(banner_at=0.5)
+play_run(scene)
+check(getattr(scene, "challenge_wait", None) == 0.0,
+      f"no challenge_wait: none passed, got {getattr(scene, 'challenge_wait', None)!r}")
 
 r = play_run(Scene(), {"recording": "nope.jsonl"})
 check(isinstance(r.result, RuntimeError) and not r.sends and r.calls == [],

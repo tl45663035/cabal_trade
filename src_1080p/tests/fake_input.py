@@ -13,7 +13,9 @@ A session is played through the real record(), the file it saves is replayed
 through the real Replay, and the two Game logs are compared on one
 microsecond clock."""
 
+import bisect
 import contextlib
+import json
 import math
 import threading
 import types
@@ -24,6 +26,25 @@ import record_all
 
 W = ra.W
 SPAN = W["ABSOLUTE_SPAN"]
+MEASURED = json.loads((__import__("pathlib").Path(__file__).parent
+                       / "windows_absolute_5360x1440.json").read_text(encoding="utf-8"))
+
+
+_RUNS = {axis: ([start for start, _pixel in MEASURED[axis]],
+                [pixel for _start, pixel in MEASURED[axis]]) for axis in ("x", "y")}
+
+
+def windows_absolute(n, size, axis):
+    """Where Windows puts an absolute (VIRTUALDESK) value on an axis of size
+    pixels. On the 5360x1440 desktop it is what was measured on the real
+    machine; on any other, the same kind of coarse grid: some pixels are
+    never reached by an absolute move."""
+    left, top, width, height = MEASURED["desktop"]
+    if (axis == "x" and size == width) or (axis == "y" and size == height):
+        starts, pixels = _RUNS[axis]
+        return pixels[bisect.bisect_right(starts, n) - 1]
+    grid = size * 4888 // 5360
+    return (n * grid // SPAN) * size // grid
 
 # name: (vk, scan, extended)
 KEYS = {
@@ -166,7 +187,8 @@ class FakeInput:
 
     def _absolute(self, dx, dy):
         left, top, width, height = self.layout
-        return self._clamp(left + dx * width // SPAN, top + dy * height // SPAN)
+        return self._clamp(left + windows_absolute(dx, width, "x"),
+                           top + windows_absolute(dy, height, "y"))
 
     # -- hooks --
     def _key_event(self, vk, scan, ext, up, injected):
@@ -425,6 +447,8 @@ def _layout_patches(fake, window=None, focus=True):
             (ra, "desktop", lambda: list(fake.layout)),
             (record_all, "game_rect", lambda: window),
             (record_all, "focus_game", lambda: focus),
+            (record_all, "cursor_now", lambda: tuple(fake.cursor)),
+            (record_all, "set_cursor", fake.set_cursor),
             (record_all, "grab", lambda rect: _picture()),
             (record_all, "time", types.SimpleNamespace(perf_counter=fake.now,
                                                        sleep=lambda s: None)),

@@ -327,6 +327,27 @@ def as_point(item):
             top + mi.dy * height // W["ABSOLUTE_SPAN"])
 
 
+placed = []
+
+
+def cursor_from_sends():
+    """Where the cursor is: the last absolute move sent (every pixel reachable
+    here), or the last exact placement after it."""
+    for item in reversed(sent):
+        if isinstance(item, tuple):
+            return item[1:]
+        if item.type == W["INPUT_MOUSE"] and item.u.mi.dwFlags & W["MOUSEEVENTF_ABSOLUTE"]:
+            return as_point(item)
+    return None
+
+
+def exact_cursor(x, y):
+    placed.append((x, y))
+    sent.append(("set_cursor", x, y))
+
+
+record_all.cursor_now = cursor_from_sends
+record_all.set_cursor = exact_cursor
 ra.send = lambda item: sent.append(item)
 try:
     events = [
@@ -447,6 +468,52 @@ for layout in ([0, 0, 1920, 1080], [0, 0, 5360, 1440], [-2560, 0, 4480, 1440]):
     check(not off, f"every pixel maps back to itself on {layout}, first off {off[:3]}")
 ra.desktop = saved_desktop
 
+# ---- the cursor lands on the exact pixel, even ones Windows' grid skips ----
+
+from fake_input import windows_absolute
+saved = (ra.send, record_all.cursor_now, record_all.set_cursor, ra.desktop)
+ra.desktop = lambda: [0, 0, 5360, 1440]
+where, log = [0, 0], []
+
+
+def windows_send(item):
+    log.append("absolute")
+    mi = item.u.mi
+    where[:] = [windows_absolute(mi.dx, 5360, "x"), windows_absolute(mi.dy, 1440, "y")]
+
+
+def windows_set(x, y):
+    log.append(("set", x, y))
+    where[:] = [x, y]
+
+
+ra.send, record_all.cursor_now, record_all.set_cursor = (
+    windows_send, lambda: tuple(where), windows_set)
+try:
+    reach_x = {windows_absolute(n, 5360, "x") for n in range(65536)}
+    reach_y = {windows_absolute(n, 1440, "y") for n in range(65536)}
+    skipped = [x for x in range(5360) if x not in reach_x]
+    check(skipped[:3] == [2, 6, 11], f"the measured grid skips pixels, got {skipped[:3]}")
+    off = []
+    for x, y in [(2, 2), (820, 760), (6, 1439), (5359, 0), (1077, 652), (0, 0)]:
+        log.clear()
+        record_all.place(x, y)
+        if tuple(where) != (x, y) or log[0] != "absolute":
+            off.append(((x, y), tuple(where), list(log)))
+    check(not off, f"place: the absolute move goes out, then the cursor is exactly on "
+                   f"the pixel; got {off}")
+    log.clear()
+    reachable = next(x for x in range(100, 5360) if x in reach_x)
+    reachable_y = next(y for y in range(100, 1440) if y in reach_y)
+    record_all.place(reachable, reachable_y)
+    check(log == ["absolute"] and tuple(where) == (reachable, reachable_y),
+          f"place: a pixel the grid reaches needs no correction, got {log}")
+    log.clear()
+    record_all.place(reachable, reachable_y)
+    check(log == [], f"place: a cursor already on the pixel is left alone, got {log}")
+finally:
+    ra.send, record_all.cursor_now, record_all.set_cursor, ra.desktop = saved
+
 # ---- record then replay gives back the same input ----
 
 ra.send = lambda item: sent.append(item)
@@ -478,13 +545,23 @@ try:
     moves = [as_point(i) for i in played
              if i.type == W["INPUT_MOUSE"] and not i.u.mi.dwFlags & (
                  W["MOUSEEVENTF_LEFTDOWN"] | W["MOUSEEVENTF_LEFTUP"])]
-    check(moves == [p for kind, p in script], "every cursor move replays to the same pixel")
-    clicks = [(as_point(i), i.u.mi.dwFlags & (W["MOUSEEVENTF_LEFTDOWN"] | W["MOUSEEVENTF_LEFTUP"]))
-              for i in played if i.type == W["INPUT_MOUSE"]
-              and i.u.mi.dwFlags & (W["MOUSEEVENTF_LEFTDOWN"] | W["MOUSEEVENTF_LEFTUP"])]
-    check(clicks == [((220, 240), W["MOUSEEVENTF_LEFTDOWN"]),
-                     ((220, 240), W["MOUSEEVENTF_LEFTUP"])],
-          f"the click replays at the same spot, got {clicks}")
+    check(moves == [p for kind, p in script] + [(220, 240)],
+          f"every cursor move replays to the same pixel, the cursor is put on the "
+          f"click's pixel before the press, and not moved again for the release "
+          f"(it is already there); got {moves[-4:]}")
+    clicks = []
+    for n, i in enumerate(played):
+        if i.type == W["INPUT_MOUSE"] and i.u.mi.dwFlags & (
+                W["MOUSEEVENTF_LEFTDOWN"] | W["MOUSEEVENTF_LEFTUP"]):
+            before = [j for j in played[:n] if j.type == W["INPUT_MOUSE"]
+                      and j.u.mi.dwFlags & W["MOUSEEVENTF_ABSOLUTE"]]
+            clicks.append((as_point(before[-1]),
+                           i.u.mi.dwFlags & (W["MOUSEEVENTF_LEFTDOWN"] | W["MOUSEEVENTF_LEFTUP"]),
+                           bool(i.u.mi.dwFlags & W["MOUSEEVENTF_ABSOLUTE"])))
+    check(clicks == [((220, 240), W["MOUSEEVENTF_LEFTDOWN"], False),
+                     ((220, 240), W["MOUSEEVENTF_LEFTUP"], False)],
+          f"the click replays at the same spot: the cursor is put there, then the "
+          f"button goes out on its own (no position of its own to round), got {clicks}")
     keys = [(i.u.ki.wScan, bool(i.u.ki.dwFlags & W["KEYEVENTF_KEYUP"]))
             for i in played if i.type == W["INPUT_KEYBOARD"]]
     check(keys == [(17, False), (17, True)], f"the key replays down then up, got {keys}")
@@ -555,6 +632,8 @@ ABS = W["MOUSEEVENTF_ABSOLUTE"]
 
 
 def described(item):
+    if isinstance(item, tuple):
+        return ("set", item[1:], ())
     if item.type == W["INPUT_KEYBOARD"]:
         k = item.u.ki
         return ("key", k.wScan, bool(k.dwFlags & W["KEYEVENTF_EXTENDEDKEY"]),
@@ -597,19 +676,20 @@ try:
     player.play()
     got = [described(i) for i in sent]
     check(got == [("abs", (50, 50), ()),
-                  ("abs", (50, 50), ()),
                   ("button", None, ("rdown",)),
                   ("rel", (6, -1), ()),
                   ("rel", (9, -2), ()),
-                  ("abs", (72, 47), ()),
+                  ("set", (72, 47), ()),
                   ("button", None, ("rup",)),
-                  ("abs", (72, 47), ()),
                   ("abs", (80, 60), ())],
-          f"a right drag turns by the raw counts (a cursor move nothing physical "
-          f"made still goes out), the cursor lands back where it was, and "
+          f"a right drag turns by the raw counts (the bot's own cursor jump "
+          f"mid-turn still goes out, straight to its pixel), the cursor lands "
+          f"back where it was, and "
           f"outside a drag positions are used. Got {got}")
 
     def lefty(item):
+        if isinstance(item, tuple):
+            return described(item)
         name, flags = described(item)[0], item.u.mi.dwFlags if item.type == W["INPUT_MOUSE"] else 0
         presses = tuple(n for n, f in (("ldown", W["MOUSEEVENTF_LEFTDOWN"]),
                                         ("lup", W["MOUSEEVENTF_LEFTUP"])) if flags & f)
@@ -619,9 +699,9 @@ try:
     sent.clear()
     record_all.Replay(left_drag, None).play()
     got = [lefty(i) for i in sent]
-    check(got == [("abs", (50, 50), ()), ("abs", (50, 50), ()), ("button", None, ("ldown",)),
-                  ("rel", (6, -1), ()), ("rel", (9, -2), ()), ("abs", (72, 47), ()),
-                  ("button", None, ("lup",)), ("abs", (72, 47), ()), ("abs", (80, 60), ())],
+    check(got == [("abs", (50, 50), ()), ("button", None, ("ldown",)),
+                  ("rel", (6, -1), ()), ("rel", (9, -2), ()), ("set", (72, 47), ()),
+                  ("button", None, ("lup",)), ("abs", (80, 60), ())],
           f"a left drag (steering or turning while held) also goes by the raw counts, "
           f"got {got}")
     tap = [{"t": 0.0, "kind": "mouse", "action": "raw", "dx": 1, "dy": 0},
@@ -632,7 +712,7 @@ try:
     sent.clear()
     record_all.Replay(tap, None).play()
     clicks = [(as_point(i) if described(i)[0] == "abs" else None, lefty(i)[2]) for i in sent]
-    check(clicks == [((300, 200), ()), (None, ("ldown",)), (None, ("lup",)), ((300, 200), ())],
+    check(clicks == [((300, 200), ()), (None, ("ldown",)), (None, ("lup",))],
           f"a short left click still presses and lets go exactly where it was, got {clicks}")
     check(set(record_all.TURN) >= {"right", "left", "middle"},
           f"right, left and middle drags all go by raw counts, got {record_all.TURN}")

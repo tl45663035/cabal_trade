@@ -502,6 +502,35 @@ def record(command=None):
     return code
 
 
+def cursor_now():
+    point = ra.wintypes.POINT()
+    ra.user32.GetCursorPos(ra.ctypes.byref(point))
+    return point.x, point.y
+
+
+def set_cursor(x, y):
+    ra.user32.SetCursorPos(x, y)
+
+
+def place(x, y):
+    """Puts the cursor on exactly (x, y). The absolute move goes out as mouse
+    input, so the game sees the mouse move. Windows' absolute grid can't
+    reach every pixel (on the 5360-wide desktop only 4888 columns and 1249 of
+    1440 rows), so when it lands beside the pixel, SetCursorPos puts the
+    cursor on it. A cursor already on the pixel is left alone: a move there
+    would only twitch it off and back."""
+    if cursor_now() == (x, y):
+        return
+    ra.send(ra.mouse_input({"x": x, "y": y}, 0))
+    if cursor_now() != (x, y):
+        set_cursor(x, y)
+
+
+def wheel_input(action, delta):
+    return ra.INPUT(type=W["INPUT_MOUSE"], u=ra.INPUTUNION(mi=ra.MOUSEINPUT(
+        0, 0, ctypes.c_ulong(delta).value, ra.WHEEL_FLAGS[action], 0, 0)))
+
+
 def relative_input(dx, dy):
     return ra.INPUT(type=W["INPUT_MOUSE"], u=ra.INPUTUNION(mi=ra.MOUSEINPUT(
         dx, dy, 0, W["MOUSEEVENTF_MOVE"], 0, 0)))
@@ -531,7 +560,8 @@ def play_event(event, keys, buttons, turning=None):
         if action == "move" and turning and event.get("injected") is False:
             return False
         if button in TURN and action == "down" and not event.get("injected"):
-            ra.send(ra.mouse_input(event, 0))
+            if not turning:
+                place(event["x"], event["y"])
             ra.send(button_input(button, "down"))
             buttons[button] = event
             turning.add(button)
@@ -540,8 +570,32 @@ def play_event(event, keys, buttons, turning=None):
             turning.discard(button)
             ra.send(button_input(button, "up"))
             buttons.pop(button, None)
-            ra.send(ra.mouse_input(event, 0))
+            if not turning:
+                place(event["x"], event["y"])
             return True
+    if event["kind"] == "mouse":
+        # The cursor first goes exactly where it was, then the button or
+        # wheel goes out on its own, so it happens on that pixel. A press
+        # mid-turn leaves the cursor put (a real press never moves it; the
+        # turn is raw counts); a move that isn't the hand's still goes out.
+        if action == "move" and turning:
+            # Not the hand's (those are skipped above): the bot's own jump
+            # mid-turn. It goes straight to the pixel, as it did then; an
+            # absolute move would land beside it first and jerk the camera.
+            if cursor_now() != (event["x"], event["y"]):
+                set_cursor(event["x"], event["y"])
+        elif action == "move" or not turning:
+            place(event["x"], event["y"])
+        if action in ra.WHEEL_FLAGS:
+            ra.send(wheel_input(action, event["delta"]))
+        elif action in ("down", "up"):
+            button = event["button"]
+            ra.send(button_input(button, action))
+            if action == "down":
+                buttons[button] = event
+            else:
+                buttons.pop(button, None)
+        return True
     ra.play_one(event, keys, buttons)
     return True
 
@@ -591,8 +645,7 @@ class Replay(ra.Replay):
             if not self.ready():
                 return
             if self.cursor:
-                ra.send(ra.mouse_input({"x": self.cursor[0],
-                                        "y": self.cursor[1]}, 0))
+                place(self.cursor[0], self.cursor[1])
             zero = time.perf_counter()
             for event in self.events:
                 due = zero + event["t"]
@@ -611,11 +664,7 @@ class Replay(ra.Replay):
             for event in list(keys.values()):
                 ra.send(ra.key_input(event, True))
             for button, event in list(buttons.items()):
-                if self.turning and button in self.turning:
-                    ra.send(button_input(button, "up"))
-                else:
-                    ra.send(ra.mouse_input(event, ra.BUTTON_FLAGS[("up", button)],
-                                           ra.X_DATA.get(button, 0)))
+                ra.send(button_input(button, "up"))
             self.holding_ctrl(False)
             ra.winmm.timeEndPeriod(ra.TIMER_MS)
             self.finished = True
