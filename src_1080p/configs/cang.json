@@ -93,7 +93,7 @@
       "chaos_arena": {
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
                      ["wait", 3], "get_to_gate", ["kill", "Gate of Chaos"],
-                     ["timer", 300], ["tap", "="],
+                     ["timer", 345], ["tap", "="],
                      ["use", "A+2"], ["wait_timer", 5],
                      "inventory", "wait_timer", ["kill", "Gate of Chaos"],
                      "bm_aura", "kill_phase",
