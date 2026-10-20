@@ -10,8 +10,9 @@ and once the replay ends it compares what arrived with the file:
   buttons  each mouse button down and up, and the wheel
   turns    for each right-drag camera turn, the raw counts added up
   timing   how far each event landed from its place in the recording
-Ctrl twice stops it early. Win keys in the recording are skipped (they
-would open the Start menu over the screen)."""
+Ctrl twice stops it early, and so does anything taking the foreground from the
+black screen. Win and Alt keys in the recording are skipped (they could open
+the Start menu or switch windows: Alt+Tab, Alt+F4)."""
 
 import ctypes
 import difflib
@@ -36,6 +37,27 @@ BUTTON_BITS = [("left", 0x1, 0x2), ("right", 0x4, 0x8), ("middle", 0x10, 0x20),
                ("x1", 0x40, 0x80), ("x2", 0x100, 0x200)]
 RIM_TYPEKEYBOARD, HID_USAGE_KEYBOARD = 1, 6
 WIN_KEYS = {91, 92}
+ALT_KEYS = {18, 164, 165}
+SKIP_KEYS = WIN_KEYS | ALT_KEYS
+GA_ROOT = 2
+
+
+def playable(events):
+    """The events the probe may replay into its black screen: no Win keys
+    (the Start menu) and no Alt (Alt+Tab, Alt+F4 would switch away)."""
+    plays = [e for e in events if not (e["kind"] == "key" and e.get("vk") in SKIP_KEYS)]
+    return plays, len(events) - len(plays)
+
+
+def should_stop(tapped, shield, foreground):
+    """Why the replay must stop now, or None: Ctrl pressed twice, or anything
+    other than the black screen in front (keys would go to that window)."""
+    if tapped:
+        return "Ctrl pressed twice"
+    if foreground != shield:
+        return ("the black screen lost the foreground, so the replay stopped before "
+                "a key could reach another window")
+    return None
 JITTER_LIMIT_MS = 10.0
 
 
@@ -90,7 +112,7 @@ def _wanted(events):
     keys, buttons, wheel = [], [], []
     for e in events:
         if e["kind"] == "key":
-            if "secret" in e or e.get("vk") == record_all.VK_PACKET or e.get("vk") in WIN_KEYS:
+            if "secret" in e or e.get("vk") == record_all.VK_PACKET or e.get("vk") in SKIP_KEYS:
                 continue
             keys.append((e["t"], (e.get("scan"), bool(e.get("extended")),
                                   e["action"] == "up")))
@@ -295,27 +317,42 @@ def run(path):
     if head.get("screen") != list(ra.screen()) or head.get("desktop") != ra.desktop():
         print(f"{path.name} was recorded on another screen layout; nothing replayed")
         return 1
-    plays = [e for e in events if not (e["kind"] == "key" and e.get("vk") in WIN_KEYS)]
-    skipped = len(events) - len(plays)
+    plays, skipped = playable(events)
+    if not plays:
+        print(f"{path.name} has nothing the probe can replay")
+        return 1
     head = {k: v for k, v in head.items() if k not in ("window", "start_shot")}
     print(f"{path.name}: {len(plays)} events over {plays[-1]['t']:.1f}s"
-          + (f" ({skipped} Win key event(s) skipped)" if skipped else ""))
+          + (f" ({skipped} Win or Alt key event(s) skipped)" if skipped else ""))
     listener = Listener()
     player = record_all.Replay(plays, head.get("cursor"), head, path.parent)
     taps = record_all.CtrlTaps(own=lambda: player.own_ctrl)
     root, label = shield(f"Input probe: replaying {path.name}\nHands off the mouse "
                          f"and keyboard. Ctrl twice stops it.\nStarting in 3 seconds...")
-    state = {"started": None}
+    state = {"started": None, "stopped": None, "worker": None}
+
+    def front():
+        return ra.user32.GetForegroundWindow()
 
     def begin():
+        here = ra.user32.GetAncestor(root.winfo_id(), GA_ROOT)
+        state["shield"] = here
+        if front() != here:
+            state["stopped"] = ("the black screen never got the foreground, so nothing "
+                                "was replayed")
+            root.destroy()
+            return
         label.configure(text=f"Replaying {path.name} ({plays[-1]['t']:.0f}s)...\n"
                              f"Ctrl twice stops it.")
         state["started"] = time.perf_counter()
-        threading.Thread(target=player.play, daemon=True).start()
+        state["worker"] = threading.Thread(target=player.play, daemon=True)
+        state["worker"].start()
         poll()
 
     def poll():
-        if taps.step(time.perf_counter()):
+        reason = should_stop(taps.step(time.perf_counter()), state["shield"], front())
+        if reason and not player.stop.is_set():
+            state["stopped"] = reason
             player.stop.set()
         if player.finished:
             root.after(300, root.destroy)
@@ -327,7 +364,11 @@ def run(path):
         root.mainloop()
     finally:
         player.stop.set()
+        if state["worker"] is not None:
+            state["worker"].join()
         listener.close()
+    if state["stopped"]:
+        print(f"stopped: {state['stopped']}")
     started = state["started"] or 0.0
     after = [e for e in listener.log if e["t"] >= started]
     heard = [e for e in after if e["sent"]]

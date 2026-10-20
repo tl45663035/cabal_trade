@@ -171,10 +171,29 @@ class Scene:
     """The bot's own steps (logged, not sent) and the screen as the run goes."""
 
     def __init__(self, banner_at=None, defeat_at=None, lose_at=None, broken_at=None,
-                 during=None):
+                 during=None, unfocus_at=None, refocus_ok=True, clock=None):
         self.calls, self.reads, self.t0 = [], 0, None
         self.banner_at, self.defeat_at = banner_at, defeat_at
         self.lose_at, self.broken_at, self.during = lose_at, broken_at, during or {}
+        self.unfocus_at, self.refocus_ok, self.clock = unfocus_at, refocus_ok, clock
+        self.unfocus_wall = None
+
+    def lose_focus_in(self, seconds):
+        self.unfocus_wall = time.monotonic() + seconds
+
+    def present(self):
+        at = self.since()
+        return self.lose_at is None or at is None or at < self.lose_at
+
+    def refocus(self):
+        self.calls.append("refocus")
+        if self.refocus_ok:
+            self.unfocus_at, self.unfocus_wall = None, None
+        return self.refocus_ok
+
+    def now(self):
+        self.calls.append("clock")
+        return self.clock
 
     def since(self):
         return None if self.t0 is None else time.monotonic() - self.t0
@@ -204,10 +223,14 @@ class Scene:
 
     def front(self):
         at = self.since()
-        return self.lose_at is None or at is None or at < self.lose_at
+        if self.unfocus_wall is not None and time.monotonic() >= self.unfocus_wall:
+            return False
+        if self.unfocus_at is not None and at is not None and at >= self.unfocus_at:
+            return False
+        return self.present()
 
 
-def play_run(scene, recorded=None, every=0.05, fake=None):
+def play_run(scene, recorded=None, every=0.05, fake=None, real_count=False):
     fake = fake or FakeInput(layout=LAYOUT, cursor=(3, 3))
     sends = []
 
@@ -219,12 +242,15 @@ def play_run(scene, recorded=None, every=0.05, fake=None):
     entry = dict(RECORDED["fire"], recording="walk.jsonl", exit_recording="leave.jsonl",
                  timeout_seconds=20)
     entry.update(recorded or {})
+    counting = ([(dungeon, "count_dungeon",
+                  lambda name, day: scene.calls.append(("counted", day)) or 1)]
+                if real_count else
+                [(rd, "count_run", lambda *a, **k: scene.calls.append("count"))])
     with world({"fire": entry}), \
             patched((dungeon, "_DUNGEON", {**dungeon._DUNGEON, "recorded": {"fire": entry},
                                            "end_check_every": every}),
                     (dungeon, "run_sequence", scene.sequence),
-                    (rd, "count_run",
-                     lambda *a, **k: scene.calls.append("count")),
+                    *counting,
                     (dungeon, "exit_dungeon", lambda *a, **k: scene.calls.append("exit")),
                     (dungeon, "press_buttons",
                      lambda label, *a, **k: scene.calls.append(("buttons", label))),
@@ -232,10 +258,12 @@ def play_run(scene, recorded=None, every=0.05, fake=None):
                      lambda seconds, verbose=True: scene.calls.append(("wait", seconds))),
                     (dungeon, "off_for_the_day",
                      lambda *a, **k: scene.calls.append("off_for_the_day")),
-                    (dungeon, "internet_now", lambda: None),
+                    (dungeon, "internet_now", scene.now),
                     (rd, "challenge", scene.challenge),
                     (rd, "screen_says", scene.screen),
                     (rd, "game_in_front", scene.front),
+                    (rd, "game_present", scene.present),
+                    (dungeon, "focus_game", scene.refocus),
                     (record_all, "focus_game", lambda: True),
                     (ra, "send", send)), \
             contextlib.redirect_stdout(out):
@@ -255,7 +283,7 @@ BEFORE = ("seq", ("cancel_bm",))
 
 r = play_run(Scene(banner_at=0.5))
 check(r.result == "cleared", f"cleared: returns 'cleared', got {r.result!r}")
-check(r.calls == [ENTRY, "challenge", "count", BEFORE, ("wait", 2), "exit"],
+check(r.calls == [ENTRY, "clock", "challenge", "count", BEFORE, ("wait", 2), "exit"],
       f"cleared: entry, Challenge, then BM cancel, end wait, claim and leave; got {r.calls}")
 late = [t for t, _item in r.sends if t > r.t0 + 0.5 + 0.05 + 0.15]
 check(not late, f"cleared: no input after the banner, got {len(late)} late sends")
@@ -484,7 +512,7 @@ with world({"b": {"enabled": True, "daily_limit": 1}},
                  lambda name, day: ran.__setitem__("n", ran["n"] + 1) or ran["n"]),
                 (dungeon, "internet_now", lambda: None)), \
         contextlib.redirect_stdout(io.StringIO()):
-    rd.count_run("b")
+    rd.count_run("b", "2026-10-19")
 check(ran["n"] == 1, "a run counts toward a daily limit set only on the recorded entry")
 
 # The driver hands its dungeon turn to the rotation when a recorded dungeon is on.
@@ -515,6 +543,108 @@ with patched((driver, "_DUNGEON", dict(driver._DUNGEON)),
     due = driver._DUNGEON["due"]
 check(acted is True and due is not None and abs(due - time.monotonic() - 600) < 5,
       f"recorded_turn: the next check is due when the rotation says, got {acted} {due}")
+
+# ======================= fixes from the final review =======================
+
+r = play_run(Scene(unfocus_at=0.4))
+check(r.result == "lost_focus" and "refocus" in r.calls and r.calls[-1] == BEFORE
+      and r.exit_keys and not r.fake.game.keys,
+      f"lost focus, window still there: the game is brought back, BM cancel, then the "
+      f"exit clip, and the run ends; got {r.result!r} {r.calls}")
+r = play_run(Scene(unfocus_at=0.4, refocus_ok=False))
+check(isinstance(r.result, rd.GameLost) and not r.exit_keys,
+      f"lost focus and the game won't come back: raises GameLost, no exit clip, got "
+      f"{r.result!r}")
+r = play_run(Scene(lose_at=0.4))
+check(isinstance(r.result, rd.GameLost) and not r.exit_keys,
+      f"the game window gone: raises GameLost, no exit clip, got {r.result!r}")
+
+scene = Scene()
+scene.during = {("cancel_bm",): lambda: scene.lose_focus_in(0.15)}
+r = play_run(scene, {"timeout_seconds": 0.5})
+check(isinstance(r.result, rd.GameLost) and len(r.exit_keys) < 2 * 2
+      and not r.fake.game.keys,
+      f"the exit clip stops the moment the game loses focus, got {r.result!r} "
+      f"{len(r.exit_keys)} Esc events")
+
+
+def after_exit_breaks():
+    raise RuntimeError("could not bring the game to the foreground.")
+
+
+r = play_run(Scene(banner_at=0.3, during={("after",): after_exit_breaks}),
+             {"after_exit": ["after"]})
+check(isinstance(r.result, RuntimeError) and not r.exit_keys,
+      f"after leaving, a failure doesn't play the exit clip outside, got {r.result!r} "
+      f"{len(r.exit_keys)}")
+
+moved = SCRATCH / "leave_moved2.jsonl"
+r = play_run(Scene(during={("cancel_bm",): lambda: EXIT_FILE.rename(moved)}),
+             {"timeout_seconds": 0.5})
+moved.rename(EXIT_FILE)
+check(isinstance(r.result, RuntimeError) and "the exit recording failed too" not in r.said,
+      f"a failed exit clip isn't tried a second time, got {r.said[-200:]!r}")
+
+r = play_run(Scene(banner_at=0.6), {"timeout_seconds": 0.6}, every=0.25)
+check(r.result == "cleared", f"a banner up at the deadline is a clear, not a timeout, got "
+                             f"{r.result!r}")
+
+r = play_run(Scene(banner_at=0.4, clock=datetime.datetime(2026, 10, 19, 20, 0,
+                                                            tzinfo=datetime.timezone.utc)),
+             real_count=True)
+check("clock" in r.calls and r.calls.index("clock") < r.calls.index("challenge")
+      and any(isinstance(c, tuple) and c[0] == "counted" and c[1] is not None
+              for c in r.calls),
+      f"the day is read before Challenge and the run counted with it, got {r.calls}")
+r = play_run(Scene(banner_at=0.4, clock=None), real_count=True)
+check(not any(isinstance(c, tuple) and c[0] == "counted" for c in r.calls)
+      and "not counted" in r.said and r.result == "cleared",
+      f"no clock: the run plays but isn't counted (never a count with no day), got "
+      f"{r.calls} {r.said[-200:]!r}")
+
+utf16 = SEQ / "fire" / "utf16.jsonl"
+utf16.write_bytes(RUN_FILE.read_text(encoding="utf-8").encode("utf-16"))
+with world({"fire": {**RECORDED["fire"], "recording": "utf16.jsonl"}}):
+    try:
+        said = rd.problem("fire") or ""
+    except Exception as exc:
+        said = f"raised {exc!r}"
+check("utf16.jsonl" in said and not said.startswith("raised"),
+      f"a file that can't be read is a problem, not a crash, got {said!r}")
+
+
+def broken_check(name):
+    if name == "a":
+        raise UnicodeDecodeError("utf-8", b"", 0, 1, "bad")
+    return None
+
+
+rot = Rotation()
+with world({"a": {"enabled": True}, "b": {"enabled": True}}, ROT), \
+        patched((rd, "run", rot.run), (rd, "problem", broken_check),
+                (dungeon, "since_reset", lambda: rot.since),
+                (dungeon, "runs_today", lambda name: rot.counts.get(name, 0)),
+                (dungeon, "_state", lambda: dict(rot.state)), (dungeon, "_save", rot.save),
+                (dungeon, "wait_timer", lambda seconds, verbose=True: None)), \
+        contextlib.redirect_stdout(io.StringIO()):
+    try:
+        outcome = rd.turn(set(), {})
+    except Exception as exc:
+        outcome = exc
+check(not isinstance(outcome, Exception) and rot.ran == ["b", "b", "b"],
+      f"a check that raises turns that dungeon off; the rotation goes on, got {outcome!r} "
+      f"{rot.ran}")
+
+rot = Rotation(outcomes={"a": rd.GameLost("the game window is gone")}
+               if hasattr(rd, "GameLost") else {})
+(result, said, off) = rotate({"a": {"enabled": True}, "b": {"enabled": True}}, rot)
+check(rot.ran == ["a"] and result == (None, None) and "GameLost" in said,
+      f"a lost game ends the rotation (no next dungeon), got {rot.ran} {result}")
+
+with world({"fire": dict(RECORDED["fire"])},
+           {"fire": {k: v for k, v in DUNGEONS["fire"].items() if k != "daily_limit"}}):
+    said = rd.problem("fire") or ""
+check("daily_limit" in said, f"a recorded dungeon needs a daily limit, got {said!r}")
 
 # ============================== Task 4 ==============================
 

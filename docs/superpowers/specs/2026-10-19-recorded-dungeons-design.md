@@ -213,3 +213,31 @@ lines.
   - cooldowns; a profile with nothing enabled (today's path, unchanged)
   - no bot input between Challenge and the end screen; nothing left held
     in every ending
+
+## Revision after the final review (2026-10-19)
+
+- **Losing focus vs losing the game.**
+  - If the game window still exists but another window took focus, the
+    bot brings the game back, cancels BM and plays the exit clip. The run
+    ends as `lost_focus`.
+  - If the game window is gone, or won't come back to the front, the run
+    raises `GameLost`. That stops the rotation, so it never starts the
+    next dungeon with the character possibly inside one.
+- **The exit clip is guarded too:** it stops the moment the game loses
+  focus or goes away.
+- **The exit clip plays at most once,** and never after the character has
+  left. Leaving is marked done before the exit clip plays and as soon as
+  the Leave button is pressed.
+- **The day is read before the Challenge click,** and the recording is
+  loaded before it too, so nothing slow sits between the click and the
+  replay. With no online clock the run is not counted (it is never
+  counted against no day, which would wipe the day's counts).
+- **A "Cleared" banner up at the deadline counts as a clear, not a
+  timeout,** so the reward is claimed.
+- **A file that can't be read** (wrong encoding, damaged) is a refusal, so
+  that dungeon is turned off rather than crashing the bot.
+- **A recorded dungeon must have a daily limit.** Without one, its runs
+  would go on back to back and trading would never resume.
+- **`after_exit` can be set per recorded dungeon,** like `before_exit`.
+- **The input probe** stops the moment its black screen loses the
+  foreground, and skips Alt as well as Win keys.

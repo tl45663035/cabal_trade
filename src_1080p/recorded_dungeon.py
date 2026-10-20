@@ -21,7 +21,8 @@ import record_all
 import row_model
 
 SEQUENCES = dungeon.SEQUENCES
-OVERRIDES = ("daily_limit", "start_at", "cooldown", "end_wait", "before_exit")
+OVERRIDES = ("daily_limit", "start_at", "cooldown", "end_wait", "before_exit",
+             "after_exit")
 JOIN_SLICE = 0.1
 
 
@@ -61,15 +62,29 @@ def problem(name):
                 f"recorded run needs a dungeon with exactly one location")
     if not place.get("timeout_seconds"):
         return f"{name} has no timeout_seconds for its recorded run"
+    if place.get("daily_limit") is None:
+        return (f"{name} has no daily_limit; without one its recorded runs would go "
+                f"on back to back and trading would never resume")
     for key, what in (("recording", "recording"), ("exit_recording", "exit recording")):
         path = find(name, place.get(key))
         if path is None:
             return (f"{name}: no {what} {place.get(key)!r} in "
                     f"{SEQUENCES / name} or {ra.OUT}")
-        _head, _events, refused = record_all.prepare(path)
+        try:
+            _head, _events, refused = record_all.prepare(path)
+        except Exception as exc:
+            return f"{name}: the {what} {path.name} can't be read ({type(exc).__name__}: {exc})"
         if refused:
             return f"{name}: the {what} {path.name} is refused: {refused}"
     return None
+
+
+def checked(name):
+    """problem(name), with anything it raises turned into the reason."""
+    try:
+        return problem(name)
+    except Exception as exc:
+        return f"{name} could not be checked ({type(exc).__name__}: {exc})"
 
 
 def challenge(verbose=True):
@@ -109,19 +124,31 @@ def game_in_front():
     return hwnd is not None and ra.user32.GetForegroundWindow() == hwnd
 
 
-def watch(stop, outcome, deadline, every):
-    """Reads the end screen and checks the game every `every` seconds until
-    something ends the run; says what in outcome["end"], then sets stop."""
+class GameLost(RuntimeError):
+    """The game window went away, or lost focus and would not come back: no
+    more input may be sent, and the rotation stops."""
+
+
+def game_present():
+    return record_all.find_game() is not None
+
+
+def watch(stop, outcome, deadline, every, read=True):
+    """Checks the game (and, with read, the end screen) every `every`
+    seconds until something ends the run; says what in outcome["end"], then
+    sets stop. A banner up at the deadline still counts as the end screen."""
     try:
         while not stop.is_set():
             if calibration.STOPPED.is_set():
                 outcome["end"] = "stopped"
-            elif time.monotonic() >= deadline:
-                outcome["end"] = "timeout"
-            elif not game_in_front():
+            elif not game_present():
                 outcome["end"] = "lost_game"
+            elif not game_in_front():
+                outcome["end"] = "lost_focus"
             else:
-                outcome["end"] = screen_says()
+                outcome["end"] = screen_says() if read else None
+                if not outcome["end"] and time.monotonic() >= deadline:
+                    outcome["end"] = "timeout"
             if outcome["end"]:
                 break
             stop.wait(every)
@@ -130,50 +157,78 @@ def watch(stop, outcome, deadline, every):
     stop.set()
 
 
-def play(path, stop):
-    """Replays a recording on a worker thread until it ends or stop is set.
-    The main thread only waits, so a Ctrl stop's interruption can't land
-    inside the replay while it lets go of what it holds."""
+def load(path):
+    """A recording, checked and parsed before any input goes out."""
     head, events, refused = record_all.prepare(path)
     if refused:
         raise RuntimeError(f"{path.name} is refused: {refused}")
-    player = record_all.Replay(events, head.get("cursor"), head, path.parent,
+    return head, events, path.parent
+
+
+def play(recording, stop):
+    """Replays a loaded recording on a worker thread until it ends or stop is
+    set. The main thread only waits, so a Ctrl stop's interruption can't land
+    inside the replay while it lets go of what it holds."""
+    head, events, base = recording
+    player = record_all.Replay(events, head.get("cursor"), head, base,
                                on_ctrl=dungeon._replay_holds_ctrl)
     player.stop = stop
     worker = threading.Thread(target=player.play, daemon=True)
-    worker.start()
     interrupted = None
-    while worker.is_alive():
-        try:
-            worker.join(JOIN_SLICE)
-            if calibration.STOPPED.is_set():
+    try:
+        worker.start()
+        while worker.is_alive():
+            try:
+                worker.join(JOIN_SLICE)
+                if calibration.STOPPED.is_set():
+                    stop.set()
+            except KeyboardInterrupt as exc:
+                interrupted = exc
                 stop.set()
-        except KeyboardInterrupt as exc:
-            interrupted = exc
+    finally:
+        if worker.is_alive():
             stop.set()
-    if player.refused:
-        raise RuntimeError(player.refused)
+            worker.join()
     if interrupted is not None:
         raise interrupted
+    if player.refused:
+        raise RuntimeError(player.refused)
     return player
 
 
 def leave(name, place, verbose=True):
-    """The recorded exit clip, played to its end."""
+    """The recorded exit clip, played to its end, stopped the moment the game
+    goes away or loses focus."""
     path = find(name, place.get("exit_recording"))
     if path is None:
         raise RuntimeError(f"{name}: the exit recording {place.get('exit_recording')!r} "
                            f"is gone; the character may still be in the dungeon")
+    recording = load(path)
     if verbose:
         print(f"  {name}: leaving by the exit recording {path.name}")
-    stop = threading.Event()
-    play(path, stop)
+    stop, outcome = threading.Event(), {"end": None}
+    every = float(dungeon._DUNGEON.get("end_check_every", 0.5))
+    guard = threading.Thread(target=watch, args=(stop, outcome, float("inf"), every, False),
+                             daemon=True)
+    guard.start()
+    try:
+        play(recording, stop)
+    finally:
+        stop.set()
+        guard.join()
     calibration.halt_if_stopped()
+    if outcome["end"] in ("lost_game", "lost_focus"):
+        raise GameLost(f"{name}: the game {'went away' if outcome['end'] == 'lost_game' else 'lost focus'} "
+                       f"during the exit recording; it stopped there")
+    if outcome["end"] == "error":
+        raise outcome["error"]
 
 
 def run(name, verbose=True):
-    """One recorded run. Returns "cleared", "defeated" or "timeout"."""
-    trouble = problem(name)
+    """One recorded run. Returns "cleared", "defeated", "timeout" or
+    "lost_focus" (the game was brought back and the run left); raises
+    GameLost if the game is gone or won't come back."""
+    trouble = checked(name)
     if trouble:
         raise RuntimeError(trouble)
     place = settings(name)
@@ -181,12 +236,14 @@ def run(name, verbose=True):
     print(f"  RECORDED RUN start {name}", flush=True)
     result, inside = "failed", False
     try:
+        recording = load(find(name, place["recording"]))
         dungeon.run_sequence(name, location, {}, verbose,
                              ["get_entry", "open_dungeon_key"], False)
         calibration.halt_if_stopped()
+        day = dungeon.day_of(dungeon.internet_now())
         clicked = challenge(verbose)
         inside = True
-        count_run(name, verbose)
+        count_run(name, day, verbose)
         every = float(dungeon._DUNGEON.get("end_check_every", 0.5))
         stop, outcome = threading.Event(), {"end": None}
         watcher = threading.Thread(
@@ -194,7 +251,7 @@ def run(name, verbose=True):
                                 every), daemon=True)
         watcher.start()
         try:
-            play(find(name, place["recording"]), stop)
+            play(recording, stop)
             while not stop.wait(JOIN_SLICE):
                 calibration.halt_if_stopped()
         finally:
@@ -205,12 +262,19 @@ def run(name, verbose=True):
             raise outcome["error"]
         if end == "lost_game":
             inside = False
-            raise RuntimeError("the game window went away or lost focus during the "
-                               "replay; the replay stopped")
+            raise GameLost("the game window went away during the replay; the replay "
+                           "stopped there")
         calibration.halt_if_stopped()
         if verbose:
             print(f"  {name}: {end} {time.monotonic() - clicked:.1f}s after "
                   f"{dungeon.CHALLENGE_WORD}")
+        if end == "lost_focus":
+            if not dungeon.focus_game():
+                inside = False
+                raise GameLost("the game lost focus during the replay and would not "
+                               "come back to the front; the replay stopped there")
+            print(f"  {name}: the game lost focus during the replay; it is back in "
+                  f"front, and the run leaves by the exit recording")
         if end == "cleared":
             if place.get("before_exit"):
                 dungeon.run_sequence(name, location, {}, verbose, place["before_exit"], False)
@@ -218,20 +282,24 @@ def run(name, verbose=True):
             dungeon.wait_timer(float(place.get("end_wait", dungeon.END_WAIT)), False)
             calibration.halt_if_stopped()
             dungeon.exit_dungeon(name, verbose)
+            inside = False
             if place.get("after_exit"):
                 dungeon.run_sequence(name, location, {}, verbose, place["after_exit"], False)
         elif end == "defeated":
             dungeon.press_buttons("defeat", dungeon.DEFEAT, verbose)
             calibration.halt_if_stopped()
+            inside = False
             leave(name, place, verbose)
         else:
             if place.get("before_exit"):
                 dungeon.run_sequence(name, location, {}, verbose, place["before_exit"], False)
             calibration.halt_if_stopped()
+            inside = False
             leave(name, place, verbose)
-        inside = False
         result = end
         return end
+    except GameLost:
+        raise
     except Exception:
         if inside and not calibration.STOPPED.is_set() and game_in_front():
             try:
@@ -243,10 +311,17 @@ def run(name, verbose=True):
         print(f"  RECORDED RUN end {name} ({result})", flush=True)
 
 
-def count_run(name, verbose=True):
-    """Counts a run toward its dungeon's daily limit at the Challenge click,
-    whether the limit comes from the dungeon or only from its recorded entry."""
-    ran = dungeon.count_dungeon(name, dungeon.day_of(dungeon.internet_now()))
+def count_run(name, day, verbose=True):
+    """Counts a run toward its dungeon's daily limit, on the dungeon day read
+    before the Challenge click, whether the limit comes from the dungeon or
+    only from its recorded entry. With no day (the online clock did not
+    answer) it is not counted rather than counted against no day, which
+    would wipe the day's counts."""
+    if day is None:
+        print(f"  {name}: the online clock did not answer before {dungeon.CHALLENGE_WORD}, "
+              f"so this run is not counted toward the daily limit")
+        return None
+    ran = dungeon.count_dungeon(name, day)
     limit = settings(name).get("daily_limit")
     if verbose:
         print(f"  {name}: {ran}" + (f" of {limit}" if limit is not None else "")
@@ -309,7 +384,7 @@ def turn(off, rested, verbose=True, between=None):
         for name in order:
             if name in off:
                 continue
-            trouble = problem(name)
+            trouble = checked(name)
             if trouble:
                 off.add(name)
                 print(f"  dungeon: {name} is off for this trading run: {trouble}")
@@ -336,7 +411,7 @@ def turn(off, rested, verbose=True, between=None):
             outcome = run(name, verbose)
             if verbose:
                 print(f"  dungeon: recorded {name} ended: {outcome}")
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, GameLost):
             raise
         except Exception as exc:
             traceback.print_exc()

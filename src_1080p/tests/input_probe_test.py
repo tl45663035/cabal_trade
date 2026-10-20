@@ -127,6 +127,19 @@ check(probe.mouse_events(wheel) == [{"kind": "wheel", "delta": -120, "horizontal
       f"a wheel turn decodes with its sign, got {probe.mouse_events(wheel)}")
 check(ctypes.sizeof(probe.RAWINPUT) == 48, "the raw input layout matches Windows (64-bit)")
 
+# What may be replayed into the probe's black screen: no Win or Alt keys, so the
+# replay can't open the Start menu or switch away (Alt+Tab, Alt+F4).
+mixed = [key(0.1, 87, 17, False), key(0.2, 91, 91, False, ext=True),
+         key(0.3, 164, 56, False), key(0.35, 9, 15, False), key(0.4, 9, 15, True),
+         key(0.45, 164, 56, True), key(0.5, 92, 92, True, ext=True), key(0.6, 87, 17, True)]
+plays, skipped = probe.playable(mixed)
+check([e["vk"] for e in plays] == [87, 9, 9, 87] and skipped == 4,
+      f"Win and Alt are skipped, the rest kept, got {[e['vk'] for e in plays]} {skipped}")
+check(probe.should_stop(False, 100, 100) is None, "the black screen in front: carry on")
+check("Ctrl" in (probe.should_stop(True, 100, 100) or ""), "Ctrl twice stops it")
+check("foreground" in (probe.should_stop(False, 100, 200) or ""),
+      "anything else in front stops it at once")
+
 check(not TRIPPED, f"tests sent real input: {TRIPPED}")
 print(f"{checks} checks, {len(failures)} failed")
 for f in failures:
