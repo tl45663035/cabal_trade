@@ -111,6 +111,11 @@ FINISH = [tuple(step) for step in _DUNGEON["finish"]]
 DUNGEONS = _DUNGEON["dungeons"]
 TRADING_DUNGEON = _DUNGEON["trading_dungeon"]
 ENTRY_RETRIES = int(_DUNGEON["entry_retries"])
+WB_AREA_SEQUENCE = _DUNGEON["wb_area_sequence"]
+WB_AREA_WAIT = float(_DUNGEON["wb_area_wait"])
+DISENCHANT_ICON = tuple(_DUNGEON["disenchant_icon"])
+SORT_ICON = tuple(_DUNGEON["sort_icon"])
+DISENCHANT_WAIT = float(_DUNGEON["disenchant_wait"])
 MENU_WINDOW = tuple(_SHARED["world_boss"]["menu_window"])
 MENU_WORD = _SHARED["world_boss"]["menu_word"]
 ESCAPE_TRIES = int(_SHARED["world_boss"]["escape_tries"])
@@ -148,6 +153,7 @@ AURA_FOR = float(_DUNGEON["aura_for"])
 MAIN_BM_AFTER = float(_DUNGEON["main_bm_after"])
 AURA_DUE = {"at": None, "after": None, "for": None}
 MAIN_BM_DUE = {"at": None, "after": None, "for": None}
+WORLD_BOSS = {"done": None}
 LAST_KILL = {"name": None, "words": None, "loop": None}
 LOOP_POINTS = {"main_bm": MAIN_BM, "alternate_bm": ALTERNATE_BM, "aura": AURA,
                "bm_pot": BM_POT, "bm_icon": BM_ICON, **OFFENSIVE_BUFFS}
@@ -1357,6 +1363,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             click(*TAB_TWO, 0.0)
         elif name == "cancel_bm":
             cancel_bm(dungeon_name, verbose)
+        elif name == "disenchant_all":
+            disenchant_all(verbose)
         elif name == "kill_phase":
             if verbose:
                 print(f"  kill phase: heal ({HEAL_KEY}) every {HEAL_EVERY:g}s "
@@ -1374,7 +1382,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         elif name == "kill_all":
             words = target_words(dungeon_name, rest[0])
             loop = list(_DUNGEON[rest[1]]) if len(rest) > 1 else None
-            search = float(setting(dungeon_name, "kill_all_search"))
+            search = (rest[2] if len(rest) > 2
+                      else float(setting(dungeon_name, "kill_all_search")))
             kills = 0
             while not OVER.is_set():
                 if not kill_bm(rest[0], words, verbose, loop,
@@ -1384,8 +1393,9 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                     break
                 kills += 1
             if verbose:
-                print(f"  kill_all {rest[0]!r}: {kills} killed, then none "
-                      f"more targeted within {search:g}s")
+                print(f"  kill_all {rest[0]!r}: {kills} killed, "
+                      + ("until the dungeon ended" if search is None
+                         else f"then none more targeted within {search:g}s"))
         elif name == "wait":
             wait_timer(float(rest[0]), verbose)
         elif name == "timer":
@@ -2066,8 +2076,105 @@ def level_left(level):
         level, 0)
 
 
+def disenchant_all(verbose=True):
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
+    open_agent_shop_premium.ensure_inventory_open(verbose=verbose,
+                                                  tesseract=False)
+    if verbose:
+        print(f"  Disenchant at {list(DISENCHANT_ICON)}")
+    click(*DISENCHANT_ICON, SELECT_SETTLE)
+    press_button("item_extraction", 0.0, verbose)
+    agree = BUTTONS["extraction_agree"]
+    up, seen = wait_for(tuple(agree["window"]), agree["word"], BUTTON_TIMEOUT)
+    if up:
+        press_button("extraction_agree", 0.0, verbose)
+        wait_timer(DISENCHANT_WAIT, verbose)
+        press_button("extraction_close", 0.0, verbose)
+    else:
+        if verbose:
+            print(f"  no {agree['word']!r} within {BUTTON_TIMEOUT:g}s of "
+                  f"Item Extraction, so nothing is left to extract")
+        press_button("extraction_cancel", 0.0, verbose)
+    if verbose:
+        print(f"  Sort all inventory at {list(SORT_ICON)}")
+    click(*SORT_ICON, SELECT_SETTLE)
+
+
+def get_to_wb_area(verbose=True):
+    level = next((level for level in sorted(LIMITS) if level_left(level) > 0),
+                 None)
+    if level is None:
+        if verbose:
+            print("  world boss area: no CA level has an entry left today, "
+                  "so the route there is skipped")
+        return False
+    location = level_location(level)
+    place = location_of(TRADING_DUNGEON, location)
+    if verbose:
+        print(f"  world boss area: {location} has {level_left(level)} "
+              f"entr(ies) left today; in, then out by {EXIT_WORD}")
+    with_entry_retries(lambda attempt: get_entry(
+        *place["entry"], verbose=verbose), verbose)
+    with_entry_retries(lambda attempt: buy_and_open(
+        TRADING_DUNGEON, location, place, attempt, verbose), verbose)
+    up, seen = wait_for(EXIT_WINDOW, EXIT_WORD, TRANSFER_TIMEOUT)
+    if not up:
+        raise RuntimeError(
+            f"no {EXIT_WORD!r} in the dungeon window {list(EXIT_WINDOW)} "
+            f"within {TRANSFER_TIMEOUT:g}s; it reads {seen!r}. Nothing "
+            f"clicked.")
+    point = centre(EXIT_WINDOW)
+    if verbose:
+        print(f"  {EXIT_WORD} at {point}, not {CHALLENGE_WORD}")
+    click(*point, 0.0)
+    wait_timer(WB_AREA_WAIT, verbose)
+    play(TRADING_DUNGEON, WB_AREA_SEQUENCE, verbose)
+    return True
+
+
+def world_boss_turn(dungeon_name, verbose=True):
+    if not (_SHARED.get("world_boss") or {}).get("enabled"):
+        return False
+    import recovery
+    import world_boss
+    try:
+        now = world_boss.online_utc()
+    except RuntimeError as exc:
+        if verbose:
+            print(f"  world boss: {exc}")
+        return False
+    when = world_boss.next_spawn(now)
+    left = (when - now).total_seconds()
+    room = (hard_limit(dungeon_name) + float(setting(dungeon_name, "cooldown"))
+            + world_boss.TRADING_LEAD)
+    if WORLD_BOSS["done"] == when or left > room:
+        return False
+    WORLD_BOSS["done"] = when
+    print("")
+    print(f"WORLD BOSS: {when:%H:%M:%S %Z} is {left:.0f}s away, inside the "
+          f"{room:g}s a {dungeon_name} run and the lead need; the dungeons "
+          f"stop here and the world boss run starts")
+    calibration.close_everything(verbose=verbose)
+    try:
+        get_to_wb_area(verbose)
+        world_boss.run(verbose=verbose, when=when)
+    except Exception as exc:
+        calibration.snap("world_boss_failed")
+        print(f"  WORLD BOSS failed: {type(exc).__name__}: {exc}")
+        if recovery.logged_out():
+            recovery.recover(verbose=verbose)
+    world_boss.pause(world_boss.RESUME_WAIT)
+    calibration.close_everything(verbose=verbose)
+    cancel_bm(dungeon_name, verbose)
+    print("WORLD BOSS: over; the dungeons go on")
+    return True
+
+
 def run_in_turn(dungeon_name, location, after, verbose=True):
     import recovery
+    if world_boss_turn(dungeon_name, verbose):
+        after = (dungeon_name, time.monotonic())
     if after is None:
         start_block(dungeon_name, location, verbose)
     else:
@@ -2082,6 +2189,7 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
             print(f"  {exc} The game is logged out, so a relog into "
                   f"{recovery.HOME_CHANNEL}, then the next run")
         recovery.recover(verbose=verbose)
+        cancel_bm(dungeon_name, verbose)
         return None
     return dungeon_name, time.monotonic()
 
@@ -2157,6 +2265,11 @@ def command(args):
         move([("do", args[1], 0.0)])
     elif args[:1] == ["shout"]:
         shout()
+    elif args[:1] == ["disenchant"]:
+        disenchant_all()
+    elif args[:1] == ["get_to_wb_area"]:
+        calibration.close_everything(verbose=True)
+        get_to_wb_area()
     elif len(args) > 1 and all(
             DUNGEONS.get(arg, {}).get("daily_limit") is not None
             for arg in args):
@@ -2183,7 +2296,8 @@ def command(args):
                          f"play DUNGEON SEQUENCE, kill DUNGEON NAME, bm_aura, "
                          f"kill_bm DUNGEON NAME, "
                          f"enter N, arrive, "
-                         f"calibrate, shout or do ACTION")
+                         f"calibrate, shout, disenchant, get_to_wb_area "
+                         f"or do ACTION")
 
 
 if __name__ == "__main__":
