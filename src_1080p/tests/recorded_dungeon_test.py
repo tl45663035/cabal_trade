@@ -688,6 +688,13 @@ check(rd.align(outside, [5, 5])[2] is None,
       "align: a left click elsewhere is not taken for Challenge")
 right = [dict(e, button="right") if e.get("button") else e for e in with_click]
 check(rd.align(right, [5, 5])[2] is None, "align: a right click on the button doesn't count")
+ground_first = ([{"t": 0.3, "kind": "mouse", "action": "down", "button": "left", "x": 200,
+                  "y": 300, "injected": False},
+                 {"t": 0.35, "kind": "mouse", "action": "up", "button": "left", "x": 200,
+                  "y": 300, "injected": False}] + with_click)
+check(rd.align(ground_first, [5, 5])[2] is None,
+      "align: only the recording's first left click can be Challenge; a later click that "
+      "lands on the button's spot (a ground click mid-run) is never taken for it")
 
 click_file = SEQ / "fire" / "with_challenge.jsonl"
 walk_events = record_all.read_recording(RUN_FILE)

@@ -226,15 +226,19 @@ def align(events, cursor):
     is used as it is)."""
     left, top, right, bottom = dungeon.CHALLENGE_WINDOW
     for n, e in enumerate(events):
-        if (e["kind"] == "mouse" and e["action"] == "down" and e.get("button") == "left"
-                and left <= e["x"] <= right and top <= e["y"] <= bottom):
-            at = e["t"]
-            rest = events[n + 1:]
-            release = next((k for k, x in enumerate(rest) if x["kind"] == "mouse"
-                            and x["action"] == "up" and x.get("button") == "left"), None)
-            if release is not None:
-                rest = rest[release + 1:]
-            return ([dict(x, t=round(x["t"] - at, 6)) for x in rest], [e["x"], e["y"]], at)
+        if not (e["kind"] == "mouse" and e["action"] == "down" and e.get("button") == "left"):
+            continue
+        # Only the recording's first left click can be Challenge: a later one on
+        # the same spot is a ground click mid-run.
+        if not (left <= e["x"] <= right and top <= e["y"] <= bottom):
+            break
+        at = e["t"]
+        rest = events[n + 1:]
+        release = next((k for k, x in enumerate(rest) if x["kind"] == "mouse"
+                        and x["action"] == "up" and x.get("button") == "left"), None)
+        if release is not None:
+            rest = rest[release + 1:]
+        return ([dict(x, t=round(x["t"] - at, 6)) for x in rest], [e["x"], e["y"]], at)
     return events, cursor, None
 
 

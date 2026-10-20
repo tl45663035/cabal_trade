@@ -98,7 +98,7 @@ class Game:
                 self.soft.add(t)
 
     def raw(self, t, dx, dy):
-        if "right" in self.buttons:
+        if self.buttons & set(record_all.TURN):
             self.camera[0] += dx
             self.camera[1] += dy
             self.log.append((t, "turn", (dx, dy)))
@@ -223,7 +223,7 @@ class FakeInput:
     # -- software: SetCursorPos (seen by no hook) and SendInput --
     def set_cursor(self, x, y):
         where = self._clamp(x, y)
-        if "right" in self.game.buttons and tuple(where) != tuple(self.cursor):
+        if self.game.buttons & set(record_all.TURN) and tuple(where) != tuple(self.cursor):
             self.game.log.append((self.clock, "jump", tuple(where)))
         self.cursor = list(where)
         self.rem = [Fraction(0), Fraction(0)]
@@ -251,7 +251,7 @@ class FakeInput:
         if flags & W["MOUSEEVENTF_MOVE"]:
             if flags & W["MOUSEEVENTF_ABSOLUTE"]:
                 where, rem = self._absolute(mi.dx, mi.dy), [Fraction(0), Fraction(0)]
-                if "right" in self.game.buttons and tuple(where) != tuple(self.cursor):
+                if self.game.buttons & set(record_all.TURN) and tuple(where) != tuple(self.cursor):
                     # An absolute jump while the camera button is down: a
                     # game turning by the cursor or by raw input would jerk.
                     self.game.log.append((self.clock, "jump", tuple(where)))
@@ -664,12 +664,15 @@ def differences(recorded, replayed, rec_start, rep_start, tolerance=1, soft=(),
 
 
 def _turning(log):
-    spans, began = [], None
+    """When any turn button (record_all.TURN) is held: the replay goes by raw
+    counts then, so the cursor may sit one sub-pixel remainder apart."""
+    spans, began, held = [], None, set()
     for t, kind, data in log:
-        if kind == "button" and data[0] == "right":
-            if data[1] and began is None:
+        if kind == "button" and data[0] in record_all.TURN:
+            (held.add if data[1] else held.discard)(data[0])
+            if held and began is None:
                 began = t
-            elif not data[1] and began is not None:
+            elif not held and began is not None:
                 spans.append((began, t))
                 began = None
     if began is not None:

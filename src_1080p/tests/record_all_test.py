@@ -609,6 +609,34 @@ try:
           f"made still goes out), the cursor lands back where it was, and "
           f"outside a drag positions are used. Got {got}")
 
+    def lefty(item):
+        name, flags = described(item)[0], item.u.mi.dwFlags if item.type == W["INPUT_MOUSE"] else 0
+        presses = tuple(n for n, f in (("ldown", W["MOUSEEVENTF_LEFTDOWN"]),
+                                        ("lup", W["MOUSEEVENTF_LEFTUP"])) if flags & f)
+        return (name, described(item)[1], presses)
+
+    left_drag = [{**e, "button": "left"} if e.get("button") == "right" else e for e in turn]
+    sent.clear()
+    record_all.Replay(left_drag, None).play()
+    got = [lefty(i) for i in sent]
+    check(got == [("abs", (50, 50), ()), ("abs", (50, 50), ()), ("button", None, ("ldown",)),
+                  ("rel", (6, -1), ()), ("rel", (9, -2), ()), ("abs", (72, 47), ()),
+                  ("button", None, ("lup",)), ("abs", (72, 47), ()), ("abs", (80, 60), ())],
+          f"a left drag (steering or turning while held) also goes by the raw counts, "
+          f"got {got}")
+    tap = [{"t": 0.0, "kind": "mouse", "action": "raw", "dx": 1, "dy": 0},
+           {"t": 0.01, "kind": "mouse", "action": "down", "button": "left", "x": 300, "y": 200,
+            "injected": False},
+           {"t": 0.05, "kind": "mouse", "action": "up", "button": "left", "x": 300, "y": 200,
+            "injected": False}]
+    sent.clear()
+    record_all.Replay(tap, None).play()
+    clicks = [(as_point(i) if described(i)[0] == "abs" else None, lefty(i)[2]) for i in sent]
+    check(clicks == [((300, 200), ()), (None, ("ldown",)), (None, ("lup",)), ((300, 200), ())],
+          f"a short left click still presses and lets go exactly where it was, got {clicks}")
+    check(set(record_all.TURN) >= {"right", "left", "middle"},
+          f"right, left and middle drags all go by raw counts, got {record_all.TURN}")
+
     sent.clear()
     no_raw = [e for e in turn if e["action"] != "raw"]
     record_all.Replay(no_raw, None).play()

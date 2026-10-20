@@ -90,7 +90,8 @@ check(found["buttons"]["matched"] == 4 and found["wheel"]["matched"] == 1,
       f"every button and wheel turn arrives, got {found['buttons']} {found['wheel']}")
 check(abs(found["offset"] - 2.0) < 1e-3 and found["jitter_ms"][2] <= 0.81,
       f"the start offset is taken out, leaving only the wobble, got {found}")
-check(found["turns"] == [{"recorded": (12, -1), "heard": (12, -1), "absolute": 0}],
+check(found["turns"] == [{"recorded": (12, -1), "heard": (12, -1), "absolute": 0},
+                        {"recorded": (0, 0), "heard": (0, 0), "absolute": 0}],
       f"each turn's raw counts are summed on both sides, got {found['turns']}")
 check(probe.verdict(found) == [], f"a faithful replay has no problems, got "
                                   f"{probe.verdict(found)}")
