@@ -60,6 +60,14 @@
     "home_channel": 11
   },
   "dungeon": {
+    "recorded": {
+      "fire": {
+        "enabled": false,
+        "recording": "trung_fire_run.jsonl",
+        "exit_recording": "trung_fire_exit.jsonl",
+        "timeout_seconds": 300
+      }
+    },
     "enabled": false,
     "trading_dungeon": "fire",
     "shout_phrases": [

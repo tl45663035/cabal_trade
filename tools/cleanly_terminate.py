@@ -20,12 +20,13 @@ HOLD = float(_S["run"]["stop_key_hold"])
 CALL_TIMEOUT = float(_S["timing"]["dialog_timeout"])
 GIFT_MARKER = "the gift box at"
 ARENA_START = re.compile(
-    r"^  dungeon: (?:buying the level \d+ key|resuming level \d+)", re.M)
+    r"^  (?:dungeon: (?:buying the level \d+ key|resuming level \d+)"
+    r"|RECORDED RUN start \S+)", re.M)
 ARENA_END = re.compile(
     r"^  (?:\S+ \S+: (?:the dungeon is over|left the dungeon by hand"
     r"|past its \S+; left it by hand|the dungeon is failed; left it by hand)"
     r"\r?$|dungeon: .*We are not at the storm|dungeon: level \d+ ended "
-    r"before its wait)", re.M)
+    r"before its wait|RECORDED RUN end \S+ \(\w+\)\r?$)", re.M)
 
 
 def newest_log():

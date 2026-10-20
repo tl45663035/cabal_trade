@@ -51,6 +51,14 @@
     "home_channel": 11
   },
   "dungeon": {
+    "recorded": {
+      "fire": {
+        "enabled": false,
+        "recording": "bot_fire_run.jsonl",
+        "exit_recording": "bot_fire_exit.jsonl",
+        "timeout_seconds": 300
+      }
+    },
     "enabled": true,
     "shout_phrases": [
       "Wtb BL Pallad 3s 3b. Mail if deal. Semi AFK !!!",

@@ -1879,6 +1879,13 @@ def command(args):
         play(args[1], args[2])
     elif args[:1] == ["replay"]:
         replay_recording(args[1] if len(args) > 1 else None, _runs_given())
+    elif args[:1] == ["recorded"] and len(args) > 1:
+        # One recorded run of dungeon.recorded.<NAME> from the config. Record
+        # the run with tools/record_all.py: click Challenge, Ctrl twice, play
+        # it, Ctrl twice once "Cleared dungeon" shows. Record the exit clip
+        # in the dungeon: Ctrl twice, leave by hand, Ctrl twice outside.
+        import recorded_dungeon
+        print(f"  {args[1]}: {recorded_dungeon.run(args[1])}")
     elif args[:1] == ["kill"] and len(args) > 2:
         name = " ".join(args[2:])
         kill(name, target_words(args[1], name))
@@ -1913,6 +1920,7 @@ def command(args):
                          f"run N, buy N, get_entry X Y, "
                          f"open_dungeon_key DUNGEON LOCATION, start_dungeon, "
                          f"play DUNGEON SEQUENCE, replay [FILE], "
+                         f"recorded DUNGEON, "
                          f"kill DUNGEON NAME, bm_aura, "
                          f"kill_bm DUNGEON NAME, "
                          f"enter N, arrive, "

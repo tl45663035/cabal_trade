@@ -516,6 +516,28 @@ with patched((driver, "_DUNGEON", dict(driver._DUNGEON)),
 check(acted is True and due is not None and abs(due - time.monotonic() - 600) < 5,
       f"recorded_turn: the next check is due when the rotation says, got {acted} {due}")
 
+# ============================== Task 4 ==============================
+
+ran_one = []
+with patched((rd, "run", lambda name, verbose=True: ran_one.append(name) or "cleared")), \
+        contextlib.redirect_stdout(io.StringIO()):
+    dungeon.command(["recorded", "fire"])
+check(ran_one == ["fire"], f"dungeon.py recorded NAME plays one recorded run, got {ran_one}")
+try:
+    with contextlib.redirect_stdout(io.StringIO()):
+        dungeon.command(["nonsense"])
+    usage = ""
+except SystemExit as exc:
+    usage = str(exc)
+check("recorded DUNGEON" in usage, f"the help names the recorded command, got {usage!r}")
+
+for profile in ("cang", "trung", "bot"):
+    entry = json.loads((SRC / "configs" / f"{profile}.json").read_text(encoding="utf-8"))[
+        "dungeon"]["recorded"]["fire"]
+    check(entry == {"enabled": False, "recording": f"{profile}_fire_run.jsonl",
+                    "exit_recording": f"{profile}_fire_exit.jsonl", "timeout_seconds": 300},
+          f"{profile} lists fire as a recorded dungeon, off until its recordings exist")
+
 # ============================== the end ==============================
 
 check(not TRIPPED, f"tests sent real input: {TRIPPED}")

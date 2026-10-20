@@ -116,6 +116,18 @@ check(cleanly_terminate.open_arena("\r\n".join([TRADE, START3, OVER3])) is None,
 check(cleanly_terminate.open_arena("\r\n".join([TRADE, GIFT])) is None,
       "a log with no arena has none open")
 
+REC_START = "  RECORDED RUN start fire"
+REC_END = "  RECORDED RUN end fire (timeout)"
+REC_FAILED = "  RECORDED RUN end fire (failed)"
+check(cleanly_terminate.open_arena("\r\n".join([TRADE, REC_START])) is not None,
+      "a recorded run that started is open")
+check(cleanly_terminate.open_arena("\r\n".join([TRADE, REC_START, REC_END])) is None,
+      "a recorded run that ended (even by timeout) is not open")
+result, sleeps, said = run([TRADE, REC_START], [[GIFT], [TRADE], [REC_FAILED], [GIFT]])
+check(result is True and sleeps == 3 and "gift box is open" not in said,
+      f"a recorded run in progress is finished before the stop, the gift box during it "
+      f"passed, got {result} after {sleeps}: {said!r}")
+
 real_state = dungeon.STATE
 dungeon.STATE = SCRATCH / "dungeon_next.json"
 try:
