@@ -390,9 +390,11 @@ def keypad(verbose=True, seen=None):
     return out
 
 
-def recover(verbose=True):
+def recover(verbose=True, channel=None):
     from open_inventory import focus_game
     who = account()
+    if channel is not None:
+        who["channel"] = _R["channel_label"].format(channel)
 
     if not focus_game():
         raise Refused("could not bring the game to the foreground.")
@@ -601,9 +603,9 @@ def logout(verbose=True):
         f"{MENU_WORD!r}, so the character is still in the world.")
 
 
-def relog(verbose=True):
+def relog(verbose=True, channel=None):
     logout(verbose=verbose)
-    return recover(verbose=verbose)
+    return recover(verbose=verbose, channel=channel)
 
 
 def _enter_home(who, verbose=True):
