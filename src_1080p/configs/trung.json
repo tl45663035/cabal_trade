@@ -73,6 +73,7 @@
     "bm_aura": ["alternate_bm"],
     "bm_aura_for": 3.0,
     "bm_loop": ["alternate_bm", "aura", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
+    "main_bm_two_targets": true,
     "dungeons": {
       "chaos_arena": {
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",

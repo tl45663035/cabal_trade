@@ -94,6 +94,7 @@ TARGET_WINDOWS = [TARGET_WINDOW] + [tuple(box) for box in
 TARGET_TEXT_MIN = int(_DUNGEON["target_text_min"])
 TARGET_HP = re.compile(_DUNGEON["target_hp_pattern"])
 TWO_TARGET_TEXT = re.compile(_DUNGEON["two_target_pattern"])
+MAIN_BM_TWO_TARGETS = bool(_DUNGEON["main_bm_two_targets"])
 BOSSES = _DUNGEON["bosses"]
 ORDER = [int(level) for level in _DUNGEON["order"]]
 ROTATE_COUNT = int(_DUNGEON["rotate_count"])
@@ -162,7 +163,9 @@ AURA_AFTER = float(_DUNGEON["aura_after"])
 AURA_FOR = float(_DUNGEON["aura_for"])
 MAIN_BM_AFTER = float(_DUNGEON["main_bm_after"])
 AURA_DUE = {"at": None, "after": None, "for": None, "since": None}
+AURA_WINDOW = {"until": None, "since": None, "last": None, "clicks": 0}
 MAIN_BM_DUE = {"at": None, "after": None, "for": None}
+MAIN_BM_STATE = {"on": False}
 WORLD_BOSS = {"done": None}
 LAST_KILL = {"name": None, "words": None, "loop": None}
 LOOP_POINTS = {"main_bm": MAIN_BM, "alternate_bm": ALTERNATE_BM, "aura": AURA,
@@ -559,9 +562,17 @@ def cancel_bm(dungeon_name, verbose=True):
     for _click in range(clicks):
         right_click(*BM_ICON, CANCEL_BM_GAP)
     calibration.snap("cancel_bm")
+    two = MAIN_BM_TWO_TARGETS and MAIN_BM_STATE["on"]
+    MAIN_BM_STATE["on"] = False
+    pending = AURA_DUE["at"] is not None
+    AURA_DUE["at"] = None
     if verbose:
         print(f"  BM icon right-clicked {clicks} times at {list(BM_ICON)}, "
-              f"{CANCEL_BM_GAP:g}s after each")
+              f"{CANCEL_BM_GAP:g}s after each"
+              + ("; the target is read from the middle bar again" if two
+                 else "")
+              + ("; the aura still due for that BM is dropped" if pending
+                 else ""))
 
 
 def setting(dungeon_name, key):
@@ -752,6 +763,12 @@ def read_inked(crops):
 
 def target_bars(image):
     centre_box, *pair_boxes = TARGET_WINDOWS
+    if MAIN_BM_TWO_TARGETS and MAIN_BM_STATE["on"]:
+        centre, left, right = read_inked([white_text(image, box)
+                                          for box in TARGET_WINDOWS])
+        return ([bar for bar in (left, right) if TWO_TARGET_TEXT.search(bar)]
+                or [bar for bar in [centre] if TWO_TARGET_TEXT.search(bar)]
+                or [left])
     centre = read_inked([white_text(image, centre_box)])[0]
     if TARGET_HP.search(centre) is not None:
         return [centre]
@@ -837,6 +854,7 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                                        f"the {label} stopped.")
                 aura_when_due(verbose)
                 main_bm_when_due(verbose)
+                aura_in_window(verbose)
                 tap(KEYS[TARGET_KEY])
                 presses += 1
                 pressed_at = LOCK["reads"]
@@ -973,6 +991,46 @@ def aura_before(dungeon_name, sequence, verbose=True):
     aura_when_due(verbose)
 
 
+def aura_now(verbose=True):
+    if AURA_DUE["for"] is None or OVER.is_set():
+        if verbose:
+            print("  no BM aura has been set up in this run, so no aura")
+        return
+    now = time.monotonic()
+    AURA_DUE["at"] = None
+    AURA_WINDOW.update(until=now + AURA_DUE["for"], since=now, last=None,
+                       clicks=0)
+    if verbose:
+        print(f"  {now - AURA_DUE['since']:.0f}s since BM: the aura goes "
+              f"now, right-clicked at {list(AURA)} at most every "
+              f"{LOOP_GAP:g}s for {AURA_DUE['for']:g}s, between the "
+              f"{TARGET_KEY} presses and the attacks of the next kill")
+
+
+def aura_in_window(verbose=True):
+    if AURA_WINDOW["until"] is None:
+        return
+    now = time.monotonic()
+    if now >= AURA_WINDOW["until"] or OVER.is_set():
+        end_aura_window(verbose)
+        return
+    if (AURA_WINDOW["last"] is not None
+            and now - AURA_WINDOW["last"] < LOOP_GAP):
+        return
+    right_click(*AURA, 0.0)
+    AURA_WINDOW.update(last=now, clicks=AURA_WINDOW["clicks"] + 1)
+
+
+def end_aura_window(verbose=True):
+    if AURA_WINDOW["until"] is None:
+        return
+    ended = min(time.monotonic(), AURA_WINDOW["until"])
+    if verbose:
+        print(f"  aura right-clicked {AURA_WINDOW['clicks']} time(s) in "
+              f"{ended - AURA_WINDOW['since']:.1f}s alongside the kill")
+    AURA_WINDOW["until"] = None
+
+
 def main_bm_when_due(verbose=True):
     due = MAIN_BM_DUE["at"]
     if due is None or OVER.is_set() or time.monotonic() < due:
@@ -988,6 +1046,15 @@ def main_bm_when_due(verbose=True):
         print(f"  {MAIN_BM_DUE['after']:g}s since the first BM: main BM "
               f"right-clicked {clicks} time(s) in "
               f"{time.monotonic() - started:.1f}s at {list(MAIN_BM)}")
+    if clicks:
+        main_bm_on(verbose)
+
+
+def main_bm_on(verbose=True):
+    if MAIN_BM_TWO_TARGETS and not MAIN_BM_STATE["on"] and verbose:
+        print("  main BM is on: the target is read from the two target bars, "
+              "with the middle bar read alongside")
+    MAIN_BM_STATE["on"] = True
 
 
 def click_round(names, since):
@@ -999,6 +1066,7 @@ def click_round(names, since):
                                "right-click loop stopped.")
         aura_when_due()
         main_bm_when_due()
+        aura_in_window()
         if entry == "aura" and AURA_DUE["at"] is not None:
             continue
         started = time.monotonic()
@@ -1009,6 +1077,8 @@ def click_round(names, since):
             right_click(*point, 0.0)
         elif entry in CLICK_POINTS:
             right_click(*CLICK_POINTS[entry], 0.0)
+            if entry == "main_bm":
+                main_bm_on()
         else:
             tap(KEYS[entry])
         ENDED.wait(max(0.0, started + LOOP_GAP - time.monotonic()))
@@ -1314,6 +1384,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
     finally:
         stop.set()
         AURA_DUE["at"] = None
+        AURA_WINDOW["until"] = None
         MAIN_BM_DUE["at"] = None
         LAST_KILL.update(name=None, words=None, loop=None)
         for thread in (phase["healer"], phase["ender"], phase["limit"]):
@@ -1442,6 +1513,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                     main=float(setting(dungeon_name, "main_bm_after")))
         elif name == "spam":
             bm_aura(verbose, list(rest[:-1]), float(rest[-1]))
+        elif name == "aura":
+            aura_now(verbose)
         elif name == "tab_two":
             if not focus_game():
                 raise RuntimeError("could not bring the game to the "
@@ -1467,6 +1540,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         elif name == "kill_bm":
             kill_bm(rest[0], target_words(dungeon_name, rest[0]), verbose,
                     list(_DUNGEON[rest[1]]) if len(rest) > 1 else None)
+            end_aura_window(verbose)
         elif name == "kill_all":
             words = target_words(dungeon_name, rest[0])
             loop = list(_DUNGEON[rest[1]]) if len(rest) > 1 else None
@@ -1484,6 +1558,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 print(f"  kill_all {rest[0]!r}: {kills} killed, "
                       + ("until the dungeon ended" if search is None
                          else f"then none more targeted within {search:g}s"))
+            end_aura_window(verbose)
         elif name == "wait":
             wait_timer(float(rest[0]), verbose)
         elif name == "timer":
