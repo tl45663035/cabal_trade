@@ -2267,6 +2267,7 @@ def disenchant_all(verbose=True):
 
 
 def get_to_wb_area(verbose=True):
+    escape_everything(verbose)
     level = next((level for level in sorted(LIMITS) if level_left(level) > 0),
                  None)
     if level is None:
