@@ -472,7 +472,8 @@ class FakeChild:
         return 0
 
 
-def record_session(script, out, fake=None, command=None, crash=False, window=None):
+def record_session(script, out, fake=None, command=None, crash=False, window=None,
+                   zoom=0):
     """Plays script on the fake hand and through the real record_all.record().
     Returns the saved file and the fake input system it ran on."""
     fake = fake or FakeInput()
@@ -523,6 +524,8 @@ def record_session(script, out, fake=None, command=None, crash=False, window=Non
         (record_all, "subprocess", types.SimpleNamespace(Popen=lambda cmd: child)),
         (ra, "Signal", lambda: types.SimpleNamespace(
             paint=lambda *a, **k: None, close=lambda: None)),
+        (record_all, "ZOOM", {**record_all.ZOOM, "notches": zoom}),
+        (ra, "send", fake.send),
     ]
     if crash:
         changes.append((record_all.Everything, "finish",

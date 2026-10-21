@@ -651,6 +651,7 @@
       "roll_dice": {"window": [395, 709, 464, 724], "word": "Roll a Dice"},
       "final_exit": {"window": [322, 709, 352, 724], "word": "Exit"},
       "list_close": {"window": [1366, 884, 1416, 900], "word": "Close"},
+      "stay": {"window": [470, 805, 580, 830], "word": "Stay"},
       "warp_yes": {"window": [944, 601, 982, 620], "word": "Yes"},
       "leave": {"window": [845, 805, 895, 826], "word": "Leave"},
       "fire_leave": {"window": [312, 805, 362, 826], "word": "Leave"},
@@ -1009,6 +1010,7 @@
       "all_turn_buttons": ["right", "left", "middle"],
       "all_stop_poll": 0.01,
       "all_compare_click_px": 1,
+      "all_zoom_out": {"notches": 15, "delta": -120, "gap_ms": 30, "settle": 0.5},
       "banner": {
         "recording": {"word": "RECORDING", "background": "101"},
         "paused": {"word": "PAUSED", "background": "102"},

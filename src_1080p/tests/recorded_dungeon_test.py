@@ -607,7 +607,7 @@ with patched((driver, "dungeon_on", lambda: True),
              (driver, "recorded_turn", lambda verbose=True: picked.append("recorded") or True),
              (driver, "back_to_back_turn", lambda *a, **k: picked.append("b2b") or True),
              (rd, "enabled", lambda: ["fire"])):
-    driver.dungeon_turn()
+    trading_ran_dungeons = driver.dungeon_turn()
 with patched((driver, "dungeon_on", lambda: True),
              (driver, "recorded_turn", lambda verbose=True: picked.append("recorded") or True),
              (driver, "back_to_back_turn", lambda *a, **k: picked.append("b2b") or True),
@@ -615,8 +615,10 @@ with patched((driver, "dungeon_on", lambda: True),
              (dungeon, "DUNGEONS", {**dungeon.DUNGEONS,
                                     dungeon.TRADING_DUNGEON: {"back_to_back": True}})):
     driver.dungeon_turn()
-check(picked == ["recorded", "b2b"],
-      f"driver_picks_recorded: recorded when on, today's path when not, got {picked}")
+check(picked == ["b2b"] and trading_ran_dungeons is False,
+      f"the trading run never runs recorded dungeons (they run on their own with "
+      f"dungeon.py), nor the scripted dungeon in their place; without recorded ones "
+      f"today's path is unchanged; got {picked} {trading_ran_dungeons!r}")
 
 state = {"due": None, "off": False}
 with patched((driver, "_DUNGEON", dict(driver._DUNGEON)),
@@ -743,6 +745,15 @@ for row, want in [("Illusion Castle Radiant Hall(Apocr", True),
                   ("Illusion Castle Radiant Hall(Apocx", False)]:
     check(dungeon.names(row, IC) is want,
           f"names: {row!r} {'is' if want else 'is not'} {IC!r}")
+IC1 = "Illusion Castle Underworld(Apocrypha)"
+for row, want in [("Illusion Castle Underworld(Apocrypl", True),
+                  ("Illusion Castle Underworld(Apocryp", True),
+                  ("Illusion Castle Underworld(30/30)[N", False),
+                  ("Illusion Castle Radiant Hall(Apocryp", False),
+                  ("Illusion Castle Underworld(Apoxxxxl", False)]:
+    check(dungeon.names(row, IC1) is want,
+          f"names: {row!r} {'is' if want else 'is not'} {IC1!r} (the letter at the edge "
+          f"may be misread)")
 for row, name, want in [("Steamer Crazy (Awakened)(30/30)L", "Steamer Crazy (Awakened)", True),
                         ("Steamer Crazy (Normal)(10/10)", "Steamer Crazy (Awakened)", False),
                         ("Steamer Crazy (Aw", "Steamer Crazy (Awakened)", False),
@@ -751,6 +762,117 @@ for row, name, want in [("Steamer Crazy (Awakened)(30/30)L", "Steamer Crazy (Awa
                         ("Edge of Phantoms", "Edge of Phantom", False)]:
     check(dungeon.names(row, name) is want,
           f"names: {row!r} {'is' if want else 'is not'} {name!r}")
+
+def times_run(outcomes, times, cooldown=35):
+    ran, waits = [], []
+    left = list(outcomes)
+
+    def one(name, verbose=True):
+        ran.append(name)
+        result = left.pop(0) if left else "cleared"
+        if isinstance(result, BaseException):
+            raise result
+        return result
+
+    out = io.StringIO()
+    with world({"fire": {**RECORDED["fire"], "cooldown": cooldown}}),             patched((rd, "run", one),
+                    (dungeon, "wait_timer", lambda seconds, verbose=True: waits.append(seconds))),             contextlib.redirect_stdout(out):
+        try:
+            result = rd.run_times("fire", times)
+        except BaseException as exc:
+            result = exc
+    return result, ran, waits, out.getvalue()
+
+
+result, ran, waits, said = times_run([], 4)
+check(result == ["cleared"] * 4 and len(ran) == 4,
+      f"run_times: that many runs back to back, got {result} {ran}")
+check(len(waits) == 3 and all(30 < w <= 35 for w in waits),
+      f"run_times: the BM cooldown between runs, not before the first, got {waits}")
+check("4 of 4" in said and "cleared 4" in said,
+      f"run_times: says which run it is and tallies the end, got {said!r}")
+
+result, ran, waits, said = times_run(["cleared", "no_entries_left"], 25)
+check(result == ["cleared", "no_entries_left"] and len(ran) == 2,
+      f"run_times: stops when the game shows no entries left, got {result}")
+
+result, ran, waits, said = times_run(["cleared", "timeout", "low_hp", "defeated"], 25)
+check(len(ran) == 4 and "3 runs in a row" in said,
+      f"run_times: stops after 3 runs in a row that don't clear, got {result} {said!r}")
+
+result, ran, waits, said = times_run(["timeout", "cleared", "timeout", "timeout", "cleared"], 5)
+check(len(ran) == 5, f"run_times: a clear in between keeps it going, got {result}")
+
+result, ran, waits, said = times_run(["cleared", KeyboardInterrupt()], 25)
+check(isinstance(result, KeyboardInterrupt) and len(ran) == 2,
+      f"run_times: a Ctrl stop ends it, got {result!r}")
+
+called = []
+saved_argv = sys.argv
+with patched((rd, "run_times", lambda name, times, verbose=True: called.append((name, times)))),         contextlib.redirect_stdout(io.StringIO()):
+    sys.argv = ["dungeon.py", "recorded", "steamer", "--runs", "25", "--config", "cang"]
+    dungeon.command(["recorded", "steamer"])
+    sys.argv = ["dungeon.py", "recorded", "steamer", "--config", "cang"]
+    dungeon.command(["recorded", "steamer"])
+sys.argv = saved_argv
+check(called == [("steamer", 25), ("steamer", 1)],
+      f"recorded NAME --runs N runs it N times; without --runs once, got {called}")
+
+def screen_with(texts):
+    def read(image, windows):
+        return [texts.get(tuple(w), "") for w in windows]
+    out = None
+    with patched((calibration, "grab", lambda: object()),
+                 (calibration, "snap", lambda *a, **k: None),
+                 (dungeon, "read_windows", read)):
+        out = rd.screen_says()
+    return out
+
+
+LEAVE_BOX = tuple(dungeon.BUTTONS["fire_leave"]["window"])
+STAY_BOX = tuple(dungeon.BUTTONS["stay"]["window"])
+BANNER = tuple(dungeon.CLEARED_WINDOW)
+check(screen_with({LEAVE_BOX: "Leave", STAY_BOX: "Stay",
+                   BANNER: "asure Acquisition Condition Met!"}) == "cleared",
+      "screen_says: the dungeon's result window (Leave and Stay) is the end, with no "
+      "Cleared dungeon banner (Illusion Castle)")
+check(screen_with({BANNER: "Cleared dungeon"}) == "cleared",
+      "screen_says: the Cleared dungeon banner is still the end")
+check(screen_with({LEAVE_BOX: "Leave"}) is None,
+      "screen_says: Leave alone is not the result window")
+check(screen_with({STAY_BOX: "Stay"}) is None,
+      "screen_says: Stay alone is not the result window")
+check(screen_with({}) is None, "screen_says: nothing on screen, no end")
+
+def exit_with(showing):
+    clicked = []
+
+    def seen(window, word, timeout):
+        return (word in showing, word if word in showing else "")
+
+    with patched((dungeon, "focus_game", lambda: True),
+                 (dungeon, "wait_for", seen),
+                 (dungeon, "click", lambda x, y, settle: clicked.append((x, y)))),             contextlib.redirect_stdout(io.StringIO()):
+        try:
+            dungeon.press_buttons("exit", [("button_if", "confirmation", 0.0),
+                                           ("button", "fire_leave", 0.0)])
+            return clicked
+        except RuntimeError as exc:
+            return exc
+
+
+CONFIRM = tuple(dungeon.centre(tuple(dungeon.BUTTONS["confirmation"]["window"])))
+LEAVE = tuple(dungeon.centre(tuple(dungeon.BUTTONS["fire_leave"]["window"])))
+got = exit_with({"Confirmation", "Leave"})
+check(got == [CONFIRM, LEAVE],
+      f"button_if: a Confirmation that shows is clicked (the reward), then Leave, got {got}")
+got = exit_with({"Leave"})
+check(got == [LEAVE],
+      f"button_if: no Confirmation (Illusion Castle's result window), straight to Leave, "
+      f"got {got}")
+got = exit_with(set())
+check(isinstance(got, RuntimeError) and "Leave" in str(got),
+      f"a plain button that never shows still stops the exit, got {got!r}")
 
 # ======== the game's own count of entries left decides the day ========
 
@@ -1028,6 +1150,17 @@ first_w = min((t for t, item in r.sends if item.type == ra.W["INPUT_KEYBOARD"]
 check(abs(first_w - (r.t0 + 3.0 + walk_events[1][0]["t"] - 2.9)) < 0.05,
       "a recording with its own Challenge click ignores start_delay")
 
+r = play_run(Scene(banner_at=RUN_LENGTH + 1.5), {"zoom_out": 4})
+wheels = [d for _t, k, d in r.fake.game.log if k == "wheel"]
+log = [k for _t, k, _d in r.fake.game.log if k in ("wheel", "key")]
+check(r.result == "cleared" and len(wheels) == 4 and all(d[0] < 0 for d in wheels)
+      and log[:5] == ["wheel"] * 4 + ["key"],
+      f"zoom_out on the dungeon: the camera zooms out by that many notches before the "
+      f"replay's first input, got {r.result!r} {log[:6]}")
+r = play_run(Scene(banner_at=RUN_LENGTH + 0.5))
+check(not [d for _t, k, d in r.fake.game.log if k == "wheel"],
+      "no zoom_out on the dungeon and none in the recording: no zoom")
+
 # ============ starting the replay from the dungeon's timer ============
 
 for text, want in [("00:04:58", 298), ("00:01.29", 89), ("00.09.59", 599),
@@ -1247,10 +1380,10 @@ check("recorded all" in usage, f"the help names recorded all, got {usage!r}")
 for profile in ("cang", "trung", "bot"):
     entry = json.loads((SRC / "configs" / f"{profile}.json").read_text(encoding="utf-8"))[
         "dungeon"]["recorded"]["fire"]
-    check(entry.get("enabled") is (profile == "cang")
+    check(entry.get("enabled") is False
           and entry.get("recording") == f"{profile}_fire_run.jsonl"
           and entry.get("timeout_seconds") == 300 and "exit_recording" not in entry,
-          f"{profile} lists fire as a recorded dungeon, on only for cang; it "
+          f"{profile} lists fire as a recorded dungeon, off for now; it "
           f"leaves by the dungeon's manual exit, so there is no exit recording, got {entry}")
 
 for profile in ("cang", "trung", "bot"):

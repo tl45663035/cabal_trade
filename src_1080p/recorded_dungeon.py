@@ -275,9 +275,13 @@ def hp_low(line):
 
 def screen_says():
     image = calibration.grab()
-    defeat, banner = dungeon.read_windows(
-        image, [tuple(dungeon.DEFEAT_SIGN["window"]), dungeon.CLEARED_WINDOW])
-    if dungeon.CLEARED_TEXT.search(banner):
+    leave, stay = dungeon.BUTTONS["fire_leave"], dungeon.BUTTONS["stay"]
+    defeat, banner, left, right = dungeon.read_windows(
+        image, [tuple(dungeon.DEFEAT_SIGN["window"]), tuple(dungeon.CLEARED_WINDOW),
+                tuple(leave["window"]), tuple(stay["window"])])
+    result_window = (row_model._key(leave["word"]) in row_model._key(left)
+                     and row_model._key(stay["word"]) in row_model._key(right))
+    if dungeon.CLEARED_TEXT.search(banner) or result_window:
         calibration.snap("dungeon_end", image)
         return "cleared"
     if row_model._key(dungeon.DEFEAT_SIGN["word"]) in row_model._key(defeat):
@@ -466,7 +470,8 @@ def run(name, verbose=True):
             events = [dict(e, t=round(e["t"] + delay, 6)) for e in events]
             print(f"  {name}: the recording began after Challenge; the replay starts "
                   f"{delay:g}s after the Challenge click")
-        recording = ({**head, "cursor": cursor}, events, base)
+        zoom = place.get("zoom_out", head.get("zoom_out"))
+        recording = ({**head, "cursor": cursor, "zoom_out": zoom}, events, base)
         try:
             dungeon.run_sequence(name, location, {}, verbose,
                                  ["get_entry", "open_dungeon_key"], False)
@@ -575,6 +580,36 @@ def run(name, verbose=True):
         raise
     finally:
         print(f"  RECORDED RUN end {name} ({result})", flush=True)
+
+
+def run_times(name, times, verbose=True):
+    results, rested, streak = [], None, 0
+    most = int(dungeon._DUNGEON.get("recorded_fail_streak", 3))
+    for number in range(1, int(times) + 1):
+        calibration.halt_if_stopped()
+        if rested is not None:
+            left = rested + float(settings(name).get("cooldown", 0)) - time.monotonic()
+            if left > 0:
+                if verbose:
+                    print(f"  {name}: {left:.1f}s of BM cooldown before the next run")
+                dungeon.wait_timer(left, False)
+        print(f"  {name}: run {number} of {times}", flush=True)
+        try:
+            outcome = run(name, verbose)
+        finally:
+            rested = time.monotonic()
+        results.append(outcome)
+        print(f"  {name}: run {number} of {times} ended: {outcome}", flush=True)
+        if outcome == "no_entries_left":
+            break
+        streak = 0 if outcome == "cleared" else streak + 1
+        if streak >= most:
+            print(f"  {name}: didn't clear {streak} runs in a row; stopping")
+            break
+    tally = ", ".join(f"{outcome} {results.count(outcome)}"
+                      for outcome in dict.fromkeys(results))
+    print(f"  {name}: {len(results)} of {times} run(s): {tally}", flush=True)
+    return results
 
 
 def count_run(name, day, verbose=True):

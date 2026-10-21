@@ -637,6 +637,21 @@ for seed in range(seeds):
     check(not any(k == "char" for _t, k, _d in replayed),
           f"E18 random session {seed}: no typed character sent")
 
+zoom_script = Script().ctrl_twice("start").tap("W", hold=40, gap=60).ctrl_twice("stop")
+path, rec = record_session(zoom_script, OUT, zoom=5)
+head = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
+check(head.get("zoom_out") == 5, f"zoom e2e: the recording notes its zoom, got {head}")
+rec_wheels = [d for _t, k, d in rec.game.log if k == "wheel"]
+check(len(rec_wheels) == 5 and all(d[0] < 0 for d in rec_wheels),
+      f"zoom e2e: the game was scrolled down 5 times before recording, got {rec_wheels}")
+check(not any(e.get("kind") == "mouse" and e.get("action") == "wheel"
+              for e in (json.loads(l) for l in path.read_text(encoding="utf-8").splitlines()[1:])),
+      "zoom e2e: those wheel turns are not in the recording")
+rep = replay_session(path)
+log = [(k, d) for _t, k, d in rep.game.log if k in ("wheel", "key")]
+check([k for k, d in log][:6] == ["wheel"] * 5 + ["key"] and all(d[0] < 0 for k, d in log[:5]),
+      f"zoom e2e: the replay scrolls down 5 times, then plays the recording, got {log[:7]}")
+
 # ============================== failure paths ============================
 
 def f1():

@@ -4600,7 +4600,7 @@ def dungeon_turn(verbose=True, report_wait=True):
     import dungeon
     import recorded_dungeon
     if recorded_dungeon.enabled():
-        return recorded_turn(verbose)
+        return False
     if dungeon.DUNGEONS[dungeon.TRADING_DUNGEON].get("back_to_back"):
         return back_to_back_turn(dungeon, verbose)
     if _DUNGEON["due"] is None and not _DUNGEON["resume_checked"]:

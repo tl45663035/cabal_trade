@@ -71,17 +71,18 @@
   "dungeon": {
     "recorded": {
       "fire": {
-        "enabled": true,
+        "enabled": false,
         "daily_limit": null,
         "start_at": "15:00",
         "recording": "cang_fire_run.jsonl",
         "timeout_seconds": 300
       },
       "eop": {
-        "enabled": false,
+        "enabled": true,
         "daily_limit": null,
         "start_at": "15:00",
         "recording": "cang_eop_run.jsonl",
+        "start_timer": "00:04:57",
         "timeout_seconds": 300
       },
       "steamer": {
@@ -89,6 +90,7 @@
         "daily_limit": null,
         "start_at": "15:00",
         "recording": "cang_steamer_run.jsonl",
+        "start_timer": "00:09:56",
         "timeout_seconds": 300
       },
       "ice": {
@@ -119,9 +121,19 @@
         "recording": "cang_illusion_run.jsonl",
         "challenge_wait": 3,
         "timeout_seconds": 300
+      },
+      "ic1": {
+        "enabled": true,
+        "daily_limit": null,
+        "start_at": "15:00",
+        "recording": "cang_ic1_run.jsonl",
+        "start_timer": "00:14:58",
+        "challenge_wait": 3,
+        "timeout_seconds": 300
       }
     },
     "enabled": true,
+    "key_tab": 7,
     "trading_dungeon": "fire",
     "level_windows": [
       [502, 266, 737, 284],
@@ -149,12 +161,17 @@
       "fire": {
         "locations": {
           "Fire": {"bm": "main_bm"}
-        }
+        },
+        "exit": [["button_if", "confirmation", 0.0], ["button", "fire_leave", 0.0]]
+      },
+      "ice": {
+        "exit": [["button_if", "confirmation", 0.0], ["button", "fire_leave", 0.0]]
       },
       "eop": {
         "locations": {
           "EoP": {"entry": [136, 597], "name": "Edge of Phantom"}
         },
+        "exit": [["button_if", "confirmation", 0.0], ["button", "fire_leave", 0.0]],
         "daily_limit": 30,
         "end_wait": 2,
         "cooldown": 35,
@@ -164,6 +181,7 @@
         "locations": {
           "Steamer": {"entry": [87, 401], "name": "Steamer Crazy (Awakened)"}
         },
+        "exit": [["button_if", "confirmation", 0.0], ["button", "fire_leave", 0.0]],
         "daily_limit": 30,
         "difficulty": 5,
         "end_wait": 2,
@@ -174,6 +192,7 @@
         "locations": {
           "Valley": {"entry": [234, 401], "name": "Hazardous Valley (Awakened)"}
         },
+        "exit": [["button_if", "confirmation", 0.0], ["button", "fire_leave", 0.0]],
         "daily_limit": 30,
         "difficulty": 0,
         "end_wait": 2,
@@ -184,6 +203,7 @@
         "locations": {
           "Panic": {"entry": [38, 401], "name": "Panic Cave (Awakened)"}
         },
+        "exit": [["button_if", "confirmation", 0.0], ["button", "fire_leave", 0.0]],
         "daily_limit": 30,
         "difficulty": 5,
         "end_wait": 2,
@@ -194,6 +214,18 @@
         "locations": {
           "Illusion": {"entry": [185, 548], "name": "Illusion Castle Radiant Hall(Apocrypha)"}
         },
+        "exit": [["button_if", "confirmation", 0.0], ["button", "fire_leave", 0.0]],
+        "difficulty": 0,
+        "end_wait": 2,
+        "cooldown": 35,
+        "before_exit": ["cancel_bm"]
+      },
+      "ic1": {
+        "locations": {
+          "IC1": {"entry": [136, 548], "name": "Illusion Castle Underworld(Apocrypha)"}
+        },
+        "exit": [["button_if", "confirmation", 0.0], ["button", "fire_leave", 0.0]],
+        "daily_limit": 30,
         "difficulty": 0,
         "end_wait": 2,
         "cooldown": 35,

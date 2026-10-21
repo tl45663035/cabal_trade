@@ -27,6 +27,8 @@ EXPLAINED = 0.1
 POLL_GAP = float(ra.R["all_stop_poll"])
 OWN_GRACE = 0.1
 TURN = set(ra.R["all_turn_buttons"])
+ZOOM = ra.R.get("all_zoom_out") or {"notches": 0, "delta": 120, "gap_ms": 30,
+                                     "settle": 0.5}
 
 LRESULT = ctypes.c_ssize_t
 WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wintypes.HWND, wintypes.UINT,
@@ -217,8 +219,11 @@ def difference(a, b):
 
 
 class Everything:
-    def __init__(self, control=True, command=None, armed=False):
+    def __init__(self, control=True, command=None, armed=False, zoom=0):
         self.control = control
+        self.zoom = zoom
+        self.zooming = False
+        self.zoomed = 0
         self.command = command
         self.gesture = ra.Gesture()
         self.lock = threading.Lock()
@@ -247,6 +252,15 @@ class Everything:
         self.path = recording_path(self.started)
         self.events = []
         self.recording = True
+
+    def zoom_then_start(self):
+        try:
+            zoom_out(self.zoom)
+            with self.lock:
+                self.start(time.perf_counter())
+                self.zoomed = self.zoom
+        finally:
+            self.zooming = False
 
     def add(self, now, event):
         stamped = {"t": round(now - self.zero, 6), **event}
@@ -287,6 +301,12 @@ class Everything:
             if self.recording:
                 self.dropped = {id(e) for e in self.ctrl_taps}
                 self.finished = True
+            elif self.zooming:
+                self.gesture.reset()
+            elif self.zoom:
+                self.gesture.reset()
+                self.zooming = True
+                threading.Thread(target=self.zoom_then_start, daemon=True).start()
             else:
                 self.gesture.reset()
                 with self.lock:
@@ -349,7 +369,7 @@ class Everything:
                 "screen": [width, height], "desktop": ra.desktop(),
                 "cursor": self.cursor, "command": self.command,
                 "window": self.window, "start_shot": self.shot,
-                "recorder": "record_all"}
+                "zoom_out": self.zoomed, "recorder": "record_all"}
 
     def open(self, window=None, picture=None):
         self.window = window
@@ -425,7 +445,8 @@ def open_session(session):
 def record(command=None):
     ra.user32.SetProcessDPIAware()
     session = Everything(control=command is None, command=command,
-                         armed=command is None)
+                         armed=command is None,
+                         zoom=int(ZOOM["notches"]) if command is None else 0)
     if command:
         open_session(session)
     hooks = [ra.hook(W["WH_KEYBOARD_LL"], session.key, 0, ra.KBDLLHOOKSTRUCT),
@@ -524,6 +545,14 @@ def place(x, y):
     ra.send(ra.mouse_input({"x": x, "y": y}, 0))
     if cursor_now() != (x, y):
         set_cursor(x, y)
+
+
+def zoom_out(notches, sleep=None):
+    sleep = sleep or time.sleep
+    for _ in range(int(notches)):
+        ra.send(wheel_input("wheel", int(ZOOM["delta"])))
+        sleep(float(ZOOM["gap_ms"]) / 1000.0)
+    sleep(float(ZOOM["settle"]))
 
 
 def wheel_input(action, delta):
@@ -646,6 +675,8 @@ class Replay(ra.Replay):
                 return
             if self.cursor:
                 place(self.cursor[0], self.cursor[1])
+            if self.head.get("zoom_out"):
+                zoom_out(self.head["zoom_out"])
             zero = time.perf_counter()
             for event in self.events:
                 due = zero + event["t"]

@@ -1,4 +1,5 @@
 import contextlib
+import ctypes
 import io
 import json
 import os
@@ -153,6 +154,58 @@ with fake_clock() as clock:
           f"the stop gesture is dropped and the rest kept, got {saved[1:]}")
     check(saved[0]["kind"] == "start" and saved[0]["recorder"] == "record_all",
           f"header first, got {saved[0]}")
+
+from fake_input import SyncThread
+zooms = []
+saved_zoom, saved_threading = record_all.zoom_out, record_all.threading
+with fake_clock() as clock:
+    def zooming(notches, sleep=None):
+        zooms.append(notches)
+        clock.step(0.6)
+        mouse(session, W["WM_MOUSEWHEEL"], 960, 540, injected=True, data=120 << 16)
+
+    record_all.zoom_out = zooming
+    record_all.threading = types.SimpleNamespace(Thread=SyncThread, Event=threading.Event,
+                                                 Lock=threading.Lock)
+    try:
+        session = record_all.Everything(armed=True, zoom=12)
+        tap(session, CTRL)
+        clock.step(0.1)
+        tap(session, CTRL)
+        check(zooms == [12] and session.recording,
+              f"zoom: Ctrl x2 zooms out by the notches, then the recording starts, got "
+              f"{zooms} {session.recording}")
+        check(session.events == [], f"zoom: the zoom's wheel turns are not recorded, got "
+                                    f"{session.events}")
+        clock.step(0.25)
+        tap(session, VK_A, scan=30)
+        check(session.events and session.events[0]["t"] == 0.25,
+              f"zoom: time counts from after the zoom, got {session.events[:1]}")
+        check(session.header().get("zoom_out") == 12,
+              f"zoom: the header says the recording began zoomed out, got {session.header()}")
+        plain = record_all.Everything(armed=True)
+        zooms.clear()
+        tap(plain, CTRL)
+        clock.step(0.1)
+        tap(plain, CTRL)
+        check(zooms == [] and plain.recording and not plain.header().get("zoom_out"),
+              f"zoom: a recorder without zoom starts at once and says no zoom, got {zooms}")
+    finally:
+        record_all.zoom_out, record_all.threading = saved_zoom, saved_threading
+
+wheels = []
+saved_send = ra.send
+ra.send = lambda item: wheels.append(item)
+try:
+    record_all.zoom_out(4, sleep=lambda s: None)
+finally:
+    ra.send = saved_send
+check(len(wheels) == 4 and all(
+          w.u.mi.dwFlags == W["MOUSEEVENTF_WHEEL"]
+          and ctypes.c_long(w.u.mi.mouseData).value == record_all.ZOOM["delta"]
+          and record_all.ZOOM["delta"] == -120 for w in wheels),
+      f"zoom_out: that many wheel turns down (zooms Cabal's camera out: the only way "
+      f"the hand ever scrolls in the recordings), with no position of their own")
 
 # ---- what gets recorded ----
 
@@ -467,6 +520,38 @@ for layout in ([0, 0, 1920, 1080], [0, 0, 5360, 1440], [-2560, 0, 4480, 1440]):
                 off.append(((x, y), back))
     check(not off, f"every pixel maps back to itself on {layout}, first off {off[:3]}")
 ra.desktop = saved_desktop
+
+ra.send = lambda item: sent.append(item)
+try:
+    walk = [{"t": 0.0, "kind": "key", "action": "down", "vk": 87, "scan": 17,
+             "extended": False, "name": "W", "repeat": False, "injected": False},
+            {"t": 0.05, "kind": "key", "action": "up", "vk": 87, "scan": 17,
+             "extended": False, "name": "W", "repeat": False, "injected": False}]
+
+    def shape(item):
+        if isinstance(item, tuple):
+            return "set"
+        if item.type == W["INPUT_KEYBOARD"]:
+            return "key"
+        flags = item.u.mi.dwFlags
+        if flags & W["MOUSEEVENTF_WHEEL"]:
+            return ("wheel", ctypes.c_long(item.u.mi.mouseData).value)
+        return "abs" if flags & W["MOUSEEVENTF_ABSOLUTE"] else "mouse"
+
+    sent.clear()
+    record_all.Replay(walk, [400, 300], {"zoom_out": 3}).play()
+    up = record_all.ZOOM["delta"]
+    check([shape(i) for i in sent] == ["abs", ("wheel", up), ("wheel", up), ("wheel", up),
+                                       "key", "key"],
+          f"zoom on replay: the cursor goes to the start, the camera zooms out by the "
+          f"recording's notches, then the recording plays; got {[shape(i) for i in sent]}")
+    sent.clear()
+    record_all.Replay(walk, [400, 300], {}).play()
+    check([shape(i) for i in sent] == ["abs", "key", "key"],
+          f"no zoom on replay for a recording that didn't begin zoomed out, got "
+          f"{[shape(i) for i in sent]}")
+finally:
+    ra.send = real_send
 
 # ---- the cursor lands on the exact pixel, even ones Windows' grid skips ----
 

@@ -468,7 +468,11 @@ def names(text, name):
         return False
     head = r"\W*".join(re.escape(word) for word in words[:-1])
     cut = re.search(head + r"\W*([0-9A-Za-z]{3,})\W*$", text, re.IGNORECASE)
-    return cut is not None and words[-1].lower().startswith(cut.group(1).lower())
+    if cut is None:
+        return False
+    seen, last = cut.group(1).lower(), words[-1].lower()
+    return last.startswith(seen) or (7 <= len(seen) <= len(last)
+                                     and last.startswith(seen[:-1]))
 
 
 class NoEntriesLeft(RuntimeError):
@@ -1184,7 +1188,13 @@ def press_buttons(label, steps, verbose=True):
         raise RuntimeError("could not bring the game to the foreground.")
     if verbose:
         print(f"  {label}: {' -> '.join(key for _action, key, _wait in steps)}")
-    for _action, key, seconds in steps:
+    for action, key, seconds in steps:
+        if action == "button_if":
+            button = BUTTONS[key]
+            if not wait_for(tuple(button["window"]), button["word"], BUTTON_TIMEOUT)[0]:
+                if verbose:
+                    print(f"  no {button['word']} showing; going on")
+                continue
         press_button(key, seconds, verbose)
 
 
@@ -1954,7 +1964,7 @@ def command(args):
         # it, Ctrl twice once "Cleared dungeon" shows. Record the exit clip
         # in the dungeon: Ctrl twice, leave by hand, Ctrl twice outside.
         import recorded_dungeon
-        print(f"  {args[1]}: {recorded_dungeon.run(args[1])}")
+        recorded_dungeon.run_times(args[1], _runs())
     elif args[:1] == ["kill"] and len(args) > 2:
         name = " ".join(args[2:])
         kill(name, target_words(args[1], name))
