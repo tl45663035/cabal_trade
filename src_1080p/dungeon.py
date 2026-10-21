@@ -28,11 +28,12 @@ def _plain_argv():
         if arg == "--config":
             skip = True
             continue
-        if arg == "--runs":
+        if arg in ("--runs", "--record-from"):
             skip = True
             continue
         if (arg.startswith("--config=") or arg == "--frames"
-                or arg.startswith("--runs=")):
+                or arg.startswith("--runs=")
+                or arg.startswith("--record-from=")):
             continue
         out.append(arg)
     return out
@@ -45,6 +46,15 @@ def _runs():
         if arg == "--runs" and index + 1 < len(sys.argv):
             return int(sys.argv[index + 1])
     return 1
+
+
+def _record_from():
+    for index, arg in enumerate(sys.argv):
+        if arg.startswith("--record-from="):
+            return arg.split("=", 1)[1]
+        if arg == "--record-from" and index + 1 < len(sys.argv):
+            return sys.argv[index + 1]
+    return None
 
 
 if __name__ == "__main__":
@@ -151,7 +161,7 @@ BM_AURA_FOR = float(_DUNGEON["bm_aura_for"])
 AURA_AFTER = float(_DUNGEON["aura_after"])
 AURA_FOR = float(_DUNGEON["aura_for"])
 MAIN_BM_AFTER = float(_DUNGEON["main_bm_after"])
-AURA_DUE = {"at": None, "after": None, "for": None}
+AURA_DUE = {"at": None, "after": None, "for": None, "since": None}
 MAIN_BM_DUE = {"at": None, "after": None, "for": None}
 WORLD_BOSS = {"done": None}
 LAST_KILL = {"name": None, "words": None, "loop": None}
@@ -292,11 +302,17 @@ def wait_for_level(box, level, timeout):
         time.sleep(WAIT_SLICE)
 
 
-def press_button(name, settle, verbose=True):
+def press_button(name, settle, verbose=True, required=True):
     button = BUTTONS[name]
     window = tuple(button["window"])
     timeout = float(button.get("timeout", BUTTON_TIMEOUT))
     up, seen = wait_for(window, button["word"], timeout)
+    if not up and not required:
+        if verbose:
+            print(f"  no {button['word']!r} in the {name} window {list(window)} "
+                  f"within {timeout:g}s; it reads {seen!r}, so nothing to "
+                  f"claim")
+        return
     if not up:
         raise RuntimeError(
             f"the {name} window {list(window)} never read {button['word']!r} "
@@ -483,13 +499,14 @@ def names(text, name):
                      re.IGNORECASE) is not None
 
 
-def find_in_list(name, timeout):
+def find_in_list(name, timeout, words=None):
     deadline = time.monotonic() + timeout
     while True:
         image = calibration.grab()
         reads = read_windows(image, LEVEL_WINDOWS)
         for box, seen in zip(LEVEL_WINDOWS, reads):
-            if names(seen, name):
+            if (all(row_model._key(word) in row_model._key(seen)
+                    for word in words) if words else names(seen, name)):
                 calibration.snap("dungeon_list", image)
                 return box, reads
         if time.monotonic() >= deadline:
@@ -552,7 +569,8 @@ def setting(dungeon_name, key):
 
 
 def open_dungeon_key(dungeon_name, location, verbose=True):
-    name = location_of(dungeon_name, location)["name"]
+    place = location_of(dungeon_name, location)
+    name, words = place["name"], place.get("list_words")
     entry = _state().get("entry")
     if not entry:
         raise RuntimeError(f"no entry is noted in {STATE.name}; get_entry "
@@ -561,7 +579,7 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
         raise RuntimeError("could not bring the game to the foreground.")
     yes = BUTTONS["warp_yes"]
     ctypes.windll.user32.SetCursorPos(*TAB_TWO)
-    box, reads = find_in_list(name, 0)
+    box, reads = find_in_list(name, 0, words)
     if box is None:
         if not wait_for(tuple(yes["window"]), yes["word"], 0)[0]:
             prepare(verbose, entry["tab"])
@@ -571,7 +589,7 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
             right_click(*entry["point"], 0.0)
         press_button("warp_yes", 0.0, verbose)
         ctypes.windll.user32.SetCursorPos(*TAB_TWO)
-        box, reads = find_in_list(name, TRANSFER_TIMEOUT)
+        box, reads = find_in_list(name, TRANSFER_TIMEOUT, words)
         if box is None:
             raise RuntimeError(
                 f"no {name!r} in the dungeon list within "
@@ -896,7 +914,7 @@ def bm_aura(verbose=True, names=None, seconds=None, after=None, spam=None,
     started = time.monotonic()
     if aura:
         AURA_DUE.update(at=started + after if after else None, after=after,
-                        **{"for": spam})
+                        since=started, **{"for": spam})
         MAIN_BM_DUE.update(at=started + main if main else None, after=main,
                            **{"for": seconds})
     rounds = 0
@@ -923,9 +941,36 @@ def aura_when_due(verbose=True):
             break
         OVER.wait(max(0.0, slot + LOOP_GAP - time.monotonic()))
     if verbose:
-        print(f"  {AURA_DUE['after']:g}s since BM: aura right-clicked "
-              f"{clicks} time(s) in {time.monotonic() - started:.1f}s at "
-              f"{list(AURA)}, {TARGET_KEY} after each")
+        print(f"  {started - AURA_DUE['since']:.0f}s since BM: aura "
+              f"right-clicked {clicks} time(s) in "
+              f"{time.monotonic() - started:.1f}s at {list(AURA)}, "
+              f"{TARGET_KEY} after each")
+
+
+def recording_length(dungeon_name, sequence):
+    path = SEQUENCES / dungeon_name / f"{sequence}.jsonl"
+    if not path.exists():
+        return 0.0
+    lines = [line for line in path.read_text(encoding="utf-8").splitlines()
+             if line.strip()]
+    if len(lines) < 2:
+        return 0.0
+    return float(json.loads(lines[-1]).get("t", 0.0))
+
+
+def aura_before(dungeon_name, sequence, verbose=True):
+    due = AURA_DUE["at"]
+    if due is None or OVER.is_set():
+        return
+    length = recording_length(dungeon_name, sequence)
+    left = due - time.monotonic()
+    if length < left:
+        return
+    if verbose:
+        print(f"  {sequence} runs {length:.1f}s and the aura is due in "
+              f"{max(0.0, left):.1f}s, so the aura goes before it")
+    AURA_DUE["at"] = time.monotonic()
+    aura_when_due(verbose)
 
 
 def main_bm_when_due(verbose=True):
@@ -1115,8 +1160,26 @@ def allow_today():
     return gone
 
 
+def before_step(dungeon_name, step):
+    sequence = DUNGEONS[dungeon_name]["sequence"]
+    names = [part if isinstance(part, str) else part[0] for part in sequence]
+    if step not in names:
+        raise SystemExit(f"{dungeon_name} has no step {step!r}; its steps are "
+                         f"{', '.join(names)}")
+    return sequence[:names.index(step)]
+
+
+def record_from_here(step, verbose=True):
+    import record_action
+    if verbose:
+        print(f"  stopped before {step}; nothing more is sent to the game. "
+              f"The recorder takes over from here")
+    with calibration._own_ctrl():
+        return record_action.record()
+
+
 def run_dungeon(dungeon_name, location, verbose=True, steps=None,
-                timer=None):
+                timer=None, until=None):
     timer = {"until": None} if timer is None else timer
     timer["end_wait"] = end_wait(dungeon_name)
     limit = DUNGEONS[dungeon_name].get("daily_limit")
@@ -1147,8 +1210,12 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
         if not overtime(timer, verbose):
             phase["limit"].start()
         phase["ender"].start()
-        run_sequence(dungeon_name, location, phase, verbose, steps,
-                     timer=timer)
+        run_sequence(dungeon_name, location, phase, verbose,
+                     steps if until is None
+                     else before_step(dungeon_name, until), timer=timer)
+        if until is not None:
+            OVER.set()
+            return True
         if killing.is_set() and not OVER.is_set():
             again = bool(DUNGEONS[dungeon_name].get("kill_again"))
             if verbose:
@@ -1259,8 +1326,8 @@ def press_buttons(label, steps, verbose=True):
         raise RuntimeError("could not bring the game to the foreground.")
     if verbose:
         print(f"  {label}: {' -> '.join(key for _action, key, _wait in steps)}")
-    for _action, key, seconds in steps:
-        press_button(key, seconds, verbose)
+    for action, key, seconds in steps:
+        press_button(key, seconds, verbose, action != "claim")
 
 
 def exit_dungeon(dungeon_name, verbose=True):
@@ -1452,8 +1519,10 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         elif name == "shout":
             shout(verbose)
         elif name == "play":
+            aura_before(rest[0], rest[1], verbose)
             play(rest[0], rest[1], verbose)
         else:
+            aura_before(dungeon_name, name, verbose)
             play(dungeon_name, name, verbose)
 
 
@@ -2349,6 +2418,13 @@ def command(args):
             DUNGEONS.get(arg, {}).get("daily_limit") is not None
             for arg in args):
         rotate(args)
+    elif args[:1] and args[0] in DUNGEONS and _record_from() is not None:
+        location = args[1] if len(args) > 1 else only_location(args[0])
+        step = _record_from()
+        before_step(args[0], step)
+        start_block(args[0], location)
+        if run_dungeon(args[0], location, until=step) is not False:
+            record_from_here(step)
     elif args[:1] and args[0] in DUNGEONS:
         location = args[1] if len(args) > 1 else only_location(args[0])
         rested = None
@@ -2364,6 +2440,8 @@ def command(args):
         raise SystemExit(f"unknown command {' '.join(args)!r}; use "
                          f"nothing for the whole loop, "
                          f"DUNGEON [LOCATION] ({', '.join(sorted(DUNGEONS))}), "
+                         f"DUNGEON --record-from STEP to play up to STEP and "
+                         f"then record, "
                          f"DUNGEON DUNGEON ... in turn until each daily "
                          f"limit, "
                          f"run N, buy N, get_entry X Y, "

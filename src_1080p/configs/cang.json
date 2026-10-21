@@ -101,6 +101,8 @@
                      "get_to_middle", ["kill_bm", "boss"]],
         "exit": [
           ["button", "confirmation", 0.0],
+          ["claim", "obtain_treasure", 0.5],
+          ["claim", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "after_exit": [["wait", 3], "after_exit"]
@@ -112,7 +114,7 @@
         "difficulty": 5,
         "bm_aura_for": 3.0,
         "aura_after": 85.0,
-        "aura_for": 5.0,
+        "aura_for": 10.0,
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      "bm_aura",
                      "move_to_A",
@@ -140,7 +142,7 @@
         "difficulty": 5,
         "bm_aura_for": 3.0,
         "aura_after": 85.0,
-        "aura_for": 5.0,
+        "aura_for": 10.0,
         "after_exit": [["wait", 3], "cancel_bm"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      "bm_aura",
