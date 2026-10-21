@@ -295,11 +295,12 @@ def wait_for_level(box, level, timeout):
 def press_button(name, settle, verbose=True):
     button = BUTTONS[name]
     window = tuple(button["window"])
-    up, seen = wait_for(window, button["word"], BUTTON_TIMEOUT)
+    timeout = float(button.get("timeout", BUTTON_TIMEOUT))
+    up, seen = wait_for(window, button["word"], timeout)
     if not up:
         raise RuntimeError(
             f"the {name} window {list(window)} never read {button['word']!r} "
-            f"within {BUTTON_TIMEOUT:g}s; it reads {seen!r}. Nothing clicked.")
+            f"within {timeout:g}s; it reads {seen!r}. Nothing clicked.")
     point = centre(window)
     if verbose:
         print(f"  {button['word']} at {point}")
