@@ -32,12 +32,12 @@ Sat 2026-10-17             8.80h   24.00h   48.93M    5.56M    2.09B   2.04B   2
 Sun 2026-10-18            19.14h   24.00h  134.71M    7.04M    6.68B   6.55B  10.83K    2.0%
 Mon 2026-10-19            11.64h   24.00h   55.49M    4.77M    4.54B   4.49B   8.04K    1.2%
 Tue 2026-10-20            12.95h   24.00h  209.91M   16.21M   11.98B  11.77B  21.14K    1.8%
-Wed 2026-10-21 (so far)    0.19h    0.96h  282.96K    1.47M    5.10M   4.81M   1.20K    5.6%
+Wed 2026-10-21 (so far)    0.45h    1.22h  282.96K  632.64K    5.10M   4.81M   1.20K    5.6%
 ============================================================================================
-7 DAYS                    85.20h  144.96h  707.29M    8.30M   36.36B  35.65B  62.23K    1.9%
+7 DAYS                    85.46h  145.22h  707.29M    8.28M   36.36B  35.65B  62.23K    1.9%
 
 
-PROFIT SUMMARY -- sold since 2026-10-21 00:00 Central (as of 00:57 Central)
+PROFIT SUMMARY -- sold since 2026-10-21 00:00 Central (as of 01:12 Central)
 
 item                  profit  revenue     cost  units  bought/u   sold/u  margin
 --------------------------------------------------------------------------------
@@ -58,34 +58,34 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-21_004610_run_board.log, board during pass 1 at row 25, read 2026-10-21T00:57:37 (live)
+ROWS -- 2026-10-21_004610_run_board.log, board during pass 5 at row 10, read 2026-10-21T01:12:56 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Force Core(High                         x1   237.22K   242.15K    +4.93K   242.15K   237.22K     4.93K
+    1  Force Core(High                         x1   237.22K   237.22K        +0   237.22K   237.22K         0
     2  Wexp Saver                              x1         -     4.30M         -     4.30M         -         -
-    3  Wexp Saver                              x5         -     4.36M         -     4.36M         -         -
-    4  Chaos Core Set                          x1   703.99K   709.80K    +5.82K   119.25M   118.27M   976.92K
+    3  Wexp Saver                              x5         -     4.32M         -     4.32M         -         -
+    4  Chaos Core Set X 168                    x1   703.99K   709.76K    +5.77K   119.24M   118.27M   969.02K
     5  Divine Stone Set X 135                  x1   715.00K   715.00K        +0    96.52M    96.52M         0
     6  Divine Stone Set X 138                  x1   715.00K   715.00K        +0    98.67M    98.67M         0
     7  Divine Stone Set X 135                  x1   715.00K   715.00K        +0    96.52M    96.52M         0
-    8  Chaos Core Set                          x1   703.23K   709.80K    +6.57K   176.74M   175.10M     1.64M
+    8  Chaos Core Set X 249                    x1   703.23K   709.76K    +6.53K   176.73M   175.10M     1.63M
     9  Divine Stone Set X 159                  x1   715.00K   715.00K        +0   113.68M   113.68M         0
-   10  Divine Stone Set X 144                  x1   715.00K   715.00K        +0   102.96M   102.96M         0
-   11  Upgrade Core (Ultimate                x179   274.98K   301.88K   +26.90K   301.88K    49.22M     4.81M
-   12  Force Core(Highest                    x232   299.30K   322.88K   +23.58K   322.88K    69.44M     5.47M
-   13  Force Core(Highest                    x125   299.30K   322.88K   +23.58K   322.88K    37.41M     2.95M
-   14  Force Core(Highest                     x62   299.30K   322.88K   +23.58K   322.88K    18.56M     1.46M
-   15  Force Core(High                       x131   237.22K   242.15K    +4.93K   242.15K    31.08M   645.83K
-   16  Force Core(High                       x250   237.22K   242.15K    +4.93K   242.15K    59.30M     1.23M
-   17  Force Core(High                        x64   237.22K   242.15K    +4.93K   242.15K    15.18M   315.39K
-   18  Divine Stone                            x3   710.64K   744.85K   +34.21K   744.85K     2.13M   102.64K
+   10  Divine Stone Set X 144                  x1   715.00K   715.00K        +0   102.96M   102.96M         0 <- here
+   11  Upgrade Core (Ultimate                x179   274.98K   301.87K   +26.89K   301.87K    49.22M     4.81M
+   12  Force Core(Highest                    x232   299.30K   322.87K   +23.57K   322.87K    69.44M     5.47M
+   13  Force Core(Highest                    x125   299.30K   322.87K   +23.57K   322.87K    37.41M     2.95M
+   14  Force Core(Highest                     x62   299.30K   322.87K   +23.57K   322.87K    18.56M     1.46M
+   15  Force Core(High                       x131   237.22K   242.13K    +4.91K   242.13K    31.08M   643.73K
+   16  Force Core(High                       x250   237.22K   242.13K    +4.91K   242.13K    59.30M     1.23M
+   17  Force Core(High                        x64   237.22K   242.13K    +4.91K   242.13K    15.18M   314.37K
+   18  Material Core (Archridium) X 127        x3         -     5.86K         -   743.71K         -         -
    19  Essence Rune(STR) X 1                   x1         -     8.79M         -     8.79M         -         -
-   20  Upgrade Core (Ultimate                x249   274.98K   301.88K   +26.90K   301.88K    68.47M     6.70M
-   21  Material Core (Archridium) X 20         x1         -     5.86K         -   117.28K         -         -
-   22  Upgrade Core (Ultimate                  x4   274.98K   301.88K   +26.89K   301.88K     1.10M   107.58K
-   23  Chaos Core Set                          x1   704.01K   709.79K    +5.78K    53.23M    52.80M   433.73K
-   24  Material Core (Archridium) X 123        x1         -     5.86K         -   721.15K         -         -
-   25  Material Core(Osmium) X 3               x1         -    79.56K         -   238.67K         -         - <- here
-    balance now 1.38B, read 2026-10-21T00:57:16
+   20  Upgrade Core (Ultimate                x249   274.98K   301.87K   +26.89K   301.87K    68.47M     6.69M
+   21  Material Core (Archridium) X 20         x1         -     5.85K         -   117.10K         -         -
+   22  Upgrade Core (Ultimate                  x4   274.98K   300.00K   +25.02K   300.00K     1.10M   100.06K
+   23  Chaos Core Set X 75                     x1   704.01K   709.76K    +5.75K    53.23M    52.80M   431.18K
+   24  Material Core (Archridium) X 123        x1         -     5.85K         -   720.04K         -         -
+   25  Material Core(Osmium) X 3               x1         -    49.56K         -   148.67K         -         -
+    balance now 1.38B, read 2026-10-21T01:11:13
        stock at its listed price                                                                        1.27B
        Alz, latest balance line                                                                         1.38B
        Cash at the voucher price                                                                       76.00M
@@ -93,12 +93,12 @@ ROWS -- 2026-10-21_004610_run_board.log, board during pass 1 at row 25, read 202
        NET WORTH                                                                                        2.73B
 
 
-MARKET -- 2026-10-21_004610_run.log, pass 1, log last written 00:57 Central (live)
+MARKET -- 2026-10-21_004610_run.log, pass 5, log last written 01:12 Central (live)
 
 core                     rows  buy/u  sell/u  margin  margin %  wants  short?
 ----------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         4      -       -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  0      -       -       -         -      -  no row free; not priced
+Force Core(Highest)         3      -       -       -         -      -  holds the most it can want, 3; not priced
+Chaos Core                  3      -       -       -         -      -  no row free; not priced
 Divine Stone                5      -       -       -         -      -  holds the most it can want, 5; not priced
 Force Core(High)            4      -       -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3      -       -       -         -      -  holds the most it can want, 3; not priced
