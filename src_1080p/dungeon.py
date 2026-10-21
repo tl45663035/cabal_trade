@@ -2921,6 +2921,28 @@ def burst_over():
             and time.monotonic() >= BURST_STATE["until"])
 
 
+def character_window_open():
+    spec = BURST["character_window"]
+    return wait_for(tuple(spec["window"]), spec["word"], 1.0)[0]
+
+
+def open_character_window(verbose=True):
+    if not BURST.get("character_window"):
+        return
+    press(int(BURST["character_window"]["key"]))
+    if verbose:
+        print("  C for the Character window: "
+              + ("open" if character_window_open() else "not seen open"))
+
+
+def close_character_window(verbose=True):
+    if not BURST.get("character_window") or not character_window_open():
+        return
+    press(int(BURST["character_window"]["key"]))
+    if verbose:
+        print("  C again: the Character window is closed")
+
+
 def rest_between_bursts(verbose=True):
     minutes = random.uniform(*(float(m) for m in BURST["rest_minutes"]))
     print(f"burst over; resting {minutes:.1f} min at the world boss stage, "
@@ -2930,11 +2952,14 @@ def rest_between_bursts(verbose=True):
         get_to_wb_area(verbose)
     except RuntimeError as exc:
         print(f"  world boss stage not reached: {exc}; resting where it stands")
+    open_character_window(verbose)
     end = time.monotonic() + minutes * 60
     every = float(BURST.get("check_every", 30))
     while time.monotonic() < end:
-        world_boss_turn(None, verbose)
+        if world_boss_turn(None, verbose):
+            open_character_window(verbose)
         wait_timer(min(every, max(0.0, end - time.monotonic())), False)
+    close_character_window(verbose)
     BURST_STATE["until"] = None
 
 
