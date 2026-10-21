@@ -99,6 +99,7 @@ BOSSES = _DUNGEON["bosses"]
 ORDER = [int(level) for level in _DUNGEON["order"]]
 ROTATE_COUNT = int(_DUNGEON["rotate_count"])
 ROTATION = list(_DUNGEON["rotation"])
+ROTATION_RUNS = int(_DUNGEON.get("rotation_runs", 1))
 LIMITS = {int(level): int(cap)
           for level, cap in _DUNGEON["daily_limits"].items()}
 STATE = calibration.LOG_DIR / _DUNGEON["state_file"]
@@ -167,6 +168,8 @@ AURA_WINDOW = {"until": None, "since": None, "last": None, "clicks": 0}
 MAIN_BM_DUE = {"at": None, "after": None, "for": None}
 MAIN_BM_STATE = {"on": False}
 WORLD_BOSS = {"done": None}
+BURST = _DUNGEON.get("burst")
+BURST_STATE = {"until": None}
 LAST_KILL = {"name": None, "words": None, "loop": None}
 LOOP_POINTS = {"main_bm": MAIN_BM, "alternate_bm": ALTERNATE_BM, "aura": AURA,
                "bm_pot": BM_POT, "bm_icon": BM_ICON, **OFFENSIVE_BUFFS}
@@ -206,7 +209,7 @@ BUY_SETTLE = float(_DUNGEON["buy_settle"])
 TRANSFER_TIMEOUT = float(_DUNGEON["transfer_timeout"])
 INVENTORY_TAB = int(_DUNGEON["inventory_tab"])
 KEY_TAB = int(_DUNGEON["key_tab"])
-LOCK = {"boss": None, "reading": None, "cleared": False, "level": ORDER[0],
+LOCK = {"boss": None, "reading": None, "cleared": False, "level": ORDER[0] if ORDER else None,
         "killed": False, "watching": False, "reads": 0}
 ENDED = threading.Event()
 
@@ -2385,8 +2388,76 @@ def idle(verbose=True):
         wait_timer(max(0.0, wake), False)
 
 
+def online_now():
+    return internet_now() or datetime.datetime.now(datetime.timezone.utc)
+
+
+def pick_channel(moment, regions, night, choice):
+    start, end = ((int(hhmm[:2]) * 60 + int(hhmm[3:])) for hhmm in night)
+    day = 24 * 60
+    at_night, distance = [], {}
+    for region in regions:
+        local = moment.astimezone(zoneinfo.ZoneInfo(region["timezone"]))
+        minute = local.hour * 60 + local.minute
+        if start <= minute < end:
+            at_night.append(region)
+        distance[region["name"]] = min((start - minute) % day, (minute - end) % day)
+    chosen = at_night or [min(regions, key=lambda region: distance[region["name"]])]
+    channels = [channel for region in chosen for channel in region["channels"]]
+    return [region["name"] for region in chosen], choice(channels)
+
+
+def relog_for_burst(verbose=True):
+    import recovery
+    names, channel = pick_channel(online_now(), BURST["regions"], BURST["night"],
+                                  random.choice)
+    print(f"burst: {' + '.join(names)} night, so Channel {channel}; relogging there")
+    try:
+        recovery.relog(verbose=verbose, channel=channel)
+    except Exception as exc:
+        print(f"  the relog into Channel {channel} failed ({type(exc).__name__}: {exc}); "
+              f"back to the home channel {recovery.HOME_CHANNEL}")
+        recovery.recover(verbose=verbose)
+
+
+def start_burst(verbose=True):
+    minutes = random.uniform(*(float(m) for m in BURST["run_minutes"]))
+    BURST_STATE["until"] = time.monotonic() + minutes * 60
+    if verbose:
+        print(f"burst: {minutes:.1f} min of dungeons from now")
+
+
+def burst_over():
+    return (BURST is not None and BURST_STATE["until"] is not None
+            and time.monotonic() >= BURST_STATE["until"])
+
+
+def rest_between_bursts(verbose=True):
+    minutes = random.uniform(*(float(m) for m in BURST["rest_minutes"]))
+    print(f"burst over; resting {minutes:.1f} min at the world boss stage, "
+          f"checking for the world boss meanwhile")
+    try:
+        calibration.close_everything(verbose=verbose)
+        get_to_wb_area(verbose)
+    except RuntimeError as exc:
+        print(f"  world boss stage not reached: {exc}; resting where it stands")
+    end = time.monotonic() + minutes * 60
+    every = float(BURST.get("check_every", 30))
+    while time.monotonic() < end:
+        world_boss_turn(None, verbose)
+        wait_timer(min(every, max(0.0, end - time.monotonic())), False)
+    BURST_STATE["until"] = None
+
+
 def run_in_turn(dungeon_name, location, after, verbose=True):
     import recovery
+    if burst_over():
+        rest_between_bursts(verbose)
+        after = None
+    if BURST is not None and BURST_STATE["until"] is None:
+        if BURST.get("regions"):
+            relog_for_burst(verbose)
+        start_burst(verbose)
     if world_boss_turn(dungeon_name, verbose):
         after = (dungeon_name, time.monotonic())
     if after is None:
@@ -2420,7 +2491,9 @@ def rotate(names, after=None, verbose=True):
         if not turn:
             return after
         for name in turn:
-            if not limit_reached(name):
+            for _ in range(ROTATION_RUNS):
+                if limit_reached(name):
+                    break
                 after = run_in_turn(name, only_location(name), after,
                                     verbose)
 
