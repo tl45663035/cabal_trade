@@ -73,7 +73,8 @@ def play(burst, turns, route_fails=False):
                  (dungeon, "world_boss_turn",
                   lambda name, verbose=True: boss_checks.append((name, clock[0])) and False),
                  (dungeon, "start_block", lambda *a, **k: events.append(("block", round(clock[0] / MINUTE)))),
-                 (dungeon, "cool_down", lambda *a, **k: None)), \
+                 (dungeon, "cool_down", lambda *a, **k: None),
+                 (dungeon, "dungeon_report_due", lambda *a, **k: None)), \
             contextlib.redirect_stdout(io.StringIO()) as said:
         after = None
         for _ in range(turns):

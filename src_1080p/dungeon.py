@@ -2597,6 +2597,7 @@ def disenchant_all(verbose=True):
     if up:
         press_button("extraction_agree", 0.0, verbose)
         wait_timer(DISENCHANT_WAIT, verbose)
+        calibration.park()
         press_button("extraction_close", 0.0, verbose)
     else:
         if verbose:
