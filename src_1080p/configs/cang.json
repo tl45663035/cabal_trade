@@ -76,6 +76,7 @@
     "rotation_runs": 3,
     "burst": {"run_minutes": [20, 30], "rest_minutes": [20, 30], "check_every": 30,
               "night": ["00:00", "06:00"],
+              "character_window": {"key": 67, "window": [100, 110, 260, 138], "word": "Character"},
               "regions": [
                 {"name": "SEA", "timezone": "Asia/Singapore", "channels": [21, 22, 23, 24, 25, 26, 27]},
                 {"name": "NA", "timezone": "America/Los_Angeles", "channels": [11, 12]},

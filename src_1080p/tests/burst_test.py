@@ -73,7 +73,8 @@ def play(burst, turns, route_fails=False):
                  (dungeon, "world_boss_turn",
                   lambda name, verbose=True: boss_checks.append((name, clock[0])) and False),
                  (dungeon, "start_block", lambda *a, **k: events.append(("block", round(clock[0] / MINUTE)))),
-                 (dungeon, "cool_down", lambda *a, **k: None)), \
+                 (dungeon, "cool_down", lambda *a, **k: None),
+                 (dungeon, "dungeon_report_due", lambda *a, **k: None)), \
             contextlib.redirect_stdout(io.StringIO()) as said:
         after = None
         for _ in range(turns):
@@ -101,6 +102,53 @@ events, boss_checks, draws, said = play(BURST, 8, route_fails=True)
 runs = [minute for kind, minute in events if kind == "run"]
 check("a route that fails still rests and carries on",
       runs[5:] == [85, 90, 95] and "world boss stage not reached" in said, f"{runs} {said[-300:]}")
+
+def rest_with_window(seen_open, boss_at_minute=None):
+    events, clock = [], [0.0]
+    spec = {"key": 67, "window": [100, 110, 260, 138], "word": "Character"}
+    burst = dict(BURST, character_window=spec)
+    window = {"open": False}
+
+    def press(key):
+        events.append(("press", key))
+        if key == 67:
+            window["open"] = not window["open"]
+
+    def boss(name, verbose=True):
+        if (boss_at_minute is not None and clock[0] >= boss_at_minute * MINUTE
+                and ("boss", boss_at_minute) not in events and name is None):
+            events.append(("boss", boss_at_minute))
+            window["open"] = False
+            return True
+        return False
+
+    def advance(seconds, verbose=True):
+        clock[0] += seconds
+
+    fake_time = types.SimpleNamespace(monotonic=lambda: clock[0], sleep=lambda s: None)
+    with patched((dungeon, "BURST", burst), (dungeon, "time", fake_time),
+                 (dungeon, "random", types.SimpleNamespace(uniform=lambda a, b: (a + b) / 2)),
+                 (dungeon, "wait_timer", advance), (dungeon, "press", press),
+                 (dungeon, "wait_for", lambda window_box, word, timeout:
+                  (seen_open and window["open"], "Character" if window["open"] else "")),
+                 (dungeon, "get_to_wb_area", lambda verbose=True: events.append(("route", 0))),
+                 (dungeon.calibration, "close_everything", lambda *a, **k: None),
+                 (dungeon, "world_boss_turn", boss)), \
+            contextlib.redirect_stdout(io.StringIO()):
+        dungeon.rest_between_bursts(True)
+    return events, window["open"]
+
+
+events, still_open = rest_with_window(True)
+check("the rest opens the Character window with C after reaching the stage, and closes it at the end",
+      events == [("route", 0), ("press", 67), ("press", 67)] and not still_open, str(events))
+events, still_open = rest_with_window(True, boss_at_minute=10)
+check("a world boss during the rest is followed by C again, and the window is closed at the end",
+      events == [("route", 0), ("press", 67), ("boss", 10), ("press", 67), ("press", 67)]
+      and not still_open, str(events))
+events, still_open = rest_with_window(False)
+check("a window that can't be read as open is not toggled again at the end",
+      events == [("route", 0), ("press", 67)], str(events))
 
 events, boss_checks, draws, said = play(None, 8)
 check("with no burst setting the runs go back to back with no rest",
