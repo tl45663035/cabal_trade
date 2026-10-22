@@ -1017,11 +1017,11 @@ def report_dungeons():
     print(f"{'total':<8}{done:>6}{cap:>7}{cleared:>12}")
 
 
-def report_world_boss():
+def world_boss_lines():
     conf = SETTINGS["world_boss"]
     path = LOGS / conf["history_file"]
     if not path.exists():
-        return
+        return []
     kills = collections.defaultdict(list)
     for entry in path.read_text(encoding="utf-8").splitlines():
         try:
@@ -1031,7 +1031,7 @@ def report_world_boss():
         except (ValueError, KeyError, TypeError):
             continue
     if not kills:
-        return
+        return []
     zone = zoneinfo.ZoneInfo(conf["timezone"])
     now = (datetime.datetime.now(datetime.timezone.utc) + shift()).astimezone(
         zone)
@@ -1043,12 +1043,11 @@ def report_world_boss():
     spawns = [spawn for spawn in spawns if min(kills) <= spawn <= now]
     channels = len(conf["channels"])
     bosses = {boss["name"]: boss for boss in conf["bosses"]}
-    print("WORLD BOSS")
-    print("")
-    print(f"{'spawn':<26}{'boss':<28}{'level':>6}{'success':>8}"
-          f"{'required':>11}"
-          + "".join(f"{f'channel {channel}':>11}"
-                    for channel in conf["channels"]))
+    lines = ["WORLD BOSS", "",
+             f"{'spawn':<26}{'boss':<28}{'level':>6}{'success':>8}"
+             f"{'required':>11}"
+             + "".join(f"{f'channel {channel}':>11}"
+                       for channel in conf["channels"])]
     for spawn in spawns:
         mine = kills.get(spawn, [])
         names = collections.Counter(record["boss"] for record in mine
@@ -1069,9 +1068,15 @@ def report_world_boss():
             (short(done[channel]) if done.get(channel) is not None
              else "?" if channel in done else "-").rjust(11)
             for channel in conf["channels"])
-        print(f"{spawn:%a %Y-%m-%d %H:%M %Z}".ljust(26) + f"{boss:<28}"
-              + level.rjust(6) + success.rjust(8) + required.rjust(11)
-              + damage)
+        lines.append(f"{spawn:%a %Y-%m-%d %H:%M %Z}".ljust(26)
+                     + f"{boss:<28}" + level.rjust(6) + success.rjust(8)
+                     + required.rjust(11) + damage)
+    return lines
+
+
+def report_world_boss():
+    for text in world_boss_lines():
+        print(text)
 
 
 RANGE = re.compile(r"^relisting rows (\d+)-(\d+) for ", re.M)

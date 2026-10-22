@@ -3084,6 +3084,10 @@ def dungeon_report():
     for short, name, tries, good, cap in rows + [totals]:
         lines.append(f"{short:<9}{name:<{named + 2}}{tries:>9}{good:>12}"
                      f"{cap:>13}{cap - tries:>6}")
+    from profit_summary import world_boss_lines
+    bosses = world_boss_lines()
+    if bosses:
+        lines += ["", "", *bosses]
     return "\n".join(lines) + "\n"
 
 
