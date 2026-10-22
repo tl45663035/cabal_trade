@@ -132,7 +132,7 @@ MENU_WINDOW = tuple(_SHARED["world_boss"]["menu_window"])
 MENU_WORD = _SHARED["world_boss"]["menu_word"]
 ESCAPE_TRIES = int(_SHARED["world_boss"]["escape_tries"])
 ESCAPE_GAP = float(_SHARED["world_boss"]["escape_gap"])
-ACTIVE = {"level": None, "until": None, "deadline": None}
+ACTIVE = {"level": None, "until": None, "deadline": None, "frames": []}
 TAB_TWO = tuple(_DUNGEON["tab_two"])
 TRADE_TABS = [(tuple(tab["window"]), tab["word"])
               for tab in _DUNGEON["trade_tabs"]]
@@ -1233,6 +1233,11 @@ def allow_today():
     return gone
 
 
+def keep_failed(location, timer, first):
+    calibration.keep_failed(location, [*timer.get("frames", []),
+                                       (first, calibration.frames_taken())])
+
+
 def before_step(dungeon_name, step):
     sequence = DUNGEONS[dungeon_name]["sequence"]
     names = [part if isinstance(part, str) else part[0] for part in sequence]
@@ -1279,6 +1284,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                        daemon=True)}
     OVER.clear()
     END["at"], END["defeated"], END["overtime"] = None, False, False
+    first = calibration.frames_taken() + 1
     try:
         if not overtime(timer, verbose):
             phase["limit"].start()
@@ -1334,12 +1340,12 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
             run_sequence(dungeon_name, location, phase, verbose, manual, False)
-            off_for_the_day(verbose)
             run_sequence(dungeon_name, location, phase, verbose,
                          DUNGEONS[dungeon_name].get("after_exit", []), False)
             if verbose:
                 print(f"  {dungeon_name} {location}: past its "
                       f"{hard_limit(dungeon_name):g}s; left it by hand")
+            keep_failed(location, timer, first)
         elif END["defeated"]:
             manual = manual_exit(dungeon_name)
             if not manual:
@@ -1355,6 +1361,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             if verbose:
                 print(f"  {dungeon_name} {location}: the dungeon is failed; "
                       f"left it by hand")
+            keep_failed(location, timer, first)
         elif END["at"] is not None:
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
@@ -1384,6 +1391,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             run_sequence(dungeon_name, location, phase, verbose, manual, False)
             if verbose:
                 print(f"  {dungeon_name} {location}: left the dungeon by hand")
+            keep_failed(location, timer, first)
     finally:
         stop.set()
         AURA_DUE["at"] = None
@@ -2024,10 +2032,11 @@ def start(level, verbose=True, rotate=False):
     waits = step_index(sequence, "wait_timer")
     timer = {"until": None, "rotate": rotate}
     LOCK["level"] = level
+    first = calibration.frames_taken() + 1
     run_dungeon(TRADING_DUNGEON, location, verbose, sequence[:waits], timer)
     started = timer.get("started")
     if END["overtime"] or END["defeated"]:
-        ACTIVE.update(level=None, until=None, deadline=None)
+        ACTIVE.update(level=None, until=None, deadline=None, frames=[])
         return None
     if timer["until"] is None:
         raise RuntimeError(f"the {TRADING_DUNGEON} sequence starts no timer "
@@ -2035,7 +2044,8 @@ def start(level, verbose=True, rotate=False):
     lead = timer_lead(sequence[waits])
     due = timer["until"] - lead
     ACTIVE.update(level=level, until=timer["until"],
-                  deadline=timer.get("deadline"))
+                  deadline=timer.get("deadline"),
+                  frames=[(first, calibration.frames_taken())])
     remember_active(level, started, due, timer.get("deadline"))
     if verbose:
         print(f"  {location}: trading until {lead:g}s before the timer is "
@@ -2050,8 +2060,9 @@ def kill_and_finish(verbose=True):
     sequence = DUNGEONS[TRADING_DUNGEON]["sequence"]
     run_dungeon(TRADING_DUNGEON, level_location(ACTIVE["level"]), verbose,
                 sequence[step_index(sequence, "wait_timer"):],
-                {"until": ACTIVE["until"], "deadline": ACTIVE["deadline"]})
-    ACTIVE.update(level=None, until=None, deadline=None)
+                {"until": ACTIVE["until"], "deadline": ACTIVE["deadline"],
+                 "frames": ACTIVE["frames"]})
+    ACTIVE.update(level=None, until=None, deadline=None, frames=[])
 
 
 def fight(verbose=True):

@@ -15,7 +15,7 @@ os.environ["CABAL_CONFIG"] = "bot"
 os.chdir(SRC)
 sys.path.insert(0, str(SRC))
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(TOOLS))
+sys.path.append(str(TOOLS))
 sys.argv = ["dungeon.py", "--config", "bot"]
 import no_input
 TRIPPED = no_input.arm()
@@ -37,6 +37,7 @@ SCRATCH = Path(tempfile.mkdtemp(prefix="cabal_arena_success_"))
 LIVE = dungeon.STATE.read_bytes() if dungeon.STATE.exists() else None
 MANUAL = dungeon.DUNGEONS["chaos_arena"]["manual_exit"]
 AFTER = dungeon.DUNGEONS["chaos_arena"]["after_exit"]
+BEFORE = dungeon.DUNGEONS["chaos_arena"]["before_exit"]
 DAY = "2026-10-19"
 done = []
 ending = {"kind": "cleared"}
@@ -100,9 +101,11 @@ try:
     check("level 4: 2 of 2 entered were successful on this server day" in said,
           f"the log says the success, got {said!r}")
 
-    for kind, ends in (("overtime", [("sequence", MANUAL), ("off",)]),
-                       ("defeated", [("buttons", "defeat"), ("sequence", MANUAL)]),
-                       ("none", [("sequence", MANUAL)])):
+    for kind, ends in (("overtime", [("sequence", BEFORE), ("sequence", MANUAL),
+                                     ("sequence", AFTER)]),
+                       ("defeated", [("buttons", "defeat"), ("sequence", BEFORE),
+                                     ("sequence", MANUAL), ("sequence", AFTER)]),
+                       ("none", [("sequence", BEFORE), ("sequence", MANUAL)])):
         said = arena(kind)
         left = read()
         check(left["successful"] == {"4": 2} and done == ends

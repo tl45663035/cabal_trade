@@ -823,6 +823,61 @@ def frames_written() -> None:
               f"not keep up")
 
 
+FAILED_DIR = LOG_DIR / "failed_dungeons"
+
+
+def frames_taken() -> int:
+    return _FRAME_N
+
+
+def _keep_frame(shot, out) -> bool:
+    try:
+        out.hardlink_to(shot)
+    except OSError:
+        try:
+            shutil.copy2(shot, out)
+        except OSError:
+            return False
+    return True
+
+
+def keep_failed(name: str, spans) -> None:
+    if not FRAMES_ON or RUN_FRAMES is None:
+        return
+    if _FRAME_QUEUE is not None:
+        _FRAME_QUEUE.join()
+    wanted = {n for first, last in spans for n in range(first, last + 1)}
+    into = FAILED_DIR / (f"{datetime.datetime.now():%Y-%m-%d_%H%M%S}_{name}_"
+                         f"{RUN_FRAMES.name}")
+    try:
+        into.mkdir(parents=True, exist_ok=True)
+        kept = 0
+        for shot in RUN_FRAMES.glob("*.png"):
+            number = shot.name.partition("_")[0]
+            if number.isdigit() and int(number) in wanted:
+                kept += _keep_frame(shot, into / shot.name)
+        index = RUN_FRAMES / FRAME_INDEX
+        if index.exists():
+            with open(index, encoding="utf-8") as source, open(
+                    into / FRAME_INDEX, "w", encoding="utf-8") as out:
+                for line in source:
+                    if line.strip() and json.loads(line).get("n") in wanted:
+                        out.write(line)
+        print(f"  kept {kept} frame(s) of the failed {name} in {into}")
+        keep = int(load_shared()["debug"]["keep_failed_dungeons"])
+        folders = sorted((p for p in FAILED_DIR.iterdir() if p.is_dir()),
+                         key=lambda p: p.name)
+        spent = folders[:max(0, len(folders) - keep)]
+        for old in spent:
+            shutil.rmtree(old, ignore_errors=True)
+        if spent:
+            print(f"  cleared {len(spent)} older failed dungeon folder(s); "
+                  f"the newest {keep} are kept")
+    except (OSError, ValueError) as exc:
+        print(f"  the frames of the failed {name} were not kept: "
+              f"{type(exc).__name__}: {exc}")
+
+
 _ALONGSIDE = ThreadPoolExecutor(max_workers=1)
 
 

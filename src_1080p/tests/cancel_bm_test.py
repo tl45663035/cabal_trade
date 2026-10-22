@@ -93,8 +93,9 @@ try:
     ending["overtime"] = True
     with contextlib.redirect_stdout(io.StringIO()):
         dungeon.run_dungeon("chaos_arena", "CA2")
-    check(done == [("sequence", MANUAL), ("off",)],
-          f"an arena past its time limit still leaves by hand only, got {done}")
+    check(done == [("sequence", BEFORE), ("sequence", MANUAL), ("sequence", AFTER)],
+          f"an arena past its time limit cancels BM, leaves by hand and runs after_exit, "
+          f"with no day off, got {done}")
 
     done.clear()
     dungeon.focus_game = lambda *a, **k: False
