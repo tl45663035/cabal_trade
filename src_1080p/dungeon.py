@@ -147,7 +147,6 @@ MENU_WINDOW = tuple(_SHARED["world_boss"]["menu_window"])
 MENU_WORD = _SHARED["world_boss"]["menu_word"]
 ESCAPE_TRIES = int(_SHARED["world_boss"]["escape_tries"])
 ESCAPE_GAP = float(_SHARED["world_boss"]["escape_gap"])
-RIDE_ESCAPE_SETTLE = float(_DUNGEON["ride_escape_settle"])
 ACTIVE = {"level": None, "until": None, "deadline": None, "frames": []}
 TAB_TWO = tuple(_DUNGEON["tab_two"])
 TRADE_TABS = [(tuple(tab["window"]), tab["word"])
@@ -210,6 +209,7 @@ if None in KEYED_SLOTS.values():
         f"{[name for name, key in KEYED_SLOTS.items() if key is None]}")
 HEAL_KEY = _DUNGEON["heal_key"]
 HEAL_EVERY = float(_DUNGEON["heal_every"])
+HEAL = {"every": HEAL_EVERY}
 END_WAIT = float(_DUNGEON["end_wait"])
 END_TIMEOUT = float(_DUNGEON["end_timeout"])
 END_POLL = float(_DUNGEON["end_poll"])
@@ -720,42 +720,6 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
         print(f"  entered {location}; the entry note is cleared")
 
 
-def escape_burst(presses, every, stop, pressed):
-    for _press in range(presses):
-        with KEY_LOCK:
-            if stop.is_set() or not PLAYING.is_set():
-                return
-            press(_INPUT["VK_ESCAPE"])
-            pressed.update(at=time.monotonic(), count=pressed["count"] + 1)
-        stop.wait(every)
-    deadline = pressed["at"] + RIDE_ESCAPE_SETTLE
-    while not stop.is_set() and time.monotonic() < deadline:
-        if wait_for(MENU_WINDOW, MENU_WORD, 0)[0]:
-            with KEY_LOCK:
-                if PLAYING.is_set():
-                    press(_INPUT["VK_ESCAPE"])
-                    pressed.update(at=time.monotonic(),
-                                   closed=pressed["closed"] + 1)
-            return
-        stop.wait(WAIT_SLICE)
-
-
-def close_menu_after_ride(pressed, verbose=True):
-    if pressed["at"] is None or OVER.is_set():
-        return
-    OVER.wait(max(0.0, pressed["at"] + RIDE_ESCAPE_SETTLE - time.monotonic()))
-    up = wait_for(MENU_WINDOW, MENU_WORD, 0)[0]
-    if up:
-        press(_INPUT["VK_ESCAPE"])
-    if verbose:
-        print(f"  Escape {pressed['count']} time(s) at the start of the ride"
-              + (", then one more because the menu was up"
-                 if pressed["closed"] else "")
-              + "; "
-              + ("the menu was up after the ride, so one more Escape closed it"
-                 if up else "no menu up after the ride, so no more Escape"))
-
-
 def snap_every(name, every, stop):
     started, shot = time.monotonic(), 0
     while True:
@@ -793,12 +757,8 @@ def play(dungeon_name, sequence, verbose=True):
         begin = [min(max(begin[0], 0), width - 1),
                  min(max(begin[1], 0), height - 1)]
         ctypes.windll.user32.SetCursorPos(*begin)
-    escapes = DUNGEONS.get(dungeon_name, {}).get("ride_escape_presses")
-    escape = DUNGEONS.get(dungeon_name, {}).get("ride_escape_every")
     heal_ride = DUNGEONS.get(dungeon_name, {}).get("heal_ride_every")
-    extras = ([f"{escapes} Escape(s) {escape:g}s apart at the start (one more "
-               f"if the menu is still up)"] if escapes else []) + (
-        [f"heal every {heal_ride:g}s"] if heal_ride else [])
+    extras = [f"heal every {heal_ride:g}s"] if heal_ride else []
     if verbose:
         print(f"  {dungeon_name}/{path.name}: {len(events)} events over "
               f"{events[-1]['t']:.1f}s, the cursor first put at {begin}"
@@ -815,16 +775,9 @@ def play(dungeon_name, sequence, verbose=True):
         threading.Thread(target=snap_every,
                          args=(sequence, WALK_FRAMES[sequence], shooting),
                          daemon=True).start()
-    pressed = {"at": None, "count": 0, "closed": 0}
-    escaper = (threading.Thread(target=escape_burst,
-                                args=(int(escapes), float(escape), shooting,
-                                      pressed),
-                                daemon=True) if escapes else None)
     record_action.winmm.timeBeginPeriod(record_action.TIMER_MS)
     with KEY_LOCK:
         PLAYING.set()
-    if escaper is not None:
-        escaper.start()
     zero = time.perf_counter()
     try:
         for event in events:
@@ -878,9 +831,6 @@ def play(dungeon_name, sequence, verbose=True):
     if verbose:
         print(f"  played {played} of {len(events)} events; nothing is left "
               f"held down")
-    if escaper is not None:
-        escaper.join()
-        close_menu_after_ride(pressed, verbose)
 
 
 def _mouse_input(flags, data=0):
@@ -1455,7 +1405,7 @@ def heal_loop(stop, kills_only, ride_every=None):
                 if not PLAYING.is_set():
                     press(KEYS[HEAL_KEY])
                     last = now
-        stop.wait(HEAL_EVERY)
+        stop.wait(HEAL["every"])
 
 
 def run_result(dungeon_name, location, result):
@@ -1770,6 +1720,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                       daemon=True)}
     OVER.clear()
     END["at"], END["defeated"], END["overtime"] = None, False, False
+    HEAL["every"] = HEAL_EVERY
     first = calibration.frames_taken() + 1
     RUN_START["frame"] = first
     crashed = False
@@ -2140,6 +2091,18 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                         verbose=verbose)
         elif name == "bm_cycle":
             cycle_cast(BM_CYCLE_SET["slots"][0], verbose)
+        elif name == "heal_every":
+            HEAL["every"] = float(rest[0]) if rest else HEAL_EVERY
+            if verbose:
+                print(f"  heal ({HEAL_KEY}) every {HEAL['every']:g}s while a "
+                      f"kill is on")
+        elif name == "aura_on":
+            if BM_CYCLE["slot"] is not None and not BM_CYCLE["extended"]:
+                cycle_aura(verbose)
+            elif verbose:
+                print(f"  {BM_CYCLE['slot'] or 'no BM'} "
+                      + ("already has its aura" if BM_CYCLE["slot"]
+                         else "is on, so no aura"))
         elif name == "swap_bm_aura":
             swap_bm_aura(dungeon_name, float(rest[0]), verbose)
         elif name == "tab_two":
