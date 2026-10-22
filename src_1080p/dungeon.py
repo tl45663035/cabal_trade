@@ -254,6 +254,10 @@ def tap(vk, hold=None):
 KEY_CELLS = [tuple(cell) for cell in _DUNGEON["key_cells"]]
 DIFFICULTY = _DUNGEON["difficulty"]
 PURCHASES = _DUNGEON["purchases"]
+ORBS = _DUNGEON["summon_orbs"]
+AFTER_RUN_BUYS = list(_DUNGEON["after_run_buys"])
+QUANTITY_CLEAR = int(_DUNGEON["quantity_clear"])
+QUANTITY_MAX = int(_DUNGEON["quantity_max"])
 KEY_WINDOW = tuple(_DUNGEON["key_window"])
 KEY_TEXT = re.compile(_DUNGEON["key_pattern"], re.IGNORECASE)
 BUY_SETTLE = float(_DUNGEON["buy_settle"])
@@ -535,7 +539,14 @@ def get_entry(x, y, verbose=True):
     return entry
 
 
-def buy_item(name, verbose=True):
+def type_quantity(quantity):
+    for _press in range(QUANTITY_CLEAR):
+        tap(KEYS["Backspace"])
+    for digit in str(quantity):
+        tap(KEYS[digit])
+
+
+def buy_item(name, verbose=True, quantity=1):
     item = PURCHASES[name]
     prepare(verbose, int(item["inventory_tab"]))
     shop = BUTTONS["shop_dungeon"]
@@ -548,13 +559,68 @@ def buy_item(name, verbose=True):
     if verbose:
         print(f"  Alt+click {item['name']} at {[x, y]}")
     calibration.alt_click(x, y, settle=0.0)
+    if quantity != 1:
+        ok = BUTTONS["key_ok"]
+        wait_for(tuple(ok["window"]), ok["word"], BUTTON_TIMEOUT)
+        type_quantity(quantity)
+        if verbose:
+            print(f"  quantity {quantity} typed")
     press_button("key_ok", 0.0, verbose)
     press(_INPUT["VK_N"])
     if wait_for(tuple(shop["window"]), shop["word"], 0)[0]:
         raise RuntimeError("the shop is still open after N.")
     if verbose:
-        print(f"  bought 1x {item['name']} into inventory tab "
+        print(f"  bought {quantity}x {item['name']} into inventory tab "
               f"{item['inventory_tab']}; N closed the shop")
+
+
+def orbs_per_run(dungeon_name):
+    steps = (list(DUNGEONS[dungeon_name]["sequence"])
+             + list(DUNGEONS[dungeon_name].get("after_exit", [])))
+    return sum(step[1:].count(ORBS["key"]) for step in steps
+               if isinstance(step, list) and step and step[0] == "tap")
+
+
+def orb_runs_today(dungeon_name, location):
+    if LEVEL_TEXT.search(location_of(dungeon_name, location)["name"]) is None:
+        return runs_today(dungeon_name)
+    return sum(ran_today(_state(), server_day()).values())
+
+
+def buy_max(name, verbose=True):
+    item = PURCHASES[name]
+    prepare(verbose, int(item["inventory_tab"]))
+    shop = BUTTONS["shop_dungeon"]
+    if not wait_for(tuple(shop["window"]), shop["word"], 0)[0]:
+        if verbose:
+            print("  N for the shop")
+        press(_INPUT["VK_N"])
+    press_button(item["tab"], SELECT_SETTLE, verbose)
+    x, y = item["cell"]
+    if verbose:
+        print(f"  Alt+click {item['name']} at {[x, y]}")
+    calibration.alt_click(x, y, settle=0.0)
+    ok = BUTTONS["key_ok"]
+    up, seen = wait_for(tuple(ok["window"]), ok["word"], BUTTON_TIMEOUT)
+    if up:
+        type_quantity(QUANTITY_MAX)
+        if verbose:
+            print(f"  quantity {QUANTITY_MAX} typed; the window keeps it to "
+                  f"the most there is enough for")
+        press_button("key_ok", BUY_SETTLE, verbose)
+        if wait_for(tuple(ok["window"]), ok["word"], 0)[0]:
+            if verbose:
+                print("  the purchase window is still up after OK, so nothing "
+                      "was bought")
+            press_button("key_cancel", 0.0, verbose)
+    elif verbose:
+        print(f"  no purchase window within {BUTTON_TIMEOUT:g}s; the "
+              f"{ok['word']} window reads {seen!r}, so nothing bought")
+    press(_INPUT["VK_N"])
+    if wait_for(tuple(shop["window"]), shop["word"], 0)[0]:
+        raise RuntimeError("the shop is still open after N.")
+    if verbose:
+        print(f"  {item['name']} done; N closed the shop")
 
 
 def set_difficulty(level, verbose=True):
@@ -1860,6 +1926,8 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 thread.join()
         if crashed:
             keep_failed_frames(dungeon_name, location, "crashed", verbose)
+    for name in AFTER_RUN_BUYS:
+        buy_max(name, verbose)
 
 
 def failed_frames_name(dungeon_name, location):
@@ -2086,6 +2154,23 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                     print(f"  {done} {dungeon_name} run(s) so far today; the "
                           f"next 1x {item} is bought in "
                           f"{every - done % every} run(s)")
+            summons = orbs_per_run(dungeon_name) if ORBS is not None else 0
+            if summons:
+                done = orb_runs_today(dungeon_name, location)
+                every = int(ORBS["every"])
+                item = PURCHASES[ORBS["item"]]["name"]
+                if done % every == 0:
+                    if verbose:
+                        print(f"  {done} {dungeon_name} run(s) so far today, "
+                              f"each summoning {summons}x with {ORBS['key']}; "
+                              f"{summons}x {item} every {every} runs: buying "
+                              f"it now")
+                    buy_item(ORBS["item"], verbose, summons)
+                elif verbose:
+                    print(f"  {done} {dungeon_name} run(s) so far today, each "
+                          f"summoning {summons}x with {ORBS['key']}; the next "
+                          f"{summons}x {item} is bought in "
+                          f"{every - done % every} run(s)")
             with_entry_retries(lambda attempt: get_entry(
                 *place["entry"], verbose=verbose), verbose)
         elif name == "open_dungeon_key":
@@ -2196,9 +2281,23 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             kill_all(dungeon_name, rest, verbose)
         elif name == "hold_kill_all":
             for key, seconds in rest[0]:
-                hold_key(key, float(seconds), verbose)
+                if key is not None:
+                    hold_key(key, float(seconds), verbose)
                 if kill_all(dungeon_name, rest[1:], verbose) or OVER.is_set():
                     break
+        elif name == "ride_kill_all":
+            if not kill_all(dungeon_name, rest[1:], verbose):
+                for ride in rest[0]:
+                    if OVER.is_set():
+                        break
+                    if verbose:
+                        print(f"  nothing killed, so {ride} and kill_all again")
+                    aura_before(dungeon_name, ride, verbose)
+                    bm_cycle_before(dungeon_name, ride, verbose)
+                    play(dungeon_name, ride, verbose)
+                    bm_cycle_after(verbose)
+                    if kill_all(dungeon_name, rest[1:], verbose) or OVER.is_set():
+                        break
         elif name == "wait":
             wait_timer(float(rest[0]), verbose)
         elif name == "timer":
@@ -2916,6 +3015,7 @@ def disenchant_all(verbose=True):
     up, seen = wait_for(tuple(agree["window"]), agree["word"], BUTTON_TIMEOUT)
     if up:
         press_button("extraction_agree", 0.0, verbose)
+        ctypes.windll.user32.SetCursorPos(*TAB_TWO)
         wait_timer(DISENCHANT_WAIT, verbose)
         calibration.park()
         press_button("extraction_close", 0.0, verbose)
