@@ -518,7 +518,7 @@
     "hard_limit_seconds": 600,
     "war_quiet_minutes": 35,
     "war_margin_seconds": 60,
-    "keys": {"W": 87, "E": 69, "A": 65, "S": 83, "`": 192, "1": 49, "2": 50, "3": 51, "4": 52, "5": 53, "6": 54, "7": 55, "8": 56, "9": 57, "0": 48, "-": 189, "=": 187, "Enter": 13, "Alt": 18},
+    "keys": {"Q": 81, "W": 87, "E": 69, "A": 65, "S": 83, "`": 192, "1": 49, "2": 50, "3": 51, "4": 52, "5": 53, "6": 54, "7": 55, "8": 56, "9": 57, "0": 48, "-": 189, "=": 187, "Enter": 13, "Alt": 18},
     "alt_row": {"modifier": "Alt", "y": 940, "x": [687, 737, 787, 837, 887, 937, 987, 1037, 1087, 1137, 1187, 1237], "keys": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="]},
     "keyed_points": ["main_bm", "alternate_bm", "aura"],
     "shout_phrases": [],
@@ -1149,9 +1149,9 @@
                      ["kill_all", "any monster", "fire_boss_loop"],
                      ["heal_every"],
                      "move_to_K",
-                     ["kill_all", "any monster", "fire_kill_loop"],
+                     ["hold_kill_all", [["Q", 1], ["E", 1]], "any monster", "fire_kill_loop"],
                      ["swap_bm_aura", 1],
-                     ["wait", 3],
+                     ["kill_all", "any monster", "fire_kill_loop"],
                      "move_to_L",
                      ["kill_all", "any monster", "fire_boss_loop"]]
       }

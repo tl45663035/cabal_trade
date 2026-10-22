@@ -2018,6 +2018,39 @@ def with_challenge_retries(dungeon_name, location, place, verbose=True):
                 dungeon_name, location, place, again, verbose), verbose)
 
 
+def hold_key(key, seconds, verbose=True):
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
+    if verbose:
+        print(f"  hold {key} for {seconds:g}s")
+    tap(KEYS[key], hold=seconds)
+    calibration.snap(f"hold_{key}")
+
+
+def kill_all(dungeon_name, rest, verbose=True):
+    words = target_words(dungeon_name, rest[0])
+    loop = list(_DUNGEON[rest[1]]) if len(rest) > 1 else None
+    main_loop = (main_loop_for(dungeon_name, rest[1])
+                 if len(rest) > 1 else None)
+    search = (rest[2] if len(rest) > 2
+              else float(setting(dungeon_name, "kill_all_search")))
+    kills = 0
+    while not OVER.is_set():
+        if not kill_bm(rest[0], words, verbose, loop,
+                       search if kills or not words else None,
+                       main_loop):
+            break
+        if OVER.is_set():
+            break
+        kills += 1
+    if verbose:
+        print(f"  kill_all {rest[0]!r}: {kills} killed, "
+              + ("until the dungeon ended" if search is None
+                 else f"then none more targeted within {search:g}s"))
+    end_aura_window(verbose)
+    return kills
+
+
 def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                  stop_when_over=True, timer=None):
     place = location_of(dungeon_name, location)
@@ -2160,26 +2193,12 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 kill_bm(rest[1], boss_words, verbose, loop)
             end_aura_window(verbose)
         elif name == "kill_all":
-            words = target_words(dungeon_name, rest[0])
-            loop = list(_DUNGEON[rest[1]]) if len(rest) > 1 else None
-            main_loop = (main_loop_for(dungeon_name, rest[1])
-                         if len(rest) > 1 else None)
-            search = (rest[2] if len(rest) > 2
-                      else float(setting(dungeon_name, "kill_all_search")))
-            kills = 0
-            while not OVER.is_set():
-                if not kill_bm(rest[0], words, verbose, loop,
-                               search if kills or not words else None,
-                               main_loop):
+            kill_all(dungeon_name, rest, verbose)
+        elif name == "hold_kill_all":
+            for key, seconds in rest[0]:
+                hold_key(key, float(seconds), verbose)
+                if kill_all(dungeon_name, rest[1:], verbose) or OVER.is_set():
                     break
-                if OVER.is_set():
-                    break
-                kills += 1
-            if verbose:
-                print(f"  kill_all {rest[0]!r}: {kills} killed, "
-                      + ("until the dungeon ended" if search is None
-                         else f"then none more targeted within {search:g}s"))
-            end_aura_window(verbose)
         elif name == "wait":
             wait_timer(float(rest[0]), verbose)
         elif name == "timer":
