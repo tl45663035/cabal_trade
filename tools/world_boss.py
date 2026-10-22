@@ -47,6 +47,7 @@ from PIL import Image
 import calibration
 import online_clock
 import row_model
+import open_inventory
 from open_inventory import _user32, focus_game, press
 
 _SHARED = calibration.load_shared()
@@ -107,6 +108,15 @@ LOOP_POINTS = {name: tuple(_BOSS[name])
                for name in cycle
                if name not in BUFF_NAMES}
 LOOP_POINTS.update(OFFENSIVE_BUFFS)
+_ROW = _SHARED["dungeon"]["alt_row"]
+_KEY_CODES = _SHARED["dungeon"]["keys"]
+ALT_KEYS = {(x, _ROW["y"]): key for x, key in zip(_ROW["x"], _ROW["keys"])}
+KEYED_SLOTS = {name: ALT_KEYS.get(LOOP_POINTS[name])
+               for name in _BOSS["keyed_points"] if name in LOOP_POINTS}
+if None in KEYED_SLOTS.values():
+    raise SystemExit(
+        f"keyed points off the {_ROW['modifier']} hotbar row {_ROW['y']}: "
+        f"{[name for name, key in KEYED_SLOTS.items() if key is None]}")
 AURA_DURATIONS = {"main": float(_BOSS["mode_duration"]),
                   "burst_alternate": float(_BOSS["burst_alternate_duration"])}
 MAIN_BM_COOLDOWN = float(_BOSS["main_bm_cooldown"])
@@ -311,6 +321,25 @@ def double_click(point):
     click(point)
     time.sleep(DOUBLE_GAP)
     _tap("MOUSEEVENTF_LEFTDOWN", "MOUSEEVENTF_LEFTUP")
+
+
+def hold_modifier(down):
+    event = open_inventory._event(_KEY_CODES[_ROW["modifier"]], up=not down)
+    _user32.SendInput(1, ctypes.byref(event), ctypes.sizeof(open_inventory._Input))
+
+
+def use_point(name, point):
+    key = KEYED_SLOTS.get(name)
+    if key is None:
+        right_click(point)
+        return
+    calibration.halt_if_stopped()
+    _LAST_KEY["at"] = time.monotonic()
+    hold_modifier(True)
+    try:
+        press(_KEY_CODES[key])
+    finally:
+        hold_modifier(False)
 
 
 def key_free():
@@ -737,7 +766,7 @@ def loop_click(plan, now, buffs_from, count, saving, verbose=True):
                                       % len(DEFENSIVE_BUFFS)]
     else:
         point = LOOP_POINTS[name]
-    right_click(point)
+    use_point(name, point)
     count[name] = count.get(name, 0) + 1
     first = plan[slot] == 1 if warming else plan[slot] % len(cycle) == 1
     if first:
@@ -745,7 +774,7 @@ def loop_click(plan, now, buffs_from, count, saving, verbose=True):
     if name == "aura" and plan["timer"] is None:
         plan["timer"] = now
         if verbose:
-            print(f"  spawn {now - plan['spawn']:+.1f}s: aura clicked; timer "
+            print(f"  spawn {now - plan['spawn']:+.1f}s: aura used; timer "
                   f"started, {phase} BM cancel at "
                   f"+{AURA_DURATIONS[phase]:g}s")
     plan["next"] = now + LOOP_GAP

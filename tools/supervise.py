@@ -1232,6 +1232,12 @@ def report_due(log, force=False):
         return
     networth_now()
     paths = [path] + networth_files() + ledger_files()
+    try:
+        import dungeon
+        paths.append(dungeon.write_dungeon_report())
+    except Exception as exc:
+        event(f"the dungeon report was not written: {type(exc).__name__}: "
+              f"{exc}"[:K["reason_width"]], "alive")
     if CONFIG == K["all_for"]:
         try:
             write_all()

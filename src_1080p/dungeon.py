@@ -1,10 +1,13 @@
 import ctypes
 import datetime
+import difflib
 import zoneinfo
 import json
 import os
 import random
 import re
+import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -65,6 +68,7 @@ from PIL import Image, ImageChops
 import calibration
 import open_agent_shop_premium
 import row_model
+import open_inventory
 from open_inventory import VK_I, focus_game, press
 
 _SHARED = calibration.load_shared()
@@ -123,6 +127,7 @@ FINISH = [tuple(step) for step in _DUNGEON["finish"]]
 DUNGEONS = _DUNGEON["dungeons"]
 TRADING_DUNGEON = _DUNGEON["trading_dungeon"]
 ENTRY_RETRIES = int(_DUNGEON["entry_retries"])
+CHALLENGE_RETRY_WAIT = float(_DUNGEON["challenge_retry_wait"])
 WB_AREA_SEQUENCE = _DUNGEON["wb_area_sequence"]
 WB_AREA_WAIT = float(_DUNGEON["wb_area_wait"])
 DISENCHANT_ICON = tuple(_DUNGEON["disenchant_icon"])
@@ -171,10 +176,23 @@ WORLD_BOSS = {"done": None}
 BURST = _DUNGEON.get("burst")
 BURST_STATE = {"until": None}
 LAST_KILL = {"name": None, "words": None, "loop": None}
+REPORT = _SHARED["supervise"]
+REPORTED = {"at": None}
 LOOP_POINTS = {"main_bm": MAIN_BM, "alternate_bm": ALTERNATE_BM, "aura": AURA,
                "bm_pot": BM_POT, "bm_icon": BM_ICON, **OFFENSIVE_BUFFS}
 SLOTS = {name: tuple(point) for name, point in _DUNGEON["slots"].items()}
 CLICK_POINTS = {**LOOP_POINTS, **SLOTS}
+ALT_ROW = _DUNGEON["alt_row"]
+SLOT_MODIFIER = ALT_ROW["modifier"]
+ALT_KEYS = {(x, ALT_ROW["y"]): key
+            for x, key in zip(ALT_ROW["x"], ALT_ROW["keys"])}
+KEYED_SLOTS = {name: ALT_KEYS.get(CLICK_POINTS[name])
+               for name in _DUNGEON["keyed_points"]}
+if None in KEYED_SLOTS.values():
+    raise SystemExit(
+        f"keyed points off the {SLOT_MODIFIER} hotbar row "
+        f"{ALT_ROW['y']}: "
+        f"{[name for name, key in KEYED_SLOTS.items() if key is None]}")
 HEAL_KEY = _DUNGEON["heal_key"]
 HEAL_EVERY = float(_DUNGEON["heal_every"])
 END_WAIT = float(_DUNGEON["end_wait"])
@@ -189,6 +207,22 @@ MANUAL_EXIT = _DUNGEON["manual_exit"]
 DEFEAT = [tuple(step) for step in _DUNGEON["defeat"]]
 DEFEAT_SIGN = BUTTONS[DEFEAT[0][1]]
 CHAT_OPEN = float(_DUNGEON["chat_open"])
+CHAT_EVERY = _DUNGEON["chat_every"]
+_CHAT_LINES = _DUNGEON["chat_lines"]
+CHAT_BOXES = [(_CHAT_LINES["left"], _CHAT_LINES["top"] + row * _CHAT_LINES["gap"],
+               _CHAT_LINES["right"],
+               _CHAT_LINES["top"] + row * _CHAT_LINES["gap"]
+               + _CHAT_LINES["height"])
+              for row in range(_CHAT_LINES["count"])]
+UNIQUE_TEXT = re.compile(_DUNGEON["unique_pattern"], re.IGNORECASE)
+CHAT_SAME = float(_DUNGEON["chat_same"])
+UNIQUE_FILE = calibration.LOG_DIR / _DUNGEON["unique_file"]
+CHAT = {"seen": None, "run": None, "last": None, "fresh": False}
+FAILED_FRAMES = _DUNGEON["failed_frames"]
+RUN_START = {"frame": None}
+COMMIT = {"sha": None}
+CONSOLE_LINES = [re.compile(pattern) for pattern in _DUNGEON["console_lines"]]
+UNCOMMITTED_IGNORE = set(_DUNGEON["uncommitted_ignore"])
 TARGET_EVERY = float(_DUNGEON["target_every"])
 KEY_LOCK = threading.Lock()
 REPLAY_MODIFIERS = set(_DUNGEON["replay_modifiers"])
@@ -218,6 +252,33 @@ def click(x, y, settle):
     calibration._button(_INPUT["MOUSEEVENTF_LEFTDOWN"],
                         _INPUT["MOUSEEVENTF_LEFTUP"], x, y, settle)
     calibration.snap(f"click_{x}_{y}")
+
+
+def slot_way(name):
+    key = KEYED_SLOTS.get(name)
+    return (f"pressed with {SLOT_MODIFIER}+{key}" if key is not None
+            else f"right-clicked at {list(CLICK_POINTS[name])}")
+
+
+def hold_modifier(down):
+    event = open_inventory._event(KEYS[SLOT_MODIFIER], up=not down)
+    open_inventory._user32.SendInput(1, ctypes.byref(event),
+                                     ctypes.sizeof(open_inventory._Input))
+
+
+def use_point(name, settle):
+    key = KEYED_SLOTS.get(name)
+    if key is None:
+        right_click(*CLICK_POINTS[name], settle)
+        return
+    with KEY_LOCK:
+        hold_modifier(True)
+        try:
+            press(KEYS[key])
+        finally:
+            hold_modifier(False)
+    calibration.snap(f"key_{SLOT_MODIFIER}_{key}")
+    time.sleep(settle)
 
 
 def right_click(x, y, settle):
@@ -955,7 +1016,7 @@ def aura_when_due(verbose=True):
     started, clicks = time.monotonic(), 0
     while not OVER.is_set():
         slot = time.monotonic()
-        right_click(*AURA, 0.0)
+        use_point("aura", 0.0)
         tap(KEYS[TARGET_KEY])
         clicks += 1
         if time.monotonic() >= started + AURA_DUE["for"]:
@@ -963,8 +1024,8 @@ def aura_when_due(verbose=True):
         OVER.wait(max(0.0, slot + LOOP_GAP - time.monotonic()))
     if verbose:
         print(f"  {started - AURA_DUE['since']:.0f}s since BM: aura "
-              f"right-clicked {clicks} time(s) in "
-              f"{time.monotonic() - started:.1f}s at {list(AURA)}, "
+              f"{slot_way('aura')} {clicks} time(s) in "
+              f"{time.monotonic() - started:.1f}s, "
               f"{TARGET_KEY} after each")
 
 
@@ -1005,7 +1066,7 @@ def aura_now(verbose=True):
                        clicks=0)
     if verbose:
         print(f"  {now - AURA_DUE['since']:.0f}s since BM: the aura goes "
-              f"now, right-clicked at {list(AURA)} at most every "
+              f"now, {slot_way('aura')} at most every "
               f"{LOOP_GAP:g}s for {AURA_DUE['for']:g}s, between the "
               f"{TARGET_KEY} presses and the attacks of the next kill")
 
@@ -1020,7 +1081,7 @@ def aura_in_window(verbose=True):
     if (AURA_WINDOW["last"] is not None
             and now - AURA_WINDOW["last"] < LOOP_GAP):
         return
-    right_click(*AURA, 0.0)
+    use_point("aura", 0.0)
     AURA_WINDOW.update(last=now, clicks=AURA_WINDOW["clicks"] + 1)
 
 
@@ -1029,7 +1090,7 @@ def end_aura_window(verbose=True):
         return
     ended = min(time.monotonic(), AURA_WINDOW["until"])
     if verbose:
-        print(f"  aura right-clicked {AURA_WINDOW['clicks']} time(s) in "
+        print(f"  aura {slot_way('aura')} {AURA_WINDOW['clicks']} time(s) in "
               f"{ended - AURA_WINDOW['since']:.1f}s alongside the kill")
     AURA_WINDOW["until"] = None
 
@@ -1041,14 +1102,14 @@ def main_bm_when_due(verbose=True):
     MAIN_BM_DUE["at"] = None
     started, clicks = time.monotonic(), 0
     while not OVER.is_set():
-        right_click(*MAIN_BM, LOOP_GAP)
+        use_point("main_bm", LOOP_GAP)
         clicks += 1
         if time.monotonic() >= started + MAIN_BM_DUE["for"]:
             break
     if verbose:
         print(f"  {MAIN_BM_DUE['after']:g}s since the first BM: main BM "
-              f"right-clicked {clicks} time(s) in "
-              f"{time.monotonic() - started:.1f}s at {list(MAIN_BM)}")
+              f"{slot_way('main_bm')} {clicks} time(s) in "
+              f"{time.monotonic() - started:.1f}s")
     if clicks:
         main_bm_on(verbose)
 
@@ -1079,7 +1140,7 @@ def click_round(names, since):
                 % len(DEFENSIVE_BUFFS)]
             right_click(*point, 0.0)
         elif entry in CLICK_POINTS:
-            right_click(*CLICK_POINTS[entry], 0.0)
+            use_point(entry, 0.0)
             if entry == "main_bm":
                 main_bm_on()
         else:
@@ -1095,8 +1156,8 @@ def loop_plan(names):
                         if entry == DEFENSIVE else entry for entry in names)
             + (f" pressed {LOOP_GAP:g}s apart" if len(keys) == len(names)
                else f" one every {LOOP_GAP:g}s, keys {'/'.join(keys)} pressed "
-               f"and the rest right-clicked" if keys else
-               f" right-clicked {LOOP_GAP:g}s apart"))
+               f"and the rest used from the hotbar" if keys else
+               f" used from the hotbar {LOOP_GAP:g}s apart"))
 
 
 def kill_bm(name, words, verbose=True, loop=None, search=None):
@@ -1146,6 +1207,145 @@ def heal_loop(stop, kills_only):
                 if not PLAYING.is_set():
                     press(KEYS[HEAL_KEY])
         stop.wait(HEAL_EVERY)
+
+
+def run_result(dungeon_name, location, result):
+    try:
+        label = run_label(dungeon_name, location)
+    except Exception:
+        label = f"{dungeon_name} {location}"
+    print(f"{label}: {result}")
+
+
+def run_label(dungeon_name, location):
+    found = LEVEL_TEXT.search(location_of(dungeon_name, location)["name"])
+    if found is None:
+        return f"{dungeon_name} #{runs_today(dungeon_name)}"
+    return f"{location} #{ran_today(_state(), None).get(int(found.group(1)), 0)}"
+
+
+def unique_items(texts):
+    found, skip = [], False
+    for index, line in enumerate(texts):
+        if skip:
+            skip = False
+            continue
+        match = UNIQUE_TEXT.search(line)
+        if match is None and index + 1 < len(texts):
+            joined = f"{line} {texts[index + 1]}"
+            spanning = UNIQUE_TEXT.search(joined)
+            if spanning and spanning.start() < len(line) < spanning.end():
+                match, line, skip = spanning, joined, True
+        if match:
+            found.append((index, line, match.group(1).strip()))
+    return found
+
+
+def same_item(old, item):
+    return difflib.SequenceMatcher(None, row_model._key(old),
+                                   row_model._key(item)).ratio()
+
+
+def read_chat(verbose=True):
+    with KEY_LOCK:
+        if PLAYING.is_set():
+            return
+        image = calibration.grab()
+    found = unique_items(read_crops([row_model._backup_line(image, box,
+                                                            colour=True)
+                                     for box in CHAT_BOXES]))
+    new = []
+    if CHAT["seen"] is not None:
+        left = list(CHAT["seen"])
+        for row, line, item in found:
+            above = [old for old in left if old[0] >= row
+                     and same_item(old[1], item) >= CHAT_SAME]
+            if above:
+                left.remove(max(above, key=lambda old: same_item(old[1],
+                                                                 item)))
+            else:
+                new.append((line, item))
+    owner = CHAT["last"] if CHAT["fresh"] and CHAT["last"] else CHAT["run"]
+    CHAT["seen"] = [(row, item) for row, _line, item in found]
+    CHAT["fresh"] = False
+    for line, item in new:
+        if verbose:
+            print(f"  chat {line!r}: unique item dropped in "
+                  f"{owner['label']}: {item!r}")
+        try:
+            note_unique(owner, item, image)
+        except BaseException as exc:
+            if verbose:
+                print(f"  {item!r} was not written to {UNIQUE_FILE.name} "
+                      f"({type(exc).__name__}: {exc})")
+
+
+def note_unique(owner, item, image):
+    try:
+        calibration.snap("unique_drop", image)
+    except Exception:
+        pass
+    with UNIQUE_FILE.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps({"day": owner["day"], "item": item,
+                                 "dungeon": owner["name"],
+                                 "run": owner["label"],
+                                 "time": report_at()}) + "\n")
+
+
+def unique_drops(day):
+    found = []
+    try:
+        for line in UNIQUE_FILE.read_text(encoding="utf-8").splitlines():
+            try:
+                record = json.loads(line)
+                if record["day"] == day:
+                    found.append(f"{record['item']}, {record['dungeon']}, "
+                                 f"{record['time']}")
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return found
+
+
+def watch_chat(stop, verbose=True):
+    told = set()
+    try:
+        while not calibration.STOPPED.is_set():
+            final = stop.is_set()
+            try:
+                read_chat(verbose)
+            except BaseException as exc:
+                reason = f"{type(exc).__name__}: {exc}"
+                if verbose and reason not in told:
+                    told.add(reason)
+                    print(f"  the chat could not be read ({reason}); the "
+                          f"run goes on and the next read is in "
+                          f"{CHAT_EVERY:g}s")
+            if final:
+                return
+            stop.wait(CHAT_EVERY)
+    except BaseException:
+        pass
+    finally:
+        CHAT["last"] = CHAT["run"]
+
+
+def start_chat(phase, dungeon_name, location, verbose=True):
+    try:
+        CHAT["run"] = {"label": run_label(dungeon_name, location),
+                       "name": location_of(dungeon_name, location)["name"],
+                       "day": server_day()}
+        CHAT["fresh"] = True
+        if verbose:
+            print(f"  the chat is read every {CHAT_EVERY:g}s, never while a "
+                  f"recording plays, for unique item drops in "
+                  f"{CHAT['run']['label']}")
+        phase["chat"].start()
+    except Exception as exc:
+        if verbose:
+            print(f"  the chat reader did not start ({type(exc).__name__}: "
+                  f"{exc}); the run goes on without it")
 
 
 def watch_end(stop, failed, killing, timer, verbose=True):
@@ -1281,10 +1481,14 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                        daemon=True),
              "limit": threading.Thread(target=watch_limit,
                                        args=(stop, timer, verbose),
-                                       daemon=True)}
+                                       daemon=True),
+             "chat": threading.Thread(target=watch_chat, args=(stop, verbose),
+                                      daemon=True)}
     OVER.clear()
     END["at"], END["defeated"], END["overtime"] = None, False, False
     first = calibration.frames_taken() + 1
+    RUN_START["frame"] = first
+    crashed = False
     try:
         if not overtime(timer, verbose):
             phase["limit"].start()
@@ -1327,7 +1531,8 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             raise RuntimeError(f"the dungeon end screen could not be read: "
                                f"{failed['error']}. Stopped.")
         stop.set()
-        for thread in (phase["healer"], phase["ender"], phase["limit"]):
+        for thread in (phase["healer"], phase["ender"], phase["limit"],
+                       phase["chat"]):
             if thread.is_alive():
                 thread.join()
         if END["overtime"]:
@@ -1345,7 +1550,12 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             if verbose:
                 print(f"  {dungeon_name} {location}: past its "
                       f"{hard_limit(dungeon_name):g}s; left it by hand")
+                run_result(dungeon_name, location,
+                           f"fail, past its {hard_limit(dungeon_name):g}s")
             keep_failed(location, timer, first)
+            keep_failed_frames(dungeon_name, location,
+                               f"past its {hard_limit(dungeon_name):g}s",
+                               verbose)
         elif END["defeated"]:
             manual = manual_exit(dungeon_name)
             if not manual:
@@ -1361,7 +1571,9 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             if verbose:
                 print(f"  {dungeon_name} {location}: the dungeon is failed; "
                       f"left it by hand")
+                run_result(dungeon_name, location, "fail, defeated")
             keep_failed(location, timer, first)
+            keep_failed_frames(dungeon_name, location, "defeated", verbose)
         elif END["at"] is not None:
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
@@ -1377,6 +1589,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                          DUNGEONS[dungeon_name].get("after_exit", []), False)
             if verbose:
                 print(f"  {dungeon_name} {location}: the dungeon is over")
+                run_result(dungeon_name, location, "pass")
         elif killing.is_set():
             manual = manual_exit(dungeon_name)
             if not manual:
@@ -1391,16 +1604,101 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             run_sequence(dungeon_name, location, phase, verbose, manual, False)
             if verbose:
                 print(f"  {dungeon_name} {location}: left the dungeon by hand")
+                run_result(dungeon_name, location,
+                           f"fail, no end screen within {END_TIMEOUT:g}s")
             keep_failed(location, timer, first)
+            keep_failed_frames(dungeon_name, location, "no end screen",
+                               verbose)
+    except Exception:
+        crashed = True
+        raise
     finally:
         stop.set()
         AURA_DUE["at"] = None
         AURA_WINDOW["until"] = None
         MAIN_BM_DUE["at"] = None
         LAST_KILL.update(name=None, words=None, loop=None)
-        for thread in (phase["healer"], phase["ender"], phase["limit"]):
+        for thread in (phase["healer"], phase["ender"], phase["limit"],
+                       phase["chat"]):
             if thread.is_alive():
                 thread.join()
+        if crashed:
+            keep_failed_frames(dungeon_name, location, "crashed", verbose)
+
+
+def failed_frames_name(dungeon_name, location):
+    from profit_summary import CLOCK
+    now = internet_now()
+    when = (now.astimezone(CLOCK).strftime(FAILED_FRAMES["time_format"])
+            if now is not None else FAILED_FRAMES["no_time"])
+    try:
+        label = run_label(dungeon_name, location)
+    except Exception:
+        label = f"{dungeon_name} {location}"
+    return re.sub(r"[^A-Za-z0-9.-]+", "_",
+                  f"{COMMIT['sha'] or FAILED_FRAMES['no_commit']} {when} "
+                  f"{label}").strip("_")
+
+
+def keep_failed_frames(dungeon_name, location, why, verbose=True):
+    try:
+        first, source = RUN_START["frame"], calibration.RUN_FRAMES
+        if not calibration.FRAMES_ON or source is None or first is None:
+            return
+        calibration.frames_written()
+        root = calibration.LOG_DIR / FAILED_FRAMES["folder"]
+        dest = root / failed_frames_name(dungeon_name, location)
+        dest.mkdir(parents=True, exist_ok=True)
+        kept = 0
+        for png in sorted(source.glob("*.png")):
+            number = png.name.split("_", 1)[0]
+            if not number.isdigit() or int(number) < first:
+                continue
+            try:
+                with Image.open(png) as image:
+                    image.convert("RGB").save(
+                        dest / f"{png.stem}.jpg",
+                        quality=int(FAILED_FRAMES["quality"]))
+                kept += 1
+            except Exception:
+                continue
+        rows = []
+        index = source / calibration.FRAME_INDEX
+        if index.exists():
+            for line in index.read_text(encoding="utf-8",
+                                        errors="replace").splitlines():
+                try:
+                    if int(json.loads(line)["n"]) >= first:
+                        rows.append(line)
+                except Exception:
+                    continue
+            (dest / calibration.FRAME_INDEX).write_text(
+                "".join(f"{row}\n" for row in rows), encoding="utf-8")
+        offsets = [json.loads(row)["log"] for row in rows]
+        offsets = [offset for offset in offsets if offset is not None]
+        log = getattr(getattr(sys.stdout, "handle", None), "name", None)
+        if log and offsets:
+            with open(log, "rb") as handle:
+                handle.seek(min(offsets))
+                (dest / FAILED_FRAMES["log_name"]).write_bytes(handle.read())
+        (dest / FAILED_FRAMES["why_name"]).write_text(f"{why}\n",
+                                                     encoding="utf-8")
+        runs = []
+        for folder in root.iterdir():
+            parts = folder.name.split("_")
+            if folder.is_dir() and len(parts) > 2:
+                runs.append((parts[1], parts[2], folder))
+        runs.sort()
+        for _day, _time, old in runs[:max(0, len(runs)
+                                            - int(FAILED_FRAMES["keep"]))]:
+            shutil.rmtree(old, ignore_errors=True)
+        if verbose:
+            print(f"  kept {kept} frame(s) of this failed run ({why}) in "
+                  f"{dest}")
+    except Exception as exc:
+        if verbose:
+            print(f"  the frames of this failed run were not kept: "
+                  f"{type(exc).__name__}: {exc}")
 
 
 def press_buttons(label, steps, verbose=True):
@@ -1463,6 +1761,27 @@ def buy_and_open(dungeon_name, location, place, attempt, verbose=True):
     open_dungeon_key(dungeon_name, location, verbose)
 
 
+def with_challenge_retries(dungeon_name, location, place, verbose=True):
+    for attempt in range(ENTRY_RETRIES + 1):
+        try:
+            return start_dungeon(verbose)
+        except RuntimeError as exc:
+            if attempt == ENTRY_RETRIES:
+                raise
+            calibration.snap("challenge_retry")
+            if verbose:
+                print(f"  {exc} Escape until the menu is up, one more "
+                      f"Escape, {CHALLENGE_RETRY_WAIT:g}s wait, then the "
+                      f"entry again from buying it (retry {attempt + 1} of "
+                      f"{ENTRY_RETRIES})")
+            escape_everything(verbose)
+            wait_timer(CHALLENGE_RETRY_WAIT, verbose)
+            with_entry_retries(lambda again: get_entry(
+                *place["entry"], verbose=verbose), verbose)
+            with_entry_retries(lambda again: buy_and_open(
+                dungeon_name, location, place, again, verbose), verbose)
+
+
 def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                  stop_when_over=True, timer=None):
     place = location_of(dungeon_name, location)
@@ -1505,7 +1824,9 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 dungeon_name, location, place, attempt, verbose), verbose)
         elif name == "start_dungeon":
             timer["limit"] = hard_limit(dungeon_name)
-            timer["deadline"] = start_dungeon(verbose) + timer["limit"]
+            timer["deadline"] = (with_challenge_retries(dungeon_name, location,
+                                                        place, verbose)
+                                 + timer["limit"])
             timer["started"] = internet_now()
             if verbose:
                 print(f"  the dungeon has {timer['limit']:g}s from the "
@@ -1548,9 +1869,12 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                       f"screen has been up {end_wait(dungeon_name):g}s")
             phase["healer"].start()
             phase["killing"].set()
+            if CHAT_EVERY is not None:
+                start_chat(phase, dungeon_name, location, verbose)
         elif name == "kill_bm":
             kill_bm(rest[0], target_words(dungeon_name, rest[0]), verbose,
-                    list(_DUNGEON[rest[1]]) if len(rest) > 1 else None)
+                    list(_DUNGEON[rest[1]]) if len(rest) > 1 else None,
+                    rest[2] if len(rest) > 2 else None)
             end_aura_window(verbose)
         elif name == "kill_all":
             words = target_words(dungeon_name, rest[0])
@@ -1619,6 +1943,11 @@ def use_slot(name, verbose=True):
                            f"{sorted(points)}. Nothing clicked.")
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
+    if name in KEYED_SLOTS:
+        if verbose:
+            print(f"  {name} {slot_way(name)}")
+        use_point(name, 0.0)
+        return
     if verbose:
         print(f"  right-click {name} at {list(points[name])}")
     right_click(*points[name], 0.0)
@@ -2111,9 +2440,8 @@ def move(steps, verbose=True, frames=True):
             ENDED.wait(seconds)
         elif action == "use":
             if verbose:
-                print(f"  right-click {key} at {list(CLICK_POINTS[key])}, then "
-                      f"wait {seconds:g}s")
-            right_click(*CLICK_POINTS[key], 0.0)
+                print(f"  {key} {slot_way(key)}, then wait {seconds:g}s")
+            use_point(key, 0.0)
             ENDED.wait(seconds)
         elif action == "wait":
             if verbose:
@@ -2360,10 +2688,160 @@ def world_boss_turn(dungeon_name, verbose=True):
     return True
 
 
+def report_at():
+    from profit_summary import central_now
+    return central_now().strftime("%H:%M:%S")
+
+
+class ConsoleLines:
+    def __init__(self, stream):
+        self.stream, self.part = stream, ""
+
+    def write(self, text):
+        self.part += text
+        *done, self.part = self.part.split("\n")
+        for line in done:
+            if any(pattern.search(line) for pattern in CONSOLE_LINES):
+                self.stream.write(line + "\n")
+                self.stream.flush()
+        return len(text)
+
+    def flush(self):
+        self.stream.flush()
+
+    def isatty(self):
+        return self.stream.isatty()
+
+    def fileno(self):
+        return self.stream.fileno()
+
+
+def running_commit():
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=str(calibration.HERE.parent),
+                              text=True, capture_output=True,
+                              timeout=REPORT["tool_timeout"]).stdout
+    try:
+        sha = git("log", "-1", "--format=%h").strip()
+        COMMIT["sha"] = sha or None
+        changed = [line[3:].strip() for line in git(
+            "status", "--porcelain", "--untracked-files=no", "--",
+            calibration.HERE.name).splitlines()]
+    except Exception as exc:
+        return f"unknown ({type(exc).__name__}: {exc})"
+    changed = [path for path in changed
+               if os.path.basename(path) not in UNCOMMITTED_IGNORE]
+    return sha + (f"; uncommitted: {', '.join(changed)}" if changed else "")
+
+
+def dungeon_report():
+    state, today = _state(), server_day()
+    entered = dungeon_counts(state, today)
+    won = state.get("dungeon_successful") or {}
+    won = dict(won.get("counts") or {}) if won.get("day") == today else {}
+    names = ROTATION + [name for name in DUNGEONS
+                        if name not in ROTATION and name != TRADING_DUNGEON
+                        and entered.get(name)]
+    rows = [(name.upper(),
+             next(iter(DUNGEONS[name]["locations"].values()))["name"],
+             int(entered.get(name, 0)), int(won.get(name, 0)),
+             int(DUNGEONS[name]["daily_limit"]))
+            for name in names if DUNGEONS[name].get("daily_limit") is not None]
+    ran, wins = ran_today(state, today), ran_today(state, today, "successful")
+    for level in sorted(LIMITS):
+        place = location_of(TRADING_DUNGEON, level_location(level))
+        rows.append((f"CA{level}", place["name"], ran.get(level, 0),
+                     wins.get(level, 0), LIMITS[level]))
+    totals = ("total", "", sum(row[2] for row in rows),
+              sum(row[3] for row in rows), sum(row[4] for row in rows))
+    named = max(len(row[1]) for row in rows + [totals])
+    head = (f"{'dungeon':<9}{'name':<{named + 2}}{'attempts':>9}"
+            f"{'successful':>12}{'daily limit':>13}{'left':>6}")
+    lines = [f"DUNGEON REPORT -- {calibration.config_name()}, server day "
+             f"{today}, written {report_at()}", "", "Unique Items:",
+             *(unique_drops(today) or ["none"]), "", head]
+    for short, name, tries, good, cap in rows + [totals]:
+        lines.append(f"{short:<9}{name:<{named + 2}}{tries:>9}{good:>12}"
+                     f"{cap:>13}{cap - tries:>6}")
+    return "\n".join(lines) + "\n"
+
+
+def write_dungeon_report():
+    path = (calibration.HERE.parent / REPORT["report_dir"]
+            / calibration.config_name() / REPORT["dungeon_report_name"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(dungeon_report(), encoding="utf-8")
+    return path
+
+
+def push_dungeon_report(path):
+    root = calibration.HERE.parent
+    rel = path.relative_to(root).as_posix()
+    branch = REPORT["report_branch"]
+    index = calibration.LOG_DIR / REPORT["dungeon_report_index"]
+
+    def git(*args, env=None):
+        return subprocess.run(["git", *args], cwd=str(root), text=True,
+                              capture_output=True,
+                              timeout=REPORT["tool_timeout"], env=env)
+
+    for attempt in range(1, int(REPORT["report_tries"]) + 1):
+        if git("fetch", "origin", branch).returncode:
+            return "fetch failed"
+        index.unlink(missing_ok=True)
+        env = dict(os.environ, GIT_INDEX_FILE=str(index))
+        if git("read-tree", f"origin/{branch}", env=env).returncode:
+            return f"origin/{branch} would not read"
+        blob = git("hash-object", "-w", str(path))
+        if blob.returncode:
+            return f"{rel} would not hash"
+        added = git("update-index", "--add", "--cacheinfo",
+                    f"{REPORT['report_mode']},{blob.stdout.strip()},{rel}",
+                    env=env)
+        if added.returncode:
+            return added.stderr.strip()[:REPORT["reason_width"]]
+        tree = git("write-tree", env=env)
+        index.unlink(missing_ok=True)
+        if tree.returncode:
+            return "the tree would not write"
+        if tree.stdout.strip() == git(
+                "rev-parse", f"origin/{branch}^{{tree}}").stdout.strip():
+            return "no change"
+        made = git("commit-tree", tree.stdout.strip(), "-p",
+                   git("rev-parse", f"origin/{branch}").stdout.strip(), "-m",
+                   REPORT["dungeon_report_message"].format(
+                       config=calibration.config_name(), at=report_at()))
+        if made.returncode:
+            return "the commit would not build"
+        sent = git("push", "origin", f"{made.stdout.strip()}:{branch}")
+        if not sent.returncode:
+            return None
+        if attempt == int(REPORT["report_tries"]):
+            return sent.stderr.strip()[:REPORT["reason_width"]]
+    return "gave up"
+
+
+def dungeon_report_due(verbose=True):
+    every = float(REPORT["report_every"])
+    if (REPORTED["at"] is not None
+            and time.monotonic() - REPORTED["at"] < every):
+        return
+    REPORTED["at"] = time.monotonic()
+    try:
+        path = write_dungeon_report()
+        failed = push_dungeon_report(path)
+    except Exception as exc:
+        failed = f"{type(exc).__name__}: {exc}"[:REPORT["reason_width"]]
+    if verbose:
+        print(f"  dungeon report: "
+              + ("pushed" if failed is None else f"not pushed ({failed})"))
+
+
 def idle(verbose=True):
     import world_boss
     day, told = None, None
     while True:
+        dungeon_report_due(verbose)
         try:
             now = world_boss.online_utc()
         except RuntimeError as exc:
@@ -2396,7 +2874,7 @@ def idle(verbose=True):
         if line != told:
             print(f"{line}, {wake:.0f}s from now")
             told = line
-        wait_timer(max(0.0, wake), False)
+        wait_timer(max(0.0, min(wake, float(REPORT["report_every"]))), False)
 
 
 def online_now():
@@ -2462,6 +2940,7 @@ def rest_between_bursts(verbose=True):
 
 def run_in_turn(dungeon_name, location, after, verbose=True):
     import recovery
+    dungeon_report_due(verbose)
     if burst_over():
         rest_between_bursts(verbose)
         after = None
@@ -2619,6 +3098,8 @@ if __name__ == "__main__":
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(errors="backslashreplace")
     calibration.log_to_file("dungeon")
+    sys.stdout.stream = ConsoleLines(sys.stdout.stream)
+    print(f"running on commit {running_commit()}")
     calibration.frames_on(True if "--frames" in sys.argv else None)
     calibration.watch_for_stop()
     try:
