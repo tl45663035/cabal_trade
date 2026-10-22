@@ -63,7 +63,7 @@
     "enabled": true,
     "trading_dungeon": "chaos_arena",
     "order": [4, 5, 6, 7],
-    "rotation": ["fire", "ice", "train", "ic2", "ic1"],
+    "rotation": ["fn", "ic1", "fire", "ic2", "ice", "train"],
     "kill_combo": [
       ["use", "A+2", 2.0],
       ["tap", "7", 2.0],
@@ -75,8 +75,9 @@
     "bm_loop": ["alternate_bm", "aura", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
     "main_bm_two_targets": true,
     "key_tab": 7,
-    "chat_every": 3.0,
-    "walk_frames": {"move_to_A": 0.5, "move_to_B": 0.5, "move_to_C": 0.5, "move_to_D": 0.5, "move_to_E": 0.5, "move_to_F": 0.5, "move_to_D1": 0.5, "move_to_G": 0.5},
+    "chat_every": null,
+    "chat_reads": {"before": "move_to_", "button": "confirmation"},
+    "walk_frames": {"move_to_A": 0.5, "move_to_B": 0.5, "move_to_C": 0.5, "move_to_D": 0.5, "move_to_E": 0.5, "move_to_F": 0.5, "move_to_D1": 0.5, "move_to_G": 0.5, "move_to_H": 0.5, "move_to_I": 0.5, "move_to_J": 0.5, "move_to_K": 0.5, "move_to_L": 0.5},
     "dungeons": {
       "chaos_arena": {
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",

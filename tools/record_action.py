@@ -178,6 +178,7 @@ class Recording:
         self.events = []
         self.zero = None
         self.started = None
+        self.session = None
         self.recording = False
         self.finished = False
         self.kept = False
@@ -248,11 +249,12 @@ class Recording:
         self.recording, self.zero, self.events = True, now, []
         self.cursor = cursor_position()
         self.started = datetime.datetime.now()
+        self.session = self.session or self.started
         self.number += 1
         self.gesture.reset()
 
     def cut(self):
-        path = recording_path(self.started)
+        path = recording_path(self.session, self.number)
         self.saved.append(path)
         writer = threading.Thread(target=self.write, args=(
             path, self.started, self.cursor, self.events,
@@ -333,8 +335,8 @@ def pump(done, tick):
         user32.KillTimer(None, timer)
 
 
-def recording_path(started):
-    return OUT / f"{started:%Y-%m-%d_%H%M%S}_actions.jsonl"
+def recording_path(session, number):
+    return OUT / f"{session:%Y-%m-%d_%H%M%S}_{number:02d}_actions.jsonl"
 
 
 def save(path, started, cursor, events, said):
@@ -419,7 +421,7 @@ def record(filming=False):
     film = None
     if filming:
         session.toggle(time.perf_counter())
-        film = Film(session, OUT / f"{session.started:%Y-%m-%d_%H%M%S}_"
+        film = Film(session, OUT / f"{session.session:%Y-%m-%d_%H%M%S}_"
                                    f"{SCREEN_FOLDER}")
         film.folder.mkdir(parents=True, exist_ok=True)
         film.worker.start()
@@ -471,7 +473,7 @@ def record(filming=False):
         print("stopped before a recording was finished; nothing saved")
         return 1
     if session.kept:
-        path = recording_path(session.started)
+        path = recording_path(session.session, session.number)
         session.saved.append(path)
         print("\n".join(save(path, session.started, session.cursor,
                              session.events, "stopped" if filming

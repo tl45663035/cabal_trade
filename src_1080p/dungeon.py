@@ -31,12 +31,13 @@ def _plain_argv():
         if arg == "--config":
             skip = True
             continue
-        if arg in ("--runs", "--record-from"):
+        if arg in ("--runs", "--record-from", "--from"):
             skip = True
             continue
         if (arg.startswith("--config=") or arg == "--frames"
                 or arg.startswith("--runs=")
-                or arg.startswith("--record-from=")):
+                or arg.startswith("--record-from=")
+                or arg.startswith("--from=")):
             continue
         out.append(arg)
     return out
@@ -56,6 +57,15 @@ def _record_from():
         if arg.startswith("--record-from="):
             return arg.split("=", 1)[1]
         if arg == "--record-from" and index + 1 < len(sys.argv):
+            return sys.argv[index + 1]
+    return None
+
+
+def _from_step():
+    for index, arg in enumerate(sys.argv):
+        if arg.startswith("--from="):
+            return arg.split("=", 1)[1]
+        if arg == "--from" and index + 1 < len(sys.argv):
             return sys.argv[index + 1]
     return None
 
@@ -137,6 +147,7 @@ MENU_WINDOW = tuple(_SHARED["world_boss"]["menu_window"])
 MENU_WORD = _SHARED["world_boss"]["menu_word"]
 ESCAPE_TRIES = int(_SHARED["world_boss"]["escape_tries"])
 ESCAPE_GAP = float(_SHARED["world_boss"]["escape_gap"])
+RIDE_ESCAPE_SETTLE = float(_DUNGEON["ride_escape_settle"])
 ACTIVE = {"level": None, "until": None, "deadline": None, "frames": []}
 TAB_TWO = tuple(_DUNGEON["tab_two"])
 TRADE_TABS = [(tuple(tab["window"]), tab["word"])
@@ -161,9 +172,11 @@ DEFENSIVE_BUFFS = [(name, tuple(point))
                    for name, point in _DUNGEON[DEFENSIVE].items()]
 DEFENSIVE_SWITCH = float(_DUNGEON["defensive_switch"])
 LOOP_GAP = float(_DUNGEON["loop_gap"])
+AURA_GAP = float(_DUNGEON["aura_gap"])
 USE_GAP = float(_DUNGEON["use_gap"])
 BM_LOOP = list(_DUNGEON["bm_loop"])
 BM_AURA = list(_DUNGEON["bm_aura"])
+BM_CYCLE_SET = _DUNGEON["bm_cycle"]
 BM_AURA_FOR = float(_DUNGEON["bm_aura_for"])
 AURA_AFTER = float(_DUNGEON["aura_after"])
 AURA_FOR = float(_DUNGEON["aura_for"])
@@ -172,6 +185,8 @@ AURA_DUE = {"at": None, "after": None, "for": None, "since": None}
 AURA_WINDOW = {"until": None, "since": None, "last": None, "clicks": 0}
 MAIN_BM_DUE = {"at": None, "after": None, "for": None}
 MAIN_BM_STATE = {"on": False}
+BM_CYCLE = {"slot": None, "ends": None, "extended": False, "last": None,
+            "resume": False, "off": {}}
 WORLD_BOSS = {"done": None}
 BURST = _DUNGEON.get("burst")
 BURST_STATE = {"until": None}
@@ -208,6 +223,8 @@ DEFEAT = [tuple(step) for step in _DUNGEON["defeat"]]
 DEFEAT_SIGN = BUTTONS[DEFEAT[0][1]]
 CHAT_OPEN = float(_DUNGEON["chat_open"])
 CHAT_EVERY = _DUNGEON["chat_every"]
+CHAT_READS = _DUNGEON["chat_reads"]
+ROOM_PREFIX = _DUNGEON["room_prefix"]
 _CHAT_LINES = _DUNGEON["chat_lines"]
 CHAT_BOXES = [(_CHAT_LINES["left"], _CHAT_LINES["top"] + row * _CHAT_LINES["gap"],
                _CHAT_LINES["right"],
@@ -244,7 +261,7 @@ TRANSFER_TIMEOUT = float(_DUNGEON["transfer_timeout"])
 INVENTORY_TAB = int(_DUNGEON["inventory_tab"])
 KEY_TAB = int(_DUNGEON["key_tab"])
 LOCK = {"boss": None, "reading": None, "cleared": False, "level": ORDER[0] if ORDER else None,
-        "killed": False, "watching": False, "reads": 0}
+        "killed": False, "watching": False, "reads": 0, "hits": []}
 ENDED = threading.Event()
 
 
@@ -384,6 +401,8 @@ def press_button(name, settle, verbose=True, required=True):
         raise RuntimeError(
             f"the {name} window {list(window)} never read {button['word']!r} "
             f"within {timeout:g}s; it reads {seen!r}. Nothing clicked.")
+    if CHAT_READS is not None and name == CHAT_READS["button"]:
+        room_chat(verbose)
     point = centre(window)
     if verbose:
         print(f"  {button['word']} at {point}")
@@ -566,12 +585,12 @@ def names(text, name):
                      re.IGNORECASE) is not None
 
 
-def find_in_list(name, timeout, words=None):
+def find_in_list(name, timeout, words=None, windows=LEVEL_WINDOWS):
     deadline = time.monotonic() + timeout
     while True:
         image = calibration.grab()
-        reads = read_windows(image, LEVEL_WINDOWS)
-        for box, seen in zip(LEVEL_WINDOWS, reads):
+        reads = read_windows(image, windows)
+        for box, seen in zip(windows, reads):
             if (all(row_model._key(word) in row_model._key(seen)
                     for word in words) if words else names(seen, name)):
                 calibration.snap("dungeon_list", image)
@@ -628,6 +647,10 @@ def cancel_bm(dungeon_name, verbose=True):
     calibration.snap("cancel_bm")
     two = MAIN_BM_TWO_TARGETS and MAIN_BM_STATE["on"]
     MAIN_BM_STATE["on"] = False
+    if BM_CYCLE["slot"] is not None:
+        BM_CYCLE["off"][BM_CYCLE["slot"]] = time.monotonic()
+    BM_CYCLE.update(last=BM_CYCLE["slot"] or BM_CYCLE["last"], slot=None,
+                    ends=None, extended=False, resume=False)
     pending = AURA_DUE["at"] is not None
     AURA_DUE["at"] = None
     if verbose:
@@ -646,6 +669,9 @@ def setting(dungeon_name, key):
 def open_dungeon_key(dungeon_name, location, verbose=True):
     place = location_of(dungeon_name, location)
     name, words = place["name"], place.get("list_words")
+    right = place.get("list_right")
+    windows = (LEVEL_WINDOWS if right is None
+               else [(box[0], box[1], right, box[3]) for box in LEVEL_WINDOWS])
     entry = _state().get("entry")
     if not entry:
         raise RuntimeError(f"no entry is noted in {STATE.name}; get_entry "
@@ -654,7 +680,7 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
         raise RuntimeError("could not bring the game to the foreground.")
     yes = BUTTONS["warp_yes"]
     ctypes.windll.user32.SetCursorPos(*TAB_TWO)
-    box, reads = find_in_list(name, 0, words)
+    box, reads = find_in_list(name, 0, words, windows)
     if box is None:
         if not wait_for(tuple(yes["window"]), yes["word"], 0)[0]:
             prepare(verbose, entry["tab"])
@@ -664,7 +690,7 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
             right_click(*entry["point"], 0.0)
         press_button("warp_yes", 0.0, verbose)
         ctypes.windll.user32.SetCursorPos(*TAB_TWO)
-        box, reads = find_in_list(name, TRANSFER_TIMEOUT, words)
+        box, reads = find_in_list(name, TRANSFER_TIMEOUT, words, windows)
         if box is None:
             raise RuntimeError(
                 f"no {name!r} in the dungeon list within "
@@ -692,6 +718,42 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
     forget_entry()
     if verbose:
         print(f"  entered {location}; the entry note is cleared")
+
+
+def escape_burst(presses, every, stop, pressed):
+    for _press in range(presses):
+        with KEY_LOCK:
+            if stop.is_set() or not PLAYING.is_set():
+                return
+            press(_INPUT["VK_ESCAPE"])
+            pressed.update(at=time.monotonic(), count=pressed["count"] + 1)
+        stop.wait(every)
+    deadline = pressed["at"] + RIDE_ESCAPE_SETTLE
+    while not stop.is_set() and time.monotonic() < deadline:
+        if wait_for(MENU_WINDOW, MENU_WORD, 0)[0]:
+            with KEY_LOCK:
+                if PLAYING.is_set():
+                    press(_INPUT["VK_ESCAPE"])
+                    pressed.update(at=time.monotonic(),
+                                   closed=pressed["closed"] + 1)
+            return
+        stop.wait(WAIT_SLICE)
+
+
+def close_menu_after_ride(pressed, verbose=True):
+    if pressed["at"] is None or OVER.is_set():
+        return
+    OVER.wait(max(0.0, pressed["at"] + RIDE_ESCAPE_SETTLE - time.monotonic()))
+    up = wait_for(MENU_WINDOW, MENU_WORD, 0)[0]
+    if up:
+        press(_INPUT["VK_ESCAPE"])
+    if verbose:
+        print(f"  Escape {pressed['count']} time(s) at the start of the ride"
+              + (", then one more because the menu was up"
+                 if pressed["closed"] else "")
+              + "; "
+              + ("the menu was up after the ride, so one more Escape closed it"
+                 if up else "no menu up after the ride, so no more Escape"))
 
 
 def snap_every(name, every, stop):
@@ -731,6 +793,12 @@ def play(dungeon_name, sequence, verbose=True):
         begin = [min(max(begin[0], 0), width - 1),
                  min(max(begin[1], 0), height - 1)]
         ctypes.windll.user32.SetCursorPos(*begin)
+    escapes = DUNGEONS.get(dungeon_name, {}).get("ride_escape_presses")
+    escape = DUNGEONS.get(dungeon_name, {}).get("ride_escape_every")
+    heal_ride = DUNGEONS.get(dungeon_name, {}).get("heal_ride_every")
+    extras = ([f"{escapes} Escape(s) {escape:g}s apart at the start (one more "
+               f"if the menu is still up)"] if escapes else []) + (
+        [f"heal every {heal_ride:g}s"] if heal_ride else [])
     if verbose:
         print(f"  {dungeon_name}/{path.name}: {len(events)} events over "
               f"{events[-1]['t']:.1f}s, the cursor first put at {begin}"
@@ -738,7 +806,8 @@ def play(dungeon_name, sequence, verbose=True):
                  else " (the recording's first mouse point)")
               + (f"; a frame every {WALK_FRAMES[sequence]:g}s while it plays"
                  if sequence in WALK_FRAMES else "")
-              + "; nothing else is pressed until it ends")
+              + (f"; only {' and '.join(extras)} go in between until it ends"
+                 if extras else "; nothing else is pressed until it ends"))
     keys, buttons, played = {}, {}, 0
     holding = False
     shooting = threading.Event()
@@ -746,9 +815,16 @@ def play(dungeon_name, sequence, verbose=True):
         threading.Thread(target=snap_every,
                          args=(sequence, WALK_FRAMES[sequence], shooting),
                          daemon=True).start()
+    pressed = {"at": None, "count": 0, "closed": 0}
+    escaper = (threading.Thread(target=escape_burst,
+                                args=(int(escapes), float(escape), shooting,
+                                      pressed),
+                                daemon=True) if escapes else None)
     record_action.winmm.timeBeginPeriod(record_action.TIMER_MS)
     with KEY_LOCK:
         PLAYING.set()
+    if escaper is not None:
+        escaper.start()
     zero = time.perf_counter()
     try:
         for event in events:
@@ -802,6 +878,9 @@ def play(dungeon_name, sequence, verbose=True):
     if verbose:
         print(f"  played {played} of {len(events)} events; nothing is left "
               f"held down")
+    if escaper is not None:
+        escaper.join()
+        close_menu_after_ride(pressed, verbose)
 
 
 def _mouse_input(flags, data=0):
@@ -859,6 +938,8 @@ def watch_target(name, words, stop, first, failed):
                     for hit in ([word for word in words
                                  if word.casefold() in bar.casefold()]
                                 if words else TARGET_HP.findall(bar))]
+            if hits:
+                LOCK["hits"] = hits
             if hits and LOCK["boss"] is None:
                 LOCK["boss"] = name
                 calibration.snap("target_found", image)
@@ -889,7 +970,7 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     limit = TIME_LIMIT.total_seconds()
-    LOCK.update(boss=None, killed=False, watching=True, reads=0)
+    LOCK.update(boss=None, killed=False, watching=True, reads=0, hits=[])
     ENDED.clear()
     stop, first, failed = threading.Event(), threading.Event(), {}
     watcher = threading.Thread(target=watch_target,
@@ -918,6 +999,7 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                                        f"the {label} stopped.")
                 aura_when_due(verbose)
                 main_bm_when_due(verbose)
+                bm_cycle_when_due(verbose)
                 aura_in_window(verbose)
                 tap(KEYS[TARGET_KEY])
                 presses += 1
@@ -1021,7 +1103,7 @@ def aura_when_due(verbose=True):
         clicks += 1
         if time.monotonic() >= started + AURA_DUE["for"]:
             break
-        OVER.wait(max(0.0, slot + LOOP_GAP - time.monotonic()))
+        OVER.wait(max(0.0, slot + AURA_GAP - time.monotonic()))
     if verbose:
         print(f"  {started - AURA_DUE['since']:.0f}s since BM: aura "
               f"{slot_way('aura')} {clicks} time(s) in "
@@ -1067,7 +1149,7 @@ def aura_now(verbose=True):
     if verbose:
         print(f"  {now - AURA_DUE['since']:.0f}s since BM: the aura goes "
               f"now, {slot_way('aura')} at most every "
-              f"{LOOP_GAP:g}s for {AURA_DUE['for']:g}s, between the "
+              f"{AURA_GAP:g}s for {AURA_DUE['for']:g}s, between the "
               f"{TARGET_KEY} presses and the attacks of the next kill")
 
 
@@ -1079,7 +1161,7 @@ def aura_in_window(verbose=True):
         end_aura_window(verbose)
         return
     if (AURA_WINDOW["last"] is not None
-            and now - AURA_WINDOW["last"] < LOOP_GAP):
+            and now - AURA_WINDOW["last"] < AURA_GAP):
         return
     use_point("aura", 0.0)
     AURA_WINDOW.update(last=now, clicks=AURA_WINDOW["clicks"] + 1)
@@ -1099,19 +1181,166 @@ def main_bm_when_due(verbose=True):
     due = MAIN_BM_DUE["at"]
     if due is None or OVER.is_set() or time.monotonic() < due:
         return
+    main_bm_now(MAIN_BM_DUE["for"],
+                f"{MAIN_BM_DUE['after']:g}s since the first BM: ", verbose)
+
+
+def main_bm_now(seconds, reason="", verbose=True):
     MAIN_BM_DUE["at"] = None
     started, clicks = time.monotonic(), 0
     while not OVER.is_set():
         use_point("main_bm", LOOP_GAP)
         clicks += 1
-        if time.monotonic() >= started + MAIN_BM_DUE["for"]:
+        if time.monotonic() >= started + seconds:
             break
     if verbose:
-        print(f"  {MAIN_BM_DUE['after']:g}s since the first BM: main BM "
-              f"{slot_way('main_bm')} {clicks} time(s) in "
+        print(f"  {reason}main BM {slot_way('main_bm')} {clicks} time(s) in "
               f"{time.monotonic() - started:.1f}s")
     if clicks:
         main_bm_on(verbose)
+
+
+def cycle_cast(slot, verbose=True):
+    cast = float(BM_CYCLE_SET["cast"][slot])
+    AURA_DUE["at"] = None
+    MAIN_BM_DUE["at"] = None
+    started, presses = time.monotonic(), 0
+    while not OVER.is_set() and time.monotonic() < started + cast:
+        use_point(slot, 0.0)
+        tap(KEYS[TARGET_KEY])
+        presses += 1
+        OVER.wait(LOOP_GAP)
+    BM_CYCLE.update(slot=slot, extended=False,
+                    ends=started + cast + float(BM_CYCLE_SET["lasts"]))
+    MAIN_BM_STATE["on"] = False
+    if slot == "main_bm":
+        main_bm_on(verbose)
+    if verbose:
+        print(f"  BM cycle: {slot} {slot_way(slot)} {presses} time(s) over its "
+              f"{cast:g}s cast, {TARGET_KEY} after each; it should run out "
+              f"{BM_CYCLE_SET['lasts']:g}s after the cast")
+
+
+def cycle_aura(verbose=True):
+    started = time.monotonic()
+    left = max(0.0, BM_CYCLE["ends"] - started)
+    presses = 0
+    while (not OVER.is_set()
+           and time.monotonic() < started + float(BM_CYCLE_SET["aura_for"])):
+        use_point("aura", 0.0)
+        tap(KEYS[TARGET_KEY])
+        presses += 1
+        OVER.wait(AURA_GAP)
+    keeps = (float(BM_CYCLE_SET["aura_base"])
+             + float(BM_CYCLE_SET["aura_share"]) * left)
+    BM_CYCLE.update(ends=started + keeps, extended=True)
+    if verbose:
+        print(f"  BM cycle: aura {slot_way('aura')} {presses} time(s) with "
+              f"{left:.1f}s of {BM_CYCLE['slot']} left, {TARGET_KEY} after "
+              f"each; it should now run out in {keeps:.1f}s")
+
+
+def cancel_spam(verbose=True):
+    span = float(BM_CYCLE_SET["cancel_for"])
+    started, clicks = time.monotonic(), 0
+    while not OVER.is_set() and time.monotonic() < started + span:
+        right_click(*BM_ICON, float(BM_CYCLE_SET["cancel_gap"]))
+        clicks += 1
+    MAIN_BM_STATE["on"] = False
+    calibration.snap("cancel_spam")
+    if verbose:
+        print(f"  BM icon right-clicked {clicks} times at {list(BM_ICON)} in "
+              f"{time.monotonic() - started:.1f}s")
+
+
+def bm_cycle_when_due(verbose=True):
+    if BM_CYCLE["slot"] is None or OVER.is_set():
+        return
+    now = time.monotonic()
+    if now >= BM_CYCLE["ends"]:
+        slots = BM_CYCLE_SET["slots"]
+        following = slots[(slots.index(BM_CYCLE["slot"]) + 1) % len(slots)]
+        if verbose:
+            print(f"  BM cycle: {BM_CYCLE['slot']} is due to run out"
+                  + ("" if BM_CYCLE["extended"] else " without its aura")
+                  + f", so it is cancelled, then {following}")
+        cancel_spam(verbose)
+        BM_CYCLE["off"][BM_CYCLE["slot"]] = time.monotonic()
+        cycle_cast(following, verbose)
+        return
+    if (not BM_CYCLE["extended"]
+            and now >= BM_CYCLE["ends"] - float(BM_CYCLE_SET["aura_left"])):
+        cycle_aura(verbose)
+
+
+def next_slot():
+    slots = BM_CYCLE_SET["slots"]
+    last = BM_CYCLE["slot"] or BM_CYCLE["last"]
+    return last, (slots[(slots.index(last) + 1) % len(slots)]
+                  if last in slots else slots[0])
+
+
+def swap_bm_aura(dungeon_name, pause, verbose=True):
+    last, following = next_slot()
+    went_off = BM_CYCLE["off"].get(following)
+    since = None if went_off is None else time.monotonic() - went_off
+    if (BM_CYCLE["slot"] is not None and since is not None
+            and since < float(BM_CYCLE_SET["cooldown"])):
+        if verbose:
+            print(f"  BM cycle: {following} went off {since:.0f}s ago, inside "
+                  f"its {BM_CYCLE_SET['cooldown']:g}s cooldown, so {last} "
+                  f"stays on"
+                  + (" and already has its aura" if BM_CYCLE["extended"]
+                     else " and gets its aura now"))
+        if not BM_CYCLE["extended"]:
+            cycle_aura(verbose)
+        return
+    if verbose:
+        print(f"  BM cycle: {last or 'no BM'} is cancelled, {pause:g}s, then "
+              f"{following} and its aura")
+    cancel_bm(dungeon_name, verbose)
+    wait_timer(pause, verbose)
+    cycle_cast(following, verbose)
+    cycle_aura(verbose)
+
+
+def bm_cycle_before(dungeon_name, sequence, verbose=True):
+    bm_cycle_when_due(verbose)
+    if BM_CYCLE["slot"] is None or OVER.is_set():
+        return
+    length = recording_length(dungeon_name, sequence)
+    if BM_CYCLE["extended"]:
+        if time.monotonic() + length < BM_CYCLE["ends"]:
+            return
+        if verbose:
+            print(f"  {sequence} runs {length:.1f}s and {BM_CYCLE['slot']} "
+                  f"runs out in "
+                  f"{max(0.0, BM_CYCLE['ends'] - time.monotonic()):.1f}s, "
+                  f"during it, so it is cancelled now and the cycle starts "
+                  f"again after the ride")
+        cancel_bm(dungeon_name, verbose)
+        BM_CYCLE["resume"] = True
+        return
+    due = BM_CYCLE["ends"] - float(BM_CYCLE_SET["aura_left"])
+    if time.monotonic() + length < due:
+        return
+    if verbose:
+        print(f"  {sequence} runs {length:.1f}s and the aura for "
+              f"{BM_CYCLE['slot']} is due in "
+              f"{max(0.0, due - time.monotonic()):.1f}s, so the aura goes "
+              f"before it")
+    cycle_aura(verbose)
+
+
+def bm_cycle_after(verbose=True):
+    if not BM_CYCLE["resume"] or OVER.is_set():
+        return
+    BM_CYCLE["resume"] = False
+    last, following = next_slot()
+    if verbose:
+        print(f"  BM cycle: {last} was cancelled before the ride, so "
+              f"{following} now")
+    cycle_cast(following, verbose)
 
 
 def main_bm_on(verbose=True):
@@ -1130,6 +1359,7 @@ def click_round(names, since):
                                "right-click loop stopped.")
         aura_when_due()
         main_bm_when_due()
+        bm_cycle_when_due()
         aura_in_window()
         if entry == "aura" and AURA_DUE["at"] is not None:
             continue
@@ -1160,7 +1390,8 @@ def loop_plan(names):
                f" used from the hotbar {LOOP_GAP:g}s apart"))
 
 
-def kill_bm(name, words, verbose=True, loop=None, search=None):
+def kill_bm(name, words, verbose=True, loop=None, search=None,
+            main_loop=None):
     loop = BM_LOOP if loop is None else loop
     LAST_KILL.update(name=name, words=words, loop=loop)
     start = next((at for at, entry in enumerate(loop)
@@ -1171,14 +1402,22 @@ def kill_bm(name, words, verbose=True, loop=None, search=None):
         if not loop:
             ENDED.wait(LOOP_GAP)
             return
-        click_round(rounds["next"], since)
+        click_round(main_loop if main_loop and MAIN_BM_STATE["on"]
+                    else rounds["next"], since)
         rounds["next"] = loop
 
     return hunt(name, words, attack, "kill_bm",
                 f"{loop_plan(loop)}, the first round from {loop[start]}"
+                + (f"; while the main BM is on, {loop_plan(main_loop)}"
+                   if main_loop else "")
                 + (f"; aura only from {AURA_DUE['after']:g}s after BM"
                    if AURA_DUE["at"] is not None else "")
                 if loop else None, verbose, search)
+
+
+def main_loop_for(dungeon_name, loop_name):
+    swap = DUNGEONS[dungeon_name].get("main_bm_loops", {}).get(loop_name)
+    return list(_DUNGEON[swap]) if swap else None
 
 
 def boss_again(verbose=True):
@@ -1199,13 +1438,23 @@ def boss_again(verbose=True):
     return True
 
 
-def heal_loop(stop, kills_only):
+def heal_loop(stop, kills_only, ride_every=None):
+    last = None
     while (not stop.is_set() and not OVER.is_set()
            and not calibration.STOPPED.is_set()):
-        if not kills_only or HUNTING.is_set():
+        now = time.monotonic()
+        if PLAYING.is_set():
+            if ride_every is not None and (last is None
+                                           or now - last >= ride_every):
+                with KEY_LOCK:
+                    if PLAYING.is_set():
+                        press(KEYS[HEAL_KEY])
+                        last = now
+        elif not kills_only or HUNTING.is_set():
             with KEY_LOCK:
                 if not PLAYING.is_set():
                     press(KEYS[HEAL_KEY])
+                    last = now
         stop.wait(HEAL_EVERY)
 
 
@@ -1292,15 +1541,21 @@ def note_unique(owner, item, image):
                                  "time": report_at()}) + "\n")
 
 
+def month_of(day):
+    when = datetime.date.fromisoformat(day)
+    return when.year, when.month
+
+
 def unique_drops(day):
     found = []
     try:
+        month = month_of(day)
         for line in UNIQUE_FILE.read_text(encoding="utf-8").splitlines():
             try:
                 record = json.loads(line)
-                if record["day"] == day:
+                if month_of(record["day"]) == month:
                     found.append(f"{record['item']}, {record['dungeon']}, "
-                                 f"{record['time']}")
+                                 f"{record['day']} {record['time']}")
             except Exception:
                 continue
     except Exception:
@@ -1331,11 +1586,39 @@ def watch_chat(stop, verbose=True):
         CHAT["last"] = CHAT["run"]
 
 
+def chat_run(dungeon_name, location):
+    return {"label": run_label(dungeon_name, location),
+            "name": location_of(dungeon_name, location)["name"],
+            "day": server_day()}
+
+
+def own_chat(dungeon_name, location, verbose=True):
+    try:
+        CHAT["last"] = CHAT["run"]
+        CHAT["run"] = chat_run(dungeon_name, location)
+        CHAT["fresh"] = True
+        if verbose:
+            print(f"  the chat is read before each {CHAT_READS['before']} "
+                  f"ride and while the {CHAT_READS['button']} banner is up, "
+                  f"for unique item drops in {CHAT['run']['label']}")
+    except Exception as exc:
+        if verbose:
+            print(f"  the chat reads could not start ({type(exc).__name__}: "
+                  f"{exc}); the run goes on without them")
+
+
+def room_chat(verbose=True):
+    try:
+        read_chat(verbose)
+    except Exception as exc:
+        if verbose:
+            print(f"  the chat could not be read ({type(exc).__name__}: "
+                  f"{exc}); the run goes on")
+
+
 def start_chat(phase, dungeon_name, location, verbose=True):
     try:
-        CHAT["run"] = {"label": run_label(dungeon_name, location),
-                       "name": location_of(dungeon_name, location)["name"],
-                       "day": server_day()}
+        CHAT["run"] = chat_run(dungeon_name, location)
         CHAT["fresh"] = True
         if verbose:
             print(f"  the chat is read every {CHAT_EVERY:g}s, never while a "
@@ -1473,7 +1756,8 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
              "healer": threading.Thread(
                  target=heal_loop,
                  args=(stop, bool(DUNGEONS[dungeon_name].get("heal_kills_only",
-                                                             False))),
+                                                             False)),
+                       DUNGEONS[dungeon_name].get("heal_ride_every")),
                  daemon=True),
              "ender": threading.Thread(target=watch_end,
                                        args=(stop, failed, killing, timer,
@@ -1521,6 +1805,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                     continue
                 aura_when_due(verbose)
                 main_bm_when_due(verbose)
+                bm_cycle_when_due(verbose)
                 tap(KEYS[TARGET_KEY])
                 presses += 1
                 OVER.wait(TARGET_EVERY)
@@ -1833,6 +2118,9 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                       f"{CHALLENGE_WORD} click")
             count_challenge(dungeon_name, location, timer, verbose)
             cancel_bm(dungeon_name, verbose)
+            start_room = DUNGEONS[dungeon_name].get("start_room")
+            if start_room is not None:
+                say_room(dungeon_name, location, start_room)
         elif name == "inventory":
             prepare(verbose)
             close_inventory(verbose)
@@ -1847,6 +2135,13 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             bm_aura(verbose, list(rest[:-1]), float(rest[-1]))
         elif name == "aura":
             aura_now(verbose)
+        elif name == "main_bm":
+            main_bm_now(float(setting(dungeon_name, "bm_aura_for")),
+                        verbose=verbose)
+        elif name == "bm_cycle":
+            cycle_cast(BM_CYCLE_SET["slots"][0], verbose)
+        elif name == "swap_bm_aura":
+            swap_bm_aura(dungeon_name, float(rest[0]), verbose)
         elif name == "tab_two":
             if not focus_game():
                 raise RuntimeError("could not bring the game to the "
@@ -1860,31 +2155,59 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             disenchant_all(verbose)
         elif name == "kill_phase":
             if verbose:
+                ride_every = DUNGEONS[dungeon_name].get("heal_ride_every")
+                rides = ("not in the recordings" if ride_every is None
+                         else f"every {ride_every:g}s while a recording plays")
                 print(f"  kill phase: heal ({HEAL_KEY}) every {HEAL_EVERY:g}s "
-                      + ("while a kill is on (not in the recordings or the "
-                         "opening), "
+                      + (f"while a kill is on ({rides}, not in the opening), "
                          if DUNGEONS[dungeon_name].get("heal_kills_only")
-                         else "except while a recording plays, ")
+                         else "except while a recording plays"
+                         + ("" if ride_every is None else f" ({rides})")
+                         + ", ")
                       + f"and the end screen read all the time, until the end "
                       f"screen has been up {end_wait(dungeon_name):g}s")
             phase["healer"].start()
             phase["killing"].set()
             if CHAT_EVERY is not None:
                 start_chat(phase, dungeon_name, location, verbose)
+            elif CHAT_READS is not None:
+                own_chat(dungeon_name, location, verbose)
         elif name == "kill_bm":
             kill_bm(rest[0], target_words(dungeon_name, rest[0]), verbose,
                     list(_DUNGEON[rest[1]]) if len(rest) > 1 else None,
-                    rest[2] if len(rest) > 2 else None)
+                    rest[2] if len(rest) > 2 else None,
+                    main_loop_for(dungeon_name, rest[1])
+                    if len(rest) > 1 else None)
+            end_aura_window(verbose)
+        elif name == "kill_before_boss":
+            loop = list(_DUNGEON[rest[2]]) if len(rest) > 2 else None
+            boss_words = target_words(dungeon_name, rest[1])
+            if verbose:
+                print(f"  {rest[0]!r} first, then {rest[1]!r}; if {rest[1]!r} "
+                      f"is targeted before {rest[0]!r} is found, it is killed "
+                      f"instead and the hunt for {rest[0]!r} ends")
+            kill_bm(f"{rest[0]} or {rest[1]}",
+                    target_words(dungeon_name, rest[0]) + boss_words,
+                    verbose, loop)
+            boss_dead = bool(set(LOCK["hits"]) & set(boss_words))
+            if boss_dead and verbose:
+                print(f"  {rest[1]!r} was the one killed, so {rest[0]!r} is "
+                      f"not looked for any more")
+            if not boss_dead and not OVER.is_set():
+                kill_bm(rest[1], boss_words, verbose, loop)
             end_aura_window(verbose)
         elif name == "kill_all":
             words = target_words(dungeon_name, rest[0])
             loop = list(_DUNGEON[rest[1]]) if len(rest) > 1 else None
+            main_loop = (main_loop_for(dungeon_name, rest[1])
+                         if len(rest) > 1 else None)
             search = (rest[2] if len(rest) > 2
                       else float(setting(dungeon_name, "kill_all_search")))
             kills = 0
             while not OVER.is_set():
                 if not kill_bm(rest[0], words, verbose, loop,
-                               search if kills or not words else None):
+                               search if kills or not words else None,
+                               main_loop):
                     break
                 if OVER.is_set():
                     break
@@ -1932,8 +2255,23 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             aura_before(rest[0], rest[1], verbose)
             play(rest[0], rest[1], verbose)
         else:
+            if (CHAT_READS is not None
+                    and name.startswith(CHAT_READS["before"])):
+                room_chat(verbose)
             aura_before(dungeon_name, name, verbose)
+            bm_cycle_before(dungeon_name, name, verbose)
             play(dungeon_name, name, verbose)
+            if name.startswith(ROOM_PREFIX) and not OVER.is_set():
+                say_room(dungeon_name, location, name[len(ROOM_PREFIX):])
+            bm_cycle_after(verbose)
+
+
+def say_room(dungeon_name, location, room):
+    try:
+        label = run_label(dungeon_name, location)
+    except Exception:
+        label = f"{dungeon_name} {location}"
+    print(f"{label}: room {room}")
 
 
 def use_slot(name, verbose=True):
@@ -3007,7 +3345,9 @@ def rotate(names, after=None, verbose=True):
         if not turn:
             return after
         for name in turn:
-            for _ in range(ROTATION_RUNS):
+            for _ in range(int(DUNGEONS[name]["daily_limit"])
+                           if DUNGEONS[name].get("all_in_turn")
+                           else ROTATION_RUNS):
                 if limit_reached(name):
                     break
                 after = run_in_turn(name, only_location(name), after,
@@ -3083,6 +3423,19 @@ def command(args):
             DUNGEONS.get(arg, {}).get("daily_limit") is not None
             for arg in args):
         rotate(args)
+    elif args[:1] and args[0] in DUNGEONS and _from_step() is not None:
+        location = args[1] if len(args) > 1 else only_location(args[0])
+        skipped = before_step(args[0], _from_step())
+        timer = {"until": None, "limit": hard_limit(args[0]),
+                 "started": internet_now()}
+        timer["deadline"] = time.monotonic() + timer["limit"]
+        print(f"{args[0]} {location}: from {_from_step()}, as if "
+              f"{CHALLENGE_WORD} was just clicked; {len(skipped)} step(s) "
+              f"before it are skipped and the dungeon has {timer['limit']:g}s "
+              f"from now")
+        run_dungeon(args[0], location,
+                    steps=DUNGEONS[args[0]]["sequence"][len(skipped):],
+                    timer=timer)
     elif args[:1] and args[0] in DUNGEONS and _record_from() is not None:
         location = args[1] if len(args) > 1 else only_location(args[0])
         step = _record_from()
