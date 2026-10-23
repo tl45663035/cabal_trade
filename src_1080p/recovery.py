@@ -57,6 +57,9 @@ KEYPAD_OK_F = tuple(_REG["recovery_keypad_ok"])
 POPUP_F = tuple(_REG["popup"])
 RECONNECT_TRIES = _R["reconnect_tries"]
 RECONNECT_SETTLE = _R["reconnect_settle"]
+CHANNEL_MISSING_WAIT = (None if _R["channel_missing_wait"] is None
+                        else float(_R["channel_missing_wait"]))
+LIST_WORD = _R["list_word"]
 NOTICE_TRIES = _R["notice_tries"]
 CLEAR_KEYS = _R["clear_keys"]
 PASSWORD_ABOVE_LOGIN = _R["password_above_login"]
@@ -620,17 +623,26 @@ def _enter_home(who, verbose=True):
 
 
 def _pick_channel(who, verbose=True):
-    channel = None
+    channel, listed = None, None
     deadline = time.monotonic() + RECONNECT_SETTLE
     while time.monotonic() < deadline and channel is None:
-        channel = _find_in(who["channel"], SELECT_PANEL_F)
-        if channel is None:
-            time.sleep(POLL_GAP)
+        words = calibration.ocr(calibration.grab(), _box_frac(SELECT_PANEL_F))
+        channel = _find(who["channel"], words=words, whole=False)
+        if channel is not None:
+            break
+        if (CHANNEL_MISSING_WAIT is not None
+                and _find(LIST_WORD, words=words, whole=False) is not None):
+            listed = listed or time.monotonic()
+            if time.monotonic() - listed >= CHANNEL_MISSING_WAIT:
+                break
+        time.sleep(POLL_GAP)
     if channel is None:
         calibration.snap("recovery_no_channel_panel")
+        waited = (f"{CHANNEL_MISSING_WAIT:g}s of the server list being up"
+                  if listed else f"{RECONNECT_SETTLE:g}s")
         raise Refused(
-            f"no {who['channel']!r} in the server list within "
-            f"{RECONNECT_SETTLE:g}s. Nothing entered.")
+            f"no {who['channel']!r} in the server list within {waited}. "
+            f"Nothing entered.")
     calibration.snap("recovery_server_select")
     if verbose:
         print(f"  {who['channel']!r} at {list(channel)}; entering")

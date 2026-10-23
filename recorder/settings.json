@@ -1,0 +1,28 @@
+{
+  "recorder": {
+    "all_suffix": "_all.jsonl",
+    "all_poll_ms": 1,
+    "all_flush_seconds": 1.0,
+    "all_focus_settle": 0.35,
+    "all_shot_compare": [160, 90],
+    "all_turn_buttons": ["right", "left", "middle"],
+    "all_stop_poll": 0.01,
+    "all_compare_click_px": 1,
+    "all_zoom_out": {"notches": 15, "delta": -120, "gap_ms": 30, "settle": 0.5}
+  },
+  "win": {
+    "KEYEVENTF_UNICODE": 4,
+    "VK_PACKET": 231,
+    "SW_RESTORE": 9,
+    "WM_INPUT": 255,
+    "RID_INPUT": 268435459,
+    "RIM_TYPEMOUSE": 0,
+    "RIDEV_INPUTSINK": 256,
+    "RIDEV_REMOVE": 1,
+    "HID_USAGE_PAGE_GENERIC": 1,
+    "HID_USAGE_GENERIC_MOUSE": 2,
+    "HWND_MESSAGE": -3,
+    "MOUSE_MOVE_ABSOLUTE": 1,
+    "KEY_STATE_DOWN": 32768
+  }
+}
