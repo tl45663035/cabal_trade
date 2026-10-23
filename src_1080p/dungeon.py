@@ -179,8 +179,10 @@ BM_CYCLE_SET = _DUNGEON["bm_cycle"]
 BM_AURA_FOR = float(_DUNGEON["bm_aura_for"])
 AURA_AFTER = float(_DUNGEON["aura_after"])
 AURA_FOR = float(_DUNGEON["aura_for"])
+AURA_TARGET = bool(_DUNGEON["aura_target"])
 MAIN_BM_AFTER = float(_DUNGEON["main_bm_after"])
-AURA_DUE = {"at": None, "after": None, "for": None, "since": None}
+AURA_DUE = {"at": None, "after": None, "for": None, "since": None,
+            "target": AURA_TARGET}
 AURA_WINDOW = {"until": None, "since": None, "last": None, "clicks": 0}
 MAIN_BM_DUE = {"at": None, "after": None, "for": None}
 MAIN_BM_STATE = {"on": False}
@@ -1112,28 +1114,30 @@ def kill(name, words, verbose=True):
 
 
 def bm_aura(verbose=True, names=None, seconds=None, after=None, spam=None,
-            main=None):
+            main=None, target=None):
     aura = names is None
     names = BM_AURA if names is None else names
     seconds = BM_AURA_FOR if seconds is None else seconds
     after = AURA_AFTER if after is None else after
     spam = AURA_FOR if spam is None else spam
     main = MAIN_BM_AFTER if main is None else main
+    target = AURA_TARGET if target is None else target
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     if verbose:
         print(f"  {' -> '.join(names)} right-clicked {LOOP_GAP:g}s apart, "
               f"over and over for {seconds:g}s from the first click"
               + ((f"; aura {after:g}s after the first"
-                  + (f", right-clicked over and over for {spam:g}s" if spam
-                     else "") if after else "; no aura")
+                  + (f", right-clicked over and over for {spam:g}s"
+                     + ("" if target else f" with no {TARGET_KEY}")
+                     if spam else "") if after else "; no aura")
                  + (f"; main BM {main:g}s after the first, right-clicked over "
                     f"and over for {seconds:g}s" if main else "")
                  if aura else ""))
     started = time.monotonic()
     if aura:
         AURA_DUE.update(at=started + after if after else None, after=after,
-                        since=started, **{"for": spam})
+                        since=started, target=target, **{"for": spam})
         MAIN_BM_DUE.update(at=started + main if main else None, after=main,
                            **{"for": seconds})
     rounds = 0
@@ -1154,7 +1158,8 @@ def aura_when_due(verbose=True):
     while not OVER.is_set():
         slot = time.monotonic()
         use_point("aura", 0.0)
-        tap(KEYS[TARGET_KEY])
+        if AURA_DUE["target"]:
+            tap(KEYS[TARGET_KEY])
         clicks += 1
         if time.monotonic() >= started + AURA_DUE["for"]:
             break
@@ -1162,8 +1167,8 @@ def aura_when_due(verbose=True):
     if verbose:
         print(f"  {started - AURA_DUE['since']:.0f}s since BM: aura "
               f"{slot_way('aura')} {clicks} time(s) in "
-              f"{time.monotonic() - started:.1f}s, "
-              f"{TARGET_KEY} after each")
+              f"{time.monotonic() - started:.1f}s"
+              + (f", {TARGET_KEY} after each" if AURA_DUE["target"] else ""))
 
 
 def recording_length(dungeon_name, sequence):
@@ -2205,7 +2210,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             bm_aura(verbose, seconds=float(setting(dungeon_name, "bm_aura_for")),
                     after=float(setting(dungeon_name, "aura_after")),
                     spam=float(setting(dungeon_name, "aura_for")),
-                    main=float(setting(dungeon_name, "main_bm_after")))
+                    main=float(setting(dungeon_name, "main_bm_after")),
+                    target=bool(setting(dungeon_name, "aura_target")))
         elif name == "spam":
             bm_aura(verbose, list(rest[:-1]), float(rest[-1]))
         elif name == "aura":
