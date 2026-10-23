@@ -186,6 +186,7 @@ MAIN_BM_DUE = {"at": None, "after": None, "for": None}
 MAIN_BM_STATE = {"on": False}
 BM_CYCLE = {"slot": None, "ends": None, "extended": False, "last": None,
             "resume": False, "off": {}}
+BM_OFF = {"at": None}
 WORLD_BOSS = {"done": None}
 BURST = _DUNGEON.get("burst")
 BURST_STATE = {"until": None}
@@ -587,6 +588,43 @@ def orb_runs_today(dungeon_name, location):
     return sum(ran_today(_state(), server_day()).values())
 
 
+def pre_run_buys(dungeon_name, location, verbose=True):
+    limit = DUNGEONS[dungeon_name].get("daily_limit")
+    if limit is not None and runs_today(dungeon_name) >= int(limit):
+        return
+    level = DUNGEONS[dungeon_name].get("difficulty")
+    buy = DIFFICULTY["buys"].get(str(level)) if level is not None else None
+    if buy is not None:
+        done = runs_today(dungeon_name)
+        every = int(buy["every"])
+        item = PURCHASES[buy["item"]]["name"]
+        if done % every == 0:
+            if verbose:
+                print(f"  {done} {dungeon_name} run(s) so far today; "
+                      f"difficulty {level} takes 1x {item} every {every} "
+                      f"runs: buying it now")
+            buy_item(buy["item"], verbose)
+        elif verbose:
+            print(f"  {done} {dungeon_name} run(s) so far today; the next 1x "
+                  f"{item} is bought in {every - done % every} run(s)")
+    summons = orbs_per_run(dungeon_name) if ORBS is not None else 0
+    if summons:
+        done = orb_runs_today(dungeon_name, location)
+        every = int(ORBS["every"])
+        item = PURCHASES[ORBS["item"]]["name"]
+        if done % every == 0:
+            if verbose:
+                print(f"  {done} {dungeon_name} run(s) so far today, each "
+                      f"summoning {summons}x with {ORBS['key']}; {summons}x "
+                      f"{item} every {every} runs: buying it now")
+            buy_item(ORBS["item"], verbose, summons)
+        elif verbose:
+            print(f"  {done} {dungeon_name} run(s) so far today, each "
+                  f"summoning {summons}x with {ORBS['key']}; the next "
+                  f"{summons}x {item} is bought in {every - done % every} "
+                  f"run(s)")
+
+
 def buy_max(name, verbose=True):
     item = PURCHASES[name]
     prepare(verbose, int(item["inventory_tab"]))
@@ -710,6 +748,7 @@ def cancel_bm(dungeon_name, verbose=True):
     clicks = cancel_bm_clicks(dungeon_name)
     for _click in range(clicks):
         right_click(*BM_ICON, CANCEL_BM_GAP)
+    BM_OFF["at"] = time.monotonic()
     calibration.snap("cancel_bm")
     two = MAIN_BM_TWO_TARGETS and MAIN_BM_STATE["on"]
     MAIN_BM_STATE["on"] = False
@@ -1786,6 +1825,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                       daemon=True)}
     OVER.clear()
     END["at"], END["defeated"], END["overtime"] = None, False, False
+    BM_OFF["at"] = None
     HEAL["every"] = HEAL_EVERY
     first = calibration.frames_taken() + 1
     RUN_START["frame"] = first
@@ -2137,40 +2177,6 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             print(f"{dungeon_name} {location}: "
                   f"{' '.join(str(part) for part in [name, *rest])}")
         if name == "get_entry":
-            level = DUNGEONS[dungeon_name].get("difficulty")
-            buy = (DIFFICULTY["buys"].get(str(level)) if level is not None
-                   else None)
-            if buy is not None:
-                done = runs_today(dungeon_name)
-                every = int(buy["every"])
-                item = PURCHASES[buy["item"]]["name"]
-                if done % every == 0:
-                    if verbose:
-                        print(f"  {done} {dungeon_name} run(s) so far today; "
-                              f"difficulty {level} takes 1x {item} every "
-                              f"{every} runs: buying it now")
-                    buy_item(buy["item"], verbose)
-                elif verbose:
-                    print(f"  {done} {dungeon_name} run(s) so far today; the "
-                          f"next 1x {item} is bought in "
-                          f"{every - done % every} run(s)")
-            summons = orbs_per_run(dungeon_name) if ORBS is not None else 0
-            if summons:
-                done = orb_runs_today(dungeon_name, location)
-                every = int(ORBS["every"])
-                item = PURCHASES[ORBS["item"]]["name"]
-                if done % every == 0:
-                    if verbose:
-                        print(f"  {done} {dungeon_name} run(s) so far today, "
-                              f"each summoning {summons}x with {ORBS['key']}; "
-                              f"{summons}x {item} every {every} runs: buying "
-                              f"it now")
-                    buy_item(ORBS["item"], verbose, summons)
-                elif verbose:
-                    print(f"  {done} {dungeon_name} run(s) so far today, each "
-                          f"summoning {summons}x with {ORBS['key']}; the next "
-                          f"{summons}x {item} is bought in "
-                          f"{every - done % every} run(s)")
             with_entry_retries(lambda attempt: get_entry(
                 *place["entry"], verbose=verbose), verbose)
         elif name == "open_dungeon_key":
@@ -2233,7 +2239,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         elif name == "cancel_bm":
             cancel_bm(dungeon_name, verbose)
         elif name == "disenchant_all":
-            disenchant_all(verbose)
+            disenchant_all(verbose, setting(dungeon_name, "cooldown_loop"))
         elif name == "kill_phase":
             if verbose:
                 ride_every = DUNGEONS[dungeon_name].get("heal_ride_every")
@@ -2393,10 +2399,18 @@ def start_block(dungeon_name, location, verbose=True):
         run_sequence(dungeon_name, location, {}, verbose, steps, False)
 
 
+def bm_off_at():
+    return BM_OFF["at"] if BM_OFF["at"] is not None else time.monotonic()
+
+
 def cool_down(dungeon_name, rested, verbose=True):
     cooldown = float(setting(dungeon_name, "cooldown"))
     left = rested + cooldown - time.monotonic()
     if left <= 0:
+        if verbose:
+            print(f"  {dungeon_name}: the {cooldown:g}s cooldown after the BM "
+                  f"cancel passed {-left:.1f}s ago, during the exit and the "
+                  f"steps after it; the next run starts now")
         return
     pops = list(setting(dungeon_name, "cooldown_loop"))
     if verbose:
@@ -3002,7 +3016,7 @@ def level_left(level):
         level, 0)
 
 
-def disenchant_all(verbose=True):
+def disenchant_all(verbose=True, pops=None):
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     open_agent_shop_premium.ensure_inventory_open(verbose=verbose,
@@ -3016,7 +3030,14 @@ def disenchant_all(verbose=True):
     if up:
         press_button("extraction_agree", 0.0, verbose)
         ctypes.windll.user32.SetCursorPos(*TAB_TWO)
-        wait_timer(DISENCHANT_WAIT, verbose)
+        if pops:
+            if verbose:
+                print(f"  {DISENCHANT_WAIT:g}s for the extraction, right-"
+                      f"clicking {' -> '.join(pops)} {LOOP_GAP:g}s apart "
+                      f"meanwhile")
+            bm_aura(False, pops, DISENCHANT_WAIT)
+        else:
+            wait_timer(DISENCHANT_WAIT, verbose)
         calibration.park()
         press_button("extraction_close", 0.0, verbose)
     else:
@@ -3400,6 +3421,7 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
         start_burst(verbose)
     if world_boss_turn(dungeon_name, verbose):
         after = (dungeon_name, time.monotonic())
+    pre_run_buys(dungeon_name, location, verbose)
     if after is None:
         start_block(dungeon_name, location, verbose)
     else:
@@ -3416,7 +3438,7 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
         recovery.recover(verbose=verbose)
         cancel_bm(dungeon_name, verbose)
         return None
-    return dungeon_name, time.monotonic()
+    return dungeon_name, bm_off_at()
 
 
 def rotate(names, after=None, verbose=True):
@@ -3526,6 +3548,7 @@ def command(args):
         location = args[1] if len(args) > 1 else only_location(args[0])
         step = _record_from()
         before_step(args[0], step)
+        pre_run_buys(args[0], location)
         start_block(args[0], location)
         if run_dungeon(args[0], location, until=step) is not False:
             record_from_here(step)
@@ -3533,13 +3556,14 @@ def command(args):
         location = args[1] if len(args) > 1 else only_location(args[0])
         rested = None
         for run in range(_runs()):
+            pre_run_buys(args[0], location)
             if run == 0:
                 start_block(args[0], location)
             if rested is not None:
                 cool_down(args[0], rested)
             if run_dungeon(args[0], location) is False:
                 break
-            rested = time.monotonic()
+            rested = bm_off_at()
     else:
         raise SystemExit(f"unknown command {' '.join(args)!r}; use "
                          f"nothing for the whole loop, "
