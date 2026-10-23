@@ -67,8 +67,7 @@ POT_DELAY = float(_BOSS["pot_delay"])
 POT_GAP = float(_BOSS["pot_gap"])
 BUFF_AFTER_SPAWN = float(_BOSS["buff_after_spawn"])
 PREPARE_LEAD = float(_BOSS["prepare_lead"])
-PREPARE_CHANNEL = (None if _BOSS["prepare_channel"] is None
-                   else int(_BOSS["prepare_channel"]))
+PREPARE_CHANNEL = int(_BOSS["prepare_channel"])
 PREPARE_WAIT = float(_BOSS["prepare_wait"])
 TAB_TWO = tuple(_BOSS["tab_two"])
 POT_SLOTS = [tuple(point) for point in _BOSS["pot_slots"]]
@@ -914,14 +913,10 @@ def relog_unless_there(channel, verbose=True):
 def prepare(verbose=True):
     if verbose:
         print("prepare world boss")
-    if PREPARE_CHANNEL is None:
-        if verbose:
-            print(f"  no prepare channel; straight to Channel {CHANNELS[0]}")
-    else:
-        relog_unless_there(PREPARE_CHANNEL, verbose)
-        if verbose:
-            print(f"  waiting {PREPARE_WAIT:g}s in Channel {PREPARE_CHANNEL}")
-        pause(PREPARE_WAIT)
+    relog_unless_there(PREPARE_CHANNEL, verbose)
+    if verbose:
+        print(f"  waiting {PREPARE_WAIT:g}s in Channel {PREPARE_CHANNEL}")
+    pause(PREPARE_WAIT)
     relog_unless_there(CHANNELS[0], verbose)
     pause(POT_DELAY)
     click(TAB_TWO)
