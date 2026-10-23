@@ -183,6 +183,7 @@ DEFENSIVE_SWITCH = float(_DUNGEON["defensive_switch"])
 BUFF_PRESSES = int(_DUNGEON["buff_presses"])
 BUFF_PRESS_GAP = float(_DUNGEON["buff_press_gap"])
 LOOP_GAP = float(_DUNGEON["loop_gap"])
+ONCE_PER_TARGET = list(_DUNGEON["once_per_target"])
 AURA_GAP = float(_DUNGEON["aura_gap"])
 USE_GAP = float(_DUNGEON["use_gap"])
 BM_LOOP = list(_DUNGEON["bm_loop"])
@@ -209,6 +210,8 @@ BURST_STATE = {"until": None}
 LAST_KILL = {"name": None, "words": None, "loop": None}
 REPORT = _SHARED["supervise"]
 REPORTED = {"at": None}
+JEWELS = _DUNGEON["jewels"]
+SUMMARY_DAYS = int(_DUNGEON["summary_days"])
 LOOP_POINTS = {"main_bm": MAIN_BM, "alternate_bm": ALTERNATE_BM, "aura": AURA,
                "bm_pot": BM_POT, "bm_icon": BM_ICON, **OFFENSIVE_BUFFS}
 SLOTS = {name: tuple(point) for name, point in _DUNGEON["slots"].items()}
@@ -284,7 +287,8 @@ TRANSFER_TIMEOUT = float(_DUNGEON["transfer_timeout"])
 INVENTORY_TAB = int(_DUNGEON["inventory_tab"])
 KEY_TAB = int(_DUNGEON["key_tab"])
 LOCK = {"boss": None, "reading": None, "cleared": False, "level": ORDER[0] if ORDER else None,
-        "killed": False, "watching": False, "reads": 0, "hits": []}
+        "killed": False, "watching": False, "reads": 0, "hits": [],
+        "targets": 0, "target_hp": None}
 ENDED = threading.Event()
 
 
@@ -1055,6 +1059,22 @@ def hp_left(text):
             else int(re.sub(r"\D", "", found.group().split("/")[0]) or 0))
 
 
+def hp_most(text):
+    found = TARGET_HP.search(text)
+    return (None if found is None
+            else int(re.sub(r"\D", "", found.group().split("/")[-1]) or 0))
+
+
+def note_target(bar, fresh):
+    left, most = hp_left(bar), hp_most(bar)
+    last = None if fresh else LOCK["target_hp"]
+    readable = left is not None and most is not None
+    if fresh or (readable and last is not None
+                 and (most != last[1] or left > last[0])):
+        LOCK["targets"] += 1
+    LOCK["target_hp"] = (left, most) if readable else last
+
+
 def read_inked(crops):
     inked = [ImageChops.invert(crop).getbbox() is not None for crop in crops]
     texts = iter(read_crops([crop for crop, ink in zip(crops, inked) if ink])
@@ -1098,6 +1118,8 @@ def watch_target(name, words, stop, first, failed):
                                 if words else TARGET_HP.findall(bar))]
             if hits:
                 LOCK["hits"] = hits
+                note_target(next(bar for bar in named if hp_left(bar) != 0),
+                            LOCK["boss"] is None)
             if hits and LOCK["boss"] is None:
                 LOCK["boss"] = name
                 calibration.snap("target_found", image)
@@ -1526,7 +1548,7 @@ def spam_buff(point):
 
 
 def click_round(names, since):
-    for entry in names:
+    for entry in names or [None]:
         if ENDED.is_set():
             return
         if not focus_game():
@@ -1536,6 +1558,9 @@ def click_round(names, since):
         main_bm_when_due()
         bm_cycle_when_due()
         aura_in_window()
+        if entry is None:
+            ENDED.wait(LOOP_GAP)
+            continue
         if entry == "aura" and AURA_DUE["at"] is not None:
             continue
         started = time.monotonic()
@@ -1562,7 +1587,10 @@ def loop_plan(names):
     buffs = any(entry == DEFENSIVE or entry in OFFENSIVE_BUFFS
                 for entry in names)
     return (" -> ".join(f"{defensive} (switching every {DEFENSIVE_SWITCH:g}s)"
-                        if entry == DEFENSIVE else entry for entry in names)
+                        if entry == DEFENSIVE else
+                        f"{entry} (once per target)"
+                        if entry in ONCE_PER_TARGET else entry
+                        for entry in names)
             + (f" pressed {LOOP_GAP:g}s apart" if len(keys) == len(names)
                else f" one every {LOOP_GAP:g}s, keys {'/'.join(keys)} pressed "
                f"and the rest used from the hotbar" if keys else
@@ -1577,14 +1605,19 @@ def kill_bm(name, words, verbose=True, loop=None, search=None,
     LAST_KILL.update(name=name, words=words, loop=loop)
     start = next((at for at, entry in enumerate(loop)
                   if entry not in BM_AURA), 0) if loop is BM_LOOP else 0
-    rounds = {"next": loop[start:]}
+    rounds = {"next": loop[start:], "target": None}
 
     def attack(since):
         if not loop:
             ENDED.wait(LOOP_GAP)
             return
-        click_round(main_loop if main_loop and MAIN_BM_STATE["on"]
-                    else rounds["next"], since)
+        names = (main_loop if main_loop and MAIN_BM_STATE["on"]
+                 else rounds["next"])
+        if rounds["target"] == LOCK["targets"]:
+            names = [entry for entry in names
+                     if entry not in ONCE_PER_TARGET]
+        rounds["target"] = LOCK["targets"]
+        click_round(names, since)
         rounds["next"] = loop
 
     return hunt(name, words, attack, "kill_bm",
@@ -1744,6 +1777,89 @@ def unique_drops(day):
     except Exception:
         pass
     return found
+
+
+def jewel_counts(day):
+    counts, first = dict.fromkeys(JEWELS["worth"], 0), None
+    try:
+        for line in UNIQUE_FILE.read_text(encoding="utf-8").splitlines():
+            try:
+                record = json.loads(line)
+                first = min(first or record["day"], record["day"])
+                if record["day"] == day:
+                    for name in counts:
+                        if name.casefold() in record["item"].casefold():
+                            counts[name] += 1
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return counts if first is not None and first <= day else None
+
+
+def jewel_alz(counts):
+    return sum(count * JEWELS["worth"][name] for name, count in counts.items())
+
+
+def dp_gained(successful):
+    return sum(int(successful.get(name, 0)) * int(DUNGEONS[name]["dp"])
+               for name in DUNGEONS if "dp" in DUNGEONS[name])
+
+
+def day_counts(state, day, today):
+    if day != today:
+        return (state.get("history") or {}).get(day)
+    won = state.get("dungeon_successful") or {}
+    return {"entered": {**dungeon_counts(state, today),
+                        **{f"CA{level}": count for level, count
+                           in ran_today(state, today).items()}},
+            "successful": {**(dict(won.get("counts") or {})
+                              if won.get("day") == today else {}),
+                           **{f"CA{level}": count for level, count
+                              in ran_today(state, today,
+                                           "successful").items()}}}
+
+
+def week_lines(state, today):
+    if today is None:
+        return []
+    last = datetime.date.fromisoformat(today)
+    first = last - datetime.timedelta(days=SUMMARY_DAYS - 1)
+    unit = JEWELS["unit"]
+    head = (f"{'day':<26}{'DP gained':>11}{'Alz from jewels':>17}"
+            f"{'dungeons run':>14}")
+    rows, sums = [], [0, 0, 0]
+    for back in range(SUMMARY_DAYS - 1, -1, -1):
+        day = last - datetime.timedelta(days=back)
+        kept = day_counts(state, day.isoformat(), today)
+        jewels = jewel_counts(day.isoformat())
+        values = [None if kept is None else dp_gained(kept["successful"]),
+                  None if jewels is None else jewel_alz(jewels),
+                  None if kept is None
+                  else sum(int(count) for count in kept["entered"].values())]
+        sums = [total + (value or 0) for total, value in zip(sums, values)]
+        shown = ["-" if value is None else f"{value}{suffix}"
+                 for value, suffix in zip(values, ["", unit, ""])]
+        label = f"{day:%a %Y-%m-%d}" + ("" if back else " (so far)")
+        rows.append(f"{label:<26}{shown[0]:>11}{shown[1]:>17}{shown[2]:>14}")
+    return [f"LAST {SUMMARY_DAYS} DAYS -- {first} to {last}, each day reset "
+            f"to reset, like the daily limits", "", head, "-" * len(head),
+            *rows, "=" * len(head),
+            f"{f'{SUMMARY_DAYS} DAYS':<26}{sums[0]:>11}"
+            f"{f'{sums[1]}{unit}':>17}{sums[2]:>14}"]
+
+
+def jewel_lines(day):
+    worth, unit = JEWELS["worth"], JEWELS["unit"]
+    counts = jewel_counts(day) or dict.fromkeys(worth, 0)
+    named = max(len(name) for name in worth)
+    total = jewel_alz(counts)
+    return (["Today Alz from jewels:"]
+            + [f"{name:<{named}}  {count} x {worth[name]}{unit} = "
+               f"{count * worth[name]}{unit}"
+               for name, count in sorted(counts.items(),
+                                         key=lambda pair: worth[pair[0]])]
+            + [f"Today: {total}{unit}"])
 
 
 def watch_chat(stop, verbose=True):
@@ -2675,7 +2791,31 @@ def war_hold():
 
 def _save(state):
     state["server_dated"] = True
+    keep_history(state)
     STATE.write_text(json.dumps(state), encoding="utf-8")
+
+
+def keep_history(state):
+    history = state.setdefault("history", {})
+    ran = state.get("dungeon_ran") or {}
+    won = state.get("dungeon_successful") or {}
+    snaps = []
+    if ran.get("day"):
+        snaps.append((ran["day"], ran.get("counts") or {},
+                      (won.get("counts") or {})
+                      if won.get("day") == ran["day"] else {}))
+    if state.get("day"):
+        snaps.append((state["day"],
+                      {f"CA{level}": count
+                       for level, count in (state.get("ran") or {}).items()},
+                      {f"CA{level}": count for level, count
+                       in (state.get("successful") or {}).items()}))
+    for day, entered, successful in snaps:
+        kept = history.setdefault(day, {"entered": {}, "successful": {}})
+        kept["entered"].update(entered)
+        kept["successful"].update(successful)
+    for day in sorted(history)[:-SUMMARY_DAYS]:
+        del history[day]
 
 
 def remember_active(level, started, due=None, deadline=None):
@@ -3353,9 +3493,12 @@ def dungeon_report():
     named = max(len(row[1]) for row in rows + [totals])
     head = (f"{'dungeon':<9}{'name':<{named + 2}}{'attempts':>9}"
             f"{'successful':>12}{'daily limit':>13}{'left':>6}")
+    week = week_lines(state, today)
     lines = [f"DUNGEON REPORT -- {calibration.config_name()}, server day "
              f"{today}, written {report_at()}", "", "Unique Items:",
-             *(unique_drops(today) or ["none"]), "", head]
+             *(unique_drops(today) or ["none"]), "",
+             *(week + [""] if week else []), *jewel_lines(today), "",
+             f"Today DP gained: {dp_gained(won)}", "", head]
     for short, name, tries, good, cap in rows + [totals]:
         lines.append(f"{short:<9}{name:<{named + 2}}{tries:>9}{good:>12}"
                      f"{cap:>13}{cap - tries:>6}")
