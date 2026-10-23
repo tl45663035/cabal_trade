@@ -35,6 +35,7 @@ def _plain_argv():
             skip = True
             continue
         if (arg.startswith("--config=") or arg == "--frames"
+                or arg == "--no-breaks"
                 or arg.startswith("--runs=")
                 or arg.startswith("--record-from=")
                 or arg.startswith("--from=")):
@@ -203,7 +204,7 @@ BM_OFF = {"at": None}
 MAIN_BM_OFF = {"at": None}
 POWERFUL_POT = {"at": None}
 WORLD_BOSS = {"done": None}
-BURST = _DUNGEON.get("burst")
+BURST = None if "--no-breaks" in sys.argv else _DUNGEON.get("burst")
 BURST_STATE = {"until": None}
 LAST_KILL = {"name": None, "words": None, "loop": None}
 REPORT = _SHARED["supervise"]
