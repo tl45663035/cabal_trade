@@ -2,8 +2,8 @@ DUNGEONS -- entries on server day 2026-10-23
 
 level     done  limit  successful
 CA1          0      5           0
-CA2          2      5           1
-CA3          2      5           2
+CA2          3      5           2
+CA3          3      5           3
 CA4          7      7           7
 CA5          7      7           7
 CA6          0     10           0
@@ -11,7 +11,7 @@ CA7          0     15           0
 ICE          0     30           0
 FIRE         0     30           0
 TRAIN        0     30           0
-total       18    144          17
+total       20    144          19
 
 
 LAST 7 DAYS -- 2026-10-16 to 2026-10-22, each day midnight to midnight Central
@@ -24,12 +24,12 @@ Sun 2026-10-18            21.51h   24.00h  219.04M   10.18M    6.91B   6.69B   9
 Mon 2026-10-19            23.01h   24.00h  298.83M   12.99M   12.61B  12.31B  17.93K    2.4%
 Tue 2026-10-20            23.72h   24.00h  310.08M   13.07M   17.97B  17.66B  25.16K    1.7%
 Wed 2026-10-21            23.82h   24.00h  347.00M   14.57M   17.61B  17.26B  24.35K    2.0%
-Thu 2026-10-22 (so far)   20.29h   20.44h  454.96M   22.42M   18.85B  18.39B  28.45K    2.4%
+Thu 2026-10-22 (so far)   20.54h   20.70h  454.96M   22.15M   18.85B  18.39B  28.45K    2.4%
 ============================================================================================
-7 DAYS                   155.10h  164.44h    2.25B   14.51M   89.31B  87.06B 123.41K    2.5%
+7 DAYS                   155.36h  164.70h    2.25B   14.49M   89.31B  87.06B 123.41K    2.5%
 
 
-PROFIT SUMMARY -- sold since 2026-10-22 00:00 Central (as of 20:26 Central)
+PROFIT SUMMARY -- sold since 2026-10-22 00:00 Central (as of 20:41 Central)
 
 item                      profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------
@@ -55,35 +55,37 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-22_092538_run_board.log, board during pass 125 at row 4, read 2026-10-22T20:23:58 (live)
+ROWS -- 2026-10-22_092538_run_board.log, board during pass 127 at row 9, read 2026-10-22T20:41:43 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    76.00M    99.00M   +23.00M    99.00M    76.00M    23.00M
     2  Yekaterina VIP Membership               x1   114.00M   128.90M   +14.90M   128.90M   114.00M    14.90M
     3  Force Core(Highest                     x54   322.75K   322.75K        +0   322.75K    17.43M         0
-    4  Force Core(Highest                     x39   321.34K   321.34K        +0   321.34K    12.53M         0 <- here
-    5  Upgrade Core (Ultimate                 x24   300.00K   379.79K   +79.79K   379.79K     7.20M     1.92M
-    6  Upgrade Core (Ultimate                 x71   295.00K   379.79K   +84.79K   379.79K    20.95M     6.02M
-    7  Force Core(High                       x104   232.51K   234.95K    +2.45K   234.95K    24.18M   254.59K
-    8  Force Core(High                       x113   227.54K   234.95K    +7.41K   234.95K    25.71M   837.44K
-    9  Upgrade Core (Ultimate                x111   275.86K   379.79K  +103.93K   379.79K    30.62M    11.54M
-   10  Force Core(High                        x80   231.99K   234.95K    +2.97K   234.95K    18.56M   237.36K
-   11  Chaos Core Set X 48                     x1   704.02K   709.98K    +5.96K    34.08M    33.79M   286.18K
-   12  Chaos Core Set X 42                     x1   704.00K   709.98K    +5.98K    29.82M    29.57M   251.29K
-   13  Chaos Core Set X 114                    x1   704.00K   709.98K    +5.98K    80.94M    80.26M   682.06K
-   14  Chaos Core Set X 153                    x1   704.89K   709.98K    +5.09K   108.63M   107.85M   778.77K
-    balance now 3.40B, read 2026-10-22T20:22:54
-       stock at its listed price                                                                      659.34M
-       Alz, latest balance line                                                                         3.40B
+    4  Force Core(Highest                     x39   321.34K   321.34K        +0   321.34K    12.53M         0
+    5  Upgrade Core (Ultimate                 x24   300.00K   379.78K   +79.78K   379.78K     7.20M     1.91M
+    6  Upgrade Core (Ultimate                 x71   295.00K   379.78K   +84.78K   379.78K    20.95M     6.02M
+    7  Force Core(High                       x104   232.51K   234.95K    +2.44K   234.95K    24.18M   253.76K
+    8  Force Core(High                       x113   227.54K   234.94K    +7.40K   234.94K    25.71M   836.54K
+    9  Upgrade Core (Ultimate                x111   275.86K   379.78K  +103.92K   379.78K    30.62M    11.54M <- here
+   10  Force Core(High                        x80   231.99K   234.95K    +2.96K   234.95K    18.56M   236.88K
+   11  Chaos Core Set X 48                     x1   704.02K   709.97K    +5.95K    34.08M    33.79M   285.60K
+   12  Chaos Core Set X 42                     x1   704.00K   709.97K    +5.97K    29.82M    29.57M   250.78K
+   13  Chaos Core Set X 114                    x1   704.00K   709.97K    +5.97K    80.94M    80.26M   680.69K
+   14  Chaos Core Set X 153                    x1   704.89K   709.97K    +5.08K   108.63M   107.85M   776.93K
+   15  Chaos Core Set X 249                    x1   704.88K   709.97K    +5.09K   176.78M   175.52M     1.27M
+   16  Chaos Core Set X 42                     x1   704.88K   709.97K    +5.08K    29.82M    29.61M   213.49K
+    balance now 3.19B, read 2026-10-22T20:41:22
+       stock at its listed price                                                                      865.94M
+       Alz, latest balance line                                                                         3.19B
        Cash at the voucher price                                                                      152.00M
        NET WORTH                                                                                        4.21B
 
 
-MARKET -- 2026-10-22_092538_run.log, pass 125, log last written 20:26 Central (live)
+MARKET -- 2026-10-22_092538_run.log, pass 127, log last written 20:41 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         2  329.09K  320.00K  -9.09K     -2.8%      0
-Chaos Core                  4  704.89K  709.98K   5.09K      0.7%     10  YES
-Force Core (Ultimate)       0  400.00K  391.80K  -8.20K     -2.1%      0
+Force Core(Highest)         2  326.67K  320.00K  -6.67K     -2.1%      0
+Chaos Core                  6  705.00K  709.97K   4.97K      0.7%      0
+Force Core (Ultimate)       0  391.30K  391.80K     496      0.1%      0
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
