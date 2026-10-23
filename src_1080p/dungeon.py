@@ -2267,6 +2267,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                                                         place, verbose)
                                  + timer["limit"])
             timer["started"] = internet_now()
+            wait_timer(float(setting(dungeon_name, "challenge_wait")),
+                       verbose)
             if verbose:
                 print(f"  the dungeon has {timer['limit']:g}s from the "
                       f"{CHALLENGE_WORD} click")
