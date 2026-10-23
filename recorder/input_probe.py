@@ -1,19 +1,3 @@
-"""Replay a recording into a blank screen and listen the way a game does.
-
-  py recorder/input_probe.py [RECORDING]      (default: the newest *_all.jsonl)
-
-A black window covers every monitor and swallows the replay's clicks and
-keys, so nothing real is touched; put the game in the background first. It
-listens to raw keyboard and mouse input, as a game reading raw input does,
-and once the replay ends it compares what arrived with the file:
-  keys     each key down and up, by scan code and extended flag, in order
-  buttons  each mouse button down and up, and the wheel
-  turns    for each right-drag camera turn, the raw counts added up
-  timing   how far each event landed from its place in the recording
-Ctrl twice stops it early, and so does anything taking the foreground from the
-black screen. Win and Alt keys in the recording are skipped (they could open
-the Start menu or switch windows: Alt+Tab, Alt+F4)."""
-
 import ctypes
 import difflib
 import json
@@ -44,15 +28,11 @@ GA_ROOT = 2
 
 
 def playable(events):
-    """The events the probe may replay into its black screen: no Win keys
-    (the Start menu) and no Alt (Alt+Tab, Alt+F4 would switch away)."""
     plays = [e for e in events if not (e["kind"] == "key" and e.get("vk") in SKIP_KEYS)]
     return plays, len(events) - len(plays)
 
 
 def should_stop(tapped, shield, foreground):
-    """Why the replay must stop now, or None: Ctrl pressed twice, or anything
-    other than the black screen in front (keys would go to that window)."""
     if tapped:
         return "Ctrl pressed twice"
     if foreground != shield:
@@ -82,8 +62,6 @@ class RAWINPUT(ctypes.Structure):
     _fields_ = [("header", record_all.RAWINPUTHEADER), ("data", _DATA)]
 
 
-# -- decoding raw packets --
-
 def key_event(kb):
     return {"scan": kb.MakeCode, "ext": bool(kb.Flags & RI_KEY_E0),
             "up": bool(kb.Flags & RI_KEY_BREAK)}
@@ -106,8 +84,6 @@ def mouse_events(ms):
                         "delta": ctypes.c_short(ms.ulButtons >> 16).value})
     return out
 
-
-# -- comparing --
 
 def _wanted(events):
     keys, buttons, wheel = [], [], []
@@ -233,10 +209,7 @@ def report(found):
     return lines
 
 
-# -- listening --
-
 class Listener:
-    """Raw keyboard and mouse input, from any source, on its own thread."""
 
     def __init__(self):
         self.log, self.ready, self.hwnd = [], threading.Event(), None
@@ -294,7 +267,6 @@ class Listener:
 
 
 def shield(text):
-    """A black window over every monitor that takes the replay's input."""
     import tkinter
     left, top, width, height = ra.desktop()
     root = tkinter.Tk()

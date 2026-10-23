@@ -110,8 +110,6 @@ HEAD = {"kind": "start", "at": "2026-10-19T15:40:52", "screen": [WIDTH, HEIGHT],
         "start_shot": None, "recorder": "record_all"}
 
 
-# ---- recording by hand: armed, Ctrl x2 starts, Ctrl x2 stops ----
-
 with fake_clock() as clock:
     session = record_all.Everything(armed=True)
     check(not session.recording and session.events == [], "armed starts idle")
@@ -208,7 +206,6 @@ check(len(wheels) == 4 and all(
       f"zoom_out: that many wheel turns down (zooms Cabal's camera out: the only way "
       f"the hand ever scrolls in the recordings), with no position of their own")
 
-# ---- what gets recorded ----
 
 with fake_clock() as clock:
     session = record_all.Everything()
@@ -244,13 +241,11 @@ with fake_clock() as clock:
     mouse(session, 0x020E + 99, 1, 1)
     check(len(session.events) == count, "unknown mouse messages are ignored")
 
-# Run mode: the Ctrl gesture is off; the command decides when it ends.
 session = record_all.Everything(control=False, command=["x"])
 tap(session, CTRL)
 tap(session, CTRL)
 check(not session.finished, "run mode ignores the Ctrl gesture")
 
-# ---- text typed by software (a login) is never recorded ----
 
 session = record_all.Everything()
 session.open()
@@ -276,7 +271,6 @@ source = (HERE.parent / "record_all.py").read_text(encoding="utf-8")
 check("account.json" not in source and "CABAL_PASSWORD" not in source,
       "nothing in the recorder or replayer reads logins")
 
-# ---- cursor moves the hook missed are picked up by polling, once ----
 
 with fake_clock() as clock:
     session = record_all.Everything()
@@ -294,7 +288,6 @@ with fake_clock() as clock:
           f"polled moves land where the cursor went, got {polled}")
     check(all("injected" not in e for e in polled), "polled moves don't claim a source")
 
-# ---- saving as it goes, and the final file ----
 
 session = record_all.Everything()
 session.path = SCRATCH / "unopened_all.jsonl"
@@ -331,7 +324,6 @@ idle = record_all.Everything(armed=True)
 check(idle.finish() == ["stopped before recording began; nothing saved"],
       "stopping before the start saves nothing")
 
-# ---- replay: what it refuses ----
 
 def prepared(path):
     return record_all.prepare(path)
@@ -368,7 +360,6 @@ older = write(SCRATCH / "older_all.jsonl", HEAD, [legacy, a_down])
 check(prepared(older)[2] is None,
       "an older recording with typed characters in it is still accepted")
 
-# ---- replay: what it sends ----
 
 sent = []
 real_send = ra.send
@@ -385,8 +376,6 @@ placed = []
 
 
 def cursor_from_sends():
-    """Where the cursor is: the last absolute move sent (every pixel reachable
-    here), or the last exact placement after it."""
     for item in reversed(sent):
         if isinstance(item, tuple):
             return item[1:]
@@ -447,7 +436,6 @@ try:
     check(record_all.Replay([], None).timing() == "no events were sent",
           "an empty replay reports nothing sent")
 
-    # Stopping part way still lets go of everything held.
     sent.clear()
     long_events = [{**a_down, "t": 0.0, "vk": VK_W, "scan": 17},
                    {"t": 0.0, "kind": "mouse", "action": "down", "button": "right",
@@ -456,8 +444,8 @@ try:
     player = record_all.Replay(long_events, None)
     worker = threading.Thread(target=player.play)
     worker.start()
-    deadline = time.time() + 5
-    while player.played < 2 and time.time() < deadline:
+    deadline = time.monotonic() + 5
+    while player.played < 2 and time.monotonic() < deadline:
         time.sleep(0.01)
     player.stop.set()
     worker.join(5)
@@ -469,7 +457,6 @@ try:
                   for i in sent[-2:]),
           "a stopped replay lets go of the held key and button")
 
-    # A recording made in the game needs the game in front, or nothing is sent.
     sent.clear()
     saved_focus = record_all.focus_game
     record_all.focus_game = lambda: False
@@ -496,7 +483,6 @@ try:
 finally:
     ra.send = real_send
 
-# ---- the start picture comparison ----
 
 black = Image.new("RGB", (320, 180), (0, 0, 0))
 check(record_all.difference(black, black) == 0.0, "identical pictures differ by 0")
@@ -505,7 +491,6 @@ half.paste((255, 255, 255), (0, 0, 160, 180))
 check(abs(record_all.difference(black, half) - 0.5) < 0.02,
       "half the picture changed reads as about 50%")
 
-# ---- positions land on the same pixel on this machine's monitors ----
 
 saved_desktop = ra.desktop
 for layout in ([0, 0, 1920, 1080], [0, 0, 5360, 1440], [-2560, 0, 4480, 1440]):
@@ -554,7 +539,6 @@ try:
 finally:
     ra.send = real_send
 
-# ---- the cursor lands on the exact pixel, even ones Windows' grid skips ----
 
 from fake_input import windows_absolute
 saved = (ra.send, record_all.cursor_now, record_all.set_cursor, ra.desktop)
@@ -600,7 +584,6 @@ try:
 finally:
     ra.send, record_all.cursor_now, record_all.set_cursor, ra.desktop = saved
 
-# ---- record then replay gives back the same input ----
 
 ra.send = lambda item: sent.append(item)
 sent.clear()
@@ -657,7 +640,6 @@ try:
 finally:
     ra.send = real_send
 
-# ---- the command line ----
 
 check(record_all.main(["nonsense"]) == record_all.USAGE, "unknown arguments print usage")
 check(record_all.main(["run"]) == record_all.USAGE, "run with no command prints usage")
@@ -670,7 +652,6 @@ with contextlib.redirect_stdout(io.StringIO()):
           "replay of a missing file fails cleanly")
 ra.OUT = saved_out
 
-# ---- recording while a command runs ----
 
 saved_hook, saved_pump = ra.hook, ra.pump
 ra.hook = lambda *a, **k: (None, None)
@@ -699,7 +680,6 @@ heads = [json.loads(p.read_text(encoding="utf-8").splitlines()[0])
 check(any(h.get("command") and h["command"][0] == sys.executable for h in heads),
       "the recording notes the command it ran")
 
-# ---- raw mouse counts: recorded from the mouse itself, used for camera turns ----
 
 session = record_all.Everything()
 session.raw(0, 5, -3, True)
@@ -823,8 +803,8 @@ try:
     player = record_all.Replay(held, None)
     worker = threading.Thread(target=player.play)
     worker.start()
-    deadline = time.time() + 5
-    while player.played < 7 and time.time() < deadline:
+    deadline = time.monotonic() + 5
+    while player.played < 7 and time.monotonic() < deadline:
         time.sleep(0.01)
     player.stop.set()
     worker.join(5)
@@ -832,7 +812,6 @@ try:
           f"stopping mid-turn lets go of the right button without moving, got "
           f"{described(sent[-1])}")
 
-    # ---- special keys record and replay like any other key ----
     sent.clear()
     special = [("Esc", 27, 1, False, False), ("Enter", 13, 28, False, False),
                ("Num Enter", 13, 28, True, False), ("Up", 38, 72, True, False),
@@ -861,7 +840,6 @@ try:
 finally:
     ra.send = real_send
 
-# ---- Ctrl taps from the key state, not a hook ----
 
 class Keys:
     def __init__(self):
@@ -910,7 +888,6 @@ check(not record_all.wait_for_taps(types.SimpleNamespace(step=lambda now: False)
                                    until=lambda: True),
       "waiting gives up when told to")
 
-# ---- the replay knows when it holds Ctrl ----
 
 ra.send = lambda item: sent.append(item)
 try:
@@ -952,8 +929,8 @@ try:
     player = record_all.Replay(held_ctrl, None, on_ctrl=calls.append)
     worker = threading.Thread(target=player.play)
     worker.start()
-    deadline = time.time() + 5
-    while player.played < 2 and time.time() < deadline:
+    deadline = time.monotonic() + 5
+    while player.played < 2 and time.monotonic() < deadline:
         time.sleep(0.01)
     player.stop.set()
     worker.join(5)
@@ -963,7 +940,6 @@ try:
     record_all.Replay(ctrl_events[4:], None, on_ctrl=calls.append).play()
     check(calls == [], "a replay that never presses Ctrl says nothing")
 
-    # Timing is measured once the event has gone out.
     ra.send = lambda item: (sent.append(item), time.sleep(0.02))
     player = record_all.Replay(ctrl_events[4:5], None)
     player.play()
@@ -972,7 +948,6 @@ try:
 finally:
     ra.send = real_send
 
-# ---- replay from the command line: Ctrl taps start and stop, no hook ----
 
 saved_taps, saved_hook = record_all.CtrlTaps, ra.hook
 ra.hook = lambda *a, **k: (_ for _ in ()).throw(AssertionError("replay installed a hook"))
@@ -1019,7 +994,6 @@ try:
 finally:
     record_all.CtrlTaps, ra.hook, ra.send = saved_taps, saved_hook, real_send
 
-# ---- compare: what the game was actually sent ----
 
 def recorded(name, events, head=None):
     return write(SCRATCH / name, head or HEAD, events)

@@ -1,6 +1,5 @@
 import collections
 import ctypes
-import datetime
 import json
 import os
 import signal
@@ -13,6 +12,7 @@ from ctypes import wintypes
 from pathlib import Path
 
 import recorder_settings
+import online_clock
 import record_action as ra
 
 W = ra.W
@@ -80,8 +80,6 @@ ra.user32.GetRawInputData.restype = wintypes.UINT
 
 
 class RawMouse:
-    """Raw mouse counts, before Windows turns them into cursor moves. The
-    game turns its camera by these, so a replayed turn needs them."""
 
     def __init__(self, handler):
         self.handler = handler
@@ -137,6 +135,14 @@ def listen_raw(session):
         print(f"  raw mouse counts are not available ({exc}); camera turns "
               f"will replay from cursor positions only", flush=True)
         return None
+
+
+def online_now():
+    now = online_clock.utc_now()
+    if now is None:
+        raise RuntimeError("no online time: no time server answered and none "
+                           "was measured before")
+    return now.astimezone().replace(tzinfo=None)
 
 
 def recording_path(started):
@@ -247,7 +253,7 @@ class Everything:
 
     def start(self, now):
         self.zero = now
-        self.started = datetime.datetime.now()
+        self.started = online_now()
         self.cursor = ra.cursor_position()
         self.last = tuple(self.cursor)
         self.path = recording_path(self.started)
@@ -278,8 +284,6 @@ class Everything:
         action = "down" if down else "up"
         event = None
         if vk == VK_PACKET:
-            # Text typed by software (a login, say) is not a key press; it is
-            # never recorded and so never replayed.
             return
         extended = bool(info.flags & W["LLKHF_EXTENDED"])
         with self.lock:
@@ -535,12 +539,6 @@ def set_cursor(x, y):
 
 
 def place(x, y):
-    """Puts the cursor on exactly (x, y). The absolute move goes out as mouse
-    input, so the game sees the mouse move. Windows' absolute grid can't
-    reach every pixel (on the 5360-wide desktop only 4888 columns and 1249 of
-    1440 rows), so when it lands beside the pixel, SetCursorPos puts the
-    cursor on it. A cursor already on the pixel is left alone: a move there
-    would only twitch it off and back."""
     if cursor_now() == (x, y):
         return
     ra.send(ra.mouse_input({"x": x, "y": y}, 0))
@@ -573,11 +571,7 @@ def button_input(button, action):
 
 
 def play_event(event, keys, buttons, turning=None):
-    """turning is None for a recording without raw counts. Otherwise it holds
-    the turn buttons down right now; while one is down, the raw counts stand in
-    for the cursor positions, so the camera turns by what the mouse really did."""
     if "secret" in event or event.get("vk") == VK_PACKET:
-        # Typed text from an older recording: never replayed.
         return False
     action = event["action"]
     if action == "raw":
@@ -604,14 +598,7 @@ def play_event(event, keys, buttons, turning=None):
                 place(event["x"], event["y"])
             return True
     if event["kind"] == "mouse":
-        # The cursor first goes exactly where it was, then the button or
-        # wheel goes out on its own, so it happens on that pixel. A press
-        # mid-turn leaves the cursor put (a real press never moves it; the
-        # turn is raw counts); a move that isn't the hand's still goes out.
         if action == "move" and turning:
-            # Not the hand's (those are skipped above): the bot's own jump
-            # mid-turn. It goes straight to the pixel, as it did then; an
-            # absolute move would land beside it first and jerk the camera.
             if cursor_now() != (event["x"], event["y"]):
                 set_cursor(event["x"], event["y"])
         elif action == "move" or not turning:
@@ -711,10 +698,6 @@ class Replay(ra.Replay):
 
 
 class CtrlTaps:
-    """Ctrl pressed TAPS times within WINDOW, read from the key state rather
-    than a hook, so nothing sits in the path of the input a replay sends.
-    While the replay itself holds Ctrl, the key state is its, not the
-    user's, so it doesn't count."""
 
     def __init__(self, own=lambda: False, state=None):
         self.own = own
@@ -832,7 +815,9 @@ def replay(name=None):
     except KeyboardInterrupt:
         print("nothing replayed")
         return 1
-    print(f"replaying from {datetime.datetime.now():%H:%M:%S}", flush=True)
+    now = online_clock.utc_now()
+    print("replaying" + (f" from {now.astimezone():%H:%M:%S}" if now else ""),
+          flush=True)
     session.worker = threading.Thread(target=session.play, daemon=True)
     session.worker.start()
     try:
@@ -882,9 +867,6 @@ def _spread(values):
 
 
 def compare(original, capture):
-    """Line a recording up with a capture of its replay (made with run mode)
-    and measure what the game was actually sent: what went missing or came
-    extra, how far each event's timing moved, and where clicks landed."""
     head_a, a, refused = read_recording(original)
     if refused:
         return {"refused": refused}

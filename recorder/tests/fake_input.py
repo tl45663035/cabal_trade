@@ -1,18 +1,3 @@
-"""A pretend Windows input system and a pretend game, for driving the real
-recorder (recorder/record_all.py) and the real replayers end to end with no
-real input.
-
-FakeInput stands in for the parts of Windows the recorder and replayer touch:
-the cursor (pointer speed, sub-pixel remainder, edges), the low-level
-keyboard and mouse hooks, raw mouse counts, SetCursorPos (which no hook sees)
-and SendInput. Game logs what a game would be told: keys by scan code,
-typed characters, the cursor, buttons, wheel turns, and camera turns from raw
-counts while the right button is held.
-
-A session is played through the real record(), the file it saves is replayed
-through the real Replay, and the two Game logs are compared on one
-microsecond clock."""
-
 import bisect
 import contextlib
 import json
@@ -35,10 +20,6 @@ _RUNS = {axis: ([start for start, _pixel in MEASURED[axis]],
 
 
 def windows_absolute(n, size, axis):
-    """Where Windows puts an absolute (VIRTUALDESK) value on an axis of size
-    pixels. On the 5360x1440 desktop it is what was measured on the real
-    machine; on any other, the same kind of coarse grid: some pixels are
-    never reached by an absolute move."""
     left, top, width, height = MEASURED["desktop"]
     if (axis == "x" and size == width) or (axis == "y" and size == height):
         starts, pixels = _RUNS[axis]
@@ -46,7 +27,6 @@ def windows_absolute(n, size, axis):
     grid = size * 4888 // 5360
     return (n * grid // SPAN) * size // grid
 
-# name: (vk, scan, extended)
 KEYS = {
     "W": (87, 17, False), "A": (65, 30, False), "S": (83, 31, False),
     "D": (68, 32, False), "Q": (81, 16, False), "E": (69, 18, False),
@@ -65,8 +45,6 @@ BY_VK = {vk: (scan, ext) for vk, scan, ext in KEYS.values()}
 
 
 def scan_to_vk(scan, ext):
-    """Keys outside the table are looked up the way Windows does (a read-only
-    call: MapVirtualKey sends nothing)."""
     if (scan, ext) in BY_SCAN:
         return BY_SCAN[(scan, ext)]
     return ra.ctypes.windll.user32.MapVirtualKeyW(scan | (0xE000 if ext else 0), 3)
@@ -93,7 +71,6 @@ X_DATA = {"x1": W["XBUTTON1"], "x2": W["XBUTTON2"]}
 
 
 class Game:
-    """What the game is told, stamped with the shared clock (microseconds)."""
 
     def __init__(self, cursor):
         self.log = []
@@ -149,7 +126,6 @@ class FakeInput:
         self.sends = []
         self.raw_made = 0
 
-    # -- time --
     def now(self):
         return self.clock / 1e6
 
@@ -167,7 +143,6 @@ class FakeInput:
             return
         self.clock = max(self.clock, target_us)
 
-    # -- the cursor --
     def _clamp(self, x, y):
         left, top, width, height = self.layout
         return (min(max(x, left), left + width - 1),
@@ -190,7 +165,6 @@ class FakeInput:
         return self._clamp(left + windows_absolute(dx, width, "x"),
                            top + windows_absolute(dy, height, "y"))
 
-    # -- hooks --
     def _key_event(self, vk, scan, ext, up, injected):
         system = vk in ALT or bool(self.held & ALT)
         if system:
@@ -213,7 +187,6 @@ class FakeInput:
         if self.raw_hook is not None:
             self.raw_hook(flags, dx, dy, physical)
 
-    # -- the hand on the keyboard and mouse --
     def press(self, name, down=True):
         vk, scan, ext = KEYS[name]
         self._key_event(vk, scan, ext, not down, False)
@@ -242,7 +215,6 @@ class FakeInput:
         self._mouse_event(message, self.cursor, (delta & 0xFFFF) << 16, False)
         self.game.wheel(self.clock, delta, horizontal)
 
-    # -- software: SetCursorPos (seen by no hook) and SendInput --
     def set_cursor(self, x, y):
         where = self._clamp(x, y)
         if self.game.buttons & set(record_all.TURN) and tuple(where) != tuple(self.cursor):
@@ -274,8 +246,6 @@ class FakeInput:
             if flags & W["MOUSEEVENTF_ABSOLUTE"]:
                 where, rem = self._absolute(mi.dx, mi.dy), [Fraction(0), Fraction(0)]
                 if self.game.buttons & set(record_all.TURN) and tuple(where) != tuple(self.cursor):
-                    # An absolute jump while the camera button is down: a
-                    # game turning by the cursor or by raw input would jerk.
                     self.game.log.append((self.clock, "jump", tuple(where)))
                 self._mouse_event(W["WM_MOUSEMOVE"], where, 0, True)
                 self.cursor, self.rem = list(where), rem
@@ -305,8 +275,6 @@ class FakeInput:
                 self._mouse_event(message, self.cursor, (delta & 0xFFFF) << 16, True)
                 self.game.wheel(self.clock, delta, horizontal)
 
-
-# -- the bot's way of sending input, as the bot's own modules build it --
 
 def bot_key(fake, name, up):
     vk, scan, ext = KEYS[name]
@@ -343,18 +311,13 @@ def typed(ch, up):
 
 
 def bot_type(fake, text):
-    """The bot's relog types the account this way (recovery._type)."""
     for ch in text:
         fake.send(typed(ch, False))
         fake.send(typed(ch, True))
         fake.wait(20)
 
 
-# -- scripted sessions --
-
 class Script:
-    """Steps of (wait in ms, what happens). Hand sessions start and stop with
-    Ctrl pressed twice, as a person would."""
 
     def __init__(self):
         self.steps = []
@@ -414,8 +377,6 @@ class Script:
 
 
 class SyncThread:
-    """record_all's own threads, run in line, so the whole session is
-    deterministic on the fake clock."""
 
     def __init__(self, target=None, args=(), daemon=None):
         self.target, self.args = target, args
@@ -474,8 +435,6 @@ class FakeChild:
 
 def record_session(script, out, fake=None, command=None, crash=False, window=None,
                    zoom=0):
-    """Plays script on the fake hand and through the real record_all.record().
-    Returns the saved file and the fake input system it ran on."""
     fake = fake or FakeInput()
     child = FakeChild()
     if command:
@@ -499,8 +458,6 @@ def record_session(script, out, fake=None, command=None, crash=False, window=Non
     poll_ms = record_all.POLL * 1000
 
     def pump(done, tick):
-        # The cursor check runs every POLL: it sees where a step leaves the
-        # cursor unless the next step moves it again sooner than that.
         tick()
         steps = script.steps
         for n, (ms, action) in enumerate(steps):
@@ -541,9 +498,6 @@ def record_session(script, out, fake=None, command=None, crash=False, window=Non
 
 def replay_session(path, entry="direct", fake=None, stop_at_ms=None, capture=None,
                    dungeon=None, window=None, focus=True, times=1, rest=0):
-    """Replays path through one of the real entry points onto a fresh fake
-    input system. capture, if given, is an Everything that listens to the
-    hooks the way a run-mode recorder would."""
     fake = fake or FakeInput(cursor=(3, 3))
     fake.marks["zeros"] = []
     if capture is not None:
@@ -607,15 +561,12 @@ def _arm_stop(fake, stop_at_ms):
     if stop_at_ms is None:
         fake.marks.pop("stop_replay_at", None)
         return
-    # The replay's zero is the clock when it starts; stop that far in.
     fake.marks["stop_replay_at"] = fake.clock + int(stop_at_ms * 1000)
 
 
 def replay_zero(fake):
     return fake.marks["zeros"][0]
 
-
-# -- comparing what the game was told --
 
 def window(log, zero, end=None):
     return [(t - zero, kind, data) for t, kind, data in log
@@ -642,14 +593,6 @@ def _sample(timeline, start, t):
 
 def differences(recorded, replayed, rec_start, rep_start, tolerance=1, soft=(),
                 slack_us=None):
-    """Everything the game was told while recording vs while replaying.
-    Keys, characters, buttons, wheel turns and camera turns must match
-    exactly, at the same microsecond. The cursor must match exactly too,
-    except while the camera turns, where Windows' sub-pixel remainder may
-    leave it one pixel apart (and it is put back when the turn ends), and
-    within one cursor check (slack_us) of a SetCursorPos move (soft, times
-    relative to the recording's start), which no hook reports: the recorder
-    can only see it on its next check."""
     if slack_us is None:
         slack_us = int(record_all.POLL * 1e6)
     soft = sorted(soft)
@@ -691,8 +634,6 @@ def differences(recorded, replayed, rec_start, rep_start, tolerance=1, soft=(),
 
 
 def _turning(log):
-    """When any turn button (record_all.TURN) is held: the replay goes by raw
-    counts then, so the cursor may sit one sub-pixel remainder apart."""
     spans, began, held = [], None, set()
     for t, kind, data in log:
         if kind == "button" and data[0] in record_all.TURN:

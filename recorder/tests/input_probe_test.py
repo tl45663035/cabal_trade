@@ -1,7 +1,3 @@
-"""recorder/input_probe.py: the comparison between a recording and what a
-game-like raw input listener received while it was replayed, and the raw
-packet decoding. No input is sent."""
-
 import os
 import sys
 from pathlib import Path
@@ -58,7 +54,6 @@ RECORDING = [
 
 
 def heard(shift=2.0, wobble=0.0, drop=None, turn=(5, 0, 7, -1), absolute_in_turn=False):
-    """What the listener would hear for RECORDING, shifted in time."""
     out = []
     for n, e in enumerate(RECORDING):
         if drop is not None and n == drop:
@@ -116,7 +111,6 @@ check(any("missing" in l for l in probe.verdict(found)),
 
 check(probe.check(RECORDING, [])["keys"]["matched"] == 0, "nothing heard is handled")
 
-# Raw packets, decoded as Windows hands them over.
 kb = probe.RAWKEYBOARD(MakeCode=72, Flags=probe.RI_KEY_E0 | probe.RI_KEY_BREAK, VKey=38)
 check(probe.key_event(kb) == {"scan": 72, "ext": True, "up": True},
       f"a raw extended key release decodes, got {probe.key_event(kb)}")
@@ -129,8 +123,6 @@ check(probe.mouse_events(wheel) == [{"kind": "wheel", "delta": -120, "horizontal
       f"a wheel turn decodes with its sign, got {probe.mouse_events(wheel)}")
 check(ctypes.sizeof(probe.RAWINPUT) == 48, "the raw input layout matches Windows (64-bit)")
 
-# What may be replayed into the probe's black screen: no Win or Alt keys, so the
-# replay can't open the Start menu or switch away (Alt+Tab, Alt+F4).
 mixed = [key(0.1, 87, 17, False), key(0.2, 91, 91, False, ext=True),
          key(0.3, 164, 56, False), key(0.35, 9, 15, False), key(0.4, 9, 15, True),
          key(0.45, 164, 56, True), key(0.5, 92, 92, True, ext=True), key(0.6, 87, 17, True)]

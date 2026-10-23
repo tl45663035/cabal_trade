@@ -1,23 +1,4 @@
-"""Check real recordings: replay each one on the pretend Windows and game
-(fake_input.py) and confirm the game is told exactly what the file holds.
-
-  py recorder/check_recordings.py                today's recordings
-  py recorder/check_recordings.py 2026-10-19     recordings from that day
-  py recorder/check_recordings.py FILE...        these files
-
-Nothing is sent to the real machine. Per file it reports:
-  file:    the file itself (header, order, raw counts, keys or buttons left
-           held at the end)
-  keys / clicks / wheel:  each reaches the game at its recorded microsecond,
-           in order, at its recorded spot
-  cursor:  every recorded cursor position, outside camera turns, is where the
-           game's cursor is at that moment
-  turns:   while the right button is held, the camera turns by exactly the
-           recorded raw counts
-  compare: a capture of the replay, run through record_all.py compare"""
-
 import contextlib
-import datetime
 import io
 import json
 import os
@@ -55,7 +36,6 @@ def typed(e):
 
 
 def turn_spans(events):
-    """Physical right-button holds, in a recording that has raw counts."""
     if not any(e["action"] == "raw" for e in events):
         return []
     spans, began = [], None
@@ -178,8 +158,6 @@ def check_file(path):
     timeline, where, i = [], tuple(head["cursor"]), 0
     moves = [(t, d) for t, k, d in log if k == "move"]
     cursor_off, in_turn_worst, checked = [], 0, 0
-    # In a turn the cursor moves with each raw count, which arrives about
-    # 0.1ms after its cursor move; look once that raw count is in.
     raw_at = [us(e["t"]) for e in events if e["action"] == "raw"]
     import bisect
     for e in events:
@@ -244,7 +222,7 @@ def check_file(path):
 def main(args):
     out = ra.OUT
     if not args:
-        args = [datetime.date.today().isoformat()]
+        args = [record_all.online_now().date().isoformat()]
     paths = []
     for arg in args:
         if Path(arg).exists():
