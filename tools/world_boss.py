@@ -96,7 +96,10 @@ LOOP_GAP = float(_BOSS["loop_gap"])
 LOOPS = {"main": list(_BOSS["main_loop"]),
          "alternate": list(_BOSS["alternate_loop"]),
          "burst_alternate": list(_BOSS["burst_alternate_loop"])}
-WARMUP_FOR = float(_BOSS["warmup_for"])
+BM_CASTS = {name: float(seconds)
+            for name, seconds in _BOSS["bm_cast"].items()}
+AURA_SPAM_FOR = float(_BOSS["aura_spam_for"])
+AURA_SPAM_GAP = float(_BOSS["aura_spam_gap"])
 WARMUPS = {"main": list(_BOSS["main_warmup"]),
            "alternate": list(_BOSS["alternate_warmup"]),
            "burst_alternate": list(_BOSS["burst_alternate_warmup"])}
@@ -711,7 +714,7 @@ def next_due(due, every):
 
 def mode_plan(spawn_at, when):
     return {"phase": "main", "next": spawn_at - BM_LEAD,
-            "index": LOOP_START["main"], "warm_index": 0, "warm_until": None,
+            "index": LOOP_START["main"], "warm_until": None,
             "timer": None, "cancelled": None, "spawn": spawn_at,
             "when": when.isoformat(), "kills": [], "boss": None,
             "powerful": False, "burst": False}
@@ -734,25 +737,55 @@ def switch_bm(plan, now, verbose=True):
                     cancelled=now)
     else:
         plan.update(phase="main")
-    plan.update(timer=None, index=LOOP_START[plan["phase"]], warm_index=0,
+    plan.update(timer=None, index=LOOP_START[plan["phase"]],
                 warm_until=None, next=now + LOOP_GAP)
     if verbose:
         print(f"  spawn {now - plan['spawn']:+.1f}s: {plan['phase']} loop: "
               f"{' -> '.join(LOOPS[plan['phase']])}, {LOOP_GAP:g}s apart")
 
 
+def spam_warmup(plan, due, count, verbose=True):
+    phase = plan["phase"]
+    if verbose:
+        print(f"  spawn {time.monotonic() - plan['spawn']:+.1f}s: {phase} "
+              f"warm-up: {' then '.join(WARMUPS[phase])}, each spammed on "
+              f"its own, then the {phase} loop: "
+              f"{' -> '.join(LOOPS[phase])}")
+    for name in WARMUPS[phase]:
+        aura = name not in BM_CASTS
+        span = AURA_SPAM_FOR if aura else BM_CASTS[name]
+        gap = AURA_SPAM_GAP if aura else LOOP_GAP
+        started, presses = time.monotonic(), 0
+        while time.monotonic() < started + span:
+            use_point(name, LOOP_POINTS[name])
+            tap_key(TARGET_VK)
+            presses += 1
+            if time.monotonic() >= due["heal"]:
+                tap_key(HEAL_VK)
+                count["heal"] = count.get("heal", 0) + 1
+                due["heal"] = next_due(due["heal"], HEAL_EVERY)
+            time.sleep(max(0.0, started + presses * gap - time.monotonic()))
+        count[name] = count.get(name, 0) + presses
+        count["target"] = count.get("target", 0) + presses
+        calibration.snap(f"{phase}_warmup_{name}", alongside=True)
+        if verbose:
+            print(f"  spawn {started - plan['spawn']:+.1f}s: {name} pressed "
+                  f"{presses} time(s) over {span:g}s, {gap:g}s apart, target "
+                  f"after each")
+        if aura and plan["timer"] is None:
+            plan["timer"] = started
+            if verbose:
+                print(f"  spawn {started - plan['spawn']:+.1f}s: aura used; "
+                      f"timer started, {phase} BM cancel at "
+                      f"+{AURA_DURATIONS[phase]:g}s")
+    plan["warm_until"] = time.monotonic()
+    plan["next"] = plan["warm_until"] + LOOP_GAP
+
+
 def loop_click(plan, now, buffs_from, count, saving, verbose=True):
     phase = plan["phase"]
-    if plan["warm_until"] is None:
-        plan["warm_until"] = now + WARMUP_FOR
-        if verbose:
-            print(f"  spawn {now - plan['spawn']:+.1f}s: {phase} warm-up: "
-                  f"{' -> '.join(WARMUPS[phase])} until spawn "
-                  f"{plan['warm_until'] - plan['spawn']:+.1f}s, then the "
-                  f"{phase} loop from {LOOPS[phase][LOOP_START[phase]]}")
-    warming = now < plan["warm_until"]
-    stage, slot = ("warmup", "warm_index") if warming else ("loop", "index")
-    cycle = (WARMUPS if warming else LOOPS)[phase]
+    stage, slot = "loop", "index"
+    cycle = LOOPS[phase]
     for _ in cycle:
         name = cycle[plan[slot] % len(cycle)]
         plan[slot] += 1
@@ -768,7 +801,7 @@ def loop_click(plan, now, buffs_from, count, saving, verbose=True):
         point = LOOP_POINTS[name]
     use_point(name, point)
     count[name] = count.get(name, 0) + 1
-    first = plan[slot] == 1 if warming else plan[slot] % len(cycle) == 1
+    first = plan[slot] % len(cycle) == 1
     if first:
         calibration.snap(f"{phase}_{stage}_{name}", alongside=True)
     if name == "aura" and plan["timer"] is None:
@@ -837,6 +870,8 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
                   and (plan["powerful"] or (plan["burst"] and burst_here))):
                 use_powerful_pot(plan, now, channel, count, verbose)
                 pot_at = None
+            elif plan["warm_until"] is None:
+                spam_warmup(plan, due, count, verbose)
             else:
                 loop_click(plan, now, buffs_from, count,
                            plan["burst"] and not burst_here, verbose)

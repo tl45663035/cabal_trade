@@ -113,6 +113,11 @@ BOSSES = _DUNGEON["bosses"]
 ORDER = [int(level) for level in _DUNGEON["order"]]
 ROTATE_COUNT = int(_DUNGEON["rotate_count"])
 ROTATION = list(_DUNGEON["rotation"])
+ROTATION_GROUPS = ([list(group) for group in ROTATION]
+                   if ROTATION and all(isinstance(group, list)
+                                       for group in ROTATION)
+                   else [ROTATION] if ROTATION else [])
+ROTATION_NAMES = [name for group in ROTATION_GROUPS for name in group]
 ROTATION_RUNS = int(_DUNGEON.get("rotation_runs", 1))
 LIMITS = {int(level): int(cap)
           for level, cap in _DUNGEON["daily_limits"].items()}
@@ -171,6 +176,8 @@ DEFENSIVE = "defensive_buffs"
 DEFENSIVE_BUFFS = [(name, tuple(point))
                    for name, point in _DUNGEON[DEFENSIVE].items()]
 DEFENSIVE_SWITCH = float(_DUNGEON["defensive_switch"])
+BUFF_PRESSES = int(_DUNGEON["buff_presses"])
+BUFF_PRESS_GAP = float(_DUNGEON["buff_press_gap"])
 LOOP_GAP = float(_DUNGEON["loop_gap"])
 AURA_GAP = float(_DUNGEON["aura_gap"])
 USE_GAP = float(_DUNGEON["use_gap"])
@@ -191,6 +198,7 @@ BM_CYCLE = {"slot": None, "ends": None, "extended": False, "last": None,
             "resume": False, "off": {}, "keep_aura": False}
 BM_OFF = {"at": None}
 MAIN_BM_OFF = {"at": None}
+POWERFUL_POT = {"at": None}
 WORLD_BOSS = {"done": None}
 BURST = _DUNGEON.get("burst")
 BURST_STATE = {"until": None}
@@ -469,6 +477,13 @@ def relog(verbose=True):
     recovery.relog(verbose=verbose)
 
 
+def relog_home(verbose=True):
+    if verbose:
+        print("  dead in the dungeon: a full relog, through the channel list "
+              "to the home channel")
+    relog(verbose)
+
+
 def buy_key(level, verbose=True):
     if not 1 <= level <= len(KEY_CELLS):
         raise RuntimeError(f"no key cell for level {level}; the shop row "
@@ -590,6 +605,26 @@ def orb_runs_today(dungeon_name, location):
     if LEVEL_TEXT.search(location_of(dungeon_name, location)["name"]) is None:
         return runs_today(dungeon_name)
     return sum(ran_today(_state(), server_day()).values())
+
+
+def powerful_pot_due(dungeon_name, verbose=True):
+    pot = DUNGEONS[dungeon_name].get("powerful_pot")
+    if pot is None:
+        return
+    every = float(pot["every"])
+    since = (None if POWERFUL_POT["at"] is None
+             else time.monotonic() - POWERFUL_POT["at"])
+    if since is not None and since < every:
+        return
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
+    if verbose:
+        print(f"  {dungeon_name}: powerful pot {pot['slot']} "
+              + ("for the first time in this launch" if since is None
+                 else f"{since:.0f}s after the last one")
+              + f"; the next one {every:g}s from now")
+    use_point(pot["slot"], SELECT_SETTLE)
+    POWERFUL_POT["at"] = time.monotonic()
 
 
 def pre_run_buys(dungeon_name, location, verbose=True):
@@ -1437,6 +1472,15 @@ def main_bm_on(verbose=True):
     MAIN_BM_STATE["on"] = True
 
 
+def spam_buff(point):
+    for press in range(BUFF_PRESSES):
+        calibration._button(_INPUT["MOUSEEVENTF_RIGHTDOWN"],
+                            _INPUT["MOUSEEVENTF_RIGHTUP"], *point,
+                            BUFF_PRESS_GAP if press + 1 < BUFF_PRESSES
+                            else 0.0)
+    calibration.snap(f"rightclick_{point[0]}_{point[1]}")
+
+
 def click_round(names, since):
     for entry in names:
         if ENDED.is_set():
@@ -1455,7 +1499,9 @@ def click_round(names, since):
             entry, point = DEFENSIVE_BUFFS[
                 int((started - since) // DEFENSIVE_SWITCH)
                 % len(DEFENSIVE_BUFFS)]
-            right_click(*point, 0.0)
+            spam_buff(point)
+        elif entry in OFFENSIVE_BUFFS and entry not in KEYED_SLOTS:
+            spam_buff(OFFENSIVE_BUFFS[entry])
         elif entry in CLICK_POINTS:
             use_point(entry, 0.0)
             if entry == "main_bm":
@@ -1469,12 +1515,16 @@ def loop_plan(names):
     defensive = "/".join(name for name, _point in DEFENSIVE_BUFFS)
     keys = [entry for entry in names
             if entry != DEFENSIVE and entry not in CLICK_POINTS]
+    buffs = any(entry == DEFENSIVE or entry in OFFENSIVE_BUFFS
+                for entry in names)
     return (" -> ".join(f"{defensive} (switching every {DEFENSIVE_SWITCH:g}s)"
                         if entry == DEFENSIVE else entry for entry in names)
             + (f" pressed {LOOP_GAP:g}s apart" if len(keys) == len(names)
                else f" one every {LOOP_GAP:g}s, keys {'/'.join(keys)} pressed "
                f"and the rest used from the hotbar" if keys else
-               f" used from the hotbar {LOOP_GAP:g}s apart"))
+               f" used from the hotbar {LOOP_GAP:g}s apart")
+            + (f"; each buff right-clicked {BUFF_PRESSES} times "
+               f"{BUFF_PRESS_GAP:g}s apart" if buffs else ""))
 
 
 def kill_bm(name, words, verbose=True, loop=None, search=None,
@@ -1859,7 +1909,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
     END["at"], END["defeated"], END["overtime"] = None, False, False
     BM_OFF["at"] = None
     BM_CYCLE["keep_aura"] = False
-    HEAL["every"] = HEAL_EVERY
+    HEAL["every"] = float(setting(dungeon_name, "heal_every"))
     first = calibration.frames_taken() + 1
     RUN_START["frame"] = first
     crashed = False
@@ -1932,20 +1982,16 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                f"past its {hard_limit(dungeon_name):g}s",
                                verbose)
         elif END["defeated"]:
-            manual = manual_exit(dungeon_name)
-            if not manual:
-                raise RuntimeError("the dungeon is failed and has no manual "
-                                   "exit.")
             press_buttons("defeat", DEFEAT, verbose)
             ENDED.clear()
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
-            run_sequence(dungeon_name, location, phase, verbose, manual, False)
+            relog_home(verbose)
             run_sequence(dungeon_name, location, phase, verbose,
                          DUNGEONS[dungeon_name].get("after_exit", []), False)
             if verbose:
                 print(f"  {dungeon_name} {location}: the dungeon is failed; "
-                      f"left it by hand")
+                      f"relogged to the home channel")
                 run_result(dungeon_name, location, "fail, defeated")
             keep_failed(location, timer, first)
             keep_failed_frames(dungeon_name, location, "defeated", verbose)
@@ -2251,7 +2297,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         elif name == "bm_cycle":
             cycle_cast(BM_CYCLE_SET["slots"][0], verbose)
         elif name == "heal_every":
-            HEAL["every"] = float(rest[0]) if rest else HEAL_EVERY
+            HEAL["every"] = (float(rest[0]) if rest
+                             else float(setting(dungeon_name, "heal_every")))
             if verbose:
                 print(f"  heal ({HEAL_KEY}) every {HEAL['every']:g}s while a "
                       f"kill is on")
@@ -2285,7 +2332,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 ride_every = DUNGEONS[dungeon_name].get("heal_ride_every")
                 rides = ("not in the recordings" if ride_every is None
                          else f"every {ride_every:g}s while a recording plays")
-                print(f"  kill phase: heal ({HEAL_KEY}) every {HEAL_EVERY:g}s "
+                print(f"  kill phase: heal ({HEAL_KEY}) every {HEAL['every']:g}s "
                       + (f"while a kill is on ({rides}, not in the opening), "
                          if DUNGEONS[dungeon_name].get("heal_kills_only")
                          else "except while a recording plays"
@@ -3221,9 +3268,10 @@ def dungeon_report():
     entered = dungeon_counts(state, today)
     won = state.get("dungeon_successful") or {}
     won = dict(won.get("counts") or {}) if won.get("day") == today else {}
-    names = ROTATION + [name for name in DUNGEONS
-                        if name not in ROTATION and name != TRADING_DUNGEON
-                        and entered.get(name)]
+    names = ROTATION_NAMES + [name for name in DUNGEONS
+                              if name not in ROTATION_NAMES
+                              and name != TRADING_DUNGEON
+                              and entered.get(name)]
     rows = [(name.upper(),
              next(iter(DUNGEONS[name]["locations"].values()))["name"],
              int(entered.get(name, 0)), int(won.get(name, 0)),
@@ -3462,6 +3510,7 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
     if world_boss_turn(dungeon_name, verbose):
         after = (dungeon_name, time.monotonic())
     pre_run_buys(dungeon_name, location, verbose)
+    powerful_pot_due(dungeon_name, verbose)
     if after is None:
         start_block(dungeon_name, location, verbose)
     else:
@@ -3505,7 +3554,8 @@ def rotate(names, after=None, verbose=True):
 def run_all(verbose=True):
     after = None
     while True:
-        after = rotate(ROTATION, after, verbose) if ROTATION else after
+        for group in ROTATION_GROUPS:
+            after = rotate(group, after, verbose)
         for level in ORDER:
             location = level_location(level)
             while level_left(level) > 0:
@@ -3597,6 +3647,8 @@ def command(args):
         rested = None
         for run in range(_runs()):
             pre_run_buys(args[0], location)
+            if not limit_reached(args[0]):
+                powerful_pot_due(args[0])
             if run == 0:
                 start_block(args[0], location)
             if rested is not None:

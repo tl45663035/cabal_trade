@@ -62,8 +62,8 @@
   "dungeon": {
     "enabled": true,
     "trading_dungeon": "chaos_arena",
-    "order": [4, 5, 6, 7],
-    "rotation": ["fn", "ic1", "fire", "ic2", "ice", "train"],
+    "order": [],
+    "rotation": [["tm", "fn"], ["ic1", "fire", "ic2", "ice", "train"]],
     "kill_combo": [
       ["use", "A+2", 2.0],
       ["tap", "7", 2.0],
