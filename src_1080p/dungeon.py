@@ -93,6 +93,9 @@ CHALLENGE_WINDOW = tuple(_DUNGEON["challenge_window"])
 EXIT_WINDOW = tuple(_DUNGEON["exit_window"])
 LEVEL_TEXT = re.compile(_DUNGEON["level_pattern"], re.IGNORECASE)
 ENTER_WORD = _DUNGEON["enter_word"]
+CANNOT_ENTER_WORD = _DUNGEON["cannot_enter_word"]
+PLAY_TIME_REFILL = _DUNGEON["play_time_refill"]
+REFILL = {"done": False}
 CHALLENGE_WORD = _DUNGEON["challenge_word"]
 EXIT_WORD = _DUNGEON["exit_word"]
 SELECT_SETTLE = float(_DUNGEON["select_settle"])
@@ -385,6 +388,19 @@ def wait_for(window, word, timeout):
     while True:
         seen = read_windows(calibration.grab(), [window])[0]
         if row_model._key(word) in row_model._key(seen):
+            return True, seen
+        if time.monotonic() >= deadline:
+            return False, seen
+        time.sleep(WAIT_SLICE)
+
+
+def wait_for_enter():
+    deadline = time.monotonic() + BUTTON_TIMEOUT
+    while True:
+        seen = read_windows(calibration.grab(), [ENTER_WINDOW])[0]
+        key = row_model._key(seen)
+        if (row_model._key(ENTER_WORD) in key
+                and row_model._key(CANNOT_ENTER_WORD) not in key):
             return True, seen
         if time.monotonic() >= deadline:
             return False, seen
@@ -829,7 +845,28 @@ def setting(dungeon_name, key):
     return DUNGEONS[dungeon_name].get(key, _DUNGEON[key])
 
 
-def open_dungeon_key(dungeon_name, location, verbose=True):
+def refill_play_time(row_y, verbose=True):
+    refill = PLAY_TIME_REFILL
+    settle = float(refill["settle"])
+    if verbose:
+        print(f"  {CANNOT_ENTER_WORD} {ENTER_WORD}: the dungeon play time is "
+              f"refilled: "
+              f"Refill on the row at {[refill['row_x'], row_y]}, the gem "
+              f"option at {refill['gem']}, {refill['time_name']!r} from the "
+              f"Refill Time list, Refill at {refill['refill']}, then "
+              f"{BUTTONS['warp_yes']['word']}")
+    for point in ([refill["row_x"], row_y], refill["gem"],
+                  refill["time_menu"], refill["time_option"],
+                  refill["refill"]):
+        click(*point, settle)
+    press_button("warp_yes", settle, verbose)
+    REFILL["done"] = True
+    calibration.snap("play_time_refilled")
+    click(*refill["cancel"], settle)
+    ctypes.windll.user32.SetCursorPos(*TAB_TWO)
+
+
+def open_dungeon_key(dungeon_name, location, verbose=True, refill=False):
     place = location_of(dungeon_name, location)
     name, words = place["name"], place.get("list_words")
     right = place.get("list_right")
@@ -869,7 +906,11 @@ def open_dungeon_key(dungeon_name, location, verbose=True):
     level = DUNGEONS[dungeon_name].get("difficulty")
     if level is not None:
         set_difficulty(int(level), verbose)
-    up, seen = wait_for(ENTER_WINDOW, ENTER_WORD, BUTTON_TIMEOUT)
+    up, seen = wait_for_enter()
+    if (not up and refill and not REFILL["done"]
+            and row_model._key(CANNOT_ENTER_WORD) in row_model._key(seen)):
+        refill_play_time(point[1], verbose)
+        up, seen = wait_for_enter()
     if not up:
         raise RuntimeError(
             f"with {location} selected the {ENTER_WORD} window "
@@ -2181,7 +2222,9 @@ def with_entry_retries(attempt_once, verbose=True):
 def buy_and_open(dungeon_name, location, place, attempt, verbose=True):
     if attempt:
         get_entry(*place["entry"], verbose=verbose)
-    open_dungeon_key(dungeon_name, location, verbose)
+    else:
+        REFILL["done"] = False
+    open_dungeon_key(dungeon_name, location, verbose, refill=attempt > 0)
 
 
 def with_challenge_retries(dungeon_name, location, place, verbose=True):
@@ -2721,7 +2764,7 @@ def enter_dungeon(level, verbose=True):
     if verbose:
         print(f"  level {level} at {point}")
     click(*point, SELECT_SETTLE)
-    up, seen = wait_for(ENTER_WINDOW, ENTER_WORD, BUTTON_TIMEOUT)
+    up, seen = wait_for_enter()
     if not up:
         raise RuntimeError(
             f"with level {level} selected the {ENTER_WORD} window "

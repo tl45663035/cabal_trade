@@ -475,7 +475,7 @@
     "trading_dungeon": "chaos_arena",
     "daily_limits": {"1": 5, "2": 5, "3": 5, "4": 7, "5": 7, "6": 10, "7": 15},
     "state_file": "dungeon_next.json",
-    "entry_retries": 2,
+    "entry_retries": 3,
     "challenge_retry_wait": 30.0,
     "wb_area_sequence": "get_to_wb_area",
     "wb_area_wait": 3.0,
@@ -495,19 +495,23 @@
     "slot_c4": [987, 882],
     "slot_c5": [1037, 882],
     "level_windows": [
-      [506, 264, 780, 282],
-      [506, 289, 780, 307],
-      [506, 314, 780, 332],
-      [506, 339, 780, 357],
-      [506, 364, 780, 382],
-      [506, 389, 780, 407],
-      [506, 414, 780, 432]
+      [506, 264, 846, 282],
+      [506, 289, 846, 307],
+      [506, 314, 846, 332],
+      [506, 339, 846, 357],
+      [506, 364, 846, 382],
+      [506, 389, 846, 407],
+      [506, 414, 846, 432]
     ],
-    "enter_window": [1092, 878, 1131, 892],
+    "enter_window": [1044, 869, 1178, 906],
     "challenge_window": [781, 750, 855, 771],
     "exit_window": [1080, 750, 1120, 770],
     "level_pattern": "Chaos\\s*Arena\\s*Lv\\.?\\s*(\\d+)",
     "enter_word": "Enter",
+    "cannot_enter_word": "Cannot",
+    "play_time_refill": {"row_x": 914, "gem": [267, 313], "time_menu": [567, 453],
+                         "time_option": [550, 584], "time_name": "4 hour(s)",
+                         "refill": [349, 764], "cancel": [543, 764], "settle": 0.8},
     "challenge_word": "Challenge",
     "exit_word": "Exit",
     "select_settle": 0.5,
@@ -702,7 +706,7 @@
       "confirmation": {"window": [924, 313, 1058, 334], "word": "Confirmation", "timeout": 60.0},
       "roll_dice": {"window": [395, 709, 464, 724], "word": "Roll a Dice"},
       "final_exit": {"window": [322, 709, 352, 724], "word": "Exit"},
-      "warp_yes": {"window": [944, 601, 982, 620], "word": "Yes"},
+      "warp_yes": {"window": [898, 594, 1026, 634], "word": "Yes"},
       "leave": {"window": [845, 805, 895, 826], "word": "Leave"},
       "fire_leave": {"window": [312, 805, 362, 826], "word": "Leave"},
       "obtain_treasure": {"window": [850, 547, 965, 566], "word": "Obtain Treasure"},
@@ -717,13 +721,13 @@
     "dungeons": {
       "chaos_arena": {
         "locations": {
-          "CA1": {"entry": [41, 202], "name": "Chaos Arena Lv.1", "boss": "Chaotic Zigdris Faello"},
-          "CA2": {"entry": [88, 202], "name": "Chaos Arena Lv.2", "boss": "Chaotic Mergaheph"},
-          "CA3": {"entry": [136, 202], "name": "Chaos Arena Lv.3", "boss": "Chaotic Killian Grausten"},
-          "CA4": {"entry": [185, 202], "name": "Chaos Arena Lv.4", "boss": "Chaotic Balrog"},
-          "CA5": {"entry": [234, 202], "name": "Chaos Arena Lv.5", "boss": "Chaotic Orca"},
-          "CA6": {"entry": [282, 202], "name": "Chaos Arena Lv.6", "boss": "Chaotic Leth Tyrant"},
-          "CA7": {"entry": [330, 202], "name": "Chaos Arena Lv.7", "boss": "Dr.Mazel of Chaos"}
+          "CA1": {"entry": [41, 202], "name": "Chaos Arena Lv.1", "boss": "Chaotic Zigdris Faello", "list_right": 780},
+          "CA2": {"entry": [88, 202], "name": "Chaos Arena Lv.2", "boss": "Chaotic Mergaheph", "list_right": 780},
+          "CA3": {"entry": [136, 202], "name": "Chaos Arena Lv.3", "boss": "Chaotic Killian Grausten", "list_right": 780},
+          "CA4": {"entry": [185, 202], "name": "Chaos Arena Lv.4", "boss": "Chaotic Balrog", "list_right": 780},
+          "CA5": {"entry": [234, 202], "name": "Chaos Arena Lv.5", "boss": "Chaotic Orca", "list_right": 780},
+          "CA6": {"entry": [282, 202], "name": "Chaos Arena Lv.6", "boss": "Chaotic Leth Tyrant", "list_right": 780},
+          "CA7": {"entry": [330, 202], "name": "Chaos Arena Lv.7", "boss": "Dr.Mazel of Chaos", "list_right": 780}
         },
         "targets": {
           "Gate of Chaos": ["gate", "chaos"],
@@ -795,7 +799,7 @@
       },
       "eop": {
         "locations": {
-          "EOP": {"entry": [136, 600], "name": "Edge of Phantom",
+          "EOP": {"entry": [136, 600], "name": "Edge of Phantom", "list_right": 780,
                   "bm": "alternate_bm", "list_words": ["phantom"]}
         },
         "daily_limit": 30,
@@ -1177,7 +1181,7 @@
       "tm": {
         "locations": {
           "TM": {"entry": [185, 450], "name": "Terminus Machina", "bm": "alternate_bm",
-                 "list_words": ["machina"], "list_right": 720}
+                 "list_words": ["machina"]}
         },
         "daily_limit": 30,
         "powerful_pot": {"slot": "A+8", "every": 3600},
