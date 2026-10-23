@@ -451,6 +451,10 @@ def find_channel(channel, verbose=True):
         f"after {SCROLL_TRIES} scroll(s). Nothing clicked.")
 
 
+class NoMoveDialog(RuntimeError):
+    pass
+
+
 def confirm_move(channel, verbose=True):
     deadline = time.monotonic() + DIALOG_TIMEOUT
     while True:
@@ -459,7 +463,7 @@ def confirm_move(channel, verbose=True):
             break
         if time.monotonic() >= deadline:
             calibration.snap("no_move_dialog", alongside=True)
-            raise RuntimeError(
+            raise NoMoveDialog(
                 f"no Move Channel dialog within {DIALOG_TIMEOUT:g}s of the "
                 f"double-click; {list(YES_WINDOW)} reads {yes!r}. Nothing "
                 f"clicked.")
@@ -897,7 +901,16 @@ def cancel_bm(verbose=True):
 def prepare(verbose=True):
     if verbose:
         print("prepare world boss")
-    quick_relog(PREPARE_CHANNEL, verbose)
+    # The game opens no Move Channel dialog for the channel the character is
+    # already in, so no dialog here means it is in Channel PREPARE_CHANNEL
+    # already; the relog to the first boss channel below presses Escape until
+    # the menu is up, which shuts the channel list left open.
+    try:
+        quick_relog(PREPARE_CHANNEL, verbose)
+    except NoMoveDialog as error:
+        if verbose:
+            print(f"  {error} Taken as already in Channel {PREPARE_CHANNEL}; "
+                  f"the route goes on")
     if verbose:
         print(f"  waiting {PREPARE_WAIT:g}s in Channel {PREPARE_CHANNEL}")
     pause(PREPARE_WAIT)
