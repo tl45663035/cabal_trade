@@ -237,6 +237,7 @@ EXIT = [tuple(step) for step in _DUNGEON["exit"]]
 MANUAL_EXIT = _DUNGEON["manual_exit"]
 DEFEAT = [tuple(step) for step in _DUNGEON["defeat"]]
 DEFEAT_SIGN = BUTTONS[DEFEAT[0][1]]
+REVIVE_SETTLE = float(_DUNGEON["revive_settle"])
 CHAT_OPEN = float(_DUNGEON["chat_open"])
 CHAT_EVERY = _DUNGEON["chat_every"]
 CHAT_READS = _DUNGEON["chat_reads"]
@@ -2165,6 +2166,22 @@ def keep_failed_frames(dungeon_name, location, why, verbose=True):
                   f"{type(exc).__name__}: {exc}")
 
 
+def revive_if_dead(verbose=True):
+    window, word = tuple(DEFEAT_SIGN["window"]), DEFEAT_SIGN["word"]
+    up, _seen = wait_for(window, word, 0)
+    if not up:
+        return False
+    calibration.snap("dead_outside_dungeon")
+    if verbose:
+        print(f"  the death {word} is up outside the dungeon: revive, "
+              f"{REVIVE_SETTLE:g}s for the town to load, the default state, "
+              f"then the next dungeon entry")
+    press_buttons("defeat", DEFEAT, verbose)
+    wait_timer(REVIVE_SETTLE, False)
+    calibration.close_everything(verbose=verbose)
+    return True
+
+
 def press_buttons(label, steps, verbose=True):
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
@@ -3554,6 +3571,7 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
         start_burst(verbose)
     if world_boss_turn(dungeon_name, verbose):
         after = (dungeon_name, time.monotonic())
+    revive_if_dead(verbose)
     pre_run_buys(dungeon_name, location, verbose)
     powerful_pot_due(dungeon_name, verbose)
     if after is None:
@@ -3691,6 +3709,7 @@ def command(args):
         location = args[1] if len(args) > 1 else only_location(args[0])
         rested = None
         for run in range(_runs()):
+            revive_if_dead()
             pre_run_buys(args[0], location)
             if not limit_reached(args[0]):
                 powerful_pot_due(args[0])
