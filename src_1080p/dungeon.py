@@ -176,6 +176,7 @@ DEFENSIVE_BUFFS = [(name, tuple(point))
                    for name, point in _DUNGEON[DEFENSIVE].items()]
 DEFENSIVE_SWITCH = float(_DUNGEON["defensive_switch"])
 LOOP_GAP = float(_DUNGEON["loop_gap"])
+ONCE_PER_TARGET = list(_DUNGEON["once_per_target"])
 AURA_GAP = float(_DUNGEON["aura_gap"])
 USE_GAP = float(_DUNGEON["use_gap"])
 BM_LOOP = list(_DUNGEON["bm_loop"])
@@ -275,7 +276,8 @@ TRANSFER_TIMEOUT = float(_DUNGEON["transfer_timeout"])
 INVENTORY_TAB = int(_DUNGEON["inventory_tab"])
 KEY_TAB = int(_DUNGEON["key_tab"])
 LOCK = {"boss": None, "reading": None, "cleared": False, "level": ORDER[0] if ORDER else None,
-        "killed": False, "watching": False, "reads": 0, "hits": []}
+        "killed": False, "watching": False, "reads": 0, "hits": [],
+        "targets": 0, "target_hp": None}
 ENDED = threading.Event()
 
 
@@ -989,6 +991,22 @@ def hp_left(text):
             else int(re.sub(r"\D", "", found.group().split("/")[0]) or 0))
 
 
+def hp_most(text):
+    found = TARGET_HP.search(text)
+    return (None if found is None
+            else int(re.sub(r"\D", "", found.group().split("/")[-1]) or 0))
+
+
+def note_target(bar, fresh):
+    left, most = hp_left(bar), hp_most(bar)
+    last = None if fresh else LOCK["target_hp"]
+    readable = left is not None and most is not None
+    if fresh or (readable and last is not None
+                 and (most != last[1] or left > last[0])):
+        LOCK["targets"] += 1
+    LOCK["target_hp"] = (left, most) if readable else last
+
+
 def read_inked(crops):
     inked = [ImageChops.invert(crop).getbbox() is not None for crop in crops]
     texts = iter(read_crops([crop for crop, ink in zip(crops, inked) if ink])
@@ -1032,6 +1050,8 @@ def watch_target(name, words, stop, first, failed):
                                 if words else TARGET_HP.findall(bar))]
             if hits:
                 LOCK["hits"] = hits
+                note_target(next(bar for bar in named if hp_left(bar) != 0),
+                            LOCK["boss"] is None)
             if hits and LOCK["boss"] is None:
                 LOCK["boss"] = name
                 calibration.snap("target_found", image)
@@ -1509,7 +1529,7 @@ def main_bm_on(verbose=True):
 
 
 def click_round(names, since):
-    for entry in names:
+    for entry in names or [None]:
         if ENDED.is_set():
             return
         if not focus_game():
@@ -1520,6 +1540,9 @@ def click_round(names, since):
         main_bm_recast_when_due()
         bm_cycle_when_due()
         aura_in_window()
+        if entry is None:
+            ENDED.wait(LOOP_GAP)
+            continue
         if entry == "aura" and AURA_DUE["at"] is not None:
             continue
         started = time.monotonic()
@@ -1542,7 +1565,10 @@ def loop_plan(names):
     keys = [entry for entry in names
             if entry != DEFENSIVE and entry not in CLICK_POINTS]
     return (" -> ".join(f"{defensive} (switching every {DEFENSIVE_SWITCH:g}s)"
-                        if entry == DEFENSIVE else entry for entry in names)
+                        if entry == DEFENSIVE else
+                        f"{entry} (once per target)"
+                        if entry in ONCE_PER_TARGET else entry
+                        for entry in names)
             + (f" pressed {LOOP_GAP:g}s apart" if len(keys) == len(names)
                else f" one every {LOOP_GAP:g}s, keys {'/'.join(keys)} pressed "
                f"and the rest used from the hotbar" if keys else
@@ -1555,14 +1581,19 @@ def kill_bm(name, words, verbose=True, loop=None, search=None,
     LAST_KILL.update(name=name, words=words, loop=loop)
     start = next((at for at, entry in enumerate(loop)
                   if entry not in BM_AURA), 0) if loop is BM_LOOP else 0
-    rounds = {"next": loop[start:]}
+    rounds = {"next": loop[start:], "target": None}
 
     def attack(since):
         if not loop:
             ENDED.wait(LOOP_GAP)
             return
-        click_round(main_loop if main_loop and MAIN_BM_STATE["on"]
-                    else rounds["next"], since)
+        names = (main_loop if main_loop and MAIN_BM_STATE["on"]
+                 else rounds["next"])
+        if rounds["target"] == LOCK["targets"]:
+            names = [entry for entry in names
+                     if entry not in ONCE_PER_TARGET]
+        rounds["target"] = LOCK["targets"]
+        click_round(names, since)
         rounds["next"] = loop
 
     return hunt(name, words, attack, "kill_bm",
