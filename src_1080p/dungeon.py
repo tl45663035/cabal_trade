@@ -162,6 +162,7 @@ ALTERNATE_BM = tuple(_DUNGEON["alternate_bm"])
 BM_ICON = tuple(_DUNGEON["bm_icon"])
 CANCEL_BM_CLICKS = int(_DUNGEON["cancel_bm_clicks"])
 CANCEL_BM_GAP = float(_DUNGEON["cancel_bm_gap"])
+MAIN_BM_CANCEL_WAIT = float(_DUNGEON["main_bm_cancel_wait"])
 AURA = tuple(_DUNGEON["aura"])
 BM_POT = tuple(_DUNGEON["bm_pot"])
 OFFENSIVE_BUFFS = {name: tuple(point)
@@ -187,8 +188,9 @@ AURA_WINDOW = {"until": None, "since": None, "last": None, "clicks": 0}
 MAIN_BM_DUE = {"at": None, "after": None, "for": None}
 MAIN_BM_STATE = {"on": False}
 BM_CYCLE = {"slot": None, "ends": None, "extended": False, "last": None,
-            "resume": False, "off": {}}
+            "resume": False, "off": {}, "keep_aura": False}
 BM_OFF = {"at": None}
+MAIN_BM_OFF = {"at": None}
 WORLD_BOSS = {"done": None}
 BURST = _DUNGEON.get("burst")
 BURST_STATE = {"until": None}
@@ -739,6 +741,24 @@ def manual_exit(dungeon_name):
     return DUNGEONS[dungeon_name].get("manual_exit", MANUAL_EXIT)
 
 
+def note_main_bm_off():
+    if MAIN_BM_STATE["on"]:
+        MAIN_BM_OFF["at"] = time.monotonic()
+
+
+def wait_after_main_bm_off(verbose=True):
+    if MAIN_BM_OFF["at"] is None:
+        return
+    left = MAIN_BM_OFF["at"] + MAIN_BM_CANCEL_WAIT - time.monotonic()
+    if left <= 0:
+        return
+    if verbose:
+        print(f"  the main BM was cancelled "
+              f"{MAIN_BM_CANCEL_WAIT - left:.1f}s ago; {left:.1f}s more so "
+              f"the recording starts {MAIN_BM_CANCEL_WAIT:g}s after it")
+    wait_timer(left, False)
+
+
 def cancel_bm_clicks(dungeon_name):
     return int(DUNGEONS[dungeon_name].get("cancel_bm_clicks",
                                           CANCEL_BM_CLICKS))
@@ -751,6 +771,7 @@ def cancel_bm(dungeon_name, verbose=True):
     for _click in range(clicks):
         right_click(*BM_ICON, CANCEL_BM_GAP)
     BM_OFF["at"] = time.monotonic()
+    note_main_bm_off()
     calibration.snap("cancel_bm")
     two = MAIN_BM_TWO_TARGETS and MAIN_BM_STATE["on"]
     MAIN_BM_STATE["on"] = False
@@ -856,6 +877,7 @@ def play(dungeon_name, sequence, verbose=True):
             + (f"; {len(off)} of its clicks or wheel turns are off the main "
                f"screen, the first at {list(off[0])}" if off else "")
             + "; nothing played.")
+    wait_after_main_bm_off(verbose)
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     begin = head.get("cursor") or next(
@@ -1306,6 +1328,7 @@ def cancel_spam(verbose=True):
     while not OVER.is_set() and time.monotonic() < started + span:
         right_click(*BM_ICON, float(BM_CYCLE_SET["cancel_gap"]))
         clicks += 1
+    note_main_bm_off()
     MAIN_BM_STATE["on"] = False
     calibration.snap("cancel_spam")
     if verbose:
@@ -1327,6 +1350,8 @@ def bm_cycle_when_due(verbose=True):
         cancel_spam(verbose)
         BM_CYCLE["off"][BM_CYCLE["slot"]] = time.monotonic()
         cycle_cast(following, verbose)
+        if BM_CYCLE["keep_aura"]:
+            cycle_aura(verbose)
         return
     if (not BM_CYCLE["extended"]
             and now >= BM_CYCLE["ends"] - float(BM_CYCLE_SET["aura_left"])):
@@ -1401,6 +1426,8 @@ def bm_cycle_after(verbose=True):
         print(f"  BM cycle: {last} was cancelled before the ride, so "
               f"{following} now")
     cycle_cast(following, verbose)
+    if BM_CYCLE["keep_aura"]:
+        cycle_aura(verbose)
 
 
 def main_bm_on(verbose=True):
@@ -1831,6 +1858,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
     OVER.clear()
     END["at"], END["defeated"], END["overtime"] = None, False, False
     BM_OFF["at"] = None
+    BM_CYCLE["keep_aura"] = False
     HEAL["every"] = HEAL_EVERY
     first = calibration.frames_taken() + 1
     RUN_START["frame"] = first
@@ -2197,7 +2225,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 print(f"  the dungeon has {timer['limit']:g}s from the "
                       f"{CHALLENGE_WORD} click")
             count_challenge(dungeon_name, location, timer, verbose)
-            cancel_bm(dungeon_name, verbose)
+            if setting(dungeon_name, "start_cancel_bm"):
+                cancel_bm(dungeon_name, verbose)
             start_room = DUNGEONS[dungeon_name].get("start_room")
             if start_room is not None:
                 say_room(dungeon_name, location, start_room)
@@ -2226,7 +2255,12 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             if verbose:
                 print(f"  heal ({HEAL_KEY}) every {HEAL['every']:g}s while a "
                       f"kill is on")
-        elif name == "aura_on":
+        elif name in ("aura_on", "keep_aura"):
+            if name == "keep_aura":
+                BM_CYCLE["keep_aura"] = True
+                if verbose:
+                    print("  every BM cast from here to the end of the run "
+                          "gets its aura right after it")
             if BM_CYCLE["slot"] is not None and not BM_CYCLE["extended"]:
                 cycle_aura(verbose)
             elif verbose:
