@@ -251,6 +251,7 @@ CHAT_BOXES = [(_CHAT_LINES["left"], _CHAT_LINES["top"] + row * _CHAT_LINES["gap"
 UNIQUE_TEXT = re.compile(_DUNGEON["unique_pattern"], re.IGNORECASE)
 CHAT_SAME = float(_DUNGEON["chat_same"])
 UNIQUE_FILE = calibration.LOG_DIR / _DUNGEON["unique_file"]
+UNIQUE_IGNORE = [item.casefold() for item in _DUNGEON["unique_ignore"]]
 CHAT = {"seen": None, "run": None, "last": None, "fresh": False}
 FAILED_FRAMES = _DUNGEON["failed_frames"]
 RUN_START = {"frame": None}
@@ -1732,7 +1733,9 @@ def unique_drops(day):
         for line in UNIQUE_FILE.read_text(encoding="utf-8").splitlines():
             try:
                 record = json.loads(line)
-                if month_of(record["day"]) == month:
+                if (month_of(record["day"]) == month
+                        and not any(item in record["item"].casefold()
+                                    for item in UNIQUE_IGNORE)):
                     found.append(f"{record['item']}, {record['dungeon']}, "
                                  f"{record['day']} {record['time']}")
             except Exception:

@@ -625,6 +625,7 @@
     "unique_pattern": "uni\\w*\\s*it\\w*\\W*(.+?)\\W*has\\s*be\\w*\\s*dro",
     "chat_same": 0.8,
     "unique_file": "unique_drops.jsonl",
+    "unique_ignore": ["Orphidia's Amulet"],
     "console_lines": ["^running on commit", "^rotation ", "^\\S+ #\\d+: (pass|fail)", "^\\S+ #\\d+: room ", "unique item dropped", "WORLD BOSS", "^idle", "Ctrl 2 times", "nothing done until the next reset", "logged out", "could not|not pushed|did not start|Error"],
     "uncommitted_ignore": ["calibration.json"],
     "failed_frames": {"folder": "failed_frames", "keep": 5, "quality": 85, "time_format": "%Y-%m-%d_%H%M%S", "no_time": "no-online-time", "no_commit": "no-commit", "log_name": "run.log", "why_name": "why.txt"},
