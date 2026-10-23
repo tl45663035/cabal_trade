@@ -114,6 +114,9 @@ ORDER = [int(level) for level in _DUNGEON["order"]]
 ROTATE_COUNT = int(_DUNGEON["rotate_count"])
 ROTATION = list(_DUNGEON["rotation"])
 ROTATION_RUNS = int(_DUNGEON.get("rotation_runs", 1))
+DEATH = _DUNGEON.get("death")
+HP_TEXT = re.compile(r"(\d+)/(\d+)")
+FAILED_RUNS = {"in_a_row": 0}
 LIMITS = {int(level): int(cap)
           for level, cap in _DUNGEON["daily_limits"].items()}
 STATE = calibration.LOG_DIR / _DUNGEON["state_file"]
@@ -140,6 +143,7 @@ ENTRY_RETRIES = int(_DUNGEON["entry_retries"])
 CHALLENGE_RETRY_WAIT = float(_DUNGEON["challenge_retry_wait"])
 WB_AREA_SEQUENCE = _DUNGEON["wb_area_sequence"]
 WB_AREA_WAIT = float(_DUNGEON["wb_area_wait"])
+WB_AREA_CHECK = _DUNGEON["wb_area_check"]
 DISENCHANT_ICON = tuple(_DUNGEON["disenchant_icon"])
 SORT_ICON = tuple(_DUNGEON["sort_icon"])
 DISENCHANT_WAIT = float(_DUNGEON["disenchant_wait"])
@@ -187,6 +191,7 @@ AURA_DUE = {"at": None, "after": None, "for": None, "since": None,
 AURA_WINDOW = {"until": None, "since": None, "last": None, "clicks": 0}
 MAIN_BM_DUE = {"at": None, "after": None, "for": None}
 MAIN_BM_STATE = {"on": False}
+MAIN_RECAST = {"at": None, "dungeon": None}
 BM_CYCLE = {"slot": None, "ends": None, "extended": False, "last": None,
             "resume": False, "off": {}, "keep_aura": False}
 BM_OFF = {"at": None}
@@ -962,6 +967,14 @@ def play(dungeon_name, sequence, verbose=True):
               f"held down")
 
 
+def replay_run(dungeon_name, file, verbose=True):
+    recorder = str(calibration.HERE.parent / "recorder")
+    if recorder not in sys.path:
+        sys.path.append(recorder)
+    import dungeon_replay
+    dungeon_replay.run(sys.modules[__name__], dungeon_name, file, verbose)
+
+
 def _mouse_input(flags, data=0):
     import record_action
     return record_action.INPUT(
@@ -1078,6 +1091,7 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                                        f"the {label} stopped.")
                 aura_when_due(verbose)
                 main_bm_when_due(verbose)
+                main_bm_recast_when_due(verbose)
                 bm_cycle_when_due(verbose)
                 aura_in_window(verbose)
                 tap(KEYS[TARGET_KEY])
@@ -1257,6 +1271,63 @@ def end_aura_window(verbose=True):
         print(f"  aura {slot_way('aura')} {AURA_WINDOW['clicks']} time(s) in "
               f"{ended - AURA_WINDOW['since']:.1f}s alongside the kill")
     AURA_WINDOW["until"] = None
+
+
+def bm_aura_step(dungeon_name, verbose=True):
+    MAIN_RECAST.update(at=time.monotonic(), dungeon=dungeon_name)
+    bm_aura(verbose, seconds=float(setting(dungeon_name, "bm_aura_for")),
+            after=float(setting(dungeon_name, "aura_after")),
+            spam=float(setting(dungeon_name, "aura_for")),
+            main=float(setting(dungeon_name, "main_bm_after")),
+            target=bool(setting(dungeon_name, "aura_target")))
+    if DUNGEONS[dungeon_name].get("main_bm_recast") and not OVER.is_set():
+        MAIN_BM_STATE["on"] = True
+
+
+def main_bm_ran_out(over, verbose=True):
+    if not MAIN_BM_STATE["on"] or time.monotonic() < over:
+        return
+    MAIN_BM_STATE["on"] = False
+    if verbose:
+        print("  the main BM has run out: the kills use the no-BM loop until "
+              "it is cast again")
+
+
+def main_bm_recast_before(dungeon_name, sequence, verbose=True):
+    recast = DUNGEONS[dungeon_name].get("main_bm_recast")
+    if not recast or MAIN_RECAST["at"] is None or OVER.is_set():
+        return
+    over = MAIN_RECAST["at"] + float(recast["over_after"])
+    now = time.monotonic()
+    if now < over:
+        return
+    main_bm_ran_out(over, verbose)
+    left = max(0.0, over + float(recast["cooldown_wait"]) - now)
+    if verbose:
+        print(f"  the main BM ran out {now - over:.0f}s ago "
+              f"({float(recast['over_after']):g}s after its cast), so "
+              f"{left:.0f}s more of its cooldown, then the main BM and its "
+              f"aura again before {sequence}")
+    if left:
+        wait_timer(left, verbose)
+    bm_aura_step(dungeon_name, verbose)
+
+
+def main_bm_recast_when_due(verbose=True):
+    dungeon_name = MAIN_RECAST["dungeon"]
+    recast = (DUNGEONS[dungeon_name].get("main_bm_recast")
+              if dungeon_name is not None else None)
+    if not recast or MAIN_RECAST["at"] is None or OVER.is_set():
+        return
+    over = MAIN_RECAST["at"] + float(recast["over_after"])
+    main_bm_ran_out(over, verbose)
+    if time.monotonic() < over + float(recast["cooldown_wait"]):
+        return
+    if verbose:
+        print(f"  the main BM ran out {time.monotonic() - over:.0f}s ago and "
+              f"its {float(recast['cooldown_wait']):g}s cooldown is over, so "
+              f"the main BM and its aura again now, in the middle of the kill")
+    bm_aura_step(dungeon_name, verbose)
 
 
 def main_bm_when_due(verbose=True):
@@ -1446,6 +1517,7 @@ def click_round(names, since):
                                "right-click loop stopped.")
         aura_when_due()
         main_bm_when_due()
+        main_bm_recast_when_due()
         bm_cycle_when_due()
         aura_in_window()
         if entry == "aura" and AURA_DUE["at"] is not None:
@@ -1895,6 +1967,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                     continue
                 aura_when_due(verbose)
                 main_bm_when_due(verbose)
+                main_bm_recast_when_due(verbose)
                 bm_cycle_when_due(verbose)
                 tap(KEYS[TARGET_KEY])
                 presses += 1
@@ -1992,6 +2065,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
         AURA_DUE["at"] = None
         AURA_WINDOW["until"] = None
         MAIN_BM_DUE["at"] = None
+        MAIN_RECAST.update(at=None, dungeon=None)
         LAST_KILL.update(name=None, words=None, loop=None)
         for thread in (phase["healer"], phase["ender"], phase["limit"],
                        phase["chat"]):
@@ -2196,8 +2270,9 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                  stop_when_over=True, timer=None):
     place = location_of(dungeon_name, location)
     timer = {"until": None} if timer is None else timer
-    for step in (DUNGEONS[dungeon_name]["sequence"] if steps is None
-                 else steps):
+    steps = DUNGEONS[dungeon_name]["sequence"] if steps is None else steps
+    stage = "opening"
+    for number, step in enumerate(steps, 1):
         name, *rest = step if isinstance(step, list) else [step]
         if stop_when_over and OVER.is_set():
             if verbose:
@@ -2206,8 +2281,11 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             return
         rest = [place.get(part, part) if isinstance(part, str) else part
                 for part in rest]
+        if (SEQUENCES / dungeon_name / f"{name}.jsonl").exists():
+            stage = name
         if verbose:
-            print(f"{dungeon_name} {location}: "
+            print(f"{dungeon_name} {location} [{stage}, step {number} of "
+                  f"{len(steps)}]: "
                   f"{' '.join(str(part) for part in [name, *rest])}")
         if name == "get_entry":
             with_entry_retries(lambda attempt: get_entry(
@@ -2236,11 +2314,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         elif name == "kill":
             kill(rest[0], target_words(dungeon_name, rest[0]), verbose)
         elif name == "bm_aura":
-            bm_aura(verbose, seconds=float(setting(dungeon_name, "bm_aura_for")),
-                    after=float(setting(dungeon_name, "aura_after")),
-                    spam=float(setting(dungeon_name, "aura_for")),
-                    main=float(setting(dungeon_name, "main_bm_after")),
-                    target=bool(setting(dungeon_name, "aura_target")))
+            bm_aura_step(dungeon_name, verbose)
         elif name == "spam":
             bm_aura(verbose, list(rest[:-1]), float(rest[-1]))
         elif name == "aura":
@@ -2378,6 +2452,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 tap(KEYS[key])
         elif name == "shout":
             shout(verbose)
+        elif name == "replay" and dungeon_name in ("ic2", "tm"):
+            replay_run(dungeon_name, rest[0], verbose)
         elif name == "play":
             aura_before(rest[0], rest[1], verbose)
             play(rest[0], rest[1], verbose)
@@ -2385,6 +2461,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             if (CHAT_READS is not None
                     and name.startswith(CHAT_READS["before"])):
                 room_chat(verbose)
+            main_bm_recast_before(dungeon_name, name, verbose)
             aura_before(dungeon_name, name, verbose)
             bm_cycle_before(dungeon_name, name, verbose)
             play(dungeon_name, name, verbose)
@@ -3091,6 +3168,28 @@ def disenchant_all(verbose=True, pops=None):
 
 
 def get_to_wb_area(verbose=True):
+    if WB_AREA_CHECK is None:
+        return wb_area_route(verbose)
+    tries = int(WB_AREA_CHECK["tries"])
+    window, word = tuple(WB_AREA_CHECK["window"]), WB_AREA_CHECK["word"]
+    for attempt in range(1, tries + 1):
+        if not wb_area_route(verbose):
+            return False
+        up, seen = wait_for(window, word, float(WB_AREA_CHECK["timeout"]))
+        if up:
+            if verbose:
+                print(f"  at the world boss stage: the minimap reads {seen!r}")
+            return True
+        calibration.snap("wb_area_missed")
+        print(f"  not at the world boss stage: the minimap {list(window)} "
+              f"reads {seen!r}, not {word!r} (try {attempt} of {tries}); "
+              f"the default state, then the route again")
+        calibration.close_everything(verbose=verbose)
+    raise RuntimeError(f"the world boss stage was not reached in {tries} "
+                       f"tries.")
+
+
+def wb_area_route(verbose=True):
     escape_everything(verbose)
     level = next((level for level in sorted(LIMITS) if level_left(level) > 0),
                  None)
@@ -3389,10 +3488,21 @@ def relog_for_burst(verbose=True):
     print(f"burst: {' + '.join(names)} night, so Channel {channel}; relogging there")
     try:
         recovery.relog(verbose=verbose, channel=channel)
+        return
     except Exception as exc:
-        print(f"  the relog into Channel {channel} failed ({type(exc).__name__}: {exc}); "
-              f"back to the home channel {recovery.HOME_CHANNEL}")
-        recovery.recover(verbose=verbose)
+        print(f"  the relog into Channel {channel} failed ({type(exc).__name__}: {exc})")
+    others = [other for region in BURST["regions"] if region["name"] in names
+              for other in region["channels"] if other != channel]
+    random.shuffle(others)
+    for other in others:
+        print(f"  Channel {other} instead, from the server list")
+        try:
+            recovery.recover(verbose=verbose, channel=other)
+            return
+        except Exception as exc:
+            print(f"  Channel {other} failed too ({type(exc).__name__}: {exc})")
+    print(f"  back to the home channel {recovery.HOME_CHANNEL}")
+    recovery.recover(verbose=verbose)
 
 
 def start_burst(verbose=True):
@@ -3466,11 +3576,17 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
         start_block(dungeon_name, location, verbose)
     else:
         cool_down(*after, verbose)
+    if DEATH is not None and dead():
+        wait_for_respawn(verbose)
+        return None
     try:
         run_dungeon(dungeon_name, location, verbose)
     except RuntimeError as exc:
         if not recovery.logged_out():
-            raise
+            if DEATH is None:
+                raise
+            survive_failed_run(dungeon_name, exc, verbose)
+            return None
         calibration.snap("dungeon_logged_out")
         if verbose:
             print(f"  {exc} The game is logged out, so a relog into "
@@ -3478,7 +3594,73 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
         recovery.recover(verbose=verbose)
         cancel_bm(dungeon_name, verbose)
         return None
+    FAILED_RUNS["in_a_row"] = 0
     return dungeon_name, bm_off_at()
+
+
+def hp_now():
+    text = read_windows(calibration.grab(), [tuple(DEATH["hp_window"])])[0]
+    found = HP_TEXT.search((text or "").replace(" ", ""))
+    if not found:
+        return None, text
+    now, most = int(found.group(1)), int(found.group(2))
+    if most <= 0 or now > most:
+        return None, text
+    return now, text
+
+
+def dead():
+    first, _text = hp_now()
+    if first != 0:
+        return False
+    again, _text = hp_now()
+    return again == 0
+
+
+def wait_for_respawn(verbose=True):
+    calibration.snap("dead")
+    timeout = float(DEATH["respawn_timeout"])
+    if verbose:
+        print(f"  the HP bar reads 0: the character is dead. Nothing is "
+              f"pressed while the game counts down to the respawn in town; "
+              f"the HP bar is read every {float(DEATH['check_every']):g}s, "
+              f"up to {timeout:g}s")
+    deadline = time.monotonic() + timeout
+    while True:
+        calibration.halt_if_stopped()
+        now, text = hp_now()
+        if now:
+            break
+        if time.monotonic() >= deadline:
+            calibration.snap("still_dead")
+            raise RuntimeError(f"the HP bar still reads {text!r} "
+                               f"{timeout:g}s after the death; stopped.")
+        wait_timer(float(DEATH["check_every"]), False)
+    if verbose:
+        print(f"  respawned: the HP bar reads {text!r}; "
+              f"{float(DEATH['settle']):g}s for the town to load, then the "
+              f"default state and the next run")
+    wait_timer(float(DEATH["settle"]), False)
+    calibration.close_everything(verbose=verbose)
+
+
+def survive_failed_run(dungeon_name, exc, verbose=True):
+    calibration.snap("run_failed")
+    if dead():
+        if verbose:
+            print(f"  {dungeon_name}: {exc}")
+        wait_for_respawn(verbose)
+        FAILED_RUNS["in_a_row"] = 0
+        return
+    FAILED_RUNS["in_a_row"] += 1
+    most = int(DEATH["failed_in_a_row"])
+    if FAILED_RUNS["in_a_row"] >= most:
+        raise RuntimeError(f"{most} runs in a row failed; the last: {exc}")
+    if verbose:
+        print(f"  {dungeon_name}: {exc} Not dead and not logged out: the "
+              f"default state, then the next run "
+              f"({FAILED_RUNS['in_a_row']} of {most} failures in a row)")
+    calibration.close_everything(verbose=verbose)
 
 
 def rotate(names, after=None, verbose=True):
