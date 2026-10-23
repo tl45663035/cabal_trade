@@ -3619,26 +3619,12 @@ def dead():
 
 def wait_for_respawn(verbose=True):
     calibration.snap("dead")
-    timeout = float(DEATH["respawn_timeout"])
     if verbose:
-        print(f"  the HP bar reads 0: the character is dead. Nothing is "
-              f"pressed while the game counts down to the respawn in town; "
-              f"the HP bar is read every {float(DEATH['check_every']):g}s, "
-              f"up to {timeout:g}s")
-    deadline = time.monotonic() + timeout
-    while True:
-        calibration.halt_if_stopped()
-        now, text = hp_now()
-        if now:
-            break
-        if time.monotonic() >= deadline:
-            calibration.snap("still_dead")
-            raise RuntimeError(f"the HP bar still reads {text!r} "
-                               f"{timeout:g}s after the death; stopped.")
-        wait_timer(float(DEATH["check_every"]), False)
+        print("  the HP bar reads 0: the character is dead, so the revive "
+              "Confirmation")
+    press_buttons("defeat", DEFEAT, verbose)
     if verbose:
-        print(f"  respawned: the HP bar reads {text!r}; "
-              f"{float(DEATH['settle']):g}s for the town to load, then the "
+        print(f"  {float(DEATH['settle']):g}s for the town to load, then the "
               f"default state and the next run")
     wait_timer(float(DEATH["settle"]), False)
     calibration.close_everything(verbose=verbose)

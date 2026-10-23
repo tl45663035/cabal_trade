@@ -81,8 +81,7 @@
     "wb_area_check": {"window": [1765, 106, 1875, 126], "word": "No Map Code",
                       "timeout": 5.0, "tries": 3},
     "chat_reads": {"before": "move_to_", "button": "confirmation"},
-    "death": {"hp_window": [80, 28, 290, 46], "respawn_timeout": 240, "check_every": 5,
-              "settle": 5, "failed_in_a_row": 5},
+    "death": {"hp_window": [80, 28, 290, 46], "settle": 5, "failed_in_a_row": 5},
     "buttons": {
       "replay_confirmation": {"window": [924, 313, 1058, 334], "word": "Confirmation", "timeout": 3.0}
     },
