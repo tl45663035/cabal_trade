@@ -96,10 +96,8 @@ LOOP_GAP = float(_BOSS["loop_gap"])
 LOOPS = {"main": list(_BOSS["main_loop"]),
          "alternate": list(_BOSS["alternate_loop"]),
          "burst_alternate": list(_BOSS["burst_alternate_loop"])}
-BM_CASTS = {name: float(seconds)
-            for name, seconds in _BOSS["bm_cast"].items()}
-AURA_SPAM_FOR = float(_BOSS["aura_spam_for"])
-AURA_SPAM_GAP = float(_BOSS["aura_spam_gap"])
+WARMUP_FOR = float(_BOSS["warmup_for"])
+WARMUP_GAP = float(_BOSS["warmup_gap"])
 WARMUPS = {"main": list(_BOSS["main_warmup"]),
            "alternate": list(_BOSS["alternate_warmup"]),
            "burst_alternate": list(_BOSS["burst_alternate_warmup"])}
@@ -746,38 +744,39 @@ def switch_bm(plan, now, verbose=True):
 
 def spam_warmup(plan, due, count, verbose=True):
     phase = plan["phase"]
+    names = WARMUPS[phase]
     if verbose:
         print(f"  spawn {time.monotonic() - plan['spawn']:+.1f}s: {phase} "
-              f"warm-up: {' then '.join(WARMUPS[phase])}, each spammed on "
-              f"its own, then the {phase} loop: "
-              f"{' -> '.join(LOOPS[phase])}")
-    for name in WARMUPS[phase]:
-        aura = name not in BM_CASTS
-        span = AURA_SPAM_FOR if aura else BM_CASTS[name]
-        gap = AURA_SPAM_GAP if aura else LOOP_GAP
-        started, presses = time.monotonic(), 0
-        while time.monotonic() < started + span:
-            use_point(name, LOOP_POINTS[name])
-            tap_key(TARGET_VK)
-            presses += 1
-            if time.monotonic() >= due["heal"]:
-                tap_key(HEAL_VK)
-                count["heal"] = count.get("heal", 0) + 1
-                due["heal"] = next_due(due["heal"], HEAL_EVERY)
-            time.sleep(max(0.0, started + presses * gap - time.monotonic()))
-        count[name] = count.get(name, 0) + presses
-        count["target"] = count.get("target", 0) + presses
-        calibration.snap(f"{phase}_warmup_{name}", alongside=True)
-        if verbose:
-            print(f"  spawn {started - plan['spawn']:+.1f}s: {name} pressed "
-                  f"{presses} time(s) over {span:g}s, {gap:g}s apart, target "
-                  f"after each")
-        if aura and plan["timer"] is None:
-            plan["timer"] = started
+              f"warm-up: {' -> '.join(names)} in turn, {WARMUP_GAP:g}s apart "
+              f"for {WARMUP_FOR:g}s nonstop, target after each, then the "
+              f"{phase} loop: {' -> '.join(LOOPS[phase])}")
+    started, presses = time.monotonic(), 0
+    while time.monotonic() < started + WARMUP_FOR:
+        name = names[presses % len(names)]
+        pressed_at = time.monotonic()
+        use_point(name, LOOP_POINTS[name])
+        tap_key(TARGET_VK)
+        presses += 1
+        count[name] = count.get(name, 0) + 1
+        count["target"] = count.get("target", 0) + 1
+        if name == "aura" and plan["timer"] is None:
+            plan["timer"] = pressed_at
             if verbose:
-                print(f"  spawn {started - plan['spawn']:+.1f}s: aura used; "
-                      f"timer started, {phase} BM cancel at "
+                print(f"  spawn {pressed_at - plan['spawn']:+.1f}s: aura "
+                      f"used; timer started, {phase} BM cancel at "
                       f"+{AURA_DURATIONS[phase]:g}s")
+        if time.monotonic() >= due["heal"]:
+            tap_key(HEAL_VK)
+            count["heal"] = count.get("heal", 0) + 1
+            due["heal"] = next_due(due["heal"], HEAL_EVERY)
+        time.sleep(max(0.0, started + presses * WARMUP_GAP - time.monotonic()))
+    calibration.snap(f"{phase}_warmup", alongside=True)
+    if verbose:
+        print(f"  spawn {started - plan['spawn']:+.1f}s: "
+              + ", ".join(f"{name} x{len(range(at, presses, len(names)))}"
+                          for at, name in enumerate(names))
+              + f" over {time.monotonic() - started:.1f}s, {WARMUP_GAP:g}s "
+                f"apart, target after each")
     plan["warm_until"] = time.monotonic()
     plan["next"] = plan["warm_until"] + LOOP_GAP
 
