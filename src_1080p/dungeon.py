@@ -984,30 +984,26 @@ def rides_bike(events):
     return False
 
 
-def bike_message(image=None):
+def bike_slot(image=None):
     image = calibration.grab() if image is None else image
-    seen = " ".join(text for text, _conf, _point in calibration.ocr(
-        image, tuple(BIKE["message_window"])))
-    return BIKE["message_word"].casefold() in seen.casefold()
+    return ImageStat.Stat(image.convert("HSV").crop(
+        tuple(BIKE["slot"]))).mean[2]
 
 
-def wait_message_gone(seconds):
-    deadline = time.monotonic() + seconds
-    while bike_message() and time.monotonic() < deadline:
-        time.sleep(WAIT_SLICE)
+def greyed(image=None):
+    return bike_slot(image) < float(BIKE["grey_below"])
 
 
 def on_bike_now():
-    wait_message_gone(float(BIKE["message_clear"]))
-    tap(KEYS[BIKE["probe_key"]])
-    deadline = time.monotonic() + float(BIKE["message_wait"])
-    while time.monotonic() < deadline:
-        image = calibration.grab()
-        if bike_message(image):
-            calibration.snap("on_bike", image)
-            return True
-        time.sleep(WAIT_SLICE)
-    return False
+    click(*TAB_TWO, SELECT_SETTLE)
+    if not greyed():
+        return False
+    time.sleep(float(BIKE["recheck"]))
+    image = calibration.grab()
+    if not greyed(image):
+        return False
+    calibration.snap("on_bike", image)
+    return True
 
 
 def off_bike(when, verbose=True):
@@ -1017,8 +1013,9 @@ def off_bike(when, verbose=True):
     if not on_bike_now():
         return False
     if verbose:
-        print(f"  {when}: {BIKE['probe_key']} got \"...while riding a bike\", "
-              f"so {SLOT_MODIFIER}+{key} to get off, then {settle:g}s")
+        print(f"  {when}: hotbar slot 1 is greyed out (reads "
+              f"{bike_slot():.0f}, under {BIKE['grey_below']}), so on the "
+              f"bike: {SLOT_MODIFIER}+{key} to get off, then {settle:g}s")
     with KEY_LOCK:
         hold_modifier(True)
         try:
@@ -1031,8 +1028,7 @@ def off_bike(when, verbose=True):
                            f"{SLOT_MODIFIER}+{key}; stopped so no run is "
                            f"spent unable to attack.")
     if verbose:
-        print(f"  off the bike now: {BIKE['probe_key']} no longer gets the "
-              f"bike message")
+        print(f"  off the bike now: hotbar slot 1 reads {bike_slot():.0f}")
     return True
 
 
