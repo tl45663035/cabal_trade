@@ -871,7 +871,7 @@
                      ["kill_all", "any monster", "kill_loop"],
                      ["wait", 1.5],
                      "move_to_B",
-                     ["kill_all", "any monster", "kill_loop"],
+                     ["kill_all", "any monster", "kill_loop", 2.0],
                      ["wait", 1.5],
                      "move_to_C",
                      ["kill_bm", "Devil Wing Hyperion", "kill_loop"],
