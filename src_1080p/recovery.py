@@ -35,6 +35,7 @@ MENU_WORD = _R["menu_word"]
 MENU_TRIES = _R["menu_tries"]
 MENU_WAIT = _R["menu_wait"]
 LOGOUT_YES_WAIT = _R["logout_yes_wait"]
+DUNGEON_EXIT_YES_F = tuple(_R["dungeon_exit_yes_band"])
 LOGOUT_WAIT = _R["logout_wait"]
 
 SCREEN_TIMEOUT = _R["screen_timeout"]
@@ -587,8 +588,14 @@ def logout(verbose=True):
     calibration.snap("logout_menu")
     calibration.click(*entry)
 
-    yes = _needed(YES_WORD, timeout=LOGOUT_YES_WAIT, verbose=verbose,
-                  region=calibration.DIALOG_BUTTONS_F)
+    yes = _wait_for(YES_WORD, timeout=LOGOUT_YES_WAIT, verbose=verbose,
+                    region=calibration.DIALOG_BUTTONS_F)
+    if yes is None:
+        yes = _needed(YES_WORD, timeout=SCREEN_TIMEOUT, verbose=verbose,
+                      region=DUNGEON_EXIT_YES_F)
+        if verbose:
+            print("  'Exit Game in a Dungeon': still in a dungeon, so its "
+                  "Yes ends the connection there")
     calibration.snap("logout_confirm")
     calibration.click(*yes)
 

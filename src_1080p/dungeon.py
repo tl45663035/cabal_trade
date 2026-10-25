@@ -31,12 +31,13 @@ def _plain_argv():
         if arg == "--config":
             skip = True
             continue
-        if arg in ("--runs", "--record-from", "--from"):
+        if arg in ("--runs", "--record-from", "--from", "--channel"):
             skip = True
             continue
         if (arg.startswith("--config=") or arg == "--frames"
                 or arg == "--no-breaks"
                 or arg.startswith("--runs=")
+                or arg.startswith("--channel=")
                 or arg.startswith("--record-from=")
                 or arg.startswith("--from=")):
             continue
@@ -51,6 +52,15 @@ def _runs():
         if arg == "--runs" and index + 1 < len(sys.argv):
             return int(sys.argv[index + 1])
     return 1
+
+
+def _channel():
+    for index, arg in enumerate(sys.argv):
+        if arg.startswith("--channel="):
+            return int(arg.split("=", 1)[1])
+        if arg == "--channel" and index + 1 < len(sys.argv):
+            return int(sys.argv[index + 1])
+    return None
 
 
 def _record_from():
@@ -74,7 +84,7 @@ def _from_step():
 if __name__ == "__main__":
     os.environ["CABAL_CONFIG"] = _chosen_config()
 
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageStat
 
 import calibration
 import open_agent_shop_premium
@@ -111,8 +121,13 @@ TARGET_WINDOWS = [TARGET_WINDOW] + [tuple(box) for box in
                                     _DUNGEON["two_target_windows"]]
 TARGET_TEXT_MIN = int(_DUNGEON["target_text_min"])
 TARGET_HP = re.compile(_DUNGEON["target_hp_pattern"])
+SLASH_MISREAD = re.compile(_DUNGEON["slash_misread_pattern"])
+LEAVE = _DUNGEON["leave"]
 TWO_TARGET_TEXT = re.compile(_DUNGEON["two_target_pattern"])
 MAIN_BM_TWO_TARGETS = bool(_DUNGEON["main_bm_two_targets"])
+TWO_TARGET_SLOTS = list(_DUNGEON["two_target_slots"])
+CYCLE_KEYS = {slot: dict(swap) for slot, swap in _DUNGEON["cycle_keys"].items()}
+BIKE = _DUNGEON["bike"]
 BOSSES = _DUNGEON["bosses"]
 ORDER = [int(level) for level in _DUNGEON["order"]]
 ROTATE_COUNT = int(_DUNGEON["rotate_count"])
@@ -209,11 +224,14 @@ MAIN_RECAST = {"at": None, "dungeon": None}
 BM_CYCLE = {"slot": None, "ends": None, "extended": False, "last": None,
             "resume": False, "off": {}, "keep_aura": False}
 BM_OFF = {"at": None}
+SEARCH_ATTACK = {"keys": []}
 MAIN_BM_OFF = {"at": None}
 POWERFUL_POT = {"at": None}
 WORLD_BOSS = {"done": None}
-BURST = None if "--no-breaks" in sys.argv else _DUNGEON.get("burst")
-BURST_STATE = {"until": None}
+BURST = _DUNGEON.get("burst")
+NO_BREAKS = "--no-breaks" in sys.argv
+CHANNEL = _channel()
+BURST_STATE = {"until": None, "on_channel": False}
 LAST_KILL = {"name": None, "words": None, "loop": None}
 REPORT = _SHARED["supervise"]
 REPORTED = {"at": None}
@@ -652,7 +670,9 @@ def powerful_pot_due(dungeon_name, verbose=True):
         print(f"  {dungeon_name}: powerful pot {pot['slot']} "
               + ("for the first time in this launch" if since is None
                  else f"{since:.0f}s after the last one")
-              + f"; the next one {every:g}s from now")
+              + f"; the next one {every:g}s from now; hotbar tab II at "
+              f"{list(TAB_TWO)} first, where the pot is")
+    click(*TAB_TWO, SELECT_SETTLE)
     use_point(pot["slot"], SELECT_SETTLE)
     POWERFUL_POT["at"] = time.monotonic()
 
@@ -838,7 +858,7 @@ def cancel_bm(dungeon_name, verbose=True):
     BM_OFF["at"] = time.monotonic()
     note_main_bm_off()
     calibration.snap("cancel_bm")
-    two = MAIN_BM_TWO_TARGETS and MAIN_BM_STATE["on"]
+    two = two_targets_now()
     MAIN_BM_STATE["on"] = False
     if BM_CYCLE["slot"] is not None:
         BM_CYCLE["off"][BM_CYCLE["slot"]] = time.monotonic()
@@ -947,6 +967,53 @@ def snap_every(name, every, stop):
             return
 
 
+def rides_bike(events):
+    if BIKE is None:
+        return False
+    alt = False
+    for event in events:
+        if event["kind"] != "key":
+            continue
+        if event.get("name") == SLOT_MODIFIER:
+            alt = event["action"] == "down"
+        elif (alt and event["action"] == "down"
+              and event.get("name") == BIKE["key"]):
+            return True
+    return False
+
+
+def bike_brightness(image):
+    return ImageStat.Stat(image.convert("HSV").crop(
+        tuple(BIKE["window"]))).mean[2]
+
+
+def off_bike(when, verbose=True):
+    key, settle = BIKE["key"], float(BIKE["settle"])
+    dim = float(BIKE["dim_below"])
+    image = calibration.grab()
+    value = bike_brightness(image)
+    if value >= dim:
+        return
+    calibration.snap("on_bike", image)
+    if verbose:
+        print(f"  {when}: still on the bike (the skill bar reads {value:.0f}, "
+              f"under {dim:g}), so {SLOT_MODIFIER}+{key} once to get off, "
+              f"then {settle:g}s")
+    with KEY_LOCK:
+        hold_modifier(True)
+        try:
+            press(KEYS[key])
+        finally:
+            hold_modifier(False)
+    time.sleep(settle)
+    value = bike_brightness(calibration.grab())
+    if verbose:
+        print(f"  the skill bar reads {value:.0f} now"
+              + ("; off the bike" if value >= dim
+                 else f"; still under {dim:g}, but Alt+1 is not pressed "
+                      f"again, since a second press would mount it again"))
+
+
 def play(dungeon_name, sequence, verbose=True):
     import record_action
     path = SEQUENCES / dungeon_name / f"{sequence}.jsonl"
@@ -970,6 +1037,7 @@ def play(dungeon_name, sequence, verbose=True):
     wait_after_main_bm_off(verbose)
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
+    bike = rides_bike(events)
     begin = head.get("cursor") or next(
         ([event["x"], event["y"]] for event in events if "x" in event), None)
     if begin is not None:
@@ -1050,6 +1118,10 @@ def play(dungeon_name, sequence, verbose=True):
     if verbose:
         print(f"  played {played} of {len(events)} events; nothing is left "
               f"held down")
+    if (bike and played == len(events) and not ENDED.is_set()
+            and not calibration.STOPPED.is_set()):
+        time.sleep(float(BIKE["settle"]))
+        off_bike(f"after {sequence}", verbose)
 
 
 def replay_run(dungeon_name, file, verbose=True):
@@ -1090,16 +1162,31 @@ def note_target(bar, fresh):
     LOCK["target_hp"] = (left, most) if readable else last
 
 
+def slash_misread(text):
+    return SLASH_MISREAD.sub(
+        lambda found: found.group(1) + ("0" if found.group(2) else "") + "/",
+        text)
+
+
 def read_inked(crops):
     inked = [ImageChops.invert(crop).getbbox() is not None for crop in crops]
     texts = iter(read_crops([crop for crop, ink in zip(crops, inked) if ink])
                  if any(inked) else [])
-    return [next(texts) if ink else "" for ink in inked]
+    return [slash_misread(next(texts)) if ink else "" for ink in inked]
+
+
+def cycle_key(entry):
+    return CYCLE_KEYS.get(BM_CYCLE["slot"], {}).get(entry, entry)
+
+
+def two_targets_now():
+    return ((MAIN_BM_TWO_TARGETS and MAIN_BM_STATE["on"])
+            or BM_CYCLE["slot"] in TWO_TARGET_SLOTS)
 
 
 def target_bars(image):
     centre_box, *pair_boxes = TARGET_WINDOWS
-    if MAIN_BM_TWO_TARGETS and MAIN_BM_STATE["on"]:
+    if two_targets_now():
         centre, left, right = read_inked([white_text(image, box)
                                           for box in TARGET_WINDOWS])
         return ([bar for bar in (left, right) if TWO_TARGET_TEXT.search(bar)]
@@ -1173,7 +1260,11 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                                daemon=True)
     if verbose:
         print(f"  {label} {name!r}: the HP bar is read all the time; "
-              f"{TARGET_KEY} until it shows "
+              f"{TARGET_KEY}"
+              + (f" (each followed by {' -> '.join(SEARCH_ATTACK['keys'])}, "
+                 f"for a target the bar can't be read for)"
+                 if SEARCH_ATTACK["keys"] else "")
+              + " until it shows "
               f"{' or '.join(map(repr, words)) if words else 'any monster'}, "
               + (f"then {plan} over and over, " if plan else
                  "then nothing clicked, ")
@@ -1198,6 +1289,8 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                 bm_cycle_when_due(verbose)
                 aura_in_window(verbose)
                 tap(KEYS[TARGET_KEY])
+                for key in SEARCH_ATTACK["keys"]:
+                    tap(KEYS[cycle_key(key)])
                 presses += 1
                 pressed_at = LOCK["reads"]
                 while (LOCK["reads"] < pressed_at + 2 and LOCK["boss"] is None
@@ -1460,6 +1553,7 @@ def cycle_cast(slot, verbose=True):
     cast = float(BM_CYCLE_SET["cast"][slot])
     AURA_DUE["at"] = None
     MAIN_BM_DUE["at"] = None
+    BM_CYCLE["slot"] = slot
     started, presses = time.monotonic(), 0
     MAIN_BM_STATE["on"] = False
     if slot == "main_bm":
@@ -1474,7 +1568,11 @@ def cycle_cast(slot, verbose=True):
     if verbose:
         print(f"  BM cycle: {slot} {slot_way(slot)} {presses} time(s) over its "
               f"{cast:g}s cast, {TARGET_KEY} after each; it should run out "
-              f"{BM_CYCLE_SET['lasts']:g}s after the cast")
+              f"{BM_CYCLE_SET['lasts']:g}s after the cast"
+              + ("; the target is read from the two target bars"
+                 if slot in TWO_TARGET_SLOTS else "")
+              + "".join(f"; {key} is pressed as {swap}"
+                        for key, swap in CYCLE_KEYS.get(slot, {}).items()))
 
 
 def cycle_aura(verbose=True):
@@ -1691,7 +1789,7 @@ def kill_bm(name, words, verbose=True, loop=None, search=None,
             names = [entry for entry in names
                      if entry not in ONCE_PER_TARGET]
         rounds["target"] = LOCK["targets"]
-        click_round(names, since)
+        click_round([cycle_key(entry) for entry in names], since)
         rounds["next"] = loop
 
     return hunt(name, words, attack, "kill_bm",
@@ -2145,7 +2243,9 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
     OVER.clear()
     END["at"], END["defeated"], END["overtime"] = None, False, False
     BM_OFF["at"] = None
-    BM_CYCLE["keep_aura"] = False
+    BM_CYCLE.update(slot=None, ends=None, extended=False, resume=False,
+                    keep_aura=False)
+    SEARCH_ATTACK["keys"] = list(setting(dungeon_name, "search_attack"))
     HEAL["every"] = float(setting(dungeon_name, "heal_every"))
     first = calibration.frames_taken() + 1
     RUN_START["frame"] = first
@@ -2207,7 +2307,9 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             ENDED.clear()
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
-            run_sequence(dungeon_name, location, phase, verbose, manual, False)
+            if not dismiss_quest_failed(verbose):
+                run_sequence(dungeon_name, location, phase, verbose, manual,
+                             False)
             run_sequence(dungeon_name, location, phase, verbose,
                          DUNGEONS[dungeon_name].get("after_exit", []), False)
             if verbose:
@@ -2260,7 +2362,9 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             ENDED.clear()
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
-            run_sequence(dungeon_name, location, phase, verbose, manual, False)
+            if not dismiss_quest_failed(verbose):
+                run_sequence(dungeon_name, location, phase, verbose, manual,
+                             False)
             if verbose:
                 print(f"  {dungeon_name} {location}: left the dungeon by hand")
                 run_result(dungeon_name, location,
@@ -3403,7 +3507,23 @@ def disenchant_all(verbose=True, pops=None):
     if verbose:
         print(f"  Disenchant at {list(DISENCHANT_ICON)}")
     click(*DISENCHANT_ICON, SELECT_SETTLE)
-    press_button("item_extraction", 0.0, verbose)
+    try:
+        press_button("item_extraction", 0.0, verbose)
+    except RuntimeError:
+        pending = BUTTONS["extraction_pending"]
+        up, _seen = wait_for(tuple(pending["window"]), pending["word"], 0)
+        if not up:
+            raise
+        calibration.snap("extraction_pending")
+        if verbose:
+            print(f"  the {pending['word']} window still holds an earlier "
+                  f"extraction's items: Receive All, Close, then Disenchant "
+                  f"again")
+        press_button("extraction_receive", SELECT_SETTLE, verbose)
+        press_button("extraction_pending_close", SELECT_SETTLE, verbose,
+                     required=False)
+        click(*DISENCHANT_ICON, SELECT_SETTLE)
+        press_button("item_extraction", 0.0, verbose)
     agree = BUTTONS["extraction_agree"]
     up, seen = wait_for(tuple(agree["window"]), agree["word"], BUTTON_TIMEOUT)
     if up:
@@ -3750,6 +3870,22 @@ def pick_channel(moment, regions, night, choice):
 
 def relog_for_burst(verbose=True):
     import recovery
+    if CHANNEL is not None:
+        if BURST_STATE["on_channel"]:
+            print(f"burst: staying on Channel {CHANNEL} (--channel)")
+            return
+        print(f"burst: --channel {CHANNEL}, so Channel {CHANNEL} for the "
+              f"whole launch; relogging there")
+        try:
+            recovery.relog(verbose=verbose, channel=CHANNEL)
+        except Exception as exc:
+            print(f"  the relog into Channel {CHANNEL} failed "
+                  f"({type(exc).__name__}: {exc}); tried again at the next "
+                  f"burst")
+            recovery.recover(verbose=verbose, channel=CHANNEL)
+            return
+        BURST_STATE["on_channel"] = True
+        return
     names, channel = pick_channel(online_now(), BURST["regions"], BURST["night"],
                                   random.choice)
     print(f"burst: {' + '.join(names)} night, so Channel {channel}; relogging there")
@@ -3830,7 +3966,13 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
     import recovery
     dungeon_report_due(verbose)
     if burst_over():
-        rest_between_bursts(verbose)
+        if NO_BREAKS:
+            print("burst over; no breaks, so straight on"
+                  + (f", still on Channel {CHANNEL}" if CHANNEL is not None
+                     else " to the next night channel"))
+            BURST_STATE["until"] = None
+        else:
+            rest_between_bursts(verbose)
         after = None
     if BURST is not None and BURST_STATE["until"] is None:
         if BURST.get("regions"):
@@ -3915,7 +4057,52 @@ def survive_failed_run(dungeon_name, exc, verbose=True):
         print(f"  {dungeon_name}: {exc} Not dead and not logged out: the "
               f"default state, then the next run "
               f"({FAILED_RUNS['in_a_row']} of {most} failures in a row)")
+    dismiss_quest_failed(verbose)
     calibration.close_everything(verbose=verbose)
+    leave_if_inside(verbose)
+
+
+def dismiss_quest_failed(verbose=True):
+    box = BUTTONS["quest_failed"]
+    up, _seen = wait_for(tuple(box["window"]), box["word"], 0)
+    if not up:
+        return False
+    calibration.snap("quest_failed")
+    if verbose:
+        print("  'Quest Dungeon Failed' is up and blocks every other window: "
+              "its OK first; the game then moves the character out")
+    press_button("quest_failed_ok", float(LEAVE["settle"]), verbose)
+    return True
+
+
+def in_dungeon(image=None):
+    image = calibration.grab() if image is None else image
+    buttons = Image.open(LEAVE["buttons"]).convert("RGB")
+    x, y = LEAVE["at"]
+    return all(ImageStat.Stat(ImageChops.difference(
+        image.convert("RGB").crop((x + left, y + top, x + right, y + bottom)),
+        buttons.crop((left, top, right, bottom)))).mean[0]
+        <= float(LEAVE["differ_over"])
+        for left, top, right, bottom in LEAVE["parts"])
+
+
+def leave_if_inside(verbose=True):
+    dismiss_quest_failed(verbose)
+    if not in_dungeon():
+        return
+    calibration.snap("still_in_dungeon")
+    if verbose:
+        print(f"  the dungeon's camera/pause/exit buttons are still up, "
+              f"so the run never left: "
+              f"{LEAVE['word']} at {LEAVE['exit']}, then its "
+              f"{LEAVE['word']!r} button, before the next run")
+    click(*LEAVE["exit"], SELECT_SETTLE)
+    press_button("leave_dungeon", float(LEAVE["settle"]), verbose)
+    if in_dungeon():
+        calibration.snap("could_not_leave")
+        raise RuntimeError("the dungeon's buttons are still up after "
+                           f"{LEAVE['word']}; stopped so no entry is bought "
+                           "from inside a dungeon.")
 
 
 def rotation_done(dungeon_name, successful):
