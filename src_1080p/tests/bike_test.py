@@ -31,54 +31,60 @@ def events(name):
     return [json.loads(line) for line in lines[1:] if line.strip()]
 
 
-on = Image.open(HERE / "fixtures" / "on_bike.jpg").convert("RGB")
-off = Image.open(HERE / "fixtures" / "off_bike.jpg").convert("RGB")
-dim = dungeon.BIKE["dim_below"]
-check("the greyed skill bar on the bike reads under the line",
-      dungeon.bike_brightness(on) < dim, f"{dungeon.bike_brightness(on):.0f}")
-check("the lit skill bar off the bike reads over it",
-      dungeon.bike_brightness(off) >= dim, f"{dungeon.bike_brightness(off):.0f}")
+fixture = lambda name: Image.open(HERE / "fixtures" / name).convert("RGB")
+message = fixture("bike_message.png")
+quiet = fixture("field_after_exit.png")
+check("the game's 'cannot attack ... while riding a bike' line is read (IC1 #22, 03:46)", dungeon.bike_message(message))
+check("a field frame with no such line is not", not dungeon.bike_message(quiet))
 check("the room S ride is known to use the bike", dungeon.rides_bike(events("move_to_S")))
 check("the room A walk is not", not dungeon.rides_bike(events("move_to_A")))
 
 
-def get_off(frames):
-    shown, pressed = list(frames), []
-    saved = (dungeon.calibration.grab, dungeon.press, dungeon.hold_modifier, dungeon.time.sleep,
+def get_off(screens):
+    shown, pressed = list(screens), []
+    saved = (dungeon.calibration.grab, dungeon.press, dungeon.tap, dungeon.hold_modifier, dungeon.time.sleep,
              dungeon.calibration.snap)
-    dungeon.calibration.grab = lambda *a, **k: shown.pop(0) if len(shown) > 1 else shown[0]
-    dungeon.press = pressed.append
+
+    def grab(*a, **k):
+        return shown.pop(0) if len(shown) > 1 else shown[0]
+
+    dungeon.calibration.grab = grab
+    dungeon.press = lambda vk, *a, **k: pressed.append(("Alt", vk))
+    dungeon.tap = lambda vk, *a, **k: pressed.append(vk)
     dungeon.hold_modifier = lambda down: None
     dungeon.time.sleep = lambda s: None
     dungeon.calibration.snap = lambda *a, **k: None
-    error = None
+    error = got_off = None
     try:
         with contextlib.redirect_stdout(io.StringIO()):
-            dungeon.off_bike("after move_to_S")
+            got_off = dungeon.off_bike("before ic1")
     except RuntimeError as exc:
         error = str(exc)
     finally:
-        (dungeon.calibration.grab, dungeon.press, dungeon.hold_modifier, dungeon.time.sleep,
+        (dungeon.calibration.grab, dungeon.press, dungeon.tap, dungeon.hold_modifier, dungeon.time.sleep,
          dungeon.calibration.snap) = saved
-    return pressed, error
+    return got_off, pressed, error
 
 
-cooling = Image.open(HERE / "fixtures" / "buffs_cooling_off_bike.png").convert("RGB")
-check("off the bike with the boss buffs on cooldown (tm #25, before room S) does not read as on the bike",
-      dungeon.bike_brightness(cooling) >= dim, f"{dungeon.bike_brightness(cooling):.0f}")
-check("the room S ride is only checked after it, not before",
-      "off_bike(f\"before" not in Path(dungeon.__file__).read_text(encoding="utf-8"))
+five, one = dungeon.KEYS["5"], dungeon.KEYS["1"]
+got_off, pressed, error = get_off([quiet])
+check("off the bike: 5 is pressed, no bike line comes, nothing else is pressed",
+      got_off is False and pressed == [five] and error is None, f"{pressed} {error}")
+got_off, pressed, error = get_off([quiet, message, quiet])
+check("on the bike: 5 gets the bike line, so Alt+1 once, then 5 again gets nothing",
+      got_off is True and pressed == [five, ("Alt", one), five] and error is None, f"{pressed} {error}")
+got_off, pressed, error = get_off([quiet, message])
+check("a bike that will not come off stops the run instead of spending it",
+      error and "still on the bike" in error and pressed.count(("Alt", one)) == 1, f"{pressed} {error}")
+check("the probe never presses Alt+1 when the bike line is not there", ("Alt", one) not in get_off([quiet])[1])
 
-one = dungeon.KEYS["1"]
-pressed, error = get_off([off])
-check("off the bike after the ride: nothing is pressed", pressed == [] and error is None, f"{pressed} {error}")
-pressed, error = get_off([on, off])
-check("still on the bike after the ride: Alt+1 once, then it reads off", pressed == [one] and error is None,
-      f"{pressed} {error}")
-pressed, error = get_off([on])
-check("a bike that still reads on gets no second Alt+1, which would mount it again, and the run goes on",
-      pressed == [one] and error is None, f"{pressed} {error}")
+lit = fixture("on_bike_field_lit.png")
+check("the field frame on the bike has a lit skill bar, which is why the bar is no longer the test",
+      not dungeon.bike_message(lit))
 
+source = (SRC / "dungeon.py").read_text(encoding="utf-8")
+check("every run starts with the bike check, and the whole-run replay is followed by one",
+      'off_bike(f"before {dungeon_name}"' in source and 'off_bike(f"after the {rest[0]} replay"' in source)
 check("no input reached the game", not TRIPPED, str(TRIPPED))
 print(f"{fails} failure(s)")
 sys.exit(1 if fails else 0)

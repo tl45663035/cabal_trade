@@ -143,6 +143,8 @@ ROTATION_RUNS = int(_DUNGEON.get("rotation_runs", 1))
 DEATH = _DUNGEON.get("death")
 HP_TEXT = re.compile(r"(\d+)/(\d+)")
 FAILED_RUNS = {"in_a_row": 0}
+RUN_OUTCOME = {"failed": False}
+NO_TARGET_STOP = float(_DUNGEON["no_target_stop"] or 0)
 LIMITS = {int(level): int(cap)
           for level, cap in _DUNGEON["daily_limits"].items()}
 STATE = calibration.LOG_DIR / _DUNGEON["state_file"]
@@ -982,23 +984,41 @@ def rides_bike(events):
     return False
 
 
-def bike_brightness(image):
-    return ImageStat.Stat(image.convert("HSV").crop(
-        tuple(BIKE["window"]))).mean[2]
+def bike_message(image=None):
+    image = calibration.grab() if image is None else image
+    seen = " ".join(text for text, _conf, _point in calibration.ocr(
+        image, tuple(BIKE["message_window"])))
+    return BIKE["message_word"].casefold() in seen.casefold()
+
+
+def wait_message_gone(seconds):
+    deadline = time.monotonic() + seconds
+    while bike_message() and time.monotonic() < deadline:
+        time.sleep(WAIT_SLICE)
+
+
+def on_bike_now():
+    wait_message_gone(float(BIKE["message_clear"]))
+    tap(KEYS[BIKE["probe_key"]])
+    deadline = time.monotonic() + float(BIKE["message_wait"])
+    while time.monotonic() < deadline:
+        image = calibration.grab()
+        if bike_message(image):
+            calibration.snap("on_bike", image)
+            return True
+        time.sleep(WAIT_SLICE)
+    return False
 
 
 def off_bike(when, verbose=True):
+    if BIKE is None or OVER.is_set():
+        return False
     key, settle = BIKE["key"], float(BIKE["settle"])
-    dim = float(BIKE["dim_below"])
-    image = calibration.grab()
-    value = bike_brightness(image)
-    if value >= dim:
-        return
-    calibration.snap("on_bike", image)
+    if not on_bike_now():
+        return False
     if verbose:
-        print(f"  {when}: still on the bike (the skill bar reads {value:.0f}, "
-              f"under {dim:g}), so {SLOT_MODIFIER}+{key} once to get off, "
-              f"then {settle:g}s")
+        print(f"  {when}: {BIKE['probe_key']} got \"...while riding a bike\", "
+              f"so {SLOT_MODIFIER}+{key} to get off, then {settle:g}s")
     with KEY_LOCK:
         hold_modifier(True)
         try:
@@ -1006,12 +1026,14 @@ def off_bike(when, verbose=True):
         finally:
             hold_modifier(False)
     time.sleep(settle)
-    value = bike_brightness(calibration.grab())
+    if on_bike_now():
+        raise RuntimeError(f"still on the bike {when}, after "
+                           f"{SLOT_MODIFIER}+{key}; stopped so no run is "
+                           f"spent unable to attack.")
     if verbose:
-        print(f"  the skill bar reads {value:.0f} now"
-              + ("; off the bike" if value >= dim
-                 else f"; still under {dim:g}, but Alt+1 is not pressed "
-                      f"again, since a second press would mount it again"))
+        print(f"  off the bike now: {BIKE['probe_key']} no longer gets the "
+              f"bike message")
+    return True
 
 
 def play(dungeon_name, sequence, verbose=True):
@@ -1270,6 +1292,7 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                  "then nothing clicked, ")
               + "stopped the moment none of them shows")
     presses, rounds, started = 0, 0, time.monotonic()
+    quiet = started
     watcher.start()
     try:
         HUNTING.set()
@@ -1280,6 +1303,16 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                 if (search is not None and since is None
                         and time.monotonic() - started >= search):
                     break
+                if (search is None and since is None and NO_TARGET_STOP
+                        and time.monotonic() - quiet >= NO_TARGET_STOP):
+                    if off_bike(f"{NO_TARGET_STOP:g}s with no target for "
+                                f"{name!r}", verbose):
+                        quiet = time.monotonic()
+                        continue
+                    raise RuntimeError(
+                        f"{name!r}: nothing targeted in {NO_TARGET_STOP:g}s "
+                        f"and not on the bike; the run is given up here, not "
+                        f"at its time limit.")
                 if not focus_game():
                     raise RuntimeError(f"the game is not in the foreground; "
                                        f"the {label} stopped.")
@@ -2215,6 +2248,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 timer=None, until=None):
     timer = {"until": None} if timer is None else timer
     timer["end_wait"] = end_wait(dungeon_name)
+    RUN_OUTCOME["failed"] = False
     limit = DUNGEONS[dungeon_name].get("daily_limit")
     if limit is not None and steps is None:
         ran = dungeon_counts(_state(), server_day()).get(dungeon_name, 0)
@@ -2223,6 +2257,10 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 print(f"{dungeon_name}: {ran} of {limit} entered on this "
                       f"dungeon day; nothing done until the next reset")
             return False
+    if steps is None:
+        if not focus_game():
+            raise RuntimeError("could not bring the game to the foreground.")
+        off_bike(f"before {dungeon_name}", verbose)
     stop, failed, killing = threading.Event(), {}, threading.Event()
     phase = {"killing": killing,
              "healer": threading.Thread(
@@ -2317,6 +2355,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                       f"{hard_limit(dungeon_name):g}s; left it by hand")
                 run_result(dungeon_name, location,
                            f"fail, past its {hard_limit(dungeon_name):g}s")
+            RUN_OUTCOME["failed"] = True
             keep_failed(location, timer, first)
             keep_failed_frames(dungeon_name, location,
                                f"past its {hard_limit(dungeon_name):g}s",
@@ -2333,6 +2372,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 print(f"  {dungeon_name} {location}: the dungeon is failed; "
                       f"relogged to the home channel")
                 run_result(dungeon_name, location, "fail, defeated")
+            RUN_OUTCOME["failed"] = True
             keep_failed(location, timer, first)
             keep_failed_frames(dungeon_name, location, "defeated", verbose)
         elif END["at"] is not None:
@@ -2369,6 +2409,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 print(f"  {dungeon_name} {location}: left the dungeon by hand")
                 run_result(dungeon_name, location,
                            f"fail, no end screen within {END_TIMEOUT:g}s")
+            RUN_OUTCOME["failed"] = True
             keep_failed(location, timer, first)
             keep_failed_frames(dungeon_name, location, "no end screen",
                                verbose)
@@ -2790,6 +2831,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             shout(verbose)
         elif name == "replay" and dungeon_name in ("ic2", "tm"):
             replay_run(dungeon_name, rest[0], verbose)
+            off_bike(f"after the {rest[0]} replay", verbose)
         elif name == "play":
             aura_before(rest[0], rest[1], verbose)
             play(rest[0], rest[1], verbose)
@@ -4005,7 +4047,11 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
         recovery.recover(verbose=verbose)
         cancel_bm(dungeon_name, verbose)
         return None
-    FAILED_RUNS["in_a_row"] = 0
+    if RUN_OUTCOME["failed"] and DEATH is not None:
+        count_failure(dungeon_name, "the run failed (past its limit, no end "
+                      "screen or defeated)", verbose)
+    else:
+        FAILED_RUNS["in_a_row"] = 0
     return dungeon_name, bm_off_at()
 
 
@@ -4041,6 +4087,17 @@ def wait_for_respawn(verbose=True):
     calibration.close_everything(verbose=verbose)
 
 
+def count_failure(dungeon_name, why, verbose=True):
+    FAILED_RUNS["in_a_row"] += 1
+    most = int(DEATH["failed_in_a_row"])
+    if FAILED_RUNS["in_a_row"] >= most:
+        raise RuntimeError(f"{most} runs in a row failed; the last: {why}")
+    if verbose:
+        print(f"  {dungeon_name}: {FAILED_RUNS['in_a_row']} of {most} "
+              f"failures in a row")
+    return most
+
+
 def survive_failed_run(dungeon_name, exc, verbose=True):
     calibration.snap("run_failed")
     if dead():
@@ -4049,10 +4106,7 @@ def survive_failed_run(dungeon_name, exc, verbose=True):
         wait_for_respawn(verbose)
         FAILED_RUNS["in_a_row"] = 0
         return
-    FAILED_RUNS["in_a_row"] += 1
-    most = int(DEATH["failed_in_a_row"])
-    if FAILED_RUNS["in_a_row"] >= most:
-        raise RuntimeError(f"{most} runs in a row failed; the last: {exc}")
+    most = count_failure(dungeon_name, exc, False)
     if verbose:
         print(f"  {dungeon_name}: {exc} Not dead and not logged out: the "
               f"default state, then the next run "
