@@ -301,7 +301,7 @@
       }
     },
     "hard_min_per_unit": {
-      "Chaos Core Set": 650000,
+      "Chaos Core Set": 500000,
       "Divine Stone Set": 650000,
       "Upgrade Core (Ultimate)": 1000,
       "Force Core (Ultimate)": 1000,
@@ -313,8 +313,8 @@
       "Chaos Core Set": 750000
     },
     "never_list_below": {
-      "Chaos Core": 650000,
-      "Chaos Core Set": 650000
+      "Chaos Core": 500000,
+      "Chaos Core Set": 500000
     },
     "price_trust_multiple": 10,
     "screen": "1920x1080",
@@ -1269,6 +1269,60 @@
                      "move_to_T",
                      "keep_aura",
                      ["kill_all", "any monster", "main_boss_loop"]]
+      },
+      "fc": {
+        "locations": {
+          "FC": {"entry": [136, 450], "name": "Frozen Canyon", "bm": "alternate_bm",
+                 "list_words": ["canyon"]}
+        },
+        "daily_limit": 30,
+        "start_cancel_bm": false,
+        "difficulty": 0,
+        "heal_kills_only": true,
+        "heal_every": 0.5,
+        "heal_ride_every": 0.5,
+        "hard_limit_seconds": 600,
+        "end_wait": 2,
+        "kill_all_search": 1.0,
+        "exit": [
+          ["button", "confirmation", 0.0],
+          ["claim", "obtain_treasure", 0.5],
+          ["claim", "obtain_points", 0.5],
+          ["button", "fire_leave", 0.0]
+        ],
+        "after_exit": [["wait", 3], "disenchant_all"],
+        "targets": {
+          "Vashirr": ["vashir"],
+          "Devil's Left Arm": ["leftarm", "left arm"],
+          "any monster": []
+        },
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     "move_to_A",
+                     "bm_cycle",
+                     ["kill_all", "any monster", "kill_loop"],
+                     "move_to_B",
+                     ["kill_all", "any monster", "kill_loop"],
+                     "move_to_C",
+                     ["kill_all", "any monster", "kill_loop"],
+                     "move_to_D",
+                     "aura_on",
+                     ["kill_all", "any monster", "offensive_boss_loop"],
+                     "move_to_E",
+                     ["kill_all", "any monster", "kill_loop"],
+                     "move_to_F",
+                     ["kill_all", "any monster", "kill_loop"],
+                     "move_to_G",
+                     ["kill_bm", "Vashirr", "kill_loop"],
+                     "move_to_H",
+                     ["kill_all", "any monster", "kill_loop"],
+                     "move_to_I",
+                     ["kill_bm", "Devil's Left Arm", "kill_loop"],
+                     "move_to_J",
+                     ["kill_all", "any monster", "kill_loop"],
+                     "move_to_K",
+                     ["kill_all", "any monster", "kill_loop"],
+                     "move_to_L",
+                     ["kill_all", "any monster", "kill_loop", null]]
       }
     },
     "finish": [
@@ -1321,9 +1375,8 @@
     "main_loop": ["bm_pot", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
     "alternate_loop": ["bm_pot", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
     "burst_alternate_loop": ["bm_pot", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
-    "bm_cast": {"main_bm": 6.0, "alternate_bm": 3.0},
-    "aura_spam_for": 3.0,
-    "aura_spam_gap": 0.1,
+    "warmup_for": 5.0,
+    "warmup_gap": 0.25,
     "main_warmup": ["main_bm", "aura"],
     "alternate_warmup": ["alternate_bm"],
     "burst_alternate_warmup": ["alternate_bm", "aura"],

@@ -117,11 +117,13 @@ BOSSES = _DUNGEON["bosses"]
 ORDER = [int(level) for level in _DUNGEON["order"]]
 ROTATE_COUNT = int(_DUNGEON["rotate_count"])
 ROTATION = list(_DUNGEON["rotation"])
-ROTATION_GROUPS = ([list(group) for group in ROTATION]
-                   if ROTATION and all(isinstance(group, list)
+ROTATION_GROUPS = ([group if isinstance(group, dict)
+                    else {"dungeons": list(group)} for group in ROTATION]
+                   if ROTATION and all(isinstance(group, (list, dict))
                                        for group in ROTATION)
-                   else [ROTATION] if ROTATION else [])
-ROTATION_NAMES = [name for group in ROTATION_GROUPS for name in group]
+                   else [{"dungeons": ROTATION}] if ROTATION else [])
+ROTATION_NAMES = list(dict.fromkeys(name for group in ROTATION_GROUPS
+                                    for name in group["dungeons"]))
 ROTATION_RUNS = int(_DUNGEON.get("rotation_runs", 1))
 DEATH = _DUNGEON.get("death")
 HP_TEXT = re.compile(r"(\d+)/(\d+)")
@@ -1443,6 +1445,8 @@ def main_bm_now(seconds, reason="", verbose=True):
     MAIN_BM_DUE["at"] = None
     started, clicks = time.monotonic(), 0
     while not OVER.is_set():
+        if not clicks:
+            main_bm_on(verbose)
         use_point("main_bm", LOOP_GAP)
         clicks += 1
         if time.monotonic() >= started + seconds:
@@ -1450,8 +1454,6 @@ def main_bm_now(seconds, reason="", verbose=True):
     if verbose:
         print(f"  {reason}main BM {slot_way('main_bm')} {clicks} time(s) in "
               f"{time.monotonic() - started:.1f}s")
-    if clicks:
-        main_bm_on(verbose)
 
 
 def cycle_cast(slot, verbose=True):
@@ -1459,6 +1461,9 @@ def cycle_cast(slot, verbose=True):
     AURA_DUE["at"] = None
     MAIN_BM_DUE["at"] = None
     started, presses = time.monotonic(), 0
+    MAIN_BM_STATE["on"] = False
+    if slot == "main_bm":
+        main_bm_on(verbose)
     while not OVER.is_set() and time.monotonic() < started + cast:
         use_point(slot, 0.0)
         tap(KEYS[TARGET_KEY])
@@ -1466,9 +1471,6 @@ def cycle_cast(slot, verbose=True):
         OVER.wait(LOOP_GAP)
     BM_CYCLE.update(slot=slot, extended=False,
                     ends=started + cast + float(BM_CYCLE_SET["lasts"]))
-    MAIN_BM_STATE["on"] = False
-    if slot == "main_bm":
-        main_bm_on(verbose)
     if verbose:
         print(f"  BM cycle: {slot} {slot_way(slot)} {presses} time(s) over its "
               f"{cast:g}s cast, {TARGET_KEY} after each; it should run out "
@@ -1915,7 +1917,8 @@ def week_lines(state, today):
         label = f"{day:%a %Y-%m-%d}" + ("" if back else " (so far)")
         rows.append(f"{label:<26}{shown[0]:>11}{shown[1]:>17}{shown[2]:>14}")
     return [f"LAST {SUMMARY_DAYS} DAYS -- {first} to {last}, each day reset "
-            f"to reset, like the daily limits", "", head, "-" * len(head),
+            f"to reset, like the daily limits; DP from successful runs only",
+            "", head, "-" * len(head),
             *rows, "=" * len(head),
             f"{f'{SUMMARY_DAYS} DAYS':<26}{sums[0]:>11}"
             f"{f'{sums[1]}{unit}':>17}{sums[2]:>14}"]
@@ -3073,6 +3076,12 @@ def runs_today(dungeon_name):
     return dungeon_counts(_state(), server_day()).get(dungeon_name, 0)
 
 
+def successes_today(dungeon_name):
+    won = _state().get("dungeon_successful") or {}
+    return (int((won.get("counts") or {}).get(dungeon_name, 0))
+            if won.get("day") == server_day() else 0)
+
+
 def open_after(dungeon_name):
     hours, minutes = (int(part) for part in DUNGEONS[dungeon_name].get(
         "start_at", START_AT).split(":"))
@@ -3597,7 +3606,8 @@ def dungeon_report():
              f"{today}, written {report_at()}", "", "Unique Items:",
              *(unique_drops(today) or ["none"]), "",
              *(week + [""] if week else []), *jewel_lines(today), "",
-             f"Today DP gained: {dp_gained(won)}", "", head]
+             f"Today DP gained: {dp_gained(won)}, from successful runs only",
+             "", head]
     for short, name, tries, good, cap in rows + [totals]:
         lines.append(f"{short:<9}{name:<{named + 2}}{tries:>9}{good:>12}"
                      f"{cap:>13}{cap - tries:>6}")
@@ -3908,32 +3918,51 @@ def survive_failed_run(dungeon_name, exc, verbose=True):
     calibration.close_everything(verbose=verbose)
 
 
-def rotate(names, after=None, verbose=True):
+def rotation_done(dungeon_name, successful):
+    return limit_reached(dungeon_name) or (
+        successful is not None
+        and successes_today(dungeon_name) >= int(successful))
+
+
+def rotate(names, after=None, verbose=True, group=None):
+    group = {} if group is None else group
+    batch = group.get("batch", ROTATION_RUNS)
+    successful = group.get("successful")
     while True:
-        turn = [name for name in names if not limit_reached(name)]
+        turn = [name for name in names
+                if not rotation_done(name, successful)]
         if verbose:
             print(f"rotation {' -> '.join(names)}: "
                   + ", ".join(f"{name} {runs_today(name)} of "
                               f"{DUNGEONS[name]['daily_limit']}"
+                              + ("" if successful is None
+                                 else f" ({successes_today(name)} of "
+                                      f"{successful} successful)")
                               for name in names)
-                  + ("" if turn else "; every daily limit is reached"))
+                  + ("" if turn
+                     else "; every daily limit is reached"
+                     if successful is None
+                     else f"; each has {successful} successful or is at "
+                          f"its daily limit"))
         if not turn:
             return after
         for name in turn:
-            for _ in range(int(DUNGEONS[name]["daily_limit"])
-                           if DUNGEONS[name].get("all_in_turn")
-                           else ROTATION_RUNS):
-                if limit_reached(name):
+            runs = (int(DUNGEONS[name]["daily_limit"])
+                    if DUNGEONS[name].get("all_in_turn") else batch)
+            done = 0
+            while runs is None or done < int(runs):
+                if rotation_done(name, successful):
                     break
                 after = run_in_turn(name, only_location(name), after,
                                     verbose)
+                done += 1
 
 
 def run_all(verbose=True):
     after = None
     while True:
         for group in ROTATION_GROUPS:
-            after = rotate(group, after, verbose)
+            after = rotate(group["dungeons"], after, verbose, group)
         for level in ORDER:
             location = level_location(level)
             while level_left(level) > 0:
