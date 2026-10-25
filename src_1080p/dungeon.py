@@ -2307,7 +2307,9 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             ENDED.clear()
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
-            run_sequence(dungeon_name, location, phase, verbose, manual, False)
+            if not dismiss_quest_failed(verbose):
+                run_sequence(dungeon_name, location, phase, verbose, manual,
+                             False)
             run_sequence(dungeon_name, location, phase, verbose,
                          DUNGEONS[dungeon_name].get("after_exit", []), False)
             if verbose:
@@ -2360,7 +2362,9 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             ENDED.clear()
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
-            run_sequence(dungeon_name, location, phase, verbose, manual, False)
+            if not dismiss_quest_failed(verbose):
+                run_sequence(dungeon_name, location, phase, verbose, manual,
+                             False)
             if verbose:
                 print(f"  {dungeon_name} {location}: left the dungeon by hand")
                 run_result(dungeon_name, location,
@@ -4053,8 +4057,22 @@ def survive_failed_run(dungeon_name, exc, verbose=True):
         print(f"  {dungeon_name}: {exc} Not dead and not logged out: the "
               f"default state, then the next run "
               f"({FAILED_RUNS['in_a_row']} of {most} failures in a row)")
+    dismiss_quest_failed(verbose)
     calibration.close_everything(verbose=verbose)
     leave_if_inside(verbose)
+
+
+def dismiss_quest_failed(verbose=True):
+    box = BUTTONS["quest_failed"]
+    up, _seen = wait_for(tuple(box["window"]), box["word"], 0)
+    if not up:
+        return False
+    calibration.snap("quest_failed")
+    if verbose:
+        print("  'Quest Dungeon Failed' is up and blocks every other window: "
+              "its OK first; the game then moves the character out")
+    press_button("quest_failed_ok", float(LEAVE["settle"]), verbose)
+    return True
 
 
 def in_dungeon(image=None):
@@ -4069,6 +4087,7 @@ def in_dungeon(image=None):
 
 
 def leave_if_inside(verbose=True):
+    dismiss_quest_failed(verbose)
     if not in_dungeon():
         return
     calibration.snap("still_in_dungeon")

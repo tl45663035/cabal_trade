@@ -36,7 +36,9 @@ check("Fort. Ruina after leaving reads as out of the dungeon", not dungeon.in_du
 def fail_run(screens):
     shown, clicks, pressed = list(screens), [], []
     saved = (dungeon.calibration.grab, dungeon.click, dungeon.press_button, dungeon.dead,
-             dungeon.calibration.close_everything, dungeon.calibration.snap, dungeon.FAILED_RUNS["in_a_row"])
+             dungeon.calibration.close_everything, dungeon.calibration.snap, dungeon.FAILED_RUNS["in_a_row"],
+             dungeon.dismiss_quest_failed)
+    dungeon.dismiss_quest_failed = lambda *a, **k: False
     dungeon.calibration.grab = lambda *a, **k: shown.pop(0) if len(shown) > 1 else shown[0]
     dungeon.click = lambda x, y, *a, **k: clicks.append((x, y))
     dungeon.press_button = lambda name, *a, **k: pressed.append(name)
@@ -52,7 +54,8 @@ def fail_run(screens):
         error = str(exc)
     finally:
         (dungeon.calibration.grab, dungeon.click, dungeon.press_button, dungeon.dead,
-         dungeon.calibration.close_everything, dungeon.calibration.snap, dungeon.FAILED_RUNS["in_a_row"]) = saved
+         dungeon.calibration.close_everything, dungeon.calibration.snap, dungeon.FAILED_RUNS["in_a_row"],
+         dungeon.dismiss_quest_failed) = saved
     return clicks, pressed, error
 
 
@@ -66,6 +69,25 @@ check("a failed run still inside TM clicks the dungeon's X, then Exit Dungeon, b
 clicks, pressed, error = fail_run([inside])
 check("if it is still inside after Exit Dungeon, the run stops, so no entry is bought from inside",
       error is not None and "no entry is bought" in error, str(error))
+
+failed_box = Image.open(HERE / "fixtures" / "quest_dungeon_failed.jpg").convert("RGB")
+pressed = []
+saved = (dungeon.calibration.grab, dungeon.press_button, dungeon.calibration.snap)
+dungeon.calibration.grab = lambda *a, **k: failed_box
+dungeon.press_button = lambda name, *a, **k: pressed.append(name)
+dungeon.calibration.snap = lambda *a, **k: None
+try:
+    with contextlib.redirect_stdout(io.StringIO()):
+        up = dungeon.dismiss_quest_failed()
+finally:
+    dungeon.calibration.grab, dungeon.press_button, dungeon.calibration.snap = saved
+check("'Quest Dungeon Failed' (EOP #11, 5 min up) is read and its OK pressed before anything else",
+      up and pressed == ["quest_failed_ok"], f"{up} {pressed}")
+dungeon.calibration.grab = lambda *a, **k: field
+try:
+    check("with no such box up, nothing is pressed", dungeon.dismiss_quest_failed(False) is False)
+finally:
+    dungeon.calibration.grab = saved[0]
 
 check("no input reached the game", not TRIPPED, str(TRIPPED))
 print(f"{fails} failure(s)")
