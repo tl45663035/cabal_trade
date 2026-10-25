@@ -997,25 +997,39 @@ def greyed(image=None):
 def on_bike_now():
     click(*TAB_TWO, SELECT_SETTLE)
     if not greyed():
-        return False
+        return None
     time.sleep(float(BIKE["recheck"]))
     image = calibration.grab()
-    if not greyed(image):
-        return False
+    value = bike_slot(image)
+    if value >= float(BIKE["grey_below"]):
+        return None
     calibration.snap("on_bike", image)
-    return True
+    return value
+
+
+def lit_again(seconds):
+    deadline = time.monotonic() + seconds
+    while True:
+        value = bike_slot()
+        if value >= float(BIKE["grey_below"]):
+            return value
+        if time.monotonic() >= deadline:
+            return None
+        time.sleep(WAIT_SLICE)
 
 
 def off_bike(when, verbose=True):
-    if BIKE is None or OVER.is_set():
+    if BIKE is None:
         return False
     key, settle = BIKE["key"], float(BIKE["settle"])
-    if not on_bike_now():
+    greyed_at = on_bike_now()
+    if greyed_at is None:
         return False
     if verbose:
         print(f"  {when}: hotbar slot 1 is greyed out (reads "
-              f"{bike_slot():.0f}, under {BIKE['grey_below']}), so on the "
-              f"bike: {SLOT_MODIFIER}+{key} to get off, then {settle:g}s")
+              f"{greyed_at:.0f}, under {BIKE['grey_below']}), so on the "
+              f"bike: {SLOT_MODIFIER}+{key} to get off, then up to "
+              f"{BIKE['dismount_wait']}s for it to light up")
     with KEY_LOCK:
         hold_modifier(True)
         try:
@@ -1023,12 +1037,13 @@ def off_bike(when, verbose=True):
         finally:
             hold_modifier(False)
     time.sleep(settle)
-    if on_bike_now():
+    lit = lit_again(float(BIKE["dismount_wait"]))
+    if lit is None:
         raise RuntimeError(f"still on the bike {when}, after "
                            f"{SLOT_MODIFIER}+{key}; stopped so no run is "
                            f"spent unable to attack.")
     if verbose:
-        print(f"  off the bike now: hotbar slot 1 reads {bike_slot():.0f}")
+        print(f"  off the bike now: hotbar slot 1 reads {lit:.0f}")
     return True
 
 
@@ -1305,6 +1320,8 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                                 f"{name!r}", verbose):
                         quiet = time.monotonic()
                         continue
+                    if OVER.is_set() or ENDED.is_set():
+                        break
                     raise RuntimeError(
                         f"{name!r}: nothing targeted in {NO_TARGET_STOP:g}s "
                         f"and not on the bike; the run is given up here, not "
@@ -1312,11 +1329,13 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                 if not focus_game():
                     raise RuntimeError(f"the game is not in the foreground; "
                                        f"the {label} stopped.")
+                casting = time.monotonic()
                 aura_when_due(verbose)
                 main_bm_when_due(verbose)
                 main_bm_recast_when_due(verbose)
                 bm_cycle_when_due(verbose)
                 aura_in_window(verbose)
+                quiet += time.monotonic() - casting
                 tap(KEYS[TARGET_KEY])
                 for key in SEARCH_ATTACK["keys"]:
                     tap(KEYS[cycle_key(key)])
@@ -2253,10 +2272,6 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 print(f"{dungeon_name}: {ran} of {limit} entered on this "
                       f"dungeon day; nothing done until the next reset")
             return False
-    if steps is None:
-        if not focus_game():
-            raise RuntimeError("could not bring the game to the foreground.")
-        off_bike(f"before {dungeon_name}", verbose)
     stop, failed, killing = threading.Event(), {}, threading.Event()
     phase = {"killing": killing,
              "healer": threading.Thread(
@@ -2281,6 +2296,10 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                     keep_aura=False)
     SEARCH_ATTACK["keys"] = list(setting(dungeon_name, "search_attack"))
     HEAL["every"] = float(setting(dungeon_name, "heal_every"))
+    if steps is None:
+        if not focus_game():
+            raise RuntimeError("could not bring the game to the foreground.")
+        off_bike(f"before {dungeon_name}", verbose)
     first = calibration.frames_taken() + 1
     RUN_START["frame"] = first
     crashed = False
@@ -2339,9 +2358,11 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                    f"{hard_limit(dungeon_name):g}s and has no "
                                    f"manual exit.")
             ENDED.clear()
+            box_up = dismiss_quest_failed(
+                verbose, float(BUTTONS["quest_failed"]["timeout"]))
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
-            if not dismiss_quest_failed(verbose):
+            if not box_up:
                 run_sequence(dungeon_name, location, phase, verbose, manual,
                              False)
             run_sequence(dungeon_name, location, phase, verbose,
@@ -2396,9 +2417,11 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 print(f"  no dungeon end screen {END_TIMEOUT:g}s after the last "
                       f"step; leaving by hand: {manual}")
             ENDED.clear()
+            box_up = dismiss_quest_failed(
+                verbose, float(BUTTONS["quest_failed"]["timeout"]))
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
-            if not dismiss_quest_failed(verbose):
+            if not box_up:
                 run_sequence(dungeon_name, location, phase, verbose, manual,
                              False)
             if verbose:
@@ -4100,7 +4123,7 @@ def survive_failed_run(dungeon_name, exc, verbose=True):
         if verbose:
             print(f"  {dungeon_name}: {exc}")
         wait_for_respawn(verbose)
-        FAILED_RUNS["in_a_row"] = 0
+        count_failure(dungeon_name, f"died: {exc}", verbose)
         return
     most = count_failure(dungeon_name, exc, False)
     if verbose:
@@ -4112,16 +4135,22 @@ def survive_failed_run(dungeon_name, exc, verbose=True):
     leave_if_inside(verbose)
 
 
-def dismiss_quest_failed(verbose=True):
+def dismiss_quest_failed(verbose=True, wait=0.0):
     box = BUTTONS["quest_failed"]
-    up, _seen = wait_for(tuple(box["window"]), box["word"], 0)
+    up, _seen = wait_for(tuple(box["window"]), box["word"], wait)
     if not up:
         return False
     calibration.snap("quest_failed")
     if verbose:
         print("  'Quest Dungeon Failed' is up and blocks every other window: "
               "its OK first; the game then moves the character out")
-    press_button("quest_failed_ok", float(LEAVE["settle"]), verbose)
+    try:
+        press_button("quest_failed_ok", float(LEAVE["settle"]), verbose)
+    except RuntimeError:
+        point = centre(tuple(BUTTONS["quest_failed_ok"]["window"]))
+        if verbose:
+            print(f"  its OK did not read; clicked where it sits, {point}")
+        click(*point, float(LEAVE["settle"]))
     return True
 
 

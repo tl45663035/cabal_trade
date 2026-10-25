@@ -32,7 +32,8 @@ def events(name):
 
 
 fixture = lambda name: Image.open(HERE / "fixtures" / name).convert("RGB")
-on_frames = ["on_bike.jpg", "bike_message.png", "on_bike_field_lit.png", "in_dungeon_exit.png"]
+on_frames = ["on_bike.jpg", "bike_message.png", "on_bike_field_lit.png", "in_dungeon_exit.png",
+             "on_bike_after_leave.png"]
 off_frames = ["off_bike.jpg", "field_after_exit.png", "buffs_cooling_off_bike.png", "quest_dungeon_failed.jpg"]
 for name in on_frames:
     check(f"on the bike, hotbar slot 1 reads greyed out ({name})", dungeon.greyed(fixture(name)),
@@ -87,6 +88,16 @@ check("a bike that will not come off stops the run, with Alt+1 pressed only once
 source = (SRC / "dungeon.py").read_text(encoding="utf-8")
 check("every run starts with the bike check, and the whole-run replay is followed by one",
       'off_bike(f"before {dungeon_name}"' in source and 'off_bike(f"after the {rest[0]} replay"' in source)
+check("the disenchant does not check the bike (the extraction works on it)",
+      'off_bike("before the disenchant' not in source)
+dungeon.OVER.set()
+try:
+    got_off, pressed, error = get_off([on, on, on, off])
+finally:
+    dungeon.OVER.clear()
+check("after the dungeon is over (EOP #15 got on the bike leaving it) the next run's check still runs and gets off",
+      got_off is True and pressed == [("Alt", one)], f"{pressed} {error}")
+
 check("no input reached the game", not TRIPPED, str(TRIPPED))
 print(f"{fails} failure(s)")
 sys.exit(1 if fails else 0)
