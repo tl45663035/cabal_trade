@@ -742,8 +742,8 @@
       "extraction_receive": {"window": [905, 736, 1035, 756], "word": "Receive All"},
       "extraction_pending_close": {"window": [1052, 736, 1184, 756], "word": "Close"},
       "leave_dungeon": {"window": [880, 600, 1040, 630], "word": "Exit"},
-      "quest_failed": {"window": [760, 380, 1000, 402], "word": "Failed", "timeout": 0.0},
-      "quest_failed_ok": {"window": [900, 750, 1015, 780], "word": "OK", "timeout": 0.0}
+      "quest_failed": {"window": [760, 380, 1000, 402], "word": "Failed", "timeout": 3.0},
+      "quest_failed_ok": {"window": [900, 750, 1015, 780], "word": "OK", "timeout": 2.0}
     },
     "dungeons": {
       "chaos_arena": {
