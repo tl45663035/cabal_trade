@@ -63,7 +63,7 @@ def play(burst, turns, route_fails=False):
     boss_checks = []
     fake_time = types.SimpleNamespace(monotonic=lambda: clock[0], sleep=lambda s: None)
     with patched((dungeon, "BURST", burst),
-                 (dungeon, "BURST_STATE", {"until": None}),
+                 (dungeon, "BURST_STATE", {"until": None, "on_channel": False}),
                  (dungeon, "time", fake_time),
                  (dungeon, "random", types.SimpleNamespace(uniform=uniform)),
                  (dungeon, "wait_timer", advance),
@@ -154,6 +154,30 @@ events, boss_checks, draws, said = play(None, 8)
 check("with no burst setting the runs go back to back with no rest",
       [m for k, m in events if k == "run"] == [0, 5, 10, 15, 20, 25, 30, 35]
       and not [e for e in events if e[0] == "route"], str(events))
+
+relogs = []
+with patched((dungeon, "NO_BREAKS", True),
+             (dungeon, "relog_for_burst", lambda verbose=True: relogs.append(True))):
+    events, boss_checks, draws, said = play(dict(BURST, regions=[{"name": "X"}]), 12)
+runs = [minute for kind, minute in events if kind == "run"]
+check("with --no-breaks the runs go back to back, never resting at the world boss stage",
+      runs == [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+      and not [e for e in events if e[0] == "route"], str(events))
+check("with --no-breaks each new burst still relogs into a night channel",
+      len(relogs) == 3 and ("block", 25) in events, f"{len(relogs)} {events}")
+
+import recovery
+relogged = []
+with patched((dungeon, "NO_BREAKS", True), (dungeon, "CHANNEL", 11),
+             (recovery, "relog", lambda verbose=True, channel=None: relogged.append(channel))):
+    events, boss_checks, draws, said = play(dict(BURST, regions=[{"name": "X", "channels": [21]}]), 12)
+check("with --channel 11 it relogs into Channel 11 once and stays there for every later burst",
+      relogged == [11] and said.count("staying on Channel 11") == 2, f"{relogged} {said.count('staying on Channel 11')}")
+check("and still never rests", not [e for e in events if e[0] == "route"], str(events))
+
+check("Cang never picks Channel 1 for a night relog; it is kept for the world boss",
+      all(1 not in region["channels"] for region in dungeon.BURST["regions"]),
+      str(dungeon.BURST["regions"]))
 
 check("Cang runs in bursts of 20-30 minutes with 20-30 minute rests",
       dungeon.BURST is not None and dungeon.BURST["run_minutes"] == [20, 30]
