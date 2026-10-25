@@ -93,9 +93,11 @@
                 {"name": "EU", "timezone": "Europe/Berlin", "channels": [2, 3, 4, 5, 6, 7, 8, 9]}
               ]},
     "walk_frames": {"eop/move_to_E": 0.2},
+    "no_target_stop": 30,
     "two_target_slots": ["alternate_bm"],
     "cycle_keys": {"main_bm": {"5": "3", "6": "4"}},
-    "bike": {"key": "1", "window": [810, 865, 1215, 912], "dim_below": 75,
+    "bike": {"key": "1", "probe_key": "5", "message_window": [600, 218, 1320, 246],
+             "message_word": "bike", "message_wait": 1.5, "message_clear": 4.0,
              "settle": 1.0},
     "fn_nobm_kill_loop": ["5", "6", "8", "9"],
     "fn_nobm_defensive_loop": ["5", "6", "8", "9", "defensive_buffs"],
