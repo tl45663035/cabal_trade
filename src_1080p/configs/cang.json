@@ -92,6 +92,7 @@
                 {"name": "NA", "timezone": "America/Los_Angeles", "channels": [11, 12]},
                 {"name": "EU", "timezone": "Europe/Berlin", "channels": [2, 3, 4, 5, 6, 7, 8, 9]}
               ]},
+    "walk_frames": {"eop/move_to_E": 0.2},
     "two_target_slots": ["alternate_bm"],
     "cycle_keys": {"main_bm": {"5": "3", "6": "4"}},
     "bike": {"key": "1", "window": [810, 865, 1215, 912], "dim_below": 75,

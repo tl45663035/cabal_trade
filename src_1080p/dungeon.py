@@ -1044,6 +1044,8 @@ def play(dungeon_name, sequence, verbose=True):
         begin = [min(max(begin[0], 0), width - 1),
                  min(max(begin[1], 0), height - 1)]
         ctypes.windll.user32.SetCursorPos(*begin)
+    every = WALK_FRAMES.get(f"{dungeon_name}/{sequence}",
+                            WALK_FRAMES.get(sequence))
     heal_ride = DUNGEONS.get(dungeon_name, {}).get("heal_ride_every")
     extras = [f"heal every {heal_ride:g}s"] if heal_ride else []
     if verbose:
@@ -1051,16 +1053,16 @@ def play(dungeon_name, sequence, verbose=True):
               f"{events[-1]['t']:.1f}s, the cursor first put at {begin}"
               + (" (where the recording began)" if head.get("cursor")
                  else " (the recording's first mouse point)")
-              + (f"; a frame every {WALK_FRAMES[sequence]:g}s while it plays"
-                 if sequence in WALK_FRAMES else "")
+              + (f"; a frame every {every:g}s while it plays"
+                 if every else "")
               + (f"; only {' and '.join(extras)} go in between until it ends"
                  if extras else "; nothing else is pressed until it ends"))
     keys, buttons, played = {}, {}, 0
     holding = False
     shooting = threading.Event()
-    if sequence in WALK_FRAMES:
+    if every:
         threading.Thread(target=snap_every,
-                         args=(sequence, WALK_FRAMES[sequence], shooting),
+                         args=(sequence, every, shooting),
                          daemon=True).start()
     record_action.winmm.timeBeginPeriod(record_action.TIMER_MS)
     with KEY_LOCK:
