@@ -94,7 +94,6 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
-          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "after_exit": [["wait", 2], "after_exit"]
