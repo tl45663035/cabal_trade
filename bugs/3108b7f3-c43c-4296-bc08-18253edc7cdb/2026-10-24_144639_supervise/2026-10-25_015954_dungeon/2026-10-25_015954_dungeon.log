@@ -1,0 +1,94 @@
+2026-10-25_015954  dungeon.py --config cang --no-breaks --channel 11
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-25_015954_dungeon.log
+running on commit c2c388d28
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-25_015954_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+rotation ic1 -> ic2 -> eop: ic1 16 of 30, ic2 15 of 30, eop 11 of 30
+  dungeon report: pushed
+burst: --channel 11, so Channel 11 for the whole launch; relogging there
+  Escape for the menu (attempt 1)
+  Escape for the menu (attempt 2)
+  Escape for the menu (attempt 3)
+  the relog into Channel 11 failed (Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.); tried again at the next burst
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Traceback (most recent call last):
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 3880, in relog_for_burst
+    recovery.relog(verbose=verbose, channel=CHANNEL)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 617, in relog
+    logout(verbose=verbose)
+    ~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 585, in logout
+    raise Refused(
+        f"no {MENU_WORD!r} in the menu after {MENU_TRIES} Escape(s). "
+        f"Nothing clicked.")
+recovery.Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\PIL\ImageFile.py", line 554, in _save
+    fh = fp.fileno()
+         ^^^^^^^^^
+AttributeError: '_idat' object has no attribute 'fileno'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 4282, in <module>
+    command(args)
+    ~~~~~~~^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 4174, in command
+    run_all()
+    ~~~~~~~^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 4152, in run_all
+    after = rotate(group["dungeons"], after, verbose, group)
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 4143, in rotate
+    after = run_in_turn(name, only_location(name), after,
+                        verbose)
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 3979, in run_in_turn
+    relog_for_burst(verbose)
+    ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 3885, in relog_for_burst
+    recovery.recover(verbose=verbose, channel=CHANNEL)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 407, in recover
+    notice = disconnected()
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 305, in disconnected
+    return _notice(DISCONNECT_WORDS, image, words)
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 295, in _notice
+    words = _within(_words(image) if words is None else words,
+                    ~~~~~~^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py", line 123, in _words
+    return calibration.ocr(image, _screen())
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py", line 1332, in ocr
+    for text, conf, point, _right in ocr_spans(image, box, scale,
+                                     ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+                                               min_conf)]
+                                               ^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py", line 1307, in ocr_spans
+    prep_for_text(image, box, scale).save(buf, "PNG")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\PIL\Image.py", line 2605, in save
+    save_handler(self, fp, filename)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\PIL\PngImagePlugin.py", line 1488, in _save
+    ImageFile._save(
+    ~~~~~~~~~~~~~~~^
+        single_im,
+        ^^^^^^^^^^
+        cast(IO[bytes], _idat(fp, chunk)),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        [ImageFile._Tile("zip", (0, 0) + single_im.size, 0, rawmode)],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\PIL\ImageFile.py", line 558, in _save
+    _encode_tile(im, fp, tile, bufsize, None, exc)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\PIL\ImageFile.py", line 584, in _encode_tile
+    errcode, data = encoder.encode(bufsize)[1:]
+                    ~~~~~~~~~~~~~~^^^^^^^^^
+KeyboardInterrupt

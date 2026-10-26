@@ -1,0 +1,111 @@
+2026-10-25_123312  src_1080p/dungeon.py ice --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-25_123312_dungeon.log
+running on commit f903834ca
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-25_123312_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  9 ice run(s) so far today; the next 1x Gemstone of Transcendence x100 is bought in 3 run(s)
+  ice: the start of a block of runs
+ice Ice [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+ice Ice [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+ice Ice [opening, step 1 of 16]: get_entry
+  Inventory shut: slot grid 0.06, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [136, 401]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 1) at [1475, 236]; noted in dungeon_next.json
+ice Ice [opening, step 2 of 16]: open_dungeon_key
+  Inventory shut: slot grid 0.06, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 1) at [1475, 236]
+  Yes at [962, 614]
+  with the cursor on tab II [727, 900] the dungeon list reads ['CatacombFrost(Normal)(10/10)[New Entry]', 'Catacomb Frost(Premium)(15/15)[New Entry]', '(Elite)Catacomb Frost (Premium)(5/5)[New Entry]', 'Catacomb Frost(Awakened)(21/30)[New Entry]', 'Yaanaenenn', '', '']
+  Ice 'Catacomb Frost (Awakened)' at [672, 350]
+  difficulty 5 on the slider at [972, 476]
+  Enter at [1111, 887]
+  entered Ice; the entry note is cleared
+ice Ice [opening, step 3 of 16]: start_dungeon
+  Challenge at [818, 760]
+  hotbar tab II at [727, 900]
+  timer 1s started
+  timer 1s up
+  the dungeon has 180s from the Challenge click
+  ice: 10 of 30 entered on this dungeon day
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each
+ice Ice [opening, step 4 of 16]: kill_phase
+  kill phase: heal (0) every 1s while a kill is on (not in the recordings, not in the opening), and the end screen read all the time, until the end screen has been up 2s
+  the chat is read before each move_to_ ride and while the confirmation banner is up, for unique item drops in ice #10
+ice Ice [opening, step 5 of 16]: bm_aura
+  main_bm right-clicked 0.5s apart, over and over for 3s from the first click; aura 85s after the first, right-clicked over and over for 10s
+  6 round(s) of main_bm in 3.0s
+ice Ice [move_to_A, step 6 of 16]: move_to_A
+  ice/move_to_A.jsonl: 265 events over 1.5s, the cursor first put at [820, 767] (where the recording began); nothing else is pressed until it ends
+  played 265 of 265 events; nothing is left held down
+ice #10: room A
+ice Ice [move_to_A, step 7 of 16]: kill_bm Awakened Monarch Akenaph kill_loop
+  kill_bm 'Awakened Monarch Akenaph': the HP bar is read all the time; ` until it shows 'awakened' or 'monarch' or 'akenaph', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'wakened MonarchAkenaph55000o/55000': Awakened Monarch Akenaph is targeted (monarch, akenaph), so no more auto target
+  1 ` press(es) before 'Awakened Monarch Akenaph' was targeted
+  the HP bar reads '': Awakened Monarch Akenaph is gone, so it is dead
+  kill_bm 'Awakened Monarch Akenaph': dead after 7 round(s) in 4.4s
+ice Ice [move_to_B, step 8 of 16]: move_to_B
+  ice/move_to_B.jsonl: 3578 events over 8.2s, the cursor first put at [944, 549] (where the recording began); nothing else is pressed until it ends
+  played 3578 of 3578 events; nothing is left held down
+ice #10: room B
+ice Ice [move_to_B, step 9 of 16]: kill_bm Frozen Bone Stack kill_loop
+  kill_bm 'Frozen Bone Stack': the HP bar is read all the time; ` until it shows 'frozen' or 'bone' or 'stack', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'ErozenBoneStack99016/99016': Frozen Bone Stack is targeted (bone, stack), so no more auto target
+  1 ` press(es) before 'Frozen Bone Stack' was targeted
+  the HP bar reads '': Frozen Bone Stack is gone, so it is dead
+  kill_bm 'Frozen Bone Stack': dead after 5 round(s) in 3.0s
+ice Ice [move_to_C, step 10 of 16]: move_to_C
+  ice/move_to_C.jsonl: 1030 events over 3.7s, the cursor first put at [1045, 317] (where the recording began); nothing else is pressed until it ends
+  played 1030 of 1030 events; nothing is left held down
+ice #10: room C
+ice Ice [move_to_C, step 11 of 16]: kill_bm Awakened Ice Guardian kill_loop
+  kill_bm 'Awakened Ice Guardian': the HP bar is read all the time; ` until it shows 'awakened' or 'ice' or 'guardian', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'AwakenedWraith396066/396066': Awakened Ice Guardian is targeted (awakened), so no more auto target
+  1 ` press(es) before 'Awakened Ice Guardian' was targeted
+  the HP bar reads 'Awakenedraith0/396066': Awakened Ice Guardian is gone, so it is dead
+  kill_bm 'Awakened Ice Guardian': dead after 5 round(s) in 2.8s
+ice Ice [move_to_C, step 12 of 16]: kill_bm Treasure Chest kill_loop
+  kill_bm 'Treasure Chest': the HP bar is read all the time; ` until it shows 'treasure' or 'chest', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'TreasureChest2zl2z': Treasure Chest is targeted (treasure, chest), so no more auto target  99 ` press(es) before 'Treasure Chest' was targeted
+
+  the HP bar reads '': Treasure Chest is gone, so it is dead
+  kill_bm 'Treasure Chest': dead after 3 round(s) in 26.6s
+ice Ice [move_to_D, step 13 of 16]: move_to_D
+  ice/move_to_D.jsonl: 6322 events over 11.5s, the cursor first put at [1327, 505] (where the recording began); nothing else is pressed until it ends
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4361[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4330[0m, in [35mcommand[0m
+    if [31mrun_dungeon[0m[1;31m(args[0], location)[0m is False:
+       [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2310[0m, in [35mrun_dungeon[0m
+    [31mrun_sequence[0m[1;31m(dungeon_name, location, phase, verbose,[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31msteps if until is None[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31melse before_step(dungeon_name, until), timer=timer)[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2864[0m, in [35mrun_sequence[0m
+    [31mplay[0m[1;31m(dungeon_name, name, verbose)[0m
+    [31m~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m1104[0m, in [35mplay[0m
+    [31mrecord_action.wait_until[0m[1;31m(zero + event["t"], ENDED)[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\tools\record_action.py"[0m, line [35m551[0m, in [35mwait_until[0m
+    [31mtime.sleep[0m[1;31m(0)[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^[0m
+[1;35mKeyboardInterrupt[0m

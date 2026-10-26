@@ -1,0 +1,1038 @@
+2026-10-24_150217  dungeon.py --config cang --no-breaks --channel 11
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-24_150217_dungeon.log
+running on commit 74c2a54fe; uncommitted: src_1080p/config.json, src_1080p/configs/cang.json, src_1080p/dungeon.py, src_1080p/dungeon/cang/ic2/cang_ic2_run.jsonl, src_1080p/recovery.py, src_1080p/tests/burst_test.py
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-24_150217_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+rotation ic1 -> ic2 -> eop: ic1 30 of 30, ic2 30 of 30, eop 30 of 30; every daily limit is reached
+rotation fire -> ice -> train -> valley: fire 30 of 30, ice 30 of 30, train 30 of 30, valley 30 of 30; every daily limit is reached
+rotation tm -> fn: tm 23 of 30, fn 3 of 30
+  dungeon report: pushed
+burst: --channel 11, so Channel 11 for the whole launch; relogging there
+  Escape for the menu (attempt 1)
+  'select character' at [926, 550]
+  'yes' at [984, 638]
+  the character list is up
+  Inventory shut; pressing I (attempt 1)
+  Inventory shut; pressing I (attempt 2)
+  no login screen; the character list is already up
+  back to the server list for the home channel, 'Channel 11'
+  'previous screen' at [1656, 992]
+  'Channel 11' at [1558, 608]; entering
+  'SoloCabalLevelin' at [1626, 470]; entering
+  Enter to start
+  no sub password asked for within 12s; going straight in
+  back in the world as SoloCabalLevelin, the balance reads
+burst: 28.2 min of dungeons from now
+  23 tm run(s) so far today, each summoning 1x with =; the next 1x Orb of Summoning x10 is bought in 7 run(s)
+  tm: powerful pot A+8 for the first time in this launch; the next one 3600s from now; hotbar tab II at [727, 900] first, where the pot is
+  tm: the start of a block of runs
+tm TM [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+tm TM [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+tm TM [opening, step 1 of 47]: get_entry
+  inventory already open
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 1) at [1475, 236]; noted in dungeon_next.json
+tm TM [opening, step 2 of 47]: open_dungeon_key
+  Inventory shut: slot grid 0.06, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 1) at [1475, 236]
+  Yes at [962, 614]
+  with the cursor on tab II [727, 900] the dungeon list reads ['SteamerCrazy(Normal)(10/10)[New Entryn', 'Steamer Crazy(Premium)(15/15)[New Entryn', '(Elite)steamer Crazy(Premium)(5/5)[new Entry]', 'Steamer Crazy (Awakened)(0/30)[New Entry', 'TearminusMachina7/aon[NewEnty', '', '']
+  TM 'Terminus Machina' at [672, 375]
+  difficulty 0 on the slider at [763, 476]
+  Enter at [1111, 887]
+  entered TM; the entry note is cleared
+tm TM [opening, step 3 of 47]: start_dungeon
+  Challenge at [818, 760]
+  hotbar tab II at [727, 900]
+  timer 0s started
+  timer 0s up
+  the dungeon has 900s from the Challenge click
+  tm: 24 of 30 entered on this dungeon day
+tm TM [opening, step 4 of 47]: kill_phase
+  kill phase: heal (0) every 0.5s while a kill is on (every 0.5s while a recording plays, not in the opening), and the end screen read all the time, until the end screen has been up 2s
+  the chat is read before each move_to_ ride and while the confirmation banner is up, for unique item drops in tm #24
+tm TM [opening, step 5 of 47]: tap =
+  tap =
+tm TM [move_to_A, step 6 of 47]: move_to_A
+  tm/move_to_A.jsonl: 963 events over 4.4s, the cursor first put at [842, 756] (where the recording began); only heal every 0.5s go in between until it ends
+  played 963 of 963 events; nothing is left held down
+tm #24: room A
+tm TM [move_to_A, step 7 of 47]: bm_cycle
+  BM cycle: alternate_bm pressed with Alt+5 6 time(s) over its 3s cast, ` after each; it should run out 99s after the cast; the target is read from the two target bars
+tm TM [move_to_A, step 8 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MechLion482815/482815 | MechLion482815/482815': any monster is targeted (482815/482815, 482815/482815), so no more auto target  0 ` press(es) before 'any monster' was targeted
+
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 9 round(s) in 11.1s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'VizenofSteel2443715/2443715': any monster is targeted (2443715/2443715), so no more auto target
+  3 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 14 round(s) in 19.8s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  11 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 2 killed, then none more targeted within 3s
+tm TM [move_to_B, step 9 of 47]: move_to_B
+  tm/move_to_B.jsonl: 701 events over 3.0s, the cursor first put at [1063, 527] (where the recording began); only heal every 0.5s go in between until it ends
+  played 701 of 701 events; nothing is left held down
+tm #24: room B
+tm TM [move_to_B, step 10 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'RelicChest10/1o': any monster is targeted (10/1), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 2 round(s) in 2.3s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  24 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 1 killed, then none more targeted within 3s
+tm TM [move_to_C, step 11 of 47]: move_to_C
+  tm/move_to_C.jsonl: 1436 events over 3.1s, the cursor first put at [1248, 747] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1436 of 1436 events; nothing is left held down
+tm #24: room C
+tm TM [move_to_C, step 12 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads '20612/45804': any monster is targeted (20612/45804), so no more auto target
+  2 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 2.2s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  9 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 1 killed, then none more targeted within 1s
+tm TM [move_to_D, step 13 of 47]: move_to_D
+  tm/move_to_D.jsonl: 4186 events over 12.4s, the cursor first put at [1083, 376] (where the recording began); only heal every 0.5s go in between until it ends
+  played 4186 of 4186 events; nothing is left held down
+tm #24: room D
+tm TM [move_to_D, step 14 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MechLihorna415673/470329': any monster is targeted (415673/470329), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 3 round(s) in 4.7s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  2 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 1 killed, then none more targeted within 1s
+tm TM [move_to_E, step 15 of 47]: move_to_E
+  tm/move_to_E.jsonl: 2333 events over 11.1s, the cursor first put at [1174, 706] (where the recording began); only heal every 0.5s go in between until it ends
+  played 2333 of 2333 events; nothing is left held down
+tm #24: room E
+tm TM [move_to_E, step 16 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  1 ` press(es); 'any monster' was never targeted
+  the HP bar reads '20612/45804': any monster is targeted (20612/45804), so no more auto target
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 0 killed, then none more targeted within 1s
+tm TM [move_to_F, step 17 of 47]: move_to_F
+  move_to_F runs 8.7s and the aura for alternate_bm is due in 5.4s, so the aura goes before it
+  BM cycle: aura pressed with Alt+7 17 time(s) with 10.4s of alternate_bm left, ` after each; it should now run out in 51.7s
+  tm/move_to_F.jsonl: 2124 events over 8.7s, the cursor first put at [813, 155] (where the recording began); only heal every 0.5s go in between until it ends
+  played 2124 of 2124 events; nothing is left held down
+tm #24: room F
+tm TM [move_to_F, step 18 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'ARM-06Espada497929/497929': any monster is targeted (497929/497929), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 3 round(s) in 3.9s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'ARM-06Espada497929/497929': any monster is targeted (497929/497929), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'ARM-06Espada0/497929': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 9 round(s) in 10.3s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  24 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 2 killed, then none more targeted within 3s
+tm TM [move_to_G, step 19 of 47]: move_to_G
+  tm/move_to_G.jsonl: 1098 events over 2.2s, the cursor first put at [1085, 449] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1098 of 1098 events; nothing is left held down
+tm #24: room G
+tm TM [move_to_G, step 20 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  1 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 0 killed, then none more targeted within 1s
+tm TM [move_to_H, step 21 of 47]: move_to_H
+  tm/move_to_H.jsonl: 2410 events over 11.8s, the cursor first put at [1149, 263] (where the recording began); only heal every 0.5s go in between until it ends
+  played 2410 of 2410 events; nothing is left held down
+tm #24: room H
+tm TM [move_to_H, step 22 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'ARM-06Espada497929/497929': any monster is targeted (497929/497929), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  BM cycle: alternate_bm is due to run out, so it is cancelled, then main_bm
+  BM icon right-clicked 5 times at [254, 148] in 2.1s
+  BM cycle: main_bm pressed with Alt+4 11 time(s) over its 6s cast, ` after each; it should run out 99s after the cast; 5 is pressed as 3; 6 is pressed as 4
+  the HP bar reads 'ARM-06Espada0/497929': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 7 round(s) in 17.6s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'PoerSupply142590/142590': any monster is targeted (142590/142590), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 1.8s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  9 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 2 killed, then none more targeted within 3s
+tm TM [move_to_I, step 23 of 47]: move_to_I
+  tm/move_to_I.jsonl: 485 events over 1.7s, the cursor first put at [1221, 674] (where the recording began); only heal every 0.5s go in between until it ends
+  played 485 of 485 events; nothing is left held down
+tm #24: room I
+tm TM [move_to_I, step 24 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  9 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 0 killed, then none more targeted within 1s
+tm TM [move_to_J, step 25 of 47]: move_to_J
+  tm/move_to_J.jsonl: 916 events over 2.8s, the cursor first put at [1149, 576] (where the recording began); only heal every 0.5s go in between until it ends
+  played 916 of 916 events; nothing is left held down
+tm #24: room J
+tm TM [move_to_J, step 26 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'ARM-06Es0ada497929/497929': any monster is targeted (497929/497929), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'ARM-06Espada0/497929': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 2 round(s) in 3.1s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  0 ` press(es) before 'any monster' was targeted  the HP bar reads 'ARM-06Es0ada92252/497929': any monster is targeted (92252/497929), so no more auto target
+
+  the HP bar reads 'ARM-06Espada0/497929': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 0.8s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  2 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 2 killed, then none more targeted within 1s
+tm TM [move_to_K, step 27 of 47]: move_to_K
+  tm/move_to_K.jsonl: 1258 events over 4.9s, the cursor first put at [1002, 423] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1258 of 1258 events; nothing is left held down
+tm #24: room K
+tm TM [move_to_K, step 28 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'ARM-06Es0ada497929/497929': any monster is targeted (497929/497929), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 3 round(s) in 4.0s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  1 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 1 killed, then none more targeted within 1s
+tm TM [move_to_L, step 29 of 47]: move_to_L
+  tm/move_to_L.jsonl: 1196 events over 2.7s, the cursor first put at [1199, 632] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1196 of 1196 events; nothing is left held down
+tm #24: room L
+tm TM [move_to_L, step 30 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-09Poerte517579/517579': any monster is targeted (517579/517579), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'MA-09Poerte0/517579': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 4 round(s) in 5.3s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-09Poerte77109/517579': any monster is targeted (77109/517579), so no more auto target  0 ` press(es) before 'any monster' was targeted
+
+  the HP bar reads 'MA-09Poerte0/517579': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 0.8s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-09Poerte171505/517579': any monster is targeted (171505/517579), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'MA-09Poerte0/517579': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 1.2s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  5 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 3 killed, then none more targeted within 1s
+tm TM [move_to_M, step 31 of 47]: move_to_M
+  tm/move_to_M.jsonl: 1198 events over 2.7s, the cursor first put at [1217, 683] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1198 of 1198 events; nothing is left held down
+tm #24: room M
+tm TM [move_to_M, step 32 of 47]: kill_all any monster main_defensive_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` -> C+6/C+7/C+8 (switching every 15s) one every 0.5s, keys 5/6/` pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-10IronDuke2855034/2855034': any monster is targeted (2855034/2855034), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'MA-10IronDuke0/2855034': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 6 round(s) in 19.0s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` -> C+6/C+7/C+8 (switching every 15s) one every 0.5s, keys 5/6/` pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5 over and over, stopped the moment none of them shows
+  1 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 1 killed, then none more targeted within 1s
+tm TM [move_to_N, step 33 of 47]: move_to_N
+  move_to_N runs 18.7s and the aura for main_bm is due in 17.9s, so the aura goes before it
+  BM cycle: aura pressed with Alt+7 17 time(s) with 22.9s of main_bm left, ` after each; it should now run out in 57.9s
+  tm/move_to_N.jsonl: 9714 events over 18.7s, the cursor first put at [1097, 608] (where the recording began); only heal every 0.5s go in between until it ends
+  played 9714 of 9714 events; nothing is left held down
+tm #24: room N
+tm TM [move_to_N, step 34 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  1 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 0 killed, then none more targeted within 1s
+tm TM [move_to_O, step 35 of 47]: move_to_O
+  tm/move_to_O.jsonl: 7142 events over 12.4s, the cursor first put at [1221, 258] (where the recording began); only heal every 0.5s go in between until it ends
+  played 7142 of 7142 events; nothing is left held down
+tm #24: room O
+tm TM [move_to_O, step 36 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-08Redonno489417/489417': any monster is targeted (489417/489417), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'MA-08Redonno0/489417': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 4 round(s) in 5.3s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  21 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 1 killed, then none more targeted within 3s
+tm TM [move_to_P, step 37 of 47]: move_to_P
+  tm/move_to_P.jsonl: 1588 events over 3.5s, the cursor first put at [1230, 761] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1588 of 1588 events; nothing is left held down
+tm #24: room P
+tm TM [move_to_P, step 38 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-08Redonno489417/489417': any monster is targeted (489417/489417), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'MA-08Redonno0/489417': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 4 round(s) in 5.1s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  BM cycle: main_bm is due to run out, so it is cancelled, then alternate_bm
+  BM icon right-clicked 5 times at [254, 148] in 2.1s
+  BM cycle: alternate_bm pressed with Alt+5 6 time(s) over its 3s cast, ` after each; it should run out 99s after the cast; the target is read from the two target bars
+  2 ` press(es); 'any monster' was never targeted
+  the HP bar reads 'P-02HeanosPena3010360/3012717': any monster is targeted (3010360/3012717), so no more auto target
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 1 killed, then none more targeted within 3s
+tm TM [move_to_Q, step 39 of 47]: move_to_Q
+  tm/move_to_Q.jsonl: 1274 events over 3.0s, the cursor first put at [896, 418] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1274 of 1274 events; nothing is left held down
+tm #24: room Q
+tm TM [move_to_Q, step 40 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'EP-02HeanosPena2488908/3012717': any monster is targeted (2488908/3012717), so no more auto target
+  2 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 20 round(s) in 22.7s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  24 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 1 killed, then none more targeted within 3s
+tm TM [move_to_R, step 41 of 47]: move_to_R
+  tm/move_to_R.jsonl: 4089 events over 7.3s, the cursor first put at [1013, 649] (where the recording began); only heal every 0.5s go in between until it ends
+  played 4089 of 4089 events; nothing is left held down
+tm #24: room R
+tm TM [move_to_R, step 42 of 47]: kill_all any monster main_boss_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` -> C+1 -> C+3 -> C+4 -> C+5 -> C+6/C+7/C+8 (switching every 15s) one every 0.5s, keys 5/6/` pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5 over and over, stopped the moment none of them shows
+  7 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 0 killed, then none more targeted within 3s
+tm TM [move_to_S, step 43 of 47]: move_to_S
+  tm/move_to_S.jsonl: 10026 events over 15.2s, the cursor first put at [1176, 673] (where the recording began); only heal every 0.5s go in between until it ends
+  played 10026 of 10026 events; nothing is left held down
+tm #24: room S
+tm TM [move_to_S, step 44 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'LeaacyChest10/1o': any monster is targeted (10/1), so no more auto target
+  2 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 4 round(s) in 6.5s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  5 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 1 killed, then none more targeted within 3s
+tm TM [move_to_T, step 45 of 47]: move_to_T
+  tm/move_to_T.jsonl: 5827 events over 9.0s, the cursor first put at [1207, 478] (where the recording began); only heal every 0.5s go in between until it ends
+  played 5827 of 5827 events; nothing is left held down
+tm #24: room T
+tm TM [move_to_T, step 46 of 47]: keep_aura
+  every BM cast from here to the end of the run gets its aura right after it
+  BM cycle: aura pressed with Alt+7 17 time(s) with 15.4s of alternate_bm left, ` after each; it should now run out in 54.2s
+tm TM [move_to_T, step 47 of 47]: kill_all any monster main_boss_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` -> C+1 -> C+3 -> C+4 -> C+5 -> C+6/C+7/C+8 (switching every 15s) one every 0.5s, keys 5/6/` pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'CommanderVizerd3527104/3527104': any monster is targeted (3527104/3527104), so no more auto target  0 ` press(es) before 'any monster' was targeted
+
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 2 round(s) in 21.0s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` -> C+1 -> C+3 -> C+4 -> C+5 -> C+6/C+7/C+8 (switching every 15s) one every 0.5s, keys 5/6/` pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'LeaendayBox10/1o': any monster is targeted (10/1), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 0.4s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` -> C+1 -> C+3 -> C+4 -> C+5 -> C+6/C+7/C+8 (switching every 15s) one every 0.5s, keys 5/6/` pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5 over and over, stopped the moment none of them shows
+  18 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 2 killed, then none more targeted within 3s
+  the sequence is done; ` every 0.3s until the dungeon end screen, up to 60s
+  5 ` press(es) after the last step  'Cleared dungeon[TerminusMachina].': the dungeon is cleared; every action stops now, exit in 2s
+
+tm TM [opening, step 1 of 1]: cancel_bm
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each; the target is read from the middle bar again
+  exit: confirmation -> obtain_treasure -> obtain_points -> fire_leave
+  Confirmation at [991, 323]
+  Obtain Treasure at [907, 556]
+  no 'Obtain Points' in the obtain_points window [852, 812, 962, 831] within 3s; it reads '', so nothing to claim
+  Leave at [337, 815]
+  tm: 10 of 24 entered were successful on this dungeon day
+tm TM [opening, step 1 of 2]: wait 3
+  timer 3s started
+  timer 3s up
+tm TM [opening, step 2 of 2]: disenchant_all
+  Inventory shut: slot grid 0.13, needs 0.33
+  inventory opened
+  Disenchant at [1524, 693]
+  Item Extraction at [1066, 744]
+  Agree at [988, 686]
+  20s for the extraction, right-clicking bm_pot -> bm_icon 0.5s apart meanwhile
+  Close at [1214, 812]
+  Sort all inventory at [1471, 732]
+  tm TM: the dungeon is over
+tm #24: pass
+  inventory already open
+  inventory tab 1 at [1454, 181]
+  N for the shop
+  Normal at [51, 157]
+  Alt+click Luminous : Selena x100 at [380, 301]
+  quantity 9999 typed; the window keeps it to the most there is enough for
+  OK at [964, 676]
+  Luminous : Selena x100 done; N closed the shop
+  24 tm run(s) so far today, each summoning 1x with =; the next 1x Orb of Summoning x10 is bought in 6 run(s)
+  tm: the 35s cooldown after the BM cancel passed 2.9s ago, during the exit and the steps after it; the next run starts now
+tm TM [opening, step 1 of 47]: get_entry
+  Inventory shut: slot grid 0.13, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 1) at [1475, 236]; noted in dungeon_next.json
+tm TM [opening, step 2 of 47]: open_dungeon_key
+  Inventory shut: slot grid 0.13, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 1) at [1475, 236]
+  Yes at [962, 614]
+  with the cursor on tab II [727, 900] the dungeon list reads ['Steamer Crazy(Normal)(10/10)[New Entry', 'Steamer Crazy(Premium)(15/15)[New Entryn', '(Elite)steamer Crazy(Premium)(5/5)[new Entry]', 'Steamer Crazy (Awakened)(0/30)[New Entry', 'TeYminusMachina/aon[NewEnty', '', '']
+  TM 'Terminus Machina' at [672, 375]
+  difficulty 0 on the slider at [763, 476]
+  Enter at [1111, 887]
+  entered TM; the entry note is cleared
+tm TM [opening, step 3 of 47]: start_dungeon
+  Challenge at [818, 760]
+  hotbar tab II at [727, 900]
+  timer 0s started
+  timer 0s up
+  the dungeon has 900s from the Challenge click
+  tm: 25 of 30 entered on this dungeon day
+tm TM [opening, step 4 of 47]: kill_phase
+  kill phase: heal (0) every 0.5s while a kill is on (every 0.5s while a recording plays, not in the opening), and the end screen read all the time, until the end screen has been up 2s
+  the chat is read before each move_to_ ride and while the confirmation banner is up, for unique item drops in tm #25
+tm TM [opening, step 5 of 47]: tap =
+  tap =
+tm TM [move_to_A, step 6 of 47]: move_to_A
+  tm/move_to_A.jsonl: 963 events over 4.4s, the cursor first put at [842, 756] (where the recording began); only heal every 0.5s go in between until it ends
+  played 963 of 963 events; nothing is left held down
+tm #25: room A
+tm TM [move_to_A, step 7 of 47]: bm_cycle
+  BM cycle: alternate_bm pressed with Alt+5 6 time(s) over its 3s cast, ` after each; it should run out 99s after the cast; the target is read from the two target bars
+tm TM [move_to_A, step 8 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MechLion482815/482815 | MechLion482815/482815': any monster is targeted (482815/482815, 482815/482815), so no more auto target  0 ` press(es) before 'any monster' was targeted
+
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 14 round(s) in 16.7s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'VizenofSteel2443715/2443715': any monster is targeted (2443715/2443715), so no more auto target
+  2 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'VizenofSteel0/2443715': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 20 round(s) in 24.1s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  10 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 2 killed, then none more targeted within 3s
+tm TM [move_to_B, step 9 of 47]: move_to_B
+  tm/move_to_B.jsonl: 701 events over 3.0s, the cursor first put at [1063, 527] (where the recording began); only heal every 0.5s go in between until it ends
+  played 701 of 701 events; nothing is left held down
+tm #25: room B
+tm TM [move_to_B, step 10 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'RelicChest10/1o': any monster is targeted (10/1), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 2 round(s) in 2.4s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  25 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 1 killed, then none more targeted within 3s
+tm TM [move_to_C, step 11 of 47]: move_to_C
+  tm/move_to_C.jsonl: 1436 events over 3.1s, the cursor first put at [1248, 747] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1436 of 1436 events; nothing is left held down
+tm #25: room C
+tm TM [move_to_C, step 12 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads '20612/45804': any monster is targeted (20612/45804), so no more auto target
+  2 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 2.4s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  6 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 1 killed, then none more targeted within 1s
+tm TM [move_to_D, step 13 of 47]: move_to_D
+  tm/move_to_D.jsonl: 4186 events over 12.4s, the cursor first put at [1083, 376] (where the recording began); only heal every 0.5s go in between until it ends
+  played 4186 of 4186 events; nothing is left held down
+tm #25: room D
+tm TM [move_to_D, step 14 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MechLihorna415577/470329': any monster is targeted (415577/470329), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 4 round(s) in 6.7s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  3 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 1 killed, then none more targeted within 1s
+tm TM [move_to_E, step 15 of 47]: move_to_E
+  move_to_E runs 11.1s and the aura for alternate_bm is due in 9.8s, so the aura goes before it
+  BM cycle: aura pressed with Alt+7 17 time(s) with 14.8s of alternate_bm left, ` after each; it should now run out in 53.9s
+  tm/move_to_E.jsonl: 2333 events over 11.1s, the cursor first put at [1174, 706] (where the recording began); only heal every 0.5s go in between until it ends
+  played 2333 of 2333 events; nothing is left held down
+tm #25: room E
+tm TM [move_to_E, step 16 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads '20612/45804': any monster is targeted (20612/45804), so no more auto target
+  2 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 2.3s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  4 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 1 killed, then none more targeted within 1s
+tm TM [move_to_F, step 17 of 47]: move_to_F
+  tm/move_to_F.jsonl: 2124 events over 8.7s, the cursor first put at [813, 155] (where the recording began); only heal every 0.5s go in between until it ends
+  played 2124 of 2124 events; nothing is left held down
+tm #25: room F
+tm TM [move_to_F, step 18 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'ARM-06Espada497929/497929': any monster is targeted (497929/497929), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 3 round(s) in 3.9s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'ARM-06Espada497929/497929': any monster is targeted (497929/497929), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 6 round(s) in 6.5s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  23 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 2 killed, then none more targeted within 3s
+tm TM [move_to_G, step 19 of 47]: move_to_G
+  tm/move_to_G.jsonl: 1098 events over 2.2s, the cursor first put at [1085, 449] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1098 of 1098 events; nothing is left held down
+tm #25: room G
+tm TM [move_to_G, step 20 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  2 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 0 killed, then none more targeted within 1s
+tm TM [move_to_H, step 21 of 47]: move_to_H
+  move_to_H runs 11.8s and alternate_bm runs out in 5.0s, during it, so it is cancelled now and the cycle starts again after the ride
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each; the target is read from the middle bar again
+  tm/move_to_H.jsonl: 2410 events over 11.8s, the cursor first put at [1149, 263] (where the recording began); only heal every 0.5s go in between until it ends
+  played 2410 of 2410 events; nothing is left held down
+tm #25: room H
+  BM cycle: alternate_bm was cancelled before the ride, so main_bm now
+  BM cycle: main_bm pressed with Alt+4 11 time(s) over its 6s cast, ` after each; it should run out 99s after the cast; 5 is pressed as 3; 6 is pressed as 4
+tm TM [move_to_H, step 22 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  0 ` press(es) before 'any monster' was targeted  the HP bar reads 'ARM-06Espada140520/497929': any monster is targeted (140520/497929), so no more auto target
+
+  the HP bar reads 'ARM-06Espada0/497929': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 0.9s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'ARM-06Es0ada319224/497929': any monster is targeted (319224/497929), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'ARM-06Espada0/497929': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 4 round(s) in 5.5s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'PoerSupply142590/142590': any monster is targeted (142590/142590), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 2 round(s) in 2.4s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  12 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 3 killed, then none more targeted within 3s
+tm TM [move_to_I, step 23 of 47]: move_to_I
+  tm/move_to_I.jsonl: 485 events over 1.7s, the cursor first put at [1221, 674] (where the recording began); only heal every 0.5s go in between until it ends
+  played 485 of 485 events; nothing is left held down
+tm #25: room I
+tm TM [move_to_I, step 24 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  3 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 0 killed, then none more targeted within 1s
+tm TM [move_to_J, step 25 of 47]: move_to_J
+  tm/move_to_J.jsonl: 916 events over 2.8s, the cursor first put at [1149, 576] (where the recording began); only heal every 0.5s go in between until it ends
+  played 916 of 916 events; nothing is left held down
+tm #25: room J
+tm TM [move_to_J, step 26 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'AkM-06Es0a0a497929/497929': any monster is targeted (497929/497929), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'ARM-06Espada0/497929': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 6 round(s) in 8.4s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  2 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 1 killed, then none more targeted within 1s
+tm TM [move_to_K, step 27 of 47]: move_to_K
+  tm/move_to_K.jsonl: 1258 events over 4.9s, the cursor first put at [1002, 423] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1258 of 1258 events; nothing is left held down
+tm #25: room K
+tm TM [move_to_K, step 28 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'ARM-06Es0ada497929/497929': any monster is targeted (497929/497929), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'ARM-06Espada0/497929': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 4 round(s) in 5.3s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'PoerSupply142590/142590': any monster is targeted (142590/142590), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 1.5s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  1 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 2 killed, then none more targeted within 1s
+tm TM [move_to_L, step 29 of 47]: move_to_L
+  tm/move_to_L.jsonl: 1196 events over 2.7s, the cursor first put at [1199, 632] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1196 of 1196 events; nothing is left held down
+tm #25: room L
+tm TM [move_to_L, step 30 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-09Poerte517579/517579': any monster is targeted (517579/517579), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'MA-09Poerte0/517579': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 3 round(s) in 4.2s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  0 ` press(es) before 'any monster' was targeted  the HP bar reads 'MA-09Poerte171081/517579': any monster is targeted (171081/517579), so no more auto target
+
+  the HP bar reads 'MA-09Poerte0/517579': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 1.1s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-09Poerte344330/517579': any monster is targeted (344330/517579), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'MA-09Poerte0/517579': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 5 round(s) in 6.4s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  5 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 3 killed, then none more targeted within 1s
+tm TM [move_to_M, step 31 of 47]: move_to_M
+  tm/move_to_M.jsonl: 1198 events over 2.7s, the cursor first put at [1217, 683] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1198 of 1198 events; nothing is left held down
+tm #25: room M
+tm TM [move_to_M, step 32 of 47]: kill_all any monster main_defensive_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` -> C+6/C+7/C+8 (switching every 15s) one every 0.5s, keys 5/6/` pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-10IronDuke2855034/2855034': any monster is targeted (2855034/2855034), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'MA-10IronDuke0/2855034': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 6 round(s) in 19.7s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` -> C+6/C+7/C+8 (switching every 15s) one every 0.5s, keys 5/6/` pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5 over and over, stopped the moment none of them shows
+  1 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 1 killed, then none more targeted within 1s
+tm TM [move_to_N, step 33 of 47]: move_to_N
+  move_to_N runs 18.7s and the aura for main_bm is due in 3.0s, so the aura goes before it
+  BM cycle: aura pressed with Alt+7 17 time(s) with 8.0s of main_bm left, ` after each; it should now run out in 50.5s
+  tm/move_to_N.jsonl: 9714 events over 18.7s, the cursor first put at [1097, 608] (where the recording began); only heal every 0.5s go in between until it ends
+  played 9714 of 9714 events; nothing is left held down
+tm #25: room N
+tm TM [move_to_N, step 34 of 47]: kill_all any monster main_kill_loop 1.0
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  1 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 0 killed, then none more targeted within 1s
+tm TM [move_to_O, step 35 of 47]: move_to_O
+  tm/move_to_O.jsonl: 7142 events over 12.4s, the cursor first put at [1221, 258] (where the recording began); only heal every 0.5s go in between until it ends
+  played 7142 of 7142 events; nothing is left held down
+tm #25: room O
+tm TM [move_to_O, step 36 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-08Redonno489417/489417': any monster is targeted (489417/489417), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'MA-08Redonno0/489417': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 2 round(s) in 2.6s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  18 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 1 killed, then none more targeted within 3s
+tm TM [move_to_P, step 37 of 47]: move_to_P
+  move_to_P runs 3.5s and main_bm runs out in 3.0s, during it, so it is cancelled now and the cycle starts again after the ride
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each
+  the main BM was cancelled 0.1s ago; 2.9s more so the recording starts 3s after it
+  tm/move_to_P.jsonl: 1588 events over 3.5s, the cursor first put at [1230, 761] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1588 of 1588 events; nothing is left held down
+tm #25: room P
+  BM cycle: main_bm was cancelled before the ride, so alternate_bm now
+  BM cycle: alternate_bm pressed with Alt+5 6 time(s) over its 3s cast, ` after each; it should run out 99s after the cast; the target is read from the two target bars
+tm TM [move_to_P, step 38 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'MA-08Redonno489417/489417 | MA-08Redonno489417/489417': any monster is targeted (489417/489417, 489417/489417), so no more auto target  0 ` press(es) before 'any monster' was targeted
+
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 4 round(s) in 4.8s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  4 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 1 killed, then none more targeted within 3s
+tm TM [move_to_Q, step 39 of 47]: move_to_Q
+  tm/move_to_Q.jsonl: 1274 events over 3.0s, the cursor first put at [896, 418] (where the recording began); only heal every 0.5s go in between until it ends
+  played 1274 of 1274 events; nothing is left held down
+tm #25: room Q
+tm TM [move_to_Q, step 40 of 47]: kill_all any monster main_kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  4 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 0 killed, then none more targeted within 3s
+tm TM [move_to_R, step 41 of 47]: move_to_R
+  tm/move_to_R.jsonl: 4089 events over 7.3s, the cursor first put at [1013, 649] (where the recording began); only heal every 0.5s go in between until it ends
+  played 4089 of 4089 events; nothing is left held down
+tm #25: room R
+tm TM [move_to_R, step 42 of 47]: kill_all any monster main_boss_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` -> C+1 -> C+3 -> C+4 -> C+5 -> C+6/C+7/C+8 (switching every 15s) one every 0.5s, keys 5/6/` pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5 over and over, stopped the moment none of them shows
+  0 ` press(es) before 'any monster' was targeted  the HP bar reads 'EP-02HeanosPena1494476/3012717': any monster is targeted (1494476/3012717), so no more auto target
+
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 2 round(s) in 11.4s
+  kill_bm 'any monster': the HP bar is read all the time; ` (each followed by 6, for a target the bar can't be read for) until it shows any monster, then 5 (once per target) -> 6 -> ` -> C+1 -> C+3 -> C+4 -> C+5 -> C+6/C+7/C+8 (switching every 15s) one every 0.5s, keys 5/6/` pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5 over and over, stopped the moment none of them shows
+  19 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 3s
+  kill_all 'any monster': 1 killed, then none more targeted within 3s
+tm TM [move_to_S, step 43 of 47]: move_to_S
+  before move_to_S: still on the bike (the skill bar reads 90, under 100), so Alt+1 to get off, then 1s
+  before move_to_S: still on the bike (the skill bar reads 90, under 100), so Alt+1 to get off, then 1s
+  before move_to_S: still on the bike (the skill bar reads 92, under 100), so Alt+1 to get off, then 1s
+  kept 245 frame(s) of this failed run (crashed) in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\failed_frames\74c2a54fe_2026-10-24_151651_tm_25
+  tm: still on the bike before move_to_S, after 3 presses of Alt+1; stopped. Not dead and not logged out: the default state, then the next run (1 of 5 failures in a row)
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  Inventory already closed
+  25 tm run(s) so far today, each summoning 1x with =; the next 1x Orb of Summoning x10 is bought in 5 run(s)
+  tm: the start of a block of runs
+tm TM [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+tm TM [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+tm TM [opening, step 1 of 47]: get_entry
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 2) at [1531, 236]; noted in dungeon_next.json
+tm TM [opening, step 2 of 47]: open_dungeon_key
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 2) at [1531, 236]
+  the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads '1'. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 1 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 3) at [1587, 236]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 3) at [1587, 236]
+  the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads '：'. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 2 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 4) at [1643, 236]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 4) at [1643, 236]
+  the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads ''. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 3 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 5) at [1699, 236]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 5) at [1699, 236]
+  kept 31 frame(s) of this failed run (crashed) in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\failed_frames\74c2a54fe_2026-10-24_151756_tm_25
+  tm: the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads ''. Nothing clicked. Not dead and not logged out: the default state, then the next run (2 of 5 failures in a row)
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  dungeon report: pushed
+  3 fn run(s) so far today, each summoning 1x with =; the next 1x Orb of Summoning x10 is bought in 7 run(s)
+  fn: the start of a block of runs
+fn FN [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+fn FN [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+fn FN [opening, step 1 of 33]: get_entry
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [41, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 6) at [1755, 236]; noted in dungeon_next.json
+fn FN [opening, step 2 of 33]: open_dungeon_key
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 6) at [1755, 236]
+  the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads ''. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 1 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [41, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 7) at [1811, 236]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 7) at [1811, 236]
+  the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads ''. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 2 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [41, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 8) at [1867, 236]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 8) at [1867, 236]
+  the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads '一'. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 3 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [41, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (2, 1) at [1475, 292]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (2, 1) at [1475, 292]
+  kept 31 frame(s) of this failed run (crashed) in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\failed_frames\74c2a54fe_2026-10-24_151851_fn_3
+  fn: the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads '1'. Nothing clicked. Not dead and not logged out: the default state, then the next run (3 of 5 failures in a row)
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  3 fn run(s) so far today, each summoning 1x with =; the next 1x Orb of Summoning x10 is bought in 7 run(s)
+  fn: the start of a block of runs
+fn FN [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+fn FN [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+fn FN [opening, step 1 of 33]: get_entry
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [41, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (2, 2) at [1531, 292]; noted in dungeon_next.json
+fn FN [opening, step 2 of 33]: open_dungeon_key
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (2, 2) at [1531, 292]
+  the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads '1'. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 1 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [41, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (2, 3) at [1587, 292]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (2, 3) at [1587, 292]
+  the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads '。'. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 2 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [41, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (2, 4) at [1643, 292]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (2, 4) at [1643, 292]
+  the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads 'ー'. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 3 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [41, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (2, 5) at [1699, 292]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (2, 5) at [1699, 292]
+  kept 31 frame(s) of this failed run (crashed) in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\failed_frames\74c2a54fe_2026-10-24_151942_fn_3
+  fn: the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads ''. Nothing clicked. Not dead and not logged out: the default state, then the next run (4 of 5 failures in a row)
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  3 fn run(s) so far today, each summoning 1x with =; the next 1x Orb of Summoning x10 is bought in 7 run(s)
+  fn: the start of a block of runs
+fn FN [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+fn FN [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+fn FN [opening, step 1 of 33]: get_entry
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [41, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (2, 6) at [1755, 292]; noted in dungeon_next.json
+fn FN [opening, step 2 of 33]: open_dungeon_key
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (2, 6) at [1755, 292]
+  the warp_yes window [898, 594, 1026, 634] never read 'Yes' within 3s; it reads ''. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 1 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [41, 450]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (2, 7) at [1811, 292]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Traceback (most recent call last):
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 4206, in <module>
+    command(args)
+    ~~~~~~~^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 4098, in command
+    run_all()
+    ~~~~~~~^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 4076, in run_all
+    after = rotate(group, after, verbose)
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 4068, in rotate
+    after = run_in_turn(name, only_location(name), after,
+                        verbose)
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 3982, in run_in_turn
+    run_dungeon(dungeon_name, location, verbose)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 2256, in run_dungeon
+    run_sequence(dungeon_name, location, phase, verbose,
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 steps if until is None
+                 ^^^^^^^^^^^^^^^^^^^^^^
+                 else before_step(dungeon_name, until), timer=timer)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 2622, in run_sequence
+    with_entry_retries(lambda attempt: buy_and_open(
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        dungeon_name, location, place, attempt, verbose), verbose)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 2523, in with_entry_retries
+    return attempt_once(attempt)
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 2622, in <lambda>
+    with_entry_retries(lambda attempt: buy_and_open(
+                                       ~~~~~~~~~~~~^
+        dungeon_name, location, place, attempt, verbose), verbose)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 2540, in buy_and_open
+    open_dungeon_key(dungeon_name, location, verbose, refill=attempt > 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 917, in open_dungeon_key
+    prepare(verbose, entry["tab"])
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 482, in prepare
+    click(*point, SELECT_SETTLE)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 318, in click
+    calibration._button(_INPUT["MOUSEEVENTF_LEFTDOWN"],
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        _INPUT["MOUSEEVENTF_LEFTUP"], x, y, settle)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py", line 961, in _button
+    time.sleep(settle)
+    ~~~~~~~~~~^^^^^^^^
+KeyboardInterrupt

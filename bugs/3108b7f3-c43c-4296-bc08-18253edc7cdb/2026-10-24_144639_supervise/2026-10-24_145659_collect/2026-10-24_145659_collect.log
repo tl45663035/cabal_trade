@@ -1,0 +1,87 @@
+2026-10-24_145659  C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\driver.py --config cang collect
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-24_145659_collect.log
+  code 74c2a54fe+edits
+  screen 1920x1080
+  ledger C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\sales.db run 2026-10-24T14:56:59
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-24_145659_collect, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  a repair: not measuring the screen, using the calibration on file
+  calibrated for 1920x1080, measured 2026-09-20T22:31:43
+  server 21:56:58 by internet time; the next war quiet runs 22:32:00 to 22:34:00, in 35.0 min
+  the Trade window is shut; opening the Agent Shop.
+  inventory already open
+  tab 6 at (1719, 181)
+  right-clicking slot (1,7) at (1811, 236) (attempt 1/3)
+  tab 4 at (1613, 181), so whatever is bought or withdrawn lands there
+  scrolled to the top; row 1 is at position 1
+                                                   bought/u   listed/u  margin      row price
+  the Register columns were not measured; Register rows are read whole by Tesseract instead
+     1  Soul Core (Senillinea) X 246       x1             -     71,426       -     17,571,041
+     2  Soul Core (Arcane Trace) X 388     x1             -     82,856       -     32,148,515
+     3  Soul Core (Porta Inferno) X 213    x1             -     52,940       -     11,276,432
+     4  Honor Medal Reset Scroll (Option S x9             -  5,100,000       -      5,100,000
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+     5  Wexp Saver                         x3             -  3,000,000       -      3,000,000
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+     6  Wexp Saver                         x72            -  4,339,994       -      4,339,994
+    the quantity column read 'lf', which holds no digits, so it is the end of the name and not a count; reading the row as 'Demonite Headgear (FA) of lf' and letting the panel count what is there
+     7  ar adimmania: of (ocala            x1             -  5,248,737       -      5,248,737
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+     8  Wexp Saver                         x2             -  2,479,990       -      2,479,990
+     9  Soul Core (Mutant Forest) X 196    x1             -     86,998       -     17,051,803
+    10  Soul Core (Lakeside) X 268         x1             -     21,517       -      5,766,823
+    11  Soul Core (Forgotten Ruin) X 269   x1             -     28,259       -      7,601,939
+    12  Soul Core (Undead Ground) X 246    x1             -     27,195       -      6,690,215
+    13  Upgrade Core Set (High) X 898      x1             -     55,153       -     49,527,394
+    14  Ring Of Fighter +9                 x1             -  3,066,040       -      3,066,040
+    15  Soul Core (Pontus Ferrum) X 253    x1             -    109,999       -     27,829,999
+    17  Infernal Ruby X 1                  x1             -    349,998       -        349,998
+    18  Machinery Head X 3                 x1             -  1,899,998       -      5,699,996
+    19  Time Reducer (8h) - Diamond Insign x1             -    833,333       -      1,666,666
+    20  Astral Core(Mithril) X 88          x1             -        785       -         69,167
+    21  Astral Core(Mithril) X 127         x3             -        784       -         99,694
+  scrolled to the top; row 1 is at position 1
+  0 row(s) keep the cost and floor the crashed run had for them
+  seeded 20 of rows 1-25; rows outside 1-25 are not read
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+    the quantity column read 'lf', which holds no digits, so it is the end of the name and not a count; reading the row as 'Demonite Headgear (FA) of lf' and letting the panel count what is there
+    the quantity column read 'Saver', which holds no digits, so it is the end of the name and not a count; reading the row as 'Wexp Saver' and letting the panel count what is there
+  row 16 is empty; nothing to relist
+  row 22 is empty; nothing to relist
+  row 23 is empty; nothing to relist
+  row 24 is empty; nothing to relist
+  row 25 is empty; nothing to relist
+
+  relisting rows 1-25: 0 relisted, 5 empty, 20 skipped
+    #          ms   share     n      each  phase
+    1    31,727.7   79.7%    25   1,269.1  scroll to the row and read it
+    2     8,093.0   20.3%    25     323.7  Refresh the table
+         39,820.7  100.0%
+  collected what sold in rows 1-25; 5 row(s) empty now
+
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  nothing has sold yet this run.
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 14:56:59, ended 14:58:28, ran for 1m 29s
+
+##############################################################################################
+
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+
+##############################################################################################
+

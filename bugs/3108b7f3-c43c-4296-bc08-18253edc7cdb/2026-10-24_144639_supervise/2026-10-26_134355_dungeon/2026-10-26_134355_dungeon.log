@@ -1,0 +1,65 @@
+2026-10-26_134355  src_1080p/dungeon.py --config cang --no-breaks
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-26_134355_dungeon.log
+running on commit f9e1ee170; uncommitted: src_1080p/configs/cang.json, src_1080p/configs/trung.json, src_1080p/dungeon.py
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-26_134355_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+rotation fire -> ice -> train -> valley: fire 30 of 30, ice 30 of 30, train 30 of 30, valley 25 of 30
+  dungeon report: pushed
+burst: SEA night, so Channel 11; relogging there
+  Escape for the menu (attempt 1)
+  Escape for the menu (attempt 2)
+  Escape for the menu (attempt 3)
+  the relog into Channel 11 failed (Refused: no 'select character' in the menu after 3 Escape(s). Nothing clicked.)
+  Channel 12 instead, from the server list
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4443[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4335[0m, in [35mcommand[0m
+    [31mrun_all[0m[1;31m()[0m
+    [31m~~~~~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4313[0m, in [35mrun_all[0m
+    after = rotate(group["dungeons"], after, verbose, group)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4304[0m, in [35mrotate[0m
+    after = run_in_turn(name, only_location(name), after,
+                        verbose)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4122[0m, in [35mrun_in_turn[0m
+    [31mrelog_for_burst[0m[1;31m(verbose)[0m
+    [31m~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4046[0m, in [35mrelog_for_burst[0m
+    [31mrecovery.recover[0m[1;31m(verbose=verbose, channel=other)[0m
+    [31m~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py"[0m, line [35m418[0m, in [35mrecover[0m
+    gone = disconnected()
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py"[0m, line [35m305[0m, in [35mdisconnected[0m
+    return _notice(DISCONNECT_WORDS, image, words)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py"[0m, line [35m295[0m, in [35m_notice[0m
+    words = _within([31m_words[0m[1;31m(image)[0m if words is None else words,
+                    [31m~~~~~~[0m[1;31m^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py"[0m, line [35m123[0m, in [35m_words[0m
+    return [31mcalibration.ocr[0m[1;31m(image, _screen())[0m
+           [31m~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py"[0m, line [35m1332[0m, in [35mocr[0m
+    for text, conf, point, _right in [31mocr_spans[0m[1;31m(image, box, scale,[0m
+                                     [31m~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^[0m
+                                               [1;31mmin_conf)[0m]
+                                               [1;31m^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py"[0m, line [35m1308[0m, in [35mocr_spans[0m
+    run = subprocess.run(
+        [TESSERACT, "stdin", "stdout", "--psm", OCR_PSM, "tsv"],
+        input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\subprocess.py"[0m, line [35m556[0m, in [35mrun[0m
+    stdout, stderr = [31mprocess.communicate[0m[1;31m(input, timeout=timeout)[0m
+                     [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\subprocess.py"[0m, line [35m1219[0m, in [35mcommunicate[0m
+    stdout, stderr = [31mself._communicate[0m[1;31m(input, endtime, timeout)[0m
+                     [31m~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\subprocess.py"[0m, line [35m1638[0m, in [35m_communicate[0m
+    [31mself.stdout_thread.join[0m[1;31m(self._remaining_time(endtime))[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\threading.py"[0m, line [35m1092[0m, in [35mjoin[0m
+    [31mself._handle.join[0m[1;31m(timeout)[0m
+    [31m~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^[0m
+[1;35mKeyboardInterrupt[0m

@@ -1,0 +1,52 @@
+2026-10-25_123632  src_1080p/dungeon.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-25_123632_dungeon.log
+running on commit f903834ca; uncommitted: src_1080p/configs/cang.json
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-25_123632_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+rotation ic1 -> ic2 -> eop: ic1 30 of 30, ic2 30 of 30, eop 30 of 30; every daily limit is reached
+rotation fire -> ice -> train -> valley: fire 8 of 30, ice 10 of 30, train 5 of 30, valley 3 of 30
+  dungeon report: pushed
+burst: SEA night, so Channel 21; relogging there
+  Escape for the menu (attempt 1)
+  Escape for the menu (attempt 2)
+  'select character' at [926, 552]
+  'yes' at [984, 638]
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4361[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4253[0m, in [35mcommand[0m
+    [31mrun_all[0m[1;31m()[0m
+    [31m~~~~~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4231[0m, in [35mrun_all[0m
+    after = rotate(group["dungeons"], after, verbose, group)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4222[0m, in [35mrotate[0m
+    after = run_in_turn(name, only_location(name), after,
+                        verbose)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4040[0m, in [35mrun_in_turn[0m
+    [31mrelog_for_burst[0m[1;31m(verbose)[0m
+    [31m~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m3954[0m, in [35mrelog_for_burst[0m
+    [31mrecovery.relog[0m[1;31m(verbose=verbose, channel=channel)[0m
+    [31m~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py"[0m, line [35m617[0m, in [35mrelog[0m
+    [31mlogout[0m[1;31m(verbose=verbose)[0m
+    [31m~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py"[0m, line [35m600[0m, in [35mlogout[0m
+    [31mcalibration.click[0m[1;31m(*yes)[0m
+    [31m~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py"[0m, line [35m1240[0m, in [35mclick[0m
+    [31m_button[0m[1;31m(shared["input"]["MOUSEEVENTF_LEFTDOWN"],[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+            [1;31mshared["input"]["MOUSEEVENTF_LEFTUP"], x, y,[0m
+            [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+            [1;31mshared["timing"]["action_gap"] if settle is None else settle,[0m
+            [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+            [1;31mhovered=hovered, check=check_hovering, released=released)[0m
+            [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py"[0m, line [35m961[0m, in [35m_button[0m
+    [31mtime.sleep[0m[1;31m(settle)[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^^^^^^[0m
+[1;35mKeyboardInterrupt[0m

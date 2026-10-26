@@ -1,0 +1,151 @@
+2026-10-25_020305  dungeon.py --config cang eop --runs 1
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-25_020305_dungeon.log
+running on commit c2c388d28
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-25_020305_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  eop: the start of a block of runs
+eop EOP [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+eop EOP [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+eop EOP [opening, step 1 of 31]: get_entry
+  Inventory shut: slot grid 0.16, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [136, 600]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 1) at [1475, 236]; noted in dungeon_next.json
+eop EOP [opening, step 2 of 31]: open_dungeon_key
+  Inventory shut: slot grid 0.16, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 1) at [1475, 236]
+  Yes at [962, 614]
+  with the cursor on tab II [727, 900] the dungeon list reads ['Edge of Phantom(19/30)[New Entry]', '', '', '', '', '', '']
+  EOP 'Edge of Phantom' at [641, 275]
+  difficulty 0 on the slider at [763, 476]
+  Enter at [1111, 887]
+  entered EOP; the entry note is cleared
+eop EOP [opening, step 3 of 31]: start_dungeon
+  Challenge at [818, 760]
+  hotbar tab II at [727, 900]
+  timer 1s started
+  timer 1s up
+  the dungeon has 300s from the Challenge click
+  eop: 12 of 30 entered on this dungeon day
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each
+eop EOP [opening, step 4 of 31]: kill_phase
+  kill phase: heal (0) every 1s while a kill is on (not in the recordings, not in the opening), and the end screen read all the time, until the end screen has been up 2s
+  the chat is read before each move_to_ ride and while the confirmation banner is up, for unique item drops in eop #12
+eop EOP [opening, step 5 of 31]: bm_aura
+  main_bm right-clicked 0.5s apart, over and over for 3s from the first click; aura 85s after the first, right-clicked over and over for 7s
+  6 round(s) of main_bm in 3.0s
+eop EOP [opening, step 6 of 31]: wait 1.5
+  timer 1.5s started
+  timer 1.5s up
+eop EOP [move_to_A, step 7 of 31]: move_to_A
+  eop/move_to_A.jsonl: 2055 events over 6.4s, the cursor first put at [1159, 662] (where the recording began); nothing else is pressed until it ends
+  played 2055 of 2055 events; nothing is left held down
+eop #12: room A
+eop EOP [move_to_A, step 8 of 31]: kill_all Enhanced Zombie Lady kill_loop
+  kill_bm 'Enhanced Zombie Lady': the HP bar is read all the time; ` until it shows 'zombie' or 'lady', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'EnhancedZombieLady208771/208771': Enhanced Zombie Lady is targeted (zombie, lady), so no more auto target
+  1 ` press(es) before 'Enhanced Zombie Lady' was targeted
+  the HP bar reads 'EnhancedZombieLady0/208771': Enhanced Zombie Lady is gone, so it is dead
+  kill_bm 'Enhanced Zombie Lady': dead after 3 round(s) in 2.5s
+  kill_bm 'Enhanced Zombie Lady': the HP bar is read all the time; ` until it shows 'zombie' or 'lady', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'EnhancedZombieLady208771/208771': Enhanced Zombie Lady is targeted (zombie, lady), so no more auto target
+  1 ` press(es) before 'Enhanced Zombie Lady' was targeted
+  the HP bar reads 'EnhancedZombieLady0/208771': Enhanced Zombie Lady is gone, so it is dead
+  kill_bm 'Enhanced Zombie Lady': dead after 3 round(s) in 1.9s
+  kill_bm 'Enhanced Zombie Lady': the HP bar is read all the time; ` until it shows 'zombie' or 'lady', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  2 ` press(es); 'Enhanced Zombie Lady' was never targeted
+  kill_bm 'Enhanced Zombie Lady': none targeted in 1s
+  kill_all 'Enhanced Zombie Lady': 2 killed, then none more targeted within 1s
+eop EOP [move_to_A, step 9 of 31]: kill_all any monster kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  5 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 0 killed, then none more targeted within 1s
+eop EOP [move_to_A, step 10 of 31]: wait 1.5
+  timer 1.5s started
+  timer 1.5s up
+eop EOP [move_to_B, step 11 of 31]: move_to_B
+  eop/move_to_B.jsonl: 1217 events over 3.0s, the cursor first put at [885, 389] (where the recording began); nothing else is pressed until it ends
+  played 1217 of 1217 events; nothing is left held down
+eop #12: room B
+eop EOP [move_to_B, step 12 of 31]: kill_all any monster kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Phantom Ghoul Varrior289960/289960': any monster is targeted (289960/289960), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'PhantomGhoulVarrior0/289960': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 2 round(s) in 1.9s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Phantom GhoulVarrior 134019/289960': any monster is targeted (134019/289960), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'PhantomGhoulVarrior0/289960': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 2 round(s) in 1.2s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'UndeadDefender324755/324755': any monster is targeted (324755/324755), so no more auto target  1 ` press(es) before 'any monster' was targeted
+
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 6 round(s) in 3.7s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  2 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 3 killed, then none more targeted within 1s
+eop EOP [move_to_B, step 13 of 31]: wait 1.5
+  timer 1.5s started
+  timer 1.5s up
+eop EOP [move_to_C, step 14 of 31]: move_to_C
+  eop/move_to_C.jsonl: 2806 events over 8.0s, the cursor first put at [1187, 491] (where the recording began); nothing else is pressed until it ends
+  played 2806 of 2806 events; nothing is left held down
+eop #12: room C
+eop EOP [move_to_C, step 15 of 31]: kill_bm Devil Wing Hyperion kill_loop
+  kill_bm 'Devil Wing Hyperion': the HP bar is read all the time; ` until it shows 'hyperion', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  85s since BM: aura pressed with Alt+7 64 time(s) in 7.0s, ` after each
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Traceback (most recent call last):
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 4282, in <module>
+    command(args)
+    ~~~~~~~^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 4251, in command
+    if run_dungeon(args[0], location) is False:
+       ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 2257, in run_dungeon
+    run_sequence(dungeon_name, location, phase, verbose,
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 steps if until is None
+                 ^^^^^^^^^^^^^^^^^^^^^^
+                 else before_step(dungeon_name, until), timer=timer)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 2713, in run_sequence
+    kill_bm(rest[0], target_words(dungeon_name, rest[0]), verbose,
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            list(_DUNGEON[rest[1]]) if len(rest) > 1 else None,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            rest[2] if len(rest) > 2 else None,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            main_loop_for(dungeon_name, rest[1])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            if len(rest) > 1 else None)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 1795, in kill_bm
+    return hunt(name, words, attack, "kill_bm",
+                f"{loop_plan(loop)}, the first round from {loop[start]}"
+    ...<3 lines>...
+                   if AURA_DUE["at"] is not None else "")
+                if loop else None, verbose, search)
+  File "C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py", line 1298, in hunt
+    ENDED.wait(WAIT_SLICE)
+    ~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\threading.py", line 659, in wait
+    signaled = self._cond.wait(timeout)
+  File "C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\threading.py", line 363, in wait
+    gotit = waiter.acquire(True, timeout)
+KeyboardInterrupt

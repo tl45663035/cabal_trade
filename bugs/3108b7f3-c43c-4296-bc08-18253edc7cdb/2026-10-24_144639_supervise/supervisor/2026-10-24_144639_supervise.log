@@ -1,0 +1,205 @@
+2026-10-24_144639  tools/supervise.py --config cang
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-24_144639_supervise.log
+  screen 1920x1080
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+* no run alive; 2026-10-22_131626_run.log ended: no Cancel button appeared after clicking Change on row 3. Nothing has been cancelled.,14:46:40,dead
+  kept 0 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-22_131626_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-24_144652_found.png
+  interrupted: relist row 3: 'Soul Core (Porta Inferno) X 213' x1 at 11,276,432 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Soul Core (Porta Inferno) X 213'; nothing on screen is read to name it
+  frame 2026-10-24_144700_tab4_50slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     relisting rows 1-25: 0 relisted, 8 empty, 17 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 8 row(s) empty now
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 14:47:01, ended 14:48:27, ran for 1m 26s
+* listing tab 4 slot (1,1) at the panel's price and the full quantity, the 'Soul Core (Porta Inferno) X 213' the log says is there,14:48:27,dead
+$ py src_1080p/driver.py --config cang list-named 1 1 0 4 Soul Core (Porta Inferno) X 213
+     listed 1 at 349,998
+   DONE {"kind": "list", "tab": 4, "slot": [1, 1], "qty": 1, "price": 349998}
+     done in 8240 ms
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 14:48:28, ended 14:48:39, ran for 10s
+  frame 2026-10-24_144843_tab4_49slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* finished: list-named 1 1 0 4 Soul Core (Porta Inferno) X 213 (Soul Core (Porta Inferno) X 213); 7 slot(s) left,14:48:44,dead
+  frame 2026-10-24_144848_tab4_49slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* listing tab 4 slot (1,2) at the panel's price and the full quantity, the 'Soul Core (Porta Inferno) X 213' the log says is there,14:48:49,dead
+$ py src_1080p/driver.py --config cang list-named 1 2 0 4 Soul Core (Porta Inferno) X 213
+     listed 1 at 5,699,996
+   DONE {"kind": "list", "tab": 4, "slot": [1, 2], "qty": 1, "price": 5699996}
+     done in 6873 ms
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 14:48:49, ended 14:48:59, ran for 9s
+  frame 2026-10-24_144903_tab4_48slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* finished: list-named 1 2 0 4 Soul Core (Porta Inferno) X 213 (Soul Core (Porta Inferno) X 213); 6 slot(s) left,14:49:04,dead
+  frame 2026-10-24_144908_tab4_48slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* listing tab 4 slot (1,3) at the panel's price and the full quantity, the 'Soul Core (Porta Inferno) X 213' the log says is there,14:49:08,dead
+$ py src_1080p/driver.py --config cang list-named 1 3 0 4 Soul Core (Porta Inferno) X 213
+     listed 1 at 69,167
+   DONE {"kind": "list", "tab": 4, "slot": [1, 3], "qty": 1, "price": 69167}
+     done in 7985 ms
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 14:49:09, ended 14:49:20, ran for 10s
+  frame 2026-10-24_144924_tab4_47slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* finished: list-named 1 3 0 4 Soul Core (Porta Inferno) X 213 (Soul Core (Porta Inferno) X 213); 5 slot(s) left,14:49:25,dead
+  frame 2026-10-24_144929_tab4_47slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* listing tab 4 slot (1,4) at the panel's price and the full quantity, the 'Soul Core (Porta Inferno) X 213' the log says is there,14:49:29,dead
+$ py src_1080p/driver.py --config cang list-named 1 4 0 4 Soul Core (Porta Inferno) X 213
+     listed 3 at 99,694
+   DONE {"kind": "list", "tab": 4, "slot": [1, 4], "qty": 3, "price": 99694}
+     done in 8061 ms
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 14:49:30, ended 14:49:41, ran for 10s
+  frame 2026-10-24_144945_tab4_44slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* finished: list-named 1 4 0 4 Soul Core (Porta Inferno) X 213 (Soul Core (Porta Inferno) X 213); 2 slot(s) left,14:49:46,dead
+  frame 2026-10-24_144950_tab4_44slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* listing tab 4 slot (1,7) at the panel's price and the full quantity, the 'Soul Core (Porta Inferno) X 213' the log says is there,14:49:51,dead
+$ py src_1080p/driver.py --config cang list-named 1 7 0 4 Soul Core (Porta Inferno) X 213
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: nothing loaded into the shop slot from (1,7) after 1 ctrl-click(s). Nothing has been listed.
+  frame 2026-10-24_145003_tab4_44slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 1 failed: list-named 1 7 0 4 Soul Core (Porta Inferno) X 213 changed nothing on tab 4; Soul Core (Porta Inferno) X 213 is still there; attempt 2 in 60s,14:50:03,dead
+  kept 0 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-22_131626_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-24_145111_found.png
+  interrupted: relist row 3: 'Soul Core (Porta Inferno) X 213' x1 at 11,276,432 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Soul Core (Porta Inferno) X 213'; nothing on screen is read to name it
+  frame 2026-10-24_145118_tab4_44slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 5 row(s) empty now
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     item                              profit   units  margin        revenue           cost
+     ------------------------------------------------------------------------------------
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 14:51:19, ended 14:52:52, ran for 1m 32s
+* listing tab 4 slot (1,7) at the panel's price and the full quantity, the 'Soul Core (Porta Inferno) X 213' the log says is there,14:52:52,dead
+$ py src_1080p/driver.py --config cang list-named 1 7 0 4 Soul Core (Porta Inferno) X 213
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: nothing loaded into the shop slot from (1,7) after 1 ctrl-click(s). Nothing has been listed.
+  frame 2026-10-24_145304_tab4_44slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 2 failed: list-named 1 7 0 4 Soul Core (Porta Inferno) X 213 changed nothing on tab 4; Soul Core (Porta Inferno) X 213 is still there; attempt 3 in 60s,14:53:04,dead
+  kept 0 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-22_131626_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=True, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-24_145413_found.png
+  interrupted: relist row 3: 'Soul Core (Porta Inferno) X 213' x1 at 11,276,432 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  Escape: window closed
+  Inventory already closed
+  the dead run's log says tab 4 holds the 'Soul Core (Porta Inferno) X 213'; nothing on screen is read to name it
+  frame 2026-10-24_145419_tab4_44slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     relisting rows 1-25: 0 relisted, 5 empty, 20 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 5 row(s) empty now
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 14:54:20, ended 14:55:49, ran for 1m 28s
+* listing tab 4 slot (1,7) at the panel's price and the full quantity, the 'Soul Core (Porta Inferno) X 213' the log says is there,14:55:49,dead
+$ py src_1080p/driver.py --config cang list-named 1 7 0 4 Soul Core (Porta Inferno) X 213
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: nothing loaded into the shop slot from (1,7) after 1 ctrl-click(s). Nothing has been listed.
+  frame 2026-10-24_145601_tab4_44slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery failed 3 times: list-named 1 7 0 4 Soul Core (Porta Inferno) X 213 changed nothing on tab 4; Soul Core (Porta Inferno) X 213 is still there; relogging (1 of 1),14:56:02,dead
+$ py src_1080p/recovery.py --relog
+     no login screen; the character list is already up
+     back to the server list for the home channel, 'Channel 11'
+     'previous screen' at [1656, 992]
+     'Channel 11' at [1558, 585]; entering
+     'SoloCabalLevelin' at [1626, 470]; entering
+     Enter to start
+     no sub password asked for within 12s; going straight in
+     back in the world as SoloCabalLevelin, the balance reads
+* relogged: back in the world,14:56:38,dead
+  kept 0 png and 0 mp4 from the dead run in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\dead_runs\2026-10-22_131626_run
+  screen: disconnect=None, failed=None, login=None, select=None, alz=True, trade=False, vendor=False, craft=False, buttons=[], underprice=False
+  frame 2026-10-24_145651_found.png
+  interrupted: relist row 3: 'Soul Core (Porta Inferno) X 213' x1 at 11,276,432 withdrawn to tab 4 slot (1, 1), never listed back
+restoring the default state:
+  no Trade window or vendor open; not pressing Escape
+  I: Inventory closed
+  the dead run's log says tab 4 holds the 'Soul Core (Porta Inferno) X 213'; nothing on screen is read to name it
+  frame 2026-10-24_145658_tab4_44slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+$ py src_1080p/driver.py --config cang collect
+     relisting rows 1-25: 0 relisted, 5 empty, 20 skipped
+       #          ms   share     n      each  phase
+     collected what sold in rows 1-25; 5 row(s) empty now
+   PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market pric
+     nothing has sold yet this run.
+     ------------------------------------------------------------------------------------
+     RUN CLOSED                             0   (0 realised, +0 assumed)
+     started 14:56:59, ended 14:58:28, ran for 1m 29s
+* listing tab 4 slot (1,7) at the panel's price and the full quantity, the 'Soul Core (Porta Inferno) X 213' the log says is there,14:58:28,dead
+$ py src_1080p/driver.py --config cang list-named 1 7 0 4 Soul Core (Porta Inferno) X 213
+     ########  ##########    ######    ########    ########    ##########  ########  
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+     ######        ##      ##      ##  ########    ########    ########    ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+           ##      ##      ##      ##  ##          ##          ##          ##      ##
+     stopped: nothing loaded into the shop slot from (1,7) after 1 ctrl-click(s). Nothing has been listed.
+  frame 2026-10-24_145840_tab4_44slots.png
+  tab 4 holds 42 slot(s) below row 1, from (2, 1); the run never puts anything there, so they are not touched
+* recovery attempt 1 failed: list-named 1 7 0 4 Soul Core (Porta Inferno) X 213 changed nothing on tab 4; Soul Core (Porta Inferno) X 213 is still there; attempt 2 in 60s,14:58:41,dead
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.

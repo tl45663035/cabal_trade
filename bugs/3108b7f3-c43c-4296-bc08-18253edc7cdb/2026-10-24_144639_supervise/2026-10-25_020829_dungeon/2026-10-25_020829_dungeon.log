@@ -1,0 +1,261 @@
+2026-10-25_020829  dungeon.py --config cang eop --runs 1
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-25_020829_dungeon.log
+running on commit bbe35cb9a
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-25_020829_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  eop: the start of a block of runs
+eop EOP [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+eop EOP [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+eop EOP [opening, step 1 of 31]: get_entry
+  Inventory shut: slot grid 0.27, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [136, 600]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 1) at [1475, 236]; noted in dungeon_next.json
+eop EOP [opening, step 2 of 31]: open_dungeon_key
+  Inventory shut: slot grid 0.27, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 1) at [1475, 236]
+  Yes at [962, 614]
+  with the cursor on tab II [727, 900] the dungeon list reads ['Edge ofPhantom(18/30)[New Entry]', '', '', '', '', '', '']
+  EOP 'Edge of Phantom' at [641, 275]
+  difficulty 0 on the slider at [763, 476]
+  Enter at [1111, 887]
+  entered EOP; the entry note is cleared
+eop EOP [opening, step 3 of 31]: start_dungeon
+  Challenge at [818, 760]
+  hotbar tab II at [727, 900]
+  timer 1s started
+  timer 1s up
+  the dungeon has 300s from the Challenge click
+  eop: 13 of 30 entered on this dungeon day
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each
+eop EOP [opening, step 4 of 31]: kill_phase
+  kill phase: heal (0) every 1s while a kill is on (not in the recordings, not in the opening), and the end screen read all the time, until the end screen has been up 2s
+  the chat is read before each move_to_ ride and while the confirmation banner is up, for unique item drops in eop #13
+eop EOP [opening, step 5 of 31]: bm_aura
+  main_bm right-clicked 0.5s apart, over and over for 3s from the first click; aura 85s after the first, right-clicked over and over for 7s
+  6 round(s) of main_bm in 3.0s
+eop EOP [opening, step 6 of 31]: wait 1.5
+  timer 1.5s started
+  timer 1.5s up
+eop EOP [move_to_A, step 7 of 31]: move_to_A
+  eop/move_to_A.jsonl: 2055 events over 6.4s, the cursor first put at [1159, 662] (where the recording began); nothing else is pressed until it ends
+  played 2055 of 2055 events; nothing is left held down
+eop #13: room A
+eop EOP [move_to_A, step 8 of 31]: kill_all Enhanced Zombie Lady kill_loop
+  kill_bm 'Enhanced Zombie Lady': the HP bar is read all the time; ` until it shows 'zombie' or 'lady', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'EnhancedZombieLady208771/208771': Enhanced Zombie Lady is targeted (zombie, lady), so no more auto target
+  1 ` press(es) before 'Enhanced Zombie Lady' was targeted
+  the HP bar reads 'EnhancedZombieLady0/208771': Enhanced Zombie Lady is gone, so it is dead
+  kill_bm 'Enhanced Zombie Lady': dead after 3 round(s) in 1.9s
+  kill_bm 'Enhanced Zombie Lady': the HP bar is read all the time; ` until it shows 'zombie' or 'lady', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'EnhancedZombieLady113933/208771': Enhanced Zombie Lady is targeted (zombie, lady), so no more auto target
+  1 ` press(es) before 'Enhanced Zombie Lady' was targeted
+  the HP bar reads 'EnhancedZombieLady0/208771': Enhanced Zombie Lady is gone, so it is dead
+  kill_bm 'Enhanced Zombie Lady': dead after 2 round(s) in 1.2s
+  kill_bm 'Enhanced Zombie Lady': the HP bar is read all the time; ` until it shows 'zombie' or 'lady', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'EnhancedZombieLady30942/208771': Enhanced Zombie Lady is targeted (zombie, lady), so no more auto target
+  1 ` press(es) before 'Enhanced Zombie Lady' was targeted
+  the HP bar reads 'EnhancedZombieLady0/208771': Enhanced Zombie Lady is gone, so it is dead
+  kill_bm 'Enhanced Zombie Lady': dead after 2 round(s) in 1.3s
+  kill_bm 'Enhanced Zombie Lady': the HP bar is read all the time; ` until it shows 'zombie' or 'lady', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  2 ` press(es); 'Enhanced Zombie Lady' was never targeted
+  kill_bm 'Enhanced Zombie Lady': none targeted in 1s
+  kill_all 'Enhanced Zombie Lady': 3 killed, then none more targeted within 1s
+eop EOP [move_to_A, step 9 of 31]: kill_all any monster kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  2 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 0 killed, then none more targeted within 1s
+eop EOP [move_to_A, step 10 of 31]: wait 1.5
+  timer 1.5s started
+  timer 1.5s up
+eop EOP [move_to_B, step 11 of 31]: move_to_B
+  eop/move_to_B.jsonl: 1217 events over 3.0s, the cursor first put at [885, 389] (where the recording began); nothing else is pressed until it ends
+  played 1217 of 1217 events; nothing is left held down
+eop #13: room B
+eop EOP [move_to_B, step 12 of 31]: kill_all any monster kill_loop 2.0
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Phantom Ghoul Varrior289960/289960': any monster is targeted (289960/289960), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'PhantomGhoulVarrior0/289960': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 4 round(s) in 2.1s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Phantom GhoulVarrior89638/289960': any monster is targeted (89638/289960), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'PhantomGhoulVarrior0/289960': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 1.0s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'UndeadDefender324755/324755': any monster is targeted (324755/324755), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 6 round(s) in 3.7s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'UndeadDefender11813/324755': any monster is targeted (11813/324755), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 3 round(s) in 1.9s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'PhantomDarkSlayer665368/665368': any monster is targeted (665368/665368), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 9 round(s) in 5.2s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  2 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 2s
+  kill_all 'any monster': 5 killed, then none more targeted within 2s
+eop EOP [move_to_B, step 13 of 31]: wait 1.5
+  timer 1.5s started
+  timer 1.5s up
+eop EOP [move_to_C, step 14 of 31]: move_to_C
+  eop/move_to_C.jsonl: 2806 events over 8.0s, the cursor first put at [1187, 491] (where the recording began); nothing else is pressed until it ends
+  played 2806 of 2806 events; nothing is left held down
+eop #13: room C
+eop EOP [move_to_C, step 15 of 31]: kill_bm Devil Wing Hyperion kill_loop
+  kill_bm 'Devil Wing Hyperion': the HP bar is read all the time; ` until it shows 'hyperion', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'DeyilVinaHyperion655524/811888': Devil Wing Hyperion is targeted (hyperion), so no more auto target
+  2 ` press(es) before 'Devil Wing Hyperion' was targeted
+  the HP bar reads 'DeyilVinaHyperion0/811888': Devil Wing Hyperion is gone, so it is dead
+  kill_bm 'Devil Wing Hyperion': dead after 10 round(s) in 6.0s
+eop EOP [move_to_C, step 16 of 31]: kill_all any monster kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Skeleton MageofHate379736/379736': any monster is targeted (379736/379736), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'SkeletonMaaeofHate0/379736': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 4 round(s) in 2.2s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Skeleton MageofHate379736/379736': any monster is targeted (379736/379736), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'SkeletonMaaeofHate0/379736': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 3 round(s) in 2.0s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  7 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 2 killed, then none more targeted within 1s
+eop EOP [move_to_C, step 17 of 31]: wait 1.5
+  timer 1.5s started
+  timer 1.5s up
+eop EOP [move_to_D, step 18 of 31]: move_to_D
+  eop/move_to_D.jsonl: 1744 events over 7.0s, the cursor first put at [913, 608] (where the recording began); nothing else is pressed until it ends
+  played 1744 of 1744 events; nothing is left held down
+eop #13: room D
+eop EOP [move_to_D, step 19 of 31]: aura
+  77s since BM: the aura goes now, pressed with Alt+7 at most every 0.1s for 7s, between the ` presses and the attacks of the next kill
+eop EOP [move_to_D, step 20 of 31]: kill_all any monster kill_loop
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'Jndead Phantom Defender579920/579920': any monster is targeted (579920/579920), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'Undead Phantom Defender0/579920': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 9 round(s) in 6.2s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'Jndead Phantom Defender579920/579920': any monster is targeted (579920/579920), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  aura pressed with Alt+7 12 time(s) in 7.0s alongside the kill
+  the HP bar reads 'Undead Phantom Defender0/579920': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 7 round(s) in 4.7s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'Undead Phantom Defender 539928/579920': any monster is targeted (539928/579920), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'Undead Phantom Defender0/579920': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 8 round(s) in 4.5s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  the HP bar reads 'Jndead Phantom Defender579920/579920': any monster is targeted (579920/579920), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'Undead Phantom Defender0/579920': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 7 round(s) in 3.9s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5 over and over, stopped the moment none of them shows
+  11 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 1s
+  kill_all 'any monster': 4 killed, then none more targeted within 1s
+eop EOP [move_to_D, step 21 of 31]: cancel_bm
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each
+eop EOP [move_to_D, step 22 of 31]: wait 30
+  timer 30s started
+  timer 30s up
+eop EOP [move_to_D, step 23 of 31]: bm_aura
+  main_bm right-clicked 0.5s apart, over and over for 3s from the first click; aura 85s after the first, right-clicked over and over for 7s
+  6 round(s) of main_bm in 3.0s
+eop EOP [move_to_D, step 24 of 31]: wait 1.5
+  timer 1.5s started
+  timer 1.5s up
+eop EOP [move_to_E, step 25 of 31]: move_to_E
+  eop/move_to_E.jsonl: 3145 events over 9.4s, the cursor first put at [1125, 312] (where the recording began); nothing else is pressed until it ends
+  played 3145 of 3145 events; nothing is left held down
+eop #13: room E
+eop EOP [move_to_E, step 26 of 31]: kill_bm Zehgo of Ambition kill_loop
+  kill_bm 'Zehgo of Ambition': the HP bar is read all the time; ` until it shows 'zehgo' or 'ambition', then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'ZehaoofAmbition1124654/2141456': Zehgo of Ambition is targeted (ambition), so no more auto target
+  65 ` press(es) before 'Zehgo of Ambition' was targeted
+  the HP bar reads 'ZehaoofAmbition0/2141456': Zehgo of Ambition is gone, so it is dead
+  kill_bm 'Zehgo of Ambition': dead after 12 round(s) in 32.3s
+eop EOP [move_to_E, step 27 of 31]: kill_all any monster kill_loop 2.0
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  5 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': none targeted in 2s
+  kill_all 'any monster': 0 killed, then none more targeted within 2s
+eop EOP [move_to_E, step 28 of 31]: wait 8
+  timer 8s started
+  timer 8s up
+eop EOP [move_to_E, step 29 of 31]: wait 1.5
+  timer 1.5s started
+  timer 1.5s up
+eop EOP [move_to_F, step 30 of 31]: move_to_F
+  eop/move_to_F.jsonl: 2155 events over 10.3s, the cursor first put at [1183, 554] (where the recording began); nothing else is pressed until it ends
+  played 2155 of 2155 events; nothing is left held down
+eop #13: room F
+eop EOP [move_to_F, step 31 of 31]: kill_all any monster kill_loop None
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'thernoCalliaoThanatos 1904686/207847': any monster is targeted (1904686/207847), so no more auto target
+  2 ` press(es) before 'any monster' was targeted
+  the HP bar reads 'EthernoCalliaoThanatos0/2078472': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 17 round(s) in 11.0s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'LeaendanyBox10/10': any monster is targeted (10/10), so no more auto target
+  1 ` press(es) before 'any monster' was targeted
+  the HP bar reads '': any monster is gone, so it is dead
+  kill_bm 'any monster': dead after 1 round(s) in 0.9s
+  kill_bm 'any monster': the HP bar is read all the time; ` until it shows any monster, then 5 (once per target) pressed 0.5s apart, the first round from 5; aura only from 85s after BM over and over, stopped the moment none of them shows
+  'Cleared dungeon[EdgeIof Phantom].': the dungeon is cleared; every action stops now, exit in 2s  86s since BM: aura pressed with Alt+7 23 time(s) in 2.5s, ` after each
+
+  3 ` press(es); 'any monster' was never targeted
+  kill_bm 'any monster': the dungeon is over, after 0 round(s) in 5.5s
+  kill_all 'any monster': 2 killed, until the dungeon ended
+eop EOP [opening, step 1 of 1]: cancel_bm
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each
+  exit: confirmation -> obtain_treasure -> obtain_points -> fire_leave
+  Confirmation at [991, 323]
+  Obtain Treasure at [907, 556]
+  no 'Obtain Points' in the obtain_points window [852, 812, 962, 831] within 3s; it reads '', so nothing to claim
+  Leave at [337, 815]
+  eop: 10 of 13 entered were successful on this dungeon day
+eop EOP [opening, step 1 of 2]: wait 3
+  timer 3s started
+  timer 3s up
+eop EOP [opening, step 2 of 2]: disenchant_all
+  Inventory shut: slot grid 0.21, needs 0.33
+  inventory opened
+  Disenchant at [1524, 693]
+  Item Extraction at [1066, 744]
+  Agree at [988, 686]
+  20s for the extraction, right-clicking bm_pot -> bm_icon 0.5s apart meanwhile
+  Close at [1214, 812]
+  Sort all inventory at [1471, 732]
+  eop EOP: the dungeon is over
+eop #13: pass
+  inventory already open
+  inventory tab 1 at [1454, 181]
+  N for the shop
+  Normal at [51, 157]
+  Alt+click Luminous : Selena x100 at [380, 301]
+  quantity 9999 typed; the window keeps it to the most there is enough for
+  OK at [964, 676]
+  Luminous : Selena x100 done; N closed the shop

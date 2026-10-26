@@ -1,0 +1,91 @@
+2026-10-26_104910  src_1080p/dungeon.py fire --config trung --no-breaks
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-26_104910_dungeon.log
+running on commit f9e1ee170; uncommitted: src_1080p/configs/cang.json, src_1080p/configs/trung.json, src_1080p/dungeon.py
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-26_104910_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  25 fire run(s) so far today; the next 1x Gemstone of Transcendence x100 is bought in 3 run(s)
+  fire: the start of a block of runs
+fire Fire [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+fire Fire [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+fire Fire [opening, step 1 of 16]: get_entry
+  inventory already open
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 401]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 1) at [1475, 236]; noted in dungeon_next.json
+fire Fire [opening, step 2 of 16]: open_dungeon_key
+  Inventory shut: slot grid 0.10, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 1) at [1475, 236]
+  Yes at [962, 614]
+  no 'Lava Hellfire (Awakened)' in the dungeon list within 20s of Yes, read with the cursor on tab II [727, 900]; its rows read ['_aaHellr reNormaln(10/10n[NewEnty', '_aaHellf irePremiumn(15/15n[NewEntryn', '[Elite)LavaHellfirePremium(5/5)[NewEntryn', '_aaa Hellf ire(Awakened(30/30)[NewEntryn', 'camaew', '', '']. Nothing more clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 1 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 401]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 2) at [1531, 236]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 2) at [1531, 236]
+  Yes at [962, 614]
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4443[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4412[0m, in [35mcommand[0m
+    if [31mrun_dungeon[0m[1;31m(args[0], location)[0m is False:
+       [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2340[0m, in [35mrun_dungeon[0m
+    [31mrun_sequence[0m[1;31m(dungeon_name, location, phase, verbose,[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31msteps if until is None[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31melse before_step(dungeon_name, until), timer=timer)[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2768[0m, in [35mrun_sequence[0m
+    [31mwith_entry_retries[0m[1;31m(lambda attempt: buy_and_open([0m
+    [31m~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31mdungeon_name, location, place, attempt, verbose), verbose)[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2669[0m, in [35mwith_entry_retries[0m
+    return attempt_once(attempt)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2768[0m, in [35m<lambda>[0m
+    with_entry_retries(lambda attempt: [31mbuy_and_open[0m[1;31m([0m
+                                       [31m~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31mdungeon_name, location, place, attempt, verbose)[0m, verbose)
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2686[0m, in [35mbuy_and_open[0m
+    [31mopen_dungeon_key[0m[1;31m(dungeon_name, location, verbose, refill=attempt > 0)[0m
+    [31m~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m936[0m, in [35mopen_dungeon_key[0m
+    box, reads = [31mfind_in_list[0m[1;31m(name, TRANSFER_TIMEOUT, words, windows)[0m
+                 [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m793[0m, in [35mfind_in_list[0m
+    reads = read_windows(image, windows)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m390[0m, in [35mread_windows[0m
+    return read_crops([scaled(image.crop(box)) for box in windows])
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m383[0m, in [35mread_crops[0m
+    texts = row_model._backup_texts(crops)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\row_model.py"[0m, line [35m609[0m, in [35m_backup_texts[0m
+    answer = lines.get(timeout=BACKUP_TIMEOUT)
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\queue.py"[0m, line [35m213[0m, in [35mget[0m
+    [31mself.not_empty.wait[0m[1;31m(remaining)[0m
+    [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\threading.py"[0m, line [35m363[0m, in [35mwait[0m
+    gotit = waiter.acquire(True, timeout)
+[1;35mKeyboardInterrupt[0m

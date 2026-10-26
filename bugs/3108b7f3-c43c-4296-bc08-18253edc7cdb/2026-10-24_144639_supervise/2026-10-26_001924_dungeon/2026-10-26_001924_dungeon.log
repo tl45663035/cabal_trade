@@ -1,0 +1,281 @@
+2026-10-26_001924  src_1080p/dungeon.py --config cang --no-breaks
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-26_001924_dungeon.log
+running on commit f9e1ee170; uncommitted: src_1080p/configs/cang.json, src_1080p/configs/trung.json
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-26_001924_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+rotation fire -> ice -> train -> valley: fire 0 of 30, ice 0 of 30, train 0 of 30, valley 0 of 30
+  dungeon report: pushed
+burst: EU night, so Channel 3; relogging there
+  Escape for the menu (attempt 1)
+  Escape for the menu (attempt 2)
+  'select character' at [926, 552]
+  'yes' at [984, 638]
+  the character list is up
+  Inventory shut; pressing I (attempt 1)
+  Inventory shut; pressing I (attempt 2)
+  no login screen; the character list is already up
+  back to the server list for the home channel, 'Channel 3'
+  'previous screen' at [1656, 992]
+  'Channel 3' at [1541, 446]; entering
+  'SoloCabalLevelin' at [1626, 470]; entering
+  Enter to start
+  keypad reads 0@[1031, 534] 1@[1078, 534] 2@[890, 582] 3@[937, 582] 4@[984, 582] 5@[984, 534] 6@[843, 534] 7@[843, 582] 8@[890, 534] 9@[937, 534]
+  the sub password clicked in
+  'ok' at [901, 639]
+  back in the world as SoloCabalLevelin, the balance reads
+burst: 28.7 min of dungeons from now
+  0 fire run(s) so far today; difficulty 5 takes 1x Gemstone of Transcendence x100 every 4 runs: buying it now
+  inventory already open
+  inventory tab 1 at [1454, 181]
+  N for the shop
+  Normal at [51, 157]
+  Alt+click Gemstone of Transcendence x100 at [380, 450]
+  OK at [964, 676]
+  bought 1x Gemstone of Transcendence x100 into inventory tab 1; N closed the shop
+  fire: the start of a block of runs
+fire Fire [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+fire Fire [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+fire Fire [opening, step 1 of 16]: get_entry
+  Inventory shut: slot grid 0.06, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 401]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 1) at [1475, 236]; noted in dungeon_next.json
+fire Fire [opening, step 2 of 16]: open_dungeon_key
+  Inventory shut: slot grid 0.06, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 1) at [1475, 236]
+  Yes at [962, 614]
+  with the cursor on tab II [727, 900] the dungeon list reads ['LavaaHellfireNormal)(10/10)[NewEntry', 'Lava HellfirePremium)(15/15)[New Entryn', 'aElite) Lava Hellfire(Premium)(5/5)[New Entry]', 'Lava Hellfire(Awakened (30/30)[New Entry]', 'Yaw', '', '']
+  Fire 'Lava Hellfire (Awakened)' at [672, 350]
+  difficulty 5 on the slider at [972, 476]
+  Enter at [1111, 887]
+  entered Fire; the entry note is cleared
+fire Fire [opening, step 3 of 16]: start_dungeon
+  Challenge at [818, 760]
+  hotbar tab II at [727, 900]
+  recording the run to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\failed_videos\fire\recording.mp4; it is deleted if the run passes and kept if it fails, the newest 3 per dungeon
+  timer 1s started
+  timer 1s up
+  the dungeon has 180s from the Challenge click
+  fire: 1 of 30 entered on this dungeon day
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each
+fire Fire [opening, step 4 of 16]: kill_phase
+  kill phase: heal (0) every 1s while a kill is on (not in the recordings, not in the opening), and the end screen read all the time, until the end screen has been up 2s
+  the chat is read before each move_to_ ride and while the confirmation banner is up, for unique item drops in fire #1
+fire Fire [opening, step 5 of 16]: bm_aura
+  main_bm right-clicked 0.5s apart, over and over for 3s from the first click; aura 85s after the first, right-clicked over and over for 10s
+  6 round(s) of main_bm in 3.0s
+fire Fire [move_to_A, step 6 of 16]: move_to_A
+  fire/move_to_A.jsonl: 363 events over 1.4s, the cursor first put at [844, 765] (where the recording began); nothing else is pressed until it ends
+  played 363 of 363 events; nothing is left held down
+fire #1: room A
+fire Fire [move_to_A, step 7 of 16]: kill_bm Fire Guardian Manticore kill_loop
+  kill_bm 'Fire Guardian Manticore': the HP bar is read all the time; ` until it shows 'fire' or 'guardian' or 'manticore', then 5 (once per target) pressed 0.5s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Fire Guardian Manticore2002528/2002528': Fire Guardian Manticore is targeted (fire, guardian, manticore), so no more auto target
+  1 ` press(es) before 'Fire Guardian Manticore' was targeted
+  the HP bar reads 'FireGuardianManticore0/2002528': Fire Guardian Manticore is gone, so it is dead
+  kill_bm 'Fire Guardian Manticore': dead after 8 round(s) in 8.0s
+fire Fire [move_to_A, step 8 of 16]: kill_bm Treasure Chest kill_loop
+  kill_bm 'Treasure Chest': the HP bar is read all the time; ` until it shows 'treasure' or 'chest', then 5 (once per target) pressed 0.5s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'TreasureChest2zl2z': Treasure Chest is targeted (treasure, chest), so no more auto target
+  1 ` press(es) before 'Treasure Chest' was targeted
+  the HP bar reads '': Treasure Chest is gone, so it is dead
+  kill_bm 'Treasure Chest': dead after 1 round(s) in 1.7s
+fire Fire [move_to_B, step 9 of 16]: move_to_B
+  fire/move_to_B.jsonl: 3867 events over 9.6s, the cursor first put at [1074, 709] (where the recording began); nothing else is pressed until it ends
+  played 3867 of 3867 events; nothing is left held down
+fire #1: room B
+fire Fire [move_to_B, step 10 of 16]: kill_bm Fire Guard Dark Archer kill_loop
+  kill_bm 'Fire Guard Dark Archer': the HP bar is read all the time; ` until it shows 'fire' or 'guard' or 'dark' or 'archer', then 5 (once per target) pressed 0.5s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Fire Guard DarkArcher 1056176/1056176': Fire Guard Dark Archer is targeted (fire, guard, dark, archer), so no more auto target
+  1 ` press(es) before 'Fire Guard Dark Archer' was targeted
+  the HP bar reads 'FireGuard DarkArcher0/1056176': Fire Guard Dark Archer is gone, so it is dead
+  kill_bm 'Fire Guard Dark Archer': dead after 4 round(s) in 4.4s
+fire Fire [move_to_C, step 11 of 16]: move_to_C
+  fire/move_to_C.jsonl: 3272 events over 7.7s, the cursor first put at [1205, 300] (where the recording began); nothing else is pressed until it ends
+  played 3272 of 3272 events; nothing is left held down
+fire #1: room C
+fire Fire [move_to_C, step 12 of 16]: kill_bm Fire Gatekeeper Demonic Jason kill_loop
+  kill_bm 'Fire Gatekeeper Demonic Jason': the HP bar is read all the time; ` until it shows 'fire' or 'gatekeeper' or 'demonic' or 'jason', then 5 (once per target) pressed 0.5s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Gatekeeper DemonicJason 1028720/ 1028': Fire Gatekeeper Demonic Jason is targeted (gatekeeper, demonic, jason), so no more auto target
+  1 ` press(es) before 'Fire Gatekeeper Demonic Jason' was targeted
+  the HP bar reads 'Fire Gatekeeper Demonic Jason 0/ 1028720': Fire Gatekeeper Demonic Jason is gone, so it is dead
+  kill_bm 'Fire Gatekeeper Demonic Jason': dead after 5 round(s) in 5.1s
+fire Fire [move_to_D, step 13 of 16]: move_to_D
+  fire/move_to_D.jsonl: 3785 events over 6.9s, the cursor first put at [812, 291] (where the recording began); nothing else is pressed until it ends
+  played 3785 of 3785 events; nothing is left held down
+fire #1: room D
+fire Fire [move_to_D, step 14 of 16]: kill_bm Lava Gate kill_loop
+  kill_bm 'Lava Gate': the HP bar is read all the time; ` until it shows 'lava' or 'gate', then 5 (once per target) pressed 0.5s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'LayaGate99016/99016': Lava Gate is targeted (gate), so no more auto target
+  1 ` press(es) before 'Lava Gate' was targeted
+  the HP bar reads 'LavaGate0/99016': Lava Gate is gone, so it is dead
+  kill_bm 'Lava Gate': dead after 2 round(s) in 1.9s
+fire Fire [move_to_E, step 15 of 16]: move_to_E
+  fire/move_to_E.jsonl: 3185 events over 6.4s, the cursor first put at [1247, 224] (where the recording began); nothing else is pressed until it ends
+  played 3185 of 3185 events; nothing is left held down
+fire #1: room E
+fire Fire [move_to_E, step 16 of 16]: kill_bm Master of Fire Eurostia offensive_boss_loop
+  kill_bm 'Master of Fire Eurostia': the HP bar is read all the time; ` until it shows 'master' or 'fire' or 'eurostia', then 5 (once per target) -> C+1 -> C+3 -> C+4 -> C+5 one every 0.5s, keys 5 pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Masterof Fire Eurostia 3017140/3017140': Master of Fire Eurostia is targeted (master, fire, eurostia), so no more auto target
+  1 ` press(es) before 'Master of Fire Eurostia' was targeted
+  the HP bar reads 'MasterofFreEurostia0/3017140': Master of Fire Eurostia is gone, so it is dead
+  kill_bm 'Master of Fire Eurostia': dead after 2 round(s) in 11.4s
+  the sequence is done; ` every 0.3s until the dungeon end screen, up to 60s
+  'Cleared dungeon[Lava Hellfire (Awakened)].': the dungeon is cleared; every action stops now, exit in 2s
+  85s since BM: aura pressed with Alt+7 38 time(s) in 4.1s, ` after each
+  2 ` press(es) after the last step
+fire Fire [opening, step 1 of 1]: cancel_bm
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each
+  exit: confirmation -> obtain_treasure -> obtain_points -> fire_leave
+  Confirmation at [991, 323]
+  Obtain Treasure at [907, 556]
+  no 'Obtain Points' in the obtain_points window [852, 812, 962, 831] within 3s; it reads '', so nothing to claim
+  Leave at [337, 815]
+  fire: 1 of 1 entered were successful on this dungeon day
+  fire Fire: the dungeon is over
+fire #1: pass
+  the run passed; its video is deleted
+  Inventory shut: slot grid 0.17, needs 0.33
+  inventory opened  (took more than one press -- it had been left open)
+  inventory tab 1 at [1454, 181]
+  N for the shop
+  Normal at [51, 157]
+  Alt+click Luminous : Selena x100 at [380, 301]
+  no purchase window within 3s; the OK window reads '福', so nothing bought
+  Luminous : Selena x100 done; N closed the shop
+  1 fire run(s) so far today; the next 1x Gemstone of Transcendence x100 is bought in 3 run(s)
+  fire: 35s cooldown after the BM cancel; 21.5s to go before the next run, right-clicking bm_pot -> bm_icon 0.5s apart meanwhile
+fire Fire [opening, step 1 of 16]: get_entry
+  Inventory shut: slot grid 0.21, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 401]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 1) at [1475, 236]; noted in dungeon_next.json
+fire Fire [opening, step 2 of 16]: open_dungeon_key
+  Inventory shut: slot grid 0.21, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 1) at [1475, 236]
+  Yes at [962, 614]
+  with the cursor on tab II [727, 900] the dungeon list reads ['LavaaHellfireNormal)(10/10)[NewEntry', 'Lava HellfirePremium)(15/15)[New Entryn', 'aElite) Lava Hellfire(Premium)(5/5)[New Entry]', 'Lava Hellfire(Awakened (29/30)[New Entry]', 'Yaw', '', '']
+  Fire 'Lava Hellfire (Awakened)' at [672, 350]
+  difficulty 5 on the slider at [972, 476]
+  Enter at [1111, 887]
+  entered Fire; the entry note is cleared
+fire Fire [opening, step 3 of 16]: start_dungeon
+  Challenge at [818, 760]
+  hotbar tab II at [727, 900]
+  recording the run to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\failed_videos\fire\recording.mp4; it is deleted if the run passes and kept if it fails, the newest 3 per dungeon
+  timer 1s started
+  timer 1s up
+  the dungeon has 180s from the Challenge click
+  fire: 2 of 30 entered on this dungeon day
+  BM icon right-clicked 3 times at [254, 148], 0.5s after each
+fire Fire [opening, step 4 of 16]: kill_phase
+  kill phase: heal (0) every 1s while a kill is on (not in the recordings, not in the opening), and the end screen read all the time, until the end screen has been up 2s
+  the chat is read before each move_to_ ride and while the confirmation banner is up, for unique item drops in fire #2
+fire Fire [opening, step 5 of 16]: bm_aura
+  main_bm right-clicked 0.5s apart, over and over for 3s from the first click; aura 85s after the first, right-clicked over and over for 10s
+  6 round(s) of main_bm in 3.0s
+fire Fire [move_to_A, step 6 of 16]: move_to_A
+  fire/move_to_A.jsonl: 363 events over 1.4s, the cursor first put at [844, 765] (where the recording began); nothing else is pressed until it ends
+  played 363 of 363 events; nothing is left held down
+fire #2: room A
+fire Fire [move_to_A, step 7 of 16]: kill_bm Fire Guardian Manticore kill_loop
+  kill_bm 'Fire Guardian Manticore': the HP bar is read all the time; ` until it shows 'fire' or 'guardian' or 'manticore', then 5 (once per target) pressed 0.5s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'FireGuaraian manticore∠0025282002528': Fire Guardian Manticore is targeted (fire, manticore), so no more auto target
+  1 ` press(es) before 'Fire Guardian Manticore' was targeted
+  the HP bar reads 'FireGuardianManticore0/2002528': Fire Guardian Manticore is gone, so it is dead
+  kill_bm 'Fire Guardian Manticore': dead after 7 round(s) in 8.2s
+fire Fire [move_to_A, step 8 of 16]: kill_bm Treasure Chest kill_loop
+  kill_bm 'Treasure Chest': the HP bar is read all the time; ` until it shows 'treasure' or 'chest', then 5 (once per target) pressed 0.5s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'TreasureChest2zl2z': Treasure Chest is targeted (treasure, chest), so no more auto target
+  1 ` press(es) before 'Treasure Chest' was targeted
+  the HP bar reads '': Treasure Chest is gone, so it is dead
+  kill_bm 'Treasure Chest': dead after 1 round(s) in 1.5s
+fire Fire [move_to_B, step 9 of 16]: move_to_B
+  fire/move_to_B.jsonl: 3867 events over 9.6s, the cursor first put at [1074, 709] (where the recording began); nothing else is pressed until it ends
+  played 3867 of 3867 events; nothing is left held down
+fire #2: room B
+fire Fire [move_to_B, step 10 of 16]: kill_bm Fire Guard Dark Archer kill_loop
+  kill_bm 'Fire Guard Dark Archer': the HP bar is read all the time; ` until it shows 'fire' or 'guard' or 'dark' or 'archer', then 5 (once per target) pressed 0.5s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Fire Guard DarkArcher 1056176/1056176': Fire Guard Dark Archer is targeted (fire, guard, dark, archer), so no more auto target
+  1 ` press(es) before 'Fire Guard Dark Archer' was targeted
+  the HP bar reads 'FireGuard DarkArcher0/1056176': Fire Guard Dark Archer is gone, so it is dead
+  kill_bm 'Fire Guard Dark Archer': dead after 4 round(s) in 4.6s
+fire Fire [move_to_C, step 11 of 16]: move_to_C
+  fire/move_to_C.jsonl: 3272 events over 7.7s, the cursor first put at [1205, 300] (where the recording began); nothing else is pressed until it ends
+  played 3272 of 3272 events; nothing is left held down
+fire #2: room C
+fire Fire [move_to_C, step 12 of 16]: kill_bm Fire Gatekeeper Demonic Jason kill_loop
+  kill_bm 'Fire Gatekeeper Demonic Jason': the HP bar is read all the time; ` until it shows 'fire' or 'gatekeeper' or 'demonic' or 'jason', then 5 (once per target) pressed 0.5s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Gatekeeper Demonic Jason 763772/1028': Fire Gatekeeper Demonic Jason is targeted (gatekeeper, demonic, jason), so no more auto target
+  2 ` press(es) before 'Fire Gatekeeper Demonic Jason' was targeted
+  the HP bar reads 'Fire Gatekeeper Demonic Jason 0/ 1028720': Fire Gatekeeper Demonic Jason is gone, so it is dead
+  kill_bm 'Fire Gatekeeper Demonic Jason': dead after 3 round(s) in 3.5s
+fire Fire [move_to_D, step 13 of 16]: move_to_D
+  fire/move_to_D.jsonl: 3785 events over 6.9s, the cursor first put at [812, 291] (where the recording began); nothing else is pressed until it ends
+  played 3785 of 3785 events; nothing is left held down
+fire #2: room D
+fire Fire [move_to_D, step 14 of 16]: kill_bm Lava Gate kill_loop
+  kill_bm 'Lava Gate': the HP bar is read all the time; ` until it shows 'lava' or 'gate', then 5 (once per target) pressed 0.5s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'LayaGate99016/99016': Lava Gate is targeted (gate), so no more auto target
+  1 ` press(es) before 'Lava Gate' was targeted
+  the HP bar reads 'LavaGate0/99016': Lava Gate is gone, so it is dead
+  kill_bm 'Lava Gate': dead after 1 round(s) in 0.9s
+fire Fire [move_to_E, step 15 of 16]: move_to_E
+  fire/move_to_E.jsonl: 3185 events over 6.4s, the cursor first put at [1247, 224] (where the recording began); nothing else is pressed until it ends
+  played 3185 of 3185 events; nothing is left held down
+fire #2: room E
+fire Fire [move_to_E, step 16 of 16]: kill_bm Master of Fire Eurostia offensive_boss_loop
+  kill_bm 'Master of Fire Eurostia': the HP bar is read all the time; ` until it shows 'master' or 'fire' or 'eurostia', then 5 (once per target) -> C+1 -> C+3 -> C+4 -> C+5 one every 0.5s, keys 5 pressed and the rest used from the hotbar; each buff right-clicked 5 times 0.1s apart, the first round from 5; 5/6 become 3 -> 4 in the main_bm, 5 in the alternate_bm; aura only from 85s after BM over and over, stopped the moment none of them shows
+  the HP bar reads 'Masterof Fire Eurostia 3017140/3017140': Master of Fire Eurostia is targeted (master, fire, eurostia), so no more auto target
+  1 ` press(es) before 'Master of Fire Eurostia' was targeted
+  the HP bar reads 'MasterofFreEurostia0/3017140': Master of Fire Eurostia is gone, so it is dead
+  kill_bm 'Master of Fire Eurostia': dead after 2 round(s) in 13.2s
+  the sequence is done; ` every 0.3s until the dungeon end screen, up to 60s
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+  the video of this run is kept: C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\failed_videos\fire\f9e1ee170_2026-10-26_002412_fire_2.mp4
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4447[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4339[0m, in [35mcommand[0m
+    [31mrun_all[0m[1;31m()[0m
+    [31m~~~~~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4317[0m, in [35mrun_all[0m
+    after = rotate(group["dungeons"], after, verbose, group)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4308[0m, in [35mrotate[0m
+    after = run_in_turn(name, only_location(name), after,
+                        verbose)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4141[0m, in [35mrun_in_turn[0m
+    [31mrun_dungeon[0m[1;31m(dungeon_name, location, verbose)[0m
+    [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2370[0m, in [35mrun_dungeon[0m
+    [31maura_when_due[0m[1;31m(verbose)[0m
+    [31m~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m1464[0m, in [35maura_when_due[0m
+    [31muse_point[0m[1;31m("aura", 0.0)[0m
+    [31m~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m354[0m, in [35muse_point[0m
+    [31mpress[0m[1;31m(KEYS[key])[0m
+    [31m~~~~~[0m[1;31m^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\open_inventory.py"[0m, line [35m80[0m, in [35mpress[0m
+    [31mtime.sleep[0m[1;31m(KEY_HOLD if hold is None else hold)[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1;35mKeyboardInterrupt[0m
