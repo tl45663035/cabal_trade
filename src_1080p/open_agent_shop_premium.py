@@ -102,7 +102,10 @@ def ensure_inventory_open(verbose: bool = True, tesseract=True) -> None:
     for attempt in range(1, TOGGLE_TRIES + 1):
         press(VK_I)
         time.sleep(ACTION_GAP)
-        if panel_open(verbose=(attempt == TOGGLE_TRIES), tesseract=tesseract):
+        image = grab()
+        calibration.snap(f"inventory_press_{attempt}", image)
+        if panel_open(image, verbose=(attempt == TOGGLE_TRIES),
+                      tesseract=tesseract):
             if verbose:
                 print("  inventory opened"
                       + ("  (took more than one press -- it had been left "

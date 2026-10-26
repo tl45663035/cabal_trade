@@ -501,13 +501,13 @@
     "slot_c4": [987, 882],
     "slot_c5": [1037, 882],
     "level_windows": [
-      [506, 264, 846, 282],
-      [506, 289, 846, 307],
-      [506, 314, 846, 332],
-      [506, 339, 846, 357],
-      [506, 364, 846, 382],
-      [506, 389, 846, 407],
-      [506, 414, 846, 432]
+      [506, 262, 846, 284],
+      [506, 287, 846, 309],
+      [506, 312, 846, 334],
+      [506, 337, 846, 359],
+      [506, 362, 846, 384],
+      [506, 387, 846, 409],
+      [506, 412, 846, 434]
     ],
     "enter_window": [1044, 869, 1178, 906],
     "challenge_window": [781, 750, 855, 771],
@@ -608,6 +608,7 @@
     "cancel_bm_clicks": 3,
     "cancel_bm_gap": 0.5,
     "main_bm_cancel_wait": 3.0,
+    "main_bm_cast_wait": 6.0,
     "start_cancel_bm": true,
     "challenge_wait": 1.0,
     "slots": {"A+1": [687, 940], "A+2": [737, 940], "A+7": [987, 940], "A+8": [1037, 940], "A+9": [1087, 940], "A+0": [1137, 940]},
@@ -626,8 +627,9 @@
     "chat_open": 0.5,
     "chat_every": null,
     "chat_reads": null,
+    "chat_skip": [],
     "room_prefix": "move_to_",
-    "jewels": {"unit": "M", "worth": {"Blue Jewel": 40, "Violet Jewel": 60, "Orange Jewel": 20, "Black Jewel": 100, "White Jewel": 80}},
+    "jewels": {"unit": "M", "worth": {"Blue Jewel": 40, "Violet Jewel": 60, "Faded Green Jewel": 20, "Black Jewel": 100, "White Jewel": 80}},
     "summary_days": 7,
     "chat_lines": {"left": 20, "top": 670, "right": 545, "height": 20, "gap": 21, "count": 10},
     "unique_pattern": "uni\\w*\\s*it\\w*\\W*(.+?)\\W*has\\s*be\\w*\\s*dro",
@@ -639,6 +641,7 @@
     "failed_frames": {"folder": "failed_frames", "keep": 5, "quality": 85, "time_format": "%Y-%m-%d_%H%M%S", "no_time": "no-online-time", "no_commit": "no-commit", "log_name": "run.log", "why_name": "why.txt"},
     "failed_videos": {"folder": "failed_videos", "keep": 3, "recording": "recording.mp4", "suffix": ".mp4"},
     "target_every": 0.3,
+    "hunt_target_every": 0.3,
     "exit": [
       ["button", "confirmation", 0.0],
       ["button", "leave", 0.0]
@@ -646,7 +649,7 @@
     "manual_exit": [["play", "chaos_arena", "exit_dungeon"]],
     "before_exit": ["cancel_bm"],
     "block_start": ["tab_two", ["use", "A+9", "A+0"]],
-    "cooldown": 35,
+    "cooldown": 30,
     "cooldown_loop": ["bm_pot", "bm_icon"],
     "defeat": [
       ["button", "revive", 0.0]
@@ -677,15 +680,22 @@
     "replay_modifiers": [16, 17, 18, 160, 161, 162, 163, 164, 165],
     "target_window": [810, 45, 1100, 58],
     "two_target_windows": [[584, 45, 934, 58], [978, 45, 1328, 58]],
-    "two_target_pattern": "[A-Za-z]{3}.*[0-9]",
-    "main_bm_two_targets": false,
-    "two_target_slots": [],
     "search_attack": [],
     "cycle_keys": {},
     "bike": null,
     "no_target_stop": null,
     "target_text_min": 150,
     "target_hp_pattern": "\\d[\\d,]*\\s*/\\s*[\\d,]+",
+    "target_slots": [
+      {"name": "middle", "cap": [788, 45], "fill": [793, 45], "frame": [794, 40]},
+      {"name": "left", "cap": [581, 45], "fill": [586, 45], "frame": [587, 40]},
+      {"name": "right", "cap": [975, 45], "fill": [980, 45], "frame": [981, 40]}
+    ],
+    "target_cap": [212, 212, 212],
+    "target_frame": [[161, 161, 161], [80, 80, 80], [10, 10, 10], [44, 44, 44]],
+    "target_fill": [255, 211, 111],
+    "target_slack": [24, 24, 40],
+    "search_grace": 0.3,
     "leave": {"buttons": "dungeon/in_dungeon_buttons.png", "at": [1737, 163],
               "parts": [[0, 0, 17, 20], [47, 0, 65, 20], [95, 1, 112, 19]], "differ_over": 25,
               "exit": [1840, 173], "word": "Exit Dungeon", "settle": 7.0},
@@ -744,7 +754,7 @@
       "extraction_receive": {"window": [905, 736, 1035, 756], "word": "Receive All"},
       "extraction_pending_close": {"window": [1052, 736, 1184, 756], "word": "Close"},
       "leave_dungeon": {"window": [880, 600, 1040, 630], "word": "Exit"},
-      "quest_failed": {"window": [760, 380, 1000, 402], "word": "Failed", "timeout": 3.0},
+      "quest_failed": {"window": [760, 376, 1000, 406], "word": "Failed", "timeout": 3.0},
       "quest_failed_ok": {"window": [900, 750, 1015, 780], "word": "OK", "timeout": 2.0}
     },
     "dungeons": {
@@ -780,7 +790,7 @@
         "kill_again": true,
         "aura_for": 10.0,
         "aura_target": false,
-        "after_exit": [["wait", 3], "after_exit", ["tap", "="], ["use", "A+2"]],
+        "after_exit": [["wait", 2], "after_exit", ["tap", "="], ["use", "A+2"]],
         "manual_exit": ["exit_dungeon"],
         "block_start": [],
         "cooldown": 0
@@ -800,8 +810,8 @@
         "end_wait": 2,
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -847,11 +857,11 @@
         "kill_all_search": 1.0,
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 3], "disenchant_all"],
+        "after_exit": [["wait", 2], "disenchant_all"],
         "targets": {
           "Enhanced Zombie Lady": ["zombie", "lady"],
           "Phantom Dark Slayer": ["dark", "slayer"],
@@ -867,6 +877,7 @@
                      "open_dungeon_key",
                      "start_dungeon",
                      "kill_phase",
+                     ["tap", "="],
                      "bm_aura",
                      ["wait", 1.5],
                      "move_to_A",
@@ -914,8 +925,8 @@
         "main_bm_after": 143.0,
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -928,6 +939,7 @@
           "any monster": []
         },
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     ["tap", "="],
                      "bm_aura",
                      "move_to_A",
                      ["kill_all", "any monster", "kill_loop"],
@@ -962,8 +974,8 @@
         "kill_all_search": 0.5,
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -975,6 +987,7 @@
                      "open_dungeon_key",
                      "start_dungeon",
                      "kill_phase",
+                     ["tap", "="],
                      "bm_aura",
                      ["wait", 1.5],
                      "move_to_A",
@@ -1016,8 +1029,8 @@
         "end_wait": 2,
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -1025,7 +1038,7 @@
           "Frozen Bone Stack": ["frozen", "bone", "stack"],
           "Awakened Ice Guardian": ["awakened", "ice", "guardian"],
           "Treasure Chest": ["treasure", "chest"],
-          "Awakened Nazabrum": ["awakened", "nazabrum"],
+          "Awakened Nazabrum": ["nazabrum"],
           "Legendary Box": ["legendary", "box"],
           "any monster": []
         },
@@ -1068,11 +1081,11 @@
         "main_bm_after": 143.0,
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 3], "disenchant_all"],
+        "after_exit": [["wait", 2], "disenchant_all"],
         "targets": {
           "Illusive Gatekeeper": ["illusive", "gatekeeper"],
           "Volfid of Despair": ["volfid", "despair"],
@@ -1123,11 +1136,11 @@
         "main_bm_after": 143.0,
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 3], "disenchant_all"],
+        "after_exit": [["wait", 2], "disenchant_all"],
         "targets": {
           "Corrupted Divine Illusion Mage": ["mage"],
           "Divine Dazzled Researcher": ["dazzled", "researcher"],
@@ -1136,6 +1149,7 @@
           "any monster": []
         },
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     ["tap", "="],
                      "bm_aura",
                      "move_to_A",
                      ["kill_all", "any monster", "kill_loop"],
@@ -1173,11 +1187,11 @@
         "kill_all_search": 3.0,
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 3], "disenchant_all"],
+        "after_exit": [["wait", 2], "disenchant_all"],
         "targets": {
           "any monster": []
         },
@@ -1235,11 +1249,11 @@
         "kill_all_search": 3.0,
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 3], "disenchant_all"],
+        "after_exit": [["wait", 2], "disenchant_all"],
         "targets": {
           "any monster": []
         },
@@ -1304,17 +1318,19 @@
         "kill_all_search": 1.0,
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 3], "disenchant_all"],
+        "after_exit": [["wait", 2], "disenchant_all"],
         "targets": {
           "Vashirr": ["vashir"],
           "Devil's Left Arm": ["leftarm", "left arm"],
           "any monster": []
         },
-        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
+                     ["tap", "="],
+                     "kill_phase",
                      "move_to_A",
                      "bm_cycle",
                      ["kill_all", "any monster", "kill_loop"],
@@ -1338,9 +1354,7 @@
                      "move_to_J",
                      ["kill_all", "any monster", "kill_loop"],
                      "move_to_K",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_L",
-                     ["kill_all", "any monster", "kill_loop", null]]
+                     ["kill_all", "any monster", "kill_loop"]]
       }
     },
     "finish": [
@@ -1856,6 +1870,7 @@
     "parallel_reads": 4
   },
   "regions": {
+    "popup": [0.3125, 0.2389, 0.8203, 0.8232],
     "craft_material_line": [0.0964, 0.4539, 0.2813, 0.4797],
     "craft_requestable": [0.2547, 0.0505, 0.2661, 0.0743]
   },

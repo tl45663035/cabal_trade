@@ -93,7 +93,12 @@
                 {"name": "EU", "timezone": "Europe/Berlin", "channels": [2, 3, 4, 5, 6, 7, 8, 9]}
               ]},
     "no_target_stop": 30,
-    "two_target_slots": ["alternate_bm"],
+    "target_slots": [
+      {"name": "middle", "cap": [787, 45], "fill": [793, 45], "frame": [794, 40]},
+      {"name": "left", "cap": [578, 45], "fill": [586, 45], "frame": [587, 40]},
+      {"name": "right", "cap": [975, 45], "fill": [980, 45], "frame": [981, 40]}
+    ],
+    "target_frame": [[156, 156, 156], [151, 151, 151], [70, 70, 70], [2, 2, 2]],
     "cycle_keys": {"main_bm": {"5": "3", "6": "4"}},
     "bm_attack": {"main_bm": ["3", "4"], "alternate_bm": ["5"]},
     "bike": {"key": "1", "slot": [664, 978, 712, 1022], "grey_below": 85,
@@ -133,11 +138,11 @@
                      "get_to_middle", ["kill_bm", "boss"]],
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 3], "after_exit"]
+        "after_exit": [["wait", 2], "after_exit"]
       },
       "fire": {
         "locations": {
@@ -148,6 +153,7 @@
         "aura_after": 85.0,
         "aura_for": 10.0,
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     ["tap", "="],
                      "bm_aura",
                      "move_to_A",
                      ["kill_bm", "Fire Guardian Manticore", "kill_loop"],
@@ -166,7 +172,7 @@
       },
       "valley": {
         "main_bm_after": 0.0,
-        "after_exit": [["wait", 3], "disenchant_all"]
+        "after_exit": [["wait", 2], "disenchant_all"]
       },
       "eop": {
         "main_bm_after": 0.0
@@ -174,11 +180,12 @@
       "ic2": {
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
                      ["wait", 3], "kill_phase",
+                     ["tap", "="],
                      ["replay", "cang_ic2_run.jsonl"]],
         "exit": [
           ["claim", "replay_confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ]
       },
@@ -238,8 +245,9 @@
         "bm_aura_for": 3.0,
         "aura_after": 85.0,
         "aura_for": 10.0,
-        "after_exit": [["wait", 3], "cancel_bm"],
+        "after_exit": [["wait", 2], "cancel_bm"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     ["tap", "="],
                      "bm_aura",
                      "move_to_A",
                      ["kill_bm", "Awakened Monarch Akenaph", "kill_loop"],

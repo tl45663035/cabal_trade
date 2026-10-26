@@ -63,10 +63,9 @@
     "enabled": true,
     "trading_dungeon": "chaos_arena",
     "order": [],
-    "rotation": [{"dungeons": ["ic1", "ic2", "eop"], "batch": 3},
-                 {"dungeons": ["tm", "fn"], "batch": null, "successful": 20},
-                 {"dungeons": ["ice", "fire", "train"], "batch": 3},
-                 {"dungeons": ["tm", "fn"], "batch": null}],
+    "rotation": [{"dungeons": ["fire", "ice", "train"], "batch": 3},
+                 {"dungeons": ["ic1", "ic2", "eop"], "batch": 3},
+                 {"dungeons": ["fn", "tm"], "batch": null}],
     "kill_combo": [
       ["use", "A+2", 2.0],
       ["tap", "7", 2.0],
@@ -76,7 +75,9 @@
     "bm_aura": ["alternate_bm"],
     "bm_aura_for": 3.0,
     "bm_loop": ["alternate_bm", "aura", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
-    "main_bm_two_targets": true,
+    "offensive_boss_loop": ["5", "C+1", "C+3", "C+5"],
+    "bike": {"key": "1", "slot": [664, 978, 712, 1022], "grey_below": 85,
+             "recheck": 3.0, "settle": 1.0, "dismount_wait": 5.0},
     "key_tab": 7,
     "chat_every": null,
     "chat_reads": {"before": "move_to_", "button": "confirmation"},
@@ -92,11 +93,11 @@
                      "get_to_middle", ["kill_bm", "boss"]],
         "exit": [
           ["button", "confirmation", 0.0],
-          ["claim", "obtain_treasure", 0.5],
-          ["claim", "obtain_points", 0.5],
+          ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 3], "after_exit"]
+        "after_exit": [["wait", 2], "after_exit"]
       },
       "ice": {
         "difficulty": 5,
@@ -104,9 +105,10 @@
         "aura_after": 85.0,
         "aura_for": 10.0,
         "main_bm_after": 143.0,
-        "after_exit": [["wait", 3], "cancel_bm"],
+        "after_exit": [["wait", 2], "cancel_bm"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     "bm_aura",
+                     ["tap", "="],
+                     "bm_cycle",
                      "move_to_A",
                      ["kill_bm", "Awakened Monarch Akenaph", "kill_loop"],
                      "move_to_B",
@@ -114,6 +116,7 @@
                      "move_to_C",
                      ["kill_bm", "Awakened Ice Guardian", "kill_loop"],
                      ["kill_bm", "Treasure Chest", "kill_loop"],
+                     ["kill_all", "any monster", "kill_loop", 3.0],
                      "move_to_D",
                      ["kill_bm", "Awakened Nazabrum", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", 3.0],
@@ -121,7 +124,7 @@
       },
       "valley": {
         "main_bm_after": 0.0,
-        "after_exit": [["wait", 3], "disenchant_all"]
+        "after_exit": [["wait", 2], "disenchant_all"]
       },
       "fire": {
         "difficulty": 5,
@@ -130,7 +133,8 @@
         "aura_for": 10.0,
         "main_bm_after": 143.0,
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     "bm_aura",
+                     ["tap", "="],
+                     "bm_cycle",
                      "move_to_A",
                      ["kill_bm", "Fire Guardian Manticore", "kill_loop"],
                      ["kill_bm", "Treasure Chest", "kill_loop"],
@@ -144,17 +148,19 @@
                      ["kill_bm", "Master of Fire Eurostia", "offensive_boss_loop"]]
       },
       "ic1": {
+        "challenge_wait": 2.0,
+        "start_cancel_bm": false,
+        "chat_skip": ["move_to_A"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      ["tap", "="],
-                     "bm_aura",
                      "move_to_A",
-                     ["kill_all", "any monster", "kill_loop"],
-                     ["kill_all", "any monster", "kill_loop", 2.0],
+                     "bm_cycle",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
                      "move_to_B",
                      ["wait", 10],
                      ["kill_bm", "Divine Dazzled Researcher", "kill_loop"],
                      "move_to_C",
-                     ["kill_all", "any monster", "kill_loop", 2.0],
+                     ["kill_all", "any monster", "kill_loop", 1.0],
                      "move_to_D",
                      ["kill_all", "any monster", "kill_loop"],
                      ["kill_bm", "Corrupted Divine Illusion Faello", "kill_loop", 3.0],
@@ -165,11 +171,13 @@
                      ["kill_all", "any monster", "kill_loop", null]]
       },
       "ic2": {
+        "challenge_wait": 2.0,
+        "start_cancel_bm": false,
+        "chat_skip": ["move_to_A"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      ["tap", "="],
-                     ["wait", 1],
-                     "bm_aura",
                      "move_to_A",
+                     "bm_cycle",
                      ["kill_bm", "Illusive Gatekeeper", "kill_loop"],
                      ["kill_all", "any monster", "kill_loop", 2.0],
                      "move_to_B",
@@ -179,7 +187,7 @@
                      ["kill_all", "any monster", "kill_loop", 2.0],
                      "cancel_bm",
                      ["wait", 30],
-                     "bm_aura",
+                     "bm_cycle",
                      "move_to_D",
                      ["kill_before_boss", "Divine Statue", "Bigcrup Cuawan of Rage",
                       "kill_loop"],
@@ -187,6 +195,23 @@
                      "move_to_E",
                      ["kill_bm", "Divine K'enith", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", null]]
+      },
+      "train": {
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     ["tap", "="],
+                     "bm_cycle",
+                     "move_to_A",
+                     ["kill_all", "any monster", "kill_loop"],
+                     "move_to_B",
+                     ["kill_all", "any monster", "kill_loop"],
+                     ["kill_all", "any monster", "kill_loop", 2.0],
+                     "move_to_C",
+                     ["kill_bm", "Awakened TA-01 Gravis Rota", "kill_loop"],
+                     ["kill_bm", "Treasure Chest", "kill_loop"],
+                     "move_to_D",
+                     ["kill_all", "any monster", "kill_loop"],
+                     "move_to_E",
+                     ["kill_bm", "Awakened Steamer LHJ-G30", "offensive_boss_loop"]]
       },
       "eop": {
         "main_bm_after": 0.0,
@@ -222,6 +247,11 @@
     "enabled": false
   },
   "world_boss": {
-    "enabled": true
+    "enabled": true,
+    "alternate_warmup": ["alternate_bm", "aura"],
+    "warmup_for": 10.0,
+    "warmup_gap": 0.5,
+    "pot_delay": 5.0,
+    "main_bm_cooldown": 35.0
   }
 }

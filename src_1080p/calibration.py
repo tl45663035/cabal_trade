@@ -926,12 +926,19 @@ def _mouse_event(flags: int):
 
 
 STOPPED = threading.Event()
+OFFLINE = threading.Event()
+
+
+class Offline(BaseException):
+    pass
 
 
 def halt_if_stopped() -> None:
     if STOPPED.is_set():
         raise KeyboardInterrupt("stopped with Ctrl; nothing more is sent to "
                                 "the game")
+    if OFFLINE.is_set():
+        raise Offline("the game is disconnected; nothing more is sent to it")
 
 
 def _arrive(x: int, y: int, hovered=False, check=False) -> None:

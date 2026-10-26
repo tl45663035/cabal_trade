@@ -959,11 +959,12 @@ def prepare(verbose=True):
     return channel
 
 
-def run(verbose=True, when=None):
+def run(verbose=True, when=None, prepare_now=False):
     row_model.start_backup_reader()
     now = online_utc()
     when = next_spawn(now) if when is None else when
-    start = when - datetime.timedelta(seconds=PREPARE_LEAD)
+    start = (now.astimezone(ZONE) if prepare_now
+             else when - datetime.timedelta(seconds=PREPARE_LEAD))
     print(f"  online time {now.astimezone(ZONE):%Y-%m-%d %H:%M:%S %Z} "
           f"({now:%H:%M:%S} UTC)")
     print(f"  the next world boss is {when:%Y-%m-%d %H:%M:%S %Z} "

@@ -4793,7 +4793,7 @@ def world_boss_turn(verbose=True):
           f"stops here and the world boss run starts")
     calibration.close_everything(verbose=verbose)
     try:
-        world_boss.run(verbose=verbose, when=when)
+        world_boss.run(verbose=verbose, when=when, prepare_now=True)
     except Exception as exc:
         calibration.snap("world_boss_failed")
         print(f"  WORLD BOSS failed: {type(exc).__name__}: {exc}")
