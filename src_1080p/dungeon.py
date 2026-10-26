@@ -207,6 +207,9 @@ BUFF_PRESSES = int(_DUNGEON["buff_presses"])
 BUFF_PRESS_GAP = float(_DUNGEON["buff_press_gap"])
 LOOP_GAP = float(_DUNGEON["loop_gap"])
 ONCE_PER_TARGET = list(_DUNGEON["once_per_target"])
+ATTACK_KEYS = list(_DUNGEON["bm_attack"]["keys"])
+BM_ATTACK = {slot: list(keys) for slot, keys in _DUNGEON["bm_attack"].items()
+             if slot != "keys"}
 AURA_GAP = float(_DUNGEON["aura_gap"])
 USE_GAP = float(_DUNGEON["use_gap"])
 BM_LOOP = list(_DUNGEON["bm_loop"])
@@ -222,6 +225,7 @@ AURA_DUE = {"at": None, "after": None, "for": None, "since": None,
 AURA_WINDOW = {"until": None, "since": None, "last": None, "clicks": 0}
 MAIN_BM_DUE = {"at": None, "after": None, "for": None}
 MAIN_BM_STATE = {"on": False}
+ALT_BM = {"on": False}
 MAIN_RECAST = {"at": None, "dungeon": None}
 BM_CYCLE = {"slot": None, "ends": None, "extended": False, "last": None,
             "resume": False, "off": {}, "keep_aura": False}
@@ -285,7 +289,9 @@ UNIQUE_FILE = calibration.LOG_DIR / _DUNGEON["unique_file"]
 UNIQUE_IGNORE = [item.casefold() for item in _DUNGEON["unique_ignore"]]
 CHAT = {"seen": None, "run": None, "last": None, "fresh": False}
 FAILED_FRAMES = _DUNGEON["failed_frames"]
+FAILED_VIDEOS = _DUNGEON["failed_videos"]
 RUN_START = {"frame": None}
+RUN_FILM = {"tape": None, "path": None}
 COMMIT = {"sha": None}
 CONSOLE_LINES = [re.compile(pattern) for pattern in _DUNGEON["console_lines"]]
 UNCOMMITTED_IGNORE = set(_DUNGEON["uncommitted_ignore"])
@@ -862,6 +868,7 @@ def cancel_bm(dungeon_name, verbose=True):
     calibration.snap("cancel_bm")
     two = two_targets_now()
     MAIN_BM_STATE["on"] = False
+    ALT_BM["on"] = False
     if BM_CYCLE["slot"] is not None:
         BM_CYCLE["off"][BM_CYCLE["slot"]] = time.monotonic()
     BM_CYCLE.update(last=BM_CYCLE["slot"] or BM_CYCLE["last"], slot=None,
@@ -1210,6 +1217,23 @@ def read_inked(crops):
 
 def cycle_key(entry):
     return CYCLE_KEYS.get(BM_CYCLE["slot"], {}).get(entry, entry)
+
+
+def current_bm():
+    if BM_CYCLE["slot"] is not None:
+        return BM_CYCLE["slot"]
+    if MAIN_BM_STATE["on"]:
+        return "main_bm"
+    return "alternate_bm" if ALT_BM["on"] else None
+
+
+def bm_keys(names):
+    keys = BM_ATTACK.get(current_bm())
+    if keys is None or not any(entry in ATTACK_KEYS for entry in names):
+        return names
+    first = next(at for at, entry in enumerate(names) if entry in ATTACK_KEYS)
+    rest = [entry for entry in names if entry not in ATTACK_KEYS]
+    return rest[:first] + keys + rest[first:]
 
 
 def two_targets_now():
@@ -1650,6 +1674,7 @@ def cancel_spam(verbose=True):
         clicks += 1
     note_main_bm_off()
     MAIN_BM_STATE["on"] = False
+    ALT_BM["on"] = False
     calibration.snap("cancel_spam")
     if verbose:
         print(f"  BM icon right-clicked {clicks} times at {list(BM_ICON)} in "
@@ -1755,6 +1780,7 @@ def main_bm_on(verbose=True):
         print("  main BM is on: the target is read from the two target bars, "
               "with the middle bar read alongside")
     MAIN_BM_STATE["on"] = True
+    ALT_BM["on"] = False
 
 
 def spam_buff(point):
@@ -1795,6 +1821,8 @@ def click_round(names, since):
             use_point(entry, 0.0)
             if entry == "main_bm":
                 main_bm_on()
+            elif entry == "alternate_bm":
+                ALT_BM["on"] = True
         else:
             tap(KEYS[entry])
         ENDED.wait(max(0.0, started + LOOP_GAP - time.monotonic()))
@@ -1831,8 +1859,8 @@ def kill_bm(name, words, verbose=True, loop=None, search=None,
         if not loop:
             ENDED.wait(LOOP_GAP)
             return
-        names = (main_loop if main_loop and MAIN_BM_STATE["on"]
-                 else rounds["next"])
+        names = bm_keys(main_loop if main_loop and MAIN_BM_STATE["on"]
+                        else rounds["next"])
         if rounds["target"] == LOCK["targets"]:
             names = [entry for entry in names
                      if entry not in ONCE_PER_TARGET]
@@ -1844,6 +1872,11 @@ def kill_bm(name, words, verbose=True, loop=None, search=None,
                 f"{loop_plan(loop)}, the first round from {loop[start]}"
                 + (f"; while the main BM is on, {loop_plan(main_loop)}"
                    if main_loop else "")
+                + (f"; {'/'.join(ATTACK_KEYS)} become "
+                   + ", ".join(f"{' -> '.join(keys)} in the {slot}"
+                               for slot, keys in BM_ATTACK.items())
+                   if any(entry in ATTACK_KEYS
+                          for entry in loop + (main_loop or [])) else "")
                 + (f"; aura only from {AURA_DUE['after']:g}s after BM"
                    if AURA_DUE["at"] is not None else "")
                 if loop else None, verbose, search)
@@ -2292,6 +2325,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
     OVER.clear()
     END["at"], END["defeated"], END["overtime"] = None, False, False
     BM_OFF["at"] = None
+    ALT_BM["on"] = False
     BM_CYCLE.update(slot=None, ends=None, extended=False, resume=False,
                     keep_aura=False)
     SEARCH_ATTACK["keys"] = list(setting(dungeon_name, "search_attack"))
@@ -2302,7 +2336,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
         off_bike(f"before {dungeon_name}", verbose)
     first = calibration.frames_taken() + 1
     RUN_START["frame"] = first
-    crashed = False
+    crashed, stopped = False, False
     try:
         if not overtime(timer, verbose):
             phase["limit"].start()
@@ -2432,6 +2466,9 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             keep_failed(location, timer, first)
             keep_failed_frames(dungeon_name, location, "no end screen",
                                verbose)
+    except KeyboardInterrupt:
+        stopped = True
+        raise
     except Exception:
         crashed = True
         raise
@@ -2448,8 +2485,56 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 thread.join()
         if crashed:
             keep_failed_frames(dungeon_name, location, "crashed", verbose)
+        end_run_film(dungeon_name, location,
+                     crashed or stopped or RUN_OUTCOME["failed"], verbose)
     for name in AFTER_RUN_BUYS:
         buy_max(name, verbose)
+
+
+def start_run_film(dungeon_name, verbose=True):
+    end_run_film(dungeon_name, None, False, False)
+    folder = calibration.LOG_DIR / FAILED_VIDEOS["folder"] / dungeon_name
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / FAILED_VIDEOS["recording"]
+    path.unlink(missing_ok=True)
+    tape = calibration.film(path)
+    RUN_FILM.update(tape=tape, path=path if tape is not None else None)
+    if verbose and tape is not None:
+        print(f"  recording the run to {path}; it is deleted if the run "
+              f"passes and kept if it fails, the newest "
+              f"{int(FAILED_VIDEOS['keep'])} per dungeon")
+
+
+def end_run_film(dungeon_name, location, keep, verbose=True):
+    tape, path = RUN_FILM["tape"], RUN_FILM["path"]
+    RUN_FILM.update(tape=None, path=None)
+    if tape is None:
+        return
+    calibration.film_done(tape)
+    if not keep or location is None:
+        path.unlink(missing_ok=True)
+        if verbose:
+            print("  the run passed; its video is deleted")
+        return
+    dest = path.with_name(failed_frames_name(dungeon_name, location)
+                          + FAILED_VIDEOS["suffix"])
+    try:
+        path.replace(dest)
+    except OSError as exc:
+        if verbose:
+            print(f"  the video of this run stays at {path}: {exc}")
+        return
+    videos = []
+    for video in path.parent.glob(f"*{FAILED_VIDEOS['suffix']}"):
+        parts = video.name.split("_")
+        if video.name != FAILED_VIDEOS["recording"] and len(parts) > 2:
+            videos.append((parts[1], parts[2], video))
+    videos.sort()
+    for _day, _time, old in videos[:max(0, len(videos)
+                                        - int(FAILED_VIDEOS["keep"]))]:
+        old.unlink(missing_ok=True)
+    if verbose:
+        print(f"  the video of this run is kept: {dest}")
 
 
 def failed_frames_name(dungeon_name, location):
@@ -2691,6 +2776,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             timer["deadline"] = (with_challenge_retries(dungeon_name, location,
                                                         place, verbose)
                                  + timer["limit"])
+            start_run_film(dungeon_name, verbose)
             timer["started"] = internet_now()
             wait_timer(float(setting(dungeon_name, "challenge_wait")),
                        verbose)

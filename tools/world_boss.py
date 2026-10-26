@@ -140,6 +140,8 @@ DOUBLE_GAP = float(_BOSS["double_gap"])
 DIALOG_TIMEOUT = float(_BOSS["dialog_timeout"])
 YES_WINDOW = tuple(_BOSS["yes_window"])
 YES_WORD = _BOSS["yes_word"]
+FULL_WINDOW = tuple(_BOSS["full_window"])
+FULL_WORD = _BOSS["full_word"]
 REWARD_WINDOW = tuple(_BOSS["reward_window"])
 REWARD_WORD = _BOSS["reward_word"]
 RAID_RESULT = tuple(_BOSS["raid_result_window"])
@@ -453,12 +455,21 @@ class NoMoveDialog(RuntimeError):
     pass
 
 
+class ChannelFull(RuntimeError):
+    pass
+
+
 def confirm_move(channel, verbose=True):
     deadline = time.monotonic() + DIALOG_TIMEOUT
     while True:
-        yes = read_screen([YES_WINDOW])[0]
+        yes, said = read_screen([YES_WINDOW, FULL_WINDOW])
         if row_model._key(YES_WORD) in row_model._key(yes):
             break
+        if row_model._key(FULL_WORD) in row_model._key(said):
+            calibration.snap(f"channel_{channel}_full", alongside=True)
+            raise ChannelFull(
+                f"Channel {channel} is full: {list(FULL_WINDOW)} reads "
+                f"{said!r}. Nothing clicked.")
         if time.monotonic() >= deadline:
             calibration.snap("no_move_dialog", alongside=True)
             raise NoMoveDialog(
@@ -909,14 +920,32 @@ def relog_unless_there(channel, verbose=True):
                   f"route goes on")
 
 
+def first_open(channels, verbose=True):
+    for channel in channels:
+        try:
+            relog_unless_there(channel, verbose)
+        except ChannelFull as error:
+            if verbose:
+                print(f"  {error} Skipped for the next on the list")
+            continue
+        return channel
+    raise RuntimeError(f"Channels {', '.join(map(str, channels))} are all "
+                       f"full; there is no world boss channel to wait in.")
+
+
 def prepare(verbose=True):
     if verbose:
         print("prepare world boss")
-    relog_unless_there(PREPARE_CHANNEL, verbose)
-    if verbose:
-        print(f"  waiting {PREPARE_WAIT:g}s in Channel {PREPARE_CHANNEL}")
-    pause(PREPARE_WAIT)
-    relog_unless_there(CHANNELS[0], verbose)
+    try:
+        relog_unless_there(PREPARE_CHANNEL, verbose)
+    except ChannelFull as error:
+        if verbose:
+            print(f"  {error} The stop there is skipped")
+    else:
+        if verbose:
+            print(f"  waiting {PREPARE_WAIT:g}s in Channel {PREPARE_CHANNEL}")
+        pause(PREPARE_WAIT)
+    channel = first_open(CHANNELS, verbose)
     pause(POT_DELAY)
     click(TAB_TWO)
     for point in POT_SLOTS:
@@ -927,6 +956,7 @@ def prepare(verbose=True):
         print(f"  {POT_DELAY:g}s after Yes: hotbar tab II at {list(TAB_TWO)}, "
               f"then pots {POT_GAP:g}s apart at "
               f"{[list(point) for point in POT_SLOTS]}")
+    return channel
 
 
 def run(verbose=True, when=None):
@@ -949,14 +979,19 @@ def run(verbose=True, when=None):
         print(f"  recording the prep and Channels "
               f"{', '.join(map(str, CHANNELS))} to {film.path}")
     try:
-        prepare(verbose)
-        finished = kill_boss(CHANNELS[0], spawn_at, plan, deadline,
+        first = prepare(verbose)
+        finished = kill_boss(first, spawn_at, plan, deadline,
                              spawn_at + POWERFUL_POT_AFTER, verbose,
                              spawn_at + BUFF_AFTER_SPAWN)
-        for channel in CHANNELS[1:]:
+        for channel in CHANNELS[CHANNELS.index(first) + 1:]:
             if not finished or time.monotonic() >= deadline:
                 break
-            clicked = quick_relog(channel, verbose)
+            try:
+                clicked = quick_relog(channel, verbose)
+            except ChannelFull as error:
+                if verbose:
+                    print(f"  {error} Skipped for the next on the list")
+                continue
             start = clicked + KILL_DELAY
             finished = kill_boss(channel, start, plan, deadline,
                                  clicked + POWERFUL_POT_AFTER, verbose,

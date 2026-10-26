@@ -95,6 +95,7 @@
     "no_target_stop": 30,
     "two_target_slots": ["alternate_bm"],
     "cycle_keys": {"main_bm": {"5": "3", "6": "4"}},
+    "bm_attack": {"main_bm": ["3", "4"], "alternate_bm": ["5"]},
     "bike": {"key": "1", "slot": [664, 978, 712, 1022], "grey_below": 85,
              "recheck": 3.0, "settle": 1.0, "dismount_wait": 5.0},
     "fn_nobm_kill_loop": ["5", "6", "8", "9"],
