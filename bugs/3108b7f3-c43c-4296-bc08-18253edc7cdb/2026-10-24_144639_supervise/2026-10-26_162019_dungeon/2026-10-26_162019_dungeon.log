@@ -1,0 +1,113 @@
+2026-10-26_162019  src_1080p/dungeon.py --config trung
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-26_162019_dungeon.log
+running on commit 6d2232a30
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-26_162019_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  the screen is checked for a disconnect every 60s and again 5s after a sighting, as trading's supervisor does
+rotation fire -> ice -> train: fire 30 of 30, ice 30 of 30, train 30 of 30; every daily limit is reached
+rotation ic1 -> ic2 -> eop: ic1 11 of 30, ic2 8 of 30, eop 6 of 30
+  dungeon report: pushed
+  11 ic1 run(s) so far today, each summoning 1x with =; the next 1x Orb of Summoning x10 is bought in 9 run(s)
+  ic1: the start of a block of runs
+ic1 IC1 [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+ic1 IC1 [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+ic1 IC1 [opening, step 1 of 21]: get_entry
+  Inventory shut: slot grid 0.11, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [136, 550]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 1) at [1475, 236]; noted in dungeon_next.json
+ic1 IC1 [opening, step 2 of 21]: open_dungeon_key
+  Inventory shut: slot grid 0.11, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 1) at [1475, 236]
+  Yes at [962, 614]
+  no 'Illusion Castle Underworld (Apocrypha)' in the dungeon list within 20s of Yes, read with the cursor on tab II [727, 900]; its rows read ['[llusion Castle Underworld(30/30)[New Entry]', '[llusion Castle Radiant Hall(30/30)[New Entry]', '[llusion Castle Underworld(Apocrypha)(19/30)[New E', '[llusion Castle Radiant Hall(Apocrypha)(22/30)[New', '', '', '']. Nothing more clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 1 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [136, 550]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 2) at [1531, 236]; noted in dungeon_next.json
+  Inventory shut: slot grid 0.11, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 2) at [1531, 236]
+  Yes at [962, 614]
+  no 'Illusion Castle Underworld (Apocrypha)' in the dungeon list within 20s of Yes, read with the cursor on tab II [727, 900]; its rows read ['[llusion Castle Underworld(30/30)[New Entry]', '[llusion Castle Radiant Hall(30/30)[New Entry]', '[llusion Castle Underworld(Apocrypha)(19/30)[New E', '[llusion Castle Radiant Hall(Apocrypha)(22/30)[New', '', '', '']. Nothing more clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 2 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Exception ignored on calling ctypes callback function <function MSSImplGdi.monitors.<locals>.callback at 0x000001A2FEDE1DA0>:
+Traceback (most recent call last):
+  File "C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\mss\windows\gdi.py", line 309, in callback
+    if user32.EnumDisplayDevicesW(
+KeyboardInterrupt: 
+  N for the shop
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4681[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4572[0m, in [35mcommand[0m
+    [31mrun_all[0m[1;31m()[0m
+    [31m~~~~~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4545[0m, in [35mrun_all[0m
+    after = rotate(group["dungeons"], after, verbose, group)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4528[0m, in [35mrotate[0m
+    after, relogged = [31mrun_or_relog[0m[1;31m(name, only_location(name),[0m
+                      [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                                   [1;31mafter, verbose)[0m
+                                   [1;31m^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4331[0m, in [35mrun_or_relog[0m
+    return [31mrun_in_turn[0m[1;31m(dungeon_name, location, after, verbose)[0m, False
+           [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4367[0m, in [35mrun_in_turn[0m
+    [31mrun_dungeon[0m[1;31m(dungeon_name, location, verbose)[0m
+    [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2461[0m, in [35mrun_dungeon[0m
+    [31mrun_sequence[0m[1;31m(dungeon_name, location, phase, verbose,[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31msteps if until is None[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31melse before_step(dungeon_name, until), timer=timer)[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2906[0m, in [35mrun_sequence[0m
+    [31mwith_entry_retries[0m[1;31m(lambda attempt: buy_and_open([0m
+    [31m~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31mdungeon_name, location, place, attempt, verbose), verbose)[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2805[0m, in [35mwith_entry_retries[0m
+    return attempt_once(attempt)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2906[0m, in [35m<lambda>[0m
+    with_entry_retries(lambda attempt: [31mbuy_and_open[0m[1;31m([0m
+                                       [31m~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31mdungeon_name, location, place, attempt, verbose)[0m, verbose)
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2819[0m, in [35mbuy_and_open[0m
+    [31mget_entry[0m[1;31m(*place["entry"], verbose=verbose)[0m
+    [31m~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m617[0m, in [35mget_entry[0m
+    [31mpress[0m[1;31m(_INPUT["VK_N"])[0m
+    [31m~~~~~[0m[1;31m^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\open_inventory.py"[0m, line [35m72[0m, in [35mpress[0m
+    [31mcalibration.halt_if_stopped[0m[1;31m()[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py"[0m, line [35m938[0m, in [35mhalt_if_stopped[0m
+    raise KeyboardInterrupt("stopped with Ctrl; nothing more is sent to "
+                            "the game")
+[1;35mKeyboardInterrupt[0m: [35mstopped with Ctrl; nothing more is sent to the game[0m

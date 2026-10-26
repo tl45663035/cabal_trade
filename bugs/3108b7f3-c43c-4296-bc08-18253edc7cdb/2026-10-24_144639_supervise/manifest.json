@@ -4,7 +4,7 @@
   "since": "2026-10-24T14:46:39",
   "machine": "DESKTOP-5CFR0IQ",
   "machine_id": "3108b7f3-c43c-4296-bc08-18253edc7cdb",
-  "submitted_at": "2026-10-26T16:18:22",
+  "submitted_at": "2026-10-26T16:21:42",
   "max_frames": 120,
   "logs": [
     {
@@ -1269,7 +1269,7 @@
       "frames": {
         "kept": 453,
         "indexed": 2820,
-        "sent": 51
+        "sent": 36
       },
       "flagged": {
         "Traceback": 3,
@@ -1311,7 +1311,7 @@
       "frames": {
         "kept": 2591,
         "indexed": 2591,
-        "sent": 52
+        "sent": 37
       },
       "flagged": {
         "Traceback": 1
@@ -1351,6 +1351,35 @@
           "line": "Traceback (most recent call last):",
           "log": 3672,
           "near": "2026-10-26T16:17:29.970"
+        }
+      ]
+    },
+    {
+      "log": "2026-10-26_162019_dungeon",
+      "kind": "dungeon",
+      "code": null,
+      "screen": null,
+      "reason": "no end line: still running, or killed from outside",
+      "frames": {
+        "kept": 30,
+        "indexed": 30,
+        "sent": 30
+      },
+      "flagged": {
+        "Traceback": 2
+      },
+      "events": [
+        {
+          "pattern": "Traceback",
+          "line": "Traceback (most recent call last):",
+          "log": 3615,
+          "near": "2026-10-26T16:21:22.385"
+        },
+        {
+          "pattern": "Traceback",
+          "line": "Traceback (most recent call last):",
+          "log": 3851,
+          "near": "2026-10-26T16:21:22.385"
         }
       ]
     }
@@ -1597,66 +1626,6 @@
       "mb": 0.23
     },
     {
-      "file": "2026-10-26_134429_dungeon/frames/02901_rightclick_1187_940.png",
-      "mb": 1.98
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02902_rightclick_254_148.png",
-      "mb": 1.98
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02903_rightclick_1187_940.png",
-      "mb": 1.97
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02904_rightclick_254_148.png",
-      "mb": 1.97
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02905_rightclick_1187_940.png",
-      "mb": 1.97
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02906_rightclick_254_148.png",
-      "mb": 1.98
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02907_rightclick_1187_940.png",
-      "mb": 1.97
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02908_rightclick_254_148.png",
-      "mb": 1.98
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02909_rightclick_1187_940.png",
-      "mb": 1.97
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02910_rightclick_254_148.png",
-      "mb": 1.98
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02911_click_1214_812.png",
-      "mb": 1.98
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02912_click_1471_732.png",
-      "mb": 2.55
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02913_click_1454_181.png",
-      "mb": 2.52
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02914_click_51_157.png",
-      "mb": 2.25
-    },
-    {
-      "file": "2026-10-26_134429_dungeon/frames/02915_altclick_380_301.png",
-      "mb": 2.22
-    },
-    {
       "file": "2026-10-26_134429_dungeon/frames/02916_rightclick_1187_940.png",
       "mb": 2.64
     },
@@ -1803,66 +1772,6 @@
     {
       "file": "2026-10-26_152120_dungeon/2026-10-26_152120_dungeon.log",
       "mb": 0.19
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02643_rightclick_254_148.png",
-      "mb": 1.99
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02644_rightclick_254_148.png",
-      "mb": 1.99
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02645_rightclick_254_148.png",
-      "mb": 1.99
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02646_cancel_bm.png",
-      "mb": 1.99
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02647_played_exit_dungeon.png",
-      "mb": 2.19
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02648_click_1524_693.png",
-      "mb": 1.38
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02649_click_1066_744.png",
-      "mb": 1.51
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02650_click_988_686.png",
-      "mb": 1.51
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02651_rightclick_1187_940.png",
-      "mb": 1.21
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02652_rightclick_254_148.png",
-      "mb": 1.22
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02653_rightclick_1187_940.png",
-      "mb": 1.21
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02654_rightclick_254_148.png",
-      "mb": 1.22
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02655_rightclick_1187_940.png",
-      "mb": 1.2
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02656_rightclick_254_148.png",
-      "mb": 1.2
-    },
-    {
-      "file": "2026-10-26_152120_dungeon/frames/02657_rightclick_1187_940.png",
-      "mb": 1.2
     },
     {
       "file": "2026-10-26_152120_dungeon/frames/02658_rightclick_254_148.png",
@@ -2083,6 +1992,130 @@
     {
       "file": "2026-10-26_161653_dungeon/frames/00017_no_menu.png",
       "mb": 2.01
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/2026-10-26_162019_dungeon.log",
+      "mb": 0.01
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00001_click_727_900.png",
+      "mb": 2.52
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00002_rightclick_1087_940.png",
+      "mb": 2.53
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00003_rightclick_1137_940.png",
+      "mb": 2.52
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00004_click_727_900.png",
+      "mb": 2.55
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00005_inventory_press_1.png",
+      "mb": 2.4
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00006_click_1773_181.png",
+      "mb": 2.25
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00007_click_143_157.png",
+      "mb": 2.1
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00008_altclick_136_550.png",
+      "mb": 1.93
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00009_click_964_676.png",
+      "mb": 1.93
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00010_no_dungeon_list.png",
+      "mb": 2.55
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00011_inventory_press_1.png",
+      "mb": 2.25
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00012_click_1773_181.png",
+      "mb": 2.26
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00013_rightclick_1475_236.png",
+      "mb": 2.15
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00014_click_962_614.png",
+      "mb": 2.55
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00015_no_dungeon_list.png",
+      "mb": 1.38
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00016_entry_retry.png",
+      "mb": 1.38
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00017_inventory_press_1.png",
+      "mb": 1.82
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00018_click_1773_181.png",
+      "mb": 1.8
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00019_click_143_157.png",
+      "mb": 1.79
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00020_altclick_136_550.png",
+      "mb": 1.67
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00021_click_964_676.png",
+      "mb": 1.67
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00022_no_dungeon_list.png",
+      "mb": 2.14
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00023_inventory_press_1.png",
+      "mb": 1.83
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00024_click_1773_181.png",
+      "mb": 1.81
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00025_rightclick_1531_236.png",
+      "mb": 1.7
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00026_click_962_614.png",
+      "mb": 2.11
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00027_no_dungeon_list.png",
+      "mb": 1.39
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00028_entry_retry.png",
+      "mb": 1.38
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00029_inventory_press_1.png",
+      "mb": 1.77
+    },
+    {
+      "file": "2026-10-26_162019_dungeon/frames/00030_click_1773_181.png",
+      "mb": 1.81
     },
     {
       "file": "supervisor/2026-10-24_144639_supervise.log",
