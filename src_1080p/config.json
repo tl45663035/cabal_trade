@@ -501,13 +501,13 @@
     "slot_c4": [987, 882],
     "slot_c5": [1037, 882],
     "level_windows": [
-      [506, 262, 846, 284],
-      [506, 287, 846, 309],
-      [506, 312, 846, 334],
-      [506, 337, 846, 359],
-      [506, 362, 846, 384],
-      [506, 387, 846, 409],
-      [506, 412, 846, 434]
+      [500, 266, 846, 284],
+      [500, 291, 846, 309],
+      [500, 316, 846, 334],
+      [500, 341, 846, 359],
+      [500, 366, 846, 384],
+      [500, 391, 846, 409],
+      [500, 416, 846, 434]
     ],
     "enter_window": [1044, 869, 1178, 906],
     "challenge_window": [781, 750, 855, 771],
@@ -655,6 +655,8 @@
       ["button", "revive", 0.0]
     ],
     "revive_settle": 5.0,
+    "death_watch": false,
+    "death_watch_every": 1.0,
     "offensive_buffs": {"C+1": [837, 882], "C+3": [937, 882], "C+4": [987, 882], "C+5": [1037, 882]},
     "defensive_buffs": {"C+6": [1087, 882], "C+7": [1137, 882], "C+8": [1187, 882]},
     "defensive_switch": 15.0,
@@ -1070,6 +1072,7 @@
                   "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "death_watch": true,
         "dp": 7,
         "difficulty": 0,
         "heal_kills_only": true,
@@ -1125,6 +1128,7 @@
                   "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "death_watch": true,
         "dp": 7,
         "difficulty": 0,
         "heal_kills_only": true,
@@ -1195,8 +1199,8 @@
         "targets": {
           "any monster": []
         },
+        "challenge_wait": 2.0,
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["wait", 3],
                      ["tap", "="],
                      "bm_cycle",
                      ["kill_all", "any monster", "kill_loop", 2.0],

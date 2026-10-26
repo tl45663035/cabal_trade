@@ -927,9 +927,14 @@ def _mouse_event(flags: int):
 
 STOPPED = threading.Event()
 OFFLINE = threading.Event()
+DEFEATED = threading.Event()
 
 
 class Offline(BaseException):
+    pass
+
+
+class Defeated(BaseException):
     pass
 
 
@@ -939,6 +944,9 @@ def halt_if_stopped() -> None:
                                 "the game")
     if OFFLINE.is_set():
         raise Offline("the game is disconnected; nothing more is sent to it")
+    if DEFEATED.is_set():
+        raise Defeated("the character is dead; nothing more is sent to the "
+                       "game")
 
 
 def _arrive(x: int, y: int, hovered=False, check=False) -> None:

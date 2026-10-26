@@ -282,6 +282,9 @@ MANUAL_EXIT = _DUNGEON["manual_exit"]
 DEFEAT = [tuple(step) for step in _DUNGEON["defeat"]]
 DEFEAT_SIGN = BUTTONS[DEFEAT[0][1]]
 REVIVE_SETTLE = float(_DUNGEON["revive_settle"])
+DEATH_WATCH_EVERY = float(_DUNGEON["death_watch_every"])
+DEATH_WATCH = {"on": False, "armed": False, "entered": False, "again": False}
+DEATH_LOCK = threading.Lock()
 CHAT_OPEN = float(_DUNGEON["chat_open"])
 CHAT_EVERY = _DUNGEON["chat_every"]
 CHAT_READS = _DUNGEON["chat_reads"]
@@ -824,6 +827,7 @@ def find_in_list(name, timeout, words=None, windows=LEVEL_WINDOWS):
         if time.monotonic() >= deadline:
             calibration.snap("no_dungeon_list", image)
             return None, reads
+        calibration.halt_if_stopped()
         time.sleep(WAIT_SLICE)
 
 
@@ -997,6 +1001,7 @@ def open_dungeon_key(dungeon_name, location, verbose=True, refill=False):
     if verbose:
         print(f"  {ENTER_WORD} at {enter_point}")
     click(*enter_point, 0.0)
+    DEATH_WATCH.update(armed=False, entered=True)
     forget_entry()
     if verbose:
         print(f"  entered {location}; the entry note is cleared")
@@ -1386,8 +1391,8 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
               + (f"then {plan} over and over, " if plan else
                  "then nothing clicked, ")
               + f"with {TARGET_KEY} every {HUNT_TARGET_EVERY:g}s between attacks"
-              + (" (outside the main BM, not while the named target is "
-                 "locked)" if words else "")
+              + (" (not while the named target is locked)" if words
+                 else "")
               + ", stopped the moment none of them shows")
     presses, rounds, started = 0, 0, time.monotonic()
     quiet = started
@@ -1533,7 +1538,7 @@ def aura_when_due(verbose=True):
     while not OVER.is_set():
         slot = time.monotonic()
         use_point("aura", 0.0)
-        if AURA_DUE["target"]:
+        if AURA_DUE["target"] and not named_locked():
             tap(KEYS[TARGET_KEY])
         clicks += 1
         if time.monotonic() >= started + AURA_DUE["for"]:
@@ -1701,16 +1706,20 @@ def cycle_cast(slot, verbose=True):
     MAIN_BM_STATE["on"] = False
     if slot == "main_bm":
         main_bm_on(verbose)
+    targeted = 0
     while not OVER.is_set() and time.monotonic() < started + cast:
         use_point(slot, 0.0)
-        tap(KEYS[TARGET_KEY])
+        if not named_locked():
+            tap(KEYS[TARGET_KEY])
+            targeted += 1
         presses += 1
         OVER.wait(LOOP_GAP)
     BM_CYCLE.update(slot=slot, extended=False,
                     ends=started + cast + float(BM_CYCLE_SET["lasts"]))
     if verbose:
         print(f"  BM cycle: {slot} {slot_way(slot)} {presses} time(s) over its "
-              f"{cast:g}s cast, {TARGET_KEY} after each; it should run out "
+              f"{cast:g}s cast, {TARGET_KEY} after {targeted} of them; it "
+              f"should run out "
               f"{BM_CYCLE_SET['lasts']:g}s after the cast"
               + "".join(f"; {key} is pressed as {swap}"
                         for key, swap in CYCLE_KEYS.get(slot, {}).items()))
@@ -1862,9 +1871,13 @@ def spam_buff(point):
     calibration.snap(f"rightclick_{point[0]}_{point[1]}")
 
 
+def named_locked():
+    return (HUNTING.is_set() and LOCK["boss"] is not None
+            and bool(LOCK["named"]))
+
+
 def targets_often():
-    return HUNTING.is_set() and (MAIN_BM_STATE["on"] or LOCK["boss"] is None
-                                 or not LOCK["named"])
+    return HUNTING.is_set() and not named_locked()
 
 
 def hunt_target():
@@ -2517,22 +2530,21 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             if not box_up:
                 run_sequence(dungeon_name, location, phase, verbose, manual,
                              False)
-            run_sequence(dungeon_name, location, phase, verbose,
-                         DUNGEONS[dungeon_name].get("after_exit", []), False)
             if verbose:
                 print(f"  {dungeon_name} {location}: {why}; left it by hand")
                 run_result(dungeon_name, location, f"fail, {why}")
             RUN_OUTCOME["failed"] = True
             keep_failed(location, timer, first)
             keep_failed_frames(dungeon_name, location, why, verbose)
+            arm_death_watch(dungeon_name, verbose)
+            run_sequence(dungeon_name, location, phase, verbose,
+                         DUNGEONS[dungeon_name].get("after_exit", []), False)
         elif END["defeated"]:
             press_buttons("defeat", DEFEAT, verbose)
             ENDED.clear()
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
             relog_home(verbose)
-            run_sequence(dungeon_name, location, phase, verbose,
-                         DUNGEONS[dungeon_name].get("after_exit", []), False)
             if verbose:
                 print(f"  {dungeon_name} {location}: the dungeon is failed; "
                       f"relogged to the home channel")
@@ -2540,7 +2552,13 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             RUN_OUTCOME["failed"] = True
             keep_failed(location, timer, first)
             keep_failed_frames(dungeon_name, location, "defeated", verbose)
+            arm_death_watch(dungeon_name, verbose)
+            run_sequence(dungeon_name, location, phase, verbose,
+                         DUNGEONS[dungeon_name].get("after_exit", []), False)
         elif END["at"] is not None:
+            count_success(dungeon_name, location, verbose)
+            if verbose:
+                run_result(dungeon_name, location, "pass")
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
             while time.monotonic() < END["at"] + timer["end_wait"]:
@@ -2549,13 +2567,12 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                max(0.0, END["at"] + timer["end_wait"]
                                    - time.monotonic())))
             exit_dungeon(dungeon_name, verbose)
-            count_success(dungeon_name, location, verbose)
             ENDED.clear()
+            arm_death_watch(dungeon_name, verbose)
             run_sequence(dungeon_name, location, phase, verbose,
                          DUNGEONS[dungeon_name].get("after_exit", []), False)
             if verbose:
                 print(f"  {dungeon_name} {location}: the dungeon is over")
-                run_result(dungeon_name, location, "pass")
         elif killing.is_set():
             manual = manual_exit(dungeon_name)
             if not manual:
@@ -2580,6 +2597,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             keep_failed(location, timer, first)
             keep_failed_frames(dungeon_name, location, "no end screen",
                                verbose)
+            arm_death_watch(dungeon_name, verbose)
     except KeyboardInterrupt:
         stopped = True
         raise
@@ -2742,6 +2760,9 @@ def revive_if_dead(verbose=True):
     up, _seen = wait_for(window, word, 0)
     if not up:
         return False
+    if DEATH_WATCH["armed"]:
+        raise calibration.Defeated(f"the death {word} is up between "
+                                   f"dungeons")
     calibration.snap("dead_outside_dungeon")
     if verbose:
         print(f"  the death {word} is up outside the dungeon: revive, "
@@ -2907,19 +2928,20 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 dungeon_name, location, place, attempt, verbose), verbose)
         elif name == "start_dungeon":
             timer["limit"] = hard_limit(dungeon_name)
-            timer["deadline"] = (with_challenge_retries(dungeon_name, location,
-                                                        place, verbose)
-                                 + timer["limit"])
+            clicked = with_challenge_retries(dungeon_name, location, place,
+                                             verbose)
+            timer["deadline"] = clicked + timer["limit"]
             start_run_film(dungeon_name, verbose)
             timer["started"] = internet_now()
-            wait_timer(float(setting(dungeon_name, "challenge_wait")),
-                       verbose)
             if verbose:
                 print(f"  the dungeon has {timer['limit']:g}s from the "
                       f"{CHALLENGE_WORD} click")
             count_challenge(dungeon_name, location, timer, verbose)
             if setting(dungeon_name, "start_cancel_bm"):
                 cancel_bm(dungeon_name, verbose)
+            wait_timer(max(0.0, clicked
+                           + float(setting(dungeon_name, "challenge_wait"))
+                           - time.monotonic()), verbose)
             start_room = DUNGEONS[dungeon_name].get("start_room")
             if start_room is not None:
                 say_room(dungeon_name, location, start_room)
@@ -4326,17 +4348,100 @@ def relog_after_disconnect(dungeon_name, exc, verbose=True):
     cancel_bm(dungeon_name or TRADING_DUNGEON, verbose)
 
 
+def arm_death_watch(dungeon_name, verbose=True):
+    if not DEATH_WATCH["on"] or not setting(dungeon_name, "death_watch"):
+        return
+    DEATH_WATCH["armed"] = True
+    if verbose:
+        print(f"  out of {dungeon_name}: the death {DEFEAT_SIGN['word']} is "
+              f"looked for every {DEATH_WATCH_EVERY:g}s until the next "
+              f"dungeon is entered")
+
+
+def watch_death(verbose=True):
+    window, word = tuple(DEFEAT_SIGN["window"]), DEFEAT_SIGN["word"]
+
+    def watch():
+        told = set()
+        while True:
+            time.sleep(DEATH_WATCH_EVERY)
+            if (not DEATH_WATCH["armed"] or RELOGGING.is_set()
+                    or calibration.OFFLINE.is_set()
+                    or calibration.DEFEATED.is_set()):
+                continue
+            try:
+                up, _seen = wait_for(window, word, 0)
+            except Exception as exc:
+                reason = f"{type(exc).__name__}: {exc}"
+                if reason not in told:
+                    told.add(reason)
+                    print(f"  the death check could not read the screen "
+                          f"({reason})")
+                continue
+            if not up:
+                continue
+            calibration.snap("dead_between_dungeons")
+            with DEATH_LOCK:
+                if not DEATH_WATCH["armed"] or RELOGGING.is_set():
+                    continue
+                print(f"  the death {word} is up between dungeons: every "
+                      f"action stops and no more input is sent")
+                calibration.DEFEATED.set()
+
+    DEATH_WATCH["on"] = True
+    threading.Thread(target=watch, daemon=True).start()
+    if verbose:
+        watched = [name for name in DUNGEONS if setting(name, "death_watch")]
+        print(f"  from each {', '.join(watched)} exit until the next dungeon "
+              f"is entered, the death {word} in {list(window)} is looked for "
+              f"every {DEATH_WATCH_EVERY:g}s")
+
+
+def dead_between_dungeons():
+    return DEATH_WATCH["armed"] and wait_for(
+        tuple(DEFEAT_SIGN["window"]), DEFEAT_SIGN["word"], 0)[0]
+
+
+def relog_after_death(dungeon_name, exc, verbose=True):
+    import recovery
+    with DEATH_LOCK:
+        DEATH_WATCH["armed"] = False
+        calibration.DEFEATED.clear()
+    DEATH_WATCH["again"] = (dungeon_name is not None
+                            and not DEATH_WATCH["entered"])
+    calibration.snap("dungeon_dead")
+    print(f"  {exc}: the revive {DEFEAT_SIGN['word']}, a relog into "
+          f"{recovery.HOME_CHANNEL}, then "
+          + (f"{dungeon_name} again" if DEATH_WATCH["again"]
+             else "the loop goes on"))
+    forget_active()
+    revive_if_dead(verbose)
+    relog(verbose)
+    cancel_bm(dungeon_name or TRADING_DUNGEON, verbose)
+    DEATH_WATCH["armed"] = True
+
+
 def run_or_relog(dungeon_name, location, after, verbose=True):
+    DEATH_WATCH["again"] = False
     try:
         return run_in_turn(dungeon_name, location, after, verbose), False
     except calibration.Offline as exc:
         relog_after_disconnect(dungeon_name, exc, verbose)
         return None, True
+    except calibration.Defeated as exc:
+        relog_after_death(dungeon_name, exc, verbose)
+        return None, False
+    except RuntimeError as exc:
+        if not dead_between_dungeons():
+            raise
+        relog_after_death(dungeon_name, exc, verbose)
+        return None, False
 
 
 def run_in_turn(dungeon_name, location, after, verbose=True):
     import recovery
     RUN_OUTCOME["failed"] = False
+    DEATH_WATCH["entered"] = False
     dungeon_report_due(verbose)
     if burst_over():
         if NO_BREAKS:
@@ -4366,6 +4471,9 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
     try:
         run_dungeon(dungeon_name, location, verbose)
     except RuntimeError as exc:
+        if dead_between_dungeons():
+            raise calibration.Defeated(f"{exc} The death "
+                                       f"{DEFEAT_SIGN['word']} is up") from exc
         if not recovery.logged_out():
             if DEATH is None:
                 raise
@@ -4400,6 +4508,8 @@ def dead():
 
 
 def wait_for_respawn(verbose=True):
+    if DEATH_WATCH["armed"]:
+        raise calibration.Defeated("the HP bar reads 0 between dungeons")
     calibration.snap("dead")
     if verbose:
         print("  the HP bar reads 0: the character is dead, so the revive "
@@ -4527,6 +4637,8 @@ def rotate(names, after=None, verbose=True, group=None):
                     break
                 after, relogged = run_or_relog(name, only_location(name),
                                                after, verbose)
+                if DEATH_WATCH["again"]:
+                    continue
                 done += 1
                 if relogged:
                     break
@@ -4540,6 +4652,7 @@ def rotate(names, after=None, verbose=True, group=None):
 def run_all(verbose=True):
     after = None
     watch_disconnect(verbose)
+    watch_death(verbose)
     while True:
         for group in ROTATION_GROUPS:
             after = rotate(group["dungeons"], after, verbose, group)
@@ -4564,6 +4677,8 @@ def run_all(verbose=True):
             idle(verbose)
         except calibration.Offline as exc:
             relog_after_disconnect(None, exc, verbose)
+        except calibration.Defeated as exc:
+            relog_after_death(None, exc, verbose)
         after = None
 
 
@@ -4613,6 +4728,7 @@ def command(args):
             DUNGEONS.get(arg, {}).get("daily_limit") is not None
             for arg in args):
         watch_disconnect()
+        watch_death()
         rotate(args)
     elif args[:1] and args[0] in DUNGEONS and _from_step() is not None:
         location = args[1] if len(args) > 1 else only_location(args[0])
