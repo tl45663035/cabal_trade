@@ -95,14 +95,15 @@
                 {"name": "EU", "timezone": "Europe/Berlin", "channels": [2, 3, 4, 5, 6, 7, 8, 9]}
               ]},
     "target_slots": [
-      {"name": "middle", "cap": [787, 45], "fill": [793, 45], "frame": [794, 40]},
-      {"name": "left", "cap": [578, 45], "fill": [586, 45], "frame": [587, 40]},
-      {"name": "right", "cap": [975, 45], "fill": [980, 45], "frame": [981, 40]}
+      {"name": "middle", "cap": [787, 45], "fill": [793, 45], "frame": [794, 41]},
+      {"name": "left", "cap": [578, 45], "fill": [586, 45], "frame": [587, 41]},
+      {"name": "right", "cap": [975, 45], "fill": [980, 45], "frame": [981, 41]}
     ],
-    "target_frame": [[156, 156, 156], [151, 151, 151], [70, 70, 70], [2, 2, 2]],
+    "target_frame": [[151, 151, 151], [70, 70, 70], [2, 2, 2]],
     "cycle_keys": {"main_bm": {"5": "3", "6": "4"}},
     "bm_cycle": {"slots": ["main_bm", "alternate_bm"]},
-    "bm_attack": {"main_bm": ["3", "4"], "alternate_bm": ["5"]},
+    "bm_attack": {"main_bm": ["3", "4"], "alternate_bm": ["5", "6"]},
+    "once_per_target": [],
     "bike": {"key": "1", "slot": [664, 978, 712, 1022], "grey_below": 85,
              "recheck": 3.0, "settle": 1.0, "dismount_wait": 5.0},
     "fn_nobm_kill_loop": ["5", "6", "8", "9"],
@@ -231,7 +232,7 @@
                      ["kill_all", "any monster", "kill_loop", null]]
       },
       "ic2": {
-        "challenge_wait": 2.0,
+        "challenge_wait": 4.0,
         "start_cancel_bm": false,
         "chat_skip": ["move_to_A"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
