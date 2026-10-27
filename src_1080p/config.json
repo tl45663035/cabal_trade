@@ -494,6 +494,7 @@
     "park": [1400, 600],
     "tab_one": [692, 900],
     "tab_two": [727, 900],
+    "notification_close": null,
     "slot_above_5": [887, 940],
     "slot_above_6": [937, 940],
     "slot_c1": [837, 882],
@@ -670,6 +671,7 @@
     "bm_loop": ["main_bm", "aura", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
     "once_per_target": ["5"],
     "bm_attack": {"keys": ["5", "6"], "main_bm": ["5"], "alternate_bm": ["3", "4"]},
+    "bm_attack_gap": 0.5,
     "kill_loop": ["5"],
     "main_kill_loop": ["5", "`"],
     "main_boss_loop": ["5", "`", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
@@ -678,7 +680,7 @@
                  "cast": {"alternate_bm": 3.0, "main_bm": 6.0},
                  "lasts": 99.0, "aura_left": 5.0, "aura_for": 3.0,
                  "aura_base": 46.5, "aura_share": 0.5, "cooldown": 30.0,
-                 "cancel_for": 2.0, "cancel_gap": 0.1},
+                 "cancel_for": 2.0, "cancel_gap": 0.1, "other_every": 0.5},
     "all_buffs_boss_loop": ["5", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
     "offensive_boss_loop": ["5", "C+1", "C+3", "C+4", "C+5"],
     "replay_modifiers": [16, 17, 18, 160, 161, 162, 163, 164, 165],
@@ -863,7 +865,7 @@
           ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 2], "disenchant_all"],
+        "after_exit": [["wait", 2], "close_notification", "disenchant_all"],
         "targets": {
           "Enhanced Zombie Lady": ["zombie", "lady"],
           "Phantom Dark Slayer": ["dark", "slayer"],
@@ -1088,7 +1090,7 @@
           ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 2], "disenchant_all"],
+        "after_exit": [["wait", 2], "close_notification", "disenchant_all"],
         "targets": {
           "Illusive Gatekeeper": ["illusive", "gatekeeper"],
           "Volfid of Despair": ["volfid", "despair"],
@@ -1145,7 +1147,7 @@
           ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 2], "disenchant_all"],
+        "after_exit": [["wait", 2], "close_notification", "disenchant_all"],
         "targets": {
           "Corrupted Divine Illusion Mage": ["mage"],
           "Divine Dazzled Researcher": ["dazzled", "researcher"],
@@ -1197,7 +1199,7 @@
           ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 2], "disenchant_all"],
+        "after_exit": [["wait", 2], "close_notification", "disenchant_all"],
         "targets": {
           "any monster": []
         },
@@ -1235,6 +1237,7 @@
                      ["kill_all", "any monster", "kill_loop", 1.0],
                      "move_to_L",
                      "keep_aura",
+                     "press_other_bm",
                      ["kill_all", "any monster", "all_buffs_boss_loop"]]
       },
       "tm": {
@@ -1260,7 +1263,7 @@
           ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 2], "disenchant_all"],
+        "after_exit": [["wait", 2], "close_notification", "disenchant_all"],
         "targets": {
           "any monster": []
         },
@@ -1307,6 +1310,7 @@
                      ["kill_all", "any monster", "main_kill_loop"],
                      "move_to_T",
                      "keep_aura",
+                     "press_other_bm",
                      ["kill_all", "any monster", "main_boss_loop"]]
       },
       "fc": {
@@ -1328,7 +1332,7 @@
           ["click", "obtain_treasure", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 2], "disenchant_all"],
+        "after_exit": [["wait", 2], "close_notification", "disenchant_all"],
         "targets": {
           "Vashirr": ["vashir"],
           "Devil's Left Arm": ["leftarm", "left arm"],

@@ -79,6 +79,7 @@
     "bike": {"key": "1", "slot": [664, 978, 712, 1022], "grey_below": 85,
              "recheck": 3.0, "settle": 1.0, "dismount_wait": 5.0},
     "key_tab": 7,
+    "notification_close": [1903, 825],
     "chat_every": null,
     "chat_reads": {"before": "move_to_", "button": "confirmation"},
     "walk_frames": {"move_to_A": 0.5, "move_to_B": 0.5, "move_to_C": 0.5, "move_to_D": 0.5, "move_to_E": 0.5, "move_to_F": 0.5, "move_to_D1": 0.5, "move_to_G": 0.5, "move_to_H": 0.5, "move_to_I": 0.5, "move_to_J": 0.5, "move_to_K": 0.5, "move_to_L": 0.5},
@@ -96,7 +97,7 @@
           ["click", "obtain_treasure", 0.5],
           ["button", "fire_leave", 0.0]
         ],
-        "after_exit": [["wait", 2], "after_exit"]
+        "after_exit": [["wait", 2], "after_exit", "close_notification"]
       },
       "ice": {
         "difficulty": 5,
@@ -104,7 +105,7 @@
         "aura_after": 85.0,
         "aura_for": 10.0,
         "main_bm_after": 143.0,
-        "after_exit": [["wait", 2], "cancel_bm"],
+        "after_exit": [["wait", 2], "close_notification", "cancel_bm"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      ["tap", "="],
                      "move_to_A",
@@ -124,9 +125,10 @@
       },
       "valley": {
         "main_bm_after": 0.0,
-        "after_exit": [["wait", 2], "disenchant_all"]
+        "after_exit": [["wait", 2], "close_notification", "disenchant_all"]
       },
       "fire": {
+        "after_exit": ["close_notification"],
         "difficulty": 5,
         "bm_aura_for": 3.0,
         "aura_after": 85.0,
@@ -198,6 +200,7 @@
                      ["kill_all", "any monster", "kill_loop", null]]
       },
       "train": {
+        "after_exit": ["close_notification"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      ["tap", "="],
                      "move_to_A",

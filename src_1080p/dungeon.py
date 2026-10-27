@@ -186,6 +186,7 @@ ESCAPE_TRIES = int(_SHARED["world_boss"]["escape_tries"])
 ESCAPE_GAP = float(_SHARED["world_boss"]["escape_gap"])
 ACTIVE = {"level": None, "until": None, "deadline": None, "frames": []}
 TAB_TWO = tuple(_DUNGEON["tab_two"])
+NOTIFICATION_CLOSE = _DUNGEON["notification_close"]
 TRADE_TABS = [(tuple(tab["window"]), tab["word"])
               for tab in _DUNGEON["trade_tabs"]]
 SEQUENCES = (calibration.HERE / _DUNGEON["sequences_dir"]
@@ -216,6 +217,7 @@ ONCE_PER_TARGET = list(_DUNGEON["once_per_target"])
 ATTACK_KEYS = list(_DUNGEON["bm_attack"]["keys"])
 BM_ATTACK = {slot: list(keys) for slot, keys in _DUNGEON["bm_attack"].items()
              if slot != "keys"}
+BM_ATTACK_GAP = float(_DUNGEON["bm_attack_gap"])
 AURA_GAP = float(_DUNGEON["aura_gap"])
 USE_GAP = float(_DUNGEON["use_gap"])
 BM_LOOP = list(_DUNGEON["bm_loop"])
@@ -233,9 +235,12 @@ MAIN_BM_DUE = {"at": None, "after": None, "for": None}
 MAIN_BM_STATE = {"on": False}
 ALT_BM = {"on": False}
 HUNT_TARGET = {"last": 0.0}
+ATTACK_PRESS = {"last": 0.0, "key": None}
 MAIN_RECAST = {"at": None, "dungeon": None}
 BM_CYCLE = {"slot": None, "ends": None, "extended": False, "last": None,
-            "resume": False, "off": {}, "keep_aura": False}
+            "resume": False, "off": {}, "keep_aura": False, "other": None,
+            "pressed": None}
+OTHER_BM_EVERY = float(BM_CYCLE_SET["other_every"])
 BM_OFF = {"at": None}
 COOLDOWN = {"after": None}
 SEARCH_ATTACK = {"keys": []}
@@ -1425,6 +1430,9 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
               + (" (not while the named target is locked)" if words
                  else "")
               + ", stopped the moment none of them shows"
+              + f"; in a BM its attack keys go with the {TARGET_KEY} presses "
+                f"and in the loop, taking turns, one every "
+                f"{BM_ATTACK_GAP:g}s at most"
               + (f"; it has been read since the BM cast's first {TARGET_KEY}"
                  if early else ""))
     presses, rounds, started = 0, 0, time.monotonic()
@@ -1464,6 +1472,7 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                 main_bm_when_due(verbose)
                 main_bm_recast_when_due(verbose)
                 bm_cycle_when_due(verbose)
+                other_bm_when_on(verbose)
                 aura_in_window(verbose)
                 quiet += time.monotonic() - casting
                 auto_target()
@@ -1800,7 +1809,8 @@ def cancel_spam(verbose=True):
 
 
 def bm_cycle_when_due(verbose=True):
-    if BM_CYCLE["slot"] is None or OVER.is_set():
+    if (BM_CYCLE["slot"] is None or BM_CYCLE["other"] is not None
+            or OVER.is_set()):
         return
     now = time.monotonic()
     if now >= BM_CYCLE["ends"]:
@@ -1819,6 +1829,44 @@ def bm_cycle_when_due(verbose=True):
     if (not BM_CYCLE["extended"]
             and now >= BM_CYCLE["ends"] - float(BM_CYCLE_SET["aura_left"])):
         cycle_aura(verbose)
+
+
+def press_other_bm(verbose=True):
+    last, following = next_slot()
+    BM_CYCLE.update(other=following, pressed=None)
+    if verbose:
+        print(f"  BM cycle: {following} {slot_way(following)} every "
+              f"{OTHER_BM_EVERY:g}s from here to the end of the run, with the "
+              f"loop's keys and buffs, so it goes on the moment "
+              f"{BM_CYCLE['slot'] or 'no BM'} runs out; no cancel and no "
+              f"cast for {last or 'it'}")
+    other_bm_when_on(verbose)
+
+
+def other_bm_when_on(verbose=True):
+    other = BM_CYCLE["other"]
+    if other is None or OVER.is_set():
+        return
+    now = time.monotonic()
+    if BM_CYCLE["slot"] != other and (BM_CYCLE["ends"] is None
+                                      or now >= BM_CYCLE["ends"]):
+        ran_out = BM_CYCLE["slot"]
+        if ran_out is not None:
+            BM_CYCLE["off"][ran_out] = now
+        MAIN_BM_STATE["on"] = False
+        ALT_BM["on"] = False
+        if other == "main_bm":
+            main_bm_on(verbose)
+        BM_CYCLE.update(slot=other, extended=False,
+                        ends=now + float(BM_CYCLE_SET["lasts"]))
+        if verbose:
+            print(f"  BM cycle: {ran_out or 'no BM'} is due to run out, so "
+                  f"{other}, pressed all along, is the BM from here")
+    if (BM_CYCLE["pressed"] is not None
+            and now < BM_CYCLE["pressed"] + OTHER_BM_EVERY):
+        return
+    use_point(other, 0.0)
+    BM_CYCLE["pressed"] = now
 
 
 def next_slot():
@@ -1918,10 +1966,23 @@ def targets_often():
     return HUNTING.is_set() and not named_locked()
 
 
+def attack_keys():
+    return [cycle_key(key) for key in BM_ATTACK.get(current_bm()) or []]
+
+
+def attack_key(now):
+    keys = attack_keys()
+    if not keys or now < ATTACK_PRESS["last"] + BM_ATTACK_GAP:
+        return
+    key = keys[(keys.index(ATTACK_PRESS["key"]) + 1) % len(keys)
+               if ATTACK_PRESS["key"] in keys else 0]
+    tap(KEYS[key])
+    ATTACK_PRESS.update(last=now, key=key)
+
+
 def auto_target():
     tap(KEYS[TARGET_KEY])
-    for key in BM_ATTACK.get(current_bm()) or []:
-        tap(KEYS[cycle_key(key)])
+    attack_key(time.monotonic())
 
 
 def hunt_target():
@@ -1948,6 +2009,7 @@ def click_round(names, since):
         main_bm_when_due()
         main_bm_recast_when_due()
         bm_cycle_when_due()
+        other_bm_when_on()
         aura_in_window()
         if entry is None:
             gap_until(time.monotonic() + LOOP_GAP)
@@ -1968,6 +2030,10 @@ def click_round(names, since):
                 main_bm_on()
             elif entry == "alternate_bm":
                 ALT_BM["on"] = True
+        elif entry in attack_keys():
+            gap_until(ATTACK_PRESS["last"] + BM_ATTACK_GAP)
+            if not ENDED.is_set():
+                attack_key(time.monotonic())
         else:
             tap(KEYS[entry])
         gap_until(started + LOOP_GAP)
@@ -2513,7 +2579,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
     BM_OFF["at"] = None
     ALT_BM["on"] = False
     BM_CYCLE.update(slot=None, ends=None, extended=False, resume=False,
-                    keep_aura=False)
+                    keep_aura=False, other=None, pressed=None)
     SEARCH_ATTACK["keys"] = list(setting(dungeon_name, "search_attack"))
     HEAL["every"] = float(setting(dungeon_name, "heal_every"))
     if steps is None:
@@ -2557,6 +2623,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 main_bm_when_due(verbose)
                 main_bm_recast_when_due(verbose)
                 bm_cycle_when_due(verbose)
+                other_bm_when_on(verbose)
                 auto_target()
                 presses += 1
                 OVER.wait(TARGET_EVERY)
@@ -3090,6 +3157,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                          else "is on, so no aura"))
         elif name == "swap_bm_aura":
             swap_bm_aura(dungeon_name, float(rest[0]), verbose)
+        elif name == "press_other_bm":
+            press_other_bm(verbose)
         elif name == "tab_two":
             if not focus_game():
                 raise RuntimeError("could not bring the game to the "
@@ -3099,6 +3168,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             click(*TAB_TWO, 0.0)
         elif name == "cancel_bm":
             cancel_bm(dungeon_name, verbose)
+        elif name == "close_notification":
+            close_notification(verbose)
         elif name == "disenchant_all":
             disenchant_all(verbose, setting(dungeon_name, "cooldown_loop"))
         elif name == "kill_phase":
@@ -3232,6 +3303,20 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             if name.startswith(ROOM_PREFIX) and not OVER.is_set():
                 say_room(dungeon_name, location, name[len(ROOM_PREFIX):])
             bm_cycle_after(verbose)
+
+
+def close_notification(verbose=True):
+    if NOTIFICATION_CLOSE is None:
+        if verbose:
+            print("  no notification_close point in this config; nothing "
+                  "clicked")
+        return
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
+    if verbose:
+        print(f"  the bottom notification's close at "
+              f"{list(NOTIFICATION_CLOSE)}, clicked without a read")
+    click(*NOTIFICATION_CLOSE, 0.0)
 
 
 def say_room(dungeon_name, location, room):
@@ -4664,7 +4749,8 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
     powerful_pot_due(dungeon_name, verbose)
     if after is None:
         start_block(dungeon_name, location, verbose)
-    COOLDOWN["after"] = after
+    COOLDOWN["after"] = (after if after is not None or BM_OFF["at"] is None
+                         else (dungeon_name, BM_OFF["at"]))
     if DEATH is not None and dead():
         wait_for_respawn(verbose)
         return None
@@ -4914,6 +5000,8 @@ def command(args):
         shout()
     elif args[:1] == ["disenchant"]:
         disenchant_all()
+    elif args[:1] == ["close_notification"]:
+        close_notification()
     elif args[:1] == ["get_to_wb_area"]:
         calibration.close_everything(verbose=True)
         get_to_wb_area()
@@ -4973,7 +5061,8 @@ def command(args):
                          f"play DUNGEON SEQUENCE, kill DUNGEON NAME, bm_aura, "
                          f"kill_bm DUNGEON NAME, "
                          f"enter N, arrive, "
-                         f"calibrate, shout, disenchant, get_to_wb_area "
+                         f"calibrate, shout, disenchant, close_notification, "
+                         f"get_to_wb_area "
                          f"or do ACTION")
 
 
