@@ -168,7 +168,6 @@
                      ["kill_all", "any monster", "kill_loop", 2.0],
                      "move_to_E",
                      ["wait", 5],
-                     "keep_aura",
                      ["kill_bm", "Divine Golem of Rage", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", null]]
       },
@@ -195,7 +194,6 @@
                       "kill_loop"],
                      ["kill_all", "any monster", "kill_loop", 2.0],
                      "move_to_E",
-                     "keep_aura",
                      ["kill_bm", "Divine K'enith", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", null]]
       },
@@ -242,8 +240,6 @@
                      ["wait", 8],
                      ["wait", 1.5],
                      "move_to_F",
-                     "keep_aura",
-                     ["kill_bm", "Etherno Calligo Thanatos", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", null]]
       }
     }

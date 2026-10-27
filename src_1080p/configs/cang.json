@@ -94,7 +94,6 @@
                 {"name": "NA", "timezone": "America/Los_Angeles", "channels": [11, 12]},
                 {"name": "EU", "timezone": "Europe/Berlin", "channels": [2, 3, 4, 5, 6, 7, 8, 9]}
               ]},
-    "no_target_stop": 30,
     "target_slots": [
       {"name": "middle", "cap": [787, 45], "fill": [793, 45], "frame": [794, 40]},
       {"name": "left", "cap": [578, 45], "fill": [586, 45], "frame": [587, 40]},
@@ -206,8 +205,6 @@
                      ["wait", 8],
                      ["wait", 1.5],
                      "move_to_F",
-                     "keep_aura",
-                     ["kill_bm", "Etherno Calligo Thanatos", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", null]]
       },
       "ic1": {
@@ -230,7 +227,6 @@
                      ["kill_all", "any monster", "kill_loop", 2.0],
                      "move_to_E",
                      ["wait", 5],
-                     "keep_aura",
                      ["kill_bm", "Divine Golem of Rage", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", null]]
       },

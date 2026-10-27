@@ -148,7 +148,7 @@ ROTATION_RUNS = int(_DUNGEON.get("rotation_runs", 1))
 DEATH = _DUNGEON.get("death")
 HP_TEXT = re.compile(r"(\d+)/(\d+)")
 FAILED_RUNS = {"in_a_row": 0}
-RUN_OUTCOME = {"failed": False}
+RUN_OUTCOME = {"failed": False, "inside": None}
 NO_TARGET_STOP = float(_DUNGEON["no_target_stop"] or 0)
 LIMITS = {int(level): int(cap)
           for level, cap in _DUNGEON["daily_limits"].items()}
@@ -2481,7 +2481,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 timer=None, until=None):
     timer = {"until": None} if timer is None else timer
     timer["end_wait"] = end_wait(dungeon_name)
-    RUN_OUTCOME["failed"] = False
+    RUN_OUTCOME.update(failed=False, inside=None)
     limit = DUNGEONS[dungeon_name].get("daily_limit")
     if limit is not None and steps is None:
         ran = dungeon_counts(_state(), server_day()).get(dungeon_name, 0)
@@ -2586,6 +2586,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             if not box_up:
                 run_sequence(dungeon_name, location, phase, verbose, manual,
                              False)
+            RUN_OUTCOME["inside"] = None
             if verbose:
                 print(f"  {dungeon_name} {location}: {why}; left it by hand")
                 run_result(dungeon_name, location, f"fail, {why}")
@@ -2601,6 +2602,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
             relog_home(verbose)
+            RUN_OUTCOME["inside"] = None
             if verbose:
                 print(f"  {dungeon_name} {location}: the dungeon is failed; "
                       f"relogged to the home channel")
@@ -2623,6 +2625,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                max(0.0, END["at"] + timer["end_wait"]
                                    - time.monotonic())))
             exit_dungeon(dungeon_name, verbose)
+            RUN_OUTCOME["inside"] = None
             ENDED.clear()
             arm_death_watch(dungeon_name, verbose)
             run_sequence(dungeon_name, location, phase, verbose,
@@ -2645,6 +2648,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             if not box_up:
                 run_sequence(dungeon_name, location, phase, verbose, manual,
                              False)
+            RUN_OUTCOME["inside"] = None
             if verbose:
                 print(f"  {dungeon_name} {location}: left the dungeon by hand")
                 run_result(dungeon_name, location,
@@ -3030,6 +3034,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             clicked = with_challenge_retries(dungeon_name, location, place,
                                              verbose)
             timer["deadline"] = clicked + timer["limit"]
+            RUN_OUTCOME["inside"] = location
             RUN_CLOCK.update(started=clicked, rooms=[[
                 DUNGEONS[dungeon_name].get("start_room") or "opening",
                 clicked]])
@@ -4741,9 +4746,25 @@ def survive_failed_run(dungeon_name, exc, verbose=True):
         print(f"  {dungeon_name}: {exc} Not dead and not logged out: the "
               f"default state, then the next run "
               f"({FAILED_RUNS['in_a_row']} of {most} failures in a row)")
-    dismiss_quest_failed(verbose)
+    box_up = dismiss_quest_failed(verbose)
     calibration.close_everything(verbose=verbose)
-    leave_if_inside(verbose)
+    location = RUN_OUTCOME["inside"]
+    if location is None:
+        return
+    if verbose:
+        print(f"  {dungeon_name} {location}: the run failed after the "
+              f"{CHALLENGE_WORD} click and never left; leaving by hand, as at "
+              f"the time limit")
+    ENDED.clear()
+    run_sequence(dungeon_name, location, None, verbose,
+                 setting(dungeon_name, "before_exit"), False)
+    if not box_up:
+        run_sequence(dungeon_name, location, None, verbose,
+                     manual_exit(dungeon_name), False)
+    RUN_OUTCOME["inside"] = None
+    arm_death_watch(dungeon_name, verbose)
+    run_sequence(dungeon_name, location, None, verbose,
+                 DUNGEONS[dungeon_name].get("after_exit", []), False)
 
 
 def dismiss_quest_failed(verbose=True, wait=0.0):
@@ -4763,36 +4784,6 @@ def dismiss_quest_failed(verbose=True, wait=0.0):
             print(f"  its OK did not read; clicked where it sits, {point}")
         click(*point, float(LEAVE["settle"]))
     return True
-
-
-def in_dungeon(image=None):
-    image = calibration.grab() if image is None else image
-    buttons = Image.open(LEAVE["buttons"]).convert("RGB")
-    x, y = LEAVE["at"]
-    return all(ImageStat.Stat(ImageChops.difference(
-        image.convert("RGB").crop((x + left, y + top, x + right, y + bottom)),
-        buttons.crop((left, top, right, bottom)))).mean[0]
-        <= float(LEAVE["differ_over"])
-        for left, top, right, bottom in LEAVE["parts"])
-
-
-def leave_if_inside(verbose=True):
-    dismiss_quest_failed(verbose)
-    if not in_dungeon():
-        return
-    calibration.snap("still_in_dungeon")
-    if verbose:
-        print(f"  the dungeon's camera/pause/exit buttons are still up, "
-              f"so the run never left: "
-              f"{LEAVE['word']} at {LEAVE['exit']}, then its "
-              f"{LEAVE['word']!r} button, before the next run")
-    click(*LEAVE["exit"], SELECT_SETTLE)
-    press_button("leave_dungeon", float(LEAVE["settle"]), verbose)
-    if in_dungeon():
-        calibration.snap("could_not_leave")
-        raise RuntimeError("the dungeon's buttons are still up after "
-                           f"{LEAVE['word']}; stopped so no entry is bought "
-                           "from inside a dungeon.")
 
 
 def rotation_done(dungeon_name, successful):

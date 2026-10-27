@@ -118,8 +118,8 @@ if None in KEYED_SLOTS.values():
     raise SystemExit(
         f"keyed points off the {_ROW['modifier']} hotbar row {_ROW['y']}: "
         f"{[name for name, key in KEYED_SLOTS.items() if key is None]}")
-AURA_DURATIONS = {"main": float(_BOSS["mode_duration"]),
-                  "burst_alternate": float(_BOSS["burst_alternate_duration"])}
+MODE_DURATION = float(_BOSS["mode_duration"])
+BURST_ALTERNATE_DURATION = float(_BOSS["burst_alternate_duration"])
 MAIN_BM_COOLDOWN = float(_BOSS["main_bm_cooldown"])
 ONLINE_EVERY = float(_BOSS["online_every"])
 FINAL_SYNC = float(_BOSS["final_sync"])
@@ -734,10 +734,11 @@ def mode_plan(spawn_at, when):
 
 
 def switch_due(plan, now):
-    if plan["phase"] in AURA_DURATIONS:
-        return (plan["timer"] is not None
-                and now >= plan["timer"] + AURA_DURATIONS[plan["phase"]])
-    return now >= plan["cancelled"] + MAIN_BM_COOLDOWN
+    if plan["phase"] == "alternate":
+        return now >= plan["cancelled"] + MAIN_BM_COOLDOWN
+    lasts = (MODE_DURATION if plan["phase"] == "main"
+             else BURST_ALTERNATE_DURATION)
+    return plan["timer"] is not None and now >= plan["timer"] + lasts
 
 
 def switch_bm(plan, now, verbose=True):
@@ -778,8 +779,7 @@ def spam_warmup(plan, due, count, verbose=True):
             plan["timer"] = pressed_at
             if verbose:
                 print(f"  spawn {pressed_at - plan['spawn']:+.1f}s: aura "
-                      f"used; timer started, {phase} BM cancel at "
-                      f"+{AURA_DURATIONS[phase]:g}s")
+                      f"used")
         if time.monotonic() >= due["heal"]:
             tap_key(HEAL_VK)
             count["heal"] = count.get("heal", 0) + 1
@@ -821,9 +821,7 @@ def loop_click(plan, now, buffs_from, count, saving, verbose=True):
     if name == "aura" and plan["timer"] is None:
         plan["timer"] = now
         if verbose:
-            print(f"  spawn {now - plan['spawn']:+.1f}s: aura used; timer "
-                  f"started, {phase} BM cancel at "
-                  f"+{AURA_DURATIONS[phase]:g}s")
+            print(f"  spawn {now - plan['spawn']:+.1f}s: aura used")
     plan["next"] = now + LOOP_GAP
 
 
@@ -959,6 +957,51 @@ def prepare(verbose=True):
     return channel
 
 
+def step_failed(where, error, then, verbose=True):
+    calibration.snap("world_boss_step_failed", alongside=True)
+    if verbose:
+        print(f"  {where}: {type(error).__name__}: {error}; {then}")
+
+
+def kill_in_channel(channel, start, plan, deadline, pot_at, verbose=True,
+                    buffs_from=None, loop_from=None):
+    try:
+        return kill_boss(channel, start, plan, deadline, pot_at, verbose,
+                         buffs_from, loop_from)
+    except Exception as error:
+        step_failed(f"Channel {channel}", error, "on to the next channel",
+                    verbose)
+        return True
+
+
+def route(plan, spawn_at, deadline, verbose=True):
+    try:
+        first = prepare(verbose)
+    except Exception as error:
+        step_failed("the prep", error, "no channel to fight in", verbose)
+        return
+    finished = kill_in_channel(first, spawn_at, plan, deadline,
+                               spawn_at + POWERFUL_POT_AFTER, verbose,
+                               spawn_at + BUFF_AFTER_SPAWN)
+    for channel in CHANNELS[CHANNELS.index(first) + 1:]:
+        if not finished or time.monotonic() >= deadline:
+            break
+        try:
+            clicked = quick_relog(channel, verbose)
+        except ChannelFull as error:
+            if verbose:
+                print(f"  {error} Skipped for the next on the list")
+            continue
+        except Exception as error:
+            step_failed(f"the relog to Channel {channel}", error,
+                        "on to the next channel", verbose)
+            continue
+        start = clicked + KILL_DELAY
+        finished = kill_in_channel(channel, start, plan, deadline,
+                                   clicked + POWERFUL_POT_AFTER, verbose,
+                                   loop_from=start)
+
+
 def run(verbose=True, when=None, prepare_now=False):
     row_model.start_backup_reader()
     now = online_utc()
@@ -980,23 +1023,7 @@ def run(verbose=True, when=None, prepare_now=False):
         print(f"  recording the prep and Channels "
               f"{', '.join(map(str, CHANNELS))} to {film.path}")
     try:
-        first = prepare(verbose)
-        finished = kill_boss(first, spawn_at, plan, deadline,
-                             spawn_at + POWERFUL_POT_AFTER, verbose,
-                             spawn_at + BUFF_AFTER_SPAWN)
-        for channel in CHANNELS[CHANNELS.index(first) + 1:]:
-            if not finished or time.monotonic() >= deadline:
-                break
-            try:
-                clicked = quick_relog(channel, verbose)
-            except ChannelFull as error:
-                if verbose:
-                    print(f"  {error} Skipped for the next on the list")
-                continue
-            start = clicked + KILL_DELAY
-            finished = kill_boss(channel, start, plan, deadline,
-                                 clicked + POWERFUL_POT_AFTER, verbose,
-                                 loop_from=start)
+        route(plan, spawn_at, deadline, verbose)
         film = end_film(film, verbose)
         if verbose:
             print(f"the route is done; back to the home channel, Channel "

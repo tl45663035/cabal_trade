@@ -700,9 +700,7 @@
     "target_fill": [255, 211, 111],
     "target_slack": [24, 24, 40],
     "search_grace": 0.3,
-    "leave": {"buttons": "dungeon/in_dungeon_buttons.png", "at": [1737, 163],
-              "parts": [[0, 0, 17, 20], [47, 0, 65, 20], [95, 1, 112, 19]], "differ_over": 25,
-              "exit": [1840, 173], "word": "Exit Dungeon", "settle": 7.0},
+    "leave": {"settle": 7.0},
     "slash_misread_pattern": "(\\d)([oO])?[fF]\\s*(?=\\d)",
     "bosses": {
       "1": "Chaotic Zigdris Faello",
@@ -757,7 +755,6 @@
       "extraction_pending": {"window": [880, 290, 1040, 314], "word": "Extract Item"},
       "extraction_receive": {"window": [905, 736, 1035, 756], "word": "Receive All"},
       "extraction_pending_close": {"window": [1052, 736, 1184, 756], "word": "Close"},
-      "leave_dungeon": {"window": [880, 600, 1040, 630], "word": "Exit"},
       "quest_failed": {"window": [760, 376, 1000, 406], "word": "Failed", "timeout": 3.0},
       "quest_failed_ok": {"window": [900, 750, 1015, 780], "word": "OK", "timeout": 2.0}
     },
