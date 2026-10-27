@@ -72,6 +72,7 @@ PREPARE_WAIT = float(_BOSS["prepare_wait"])
 TAB_TWO = tuple(_BOSS["tab_two"])
 POT_SLOTS = [tuple(point) for point in _BOSS["pot_slots"]]
 KILL_DELAY = float(_BOSS["kill_delay"])
+CANCEL_DELAY = float(_BOSS["cancel_delay"])
 TARGET_VK = int(_BOSS["target_vk"])
 TARGET_EVERY = float(_BOSS["target_every"])
 HEAL_VK = int(_BOSS["heal_vk"])
@@ -92,21 +93,26 @@ POWERFUL_POT_AFTER = float(_BOSS["powerful_pot_after"])
 POWERFUL_LEVELS = {int(level) for level in _BOSS["powerful_levels"]}
 BURST_LEVELS = {int(level) for level in _BOSS["burst_levels"]}
 BURST_CHANNEL = int(_BOSS["burst_channel"])
-LOOP_GAP = float(_BOSS["loop_gap"])
+BUFF_CLICKS = int(_BOSS["buff_clicks"])
+BUFF_GAP = float(_BOSS["buff_gap"])
+BUFF_EVERY = float(_BOSS["buff_every"])
+KEY_EVERY = float(_BOSS["key_every"])
+KEY_GAP = float(_BOSS["key_gap"])
+CANCEL_CLICKS = int(_BOSS["cancel_clicks"])
+CANCEL_GAP = float(_BOSS["cancel_gap"])
+SWITCH_GAP = float(_BOSS["switch_gap"])
 LOOPS = {"main": list(_BOSS["main_loop"]),
          "alternate": list(_BOSS["alternate_loop"]),
          "burst_alternate": list(_BOSS["burst_alternate_loop"])}
-WARMUP_FOR = float(_BOSS["warmup_for"])
-WARMUP_GAP = float(_BOSS["warmup_gap"])
-WARMUPS = {"main": list(_BOSS["main_warmup"]),
-           "alternate": list(_BOSS["alternate_warmup"]),
-           "burst_alternate": list(_BOSS["burst_alternate_warmup"])}
-LOOP_START = {phase: next((at for at, name in enumerate(cycle)
-                           if name not in WARMUPS[phase]), 0)
-              for phase, cycle in LOOPS.items()}
+SPAMS = {"main": list(_BOSS["main_spam"]),
+         "alternate": list(_BOSS["alternate_spam"]),
+         "burst_alternate": list(_BOSS["burst_alternate_spam"])}
+SPAM_PRESSES = int(_BOSS["spam_presses"])
+ROTATIONS = {phase: [name for name in names for _ in range(SPAM_PRESSES)]
+             for phase, names in SPAMS.items()}
 LOOP_POINTS = {name: tuple(_BOSS[name])
-               for cycle in [*LOOPS.values(), *WARMUPS.values()]
-               for name in cycle
+               for names in (*SPAMS.values(), *LOOPS.values())
+               for name in names
                if name not in BUFF_NAMES}
 LOOP_POINTS.update(OFFENSIVE_BUFFS)
 _ROW = _SHARED["dungeon"]["alt_row"]
@@ -119,7 +125,6 @@ if None in KEYED_SLOTS.values():
         f"keyed points off the {_ROW['modifier']} hotbar row {_ROW['y']}: "
         f"{[name for name, key in KEYED_SLOTS.items() if key is None]}")
 MODE_DURATION = float(_BOSS["mode_duration"])
-BURST_ALTERNATE_DURATION = float(_BOSS["burst_alternate_duration"])
 MAIN_BM_COOLDOWN = float(_BOSS["main_bm_cooldown"])
 ONLINE_EVERY = float(_BOSS["online_every"])
 FINAL_SYNC = float(_BOSS["final_sync"])
@@ -726,121 +731,142 @@ def next_due(due, every):
 
 
 def mode_plan(spawn_at, when):
-    return {"phase": "main", "next": spawn_at - BM_LEAD,
-            "index": LOOP_START["main"], "warm_until": None,
+    return {"phase": "main", "key_at": spawn_at - BM_LEAD, "key_index": 0,
+            "round": [], "round_at": None, "click_at": None,
+            "cancel_left": 0, "cancel_at": None,
             "timer": None, "cancelled": None, "spawn": spawn_at,
             "when": when.isoformat(), "kills": [], "boss": None,
             "powerful": False, "burst": False}
 
 
+def key_step(phase):
+    return KEY_EVERY if len(SPAMS[phase]) == 1 else KEY_GAP
+
+
+def cycle_text(phase):
+    lasts = (f"for {MAIN_BM_COOLDOWN:g}s from the cancel"
+             if phase == "alternate"
+             else f"until {MODE_DURATION:g}s after its first aura"
+             if phase == "main"
+             else "until the world boss ends, with no more cancels")
+    keys = SPAMS[phase]
+    pattern = (f"{keys[0]} by key every {key_step(phase):g}s" if len(keys) == 1
+               else " -> ".join(f"{name} x{SPAM_PRESSES}" for name in keys)
+               + f" by key, {key_step(phase):g}s apart")
+    return (f"{pattern}, over and over {lasts}; alongside, "
+            f"{' -> '.join(LOOPS[phase])} by mouse, each right-clicked "
+            f"{BUFF_CLICKS} times {BUFF_GAP:g}s apart, a round every "
+            f"{BUFF_EVERY:g}s")
+
+
 def switch_due(plan, now):
+    if plan["phase"] == "burst_alternate":
+        return False
     if plan["phase"] == "alternate":
         return now >= plan["cancelled"] + MAIN_BM_COOLDOWN
-    lasts = (MODE_DURATION if plan["phase"] == "main"
-             else BURST_ALTERNATE_DURATION)
-    return plan["timer"] is not None and now >= plan["timer"] + lasts
+    return plan["timer"] is not None and now >= plan["timer"] + MODE_DURATION
+
+
+def start_cancel(plan, now, verbose=True):
+    plan.update(cancel_left=CANCEL_CLICKS, cancel_at=now)
+    if verbose:
+        print(f"  spawn {now - plan['spawn']:+.1f}s: cancel {plan['phase']} "
+              f"BM: the BM icon at {list(BM_ICON)} right-clicked "
+              f"{CANCEL_CLICKS} times {CANCEL_GAP:g}s apart, then the switch")
+
+
+def cancel_click(plan, now, verbose=True):
+    right_click(BM_ICON)
+    plan["cancel_left"] -= 1
+    plan["cancel_at"] = now + CANCEL_GAP
+    if plan["cancel_left"]:
+        return
+    calibration.snap("cancel_bm", alongside=True)
+    plan["click_at"] = max(plan["click_at"] or now, now + BUFF_GAP)
+    switch_bm(plan, time.monotonic(), verbose)
 
 
 def switch_bm(plan, now, verbose=True):
-    if verbose:
-        print(f"  spawn {now - plan['spawn']:+.1f}s: cancel {plan['phase']} "
-              f"BM")
-    cancel_bm(verbose)
     if plan["phase"] == "main":
         plan.update(phase="burst_alternate" if plan["burst"] else "alternate",
                     cancelled=now)
     else:
         plan.update(phase="main")
-    plan.update(timer=None, index=LOOP_START[plan["phase"]],
-                warm_until=None, next=now + LOOP_GAP)
+    plan.update(timer=None, key_index=0, key_at=now + SWITCH_GAP)
     if verbose:
-        print(f"  spawn {now - plan['spawn']:+.1f}s: {plan['phase']} loop: "
-              f"{' -> '.join(LOOPS[plan['phase']])}, {LOOP_GAP:g}s apart")
+        print(f"  spawn {now - plan['spawn']:+.1f}s: {plan['phase']}: "
+              f"{cycle_text(plan['phase'])}")
 
 
-def spam_warmup(plan, due, count, verbose=True):
-    phase = plan["phase"]
-    names = WARMUPS[phase]
-    if verbose:
-        print(f"  spawn {time.monotonic() - plan['spawn']:+.1f}s: {phase} "
-              f"warm-up: {' -> '.join(names)} in turn, {WARMUP_GAP:g}s apart "
-              f"for {WARMUP_FOR:g}s nonstop, target after each, then the "
-              f"{phase} loop: {' -> '.join(LOOPS[phase])}")
-    started, presses = time.monotonic(), 0
-    while time.monotonic() < started + WARMUP_FOR:
-        name = names[presses % len(names)]
-        pressed_at = time.monotonic()
-        use_point(name, LOOP_POINTS[name])
-        tap_key(TARGET_VK)
-        presses += 1
-        count[name] = count.get(name, 0) + 1
-        count["target"] = count.get("target", 0) + 1
-        if name == "aura" and plan["timer"] is None:
-            plan["timer"] = pressed_at
-            if verbose:
-                print(f"  spawn {pressed_at - plan['spawn']:+.1f}s: aura "
-                      f"used")
-        if time.monotonic() >= due["heal"]:
-            tap_key(HEAL_VK)
-            count["heal"] = count.get("heal", 0) + 1
-            due["heal"] = next_due(due["heal"], HEAL_EVERY)
-        time.sleep(max(0.0, started + presses * WARMUP_GAP - time.monotonic()))
-    calibration.snap(f"{phase}_warmup", alongside=True)
-    if verbose:
-        print(f"  spawn {started - plan['spawn']:+.1f}s: "
-              + ", ".join(f"{name} x{len(range(at, presses, len(names)))}"
-                          for at, name in enumerate(names))
-              + f" over {time.monotonic() - started:.1f}s, {WARMUP_GAP:g}s "
-                f"apart, target after each")
-    plan["warm_until"] = time.monotonic()
-    plan["next"] = plan["warm_until"] + LOOP_GAP
-
-
-def loop_click(plan, now, buffs_from, count, saving, verbose=True):
-    phase = plan["phase"]
-    stage, slot = "loop", "index"
-    cycle = LOOPS[phase]
-    for _ in cycle:
-        name = cycle[plan[slot] % len(cycle)]
-        plan[slot] += 1
-        if name not in BUFF_NAMES or now >= buffs_from:
-            break
-    if saving and name in OFFENSIVE_BUFFS:
-        plan["next"] = now + LOOP_GAP
-        return
-    if name == DEFENSIVE:
-        name, point = DEFENSIVE_BUFFS[int((now - buffs_from) // DEFENSIVE_SWITCH)
-                                      % len(DEFENSIVE_BUFFS)]
-    else:
-        point = LOOP_POINTS[name]
-    use_point(name, point)
+def press_key(plan, now, count, verbose=True):
+    names = ROTATIONS[plan["phase"]]
+    name = names[plan["key_index"] % len(names)]
+    plan["key_index"] += 1
+    use_point(name, LOOP_POINTS[name])
     count[name] = count.get(name, 0) + 1
-    first = plan[slot] % len(cycle) == 1
-    if first:
-        calibration.snap(f"{phase}_{stage}_{name}", alongside=True)
     if name == "aura" and plan["timer"] is None:
         plan["timer"] = now
         if verbose:
-            print(f"  spawn {now - plan['spawn']:+.1f}s: aura used")
-    plan["next"] = now + LOOP_GAP
+            print(f"  spawn {now - plan['spawn']:+.1f}s: first aura press")
+    plan["key_at"] = next_due(plan["key_at"], key_step(plan["phase"]))
+
+
+def round_clicks(phase, now, buffs_from, saving):
+    clicks = []
+    for name in LOOPS[phase]:
+        if name in BUFF_NAMES and now < buffs_from:
+            continue
+        if saving and name in OFFENSIVE_BUFFS:
+            continue
+        if name == DEFENSIVE:
+            entry = DEFENSIVE_BUFFS[int((now - buffs_from) // DEFENSIVE_SWITCH)
+                                    % len(DEFENSIVE_BUFFS)]
+        else:
+            entry = (name, LOOP_POINTS[name])
+        clicks.extend([entry] * BUFF_CLICKS)
+    return clicks
+
+
+def buff_click(plan, now, buffs_from, count, saving):
+    if not plan["round"]:
+        if plan["round_at"] is not None and now < plan["round_at"]:
+            return
+        plan["round"] = round_clicks(plan["phase"], now, buffs_from, saving)
+        plan["round_at"] = (now + BUFF_EVERY if now >= buffs_from
+                            else min(now + BUFF_EVERY, buffs_from))
+        plan["click_at"] = max(now, plan["click_at"] or now)
+        if not plan["round"]:
+            return
+        calibration.snap(f"{plan['phase']}_buffs", alongside=True)
+    if now < plan["click_at"]:
+        return
+    name, point = plan["round"].pop(0)
+    right_click(point)
+    count[name] = count.get(name, 0) + 1
+    plan["click_at"] = now + BUFF_GAP
 
 
 def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
-              buffs_from=None, loop_from=None):
+              buffs_from=None, loop_from=None, cancel_from=None):
     buffs_from = start if buffs_from is None else buffs_from
-    loop_from = plan["next"] if loop_from is None else loop_from
+    loop_from = plan["key_at"] if loop_from is None else loop_from
+    cancel_from = loop_from if cancel_from is None else cancel_from
     due = {"target": start, "heal": start + HEAL_OFFSET}
     count = {}
     if verbose:
-        print(f"kill world boss in Channel {channel}: target and heal from "
-              f"spawn {start - plan['spawn']:+.1f}s, buffs in the "
-              f"{plan['phase']} loop from spawn "
+        print(f"kill world boss in Channel {channel}: the loop from spawn "
+              f"{loop_from - plan['spawn']:+.1f}s, target and heal from "
+              f"spawn {start - plan['spawn']:+.1f}s, buffs from spawn "
               f"{buffs_from - plan['spawn']:+.1f}s, the powerful pot once from "
               f"spawn {pot_at - plan['spawn']:+.1f}s for a level "
               f"{'/'.join(map(str, sorted(POWERFUL_LEVELS)))} boss (a level "
               f"{'/'.join(map(str, sorted(BURST_LEVELS)))} boss gets it and "
               f"the offensive buffs only in Channel {BURST_CHANNEL}), until "
-              f"{REWARD_WORD!r} reads")
+              f"{REWARD_WORD!r} reads; "
+              + (f"no BM cancel before spawn "
+                 f"{cancel_from - plan['spawn']:+.1f}s; "
+                 if cancel_from > loop_from else "")
+              + f"{plan['phase']}: {cycle_text(plan['phase'])}")
     while True:
         if plan["boss"] is None:
             spot_boss(plan, verbose)
@@ -865,45 +891,45 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
                       f"here; " + ", ".join(f"{name} x{n}"
                                              for name, n in count.items()))
             return False
+        if plan["cancel_left"]:
+            if now >= plan["cancel_at"]:
+                cancel_click(plan, now, verbose)
+        elif now >= loop_from and now >= cancel_from and switch_due(plan, now):
+            start_cancel(plan, now, verbose)
+        cancelling = plan["cancel_left"] > 0
+        keying = not cancelling and now >= loop_from
+        key_in = plan["key_at"] - now if keying else float("inf")
         keys_free = key_free()
-        if keys_free and now >= due["target"]:
+        if keys_free and key_in <= 0:
+            press_key(plan, now, count, verbose)
+        elif keys_free and key_in >= KEY_SPACING and now >= due["target"]:
             tap_key(TARGET_VK)
             count["target"] = count.get("target", 0) + 1
             due["target"] = next_due(due["target"], TARGET_EVERY)
-        elif keys_free and now >= due["heal"]:
+        elif keys_free and key_in >= KEY_SPACING and now >= due["heal"]:
             tap_key(HEAL_VK)
             count["heal"] = count.get("heal", 0) + 1
             due["heal"] = next_due(due["heal"], HEAL_EVERY)
-        elif now >= plan["next"] and now >= loop_from:
-            burst_here = channel == BURST_CHANNEL
-            if switch_due(plan, now):
-                switch_bm(plan, now, verbose)
-            elif (pot_at is not None and now >= pot_at
-                  and (plan["powerful"] or (plan["burst"] and burst_here))):
-                use_powerful_pot(plan, now, channel, count, verbose)
-                pot_at = None
-            elif plan["warm_until"] is None:
-                spam_warmup(plan, due, count, verbose)
-            else:
-                loop_click(plan, now, buffs_from, count,
-                           plan["burst"] and not burst_here, verbose)
+        if not keying or key_in < HOVER_SETTLE + CLICK_HOLD:
+            continue
+        burst_here = channel == BURST_CHANNEL
+        if (pot_at is not None and now >= pot_at
+                and (plan["powerful"] or (plan["burst"] and burst_here))):
+            use_powerful_pot(plan, now, channel, count, verbose)
+            pot_at = None
+        else:
+            buff_click(plan, now, buffs_from, count,
+                       plan["burst"] and not burst_here)
 
 
 def use_powerful_pot(plan, now, channel, count, verbose=True):
     right_click(POWERFUL_POT)
     count["powerful_pot"] = 1
     calibration.snap(f"powerful_pot_channel_{channel}", alongside=True)
-    plan["next"] = now + LOOP_GAP
+    plan["click_at"] = now + BUFF_GAP
     if verbose:
         print(f"  spawn {now - plan['spawn']:+.1f}s: powerful pot "
               f"right-clicked at {list(POWERFUL_POT)}")
-
-
-def cancel_bm(verbose=True):
-    right_click(BM_ICON)
-    calibration.snap("cancel_bm", alongside=True)
-    if verbose:
-        print(f"  BM icon right-clicked at {list(BM_ICON)}")
 
 
 def relog_unless_there(channel, verbose=True):
@@ -964,10 +990,10 @@ def step_failed(where, error, then, verbose=True):
 
 
 def kill_in_channel(channel, start, plan, deadline, pot_at, verbose=True,
-                    buffs_from=None, loop_from=None):
+                    buffs_from=None, loop_from=None, cancel_from=None):
     try:
         return kill_boss(channel, start, plan, deadline, pot_at, verbose,
-                         buffs_from, loop_from)
+                         buffs_from, loop_from, cancel_from)
     except Exception as error:
         step_failed(f"Channel {channel}", error, "on to the next channel",
                     verbose)
@@ -999,7 +1025,8 @@ def route(plan, spawn_at, deadline, verbose=True):
         start = clicked + KILL_DELAY
         finished = kill_in_channel(channel, start, plan, deadline,
                                    clicked + POWERFUL_POT_AFTER, verbose,
-                                   loop_from=start)
+                                   loop_from=start,
+                                   cancel_from=clicked + CANCEL_DELAY)
 
 
 def run(verbose=True, when=None, prepare_now=False):

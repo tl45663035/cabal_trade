@@ -1,10 +1,13 @@
+import base64
 import contextlib
 import ctypes
 import datetime
 import difflib
+import io
 import zoneinfo
 import json
 import os
+import queue
 import random
 import re
 import shutil
@@ -36,7 +39,7 @@ def _plain_argv():
             skip = True
             continue
         if (arg.startswith("--config=") or arg == "--frames"
-                or arg == "--no-breaks"
+                or arg == "--no-breaks" or arg == "--no-banner"
                 or arg.startswith("--runs=")
                 or arg.startswith("--channel=")
                 or arg.startswith("--record-from=")
@@ -189,6 +192,8 @@ ESCAPE_GAP = float(_SHARED["world_boss"]["escape_gap"])
 ACTIVE = {"level": None, "until": None, "deadline": None, "frames": []}
 TAB_TWO = tuple(_DUNGEON["tab_two"])
 NOTIFICATION_CLOSE = _DUNGEON["notification_close"]
+NOTIFICATION_CLICKS = int(_DUNGEON["notification_clicks"])
+NOTIFICATION_GAP = float(_DUNGEON["notification_gap"])
 TRADE_TABS = [(tuple(tab["window"]), tab["word"])
               for tab in _DUNGEON["trade_tabs"]]
 SEQUENCES = (calibration.HERE / _DUNGEON["sequences_dir"]
@@ -252,6 +257,7 @@ POWERFUL_POT = {"at": None}
 WORLD_BOSS = {"done": None}
 BURST = _DUNGEON.get("burst")
 NO_BREAKS = "--no-breaks" in sys.argv
+NO_BANNER = "--no-banner" in sys.argv
 CHANNEL = _channel()
 BURST_STATE = {"until": None, "on_channel": False}
 LAST_KILL = {"name": None, "words": None, "loop": None}
@@ -309,8 +315,12 @@ UNIQUE_TEXT = re.compile(_DUNGEON["unique_pattern"], re.IGNORECASE)
 CHAT_SAME = float(_DUNGEON["chat_same"])
 UNIQUE_FILE = calibration.LOG_DIR / _DUNGEON["unique_file"]
 UNIQUE_IGNORE = [item.casefold() for item in _DUNGEON["unique_ignore"]]
+UNIQUE_DAYS = int(_DUNGEON["unique_days"])
 CHAT = {"seen": None, "run": None, "last": None, "fresh": False}
 CHAT_WORK = threading.Lock()
+CHAT_READER = {"proc": None, "lines": None, "down": None, "down_run": None,
+               "run": 0}
+CHAT_READER_LOCK = threading.Lock()
 KILL_DONE = {"at": None}
 KILL_STEPS = ("kill", "kill_bm", "kill_all", "kill_before_boss",
               "hold_kill_all", "ride_kill_all", "look_kill_bm")
@@ -412,8 +422,23 @@ def white_text(image, box):
 def read_crops(crops):
     texts = row_model._backup_texts(crops)
     if texts is None:
-        raise RuntimeError("the Paddle reader did not answer; nothing read.")
+        fresh_reader()
+        texts = row_model._backup_texts(crops)
+    if texts is None:
+        raise RuntimeError(f"the Paddle reader did not answer, and neither "
+                           f"did a fresh one ({row_model._reader['failed']}); "
+                           f"nothing read.")
     return [(text or "").strip() for text in texts]
+
+
+def fresh_reader():
+    with row_model._reading:
+        proc, why = row_model._reader["proc"], row_model._reader["failed"]
+        if not why or (proc is not None and proc.poll() is None):
+            return
+        print(f"  the Paddle reader stopped ({why}); a fresh one starts with "
+              f"this read")
+        row_model._reader["failed"] = None
 
 
 def read_windows(image, windows):
@@ -727,6 +752,7 @@ def pre_run_buys(dungeon_name, location, verbose=True):
     limit = DUNGEONS[dungeon_name].get("daily_limit")
     if limit is not None and runs_today(dungeon_name) >= int(limit):
         return
+    close_notifications(verbose)
     level = DUNGEONS[dungeon_name].get("difficulty")
     buy = DIFFICULTY["buys"].get(str(level)) if level is not None else None
     if buy is not None:
@@ -1161,6 +1187,20 @@ def off_bike(when, verbose=True):
     if verbose:
         print(f"  off the bike now: hotbar slot 1 reads {lit:.0f}")
     return True
+
+
+def bike_after_crash(dungeon_name, verbose=True):
+    when = f"after the {dungeon_name} crash"
+    try:
+        if focus_game():
+            off_bike(when, verbose)
+        elif verbose:
+            print(f"  the game is not in the foreground, so no bike check "
+                  f"{when}")
+    except Exception as exc:
+        if verbose:
+            print(f"  the bike check {when} failed ({type(exc).__name__}: "
+                  f"{exc})")
 
 
 def play(dungeon_name, sequence, verbose=True):
@@ -1833,14 +1873,14 @@ def cycle_cast(slot, verbose=True, then=None):
                  f"{TARGET_KEY} on" if then is not None else ""))
 
 
-def cycle_aura(verbose=True):
+def cycle_aura(verbose=True, target=False):
     started = time.monotonic()
     left = max(0.0, BM_CYCLE["ends"] - started)
     presses, targeted = 0, 0
     while (not OVER.is_set()
            and time.monotonic() < started + float(BM_CYCLE_SET["aura_for"])):
         use_point("aura", 0.0)
-        if targets_often():
+        if targets_often() or (target and not named_locked()):
             auto_target()
             targeted += 1
         presses += 1
@@ -2256,10 +2296,95 @@ def read_chat(verbose=True, image=None):
         read_chat_lines(image, verbose)
 
 
+def start_chat_reader():
+    proc = subprocess.Popen(
+        [str(row_model.BACKUP_PYTHON), str(row_model.BACKUP_READER),
+         row_model.BACKUP_MODEL],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL, text=True, encoding="utf-8",
+        creationflags=(subprocess.CREATE_NO_WINDOW
+                       | subprocess.BELOW_NORMAL_PRIORITY_CLASS))
+    lines = queue.Queue()
+
+    def pump():
+        for line in proc.stdout:
+            lines.put(line)
+        lines.put(None)
+
+    threading.Thread(target=pump, daemon=True).start()
+    try:
+        ready = lines.get(timeout=row_model.BACKUP_START_TIMEOUT)
+    except queue.Empty:
+        ready = None
+    if not ready:
+        proc.kill()
+        raise RuntimeError(f"it did not start within "
+                           f"{row_model.BACKUP_START_TIMEOUT}s")
+    CHAT_READER.update(proc=proc, lines=lines)
+
+
+def stop_chat_reader(why, run):
+    proc = CHAT_READER["proc"]
+    CHAT_READER.update(proc=None, lines=None, down=why, down_run=run)
+    if proc is not None:
+        try:
+            proc.kill()
+        except OSError:
+            pass
+
+
+def chat_reader_again(verbose=True):
+    CHAT_READER["run"] += 1
+    why = CHAT_READER["down"]
+    if why is None:
+        return
+    CHAT_READER["down"] = None
+    if verbose:
+        print(f"  the chat reader stopped in an earlier run ({why}); a new "
+              f"one starts with this run's first chat read")
+
+
+def chat_texts(prepared, verbose=True):
+    with CHAT_READER_LOCK:
+        run = CHAT_READER["run"]
+        if CHAT_READER["down"] is not None and CHAT_READER["down_run"] == run:
+            return None
+        try:
+            proc = CHAT_READER["proc"]
+            if proc is None or proc.poll() is not None:
+                start_chat_reader()
+                proc = CHAT_READER["proc"]
+            crops = []
+            for picture in (p for p in prepared if p is not None):
+                buf = io.BytesIO()
+                picture.convert("RGB").save(buf, "PNG")
+                crops.append(base64.b64encode(buf.getvalue()).decode("ascii"))
+            proc.stdin.write(json.dumps(crops) + "\n")
+            proc.stdin.flush()
+            answer = CHAT_READER["lines"].get(timeout=row_model.BACKUP_TIMEOUT)
+            if not answer:
+                raise RuntimeError("its process ended")
+            read = iter(text for text, _score in json.loads(answer))
+            return [(next(read) if p is not None else "").strip()
+                    for p in prepared]
+        except Exception as exc:
+            why = (f"no answer within {row_model.BACKUP_TIMEOUT}s"
+                   if isinstance(exc, queue.Empty)
+                   else f"{type(exc).__name__}: {exc}")
+            stop_chat_reader(why, run)
+            if verbose:
+                print(f"  the chat reader stopped ({why}); no unique items "
+                      f"are read for the rest of this run, the run goes on, "
+                      f"and a new reader starts with the next run")
+            return None
+
+
 def read_chat_lines(image, verbose=True):
-    found = unique_items(read_crops([row_model._backup_line(image, box,
-                                                            colour=True)
-                                     for box in CHAT_BOXES]))
+    texts = chat_texts([row_model._backup_line(image, box, colour=True)
+                        for box in CHAT_BOXES], verbose)
+    if texts is None:
+        return
+    found = unique_items(texts)
     new = []
     if CHAT["seen"] is not None:
         left = list(CHAT["seen"])
@@ -2298,28 +2423,55 @@ def note_unique(owner, item, image):
                                  "time": report_at()}) + "\n")
 
 
-def month_of(day):
-    when = datetime.date.fromisoformat(day)
-    return when.year, when.month
+def unique_days(day):
+    last = datetime.date.fromisoformat(day)
+    return [(last - datetime.timedelta(days=back)).isoformat()
+            for back in range(UNIQUE_DAYS - 1, -1, -1)]
 
 
 def unique_drops(day):
     found = []
     try:
-        month = month_of(day)
+        days = set(unique_days(day))
         for line in UNIQUE_FILE.read_text(encoding="utf-8").splitlines():
             try:
                 record = json.loads(line)
-                if (month_of(record["day"]) == month
+                if (record["day"] in days
                         and not any(item in record["item"].casefold()
                                     for item in UNIQUE_IGNORE)):
-                    found.append(f"{record['item']}, {record['dungeon']}, "
-                                 f"{record['day']} {record['time']}")
+                    found.append((record["day"], drop_dungeon(record),
+                                  drop_item(record["item"])))
             except Exception:
                 continue
     except Exception:
         pass
     return found
+
+
+def drop_dungeon(record):
+    return (str(record.get("run") or "").split(" #")[0].upper()
+            or record["dungeon"])
+
+
+def drop_item(item):
+    return item + ")" * max(0, item.count("(") - item.count(")"))
+
+
+def unique_lines(day):
+    drops = unique_drops(day)
+    span = (f"last {UNIQUE_DAYS} server days, {unique_days(day)[0]} to {day}"
+            if day else f"last {UNIQUE_DAYS} server days")
+    if not drops:
+        return [f"UNIQUE ITEMS -- {span}: none"]
+    head = ("server day", "dungeon", "item")
+    widths = [max(len(row[column]) for row in [head, *drops])
+              for column in range(len(head) - 1)]
+    rows = ["  ".join(f"{value:<{width}}" for value, width
+                      in zip(row, widths)) + f"  {row[-1]}"
+            for row in [head, *drops]]
+    return [f"UNIQUE ITEMS -- {span}, {len(drops)} so far; each server "
+            f"day reset to reset", "", rows[0],
+            "-" * max(len(row) for row in rows), *rows[1:]]
 
 
 def jewel_counts(day):
@@ -2437,13 +2589,15 @@ def chat_run(dungeon_name, location):
 
 def own_chat(dungeon_name, location, verbose=True):
     try:
+        chat_reader_again(verbose)
         CHAT["last"] = CHAT["run"]
         CHAT["run"] = chat_run(dungeon_name, location)
         CHAT["fresh"] = True
         if verbose:
             print(f"  the chat is read before each {CHAT_READS['before']} "
                   f"ride and while the {CHAT_READS['button']} banner is up, "
-                  f"for unique item drops in {CHAT['run']['label']}")
+                  f"for unique item drops in {CHAT['run']['label']}, by a "
+                  f"reader process of its own")
     except Exception as exc:
         if verbose:
             print(f"  the chat reads could not start ({type(exc).__name__}: "
@@ -2451,12 +2605,17 @@ def own_chat(dungeon_name, location, verbose=True):
 
 
 def room_chat(verbose=True):
-    with KEY_LOCK:
-        if PLAYING.is_set():
-            return
-        image = calibration.grab()
-    threading.Thread(target=room_chat_read, args=(image, verbose),
-                     daemon=True).start()
+    try:
+        with KEY_LOCK:
+            if PLAYING.is_set():
+                return
+            image = calibration.grab()
+        threading.Thread(target=room_chat_read, args=(image, verbose),
+                         daemon=True).start()
+    except Exception as exc:
+        if verbose:
+            print(f"  the chat could not be read ({type(exc).__name__}: "
+                  f"{exc}); the run goes on")
 
 
 def room_chat_read(image, verbose=True):
@@ -2470,6 +2629,7 @@ def room_chat_read(image, verbose=True):
 
 def start_chat(phase, dungeon_name, location, verbose=True):
     try:
+        chat_reader_again(verbose)
         CHAT["run"] = chat_run(dungeon_name, location)
         CHAT["fresh"] = True
         if verbose:
@@ -2489,11 +2649,19 @@ def watch_end(stop, failed, killing, timer, verbose=True):
             if timer.get("deadline") is None:
                 stop.wait(WAIT_SLICE)
                 continue
-            image = calibration.grab()
-            defeat, quest, *banner = read_windows(
-                image, [tuple(DEFEAT_SIGN["window"]),
-                        tuple(BUTTONS["quest_failed"]["window"])]
-                + ([CLEARED_WINDOW] if killing.is_set() else []))
+            try:
+                image = calibration.grab()
+                defeat, quest, *banner = read_windows(
+                    image, [tuple(DEFEAT_SIGN["window"]),
+                            tuple(BUTTONS["quest_failed"]["window"])]
+                    + ([CLEARED_WINDOW] if killing.is_set() else []))
+            except Exception as exc:
+                if verbose:
+                    print(f"  the end screen could not be read "
+                          f"({type(exc).__name__}: {exc}); nothing is seen "
+                          f"this time, and it is read again in {END_POLL:g}s")
+                stop.wait(END_POLL)
+                continue
             if banner and CLEARED_TEXT.search(banner[0]):
                 banner = banner[0]
                 END["at"] = time.monotonic()
@@ -2808,6 +2976,8 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                        phase["chat"]):
             if thread.is_alive():
                 thread.join()
+        if crashed == "crashed" and steps is None:
+            bike_after_crash(dungeon_name, verbose)
         if crashed:
             keep_failed_frames(dungeon_name, location, crashed, verbose)
         end_run_film(dungeon_name, location,
@@ -2821,6 +2991,8 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             if verbose:
                 print(f"  {PURCHASES[name]['name']} could not be bought "
                       f"({exc}); the buy is skipped and the loop goes on")
+    if steps is None:
+        off_bike(f"after {dungeon_name}", verbose)
 
 
 def start_run_film(dungeon_name, verbose=True):
@@ -2983,6 +3155,24 @@ def exit_dungeon(dungeon_name, verbose=True):
     steps = DUNGEONS[dungeon_name].get("exit")
     press_buttons("exit", EXIT if steps is None
                   else [tuple(step) for step in steps], verbose)
+
+
+def exit_now(dungeon_name, verbose=True):
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
+    steps = [tuple(step)
+             for step in DUNGEONS[dungeon_name].get("exit") or EXIT]
+    action, key, _wait = steps[0]
+    button = BUTTONS[key]
+    if action == "button" and not wait_for(tuple(button["window"]),
+                                           button["word"], 0)[0]:
+        if verbose:
+            print(f"  no {button['word']!r} in {button['window']}: that step "
+                  f"is past, so the exit starts after it")
+        steps = steps[1:]
+    press_buttons("exit", steps, verbose)
+    run_sequence(dungeon_name, only_location(dungeon_name), {}, verbose,
+                 list(DUNGEONS[dungeon_name].get("after_exit", [])), False)
 
 
 def escape_everything(verbose=True):
@@ -3211,7 +3401,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                     print("  every BM cast from here to the end of the run "
                           "gets its aura right after it")
             if BM_CYCLE["slot"] is not None and not BM_CYCLE["extended"]:
-                cycle_aura(verbose)
+                cycle_aura(verbose, "target" in rest)
             elif verbose:
                 print(f"  {BM_CYCLE['slot'] or 'no BM'} "
                       + ("already has its aura" if BM_CYCLE["slot"]
@@ -3380,6 +3570,20 @@ def close_notification(verbose=True):
     click(*NOTIFICATION_CLOSE, 0.0)
 
 
+def close_notifications(verbose=True):
+    if NOTIFICATION_CLOSE is None:
+        return
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
+    if verbose:
+        print(f"  the bottom notifications' close at "
+              f"{list(NOTIFICATION_CLOSE)}, clicked {NOTIFICATION_CLICKS} "
+              f"times {NOTIFICATION_GAP:g}s apart without a read, before the "
+              f"prep")
+    for left in range(NOTIFICATION_CLICKS - 1, -1, -1):
+        click(*NOTIFICATION_CLOSE, NOTIFICATION_GAP if left else 0.0)
+
+
 def say_room(dungeon_name, location, room):
     try:
         label = run_label(dungeon_name, location)
@@ -3526,6 +3730,11 @@ def day_of(when):
 
 def server_day():
     return day_of(internet_now())
+
+
+def new_day(day):
+    today = server_day()
+    return day is not None and today is not None and today != day
 
 
 def dungeon_open():
@@ -4132,17 +4341,24 @@ def get_to_wb_area(verbose=True):
     tries = int(WB_AREA_CHECK["tries"])
     window, word = tuple(WB_AREA_CHECK["window"]), WB_AREA_CHECK["word"]
     for attempt in range(1, tries + 1):
-        if not wb_area_route(verbose):
-            return False
-        up, seen = wait_for(window, word, float(WB_AREA_CHECK["timeout"]))
+        try:
+            if not wb_area_route(verbose):
+                return False
+            if verbose:
+                print("  every window closed before the minimap is read")
+            escape_everything(verbose)
+            up, seen = wait_for(window, word, float(WB_AREA_CHECK["timeout"]))
+            why = (f"the minimap {list(window)} reads {seen!r}, not "
+                   f"{word!r}")
+        except RuntimeError as exc:
+            up, why = False, f"the route failed: {exc}"
         if up:
             if verbose:
                 print(f"  at the world boss stage: the minimap reads {seen!r}")
             return True
         calibration.snap("wb_area_missed")
-        print(f"  not at the world boss stage: the minimap {list(window)} "
-              f"reads {seen!r}, not {word!r} (try {attempt} of {tries}); "
-              f"the default state, then the route again")
+        print(f"  not at the world boss stage: {why} (try {attempt} of "
+              f"{tries}); the default state, then the route again")
         calibration.close_everything(verbose=verbose)
     raise RuntimeError(f"the world boss stage was not reached in {tries} "
                        f"tries.")
@@ -4177,6 +4393,10 @@ def wb_area_route(verbose=True):
         print(f"  {EXIT_WORD} at {point}, not {CHALLENGE_WORD}")
     click(*point, 0.0)
     wait_timer(WB_AREA_WAIT, verbose)
+    if verbose:
+        print("  every window closed and off the bike before the walk")
+    escape_everything(verbose)
+    off_bike(f"before {WB_AREA_SEQUENCE}", verbose)
     play(TRADING_DUNGEON, WB_AREA_SEQUENCE, verbose)
     return True
 
@@ -4213,7 +4433,11 @@ def world_boss_turn(dungeon_name, verbose=True):
           + " and the world boss run starts")
     calibration.close_everything(verbose=verbose)
     try:
-        get_to_wb_area(verbose)
+        if not get_to_wb_area(verbose):
+            print("WORLD BOSS: skipped, there is no way to the world boss "
+                  "area today; " + ("back to the idle" if dungeon_name is None
+                                    else "the dungeons go on"))
+            return False
         world_boss.run(verbose=verbose, when=when, prepare_now=True)
     except Exception as exc:
         calibration.snap("world_boss_failed")
@@ -4301,8 +4525,7 @@ def dungeon_report():
             f"{'successful':>12}{'daily limit':>13}{'left':>6}")
     week = week_lines(state, today)
     lines = [f"DUNGEON REPORT -- {calibration.config_name()}, server day "
-             f"{today}, written {report_at()}", "", "Unique Items:",
-             *(unique_drops(today) or ["none"]), "",
+             f"{today}, written {report_at()}", "", *unique_lines(today), "",
              *(week + [""] if week else []), *jewel_lines(today), "",
              f"Today DP gained: {dp_gained(won)}, from successful runs only",
              "", head]
@@ -4694,16 +4917,26 @@ def run_seconds(dungeon_name):
                                             hard_limit(dungeon_name)))
 
 
+def banner_clicks(dungeon_name):
+    clicks = DUNGEONS[dungeon_name].get("banner_clicks")
+    if clicks is None:
+        return 0.0, run_seconds(dungeon_name)
+    return (float(clicks[0]), float(clicks[1])) if clicks else None
+
+
 def banner_wait(now, dungeon_name):
     start = now.replace(minute=int(BANNER["minute"]), second=0, microsecond=0)
     length = datetime.timedelta(minutes=float(BANNER["minutes"]))
     if now >= start + length:
         start += datetime.timedelta(hours=1)
-    run = datetime.timedelta(seconds=float(BANNER["entry_allowance"])
-                             + run_seconds(dungeon_name))
-    left = (0.0 if now + run <= start
-            else (start + length - now).total_seconds())
-    return left, start, length, run
+    clicks = banner_clicks(dungeon_name)
+    if clicks is None:
+        return 0.0, start, length, clicks
+    first, last = (datetime.timedelta(seconds=at) for at in clicks)
+    entry = datetime.timedelta(seconds=float(BANNER["entry_allowance"]))
+    if now + entry + last <= start or now + first >= start + length:
+        return 0.0, start, length, clicks
+    return (start + length - first - now).total_seconds(), start, length, clicks
 
 
 def run_cost(dungeon_name):
@@ -4712,7 +4945,7 @@ def run_cost(dungeon_name):
 
 
 def banner_plan(now, start, pool, depth):
-    best = ([], (start - now).total_seconds())
+    best = ([], max(0.0, (start - now).total_seconds()))
     if depth <= 0:
         return best
     for other in pool:
@@ -4727,6 +4960,8 @@ def banner_plan(now, start, pool, depth):
 
 
 def banner_filler(dungeon_name, pool, verbose=True):
+    if NO_BANNER:
+        return None
     try:
         now = online_now()
     except RuntimeError:
@@ -4740,14 +4975,16 @@ def banner_filler(dungeon_name, pool, verbose=True):
     if not plan:
         return None
     if verbose:
-        print(f"{dungeon_name}: a run started now would still be on when the "
-              f"Surprise Attack banner comes up at :{start:%M}, so "
-              f"{' -> '.join(plan)} fill the time before it ({idle:.0f}s left "
-              f"over); {plan[0]} now")
+        print(f"{dungeon_name}: a run started now would click in the banner "
+              f"band while the Surprise Attack banner is up from :{start:%M}, "
+              f"so {' -> '.join(plan)} fill the time before it ({idle:.0f}s "
+              f"left over); {plan[0]} now")
     return plan[0]
 
 
 def banner_clear(dungeon_name, verbose=True):
+    if NO_BANNER:
+        return
     try:
         now = online_now()
     except RuntimeError:
@@ -4755,14 +4992,17 @@ def banner_clear(dungeon_name, verbose=True):
             print("  no time server has answered yet, so the Surprise Attack "
                   "banner hour is not checked before this run")
         return
-    left, start, length, run = banner_wait(now, dungeon_name)
+    left, start, length, clicks = banner_wait(now, dungeon_name)
     if not left:
         return
     if verbose:
         print(f"  {dungeon_name}: the Surprise Attack banner is up from "
-              f":{start:%M} to :{start + length:%M} every hour and a run "
-              f"started now could last {run.total_seconds():.0f}s, so no "
-              f"dungeon until :{start + length:%M} ({left:.0f}s)")
+              f":{start:%M} to :{start + length:%M} every hour and this run "
+              f"clicks in the banner band {clicks[0]:.0f}-{clicks[1]:.0f}s "
+              f"after {CHALLENGE_WORD}, so it starts at "
+              f":{now + datetime.timedelta(seconds=left):%M:%S}, when its "
+              f"first band click comes after :{start + length:%M} "
+              f"({left:.0f}s)")
     wait_timer(left, False)
 
 
@@ -4939,12 +5179,15 @@ def rotation_done(dungeon_name, successful):
         and successes_today(dungeon_name) >= int(successful))
 
 
-def rotate(names, after=None, verbose=True, group=None, pool=None):
+def rotate(names, after=None, verbose=True, group=None, pool=None,
+           day=None):
     group = {} if group is None else group
     pool = names if pool is None else pool
     batch = group.get("batch", ROTATION_RUNS)
     successful = group.get("successful")
     while True:
+        if new_day(day):
+            return after
         turn = [name for name in names
                 if not rotation_done(name, successful)]
         if verbose:
@@ -4967,6 +5210,8 @@ def rotate(names, after=None, verbose=True, group=None, pool=None):
                     if DUNGEONS[name].get("all_in_turn") else batch)
             done = 0
             while runs is None or done < int(runs):
+                if new_day(day):
+                    return after
                 if rotation_done(name, successful):
                     break
                 filler = banner_filler(name, pool, verbose)
@@ -4988,17 +5233,37 @@ def rotate(names, after=None, verbose=True, group=None, pool=None):
                     break
 
 
+def start_home(verbose=True):
+    if BURST is not None and BURST.get("regions"):
+        if verbose:
+            print("the loop starts with the burst's own relog, through the "
+                  "server list, before the first run")
+        return
+    if verbose:
+        print("the loop starts with a full relog, out to the server list and "
+              "into the home channel")
+    forget_active()
+    relog(verbose)
+    cancel_bm(TRADING_DUNGEON, verbose)
+
+
 def run_all(verbose=True):
     after = None
     watch_disconnect(verbose)
     watch_death(verbose)
+    start_home(verbose)
     while True:
+        day = server_day()
         for group in ROTATION_GROUPS:
             after = rotate(group["dungeons"], after, verbose, group,
-                           ROTATION_NAMES)
+                           ROTATION_NAMES, day)
+            if new_day(day):
+                break
         for level in ORDER:
+            if new_day(day):
+                break
             location = level_location(level)
-            while level_left(level) > 0:
+            while level_left(level) > 0 and not new_day(day):
                 if verbose:
                     print(f"{location}: "
                           f"{LIMITS[level] - level_left(level)} of "
@@ -5008,9 +5273,15 @@ def run_all(verbose=True):
                                                after, verbose)
                 if relogged:
                     break
-            if verbose:
+            if verbose and not new_day(day):
                 print(f"{location}: {LIMITS[level]} of {LIMITS[level]} "
                       f"entered on this server day")
+        if new_day(day):
+            if verbose:
+                print(f"server day {server_day()} has begun: the daily limits "
+                      f"are reset, so the rotation starts again from its "
+                      f"first group")
+            continue
         if verbose:
             print("every dungeon in the loop is at its daily limit")
         try:
@@ -5063,6 +5334,10 @@ def command(args):
         disenchant_all()
     elif args[:1] == ["close_notification"]:
         close_notification()
+    elif args[:1] == ["off_bike"]:
+        off_bike("by hand")
+    elif args[:1] == ["exit"] and len(args) > 1:
+        exit_now(args[1])
     elif args[:1] == ["get_to_wb_area"]:
         calibration.close_everything(verbose=True)
         get_to_wb_area()
@@ -5123,7 +5398,7 @@ def command(args):
                          f"kill_bm DUNGEON NAME, "
                          f"enter N, arrive, "
                          f"calibrate, shout, disenchant, close_notification, "
-                         f"get_to_wb_area "
+                         f"off_bike, exit DUNGEON, get_to_wb_area "
                          f"or do ACTION")
 
 
@@ -5135,6 +5410,9 @@ if __name__ == "__main__":
     calibration.log_to_file("dungeon")
     sys.stdout.stream = ConsoleLines(sys.stdout.stream)
     print(f"running on commit {running_commit()}")
+    if NO_BANNER:
+        print("  --no-banner: the Surprise Attack banner hour is ignored; a "
+              "run starts at any time")
     calibration.frames_on(True if "--frames" in sys.argv else None)
     calibration.watch_for_stop()
     try:

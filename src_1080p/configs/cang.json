@@ -114,6 +114,7 @@
     "main_defensive_loop": ["5", "6", "`", "defensive_buffs"],
     "main_boss_loop": ["5", "6", "`", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
     "key_tab": 7,
+    "notification_close": [1903, 834],
     "kill_combo": [
       ["use", "A+2", 2.0],
       ["tap", "7", 2.0],
@@ -272,11 +273,11 @@
                      "move_to_B",
                      ["kill_bm", "Frozen Bone Stack", "kill_loop"],
                      "move_to_C",
+                     ["keep_aura", "target"],
                      ["kill_bm", "Awakened Ice Guardian", "kill_loop"],
                      ["kill_bm", "Treasure Chest", "kill_loop"],
                      ["kill_all", "any monster", "kill_loop", 3.0],
                      "move_to_D",
-                     "keep_aura",
                      ["kill_bm", "Awakened Nazabrum", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", 3.0],
                      "final_sequence"]
@@ -285,6 +286,7 @@
   },
   "world_boss": {
     "enabled": true,
-    "prepare_channel": 4
+    "prepare_channel": 4,
+    "main_bm_cooldown": 40.0
   }
 }

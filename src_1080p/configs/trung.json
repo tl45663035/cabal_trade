@@ -80,6 +80,8 @@
              "recheck": 3.0, "settle": 1.0, "dismount_wait": 5.0},
     "key_tab": 7,
     "notification_close": [1903, 825],
+    "wb_area_check": {"window": [1765, 106, 1875, 126], "word": "No Map Code",
+                      "timeout": 5.0, "tries": 3},
     "chat_every": null,
     "chat_reads": {"before": "move_to_", "button": "confirmation"},
     "walk_frames": {"move_to_A": 0.5, "move_to_B": 0.5, "move_to_C": 0.5, "move_to_D": 0.5, "move_to_E": 0.5, "move_to_F": 0.5, "move_to_D1": 0.5, "move_to_G": 0.5, "move_to_H": 0.5, "move_to_I": 0.5, "move_to_J": 0.5, "move_to_K": 0.5, "move_to_L": 0.5},
@@ -114,11 +116,11 @@
                      "move_to_B",
                      ["kill_bm", "Frozen Bone Stack", "kill_loop"],
                      "move_to_C",
+                     ["keep_aura", "target"],
                      ["kill_bm", "Awakened Ice Guardian", "kill_loop"],
                      ["kill_bm", "Treasure Chest", "kill_loop"],
                      ["kill_all", "any monster", "kill_loop", 3.0],
                      "move_to_D",
-                     "keep_aura",
                      ["kill_bm", "Awakened Nazabrum", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", 3.0],
                      "final_sequence"]
@@ -218,6 +220,9 @@
                      "keep_aura",
                      ["kill_bm", "Awakened Steamer LHJ-G30", "offensive_boss_loop"]]
       },
+      "windmill": {
+        "after_exit": ["close_notification"]
+      },
       "eop": {
         "main_bm_after": 0.0,
         "main_bm_loops": {"kill_loop": "main_kill_loop"},
@@ -252,10 +257,7 @@
   },
   "world_boss": {
     "enabled": true,
-    "alternate_warmup": ["alternate_bm", "aura"],
-    "warmup_for": 10.0,
-    "warmup_gap": 0.5,
     "pot_delay": 5.0,
-    "main_bm_cooldown": 35.0
+    "main_bm_cooldown": 40.0
   }
 }
