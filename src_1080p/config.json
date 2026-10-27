@@ -657,6 +657,8 @@
     "revive_settle": 5.0,
     "death_watch": false,
     "death_watch_every": 1.0,
+    "banner_window": {"minute": 1, "minutes": 10, "entry_allowance": 60,
+                      "exit_allowance": 15, "plan_depth": 4},
     "offensive_buffs": {"C+1": [837, 882], "C+3": [937, 882], "C+4": [987, 882], "C+5": [1037, 882]},
     "defensive_buffs": {"C+6": [1087, 882], "C+7": [1137, 882], "C+8": [1187, 882]},
     "defensive_switch": 15.0,
@@ -803,6 +805,7 @@
                    "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "run_seconds": 88,
         "dp": 5,
         "start_at": "01:40",
         "back_to_back": true,
@@ -844,6 +847,7 @@
                   "bm": "alternate_bm", "list_words": ["phantom"]}
         },
         "daily_limit": 30,
+        "run_seconds": 165,
         "dp": 7,
         "start_at": "01:40",
         "back_to_back": true,
@@ -913,6 +917,7 @@
                     "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "run_seconds": 115,
         "dp": 5,
         "start_at": "01:40",
         "back_to_back": true,
@@ -1021,6 +1026,7 @@
                   "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "run_seconds": 101,
         "dp": 5,
         "difficulty": 5,
         "heal_kills_only": true,
@@ -1068,6 +1074,7 @@
                   "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "run_seconds": 168,
         "death_watch": true,
         "dp": 7,
         "difficulty": 0,
@@ -1124,6 +1131,7 @@
                   "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "run_seconds": 139,
         "death_watch": true,
         "dp": 7,
         "difficulty": 0,
@@ -1174,6 +1182,7 @@
                  "list_words": ["nest"], "list_right": 720}
         },
         "daily_limit": 30,
+        "run_seconds": 472,
         "dp": 8,
         "powerful_pot": {"slot": "A+8", "every": 3600},
         "difficulty": 0,
@@ -1237,6 +1246,7 @@
                  "list_words": ["machina"]}
         },
         "daily_limit": 30,
+        "run_seconds": 417,
         "dp": 8,
         "powerful_pot": {"slot": "A+8", "every": 3600},
         "start_cancel_bm": false,
