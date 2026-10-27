@@ -501,13 +501,13 @@
     "slot_c4": [987, 882],
     "slot_c5": [1037, 882],
     "level_windows": [
-      [506, 262, 846, 284],
-      [506, 287, 846, 309],
-      [506, 312, 846, 334],
-      [506, 337, 846, 359],
-      [506, 362, 846, 384],
-      [506, 387, 846, 409],
-      [506, 412, 846, 434]
+      [500, 266, 846, 284],
+      [500, 291, 846, 309],
+      [500, 316, 846, 334],
+      [500, 341, 846, 359],
+      [500, 366, 846, 384],
+      [500, 391, 846, 409],
+      [500, 416, 846, 434]
     ],
     "enter_window": [1044, 869, 1178, 906],
     "challenge_window": [781, 750, 855, 771],
@@ -655,6 +655,10 @@
       ["button", "revive", 0.0]
     ],
     "revive_settle": 5.0,
+    "death_watch": false,
+    "death_watch_every": 1.0,
+    "banner_window": {"minute": 1, "minutes": 10, "entry_allowance": 60,
+                      "exit_allowance": 15, "plan_depth": 4},
     "offensive_buffs": {"C+1": [837, 882], "C+3": [937, 882], "C+4": [987, 882], "C+5": [1037, 882]},
     "defensive_buffs": {"C+6": [1087, 882], "C+7": [1137, 882], "C+8": [1187, 882]},
     "defensive_switch": 15.0,
@@ -801,6 +805,7 @@
                    "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "run_seconds": 88,
         "dp": 5,
         "start_at": "01:40",
         "back_to_back": true,
@@ -811,7 +816,6 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
-          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -843,6 +847,7 @@
                   "bm": "alternate_bm", "list_words": ["phantom"]}
         },
         "daily_limit": 30,
+        "run_seconds": 165,
         "dp": 7,
         "start_at": "01:40",
         "back_to_back": true,
@@ -912,6 +917,7 @@
                     "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "run_seconds": 115,
         "dp": 5,
         "start_at": "01:40",
         "back_to_back": true,
@@ -926,7 +932,6 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
-          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -975,7 +980,6 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
-          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -1022,6 +1026,7 @@
                   "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "run_seconds": 101,
         "dp": 5,
         "difficulty": 5,
         "heal_kills_only": true,
@@ -1030,7 +1035,6 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
-          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -1070,6 +1074,8 @@
                   "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "run_seconds": 168,
+        "death_watch": true,
         "dp": 7,
         "difficulty": 0,
         "heal_kills_only": true,
@@ -1125,6 +1131,8 @@
                   "bm": "alternate_bm"}
         },
         "daily_limit": 30,
+        "run_seconds": 139,
+        "death_watch": true,
         "dp": 7,
         "difficulty": 0,
         "heal_kills_only": true,
@@ -1174,6 +1182,7 @@
                  "list_words": ["nest"], "list_right": 720}
         },
         "daily_limit": 30,
+        "run_seconds": 472,
         "dp": 8,
         "powerful_pot": {"slot": "A+8", "every": 3600},
         "difficulty": 0,
@@ -1195,8 +1204,8 @@
         "targets": {
           "any monster": []
         },
+        "challenge_wait": 2.0,
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["wait", 3],
                      ["tap", "="],
                      "bm_cycle",
                      ["kill_all", "any monster", "kill_loop", 2.0],
@@ -1237,6 +1246,7 @@
                  "list_words": ["machina"]}
         },
         "daily_limit": 30,
+        "run_seconds": 417,
         "dp": 8,
         "powerful_pot": {"slot": "A+8", "every": 3600},
         "start_cancel_bm": false,
@@ -1319,7 +1329,6 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
-          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "after_exit": [["wait", 2], "disenchant_all"],

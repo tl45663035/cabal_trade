@@ -1,0 +1,89 @@
+2026-10-26_203315  src_1080p/dungeon.py --config trung --no-breaks
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-26_203315_dungeon.log
+running on commit 9de7b8a8b
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-26_203315_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  the screen is checked for a disconnect every 60s and again 5s after a sighting, as trading's supervisor does
+  from each ic2, ic1 exit until the next dungeon is entered, the death Confirmation in [905, 678, 1021, 700] is looked for every 1s
+rotation fire -> ice -> train: fire 1 of 30, ice 0 of 30, train 0 of 30
+  dungeon report: pushed
+  1 fire run(s) so far today; the next 1x Gemstone of Transcendence x100 is bought in 3 run(s)
+  1 fire run(s) so far today, each summoning 1x with =; the next 1x Orb of Summoning x10 is bought in 9 run(s)
+  fire: the start of a block of runs
+fire Fire [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+fire Fire [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+fire Fire [opening, step 1 of 17]: get_entry
+  Inventory shut: slot grid 0.08, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  the shop_dungeon window [110, 149, 176, 166] never read 'Dungeon' within 3s; it reads '-'. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 1 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.08, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  the shop_dungeon window [110, 149, 176, 166] never read 'Dungeon' within 3s; it reads '1'. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 2 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.08, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  the shop_dungeon window [110, 149, 176, 166] never read 'Dungeon' within 3s; it reads '1'. Nothing clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 3 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.08, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  kept 11 frame(s) of this failed run (crashed) in C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\failed_frames\9de7b8a8b_2026-10-26_203340_fire_1
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m5000[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4889[0m, in [35mcommand[0m
+    [31mrun_all[0m[1;31m()[0m
+    [31m~~~~~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4859[0m, in [35mrun_all[0m
+    after = rotate(group["dungeons"], after, verbose, group,
+                   ROTATION_NAMES)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4839[0m, in [35mrotate[0m
+    after, relogged = [31mrun_or_relog[0m[1;31m(name, only_location(name),[0m
+                      [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                                   [1;31mafter, verbose)[0m
+                                   [1;31m^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4621[0m, in [35mrun_or_relog[0m
+    return [31mrun_in_turn[0m[1;31m(dungeon_name, location, after, verbose)[0m, False
+           [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4667[0m, in [35mrun_in_turn[0m
+    [31mrun_dungeon[0m[1;31m(dungeon_name, location, verbose)[0m
+    [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2530[0m, in [35mrun_dungeon[0m
+    [31mrun_sequence[0m[1;31m(dungeon_name, location, phase, verbose,[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31msteps if until is None[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31melse before_step(dungeon_name, until), timer=timer)[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m3023[0m, in [35mrun_sequence[0m
+    [31mwith_entry_retries[0m[1;31m(lambda attempt: get_entry([0m
+    [31m~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31m*place["entry"], verbose=verbose), verbose)[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2883[0m, in [35mwith_entry_retries[0m
+    return attempt_once(attempt)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m3023[0m, in [35m<lambda>[0m
+    with_entry_retries(lambda attempt: [31mget_entry[0m[1;31m([0m
+                                       [31m~~~~~~~~~[0m[1;31m^[0m
+        [1;31m*place["entry"], verbose=verbose)[0m, verbose)
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m624[0m, in [35mget_entry[0m
+    [31mpress_button[0m[1;31m("shop_dungeon", SELECT_SETTLE, verbose)[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m504[0m, in [35mpress_button[0m
+    raise RuntimeError(
+        f"the {name} window {list(window)} never read {button['word']!r} "
+        f"within {timeout:g}s; it reads {seen!r}. Nothing clicked.")
+[1;35mRuntimeError[0m: [35mthe shop_dungeon window [110, 149, 176, 166] never read 'Dungeon' within 3s; it reads '1'. Nothing clicked.[0m

@@ -1,0 +1,83 @@
+2026-10-26_190006  src_1080p/dungeon.py --config cang --no-breaks
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-26_190006_dungeon.log
+running on commit d18993e30; uncommitted: src_1080p/configs/cang.json
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-26_190006_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  the screen is checked for a disconnect every 60s and again 5s after a sighting, as trading's supervisor does
+  from each ic2, ic1 exit until the next dungeon is entered, the death Confirmation in [905, 678, 1021, 700] is looked for every 1s
+rotation ic1 -> eop: ic1 12 of 30, eop 1 of 30
+  dungeon report: pushed
+burst: EU night, so Channel 6; relogging there
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\PIL\ImageFile.py"[0m, line [35m554[0m, in [35m_save[0m
+    fh = [1;31mfp.fileno[0m()
+         [1;31m^^^^^^^^^[0m
+[1;35mAttributeError[0m: [35m'_idat' object has no attribute 'fileno'[0m
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4797[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4687[0m, in [35mcommand[0m
+    [31mrun_all[0m[1;31m()[0m
+    [31m~~~~~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4658[0m, in [35mrun_all[0m
+    after = rotate(group["dungeons"], after, verbose, group)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4638[0m, in [35mrotate[0m
+    after, relogged = [31mrun_or_relog[0m[1;31m(name, only_location(name),[0m
+                      [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                                   [1;31mafter, verbose)[0m
+                                   [1;31m^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4427[0m, in [35mrun_or_relog[0m
+    return [31mrun_in_turn[0m[1;31m(dungeon_name, location, after, verbose)[0m, False
+           [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4458[0m, in [35mrun_in_turn[0m
+    [31mrelog_for_burst[0m[1;31m(verbose)[0m
+    [31m~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4210[0m, in [35mrelog_for_burst[0m
+    [31mrecovery.relog[0m[1;31m(verbose=verbose, channel=channel)[0m
+    [31m~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py"[0m, line [35m617[0m, in [35mrelog[0m
+    [31mlogout[0m[1;31m(verbose=verbose)[0m
+    [31m~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py"[0m, line [35m567[0m, in [35mlogout[0m
+    if [31mcharacter_list[0m[1;31m(who=who)[0m is not None:
+       [31m~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py"[0m, line [35m182[0m, in [35mcharacter_list[0m
+    return _find_bare_in(who["character"], SELECT_PANEL_F, image=image)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\recovery.py"[0m, line [35m167[0m, in [35m_find_bare_in[0m
+    words = _bare_words([31mcalibration.ocr[0m[1;31m(image, box)[0m)
+                        [31m~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py"[0m, line [35m1347[0m, in [35mocr[0m
+    for text, conf, point, _right in [31mocr_spans[0m[1;31m(image, box, scale,[0m
+                                     [31m~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^[0m
+                                               [1;31mmin_conf)[0m]
+                                               [1;31m^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py"[0m, line [35m1322[0m, in [35mocr_spans[0m
+    [31mprep_for_text(image, box, scale).save[0m[1;31m(buf, "PNG")[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\PIL\Image.py"[0m, line [35m2605[0m, in [35msave[0m
+    [31msave_handler[0m[1;31m(self, fp, filename)[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\PIL\PngImagePlugin.py"[0m, line [35m1488[0m, in [35m_save[0m
+    [31mImageFile._save[0m[1;31m([0m
+    [31m~~~~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31msingle_im,[0m
+        [1;31m^^^^^^^^^^[0m
+        [1;31mcast(IO[bytes], _idat(fp, chunk)),[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31m[ImageFile._Tile("zip", (0, 0) + single_im.size, 0, rawmode)],[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1;31m)[0m
+    [1;31m^[0m
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\PIL\ImageFile.py"[0m, line [35m558[0m, in [35m_save[0m
+    [31m_encode_tile[0m[1;31m(im, fp, tile, bufsize, None, exc)[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\AppData\Local\Programs\Python\Python313\Lib\site-packages\PIL\ImageFile.py"[0m, line [35m584[0m, in [35m_encode_tile[0m
+    errcode, data = [31mencoder.encode[0m[1;31m(bufsize)[0m[1:]
+                    [31m~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^[0m
+[1;35mKeyboardInterrupt[0m

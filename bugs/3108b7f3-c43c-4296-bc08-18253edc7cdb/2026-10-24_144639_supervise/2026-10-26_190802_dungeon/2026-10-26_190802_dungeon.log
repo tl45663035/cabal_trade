@@ -1,0 +1,60 @@
+2026-10-26_190802  src_1080p/dungeon.py ic2 --config cang --no-breaks
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-26_190802_dungeon.log
+running on commit 96da1e0ae
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-26_190802_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  4 ic2 run(s) so far today, each summoning 1x with =; the next 1x Orb of Summoning x10 is bought in 6 run(s)
+  ic2: the start of a block of runs
+ic2 IC2 [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+ic2 IC2 [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+ic2 IC2 [opening, step 1 of 7]: get_entry
+  inventory already open
+  inventory tab 7 at [1773, 181]
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4797[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4766[0m, in [35mcommand[0m
+    if [31mrun_dungeon[0m[1;31m(args[0], location)[0m is False:
+       [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2474[0m, in [35mrun_dungeon[0m
+    [31mrun_sequence[0m[1;31m(dungeon_name, location, phase, verbose,[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31msteps if until is None[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31melse before_step(dungeon_name, until), timer=timer)[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2924[0m, in [35mrun_sequence[0m
+    [31mwith_entry_retries[0m[1;31m(lambda attempt: get_entry([0m
+    [31m~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31m*place["entry"], verbose=verbose), verbose)[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2826[0m, in [35mwith_entry_retries[0m
+    return attempt_once(attempt)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2924[0m, in [35m<lambda>[0m
+    with_entry_retries(lambda attempt: [31mget_entry[0m[1;31m([0m
+                                       [31m~~~~~~~~~[0m[1;31m^[0m
+        [1;31m*place["entry"], verbose=verbose)[0m, verbose)
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m615[0m, in [35mget_entry[0m
+    before = key_tab_slots(verbose)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m538[0m, in [35mkey_tab_slots[0m
+    [31mprepare[0m[1;31m(verbose, KEY_TAB)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m520[0m, in [35mprepare[0m
+    [31mclick[0m[1;31m(*point, SELECT_SETTLE)[0m
+    [31m~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m349[0m, in [35mclick[0m
+    [31mcalibration._button[0m[1;31m(_INPUT["MOUSEEVENTF_LEFTDOWN"],[0m
+    [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                        [1;31m_INPUT["MOUSEEVENTF_LEFTUP"], x, y, settle)[0m
+                        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py"[0m, line [35m976[0m, in [35m_button[0m
+    [31mtime.sleep[0m[1;31m(settle)[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^^^^^^[0m
+[1;35mKeyboardInterrupt[0m

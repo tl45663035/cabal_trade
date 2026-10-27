@@ -1,0 +1,44 @@
+2026-10-26_171916  src_1080p/dungeon.py --config trung --no-breaks
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-26_171916_dungeon.log
+running on commit 00782e63d
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-26_171916_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  the screen is checked for a disconnect every 60s and again 5s after a sighting, as trading's supervisor does
+rotation fire -> ice -> train: fire 0 of 30, ice 0 of 30, train 0 of 30
+  dungeon report: pushed
+  0 fire run(s) so far today; difficulty 5 takes 1x Gemstone of Transcendence x100 every 4 runs: buying it now
+  Inventory shut: slot grid 0.12, needs 0.33
+  inventory opened
+  inventory tab 1 at [1454, 181]
+  N for the shop
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4681[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4572[0m, in [35mcommand[0m
+    [31mrun_all[0m[1;31m()[0m
+    [31m~~~~~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4545[0m, in [35mrun_all[0m
+    after = rotate(group["dungeons"], after, verbose, group)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4528[0m, in [35mrotate[0m
+    after, relogged = [31mrun_or_relog[0m[1;31m(name, only_location(name),[0m
+                      [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                                   [1;31mafter, verbose)[0m
+                                   [1;31m^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4331[0m, in [35mrun_or_relog[0m
+    return [31mrun_in_turn[0m[1;31m(dungeon_name, location, after, verbose)[0m, False
+           [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4358[0m, in [35mrun_in_turn[0m
+    [31mpre_run_buys[0m[1;31m(dungeon_name, location, verbose)[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m728[0m, in [35mpre_run_buys[0m
+    [31mbuy_item[0m[1;31m(buy["item"], verbose)[0m
+    [31m~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m658[0m, in [35mbuy_item[0m
+    [31mpress_button[0m[1;31m(item["tab"], SELECT_SETTLE, verbose)[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m498[0m, in [35mpress_button[0m
+    raise RuntimeError(
+        f"the {name} window {list(window)} never read {button['word']!r} "
+        f"within {timeout:g}s; it reads {seen!r}. Nothing clicked.")
+[1;35mRuntimeError[0m: [35mthe shop_normal window [24, 149, 78, 166] never read 'Normal' within 3s; it reads ''. Nothing clicked.[0m

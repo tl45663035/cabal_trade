@@ -1,0 +1,106 @@
+2026-10-26_174819  src_1080p/dungeon.py --config trung --no-breaks
+  logging to C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\logs\2026-10-26_174819_dungeon.log
+running on commit f6a9e3ca6
+  debug frames -> C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\debug_frames\2026-10-26_174819_dungeon, indexed in frames.jsonl; earlier runs' frames are kept until the 3,000-frame budget needs the room
+  press Ctrl 2 times within 1.5s to stop, from the game or anywhere else
+  the screen is checked for a disconnect every 60s and again 5s after a sighting, as trading's supervisor does
+rotation fire -> ice -> train: fire 0 of 30, ice 0 of 30, train 0 of 30
+  dungeon report: pushed
+  0 fire run(s) so far today; difficulty 5 takes 1x Gemstone of Transcendence x100 every 4 runs: buying it now
+  Inventory shut: slot grid 0.13, needs 0.33
+  inventory opened
+  inventory tab 1 at [1454, 181]
+  N for the shop
+  Normal at [51, 157]
+  Alt+click Gemstone of Transcendence x100 at [380, 450]
+  OK at [964, 676]
+  bought 1x Gemstone of Transcendence x100 into inventory tab 1; N closed the shop
+  0 fire run(s) so far today, each summoning 1x with =; 1x Orb of Summoning x10 every 10 runs: buying it now
+  Inventory shut: slot grid 0.13, needs 0.33
+  inventory opened
+  inventory tab 1 at [1454, 181]
+  N for the shop
+  Normal at [51, 157]
+  Alt+click Orb of Summoning x10 at [331, 500]
+  OK at [964, 676]
+  bought 1x Orb of Summoning x10 into inventory tab 1; N closed the shop
+  fire: the start of a block of runs
+fire Fire [opening, step 1 of 2]: tab_two
+  hotbar tab II at [727, 900]
+fire Fire [opening, step 2 of 2]: use A+9 A+0
+  right-click A+9 at [1087, 940]
+  right-click A+0 at [1137, 940]
+fire Fire [opening, step 1 of 17]: get_entry
+  Inventory shut: slot grid 0.13, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  N for the shop
+  Dungeon at [143, 157]
+  Alt+click the entry at [185, 401]
+  OK at [964, 676]
+  bought; N to close the shop
+  the entry landed in tab 7 slot (1, 1) at [1475, 236]; noted in dungeon_next.json
+fire Fire [opening, step 2 of 17]: open_dungeon_key
+  Inventory shut: slot grid 0.13, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+  right-click the entry in tab 7 slot (1, 1) at [1475, 236]
+  Yes at [962, 614]
+  no 'Lava Hellfire (Awakened)' in the dungeon list within 20s of Yes, read with the cursor on tab II [727, 900]; its rows read ['_ava Hellfire (Normal)(10/10)[New Entry]', '_ava Hellfire (Premium)(15/15)[New Entry]', '(Elite)Lava Hellfire (Premium)(5/5)[New Entry]', 'ava Hellfire (Awakened)(30/30)[New Entry]', 'Flame Nest(30/30)[New Entry]', '', '']. Nothing more clicked. Escape until the menu is up, one more Escape, then the entry again from buying it (retry 1 of 3)
+  the menu is up after 2 Escape(s); one more Escape closes it
+  Inventory shut: slot grid 0.19, needs 0.33
+  inventory opened
+  inventory tab 7 at [1773, 181]
+
+  Ctrl 2 times: stopping the run the way Ctrl+C would; no more input is sent.
+Traceback (most recent call last):
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4681[0m, in [35m<module>[0m
+    [31mcommand[0m[1;31m(args)[0m
+    [31m~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4572[0m, in [35mcommand[0m
+    [31mrun_all[0m[1;31m()[0m
+    [31m~~~~~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4545[0m, in [35mrun_all[0m
+    after = rotate(group["dungeons"], after, verbose, group)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4528[0m, in [35mrotate[0m
+    after, relogged = [31mrun_or_relog[0m[1;31m(name, only_location(name),[0m
+                      [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                                   [1;31mafter, verbose)[0m
+                                   [1;31m^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4331[0m, in [35mrun_or_relog[0m
+    return [31mrun_in_turn[0m[1;31m(dungeon_name, location, after, verbose)[0m, False
+           [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m4367[0m, in [35mrun_in_turn[0m
+    [31mrun_dungeon[0m[1;31m(dungeon_name, location, verbose)[0m
+    [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2461[0m, in [35mrun_dungeon[0m
+    [31mrun_sequence[0m[1;31m(dungeon_name, location, phase, verbose,[0m
+    [31m~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31msteps if until is None[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^[0m
+                 [1;31melse before_step(dungeon_name, until), timer=timer)[0m
+                 [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2906[0m, in [35mrun_sequence[0m
+    [31mwith_entry_retries[0m[1;31m(lambda attempt: buy_and_open([0m
+    [31m~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31mdungeon_name, location, place, attempt, verbose), verbose)[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2805[0m, in [35mwith_entry_retries[0m
+    return attempt_once(attempt)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2906[0m, in [35m<lambda>[0m
+    with_entry_retries(lambda attempt: [31mbuy_and_open[0m[1;31m([0m
+                                       [31m~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31mdungeon_name, location, place, attempt, verbose)[0m, verbose)
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m2819[0m, in [35mbuy_and_open[0m
+    [31mget_entry[0m[1;31m(*place["entry"], verbose=verbose)[0m
+    [31m~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m612[0m, in [35mget_entry[0m
+    before = key_tab_slots(verbose)
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\dungeon.py"[0m, line [35m536[0m, in [35mkey_tab_slots[0m
+    [31mcalibration.park[0m[1;31m()[0m
+    [31m~~~~~~~~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"C:\Users\tl456\Desktop\cabal-trader\cabal_trade\src_1080p\calibration.py"[0m, line [35m511[0m, in [35mpark[0m
+    [31mtime.sleep[0m[1;31m(PARK_SETTLE)[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^[0m
+[1;35mKeyboardInterrupt[0m
