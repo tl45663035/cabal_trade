@@ -1271,7 +1271,7 @@
                      ["tap", "="],
                      "move_to_A",
                      "bm_cycle",
-                     ["kill_all", "any monster", "main_kill_loop"],
+                     ["kill_all", "any monster", "main_kill_loop", 5.0],
                      "move_to_B",
                      ["kill_all", "any monster", "main_kill_loop"],
                      "move_to_C",
