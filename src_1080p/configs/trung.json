@@ -117,6 +117,7 @@
                      ["kill_bm", "Treasure Chest", "kill_loop"],
                      ["kill_all", "any monster", "kill_loop", 3.0],
                      "move_to_D",
+                     "keep_aura",
                      ["kill_bm", "Awakened Nazabrum", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", 3.0],
                      "final_sequence"]
@@ -144,6 +145,7 @@
                      "move_to_D",
                      ["kill_bm", "Lava Gate", "kill_loop"],
                      "move_to_E",
+                     "keep_aura",
                      ["kill_bm", "Master of Fire Eurostia", "offensive_boss_loop"]]
       },
       "ic1": {
@@ -166,6 +168,7 @@
                      ["kill_all", "any monster", "kill_loop", 2.0],
                      "move_to_E",
                      ["wait", 5],
+                     "keep_aura",
                      ["kill_bm", "Divine Golem of Rage", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", null]]
       },
@@ -192,6 +195,7 @@
                       "kill_loop"],
                      ["kill_all", "any monster", "kill_loop", 2.0],
                      "move_to_E",
+                     "keep_aura",
                      ["kill_bm", "Divine K'enith", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", null]]
       },
@@ -210,6 +214,7 @@
                      "move_to_D",
                      ["kill_all", "any monster", "kill_loop"],
                      "move_to_E",
+                     "keep_aura",
                      ["kill_bm", "Awakened Steamer LHJ-G30", "offensive_boss_loop"]]
       },
       "eop": {
@@ -237,6 +242,7 @@
                      ["wait", 8],
                      ["wait", 1.5],
                      "move_to_F",
+                     "keep_aura",
                      ["kill_bm", "Etherno Calligo Thanatos", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", null]]
       }
