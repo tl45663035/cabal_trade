@@ -1374,6 +1374,11 @@
         "daily_limit": 9,
         "difficulty": 0,
         "hard_limit_seconds": 300,
+        "exit": [
+          ["button", "confirmation", 0.0],
+          ["click", "obtain_treasure", 0.5],
+          ["button", "fire_leave", 0.0]
+        ],
         "reset": {"heading_box": [775, 468, 960, 488], "heading_word": "Reset",
                   "cancel_box": [1035, 601, 1160, 628], "cancel_word": "Cancel",
                   "count_box": [925, 553, 990, 573], "button": [962, 614],
