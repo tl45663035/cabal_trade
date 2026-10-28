@@ -315,6 +315,7 @@ CHAT_EVERY = _DUNGEON["chat_every"]
 CHAT_READS = _DUNGEON["chat_reads"]
 ROOM_PREFIX = _DUNGEON["room_prefix"]
 PARTY_SET = _DUNGEON["party"]
+LOOTING = PARTY_SET["looting"]
 PARTY = None
 PARTY_LEFT = {"together": None}
 _CHAT_LINES = _DUNGEON["chat_lines"]
@@ -3775,36 +3776,78 @@ def find_word(box, word, timeout, label):
 
 
 def invite_partner(verbose=True):
-    name, key = PARTY_SET["partner_character"], PARTY_SET["friends_key"]
-    settle, wait = float(PARTY_SET["settle"]), float(PARTY_SET["find_wait"])
-    box = PARTY_SET["friends_box"]
+    import recovery
+    phrase = PARTY_SET["invite_phrase"].format(
+        name=PARTY_SET["partner_character"])
+    settle = float(PARTY_SET["settle"])
     escape_everything(verbose)
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
     if verbose:
-        print(f"  party: every window closed, {key} for the friend list, "
-              f"{name!r} looked for only in {box}, right-click it, then "
-              f"{PARTY_SET['invite_word']!r}")
-    tap(KEYS[key])
-    point = find_word(box, name, wait, "friend")
-    if point is None:
-        escape_everything(verbose)
-        raise RuntimeError(f"{name!r} is not in the friend list {box} "
-                           f"within {wait:g}s of {key}.")
-    right_click(*point, settle)
-    left, top, right, bottom = PARTY_SET["menu_box"]
-    menu = [max(0, point[0] + left), max(0, point[1] + top),
-            point[0] + right, point[1] + bottom]
-    item = find_word(menu, PARTY_SET["invite_word"], wait, "invite")
-    if item is None:
-        escape_everything(verbose)
-        raise RuntimeError(f"no {PARTY_SET['invite_word']!r} in {menu} "
-                           f"after right-clicking {name!r} at "
-                           f"{list(point)}.")
-    click(*item, settle)
+        print(f"  party: every window closed, Enter for the chat, "
+              f"{phrase!r} typed, Enter to send it")
+    tap(KEYS["Enter"])
+    time.sleep(settle)
+    recovery._type(phrase)
+    time.sleep(settle)
+    tap(KEYS["Enter"])
+    time.sleep(settle)
+    calibration.snap("party_invite_sent")
+
+
+def looting_selected():
+    x, y = LOOTING["circle"]
+    image = calibration.grab()
+    pixels = [image.getpixel((x + dx, y + dy))
+              for dx in (-1, 0, 1) for dy in (-1, 0, 1)]
+    red = sum(p[0] for p in pixels) / len(pixels)
+    blue = sum(p[2] for p in pixels) / len(pixels)
+    return blue - red >= float(LOOTING["selected_blue"])
+
+
+def set_looting_rule(verbose=True):
+    settle, wait = float(PARTY_SET["settle"]), float(LOOTING["find_wait"])
     escape_everything(verbose)
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
     if verbose:
-        print(f"  party: {name!r} at {list(point)} right-clicked, "
-              f"{PARTY_SET['invite_word']!r} at {list(item)} clicked, "
-              f"every window closed again")
+        print(f"  party: right-click {PARTY_SET['partner_character']}'s HP "
+              f"bar at {LOOTING['panel_point']}, {LOOTING['rule_word']!r}, "
+              f"the {LOOTING['settle_word']!r} circle at "
+              f"{LOOTING['circle']}, then {LOOTING['ok_word']!r}")
+    right_click(*LOOTING["panel_point"], settle)
+    if find_word(LOOTING["rule_box"], LOOTING["rule_word"], wait,
+                 "looting_rule") is None:
+        escape_everything(verbose)
+        raise RuntimeError(f"no {LOOTING['rule_word']!r} in "
+                           f"{LOOTING['rule_box']} after right-clicking the "
+                           f"party panel.")
+    click(*LOOTING["rule_point"], settle)
+    if find_word(LOOTING["settle_box"], LOOTING["settle_word"], wait,
+                 "looting_settlement") is None:
+        escape_everything(verbose)
+        raise RuntimeError(f"no {LOOTING['settle_word']!r} in "
+                           f"{LOOTING['settle_box']}; the Party Option "
+                           f"window did not open.")
+    for _ in range(int(LOOTING["tries"])):
+        click(*LOOTING["circle"], settle)
+        if looting_selected():
+            break
+    else:
+        escape_everything(verbose)
+        raise RuntimeError(f"the {LOOTING['settle_word']!r} circle at "
+                           f"{LOOTING['circle']} is not selected after "
+                           f"{LOOTING['tries']} click(s).")
+    if find_word(LOOTING["ok_box"], LOOTING["ok_word"], wait,
+                 "looting_ok") is None:
+        escape_everything(verbose)
+        raise RuntimeError(f"no {LOOTING['ok_word']!r} in "
+                           f"{LOOTING['ok_box']}; nothing saved.")
+    click(*LOOTING["ok_point"], settle)
+    calibration.snap("party_looting_rule_set")
+    if verbose:
+        print(f"  party: {LOOTING['settle_word']} selected and "
+              f"{LOOTING['ok_word']} clicked")
 
 
 def accept_invite(verbose=True):
@@ -3893,12 +3936,22 @@ def party_ready(steps, verbose=True):
             PARTY.solo()
             return
         say_step("invite sent" if PARTY.leader else "invite accepted")
-        PARTY.formed = True
+        PARTY.formed = fresh = True
     else:
+        fresh = False
         say_step("party already formed")
     party_meet("party", wait, verbose)
     if PARTY.alone:
         PARTY.formed = False
+    elif fresh and PARTY.leader:
+        say_step("setting the looting rule")
+        try:
+            set_looting_rule(verbose)
+            say_step("looting rule: Immediate Settlement")
+        except RuntimeError as exc:
+            say_step("looting rule not set")
+            print(f"  party: {exc} The run goes on with the looting rule "
+                  f"as it was")
 
 
 def party_runs(dungeon_name=None, verbose=True):

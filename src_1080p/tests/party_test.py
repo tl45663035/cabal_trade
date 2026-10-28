@@ -1,3 +1,5 @@
+import contextlib
+import io
 import os
 import sys
 import threading
@@ -124,6 +126,62 @@ check("rooms are numbered by their order among the move_to steps",
 check("cang's party block: leader, partner trung, character Jarvan, ic1",
       dungeon.PARTY_SET["leader"] is True and dungeon.PARTY_SET["partner"] == "trung"
       and dungeon.PARTY_SET["partner_character"] == "Jarvan" and dungeon.PARTY_SET["dungeon"] == "ic1")
+
+import recovery
+sent = []
+saved = (dungeon.tap, dungeon.escape_everything, dungeon.focus_game,
+         recovery._type, calibration.snap, dungeon.PARTY_SET["settle"])
+try:
+    dungeon.tap = lambda vk, hold=None: sent.append(("key", vk))
+    dungeon.escape_everything = lambda verbose=True: sent.append(("escape",))
+    dungeon.focus_game = lambda *a, **k: True
+    recovery._type = lambda text: sent.append(("type", text))
+    calibration.snap = lambda *a, **k: None
+    dungeon.PARTY_SET["settle"] = 0.0
+    with contextlib.redirect_stdout(io.StringIO()):
+        dungeon.invite_partner()
+    check("the invite is Enter, '/party Jarvan', Enter, with no OCR",
+          sent == [("escape",), ("key", dungeon.KEYS["Enter"]),
+                   ("type", "/party Jarvan"), ("key", dungeon.KEYS["Enter"])],
+          str(sent))
+finally:
+    (dungeon.tap, dungeon.escape_everything, dungeon.focus_game,
+     recovery._type, calibration.snap, dungeon.PARTY_SET["settle"]) = saved
+
+did = []
+picks = iter([False, True])
+saved = (dungeon.escape_everything, dungeon.focus_game, dungeon.right_click,
+         dungeon.click, dungeon.find_word, dungeon.looting_selected,
+         calibration.snap, dungeon.PARTY_SET["settle"])
+try:
+    dungeon.escape_everything = lambda verbose=True: did.append("escape")
+    dungeon.focus_game = lambda *a, **k: True
+    dungeon.right_click = lambda x, y, settle=0: did.append(("right", x, y))
+    dungeon.click = lambda x, y, settle=0: did.append(("click", x, y))
+    dungeon.find_word = lambda box, word, wait, label: did.append(("find", word)) or (1, 1)
+    dungeon.looting_selected = lambda: next(picks)
+    calibration.snap = lambda *a, **k: None
+    dungeon.PARTY_SET["settle"] = 0.0
+    with contextlib.redirect_stdout(io.StringIO()):
+        dungeon.set_looting_rule()
+    check("looting rule: HP bar, Looting Rule, the circle until it is selected, OK",
+          did == ["escape", ("right", 143, 242), ("find", "Looting"), ("click", 434, 285),
+                  ("find", "Immediate"), ("click", 790, 614), ("click", 790, 614),
+                  ("find", "OK"), ("click", 966, 656)], str(did))
+    did.clear()
+    dungeon.find_word = lambda box, word, wait, label: None if word == "Looting" else (1, 1)
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            dungeon.set_looting_rule()
+        raised = False
+    except RuntimeError:
+        raised = True
+    check("no Looting Rule in the menu: windows closed, an error, nothing more clicked",
+          raised and did == ["escape", ("right", 143, 242), "escape"], str(did))
+finally:
+    (dungeon.escape_everything, dungeon.focus_game, dungeon.right_click,
+     dungeon.click, dungeon.find_word, dungeon.looting_selected,
+     calibration.snap, dungeon.PARTY_SET["settle"]) = saved
 
 check("no input reached the game", not TRIPPED, str(TRIPPED))
 print(f"{fails} failure(s)")
