@@ -3901,11 +3901,16 @@ def party_ready(steps, verbose=True):
         PARTY.formed = False
 
 
-def party_runs(verbose=True):
+def party_runs(dungeon_name=None, verbose=True):
     global PARTY
     import messaging
     import party
-    dungeon_name = PARTY_SET["dungeon"]
+    dungeon_name = dungeon_name or PARTY_SET["dungeon"]
+    if DUNGEONS.get(dungeon_name, {}).get("daily_limit") is None:
+        raise SystemExit(f"party mode: no dungeon {dungeon_name!r} with a "
+                         f"daily limit; the dungeons are "
+                         f"{', '.join(sorted(DUNGEONS))}")
+    PARTY_SET["dungeon"] = dungeon_name
     location = only_location(dungeon_name)
     off = messaging.why_off()
     if off is not None:
@@ -5797,7 +5802,7 @@ def command(args):
     elif args[:1] == ["exit"] and len(args) > 1:
         exit_now(args[1])
     elif args[:1] == ["party"]:
-        party_runs()
+        party_runs(args[1] if len(args) > 1 else None)
     elif args[:1] == ["get_to_wb_area"]:
         calibration.close_everything(verbose=True)
         get_to_wb_area()
@@ -5857,7 +5862,7 @@ def command(args):
                          f"play DUNGEON SEQUENCE, kill DUNGEON NAME, bm_aura, "
                          f"kill_bm DUNGEON NAME, "
                          f"enter N, arrive, "
-                         f"party, calibrate, shout, disenchant, close_notification, "
+                         f"party [DUNGEON], calibrate, shout, disenchant, close_notification, "
                          f"off_bike, exit DUNGEON, get_to_wb_area "
                          f"or do ACTION")
 

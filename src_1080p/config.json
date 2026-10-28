@@ -1454,6 +1454,18 @@
                      ["kill_all", "any monster", "kill_loop", 3.0],
                      "move_to_F",
                      ["kill_all", "any monster", "kill_loop", 3.0]]
+      },
+      "god": {
+        "locations": {
+          "GOD": {"entry": [234, 450], "name": "Garden of Dust"}
+        },
+        "daily_limit": 30,
+        "difficulty": 0,
+        "targets": {"any monster": []},
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     "move_to_A",
+                     "bm_cycle",
+                     ["kill_all", "any monster", "kill_loop", 3.0]]
       }
     },
     "finish": [
