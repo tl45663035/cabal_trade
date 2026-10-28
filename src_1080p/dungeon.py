@@ -3654,8 +3654,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             if name.startswith(ROOM_PREFIX) and PARTY is not None:
                 done = [step_name(earlier) for earlier in steps[:number - 1]
                         if step_name(earlier).startswith(ROOM_PREFIX)]
-                party_meet(f"room:{len(done)}:{name}",
-                           float(PARTY_SET["door_wait"]), verbose,
+                party_meet(f"room:{len(done)}", PARTY_SET["door_wait"],
+                           verbose,
                            done[-1][len(ROOM_PREFIX):] if done else None,
                            name[len(ROOM_PREFIX):])
                 if stop_when_over and OVER.is_set():
@@ -3738,23 +3738,26 @@ def party_meet(mark, timeout, verbose=True, cleared=None, entering=None):
     if PARTY is None or PARTY.alone or PARTY.run is None:
         return
     waiting, together, missing = meet_words(mark, cleared, entering)
+    limit = float("inf") if timeout is None else float(timeout)
+    within = "" if timeout is None else f" in {timeout:g}s"
     if PARTY.seen.get((mark, PARTY.run)) is None:
         say_step(waiting)
     if verbose:
-        print(f"  party: {mark}: waiting up to {timeout:g}s for "
-              f"{PARTY.partner}")
+        print(f"  party: {mark}: waiting "
+              + ("until the run ends" if timeout is None
+                 else f"up to {timeout:g}s")
+              + f" for {PARTY.partner}")
     started = time.monotonic()
-    met = PARTY.meet(mark, timeout, party_stop)
+    met = PARTY.meet(mark, limit, party_stop)
     PARTY.drain(print)
     if met is not None:
-        say_step(together if met else
-                 f"{missing} in {timeout:g}s, solo run")
+        say_step(together if met else f"{missing}{within}, solo run")
     if verbose and met is not None:
         print(f"  party: {mark}: "
               + (f"{PARTY.partner} is there too, after "
                  f"{time.monotonic() - started:.1f}s" if met else
-                 f"no {PARTY.partner} within {timeout:g}s, or it quit; the "
-                 f"rest of this run is solo"))
+                 f"no {PARTY.partner}{within}, or it quit or finished its "
+                 f"run; the rest of this run is solo"))
 
 
 def find_word(box, word, timeout, label):
@@ -3872,13 +3875,10 @@ def party_ready(steps, verbose=True):
         raise PartyDone(f"no {dungeon_name} runs left together today "
                         f"({PARTY_SET['name']} {left}, {PARTY.partner} "
                         f"{theirs})")
-    if got.get("rooms") != rooms:
-        PARTY.finish(failed=True)
-        raise SystemExit(f"party: {PARTY.partner} plays {got.get('rooms')} "
-                         f"and this bot {rooms}; both must play the same "
-                         f"rooms in the same order.")
     if verbose:
-        print(f"  party: run {PARTY.run} with {PARTY.partner}")
+        print(f"  party: run {PARTY.run} with {PARTY.partner}; its rooms "
+              f"{got.get('rooms')}, this bot's {rooms}, met door by door in "
+              f"order")
     if not (PARTY.formed and got.get("party")):
         say_step(f"inviting {PARTY_SET['partner_character']}" if PARTY.leader
                  else "waiting for the party invite")
@@ -3924,8 +3924,11 @@ def party_runs(dungeon_name=None, verbose=True):
     print(f"party mode: {PARTY_SET['name']} "
           f"({'leader' if PARTY.leader else 'member'}) with "
           f"{PARTY_SET['partner']} in {dungeon_name} {location}; up to "
-          f"{wait:g}s at the start and {float(PARTY_SET['door_wait']):g}s at "
-          f"each door before going solo")
+          f"{wait:g}s at the start; at each door until {PARTY_SET['partner']} "
+          f"is there, quits or the run ends" if PARTY_SET["door_wait"] is None
+          else f"{wait:g}s at the start and "
+               f"{float(PARTY_SET['door_wait']):g}s at each door before going "
+               f"solo")
     say_step("party_mode start")
     try:
         say_step(f"waiting for {PARTY_SET['partner']} to respond")
@@ -4104,7 +4107,7 @@ def start_dungeon(verbose=True):
     if party_paired():
         party_meet("challenge", float(PARTY_SET["start_wait"]), verbose)
     if party_paired() and not PARTY.leader:
-        party_meet("challenged", float(PARTY_SET["door_wait"]), verbose)
+        party_meet("challenged", float(PARTY_SET["start_wait"]), verbose)
         if party_paired():
             clicked = time.monotonic()
             if verbose:
@@ -4122,7 +4125,7 @@ def start_dungeon(verbose=True):
         print(f"  hotbar tab II at {list(TAB_TWO)}")
     click(*TAB_TWO, 0.0)
     if party_paired() and PARTY.leader:
-        party_meet("challenged", float(PARTY_SET["door_wait"]), verbose)
+        party_meet("challenged", float(PARTY_SET["start_wait"]), verbose)
     return clicked
 
 

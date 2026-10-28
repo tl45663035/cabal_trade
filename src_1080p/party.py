@@ -121,7 +121,8 @@ class Party:
                 return None
             with self.lock:
                 hit = found()
-                quit = self.run is not None and self.run in self.quit_runs
+                quit = self.run is not None and (
+                    self.run in self.quit_runs or self.run in self.done_runs)
             if hit is not None:
                 return hit
             if quit:
