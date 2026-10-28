@@ -1365,6 +1365,37 @@
                      ["kill_all", "any monster", "kill_loop"],
                      "move_to_K",
                      ["kill_all", "any monster", "kill_loop"]]
+      },
+      "windmill": {
+        "locations": {
+          "WINDMILL": {"entry": [41, 646], "name": "Holy Windmill", "list_right": 780,
+                       "list_words": ["windmill"]}
+        },
+        "daily_limit": 9,
+        "difficulty": 0,
+        "hard_limit_seconds": 300,
+        "reset": {"heading_box": [775, 468, 960, 488], "heading_word": "Reset",
+                  "cancel_box": [1035, 601, 1160, 628], "cancel_word": "Cancel",
+                  "count_box": [925, 553, 990, 573], "button": [962, 614],
+                  "wait": 5.0, "settle": 1.0},
+        "targets": {"any monster": []},
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     "bm_cycle",
+                     ["tap", "`", "5"],
+                     "move_to_A",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_B",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_C",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_D",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_E",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_F",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_G",
+                     ["kill_all", "any monster", "kill_loop", 3.0]]
       }
     },
     "finish": [

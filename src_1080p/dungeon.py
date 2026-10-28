@@ -108,6 +108,8 @@ ENTER_WORD = _DUNGEON["enter_word"]
 CANNOT_ENTER_WORD = _DUNGEON["cannot_enter_word"]
 PLAY_TIME_REFILL = _DUNGEON["play_time_refill"]
 REFILL = {"done": False}
+ENTRIES_LEFT = re.compile(r"\((\d+|[Oo])\s*/\s*(\d+)\)")
+RESETS_USED = re.compile(r"(\d+)\s*/\s*(\d+)")
 CHALLENGE_WORD = _DUNGEON["challenge_word"]
 EXIT_WORD = _DUNGEON["exit_word"]
 SELECT_SETTLE = float(_DUNGEON["select_settle"])
@@ -956,7 +958,50 @@ def refill_play_time(row_y, verbose=True):
     ctypes.windll.user32.SetCursorPos(*TAB_TWO)
 
 
-def open_dungeon_key(dungeon_name, location, verbose=True, refill=False):
+def reset_play_limit(reset, verbose=True):
+    settle = float(reset["settle"])
+    heading = tuple(reset["heading_box"])
+    cancel = tuple(reset["cancel_box"])
+    enter_point = centre(ENTER_WINDOW)
+    if verbose:
+        print(f"  no entries left on the row, so the button at {enter_point} "
+              f"for the reset")
+    click(*enter_point, 0.0)
+    up, seen = wait_for(heading, reset["heading_word"], float(reset["wait"]))
+    if not up:
+        raise RuntimeError(
+            f"no {reset['heading_word']!r} popup in {list(heading)} within "
+            f"{float(reset['wait']):g}s of the click; it reads {seen!r}. "
+            f"Nothing more clicked.")
+    if not wait_for(cancel, reset["cancel_word"], 0)[0]:
+        raise RuntimeError(
+            f"the {reset['heading_word']!r} popup has no "
+            f"{reset['cancel_word']!r} in {list(cancel)}. Nothing more "
+            f"clicked.")
+    used = read_windows(calibration.grab(), [tuple(reset["count_box"])])[0]
+    found = RESETS_USED.search(used)
+    if found is not None and int(found.group(1)) >= int(found.group(2)):
+        click(*centre(cancel), settle)
+        raise RuntimeError(
+            f"the Daily Reset Limit reads {used!r}: no resets left today. "
+            f"{reset['cancel_word']} clicked.")
+    if verbose:
+        print(f"  {seen!r}, Daily Reset Limit {used!r}: the reset button at "
+              f"{reset['button']}")
+    click(*reset["button"], 0.0)
+    deadline = time.monotonic() + float(reset["wait"])
+    while wait_for(heading, reset["heading_word"], 0)[0]:
+        if time.monotonic() >= deadline:
+            raise RuntimeError(
+                f"the {reset['heading_word']!r} popup is still up "
+                f"{float(reset['wait']):g}s after the reset button.")
+        time.sleep(WAIT_SLICE)
+    calibration.snap("play_limit_reset")
+    time.sleep(settle)
+
+
+def open_dungeon_key(dungeon_name, location, verbose=True, refill=False,
+                     after_reset=False):
     place = location_of(dungeon_name, location)
     name, words = place["name"], place.get("list_words")
     right = place.get("list_right")
@@ -996,6 +1041,22 @@ def open_dungeon_key(dungeon_name, location, verbose=True, refill=False):
     level = DUNGEONS[dungeon_name].get("difficulty")
     if level is not None:
         set_difficulty(int(level), verbose)
+    reset = DUNGEONS[dungeon_name].get("reset")
+    if reset is not None:
+        row = reads[windows.index(box)]
+        left = ENTRIES_LEFT.search(row)
+        if left is None and verbose:
+            print(f"  no entry count on the row {row!r}; entering as usual")
+        elif left is not None and left.group(1) in ("0", "O", "o"):
+            if after_reset:
+                raise RuntimeError(
+                    f"the row still reads {row!r} after the reset. Nothing "
+                    f"entered.")
+            reset_play_limit(reset, verbose)
+            return open_dungeon_key(dungeon_name, location, verbose, refill,
+                                    after_reset=True)
+        elif verbose:
+            print(f"  the row reads {row!r}: entries left")
     up, seen = wait_for_enter()
     if (not up and refill and not REFILL["done"]
             and row_model._key(CANNOT_ENTER_WORD) in row_model._key(seen)):
