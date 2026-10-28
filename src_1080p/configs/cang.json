@@ -98,6 +98,9 @@
     "bm_attack": {"main_bm": ["3", "4"], "alternate_bm": ["5", "6"]},
     "twin_bm": "alternate_bm",
     "once_per_target": [],
+    "key_repeats": {"main_bm": 3, "alternate_bm": 3, "aura": 3},
+    "party": {"name": "cang", "partner": "trung", "leader": true,
+              "partner_character": "Jarvan", "dungeon": "ic1"},
     "bike": {"key": "1", "slot": [664, 978, 712, 1022], "grey_below": 85,
              "recheck": 3.0, "settle": 1.0, "dismount_wait": 5.0},
     "fn_nobm_kill_loop": ["5", "6", "8", "9"],
@@ -270,6 +273,7 @@
   "world_boss": {
     "enabled": true,
     "prepare_channel": 4,
-    "main_bm_cooldown": 40.0
+    "main_bm_cooldown": 40.0,
+    "key_repeats": {"main_bm": 3, "alternate_bm": 3, "aura": 3}
   }
 }
