@@ -613,6 +613,8 @@ def relog(verbose=True):
         print(f"  relogging into {recovery.HOME_CHANNEL}")
     with relogging():
         recovery.relog(verbose=verbose)
+    if PARTY is not None:
+        decline_notifications(verbose)
 
 
 def relog_home(verbose=True):
@@ -5109,8 +5111,12 @@ def relog_for_burst(verbose=True):
                   f"({type(exc).__name__}: {exc}); tried again at the next "
                   f"burst")
             recovery.recover(verbose=verbose, channel=CHANNEL)
+            if PARTY is not None:
+                decline_notifications(verbose)
             return
         BURST_STATE["on_channel"] = True
+        if PARTY is not None:
+            decline_notifications(verbose)
         return
     try:
         now = online_now()
@@ -5264,6 +5270,8 @@ def relog_after_disconnect(dungeon_name, exc, verbose=True):
                  f"{recovery.HOME_CHANNEL.lower()}")
     with relogging():
         recovery.recover(verbose=verbose)
+    if PARTY is not None:
+        decline_notifications(verbose)
     cancel_bm(dungeon_name or TRADING_DUNGEON, verbose)
 
 
