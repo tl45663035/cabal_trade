@@ -1385,6 +1385,7 @@
                   "wait": 5.0, "settle": 1.0},
         "targets": {"any monster": []},
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     ["tap", "="],
                      "bm_cycle",
                      ["tap", "`", "5"],
                      "move_to_A",
