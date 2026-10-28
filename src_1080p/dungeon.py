@@ -350,7 +350,6 @@ KEY_CELLS = [tuple(cell) for cell in _DUNGEON["key_cells"]]
 DIFFICULTY = _DUNGEON["difficulty"]
 PURCHASES = _DUNGEON["purchases"]
 ORBS = _DUNGEON["summon_orbs"]
-AFTER_RUN_BUYS = list(_DUNGEON["after_run_buys"])
 QUANTITY_CLEAR = int(_DUNGEON["quantity_clear"])
 QUANTITY_MAX = int(_DUNGEON["quantity_max"])
 KEY_WINDOW = tuple(_DUNGEON["key_window"])
@@ -2983,7 +2982,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
         end_run_film(dungeon_name, location,
                      bool(crashed) or stopped or RUN_OUTCOME["failed"],
                      verbose)
-    for name in AFTER_RUN_BUYS:
+    for name in setting(dungeon_name, "after_run_buys"):
         try:
             buy_max(name, verbose)
         except RuntimeError as exc:
@@ -4917,26 +4916,16 @@ def run_seconds(dungeon_name):
                                             hard_limit(dungeon_name)))
 
 
-def banner_clicks(dungeon_name):
-    clicks = DUNGEONS[dungeon_name].get("banner_clicks")
-    if clicks is None:
-        return 0.0, run_seconds(dungeon_name)
-    return (float(clicks[0]), float(clicks[1])) if clicks else None
-
-
 def banner_wait(now, dungeon_name):
     start = now.replace(minute=int(BANNER["minute"]), second=0, microsecond=0)
     length = datetime.timedelta(minutes=float(BANNER["minutes"]))
     if now >= start + length:
         start += datetime.timedelta(hours=1)
-    clicks = banner_clicks(dungeon_name)
-    if clicks is None:
-        return 0.0, start, length, clicks
-    first, last = (datetime.timedelta(seconds=at) for at in clicks)
-    entry = datetime.timedelta(seconds=float(BANNER["entry_allowance"]))
-    if now + entry + last <= start or now + first >= start + length:
-        return 0.0, start, length, clicks
-    return (start + length - first - now).total_seconds(), start, length, clicks
+    run = datetime.timedelta(seconds=float(BANNER["entry_allowance"])
+                             + run_seconds(dungeon_name))
+    left = (0.0 if now + run <= start
+            else (start + length - now).total_seconds())
+    return left, start, length, run
 
 
 def run_cost(dungeon_name):
@@ -4945,7 +4934,7 @@ def run_cost(dungeon_name):
 
 
 def banner_plan(now, start, pool, depth):
-    best = ([], max(0.0, (start - now).total_seconds()))
+    best = ([], (start - now).total_seconds())
     if depth <= 0:
         return best
     for other in pool:
@@ -4975,10 +4964,10 @@ def banner_filler(dungeon_name, pool, verbose=True):
     if not plan:
         return None
     if verbose:
-        print(f"{dungeon_name}: a run started now would click in the banner "
-              f"band while the Surprise Attack banner is up from :{start:%M}, "
-              f"so {' -> '.join(plan)} fill the time before it ({idle:.0f}s "
-              f"left over); {plan[0]} now")
+        print(f"{dungeon_name}: a run started now would still be on when the "
+              f"Surprise Attack banner comes up at :{start:%M}, so "
+              f"{' -> '.join(plan)} fill the time before it ({idle:.0f}s left "
+              f"over); {plan[0]} now")
     return plan[0]
 
 
@@ -4992,17 +4981,14 @@ def banner_clear(dungeon_name, verbose=True):
             print("  no time server has answered yet, so the Surprise Attack "
                   "banner hour is not checked before this run")
         return
-    left, start, length, clicks = banner_wait(now, dungeon_name)
+    left, start, length, run = banner_wait(now, dungeon_name)
     if not left:
         return
     if verbose:
         print(f"  {dungeon_name}: the Surprise Attack banner is up from "
-              f":{start:%M} to :{start + length:%M} every hour and this run "
-              f"clicks in the banner band {clicks[0]:.0f}-{clicks[1]:.0f}s "
-              f"after {CHALLENGE_WORD}, so it starts at "
-              f":{now + datetime.timedelta(seconds=left):%M:%S}, when its "
-              f"first band click comes after :{start + length:%M} "
-              f"({left:.0f}s)")
+              f":{start:%M} to :{start + length:%M} every hour and a run "
+              f"started now could last {run.total_seconds():.0f}s, so no "
+              f"dungeon until :{start + length:%M} ({left:.0f}s)")
     wait_timer(left, False)
 
 

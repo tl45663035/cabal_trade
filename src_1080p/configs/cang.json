@@ -151,13 +151,13 @@
                      ["kill_bm", "Fire Guardian Manticore", "kill_loop"],
                      ["kill_bm", "Treasure Chest", "kill_loop"],
                      "move_to_B",
+                     ["keep_aura", "target"],
                      ["look_kill_bm", [["Q", "E", 1.0], ["E", "Q", 1.0]], "Fire Guard Dark Archer", "kill_loop", 3.0],
                      "move_to_C",
                      ["look_kill_bm", [["Q", "E", 1.0], ["E", "Q", 1.0]], "Fire Gatekeeper Demonic Jason", "kill_loop", 3.0],
                      "move_to_D",
                      ["kill_bm", "Lava Gate", "kill_loop"],
                      "move_to_E",
-                     "keep_aura",
                      ["kill_bm", "Master of Fire Eurostia", "offensive_boss_loop"]]
       },
       "train": {
@@ -175,7 +175,7 @@
                      "move_to_D",
                      ["kill_all", "any monster", "kill_loop"],
                      "move_to_E",
-                     "keep_aura",
+                     ["keep_aura", "target"],
                      ["kill_bm", "Awakened Steamer LHJ-G30", "offensive_boss_loop"]]
       },
       "valley": {
