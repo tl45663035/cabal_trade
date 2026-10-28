@@ -784,7 +784,7 @@
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
                      ["wait", 3], "get_to_gate", ["kill", "Gate of Chaos"],
                      ["timer", 330], ["tap", "="],
-                     "shout", ["wait_timer", 5],
+                     ["wait_timer", 5],
                      "inventory", "wait_timer", ["kill", "Gate of Chaos"],
                      "bm_aura", "kill_phase",
                      "get_to_middle", ["kill_bm", "boss"]],
