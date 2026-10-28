@@ -316,6 +316,7 @@ CHAT_READS = _DUNGEON["chat_reads"]
 ROOM_PREFIX = _DUNGEON["room_prefix"]
 PARTY_SET = _DUNGEON["party"]
 PARTY = None
+PARTY_LEFT = {"together": None}
 _CHAT_LINES = _DUNGEON["chat_lines"]
 CHAT_BOXES = [(_CHAT_LINES["left"], _CHAT_LINES["top"] + row * _CHAT_LINES["gap"],
                _CHAT_LINES["right"],
@@ -606,6 +607,8 @@ def use_key(before, verbose=True):
 def relog(verbose=True):
     import recovery
     party_left()
+    if PARTY is not None:
+        say_step(f"relogging {recovery.HOME_CHANNEL.lower()}")
     if verbose:
         print(f"  relogging into {recovery.HOME_CHANNEL}")
     with relogging():
@@ -1604,9 +1607,6 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
         first.wait(limit)
         since = None
         while not ENDED.is_set() and time.monotonic() - started < limit:
-            if party_ahead(verbose):
-                LOCK["killed"] = True
-                break
             if LOCK["boss"] is None:
                 if (search is not None and since is None
                         and time.monotonic() - started >= search):
@@ -3333,8 +3333,6 @@ def buy_and_open(dungeon_name, location, place, attempt, verbose=True):
 def with_challenge_retries(dungeon_name, location, place, verbose=True):
     for attempt in range(ENTRY_RETRIES + 1):
         try:
-            party_meet(f"challenge:{attempt}", float(PARTY_SET["start_wait"]),
-                       verbose)
             return start_dungeon(verbose)
         except RuntimeError as exc:
             if attempt == ENTRY_RETRIES:
@@ -3417,7 +3415,7 @@ def kill_all(dungeon_name, rest, verbose=True):
                        search if kills or not words else None,
                        main_loop):
             break
-        if OVER.is_set() or party_ahead(False):
+        if OVER.is_set():
             break
         kills += 1
     if verbose:
@@ -3652,10 +3650,12 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             play(rest[0], rest[1], verbose)
         else:
             if name.startswith(ROOM_PREFIX) and PARTY is not None:
-                room = sum(1 for earlier in steps[:number - 1]
-                           if step_name(earlier).startswith(ROOM_PREFIX))
-                party_meet(f"room:{room}:{name}",
-                           float(PARTY_SET["door_wait"]), verbose)
+                done = [step_name(earlier) for earlier in steps[:number - 1]
+                        if step_name(earlier).startswith(ROOM_PREFIX)]
+                party_meet(f"room:{len(done)}:{name}",
+                           float(PARTY_SET["door_wait"]), verbose,
+                           done[-1][len(ROOM_PREFIX):] if done else None,
+                           name[len(ROOM_PREFIX):])
                 if stop_when_over and OVER.is_set():
                     continue
             if name.startswith(ROOM_PREFIX) and RUN_CLOCK["started"] is not None:
@@ -3683,6 +3683,18 @@ def party_stop():
     return OVER.is_set()
 
 
+class PartyDone(BaseException):
+    pass
+
+
+def say_step(text):
+    print(f"> {text}")
+
+
+def meet_place(mark):
+    return mark.split(":")[-1] if mark.startswith("room:") else mark.split(":")[0]
+
+
 def party_left():
     if PARTY is not None and PARTY.formed:
         PARTY.formed = False
@@ -3690,24 +3702,51 @@ def party_left():
               "the next run")
 
 
-def party_ahead(verbose=True):
-    if PARTY is None or not PARTY.ahead():
-        return False
-    if verbose:
-        print(f"  party: {PARTY.partner} is already at a later door, so this "
-              f"room is clear; the target counts as killed")
-    return True
+def party_paired():
+    return PARTY is not None and not PARTY.alone and PARTY.run is not None
 
 
-def party_meet(mark, timeout, verbose=True):
+def meet_words(mark, cleared, entering):
+    partner, place = PARTY.partner, meet_place(mark)
+    if mark == "challenged" and PARTY.leader:
+        return (f"{CHALLENGE_WORD} clicked, telling {partner}",
+                f"{partner} has the {CHALLENGE_WORD} click",
+                f"{partner} did not answer the {CHALLENGE_WORD} click")
+    if mark == "challenged":
+        return (f"waiting for {partner} to click {CHALLENGE_WORD}",
+                f"{partner} clicked {CHALLENGE_WORD}, going in",
+                f"{partner} did not click {CHALLENGE_WORD}")
+    if mark == "challenge":
+        return (f"at the {CHALLENGE_WORD} window, waiting for {partner}",
+                f"both at the {CHALLENGE_WORD} window",
+                f"no {partner} at the {CHALLENGE_WORD} window")
+    if entering is None:
+        return (f"{place}: waiting for {partner}", f"{place}: with {partner}",
+                f"{place}: no {partner}")
+    if cleared is None:
+        return (f"in the dungeon, waiting for {partner}",
+                f"both in, moving to room {entering}",
+                f"no {partner} in the dungeon")
+    return (f"room {cleared} clear, waiting for {partner} to clear it",
+            f"room {cleared} clear for both, moving to room {entering}",
+            f"room {cleared}: {partner} did not clear it")
+
+
+def party_meet(mark, timeout, verbose=True, cleared=None, entering=None):
     if PARTY is None or PARTY.alone or PARTY.run is None:
         return
+    waiting, together, missing = meet_words(mark, cleared, entering)
+    if PARTY.seen.get((mark, PARTY.run)) is None:
+        say_step(waiting)
     if verbose:
         print(f"  party: {mark}: waiting up to {timeout:g}s for "
               f"{PARTY.partner}")
     started = time.monotonic()
     met = PARTY.meet(mark, timeout, party_stop)
     PARTY.drain(print)
+    if met is not None:
+        say_step(together if met else
+                 f"{missing} in {timeout:g}s, solo run")
     if verbose and met is not None:
         print(f"  party: {mark}: "
               + (f"{PARTY.partner} is there too, after "
@@ -3733,33 +3772,34 @@ def find_word(box, word, timeout, label):
 def invite_partner(verbose=True):
     name, key = PARTY_SET["partner_character"], PARTY_SET["friends_key"]
     settle, wait = float(PARTY_SET["settle"]), float(PARTY_SET["find_wait"])
-    if not focus_game():
-        raise RuntimeError("could not bring the game to the foreground.")
+    box = PARTY_SET["friends_box"]
+    escape_everything(verbose)
     if verbose:
-        print(f"  party: {key} for the friend list, right-click {name!r}, "
-              f"then {PARTY_SET['invite_word']!r}")
+        print(f"  party: every window closed, {key} for the friend list, "
+              f"{name!r} looked for only in {box}, right-click it, then "
+              f"{PARTY_SET['invite_word']!r}")
     tap(KEYS[key])
-    point = find_word(PARTY_SET["friends_box"], name, wait, "friend")
+    point = find_word(box, name, wait, "friend")
     if point is None:
-        tap(KEYS[key])
-        raise RuntimeError(f"{name!r} is not in the friend list within "
-                           f"{wait:g}s of {key}.")
+        escape_everything(verbose)
+        raise RuntimeError(f"{name!r} is not in the friend list {box} "
+                           f"within {wait:g}s of {key}.")
     right_click(*point, settle)
     left, top, right, bottom = PARTY_SET["menu_box"]
     menu = [max(0, point[0] + left), max(0, point[1] + top),
             point[0] + right, point[1] + bottom]
     item = find_word(menu, PARTY_SET["invite_word"], wait, "invite")
     if item is None:
-        tap(KEYS[key])
+        escape_everything(verbose)
         raise RuntimeError(f"no {PARTY_SET['invite_word']!r} in {menu} "
                            f"after right-clicking {name!r} at "
                            f"{list(point)}.")
     click(*item, settle)
-    tap(KEYS[key])
+    escape_everything(verbose)
     if verbose:
         print(f"  party: {name!r} at {list(point)} right-clicked, "
               f"{PARTY_SET['invite_word']!r} at {list(item)} clicked, "
-              f"{key} again to shut the list")
+              f"every window closed again")
 
 
 def accept_invite(verbose=True):
@@ -3778,14 +3818,22 @@ def accept_invite(verbose=True):
         print(f"  party: the request's check mark at {point} clicked")
 
 
-def partner_back(wait):
-    deadline = time.monotonic() + wait
-    while not PARTY.partner_online() and time.monotonic() < deadline:
-        calibration.halt_if_stopped()
-        PARTY.drain(print)
-        time.sleep(WAIT_SLICE)
-    PARTY.drain(print)
-    return PARTY.partner_online()
+def decline_notifications(verbose=True):
+    if NOTIFICATION_CLOSE is None:
+        if verbose:
+            print("  no notification_close point in this config; no "
+                  "bottom-right box declined")
+        return
+    clicks, gap = int(PARTY_SET["decline_clicks"]), float(PARTY_SET["decline_gap"])
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
+    say_step("declining every bottom-right box")
+    if verbose:
+        print(f"  the bottom-right box's close at {list(NOTIFICATION_CLOSE)} "
+              f"clicked {clicks} times, {gap:g}s apart, without a read; each "
+              f"click shuts the bottom box and the next drops into its place")
+    for number in range(clicks):
+        click(*NOTIFICATION_CLOSE, gap if number < clicks - 1 else 0.0)
 
 
 def party_ready(steps, verbose=True):
@@ -3795,23 +3843,33 @@ def party_ready(steps, verbose=True):
              if step_name(step).startswith(ROOM_PREFIX)]
     wait = float(PARTY_SET["start_wait"])
     PARTY.drain(print)
-    if not PARTY.partner_online():
-        print(f"  party: {PARTY.partner} is offline; up to {wait:g}s for it "
-              f"to come back")
-    if not partner_back(wait):
-        PARTY.solo()
-        print(f"  party: {PARTY.partner} is still offline; this run is solo")
-        return
+    decline_notifications(verbose)
+    dungeon_name = PARTY_SET["dungeon"]
+    left = int(DUNGEONS[dungeon_name]["daily_limit"]) - runs_today(dungeon_name)
+    say_step(f"waiting for {PARTY.partner} ready")
     if verbose:
         print(f"  party: ready as the "
-              f"{'leader' if PARTY.leader else 'member'}; up to {wait:g}s "
-              f"for {PARTY.partner}")
-    got = PARTY.begin_run(rooms, PARTY.formed, wait, party_stop)
+              f"{'leader' if PARTY.leader else 'member'} with {left} "
+              f"{dungeon_name} entr(ies) left today; up to {wait:g}s for "
+              f"{PARTY.partner}")
+    got = PARTY.begin_run(rooms, PARTY.formed, wait, party_stop, left)
     PARTY.drain(print)
     if not got:
+        PARTY_LEFT["together"] = None
+        say_step(f"{PARTY.partner} not ready in {wait:g}s, solo run")
         print(f"  party: no {PARTY.partner} within {wait:g}s; this run is "
               f"solo")
         return
+    theirs = got.get("left")
+    together = left if theirs is None else min(left, int(theirs))
+    PARTY_LEFT["together"] = together
+    say_step(f"{PARTY.partner} ready; {together} {dungeon_name} run(s) left "
+             f"together today ({PARTY_SET['name']} {left}, {PARTY.partner} "
+             f"{theirs})")
+    if together <= 0:
+        raise PartyDone(f"no {dungeon_name} runs left together today "
+                        f"({PARTY_SET['name']} {left}, {PARTY.partner} "
+                        f"{theirs})")
     if got.get("rooms") != rooms:
         PARTY.finish(failed=True)
         raise SystemExit(f"party: {PARTY.partner} plays {got.get('rooms')} "
@@ -3820,15 +3878,22 @@ def party_ready(steps, verbose=True):
     if verbose:
         print(f"  party: run {PARTY.run} with {PARTY.partner}")
     if not (PARTY.formed and got.get("party")):
+        say_step(f"inviting {PARTY_SET['partner_character']}" if PARTY.leader
+                 else "waiting for the party invite")
         try:
             (invite_partner if PARTY.leader else accept_invite)(verbose)
         except RuntimeError as exc:
+            say_step(("invite failed" if PARTY.leader
+                      else "no party invite") + ", solo run")
             print(f"  party: {exc} This run is solo")
             PARTY.formed = False
             PARTY.finish(failed=True)
             PARTY.solo()
             return
+        say_step("invite sent" if PARTY.leader else "invite accepted")
         PARTY.formed = True
+    else:
+        say_step("party already formed")
     party_meet("party", wait, verbose)
     if PARTY.alone:
         PARTY.formed = False
@@ -3854,7 +3919,18 @@ def party_runs(verbose=True):
           f"{PARTY_SET['partner']} in {dungeon_name} {location}; up to "
           f"{wait:g}s at the start and {float(PARTY_SET['door_wait']):g}s at "
           f"each door before going solo")
+    say_step("party_mode start")
     try:
+        say_step(f"waiting for {PARTY_SET['partner']} to respond")
+        print(f"party: nothing starts until {PARTY_SET['partner']} answers; "
+              f"a hello goes out every {float(PARTY_SET['repeat']):g}s")
+        PARTY.greet(party_stop)
+        PARTY.drain(print)
+        for who in ((PARTY_SET["name"], PARTY_SET["partner"]) if PARTY.leader
+                    else (PARTY_SET["partner"], PARTY_SET["name"])):
+            say_step(f"{who} responded")
+        print(f"party: {PARTY_SET['partner']} answered, so both are online; "
+              f"party mode starts")
         if CHANNEL is not None:
             import recovery
             recovery.HOME_CHANNEL = recovery._R["channel_label"].format(CHANNEL)
@@ -3863,20 +3939,27 @@ def party_runs(verbose=True):
                       f"the whole launch, every relog included; relogging "
                       f"there")
                 relog(verbose)
-        partner_back(wait)
         watch_disconnect(verbose)
         watch_death(verbose)
         after = None
+        PARTY_LEFT["together"] = None
         while not limit_reached(dungeon_name):
             failed = True
             try:
                 after, _relogged = run_or_relog(dungeon_name, location, after,
                                                 verbose)
                 failed = after is None or RUN_OUTCOME["failed"]
+            except PartyDone as done:
+                say_step(f"party_mode end, {done}")
+                return
             finally:
                 PARTY.finish(failed)
                 PARTY.drain(print)
-        print(f"{dungeon_name}: the daily limit is reached; party mode ends")
+            if PARTY_LEFT["together"] == 1:
+                say_step(f"party_mode end, that was the last {dungeon_name} "
+                         f"run both have left today")
+                return
+        say_step(f"party_mode end, the {dungeon_name} daily limit is reached")
     finally:
         PARTY.close(float(messaging.settings()["close_wait"]))
 
@@ -4011,6 +4094,18 @@ def start_dungeon(verbose=True):
     after, COOLDOWN["after"] = COOLDOWN["after"], None
     if after is not None:
         cool_down(*after, verbose)
+    if party_paired():
+        party_meet("challenge", float(PARTY_SET["start_wait"]), verbose)
+    if party_paired() and not PARTY.leader:
+        party_meet("challenged", float(PARTY_SET["door_wait"]), verbose)
+        if party_paired():
+            clicked = time.monotonic()
+            if verbose:
+                print(f"  party: {PARTY.partner} clicked {CHALLENGE_WORD}, so "
+                      f"it is not clicked here; hotbar tab II at "
+                      f"{list(TAB_TWO)}")
+            click(*TAB_TWO, 0.0)
+            return clicked
     point = centre(CHALLENGE_WINDOW)
     if verbose:
         print(f"  {CHALLENGE_WORD} at {point}")
@@ -4019,6 +4114,8 @@ def start_dungeon(verbose=True):
     if verbose:
         print(f"  hotbar tab II at {list(TAB_TWO)}")
     click(*TAB_TWO, 0.0)
+    if party_paired() and PARTY.leader:
+        party_meet("challenged", float(PARTY_SET["door_wait"]), verbose)
     return clicked
 
 
@@ -5003,6 +5100,8 @@ def relog_for_burst(verbose=True):
             return
         print(f"burst: --channel {CHANNEL}, so Channel {CHANNEL} for the "
               f"whole launch; relogging there")
+        if PARTY is not None:
+            say_step(f"relogging channel {CHANNEL}")
         try:
             recovery.relog(verbose=verbose, channel=CHANNEL)
         except Exception as exc:
@@ -5160,6 +5259,9 @@ def relog_after_disconnect(dungeon_name, exc, verbose=True):
              else "the loop goes on"))
     forget_active()
     party_left()
+    if PARTY is not None:
+        say_step(f"disconnected, logging back in to "
+                 f"{recovery.HOME_CHANNEL.lower()}")
     with relogging():
         recovery.recover(verbose=verbose)
     cancel_bm(dungeon_name or TRADING_DUNGEON, verbose)

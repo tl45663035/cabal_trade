@@ -26,15 +26,14 @@ class Party:
         self.t = topics(conf, name)
         self.lock = threading.Lock()
         self.online = False
+        self.heard = self.acked = False
         self.runs = 0
         self.run = None
         self.last_run = None
         self.finished = set()
         self.alone = False
-        self.room = None
         self.formed = False
         self.seen = {}
-        self.partner_room = {}
         self.quit_runs = set()
         self.done_runs = set()
         self.rooms_of = {}
@@ -61,8 +60,7 @@ class Party:
     def _ready(self):
         self.note(f"connected as {self.name}; partner {self.partner}")
         self.link.publish(self.t["presence"], {
-            "online": True, "session": self.session,
-            "at": messaging.stamp()}, retain=True)
+            "online": True, "session": self.session}, retain=True)
 
     def _message(self, topic, data):
         if topic == f"{self.t['everyone'][:-1]}{self.partner}":
@@ -76,19 +74,36 @@ class Party:
         if topic != self.t["mark"] or data.get("from") != self.partner:
             return
         mark, run = data.get("mark"), data.get("run")
+        if mark in ("hello", "hello_back"):
+            with self.lock:
+                self.heard = True
+                self.acked = self.acked or mark == "hello_back"
+            if mark == "hello":
+                self.send("hello_back")
+            return
         with self.lock:
             if mark == "ready":
                 self.seen[("ready", run)] = data
                 return
             self.seen[(mark, run)] = data
-            if mark.startswith("room:"):
-                index = int(mark.split(":")[1])
-                self.partner_room[run] = max(self.partner_room.get(run, -1),
-                                             index)
-            elif mark == "quit":
+            if mark == "quit":
                 self.quit_runs.add(run)
             elif mark == "done":
                 self.done_runs.add(run)
+
+    def greet(self, stop=None):
+        sent = None
+        while True:
+            if stop is not None and stop():
+                return False
+            with self.lock:
+                if self.heard and self.acked:
+                    return True
+            now = self.clock()
+            if sent is None or now - sent >= self.repeat:
+                self.send("hello")
+                sent = now
+            self.sleep(0.1)
 
     def partner_online(self):
         with self.lock:
@@ -96,8 +111,7 @@ class Party:
 
     def send(self, mark, **extra):
         self.link.publish(self.t["mark"], {
-            "from": self.name, "run": self.run, "mark": mark,
-            "at": messaging.stamp(), **extra})
+            "from": self.name, "run": self.run, "mark": mark, **extra})
 
     def _wait(self, found, mark, timeout, stop, extra):
         deadline = self.clock() + timeout
@@ -120,20 +134,22 @@ class Party:
                 sent = now
             self.sleep(min(0.1, max(0.0, deadline - now)))
 
-    def begin_run(self, rooms, formed, timeout, stop=None):
+    def begin_run(self, rooms, formed, timeout, stop=None, left=None):
         """The `ready` meet: the leader names the run, the member takes it.
         Returns the partner's ready data, or None (stopped) / False (no
         partner within timeout; this run is solo)."""
-        self.alone, self.room = False, None
-        extra = {"rooms": list(rooms), "party": bool(formed)}
+        self.alone = False
+        extra = {"rooms": list(rooms), "party": bool(formed), "left": left}
         if self.leader:
             self.runs += 1
             self.run = f"{self.session}-{self.runs}"
+            with self.lock:
+                self.seen = {key: data for key, data in self.seen.items()
+                             if key[0] != "ready"}
 
             def found():
                 for (mark, run), data in self.seen.items():
-                    if mark == "ready" and run in (None, self.run) and (
-                            data.get("at", "") >= self.started):
+                    if mark == "ready" and run in (None, self.run):
                         return data
                 return None
         else:
@@ -147,7 +163,6 @@ class Party:
                         self.run = run
                         return data
                 return None
-        self.started = messaging.stamp()
         got = self._wait(found, "ready", timeout, stop, extra)
         if not got:
             self.alone = True
@@ -162,8 +177,6 @@ class Party:
         quit (the rest of the run is solo); None when stopped."""
         if self.alone or self.run is None:
             return False
-        if mark.startswith("room:"):
-            self.room = int(mark.split(":")[1])
         run = self.run
         got = self._wait(lambda: self.seen.get((mark, run)), mark, timeout,
                          stop, {})
@@ -175,23 +188,13 @@ class Party:
         self.send(mark)
         return True
 
-    def ahead(self):
-        """The partner is already at a later room's door (or out), so every
-        target in this bot's room is dead."""
-        with self.lock:
-            if self.alone or self.run is None or self.room is None:
-                return False
-            if self.run in self.done_runs:
-                return True
-            return self.partner_room.get(self.run, -1) > self.room
-
     def solo(self):
-        self.alone, self.run, self.room = True, None, None
+        self.alone, self.run = True, None
 
     def finish(self, failed=False):
         if self.run is not None and not self.alone:
             self.send("quit" if failed else "done")
-        self.last_run, self.room = self.run, None
+        self.last_run = self.run
         if self.run is not None:
             self.finished.add(self.run)
             with self.lock:

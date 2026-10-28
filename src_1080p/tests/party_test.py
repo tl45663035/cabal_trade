@@ -1,5 +1,3 @@
-import contextlib
-import io
 import os
 import sys
 import threading
@@ -74,17 +72,12 @@ check("both meet at Challenge", met == (True, True) and time.monotonic() - start
 lead_room = threading.Thread(target=lambda: lead.meet("room:1:move_to_B", 3.0))
 member.meet("room:0:move_to_A", 0.01)
 member.alone = False
-lead.room = 0
 lead_room.start()
 time.sleep(0.3)
-check("the partner at a later door: this bot's room is clear",
-      member.room == 0 and member.ahead(), f"{member.room} {member.partner_room}")
-check("not ahead of itself", not lead.ahead())
 check("the later door waits for this bot", lead_room.is_alive())
 check("this bot arrives: both go on", member.meet("room:1:move_to_B", 3.0) is True)
 lead_room.join(3)
 check("the leader's wait ended once this bot arrived", not lead_room.is_alive())
-check("with both in the same room, nobody is ahead", not member.ahead() and not lead.ahead())
 
 started = time.monotonic()
 check("no partner at a door: False after the wait", lead.meet("room:2:move_to_C", 0.3) is False)
@@ -122,83 +115,7 @@ time.sleep(0.1)
 check("closing tells the partner it is offline", not member.partner_online())
 member.close()
 
-# dungeon.py hooks
-class Ahead:
-    partner = "trung"
 
-    def __init__(self, ahead):
-        self.value = ahead
-
-    def ahead(self):
-        return self.value
-
-
-kills = []
-saved = dungeon.PARTY, dungeon.kill_bm, dungeon.end_aura_window
-try:
-    dungeon.kill_bm = lambda *a, **k: kills.append(a[0]) or True
-    dungeon.end_aura_window = lambda verbose=True: None
-    dungeon.PARTY = Ahead(True)
-    with contextlib.redirect_stdout(io.StringIO()):
-        done = dungeon.kill_all("ic1", ["any monster", "kill_loop", None])
-    check("kill_all with no search ends once the partner is ahead (the partner's kill is not counted)", done == 0 and len(kills) == 1, str(kills))
-    dungeon.PARTY = None
-    check("without a party the hook is off", dungeon.party_ahead() is False)
-finally:
-    dungeon.PARTY, dungeon.kill_bm, dungeon.end_aura_window = saved
-
-
-def fake_watch(name, words):
-    first = threading.Event()
-    first.set()
-    thread = threading.Thread(target=lambda: None)
-    thread.start()
-    return {"name": name, "words": words, "stop": threading.Event(),
-            "first": first, "failed": {}, "thread": thread}
-
-
-saved = dungeon.PARTY, dungeon.start_watch, dungeon.focus_game, dungeon.auto_target
-try:
-    dungeon.start_watch = fake_watch
-    dungeon.focus_game = lambda *a, **k: True
-    dungeon.auto_target = lambda: None
-    dungeon.PARTY = Ahead(True)
-    dungeon.LOCK.update(boss=None, killed=False)
-    with contextlib.redirect_stdout(io.StringIO()):
-        took = time.monotonic()
-        killed = dungeon.hunt("Divine Dazzled Researcher", ["dazzled"],
-                              lambda since: None, "kill_bm", "", True)
-    check("a named hunt ends as killed once the partner is ahead",
-          killed is True and time.monotonic() - took < 2)
-finally:
-    dungeon.PARTY, dungeon.start_watch, dungeon.focus_game, dungeon.auto_target = saved
-
-class Returns:
-    partner = "trung"
-
-    def __init__(self, after):
-        self.back_at = time.monotonic() + after
-
-    def partner_online(self):
-        return time.monotonic() >= self.back_at
-
-    def drain(self, out):
-        pass
-
-
-saved = dungeon.PARTY, dungeon.WAIT_SLICE
-try:
-    dungeon.WAIT_SLICE = 0.01
-    dungeon.PARTY = Returns(0.2)
-    took = time.monotonic()
-    check("an offline partner that comes back inside the wait is waited for",
-          dungeon.partner_back(3.0) is True and 0.15 <= time.monotonic() - took < 1.5)
-    dungeon.PARTY = Returns(99)
-    took = time.monotonic()
-    check("one that stays offline: False after the wait",
-          dungeon.partner_back(0.2) is False and time.monotonic() - took < 1.5)
-finally:
-    dungeon.PARTY, dungeon.WAIT_SLICE = saved
 
 steps = ["get_entry", ["tap", "="], "move_to_A", ["kill_all", "x"], "move_to_B", "move_to_C"]
 check("rooms are numbered by their order among the move_to steps",
