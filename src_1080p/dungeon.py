@@ -3842,6 +3842,14 @@ def party_runs(verbose=True):
           f"{wait:g}s at the start and {float(PARTY_SET['door_wait']):g}s at "
           f"each door before going solo")
     try:
+        if CHANNEL is not None:
+            import recovery
+            recovery.HOME_CHANNEL = recovery._R["channel_label"].format(CHANNEL)
+            if BURST is None:
+                print(f"party: --channel {CHANNEL}, so Channel {CHANNEL} for "
+                      f"the whole launch, every relog included; relogging "
+                      f"there")
+                relog(verbose)
         deadline = time.monotonic() + wait
         while not PARTY.partner_online() and time.monotonic() < deadline:
             calibration.halt_if_stopped()
