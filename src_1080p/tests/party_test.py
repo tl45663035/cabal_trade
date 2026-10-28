@@ -173,6 +173,33 @@ try:
 finally:
     dungeon.PARTY, dungeon.start_watch, dungeon.focus_game, dungeon.auto_target = saved
 
+class Returns:
+    partner = "trung"
+
+    def __init__(self, after):
+        self.back_at = time.monotonic() + after
+
+    def partner_online(self):
+        return time.monotonic() >= self.back_at
+
+    def drain(self, out):
+        pass
+
+
+saved = dungeon.PARTY, dungeon.WAIT_SLICE
+try:
+    dungeon.WAIT_SLICE = 0.01
+    dungeon.PARTY = Returns(0.2)
+    took = time.monotonic()
+    check("an offline partner that comes back inside the wait is waited for",
+          dungeon.partner_back(3.0) is True and 0.15 <= time.monotonic() - took < 1.5)
+    dungeon.PARTY = Returns(99)
+    took = time.monotonic()
+    check("one that stays offline: False after the wait",
+          dungeon.partner_back(0.2) is False and time.monotonic() - took < 1.5)
+finally:
+    dungeon.PARTY, dungeon.WAIT_SLICE = saved
+
 steps = ["get_entry", ["tap", "="], "move_to_A", ["kill_all", "x"], "move_to_B", "move_to_C"]
 check("rooms are numbered by their order among the move_to steps",
       [sum(1 for earlier in steps[:at] if dungeon.step_name(earlier).startswith(dungeon.ROOM_PREFIX))

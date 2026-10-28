@@ -3778,6 +3778,16 @@ def accept_invite(verbose=True):
         print(f"  party: the request's check mark at {point} clicked")
 
 
+def partner_back(wait):
+    deadline = time.monotonic() + wait
+    while not PARTY.partner_online() and time.monotonic() < deadline:
+        calibration.halt_if_stopped()
+        PARTY.drain(print)
+        time.sleep(WAIT_SLICE)
+    PARTY.drain(print)
+    return PARTY.partner_online()
+
+
 def party_ready(steps, verbose=True):
     if PARTY is None:
         return
@@ -3786,8 +3796,11 @@ def party_ready(steps, verbose=True):
     wait = float(PARTY_SET["start_wait"])
     PARTY.drain(print)
     if not PARTY.partner_online():
+        print(f"  party: {PARTY.partner} is offline; up to {wait:g}s for it "
+              f"to come back")
+    if not partner_back(wait):
         PARTY.solo()
-        print(f"  party: {PARTY.partner} is offline; this run is solo")
+        print(f"  party: {PARTY.partner} is still offline; this run is solo")
         return
     if verbose:
         print(f"  party: ready as the "
@@ -3850,12 +3863,7 @@ def party_runs(verbose=True):
                       f"the whole launch, every relog included; relogging "
                       f"there")
                 relog(verbose)
-        deadline = time.monotonic() + wait
-        while not PARTY.partner_online() and time.monotonic() < deadline:
-            calibration.halt_if_stopped()
-            PARTY.drain(print)
-            time.sleep(WAIT_SLICE)
-        PARTY.drain(print)
+        partner_back(wait)
         watch_disconnect(verbose)
         watch_death(verbose)
         after = None
