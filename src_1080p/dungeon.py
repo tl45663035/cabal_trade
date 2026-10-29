@@ -242,12 +242,15 @@ MAIN_BM_DUE = {"at": None, "after": None, "for": None}
 MAIN_BM_STATE = {"on": False}
 ALT_BM = {"on": False}
 HUNT_TARGET = {"last": 0.0}
+LOCK_ALL = {"on": False, "every": None, "twin": None}
 ATTACK_PRESS = {"last": 0.0, "key": None}
 MAIN_RECAST = {"at": None, "dungeon": None}
 BM_CYCLE = {"slot": None, "ends": None, "extended": False, "last": None,
             "resume": False, "off": {}, "keep_aura": False, "other": None,
-            "pressed": None}
+            "pressed": None, "aura_target": False, "with_aura": False,
+            "aura_at": None}
 OTHER_BM_EVERY = float(BM_CYCLE_SET["other_every"])
+OTHER_AURA_AFTER = float(BM_CYCLE_SET["other_aura_after"])
 BM_OFF = {"at": None}
 COOLDOWN = {"after": None}
 SEARCH_ATTACK = {"keys": []}
@@ -299,6 +302,9 @@ DEFEAT_SIGN = BUTTONS[DEFEAT[0][1]]
 REVIVE_SETTLE = float(_DUNGEON["revive_settle"])
 DEATH_WATCH_EVERY = float(_DUNGEON["death_watch_every"])
 BANNER = _DUNGEON["banner_window"]
+BANNER_FILL = _DUNGEON["banner_fill"]
+BANNER_SAFE = {BANNER_FILL["dungeon"]} if BANNER_FILL else set()
+BANNER_FILLS = {"window": None, "done": 0}
 DEATH_WATCH = {"on": False, "armed": False, "entered": False, "again": False}
 DEATH_LOCK = threading.Lock()
 CHAT_OPEN = float(_DUNGEON["chat_open"])
@@ -336,6 +342,8 @@ CONSOLE_LINES = [re.compile(pattern) for pattern in _DUNGEON["console_lines"]]
 UNCOMMITTED_IGNORE = set(_DUNGEON["uncommitted_ignore"])
 TARGET_EVERY = float(_DUNGEON["target_every"])
 HUNT_TARGET_EVERY = float(_DUNGEON["hunt_target_every"])
+TWIN_BM = _DUNGEON["twin_bm"]
+TWIN_TARGETS = int(_DUNGEON["twin_targets"])
 KEY_LOCK = threading.Lock()
 REPLAY_MODIFIERS = set(_DUNGEON["replay_modifiers"])
 
@@ -360,7 +368,7 @@ INVENTORY_TAB = int(_DUNGEON["inventory_tab"])
 KEY_TAB = int(_DUNGEON["key_tab"])
 LOCK = {"boss": None, "reading": None, "cleared": False, "level": ORDER[0] if ORDER else None,
         "killed": False, "watching": False, "reads": 0, "hits": [],
-        "targets": 0, "target_hp": None, "named": False}
+        "targets": 0, "target_hp": None, "named": False, "live": 0}
 ENDED = threading.Event()
 
 
@@ -1169,8 +1177,9 @@ def greyed(image=None):
     return bike_slot(image) < float(BIKE["grey_below"])
 
 
-def on_bike_now():
-    click(*TAB_TWO, SELECT_SETTLE)
+def on_bike_now(tab=True):
+    if tab:
+        click(*TAB_TWO, SELECT_SETTLE)
     if not greyed():
         return None
     time.sleep(float(BIKE["recheck"]))
@@ -1193,11 +1202,11 @@ def lit_again(seconds):
         time.sleep(WAIT_SLICE)
 
 
-def off_bike(when, verbose=True):
+def off_bike(when, verbose=True, tab=True):
     if BIKE is None:
         return False
     key, settle = BIKE["key"], float(BIKE["settle"])
-    greyed_at = on_bike_now()
+    greyed_at = on_bike_now(tab)
     if greyed_at is None:
         return False
     if verbose:
@@ -1343,8 +1352,7 @@ def play(dungeon_name, sequence, verbose=True):
               f"held down")
     if (bike and played == len(events) and not ENDED.is_set()
             and not calibration.STOPPED.is_set()):
-        time.sleep(float(BIKE["settle"]))
-        off_bike(f"after {sequence}", verbose)
+        off_bike(f"after {sequence}", verbose, False)
 
 
 def replay_run(dungeon_name, file, verbose=True):
@@ -1457,6 +1465,7 @@ def watch_target(name, words, stop, first, failed):
         while not stop.is_set():
             image = calibration.grab()
             live, bars = target_bars(image, words)
+            LOCK["live"] = len(live)
             LOCK["reads"] += 1
             first.set()
             if not words:
@@ -1464,8 +1473,12 @@ def watch_target(name, words, stop, first, failed):
                     LOCK["boss"] = name
                     LOCK["targets"] += 1
                     calibration.snap("target_found", image)
-                    print(f"  {yellow_bars(live)}: {name} is targeted, so no "
-                          f"more auto target")
+                    print(f"  {yellow_bars(live)}: {name} is targeted"
+                          + (f"; {TWIN_BM} is on, so {TARGET_KEY} every "
+                             f"{LOCK_ALL['twin']:g}s until {TWIN_TARGETS} "
+                             f"HP bars are yellow"
+                             if LOCK_ALL["on"] and need_target() else
+                             ", so no more auto target"))
                 elif not live and LOCK["boss"] is not None:
                     LOCK["killed"] = True
                     calibration.snap("target_gone", image)
@@ -1513,7 +1526,7 @@ def watch_target(name, words, stop, first, failed):
 
 def start_watch(name, words):
     LOCK.update(boss=None, killed=False, watching=True, reads=0, hits=[],
-                named=bool(words))
+                named=bool(words), live=0)
     ENDED.clear()
     watch = {"name": name, "words": words, "stop": threading.Event(),
              "first": threading.Event(), "failed": {}}
@@ -1560,9 +1573,15 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
               f"{' or '.join(map(repr, words)) if words else 'any monster'}, "
               + (f"then {plan} over and over, " if plan else
                  "then nothing clicked, ")
-              + f"with {TARGET_KEY} every {HUNT_TARGET_EVERY:g}s between attacks"
-              + (" (not while the named target is locked)" if words
-                 else "")
+              + (f"with {TARGET_KEY} every {LOCK_ALL['every']:g}s only while "
+                 f"nothing is targeted, and in {TWIN_BM} every "
+                 f"{LOCK_ALL['twin']:g}s while fewer than {TWIN_TARGETS} HP "
+                 f"bars are yellow, none from the loop"
+                 if LOCK_ALL["on"] else
+                 f"with {TARGET_KEY} every {HUNT_TARGET_EVERY:g}s between "
+                 f"attacks"
+                 + (" (not while the named target is locked)" if words
+                    else ""))
               + ", stopped the moment none of them shows"
               + f"; in a BM its attack keys go with the {TARGET_KEY} presses "
                 f"and in the loop, taking turns, one every "
@@ -1589,7 +1608,7 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                 if (search is None and since is None and NO_TARGET_STOP
                         and time.monotonic() - quiet >= NO_TARGET_STOP):
                     if off_bike(f"{NO_TARGET_STOP:g}s with no target for "
-                                f"{name!r}", verbose):
+                                f"{name!r}", verbose, False):
                         quiet = time.monotonic()
                         continue
                     if OVER.is_set() or ENDED.is_set():
@@ -1613,6 +1632,14 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                 for key in SEARCH_ATTACK["keys"]:
                     tap(KEYS[cycle_key(key)])
                 presses += 1
+                if LOCK_ALL["on"]:
+                    HUNT_TARGET["last"] = time.monotonic()
+                    until = HUNT_TARGET["last"] + target_every()
+                    while (time.monotonic() < until and LOCK["boss"] is None
+                           and not ENDED.is_set()):
+                        other_bm_when_on(verbose)
+                        ENDED.wait(WAIT_SLICE)
+                    continue
                 pressed_at = LOCK["reads"]
                 while (LOCK["reads"] < pressed_at + 2 and LOCK["boss"] is None
                        and not ENDED.is_set()):
@@ -1913,7 +1940,8 @@ def cycle_aura(verbose=True, target=False):
     while (not OVER.is_set()
            and time.monotonic() < started + float(BM_CYCLE_SET["aura_for"])):
         use_point("aura", 0.0)
-        if targets_often() or (target and not named_locked()):
+        if targets_often() or ((target or BM_CYCLE["aura_target"])
+                               and not named_locked()):
             auto_target()
             targeted += 1
         presses += 1
@@ -1965,12 +1993,17 @@ def bm_cycle_when_due(verbose=True):
         cycle_aura(verbose)
 
 
-def press_other_bm(verbose=True):
+def press_other_bm(verbose=True, with_aura=False):
     last, following = next_slot()
-    BM_CYCLE.update(other=following, pressed=None)
+    BM_CYCLE.update(other=following, pressed=None, with_aura=with_aura,
+                    aura_at=None)
     if verbose:
         print(f"  BM cycle: {following} {slot_way(following)} every "
-              f"{OTHER_BM_EVERY:g}s from here to the end of the run, with the "
+              f"{OTHER_BM_EVERY:g}s"
+              + (f", each press followed {OTHER_AURA_AFTER:g}s later by the "
+                 f"aura {slot_way('aura')}, which never holds up a BM press"
+                 if with_aura else "")
+              + f" from here to the end of the run, with the "
               f"loop's keys and buffs, so it goes on the moment "
               f"{BM_CYCLE['slot'] or 'no BM'} runs out; no cancel and no "
               f"cast for {last or 'it'}")
@@ -1996,11 +2029,16 @@ def other_bm_when_on(verbose=True):
         if verbose:
             print(f"  BM cycle: {ran_out or 'no BM'} is due to run out, so "
                   f"{other}, pressed all along, is the BM from here")
-    if (BM_CYCLE["pressed"] is not None
-            and now < BM_CYCLE["pressed"] + OTHER_BM_EVERY):
+    if (BM_CYCLE["pressed"] is None
+            or now >= BM_CYCLE["pressed"] + OTHER_BM_EVERY):
+        use_point(other, 0.0)
+        BM_CYCLE.update(pressed=now, aura_at=(now + OTHER_AURA_AFTER
+                                              if BM_CYCLE["with_aura"]
+                                              else None))
         return
-    use_point(other, 0.0)
-    BM_CYCLE["pressed"] = now
+    if BM_CYCLE["aura_at"] is not None and now >= BM_CYCLE["aura_at"]:
+        use_point("aura", 0.0)
+        BM_CYCLE["aura_at"] = None
 
 
 def next_slot():
@@ -2100,6 +2138,15 @@ def targets_often():
     return HUNTING.is_set() and not named_locked()
 
 
+def need_target():
+    return LOCK["boss"] is None or (current_bm() == TWIN_BM
+                                   and LOCK["live"] < TWIN_TARGETS)
+
+
+def target_every():
+    return LOCK_ALL["twin"] if current_bm() == TWIN_BM else LOCK_ALL["every"]
+
+
 def attack_keys():
     return [cycle_key(key) for key in BM_ATTACK.get(current_bm()) or []]
 
@@ -2121,6 +2168,15 @@ def auto_target():
 
 def hunt_target():
     now = time.monotonic()
+    if LOCK_ALL["on"]:
+        if not HUNTING.is_set():
+            return
+        if need_target() and now - HUNT_TARGET["last"] >= target_every():
+            auto_target()
+            HUNT_TARGET["last"] = now
+        else:
+            attack_key(now)
+        return
     if targets_often() and now - HUNT_TARGET["last"] >= HUNT_TARGET_EVERY:
         auto_target()
         HUNT_TARGET["last"] = now
@@ -2129,6 +2185,7 @@ def hunt_target():
 def gap_until(until):
     while not ENDED.is_set() and time.monotonic() < until:
         hunt_target()
+        other_bm_when_on()
         ENDED.wait(min(WAIT_SLICE, max(0.0, until - time.monotonic())))
 
 
@@ -2168,7 +2225,7 @@ def click_round(names, since):
             gap_until(ATTACK_PRESS["last"] + BM_ATTACK_GAP)
             if not ENDED.is_set():
                 attack_key(time.monotonic())
-        else:
+        elif entry != TARGET_KEY or not LOCK_ALL["on"]:
             tap(KEYS[entry])
         gap_until(started + LOOP_GAP)
 
@@ -2841,7 +2898,13 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
     BM_OFF["at"] = None
     ALT_BM["on"] = False
     BM_CYCLE.update(slot=None, ends=None, extended=False, resume=False,
-                    keep_aura=False, other=None, pressed=None)
+                    keep_aura=False, other=None, pressed=None,
+                    with_aura=False, aura_at=None,
+                    aura_target=bool(setting(dungeon_name,
+                                             "cycle_aura_target")))
+    LOCK_ALL.update(on=bool(setting(dungeon_name, "lock_target")),
+                    every=float(setting(dungeon_name, "lock_target_every")),
+                    twin=float(setting(dungeon_name, "twin_target_every")))
     SEARCH_ATTACK["keys"] = list(setting(dungeon_name, "search_attack"))
     HEAL["every"] = float(setting(dungeon_name, "heal_every"))
     if steps is None:
@@ -3442,7 +3505,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         elif name == "swap_bm_aura":
             swap_bm_aura(dungeon_name, float(rest[0]), verbose)
         elif name == "press_other_bm":
-            press_other_bm(verbose)
+            press_other_bm(verbose, "aura" in rest)
         elif name == "tab_two":
             if not focus_game():
                 raise RuntimeError("could not bring the game to the "
@@ -3568,7 +3631,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             shout(verbose)
         elif name == "replay" and dungeon_name in ("ic2", "tm"):
             replay_run(dungeon_name, rest[0], verbose)
-            off_bike(f"after the {rest[0]} replay", verbose)
+            off_bike(f"after the {rest[0]} replay", verbose, False)
         elif name == "play":
             aura_before(rest[0], rest[1], verbose)
             play(rest[0], rest[1], verbose)
@@ -4983,7 +5046,7 @@ def banner_plan(now, start, pool, depth):
 
 
 def banner_filler(dungeon_name, pool, verbose=True):
-    if NO_BANNER:
+    if NO_BANNER or dungeon_name in BANNER_SAFE:
         return None
     try:
         now = online_now()
@@ -5005,6 +5068,33 @@ def banner_filler(dungeon_name, pool, verbose=True):
     return plan[0]
 
 
+def banner_fill(dungeon_name, verbose=True):
+    if NO_BANNER or not BANNER_FILL or dungeon_name in BANNER_SAFE:
+        return None
+    fill = BANNER_FILL["dungeon"]
+    if limit_reached(fill):
+        return None
+    try:
+        now = online_now()
+    except RuntimeError:
+        return None
+    left, start, length, _run = banner_wait(now, dungeon_name)
+    if not left:
+        return None
+    if BANNER_FILLS["window"] != start:
+        BANNER_FILLS.update(window=start, done=0)
+    if BANNER_FILLS["done"] >= int(BANNER_FILL["runs"]):
+        return None
+    BANNER_FILLS["done"] += 1
+    if verbose:
+        print(f"{dungeon_name}: the Surprise Attack banner keeps it out until "
+              f":{start + length:%M} ({left:.0f}s), so {fill}, whose "
+              f"recordings stay clear of the banner, runs in the wait "
+              f"({BANNER_FILLS['done']} of {BANNER_FILL['runs']} for this "
+              f"banner)")
+    return fill
+
+
 def banner_clear(dungeon_name, verbose=True):
     if NO_BANNER:
         return
@@ -5017,6 +5107,12 @@ def banner_clear(dungeon_name, verbose=True):
         return
     left, start, length, run = banner_wait(now, dungeon_name)
     if not left:
+        return
+    if dungeon_name in BANNER_SAFE:
+        if verbose:
+            print(f"  {dungeon_name}: its recordings stay clear of the "
+                  f"Surprise Attack banner, so it runs now without waiting "
+                  f"for :{start + length:%M}")
         return
     if verbose:
         print(f"  {dungeon_name}: the Surprise Attack banner is up from "
@@ -5235,6 +5331,8 @@ def rotate(names, after=None, verbose=True, group=None, pool=None,
                 if rotation_done(name, successful):
                     break
                 filler = banner_filler(name, pool, verbose)
+                if filler is None:
+                    filler = banner_fill(name, verbose)
                 if filler is not None:
                     after, _relogged = run_or_relog(
                         filler, only_location(filler), after, verbose)
