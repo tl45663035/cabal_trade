@@ -998,6 +998,29 @@ def reset_play_limit(reset, verbose=True):
             f"no {reset['heading_word']!r} popup in {list(heading)} within "
             f"{float(reset['wait']):g}s of the click; it reads {seen!r}. "
             f"Nothing more clicked.")
+    answer_reset(reset, seen, verbose)
+
+
+def reset_popup(reset):
+    """After Enter: True once the reset popup is up, False once the
+    Challenge window is (or after the reset's wait with neither)."""
+    heading = tuple(reset["heading_box"])
+    deadline = time.monotonic() + float(reset["wait"])
+    while True:
+        up, challenge = read_windows(calibration.grab(),
+                                     [heading, CHALLENGE_WINDOW])
+        if row_model._key(reset["heading_word"]) in row_model._key(up):
+            return True
+        if (row_model._key(CHALLENGE_WORD) in row_model._key(challenge)
+                or time.monotonic() >= deadline):
+            return False
+        time.sleep(WAIT_SLICE)
+
+
+def answer_reset(reset, seen, verbose=True):
+    settle = float(reset["settle"])
+    heading = tuple(reset["heading_box"])
+    cancel = tuple(reset["cancel_box"])
     if not wait_for(cancel, reset["cancel_word"], 0)[0]:
         raise RuntimeError(
             f"the {reset['heading_word']!r} popup has no "
@@ -1095,6 +1118,17 @@ def open_dungeon_key(dungeon_name, location, verbose=True, refill=False,
     if verbose:
         print(f"  {ENTER_WORD} at {enter_point}")
     click(*enter_point, 0.0)
+    if reset is not None and reset_popup(reset):
+        if after_reset:
+            raise RuntimeError(
+                f"the {reset['heading_word']!r} popup came up again after "
+                f"the reset. Nothing more clicked.")
+        if verbose:
+            print(f"  the {reset['heading_word']!r} popup came up although "
+                  f"the row read {row!r}: no entries left after all")
+        answer_reset(reset, reset["heading_word"], verbose)
+        return open_dungeon_key(dungeon_name, location, verbose, refill,
+                                after_reset=True)
     DEATH_WATCH.update(armed=False, entered=True)
     forget_entry()
     if verbose:

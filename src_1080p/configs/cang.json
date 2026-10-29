@@ -75,7 +75,7 @@
     "enabled": true,
     "trading_dungeon": "chaos_arena",
     "order": [],
-    "rotation": [{"dungeons": ["ice", "train", "fire", "valley", "windmill"], "batch": 3},
+    "rotation": [{"dungeons": ["ice", "train", "fire", "valley"], "batch": 3},
                  {"dungeons": ["ic1", "ic2", "eop"], "batch": 3},
                  {"dungeons": ["tm", "fn"], "batch": null}],
     "rotation_runs": 3,
@@ -86,14 +86,6 @@
     "buttons": {
       "replay_confirmation": {"window": [924, 313, 1058, 334], "word": "Confirmation", "timeout": 3.0}
     },
-    "burst": {"run_minutes": [20, 30], "rest_minutes": [20, 30], "check_every": 30,
-              "night": ["00:00", "06:00"],
-              "character_window": {"key": 67, "window": [100, 110, 260, 138], "word": "Character"},
-              "regions": [
-                {"name": "SEA", "timezone": "Asia/Singapore", "channels": [21, 22, 23, 24, 25, 26, 27]},
-                {"name": "NA", "timezone": "America/Los_Angeles", "channels": [11, 12]},
-                {"name": "EU", "timezone": "Europe/Berlin", "channels": [2, 3, 4, 5, 6, 7, 8, 9]}
-              ]},
     "target_slots": [
       {"name": "middle", "cap": [787, 45], "fill": [793, 45], "frame": [794, 41]},
       {"name": "left", "cap": [578, 45], "fill": [586, 45], "frame": [587, 41]},
