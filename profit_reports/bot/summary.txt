@@ -1,7 +1,7 @@
 DUNGEONS -- entries on server day 2026-10-29
 
 level     done  limit  successful
-CA1          2      5           1
+CA1          5      5           3
 CA2          5      5           5
 CA3          5      5           5
 CA4          7      7           7
@@ -11,7 +11,7 @@ CA7          0     15           0
 ICE          0     30           0
 FIRE         0     30           0
 TRAIN        0     30           0
-total       26    144          25
+total       29    144          27
 
 
 LAST 7 DAYS -- 2026-10-22 to 2026-10-28, each day midnight to midnight Central
@@ -24,12 +24,12 @@ Sat 2026-10-24            23.66h   24.00h    1.45B      61.16M         22.85B   
 Sun 2026-10-25            22.44h   24.00h    1.01B      44.95M         19.88B         18.88B  30.09K    5.1%
 Mon 2026-10-26            22.85h   24.00h    1.00B      43.78M         18.01B         17.01B  27.21K    5.6%
 Tue 2026-10-27            23.07h   24.00h    1.36B      59.14M         20.90B         19.54B  26.13K    6.5%
-Wed 2026-10-28 (so far)   21.77h   22.13h    1.40B      64.16M         21.59B         20.20B  27.81K    6.5%
+Wed 2026-10-28 (so far)   22.02h   22.39h    1.40B      63.42M         21.59B         20.20B  27.81K    6.5%
 ============================================================================================================
-7 DAYS                   158.42h  166.13h    7.49B  47,281,693151,217,478,382143,726,991,312 208.56K    5.0%
+7 DAYS                   158.68h  166.39h    7.49B  47,206,101151,217,478,382143,726,991,312 208.56K    5.0%
 
 
-PROFIT SUMMARY -- sold since 2026-10-28 00:00 Central (as of 22:07 Central)
+PROFIT SUMMARY -- sold since 2026-10-28 00:00 Central (as of 22:23 Central)
 
 item                      profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-28_150804_run_board.log, board during pass 83 at row 1, read 2026-10-28T22:01:07 (live)
+ROWS -- 2026-10-28_150804_run_board.log, board during pass 87 at row 1, read 2026-10-28T22:22:45 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    72.00M    99.00M   +27.00M    99.00M    72.00M    27.00M <- here
     2  Force Core (Ultimate                   x44   400.00K   400.00K        +0   400.00K    17.60M         0
@@ -70,20 +70,23 @@ ROWS -- 2026-10-28_150804_run_board.log, board during pass 83 at row 1, read 202
     8  Upgrade Core (Ultimate                x214   298.51K   322.16K   +23.66K   322.16K    63.88M     5.06M
     9  Upgrade Core (Ultimate                x152   299.00K   322.16K   +23.16K   322.16K    45.45M     3.52M
    10  Upgrade Core (Ultimate                 x75   299.00K   322.16K   +23.16K   322.16K    22.43M     1.74M
-    balance now 3.63B, read 2026-10-28T22:01:07
-       stock at its listed price                                                                        1.03B
-       Alz, latest balance line                                                                         3.63B
+   11  Chaos Core Set                          x1   555.55K   599.98K   +44.42K    12.60M    11.67M   932.82K
+   12  Chaos Core Set                          x1   580.00K   599.97K   +19.97K   106.20M   102.66M     3.54M
+   13  Chaos Core Set                          x1   580.16K   599.97K   +19.82K   136.79M   132.28M     4.52M
+    balance now 3.39B, read 2026-10-28T22:20:28
+       stock at its listed price                                                                        1.28B
+       Alz, latest balance line                                                                         3.39B
        Cash at the voucher price                                                                      287.76M
        gems at the voucher price                                                                       15.29M
-       NET WORTH                                                                                        4.97B
+       NET WORTH                                                                                        4.98B
 
 
-MARKET -- 2026-10-28_150804_run.log, pass 83, log last written 22:07 Central (live)
+MARKET -- 2026-10-28_150804_run.log, pass 87, log last written 22:23 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         0  316.15K  310.00K  -6.15K     -2.0%      0
-Chaos Core                  1  555.55K  599.98K  44.42K      7.4%     10  YES
+Chaos Core                  4  580.00K  599.97K  19.97K      3.3%     10  YES
 Force Core (Ultimate)       2  399.74K  398.00K  -1.74K     -0.4%      0
-Force Core(High)            0  240.49K  241.00K     505      0.2%      0
+Force Core(High)            0  214.28K  230.00K  15.71K      6.8%      3  YES
 Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
