@@ -4610,7 +4610,7 @@ def dungeon_report():
              int(DUNGEONS[name]["daily_limit"]))
             for name in names if DUNGEONS[name].get("daily_limit") is not None]
     ran, wins = ran_today(state, today), ran_today(state, today, "successful")
-    for level in sorted(LIMITS):
+    for level in sorted(LIMITS) if ORDER else []:
         place = location_of(TRADING_DUNGEON, level_location(level))
         rows.append((f"CA{level}", place["name"], ran.get(level, 0),
                      wins.get(level, 0), LIMITS[level]))
