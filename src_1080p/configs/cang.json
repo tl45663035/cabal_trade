@@ -62,7 +62,7 @@
   },
   "run": {
     "relist_to": 25,
-    "home_channel": 11
+    "home_channel": 12
   },
   "recovery": {
     "channel_missing_wait": 10.0
@@ -77,7 +77,7 @@
     "order": [],
     "rotation": [{"dungeons": ["ice", "train", "fire", "valley", "windmill", "keldrasil"], "batch": 3},
                  {"dungeons": ["ic1", "ic2", "eop"], "batch": 3},
-                 {"dungeons": ["tm", "fn"], "batch": null}],
+                 {"dungeons": ["fn", "tm"], "batch": null}],
     "banner_fill": {"dungeon": "fn", "runs": 2},
     "rotation_runs": 3,
     "wb_area_check": {"window": [1765, 106, 1875, 126], "word": "No Map Code",
