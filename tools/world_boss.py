@@ -750,9 +750,13 @@ def cycle_text(phase):
              if phase == "main"
              else "until the world boss ends, with no more cancels")
     keys = SPAMS[phase]
-    pattern = (f"{keys[0]} by key every {key_step(phase):g}s" if len(keys) == 1
+    way = ("by key" if all(name in KEYED_SLOTS for name in keys)
+           else "by mouse right-click" if not any(name in KEYED_SLOTS
+                                                  for name in keys)
+           else "by key and mouse")
+    pattern = (f"{keys[0]} {way} every {key_step(phase):g}s" if len(keys) == 1
                else " -> ".join(f"{name} x{SPAM_PRESSES}" for name in keys)
-               + f" by key, {key_step(phase):g}s apart")
+               + f" {way}, {key_step(phase):g}s apart")
     return (f"{pattern}, over and over {lasts}; alongside, "
             f"{' -> '.join(LOOPS[phase])} by mouse, each right-clicked "
             f"{BUFF_CLICKS} times {BUFF_GAP:g}s apart, a round every "

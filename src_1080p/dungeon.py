@@ -336,6 +336,9 @@ RUN_START = {"frame": None}
 RUN_FILM = {"tape": None, "path": None}
 DISCONNECT_GAP = float(_SHARED["supervise"]["screen_gap"])
 DISCONNECT_RECHECK = float(_SHARED["supervise"]["disconnect_kill"])
+RECOVER_RETRIES = int(_SHARED["supervise"]["recover_retries"])
+RECOVER_WAIT = float(_SHARED["supervise"]["recover_wait"])
+RELOG_TRIES = int(_SHARED["supervise"]["relog_tries"])
 RELOGGING = threading.Event()
 COMMIT = {"sha": None}
 CONSOLE_LINES = [re.compile(pattern) for pattern in _DUNGEON["console_lines"]]
@@ -600,7 +603,36 @@ def relog(verbose=True):
     if verbose:
         print(f"  relogging into {recovery.HOME_CHANNEL}")
     with relogging():
-        recovery.relog(verbose=verbose)
+        recover_retrying(lambda: recovery.relog(verbose=verbose), verbose)
+
+
+def recover_retrying(first, verbose=True, channel=None):
+    import recovery
+    failed = relogged = 0
+    attempt = first
+    while True:
+        try:
+            return attempt()
+        except Exception as exc:
+            failed += 1
+            if failed > RECOVER_RETRIES:
+                if relogged >= RELOG_TRIES:
+                    raise
+                relogged += 1
+                failed = 0
+                print(f"  recovery failed {RECOVER_RETRIES + 1} times: {exc}; "
+                      f"relogging ({relogged} of {RELOG_TRIES})")
+                try:
+                    recovery.relog(verbose=verbose, channel=channel)
+                except Exception as refused:
+                    print(f"  the relog was refused too: {refused}")
+                    raise exc from refused
+            else:
+                print(f"  recovery attempt {failed} failed: {exc}; attempt "
+                      f"{failed + 1} in {RECOVER_WAIT:g}s")
+                time.sleep(RECOVER_WAIT)
+            attempt = lambda: recovery.recover(verbose=verbose,
+                                               channel=channel)
 
 
 def relog_home(verbose=True):
@@ -4540,7 +4572,8 @@ def world_boss_turn(dungeon_name, verbose=True):
         print(f"  WORLD BOSS failed: {type(exc).__name__}: {exc}")
         if recovery.logged_out():
             with relogging():
-                recovery.recover(verbose=verbose)
+                recover_retrying(lambda: recovery.recover(verbose=verbose),
+                                 verbose)
     world_boss.pause(world_boss.RESUME_WAIT)
     calibration.close_everything(verbose=verbose)
     cancel_bm(dungeon_name or TRADING_DUNGEON, verbose)
@@ -4780,7 +4813,9 @@ def relog_for_burst(verbose=True):
             print(f"  the relog into Channel {CHANNEL} failed "
                   f"({type(exc).__name__}: {exc}); tried again at the next "
                   f"burst")
-            recovery.recover(verbose=verbose, channel=CHANNEL)
+            recover_retrying(lambda: recovery.recover(verbose=verbose,
+                                                      channel=CHANNEL),
+                             verbose, CHANNEL)
             return
         BURST_STATE["on_channel"] = True
         return
@@ -4809,7 +4844,7 @@ def relog_for_burst(verbose=True):
         except Exception as exc:
             print(f"  Channel {other} failed too ({type(exc).__name__}: {exc})")
     print(f"  back to the home channel {recovery.HOME_CHANNEL}")
-    recovery.recover(verbose=verbose)
+    recover_retrying(lambda: recovery.recover(verbose=verbose), verbose)
 
 
 def start_burst(verbose=True):
@@ -4931,7 +4966,7 @@ def relog_after_disconnect(dungeon_name, exc, verbose=True):
              else "the loop goes on"))
     forget_active()
     with relogging():
-        recovery.recover(verbose=verbose)
+        recover_retrying(lambda: recovery.recover(verbose=verbose), verbose)
     cancel_bm(dungeon_name or TRADING_DUNGEON, verbose)
 
 
