@@ -3347,7 +3347,8 @@ def buy_and_open(dungeon_name, location, place, attempt, verbose=True):
 def with_challenge_retries(dungeon_name, location, place, verbose=True):
     for attempt in range(ENTRY_RETRIES + 1):
         try:
-            return start_dungeon(verbose)
+            return start_dungeon(verbose, float(setting(
+                dungeon_name, "before_challenge_wait")))
         except RuntimeError as exc:
             if attempt == ENTRY_RETRIES:
                 raise
@@ -4301,7 +4302,7 @@ def target_words(dungeon_name, name):
     return list(targets[name])
 
 
-def start_dungeon(verbose=True):
+def start_dungeon(verbose=True, delay=None):
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     up, seen = wait_for(CHALLENGE_WINDOW, CHALLENGE_WORD, TRANSFER_TIMEOUT)
@@ -4325,6 +4326,8 @@ def start_dungeon(verbose=True):
                       f"{list(TAB_TWO)}")
             click(*TAB_TWO, 0.0)
             return clicked
+    if delay:
+        wait_timer(delay, verbose)
     point = centre(CHALLENGE_WINDOW)
     if verbose:
         print(f"  {CHALLENGE_WORD} at {point}")
