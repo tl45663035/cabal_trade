@@ -4594,17 +4594,23 @@ def world_boss_turn(dungeon_name, verbose=True):
              else f"{room:g}s a {dungeon_name} run and the lead need; "
                   f"the dungeons stop here")
           + " and the world boss run starts")
+    if LIVE["view"] is not None:
+        LIVE["view"].boss(f"{when:{VIEW_SET['boss_clock']}}")
+    failed = None
     calibration.close_everything(verbose=verbose)
     try:
         if not get_to_wb_area(verbose):
             print("WORLD BOSS: skipped, there is no way to the world boss "
                   "area today; " + ("back to the idle" if dungeon_name is None
                                     else "the dungeons go on"))
+            if LIVE["view"] is not None:
+                LIVE["view"].boss_end("skipped")
             return False
         world_boss.run(verbose=verbose, when=when, prepare_now=True)
     except Exception as exc:
         calibration.snap("world_boss_failed")
-        print(f"  WORLD BOSS failed: {type(exc).__name__}: {exc}")
+        failed = f"{type(exc).__name__}: {exc}"
+        print(f"  WORLD BOSS failed: {failed}")
         if recovery.logged_out():
             with relogging():
                 recover_retrying(lambda: recovery.recover(verbose=verbose),
@@ -4614,6 +4620,8 @@ def world_boss_turn(dungeon_name, verbose=True):
     cancel_bm(dungeon_name or TRADING_DUNGEON, verbose)
     print("WORLD BOSS: over; " + ("back to the idle" if dungeon_name is None
                                    else "the dungeons go on"))
+    if LIVE["view"] is not None:
+        LIVE["view"].boss_end("fail" if failed else "pass", failed or "")
     return True
 
 
@@ -4638,7 +4646,27 @@ class LiveView:
     def paint(self, colour, text):
         return f"{chr(27)}[{VIEW_SET['colours'][colour]}m{text}{chr(27)}[0m"
 
+    def boss_segments(self, verdict, why):
+        run, look = self.run, VIEW_SET
+        words = {"pass": "boss_pass", "fail": "boss_fail",
+                 "skipped": "boss_skipped", "stopped": "stopped"}
+        width = max(len(look[key]) for key in ["boss_running",
+                                               *words.values()])
+        state, colour = ((look[words[verdict]],
+                          "quiet" if verdict == "skipped" else verdict)
+                         if verdict else (look["boss_running"], None))
+        took = (run["ended"] or time.monotonic()) - run["started"]
+        out = [(run["name"], "name"), (look["gap"] + run["when"], None),
+               (look["spacing"] + f"{state:<{width}}", colour),
+               (look["spacing"]
+                + time.strftime(look["clock"], time.gmtime(took)), "quiet")]
+        if why:
+            out.append((look["spacing"] + why, "quiet"))
+        return out
+
     def segments(self, verdict, why):
+        if self.run.get("boss"):
+            return self.boss_segments(verdict, why)
         run, look = self.run, VIEW_SET
         reached, rooms = run["reached"], run["rooms"]
         moving = run.get("moving")
@@ -4690,8 +4718,11 @@ class LiveView:
     def draw(self, verdict=None, why=""):
         parts = self.segments(verdict, why)
         plain = "".join(text for text, _colour in parts)
-        if why and len(plain) >= shutil.get_terminal_size().columns:
-            return self.draw(verdict)
+        columns = shutil.get_terminal_size().columns
+        if why and len(plain) >= columns:
+            keep = columns - len(plain) + len(why) - len(VIEW_SET["cut"]) - 1
+            return self.draw(verdict, why[:keep] + VIEW_SET["cut"]
+                             if keep > 0 else "")
         self.stream.write(f"\r{chr(27)}[2K" + "".join(
             self.paint(colour, text) if colour else text
             for text, colour in parts))
@@ -4761,6 +4792,32 @@ class LiveView:
 
     def unique(self, item):
         self.line(self.paint("unique", f"{VIEW_SET['unique']} {item}"))
+
+    def rotation(self, parts, done):
+        look = VIEW_SET
+        out = [(look["rotation"], "quiet")]
+        for name, runs, limit, wins, complete in parts:
+            text = f"{name} {runs}/{limit}" + (
+                "" if wins is None else f" ({wins} {look['successful']})")
+            out += [(look["spacing"], None), (text, "done" if complete else None)]
+        if done:
+            out += [(look["spacing"], None), (look["all_done"], "pass")]
+        self.line("".join(self.paint(colour, text) if colour else text
+                          for text, colour in out))
+
+    def boss(self, when):
+        with self.lock:
+            self.clear()
+            self.run = {"boss": True, "name": VIEW_SET["boss"], "when": when,
+                        "started": time.monotonic(), "ended": None}
+            self.draw()
+
+    def boss_end(self, verdict, why=""):
+        with self.lock:
+            if self.run is None or not self.run.get("boss"):
+                return
+            self.run["ended"] = time.monotonic()
+            self.finish(verdict, why)
 
     def tick(self):
         while not self.closed.wait(float(VIEW_SET["tick"])):
@@ -5579,6 +5636,12 @@ def rotate(names, after=None, verbose=True, group=None, pool=None,
                      if successful is None
                      else f"; each has {successful} successful or is at "
                           f"its daily limit"))
+        if LIVE["view"] is not None:
+            LIVE["view"].rotation(
+                [(name, runs_today(name), DUNGEONS[name]["daily_limit"],
+                  None if successful is None else successes_today(name),
+                  rotation_done(name, successful)) for name in names],
+                not turn)
         if not turn:
             return after
         for name in turn:
