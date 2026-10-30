@@ -4020,6 +4020,14 @@ def party_ready(steps, verbose=True):
 
 
 def party_leave_at_end(verbose=True):
+    dungeon_name = PARTY_SET["dungeon"]
+    if not limit_reached(dungeon_name):
+        say_step("party kept")
+        print(f"  party: {runs_today(dungeon_name)} of "
+              f"{DUNGEONS[dungeon_name]['daily_limit']} {dungeon_name} "
+              f"entered today, so the party is kept; it is left only once "
+              f"the daily limit is used up")
+        return
     say_step("leaving the party")
     try:
         say_step("left the party" if leave_party(verbose)

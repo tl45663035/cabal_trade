@@ -233,6 +233,20 @@ try:
     finally:
         dungeon.LEAVING["gone_wait"] = gone
     check("Yes with no new 'You have left the party' notice: an error", raised, str(did))
+    calls = []
+    saved_leave = (dungeon.leave_party, dungeon.runs_today, dungeon.say_step)
+    dungeon.leave_party = lambda verbose=True: calls.append("leave") or True
+    dungeon.say_step = lambda *a, **k: None
+    limit = int(dungeon.DUNGEONS[dungeon.PARTY_SET["dungeon"]]["daily_limit"])
+    try:
+        for ran in (limit - 1, limit):
+            dungeon.runs_today = lambda name, ran=ran: ran
+            with contextlib.redirect_stdout(io.StringIO()):
+                dungeon.party_leave_at_end()
+    finally:
+        dungeon.leave_party, dungeon.runs_today, dungeon.say_step = saved_leave
+    check("the party is left only once the daily limit is used up",
+          calls == ["leave"], str(calls))
 finally:
     (dungeon.escape_everything, dungeon.focus_game, dungeon.right_click,
      dungeon.click, dungeon.find_word, dungeon.left_notices,
