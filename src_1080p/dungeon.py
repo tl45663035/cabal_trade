@@ -342,6 +342,9 @@ RELOG_TRIES = int(_SHARED["supervise"]["relog_tries"])
 RELOGGING = threading.Event()
 COMMIT = {"sha": None}
 CONSOLE_LINES = [re.compile(pattern) for pattern in _DUNGEON["console_lines"]]
+VIEW_SET = _DUNGEON["console_view"]
+VIEW_LIVE = [re.compile(pattern) for pattern in VIEW_SET["live"]]
+LIVE = {"view": None}
 UNCOMMITTED_IGNORE = set(_DUNGEON["uncommitted_ignore"])
 TARGET_EVERY = float(_DUNGEON["target_every"])
 HUNT_TARGET_EVERY = float(_DUNGEON["hunt_target_every"])
@@ -2366,10 +2369,12 @@ def run_result(dungeon_name, location, result):
         label = f"{dungeon_name} {location}"
     print(f"{label}: {result}")
     started = RUN_CLOCK["started"]
-    if started is None:
-        return
     ended = (END["at"] if result == "pass" and END["at"] is not None
              else time.monotonic())
+    if LIVE["view"] is not None:
+        LIVE["view"].result(result, ended)
+    if started is None:
+        return
     rooms = RUN_CLOCK["rooms"]
     ends = [at for _room, at in rooms[1:]] + [ended]
     print(f"  {label}: {ended - started:.1f}s from {CHALLENGE_WORD} to the "
@@ -2379,11 +2384,25 @@ def run_result(dungeon_name, location, result):
     RUN_CLOCK.update(started=None, rooms=[])
 
 
-def run_label(dungeon_name, location):
+def run_count(dungeon_name, location):
     found = LEVEL_TEXT.search(location_of(dungeon_name, location)["name"])
     if found is None:
-        return f"{dungeon_name} #{runs_today(dungeon_name)}"
-    return f"{location} #{ran_today(_state(), None).get(int(found.group(1)), 0)}"
+        return (dungeon_name, runs_today(dungeon_name),
+                DUNGEONS[dungeon_name].get("daily_limit"))
+    return (location, ran_today(_state(), None).get(int(found.group(1)), 0),
+            None)
+
+
+def run_label(dungeon_name, location):
+    name, count, _limit = run_count(dungeon_name, location)
+    return f"{name} #{count}"
+
+
+def view_rooms(dungeon_name):
+    start = DUNGEONS[dungeon_name].get("start_room")
+    return ([start] if start else []) + [
+        step[len(ROOM_PREFIX):] for step in DUNGEONS[dungeon_name]["sequence"]
+        if isinstance(step, str) and step.startswith(ROOM_PREFIX)]
 
 
 def unique_items(texts):
@@ -2907,6 +2926,9 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                 print(f"{dungeon_name}: {ran} of {limit} entered on this "
                       f"dungeon day; nothing done until the next reset")
             return False
+    if LIVE["view"] is not None and steps is None:
+        name, count, cap = run_count(dungeon_name, location)
+        LIVE["view"].prepare(name, count + 1, cap, view_rooms(dungeon_name))
     stop, failed, killing = threading.Event(), {}, threading.Event()
     phase = {"killing": killing,
              "healer": threading.Thread(
@@ -3490,6 +3512,9 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 print(f"  the dungeon has {timer['limit']:g}s from the "
                       f"{CHALLENGE_WORD} click")
             count_challenge(dungeon_name, location, timer, verbose)
+            if LIVE["view"] is not None:
+                LIVE["view"].start(*run_count(dungeon_name, location),
+                                   view_rooms(dungeon_name), clicked)
             if setting(dungeon_name, "start_cancel_bm"):
                 cancel_bm(dungeon_name, verbose)
             wait_timer(max(0.0, clicked
@@ -3718,6 +3743,8 @@ def say_room(dungeon_name, location, room):
     except Exception:
         label = f"{dungeon_name} {location}"
     print(f"{label}: room {room}")
+    if LIVE["view"] is not None:
+        LIVE["view"].room(room)
 
 
 def use_slot(name, verbose=True):
@@ -4587,15 +4614,182 @@ def report_at():
     return central_now().strftime("%H:%M:%S")
 
 
-class ConsoleLines:
+class LiveView:
     def __init__(self, stream):
-        self.stream, self.part = stream, ""
+        self.stream, self.lock = stream, threading.RLock()
+        self.run, self.shown, self.closed = None, False, threading.Event()
+        threading.Thread(target=self.tick, daemon=True).start()
+
+    @staticmethod
+    def open(stream):
+        import record_action
+        if not stream.isatty() or not record_action.console_colours():
+            return None
+        return LiveView(stream)
+
+    def paint(self, colour, text):
+        return f"{chr(27)}[{VIEW_SET['colours'][colour]}m{text}{chr(27)}[0m"
+
+    def segments(self, verdict, why):
+        run, look = self.run, VIEW_SET
+        reached, rooms = run["reached"], run["rooms"]
+        number = f"#{run['number']}" + (f"/{run['limit']}" if run["limit"]
+                                        else "")
+        wide = (len(f"#{run['limit']}/{run['limit']}") if run["limit"]
+                else len(number))
+        out = [(f"{run['name']:<{look['name_width']}}", "name"),
+               (f"{look['gap']}{number:<{wide}}", None)]
+        if rooms:
+            out.append((look["spacing"], None))
+        for at in range(len(rooms)):
+            if at:
+                out.append((look["gap"], None))
+            if verdict == "pass" or at < reached - 1:
+                out.append((look["done"], "done"))
+            elif at == reached - 1:
+                out.append((look["current"], verdict or "current"))
+            else:
+                out.append((look["left"], "left"))
+        states = [look[key] for key in ("entering", "opening", "pass", "fail",
+                                        "stopped")]
+        states += [f"{look['room']} {room}" for room in rooms]
+        if verdict is not None:
+            state, colour = look[verdict], verdict
+        elif run["started"] is None:
+            state, colour = look["entering"], "quiet"
+        elif reached == 0:
+            state, colour = look["opening"], None
+        else:
+            state, colour = f"{look['room']} {rooms[reached - 1]}", None
+        out += [(look["spacing"], None),
+                (f"{state:<{max(len(text) for text in states)}}", colour)]
+        if run["started"] is not None:
+            took = (run["ended"] or time.monotonic()) - run["started"]
+            out.append((look["spacing"]
+                        + time.strftime(look["clock"], time.gmtime(took)),
+                        "quiet"))
+        if why:
+            out.append((look["spacing"] + why, "quiet"))
+        return out
+
+    def draw(self, verdict=None, why=""):
+        parts = self.segments(verdict, why)
+        plain = "".join(text for text, _colour in parts)
+        if why and len(plain) >= shutil.get_terminal_size().columns:
+            return self.draw(verdict)
+        self.stream.write(f"\r{chr(27)}[2K" + "".join(
+            self.paint(colour, text) if colour else text
+            for text, colour in parts))
+        self.stream.flush()
+        self.shown = True
+
+    def clear(self):
+        if self.shown:
+            self.stream.write(f"\r{chr(27)}[2K")
+            self.stream.flush()
+            self.shown = False
+
+    def finish(self, verdict, why=""):
+        self.draw(verdict, why)
+        self.stream.write("\n")
+        self.stream.flush()
+        self.shown, self.run = False, None
+
+    def prepare(self, name, number, limit, rooms):
+        with self.lock:
+            self.clear()
+            self.run = {"name": name, "number": number, "limit": limit,
+                        "rooms": rooms, "reached": 0, "started": None,
+                        "ended": None}
+            self.draw()
+
+    def start(self, name, number, limit, rooms, clicked):
+        with self.lock:
+            if self.run is None or self.run["name"] != name:
+                self.run = {"name": name, "limit": limit, "rooms": rooms}
+            self.run.update(number=number, reached=0, started=clicked,
+                            ended=None)
+            self.draw()
+
+    def room(self, room):
+        with self.lock:
+            if self.run is None:
+                return
+            rooms = self.run["rooms"]
+            self.run["reached"] = (rooms.index(room) + 1 if room in rooms
+                                   else self.run["reached"] + 1)
+            self.draw()
+
+    def result(self, result, ended):
+        with self.lock:
+            if self.run is None:
+                return
+            verdict, _comma, why = result.partition(", ")
+            self.run["ended"] = ended if self.run["started"] else None
+            self.finish("pass" if verdict == "pass" else "fail", why)
+
+    def line(self, text):
+        with self.lock:
+            self.clear()
+            self.stream.write(text + "\n")
+            self.stream.flush()
+            if self.run is not None:
+                self.draw()
+
+    def tick(self):
+        while not self.closed.wait(float(VIEW_SET["tick"])):
+            with self.lock:
+                if (self.run is not None and self.run["started"] is not None
+                        and self.shown):
+                    self.draw()
+
+    def close(self):
+        with self.lock:
+            self.closed.set()
+            if self.run is not None and self.run["started"] is not None:
+                self.finish("stopped")
+            else:
+                self.clear()
+
+
+class ConsoleErrors:
+    def __init__(self, stream, view):
+        self.stream, self.view = stream, view
+
+    def write(self, text):
+        with self.view.lock:
+            self.view.clear()
+            self.stream.write(text)
+            self.stream.flush()
+            if text.endswith("\n") and self.view.run is not None:
+                self.view.draw()
+        return len(text)
+
+    def flush(self):
+        self.stream.flush()
+
+    def isatty(self):
+        return self.stream.isatty()
+
+    def fileno(self):
+        return self.stream.fileno()
+
+
+class ConsoleLines:
+    def __init__(self, stream, view=None):
+        self.stream, self.part, self.view = stream, "", view
 
     def write(self, text):
         self.part += text
         *done, self.part = self.part.split("\n")
         for line in done:
+            if self.view is not None and any(pattern.search(line)
+                                             for pattern in VIEW_LIVE):
+                continue
             if any(pattern.search(line) for pattern in CONSOLE_LINES):
+                if self.view is not None:
+                    self.view.line(line)
+                    continue
                 self.stream.write(line + "\n")
                 self.stream.flush()
         return len(text)
@@ -5561,7 +5755,10 @@ if __name__ == "__main__":
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(errors="backslashreplace")
     calibration.log_to_file("dungeon")
-    sys.stdout.stream = ConsoleLines(sys.stdout.stream)
+    LIVE["view"] = LiveView.open(sys.stdout.stream)
+    sys.stdout.stream = ConsoleLines(sys.stdout.stream, LIVE["view"])
+    if LIVE["view"] is not None:
+        sys.stderr.stream = ConsoleErrors(sys.stderr.stream, LIVE["view"])
     print(f"running on commit {running_commit()}")
     if NO_BANNER:
         print("  --no-banner: the Surprise Attack banner hour is ignored; a "
@@ -5572,3 +5769,5 @@ if __name__ == "__main__":
         command(args)
     finally:
         calibration.frames_written()
+        if LIVE["view"] is not None:
+            LIVE["view"].close()
