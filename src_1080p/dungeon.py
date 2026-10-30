@@ -288,7 +288,7 @@ KEY_REPEATS = {name: int(times)
 KEY_REPEAT_GAP = float(_DUNGEON["key_repeat_gap"])
 HEAL_KEY = _DUNGEON["heal_key"]
 HEAL_EVERY = float(_DUNGEON["heal_every"])
-HEAL = {"every": HEAL_EVERY}
+HEAL = {"every": HEAL_EVERY, "ride": None}
 END_WAIT = float(_DUNGEON["end_wait"])
 END_TIMEOUT = float(_DUNGEON["end_timeout"])
 END_POLL = float(_DUNGEON["end_poll"])
@@ -1292,7 +1292,7 @@ def play(dungeon_name, sequence, verbose=True):
         begin = [min(max(begin[0], 0), width - 1),
                  min(max(begin[1], 0), height - 1)]
         ctypes.windll.user32.SetCursorPos(*begin)
-    heal_ride = DUNGEONS.get(dungeon_name, {}).get("heal_ride_every")
+    heal_ride = ride_heal(dungeon_name, sequence)
     extras = [f"heal every {heal_ride:g}s"] if heal_ride else []
     if verbose:
         print(f"  {dungeon_name}/{path.name}: {len(events)} events over "
@@ -1312,6 +1312,7 @@ def play(dungeon_name, sequence, verbose=True):
                          daemon=True).start()
     record_action.winmm.timeBeginPeriod(record_action.TIMER_MS)
     with KEY_LOCK:
+        HEAL["ride"] = heal_ride
         PLAYING.set()
     zero = time.perf_counter()
     try:
@@ -2323,11 +2324,18 @@ def boss_again(verbose=True):
     return True
 
 
+def ride_heal(dungeon_name, sequence):
+    known = DUNGEONS.get(dungeon_name, {})
+    return (known.get("heal_rides") or {}).get(
+        sequence, known.get("heal_ride_every"))
+
+
 def heal_loop(stop, kills_only, ride_every=None):
     last = None
     while (not stop.is_set() and not OVER.is_set()
            and not calibration.STOPPED.is_set()):
         now = time.monotonic()
+        ride_every = HEAL["ride"]
         if PLAYING.is_set():
             if ride_every is not None and (last is None
                                            or now - last >= ride_every):
@@ -2340,7 +2348,9 @@ def heal_loop(stop, kills_only, ride_every=None):
                 if not PLAYING.is_set():
                     press(KEYS[HEAL_KEY])
                     last = now
-        stop.wait(HEAL["every"])
+        stop.wait(min(HEAL["every"], ride_every)
+                  if PLAYING.is_set() and ride_every is not None
+                  else HEAL["every"])
 
 
 def run_result(dungeon_name, location, result):
@@ -3498,7 +3508,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             main_bm_now(float(setting(dungeon_name, "bm_aura_for")),
                         verbose=verbose)
         elif name == "bm_cycle":
-            cycle_cast(BM_CYCLE_SET["slots"][0], verbose,
+            cycle_cast(rest[0] if rest else BM_CYCLE_SET["slots"][0], verbose,
                        first_hunt(dungeon_name, place,
                                   steps[number:number + 1]))
         elif name == "heal_every":
