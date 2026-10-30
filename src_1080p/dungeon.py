@@ -316,6 +316,7 @@ CHAT_READS = _DUNGEON["chat_reads"]
 ROOM_PREFIX = _DUNGEON["room_prefix"]
 PARTY_SET = _DUNGEON["party"]
 LOOTING = PARTY_SET["looting"]
+LEAVING = PARTY_SET["leave"]
 PARTY = None
 PARTY_LEFT = {"together": None}
 _CHAT_LINES = _DUNGEON["chat_lines"]
@@ -3850,6 +3851,60 @@ def set_looting_rule(verbose=True):
               f"{LOOTING['ok_word']} clicked")
 
 
+def left_notices():
+    seen = row_model._key(" ".join(
+        text for text, _conf, _point
+        in calibration.ocr(calibration.grab(), tuple(LEAVING["notice_box"]))))
+    return seen.count(row_model._key(LEAVING["notice"]))
+
+
+def leave_party(verbose=True):
+    settle, wait = float(PARTY_SET["settle"]), float(LEAVING["find_wait"])
+    escape_everything(verbose)
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
+    if verbose:
+        print(f"  party: right-click {PARTY_SET['partner']}'s HP bar at "
+              f"{LOOTING['panel_point']}, {LEAVING['word']!r} in "
+              f"{LEAVING['menu_box']}, then Yes at {LEAVING['yes_point']} "
+              f"once {LEAVING['confirm_word']!r} is in "
+              f"{LEAVING['confirm_box']}")
+    right_click(*LOOTING["panel_point"], settle)
+    point = find_word(LEAVING["menu_box"], LEAVING["word"], wait,
+                      "leave_party")
+    if point is None:
+        escape_everything(verbose)
+        if verbose:
+            print(f"  party: no {LEAVING['word']!r} in {LEAVING['menu_box']} "
+                  f"after the right-click, so no party menu: already out of "
+                  f"the party ({PARTY_SET['partner']} may have left first, "
+                  f"which ends a party of two)")
+        return False
+    click(*point, settle)
+    if find_word(LEAVING["confirm_box"], LEAVING["confirm_word"], wait,
+                 "leave_confirm") is None:
+        escape_everything(verbose)
+        raise RuntimeError(f"no {LEAVING['confirm_word']!r} in "
+                           f"{LEAVING['confirm_box']} after {LEAVING['word']!r} "
+                           f"at {list(point)}; the confirmation did not open.")
+    before = left_notices()
+    click(*LEAVING["yes_point"], settle)
+    deadline = time.monotonic() + float(LEAVING["gone_wait"])
+    while left_notices() <= before:
+        if time.monotonic() >= deadline:
+            calibration.snap("party_not_left")
+            raise RuntimeError(f"no new {LEAVING['notice']!r} in "
+                               f"{LEAVING['notice_box']} "
+                               f"{float(LEAVING['gone_wait']):g}s after Yes at "
+                               f"{LEAVING['yes_point']}.")
+        time.sleep(WAIT_SLICE)
+    calibration.snap("party_left")
+    if verbose:
+        print(f"  party: {LEAVING['word']!r} clicked at {list(point)}, then "
+              f"Yes; {LEAVING['notice']!r} is in the notices")
+    return True
+
+
 def accept_invite(verbose=True):
     window, word = PARTY_SET["accept_window"], PARTY_SET["accept_word"]
     point, wait = PARTY_SET["accept_point"], float(PARTY_SET["accept_wait"])
@@ -3954,6 +4009,16 @@ def party_ready(steps, verbose=True):
                   f"as it was")
 
 
+def party_leave_at_end(verbose=True):
+    say_step("leaving the party")
+    try:
+        say_step("left the party" if leave_party(verbose)
+                 else "already out of the party")
+    except RuntimeError as exc:
+        say_step("party not left")
+        print(f"  party: {exc} Leave it by hand")
+
+
 def party_runs(dungeon_name=None, verbose=True):
     global PARTY
     import messaging
@@ -4014,6 +4079,7 @@ def party_runs(dungeon_name=None, verbose=True):
                 failed = after is None or RUN_OUTCOME["failed"]
             except PartyDone as done:
                 say_step(f"party_mode end, {done}")
+                party_leave_at_end(verbose)
                 return
             finally:
                 PARTY.finish(failed)
@@ -4021,8 +4087,10 @@ def party_runs(dungeon_name=None, verbose=True):
             if PARTY_LEFT["together"] == 1:
                 say_step(f"party_mode end, that was the last {dungeon_name} "
                          f"run both have left today")
+                party_leave_at_end(verbose)
                 return
         say_step(f"party_mode end, the {dungeon_name} daily limit is reached")
+        party_leave_at_end(verbose)
     finally:
         PARTY.close(float(messaging.settings()["close_wait"]))
 

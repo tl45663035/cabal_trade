@@ -183,6 +183,61 @@ finally:
      dungeon.click, dungeon.find_word, dungeon.looting_selected,
      calibration.snap, dungeon.PARTY_SET["settle"]) = saved
 
+did = []
+saved = (dungeon.escape_everything, dungeon.focus_game, dungeon.right_click,
+         dungeon.click, dungeon.find_word, dungeon.left_notices,
+         calibration.snap, dungeon.PARTY_SET["settle"])
+try:
+    dungeon.escape_everything = lambda verbose=True: did.append("escape")
+    dungeon.focus_game = lambda *a, **k: True
+    dungeon.right_click = lambda x, y, settle=0: did.append(("right", x, y))
+    dungeon.click = lambda x, y, settle=0: did.append(("click", x, y))
+    found = {"Leave": (415, 252), "sure": (900, 540)}
+    dungeon.find_word = lambda box, word, wait, label: did.append(("find", word)) or found[word]
+    counts = iter([1, 1, 2])
+    dungeon.left_notices = lambda: next(counts)
+    calibration.snap = lambda *a, **k: None
+    dungeon.PARTY_SET["settle"] = 0.0
+    with contextlib.redirect_stdout(io.StringIO()):
+        left = dungeon.leave_party()
+    check("leave party: HP bar, Leave where it was read, the confirmation, Yes, a new notice",
+          left is True and did == ["escape", ("right", 143, 242), ("find", "Leave"),
+                                   ("click", 415, 252), ("find", "sure"), ("click", 962, 614)],
+          str(did))
+    did.clear()
+    dungeon.find_word = lambda box, word, wait, label: None
+    with contextlib.redirect_stdout(io.StringIO()):
+        left = dungeon.leave_party()
+    check("no Leave in the menu: already out, windows closed, nothing clicked",
+          left is False and did == ["escape", ("right", 143, 242), "escape"], str(did))
+    did.clear()
+    dungeon.find_word = lambda box, word, wait, label: found[word] if word == "Leave" else None
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            dungeon.leave_party()
+        raised = False
+    except RuntimeError:
+        raised = True
+    check("no confirmation after Leave: an error and no Yes",
+          raised and ("click", 962, 614) not in did, str(did))
+    did.clear()
+    dungeon.find_word = lambda box, word, wait, label: found[word]
+    dungeon.left_notices = lambda: 1
+    dungeon.LEAVING["gone_wait"], gone = 0.0, dungeon.LEAVING["gone_wait"]
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            dungeon.leave_party()
+        raised = False
+    except RuntimeError:
+        raised = True
+    finally:
+        dungeon.LEAVING["gone_wait"] = gone
+    check("Yes with no new 'You have left the party' notice: an error", raised, str(did))
+finally:
+    (dungeon.escape_everything, dungeon.focus_game, dungeon.right_click,
+     dungeon.click, dungeon.find_word, dungeon.left_notices,
+     calibration.snap, dungeon.PARTY_SET["settle"]) = saved
+
 check("no input reached the game", not TRIPPED, str(TRIPPED))
 print(f"{fails} failure(s)")
 sys.exit(1 if fails else 0)
