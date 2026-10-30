@@ -124,6 +124,8 @@ if None in KEYED_SLOTS.values():
     raise SystemExit(
         f"keyed points off the {_ROW['modifier']} hotbar row {_ROW['y']}: "
         f"{[name for name, key in KEYED_SLOTS.items() if key is None]}")
+KEY_REPEATS = {name: int(times) for name, times in _BOSS["key_repeats"].items()}
+KEY_REPEAT_GAP = float(_BOSS["key_repeat_gap"])
 MODE_DURATION = float(_BOSS["mode_duration"])
 MAIN_BM_COOLDOWN = float(_BOSS["main_bm_cooldown"])
 ONLINE_EVERY = float(_BOSS["online_every"])
@@ -345,7 +347,10 @@ def use_point(name, point):
     _LAST_KEY["at"] = time.monotonic()
     hold_modifier(True)
     try:
-        press(_KEY_CODES[key])
+        for time_number in range(KEY_REPEATS.get(name, 1)):
+            if time_number:
+                time.sleep(KEY_REPEAT_GAP)
+            press(_KEY_CODES[key])
     finally:
         hold_modifier(False)
 
@@ -932,16 +937,41 @@ def use_powerful_pot(plan, now, channel, count, verbose=True):
               f"right-clicked at {list(POWERFUL_POT)}")
 
 
+def cancel_bm(verbose=True):
+    right_click(BM_ICON)
+    calibration.snap("cancel_bm", alongside=True)
+    if verbose:
+        print(f"  BM icon right-clicked at {list(BM_ICON)}")
+
+
+def close_list(verbose=True):
+    presses, pressed = 0, None
+    while listed() or menu_up():
+        if ((pressed is None or time.monotonic() - pressed >= ESCAPE_GAP)
+                and key_free()):
+            if presses == ESCAPE_TRIES:
+                calibration.snap("list_left_open", alongside=True)
+                raise RuntimeError(
+                    f"the channel list or the menu is still up after "
+                    f"{ESCAPE_TRIES} Escape(s).")
+            tap_key(_INPUT["VK_ESCAPE"])
+            presses += 1
+            pressed = time.monotonic()
+    if verbose:
+        print(f"  the channel list shut after {presses} Escape(s)")
+
+
 def relog_unless_there(channel, verbose=True):
     # The game opens no Move Channel dialog for the channel the character is
-    # already in, so no dialog means it is in that channel already; the next
-    # relog presses Escape until the menu is up, which shuts the list.
+    # already in, so no dialog means it is in that channel already; the list
+    # it leaves open is shut with Escape, since no later relog may come.
     try:
         quick_relog(channel, verbose)
     except NoMoveDialog as error:
         if verbose:
             print(f"  {error} Taken as already in Channel {channel}; the "
                   f"route goes on")
+        close_list(verbose)
 
 
 def first_open(channels, verbose=True):

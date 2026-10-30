@@ -98,6 +98,9 @@
     "bm_attack": {"main_bm": ["3", "4"], "alternate_bm": ["5", "6"]},
     "twin_bm": "alternate_bm",
     "once_per_target": [],
+    "key_repeats": {"main_bm": 3, "alternate_bm": 3, "aura": 3},
+    "party": {"name": "cang", "partner": "trung", "leader": true,
+              "partner_character": "Jarvan", "dungeon": "ic1"},
     "bike": {"key": "1", "slot": [664, 978, 712, 1022], "grey_below": 85,
              "recheck": 3.0, "settle": 1.0, "dismount_wait": 5.0},
     "fn_nobm_kill_loop": ["5", "6", "8", "9"],
@@ -117,6 +120,36 @@
     "aura": [987, 940],
     "bm_aura_for": 3.0,
     "dungeons": {
+      "god": {
+        "heal_rides": {"move_to_D": 0.5},
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     ["tap", "="],
+                     "move_to_A",
+                     ["bm_cycle", "alternate_bm"],
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_B",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_C",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_D",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_E",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_F",
+                     ["kill_all", "any monster", "kill_loop", 3.0],
+                     "move_to_G",
+                     ["kill_all", "any monster", "offensive_boss_loop", 3.0],
+                     "move_to_H",
+                     ["kill_all", "any monster", "offensive_boss_loop", 3.0],
+                     "move_to_I",
+                     ["kill_all", "any monster", "offensive_boss_loop", 3.0],
+                     "move_to_J",
+                     ["kill_all", "any monster", "offensive_boss_loop", 3.0],
+                     "move_to_K",
+                     ["kill_all", "any monster", "offensive_boss_loop", 3.0],
+                     "move_to_L",
+                     ["kill_all", "any monster", "offensive_boss_loop", 3.0]]
+      },
       "chaos_arena": {
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
                      ["wait", 3], "get_to_gate", ["kill", "Gate of Chaos"],
@@ -270,6 +303,7 @@
   "world_boss": {
     "enabled": true,
     "prepare_channel": 4,
-    "main_bm_cooldown": 40.0
+    "main_bm_cooldown": 40.0,
+    "key_repeats": {"main_bm": 3, "alternate_bm": 3, "aura": 3}
   }
 }
