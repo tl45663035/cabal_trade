@@ -96,22 +96,28 @@ BURST_CHANNEL = int(_BOSS["burst_channel"])
 BUFF_CLICKS = int(_BOSS["buff_clicks"])
 BUFF_GAP = float(_BOSS["buff_gap"])
 BUFF_EVERY = float(_BOSS["buff_every"])
-KEY_EVERY = float(_BOSS["key_every"])
-KEY_GAP = float(_BOSS["key_gap"])
+REWARD_EVERY = float(_BOSS["reward_every"])
 CANCEL_CLICKS = int(_BOSS["cancel_clicks"])
 CANCEL_GAP = float(_BOSS["cancel_gap"])
 SWITCH_GAP = float(_BOSS["switch_gap"])
 LOOPS = {"main": list(_BOSS["main_loop"]),
          "alternate": list(_BOSS["alternate_loop"]),
          "burst_alternate": list(_BOSS["burst_alternate_loop"])}
-SPAMS = {"main": list(_BOSS["main_spam"]),
-         "alternate": list(_BOSS["alternate_spam"]),
-         "burst_alternate": list(_BOSS["burst_alternate_spam"])}
-SPAM_PRESSES = int(_BOSS["spam_presses"])
-ROTATIONS = {phase: [name for name in names for _ in range(SPAM_PRESSES)]
-             for phase, names in SPAMS.items()}
+ROTATION_STEPS = {phase: [(name, int(times)) for name, times in steps]
+                  for phase, steps in _BOSS["rotations"].items()}
+ROTATION_GAPS = {phase: float(gap)
+                 for phase, gap in _BOSS["rotation_gaps"].items()}
+ROTATIONS = {phase: [name for name, times in steps for _ in range(times)]
+             for phase, steps in ROTATION_STEPS.items()}
+SPAMS = {phase: list(dict.fromkeys(names)) for phase, names in ROTATIONS.items()}
+ROTATION_BUFFS = {phase: {"every": float(buffs["every"]),
+                          "steps": [(name, int(times))
+                                    for name, times in buffs["steps"]]}
+                  for phase, buffs in _BOSS["rotation_buffs"].items()}
 LOOP_POINTS = {name: tuple(_BOSS[name])
-               for names in (*SPAMS.values(), *LOOPS.values())
+               for names in (*SPAMS.values(), *LOOPS.values(),
+                             *([name for name, _times in buffs["steps"]]
+                               for buffs in ROTATION_BUFFS.values()))
                for name in names
                if name not in BUFF_NAMES}
 LOOP_POINTS.update(OFFENSIVE_BUFFS)
@@ -733,6 +739,7 @@ def next_due(due, every):
 def mode_plan(spawn_at, when):
     return {"phase": "main", "key_at": spawn_at - BM_LEAD, "key_index": 0,
             "round": [], "round_at": None, "click_at": None,
+            "buff_queue": [], "buff_due": None,
             "cancel_left": 0, "cancel_at": None,
             "timer": None, "cancelled": None, "spawn": spawn_at,
             "when": when.isoformat(), "kills": [], "boss": None,
@@ -740,7 +747,7 @@ def mode_plan(spawn_at, when):
 
 
 def key_step(phase):
-    return KEY_EVERY if len(SPAMS[phase]) == 1 else KEY_GAP
+    return ROTATION_GAPS[phase]
 
 
 def cycle_text(phase):
@@ -754,13 +761,19 @@ def cycle_text(phase):
            else "by mouse right-click" if not any(name in KEYED_SLOTS
                                                   for name in keys)
            else "by key and mouse")
+    steps = ROTATION_STEPS[phase]
     pattern = (f"{keys[0]} {way} every {key_step(phase):g}s" if len(keys) == 1
-               else " -> ".join(f"{name} x{SPAM_PRESSES}" for name in keys)
+               else " -> ".join(f"{name} x{times}" for name, times in steps)
                + f" {way}, {key_step(phase):g}s apart")
-    return (f"{pattern}, over and over {lasts}; alongside, "
-            f"{' -> '.join(LOOPS[phase])} by mouse, each right-clicked "
-            f"{BUFF_CLICKS} times {BUFF_GAP:g}s apart, a round every "
-            f"{BUFF_EVERY:g}s")
+    buffs = ROTATION_BUFFS.get(phase)
+    return (f"{pattern}, over and over {lasts}"
+            + (f"; every {buffs['every']:g}s, after a full round, "
+               + " -> ".join(f"{name} x{times}"
+                             for name, times in buffs["steps"])
+               + " in the same rhythm" if buffs else "")
+            + (f"; alongside, {' -> '.join(LOOPS[phase])} by mouse, each "
+               f"right-clicked {BUFF_CLICKS} times {BUFF_GAP:g}s apart, a "
+               f"round every {BUFF_EVERY:g}s" if LOOPS[phase] else ""))
 
 
 def switch_due(plan, now):
@@ -796,16 +809,50 @@ def switch_bm(plan, now, verbose=True):
                     cancelled=now)
     else:
         plan.update(phase="main")
-    plan.update(timer=None, key_index=0, key_at=now + SWITCH_GAP)
+    plan.update(timer=None, key_index=0, key_at=now + SWITCH_GAP,
+                buff_queue=[])
     if verbose:
         print(f"  spawn {now - plan['spawn']:+.1f}s: {plan['phase']}: "
               f"{cycle_text(plan['phase'])}")
 
 
-def press_key(plan, now, count, verbose=True):
+def held_back(name, now, buffs_from, saving):
+    return name in BUFF_NAMES and (now < buffs_from
+                                   or (saving and name in OFFENSIVE_BUFFS))
+
+
+def next_keyed(plan):
+    if plan["buff_queue"]:
+        return plan["buff_queue"][0] in KEYED_SLOTS
     names = ROTATIONS[plan["phase"]]
-    name = names[plan["key_index"] % len(names)]
-    plan["key_index"] += 1
+    return names[plan["key_index"] % len(names)] in KEYED_SLOTS
+
+
+def queue_buffs(plan, now, buffs_from, saving):
+    buffs = ROTATION_BUFFS.get(plan["phase"])
+    names = ROTATIONS[plan["phase"]]
+    if (buffs is None or plan["buff_queue"] or buffs_from is None
+            or now < buffs_from or plan["key_index"] % len(names)
+            or (plan["buff_due"] is not None and now < plan["buff_due"])):
+        return
+    plan["buff_queue"] = [name for name, times in buffs["steps"]
+                          for _ in range(times)
+                          if not held_back(name, now, buffs_from, saving)]
+    plan["buff_due"] = now + buffs["every"]
+
+
+def press_key(plan, now, count, verbose=True, buffs_from=None, saving=False):
+    queue_buffs(plan, now, buffs_from, saving)
+    names = ROTATIONS[plan["phase"]]
+    if plan["buff_queue"]:
+        name = plan["buff_queue"].pop(0)
+    else:
+        for _ in names:
+            name = names[plan["key_index"] % len(names)]
+            plan["key_index"] += 1
+            if (buffs_from is None
+                    or not held_back(name, now, buffs_from, saving)):
+                break
     use_point(name, LOOP_POINTS[name])
     count[name] = count.get(name, 0) + 1
     if name == "aura" and plan["timer"] is None:
@@ -871,10 +918,14 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
                  f"{cancel_from - plan['spawn']:+.1f}s; "
                  if cancel_from > loop_from else "")
               + f"{plan['phase']}: {cycle_text(plan['phase'])}")
+    reward_at = time.monotonic()
     while True:
         if plan["boss"] is None:
             spot_boss(plan, verbose)
-        if reward_up():
+        reading = time.monotonic() >= reward_at
+        if reading:
+            reward_at = time.monotonic() + REWARD_EVERY
+        if reading and reward_up():
             seen_at = time.monotonic()
             shot, bar, title = reward_shot()
             calibration.snap(f"raid_result_channel_{channel}", image=shot)
@@ -904,26 +955,31 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
         keying = not cancelling and now >= loop_from
         key_in = plan["key_at"] - now if keying else float("inf")
         keys_free = key_free()
-        if keys_free and key_in <= 0:
-            press_key(plan, now, count, verbose)
-        elif keys_free and key_in >= KEY_SPACING and now >= due["target"]:
+        keyed = keying and next_keyed(plan)
+        burst_here = channel == BURST_CHANNEL
+        saving = plan["burst"] and not burst_here
+        if key_in <= 0 and (keys_free or not keyed):
+            if (pot_at is not None and now >= pot_at
+                    and (plan["powerful"] or (plan["burst"] and burst_here))):
+                use_powerful_pot(plan, now, channel, count, verbose)
+                pot_at = None
+                plan["key_at"] = next_due(plan["key_at"],
+                                          key_step(plan["phase"]))
+            else:
+                press_key(plan, now, count, verbose, buffs_from, saving)
+        elif (keys_free and (key_in >= KEY_SPACING or not keyed)
+              and now >= due["target"]):
             tap_key(TARGET_VK)
             count["target"] = count.get("target", 0) + 1
             due["target"] = next_due(due["target"], TARGET_EVERY)
-        elif keys_free and key_in >= KEY_SPACING and now >= due["heal"]:
+        elif (keys_free and (key_in >= KEY_SPACING or not keyed)
+              and now >= due["heal"]):
             tap_key(HEAL_VK)
             count["heal"] = count.get("heal", 0) + 1
             due["heal"] = next_due(due["heal"], HEAL_EVERY)
         if not keying or key_in < HOVER_SETTLE + CLICK_HOLD:
             continue
-        burst_here = channel == BURST_CHANNEL
-        if (pot_at is not None and now >= pot_at
-                and (plan["powerful"] or (plan["burst"] and burst_here))):
-            use_powerful_pot(plan, now, channel, count, verbose)
-            pot_at = None
-        else:
-            buff_click(plan, now, buffs_from, count,
-                       plan["burst"] and not burst_here)
+        buff_click(plan, now, buffs_from, count, saving)
 
 
 def use_powerful_pot(plan, now, channel, count, verbose=True):

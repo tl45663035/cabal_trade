@@ -203,7 +203,8 @@
                      ["wait", 8],
                      ["wait", 1.5],
                      "move_to_F",
-                     ["kill_all", "any monster", "kill_loop", null]]
+                     ["kill_all", "any monster", "kill_loop", null],
+                     "final_sequence"]
       },
       "ic1": {
         "challenge_wait": 2.0,

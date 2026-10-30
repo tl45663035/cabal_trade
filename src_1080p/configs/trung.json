@@ -257,7 +257,8 @@
                      ["wait", 8],
                      ["wait", 1.5],
                      "move_to_F",
-                     ["kill_all", "any monster", "kill_loop", null]]
+                     ["kill_all", "any monster", "kill_loop", null],
+                     "final_sequence"]
       }
     }
   },
@@ -267,6 +268,7 @@
   "world_boss": {
     "enabled": true,
     "pot_delay": 5.0,
-    "main_bm_cooldown": 40.0
+    "main_bm_cooldown": 40.0,
+    "rotation_buffs": {"main": {"steps": [["C+1", 2], ["C+3", 2], ["bm_pot", 2]]}}
   }
 }

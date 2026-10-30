@@ -313,6 +313,7 @@ CHAT_OPEN = float(_DUNGEON["chat_open"])
 CHAT_EVERY = _DUNGEON["chat_every"]
 CHAT_READS = _DUNGEON["chat_reads"]
 ROOM_PREFIX = _DUNGEON["room_prefix"]
+RECORD_END = _DUNGEON["record_end"]
 _CHAT_LINES = _DUNGEON["chat_lines"]
 CHAT_BOXES = [(_CHAT_LINES["left"], _CHAT_LINES["top"] + row * _CHAT_LINES["gap"],
                _CHAT_LINES["right"],
@@ -1282,6 +1283,26 @@ def bike_after_crash(dungeon_name, verbose=True):
                   f"{exc})")
 
 
+def cleared():
+    return END["at"] is not None and not (END["defeated"] or END["overtime"]
+                                          or END["quest_failed"])
+
+
+class PlayStop:
+    def is_set(self):
+        return calibration.STOPPED.is_set() or (ENDED.is_set()
+                                                and not cleared())
+
+    def wait(self, timeout):
+        if ENDED.is_set():
+            time.sleep(min(timeout, WAIT_SLICE))
+        else:
+            ENDED.wait(timeout)
+
+
+PLAY_STOP = PlayStop()
+
+
 def play(dungeon_name, sequence, verbose=True):
     import record_action
     path = SEQUENCES / dungeon_name / f"{sequence}.jsonl"
@@ -1337,8 +1358,8 @@ def play(dungeon_name, sequence, verbose=True):
     zero = time.perf_counter()
     try:
         for event in events:
-            record_action.wait_until(zero + event["t"], ENDED)
-            if ENDED.is_set() or calibration.STOPPED.is_set():
+            record_action.wait_until(zero + event["t"], PLAY_STOP)
+            if PLAY_STOP.is_set():
                 break
             if event["kind"] == "key":
                 up = event["action"] == "up"
@@ -1387,8 +1408,7 @@ def play(dungeon_name, sequence, verbose=True):
     if verbose:
         print(f"  played {played} of {len(events)} events; nothing is left "
               f"held down")
-    if (bike and played == len(events) and not ENDED.is_set()
-            and not calibration.STOPPED.is_set()):
+    if bike and played == len(events) and not PLAY_STOP.is_set():
         off_bike(f"after {sequence}", verbose, False)
 
 
@@ -2901,18 +2921,24 @@ def keep_failed(location, timer, first):
 
 def before_step(dungeon_name, step):
     sequence = DUNGEONS[dungeon_name]["sequence"]
+    if step == RECORD_END:
+        return list(sequence)
     names = [part if isinstance(part, str) else part[0] for part in sequence]
     if step not in names:
         raise SystemExit(f"{dungeon_name} has no step {step!r}; its steps are "
-                         f"{', '.join(names)}")
+                         f"{', '.join(names)}, or {RECORD_END} for after the "
+                         f"last one")
     return sequence[:names.index(step)]
 
 
 def record_from_here(step, verbose=True):
     import record_action
     if verbose:
-        print(f"  stopped before {step}; nothing more is sent to the game. "
-              f"The recorder takes over from here")
+        print(f"  stopped "
+              + ("after the last step" if step == RECORD_END
+                 else f"before {step}")
+              + "; nothing more is sent to the game. The recorder takes "
+                "over from here")
     with calibration._own_ctrl():
         return record_action.record()
 
@@ -3483,10 +3509,20 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         name, *rest = step if isinstance(step, list) else [step]
         before, current = current, (name, time.monotonic())
         if stop_when_over and OVER.is_set():
+            if not cleared():
+                if verbose:
+                    print(f"  the dungeon is over; {name} and the rest are "
+                          f"skipped")
+                return
+            if not (SEQUENCES / dungeon_name / f"{name}.jsonl").exists():
+                if verbose:
+                    print(f"  the dungeon is cleared; {name} is skipped")
+                continue
             if verbose:
-                print(f"  the dungeon is over; {name} and the rest are "
-                      f"skipped")
-            return
+                print(f"  the dungeon is cleared; {name} still plays before "
+                      f"the exit")
+            play(dungeon_name, name, verbose)
+            continue
         rest = [place.get(part, part) if isinstance(part, str) else part
                 for part in rest]
         if (SEQUENCES / dungeon_name / f"{name}.jsonl").exists():
