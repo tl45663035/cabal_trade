@@ -2869,13 +2869,13 @@ def before_step(dungeon_name, step):
     return sequence[:names.index(step)]
 
 
-def record_from_here(step, verbose=True):
+def record_from_here(step, verbose=True, on_shift=None):
     import record_action
     if verbose:
         print(f"  stopped before {step}; nothing more is sent to the game. "
               f"The recorder takes over from here")
     with calibration._own_ctrl():
-        return record_action.record()
+        return record_action.record(on_shift=on_shift)
 
 
 def run_dungeon(dungeon_name, location, verbose=True, steps=None,
@@ -3654,12 +3654,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             play(rest[0], rest[1], verbose)
         else:
             if name.startswith(ROOM_PREFIX) and PARTY is not None:
-                done = [step_name(earlier) for earlier in steps[:number - 1]
-                        if step_name(earlier).startswith(ROOM_PREFIX)]
-                party_meet(f"room:{len(done)}", PARTY_SET["door_wait"],
-                           verbose,
-                           done[-1][len(ROOM_PREFIX):] if done else None,
-                           name[len(ROOM_PREFIX):])
+                door_meet(steps[:number - 1], name, verbose)
                 if stop_when_over and OVER.is_set():
                     continue
             if name.startswith(ROOM_PREFIX) and RUN_CLOCK["started"] is not None:
@@ -3736,7 +3731,8 @@ def meet_words(mark, cleared, entering):
             f"room {cleared}: {partner} did not clear it")
 
 
-def party_meet(mark, timeout, verbose=True, cleared=None, entering=None):
+def party_meet(mark, timeout, verbose=True, cleared=None, entering=None,
+               stop=party_stop):
     if PARTY is None or PARTY.alone or PARTY.run is None:
         return
     waiting, together, missing = meet_words(mark, cleared, entering)
@@ -3750,7 +3746,7 @@ def party_meet(mark, timeout, verbose=True, cleared=None, entering=None):
                  else f"up to {timeout:g}s")
               + f" for {PARTY.partner}")
     started = time.monotonic()
-    met = PARTY.meet(mark, limit, party_stop)
+    met = PARTY.meet(mark, limit, stop)
     PARTY.drain(print)
     if met is not None:
         say_step(together if met else f"{missing}{within}, solo run")
@@ -3760,6 +3756,14 @@ def party_meet(mark, timeout, verbose=True, cleared=None, entering=None):
                  f"{time.monotonic() - started:.1f}s" if met else
                  f"no {PARTY.partner}{within}, or it quit or finished its "
                  f"run; the rest of this run is solo"))
+
+
+def door_meet(earlier, name, verbose=True, stop=party_stop):
+    done = [step_name(step) for step in earlier
+            if step_name(step).startswith(ROOM_PREFIX)]
+    party_meet(f"room:{len(done)}", PARTY_SET["door_wait"], verbose,
+               done[-1][len(ROOM_PREFIX):] if done else None,
+               name[len(ROOM_PREFIX):], stop)
 
 
 def find_word(box, word, timeout, label):
@@ -3949,12 +3953,18 @@ def party_ready(steps, verbose=True):
     decline_notifications(verbose)
     dungeon_name = PARTY_SET["dungeon"]
     left = int(DUNGEONS[dungeon_name]["daily_limit"]) - runs_today(dungeon_name)
+    recording = PARTY_SET["record_from"]
+    if recording is not None:
+        left = min(left, 1)
     say_step(f"waiting for {PARTY.partner} ready")
     if verbose:
         print(f"  party: ready as the "
               f"{'leader' if PARTY.leader else 'member'} with {left} "
               f"{dungeon_name} entr(ies) left today; up to {wait:g}s for "
-              f"{PARTY.partner}")
+              f"{PARTY.partner}"
+              + (f"; --record-from {recording} makes this the last run "
+                 f"together, so the ready says at most 1"
+                 if recording is not None else ""))
     got = PARTY.begin_run(rooms, PARTY.formed, wait, party_stop, left)
     PARTY.drain(print)
     if not got:
@@ -4019,7 +4029,7 @@ def party_leave_at_end(verbose=True):
         print(f"  party: {exc} Leave it by hand")
 
 
-def party_runs(dungeon_name=None, verbose=True):
+def party_runs(dungeon_name=None, verbose=True, record_from=None):
     global PARTY
     import messaging
     import party
@@ -4028,7 +4038,10 @@ def party_runs(dungeon_name=None, verbose=True):
         raise SystemExit(f"party mode: no dungeon {dungeon_name!r} with a "
                          f"daily limit; the dungeons are "
                          f"{', '.join(sorted(DUNGEONS))}")
+    if record_from is not None:
+        before_step(dungeon_name, record_from)
     PARTY_SET["dungeon"] = dungeon_name
+    PARTY_SET["record_from"] = record_from
     location = only_location(dungeon_name)
     off = messaging.why_off()
     if off is not None:
@@ -4047,6 +4060,12 @@ def party_runs(dungeon_name=None, verbose=True):
           else f"{wait:g}s at the start and "
                f"{float(PARTY_SET['door_wait']):g}s at each door before going "
                f"solo")
+    if record_from is not None:
+        print(f"party: --record-from {record_from}: one run with "
+              f"{PARTY_SET['partner']}, played up to {record_from}, then the "
+              f"recorder; each Shift sends {PARTY_SET['partner']} the next "
+              f"door, from {record_from}'s on, and party mode ends after that "
+              f"run")
     say_step("party_mode start")
     try:
         say_step(f"waiting for {PARTY_SET['partner']} to respond")
@@ -4067,6 +4086,12 @@ def party_runs(dungeon_name=None, verbose=True):
                       f"the whole launch, every relog included; relogging "
                       f"there")
                 relog(verbose)
+        if record_from is not None:
+            try:
+                party_record_from(dungeon_name, location, record_from, verbose)
+            except PartyDone as done:
+                say_step(f"party_mode end, {done}")
+            return
         watch_disconnect(verbose)
         watch_death(verbose)
         after = None
@@ -4093,6 +4118,51 @@ def party_runs(dungeon_name=None, verbose=True):
         party_leave_at_end(verbose)
     finally:
         PARTY.close(float(messaging.settings()["close_wait"]))
+
+
+def party_record_from(dungeon_name, location, step, verbose=True):
+    pre_run_buys(dungeon_name, location, verbose)
+    start_block(dungeon_name, location, verbose)
+    failed = True
+    try:
+        if run_dungeon(dungeon_name, location, verbose, until=step) is False:
+            return
+        failed = False
+        record_with_doors(dungeon_name, step, verbose)
+    finally:
+        PARTY.finish(failed)
+        PARTY.drain(print)
+
+
+def record_with_doors(dungeon_name, step, verbose=True):
+    sequence = DUNGEONS[dungeon_name]["sequence"]
+    first = len(before_step(dungeon_name, step))
+    doors = [(sequence[:number], step_name(part))
+             for number, part in enumerate(sequence)
+             if number >= first and step_name(part).startswith(ROOM_PREFIX)]
+    presses, ended = queue.Queue(), threading.Event()
+
+    def move_on():
+        for earlier, name in doors:
+            if presses.get() is None:
+                return
+            door_meet(earlier, name, verbose, ended.is_set)
+        while presses.get() is not None:
+            say_step(f"Shift: no door left; {PARTY.partner} is past the last "
+                     f"one")
+
+    worker = threading.Thread(target=move_on, daemon=True)
+    worker.start()
+    say_step(f"stopped before {step}; {PARTY.partner} waits at each door "
+             f"until you press Shift")
+    say_step("recorder on: Z starts or cuts a take, Shift sends the next door, "
+             "Ctrl x2 saves and stops")
+    try:
+        record_from_here(step, verbose, lambda: presses.put(True))
+    finally:
+        ended.set()
+        presses.put(None)
+        worker.join()
 
 
 def close_notification(verbose=True):
@@ -5926,7 +5996,8 @@ def command(args):
     elif args[:1] == ["exit"] and len(args) > 1:
         exit_now(args[1])
     elif args[:1] == ["party"]:
-        party_runs(args[1] if len(args) > 1 else None)
+        party_runs(args[1] if len(args) > 1 else None,
+                   record_from=_record_from())
     elif args[:1] == ["get_to_wb_area"]:
         calibration.close_everything(verbose=True)
         get_to_wb_area()
@@ -5986,7 +6057,7 @@ def command(args):
                          f"play DUNGEON SEQUENCE, kill DUNGEON NAME, bm_aura, "
                          f"kill_bm DUNGEON NAME, "
                          f"enter N, arrive, "
-                         f"party [DUNGEON], calibrate, shout, disenchant, close_notification, "
+                         f"party [DUNGEON] [--record-from STEP], calibrate, shout, disenchant, close_notification, "
                          f"off_bike, exit DUNGEON, get_to_wb_area "
                          f"or do ACTION")
 

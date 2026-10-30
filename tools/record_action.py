@@ -29,6 +29,7 @@ GLYPH_ROWS = len(next(iter(GLYPHS.values())))
 ESC = chr(27)
 CTRL ={W["VK_CONTROL"], W["VK_LCONTROL"], W["VK_RCONTROL"]}
 CUT = W["VK_Z"]
+SHIFT = {W["VK_SHIFT"], W["VK_LSHIFT"], W["VK_RSHIFT"]}
 KEY_DOWN = {W["WM_KEYDOWN"], W["WM_SYSKEYDOWN"]}
 KEY_UP = {W["WM_KEYUP"], W["WM_SYSKEYUP"]}
 BUTTON_MESSAGES = {
@@ -172,7 +173,8 @@ class Gesture:
 
 
 class Recording:
-    def __init__(self, segments=False):
+    def __init__(self, segments=False, on_shift=None):
+        self.on_shift = on_shift
         self.gesture = Gesture()
         self.held = set()
         self.events = []
@@ -210,6 +212,11 @@ class Recording:
                     self.cut()
                 else:
                     self.begin(now)
+            return
+        if self.on_shift is not None and vk in SHIFT:
+            self.gesture.reset()
+            if down and not repeat:
+                self.on_shift()
             return
         event = None
         if self.recording:
@@ -410,9 +417,9 @@ class Signal:
             sys.stdout.flush()
 
 
-def record(filming=False):
+def record(filming=False, on_shift=None):
     user32.SetProcessDPIAware()
-    session = Recording(segments=not filming)
+    session = Recording(segments=not filming, on_shift=on_shift)
     signal = Signal()
     hooks = [hook(W["WH_KEYBOARD_LL"], session.key, W["LLKHF_INJECTED"],
                   KBDLLHOOKSTRUCT),
