@@ -214,8 +214,10 @@ BM_POT = tuple(_DUNGEON["bm_pot"])
 OFFENSIVE_BUFFS = {name: tuple(point)
                    for name, point in _DUNGEON["offensive_buffs"].items()}
 DEFENSIVE = "defensive_buffs"
-DEFENSIVE_BUFFS = [(name, tuple(point))
-                   for name, point in _DUNGEON[DEFENSIVE].items()]
+BUFF_POINTS = {**_DUNGEON["offensive_buffs"], **_DUNGEON[DEFENSIVE]}
+DEFENSIVE_BUFFS = [(name, tuple(BUFF_POINTS[name]))
+                   for name in (_DUNGEON["defensive_slots"]
+                                or _DUNGEON[DEFENSIVE])]
 DEFENSIVE_SWITCH = float(_DUNGEON["defensive_switch"])
 BUFF_PRESSES = int(_DUNGEON["buff_presses"])
 BUFF_PRESS_GAP = float(_DUNGEON["buff_press_gap"])
