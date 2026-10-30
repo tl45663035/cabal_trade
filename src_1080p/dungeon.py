@@ -267,7 +267,7 @@ CHANNEL = _channel()
 BURST_STATE = {"until": None, "on_channel": False}
 LAST_KILL = {"name": None, "words": None, "loop": None}
 REPORT = _SHARED["supervise"]
-REPORTED = {"at": None}
+STATE_LOCK = threading.RLock()
 JEWELS = _DUNGEON["jewels"]
 SUMMARY_DAYS = int(_DUNGEON["summary_days"])
 LOOP_POINTS = {"main_bm": MAIN_BM, "alternate_bm": ALTERNATE_BM, "aura": AURA,
@@ -2546,6 +2546,8 @@ def read_chat_lines(image, verbose=True):
         if verbose:
             print(f"  chat {line!r}: unique item dropped in "
                   f"{owner['label']}: {item!r}")
+        if LIVE["view"] is not None:
+            LIVE["view"].unique(item)
         try:
             note_unique(owner, item, image)
         except BaseException as exc:
@@ -3698,6 +3700,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             if name.startswith(ROOM_PREFIX) and RUN_CLOCK["started"] is not None:
                 RUN_CLOCK["rooms"].append([name[len(ROOM_PREFIX):],
                                            time.monotonic()])
+            if name.startswith(ROOM_PREFIX) and LIVE["view"] is not None:
+                LIVE["view"].moving(name[len(ROOM_PREFIX):])
             if (CHAT_READS is not None
                     and name.startswith(CHAT_READS["before"])
                     and name not in setting(dungeon_name, "chat_skip")):
@@ -3856,7 +3860,8 @@ def start_dungeon(verbose=True):
 
 def _state():
     try:
-        known = json.loads(STATE.read_text(encoding="utf-8"))
+        with STATE_LOCK:
+            known = json.loads(STATE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
     if not isinstance(known, dict):
@@ -3919,7 +3924,8 @@ def war_hold():
 def _save(state):
     state["server_dated"] = True
     keep_history(state)
-    STATE.write_text(json.dumps(state), encoding="utf-8")
+    with STATE_LOCK:
+        STATE.write_text(json.dumps(state), encoding="utf-8")
 
 
 def keep_history(state):
@@ -4635,6 +4641,9 @@ class LiveView:
     def segments(self, verdict, why):
         run, look = self.run, VIEW_SET
         reached, rooms = run["reached"], run["rooms"]
+        moving = run.get("moving")
+        here = (rooms.index(moving) if moving in rooms
+                else reached if moving is not None else reached - 1)
         number = f"#{run['number']}" + (f"/{run['limit']}" if run["limit"]
                                         else "")
         wide = (len(f"#{run['limit']}/{run['limit']}") if run["limit"]
@@ -4646,19 +4655,23 @@ class LiveView:
         for at in range(len(rooms)):
             if at:
                 out.append((look["gap"], None))
-            if verdict == "pass" or at < reached - 1:
+            if verdict == "pass" or at < here:
                 out.append((look["done"], "done"))
-            elif at == reached - 1:
-                out.append((look["current"], verdict or "current"))
+            elif at == here:
+                out.append((look["left"] if moving is not None and not verdict
+                            else look["current"], verdict or "current"))
             else:
                 out.append((look["left"], "left"))
         states = [look[key] for key in ("entering", "opening", "pass", "fail",
                                         "stopped")]
-        states += [f"{look['room']} {room}" for room in rooms]
+        states += [f"{look[key]} {room}" for room in rooms
+                   for key in ("room", "moving")]
         if verdict is not None:
             state, colour = look[verdict], verdict
         elif run["started"] is None:
             state, colour = look["entering"], "quiet"
+        elif moving is not None:
+            state, colour = f"{look['moving']} {moving}", None
         elif reached == 0:
             state, colour = look["opening"], None
         else:
@@ -4709,8 +4722,15 @@ class LiveView:
         with self.lock:
             if self.run is None or self.run["name"] != name:
                 self.run = {"name": name, "limit": limit, "rooms": rooms}
-            self.run.update(number=number, reached=0, started=clicked,
-                            ended=None)
+            self.run.update(number=number, reached=0, moving=None,
+                            started=clicked, ended=None)
+            self.draw()
+
+    def moving(self, room):
+        with self.lock:
+            if self.run is None:
+                return
+            self.run["moving"] = room
             self.draw()
 
     def room(self, room):
@@ -4720,6 +4740,7 @@ class LiveView:
             rooms = self.run["rooms"]
             self.run["reached"] = (rooms.index(room) + 1 if room in rooms
                                    else self.run["reached"] + 1)
+            self.run["moving"] = None
             self.draw()
 
     def result(self, result, ended):
@@ -4737,6 +4758,9 @@ class LiveView:
             self.stream.flush()
             if self.run is not None:
                 self.draw()
+
+    def unique(self, item):
+        self.line(self.paint("unique", f"{VIEW_SET['unique']} {item}"))
 
     def tick(self):
         while not self.closed.wait(float(VIEW_SET["tick"])):
@@ -4919,12 +4943,7 @@ def push_dungeon_report(path):
     return "gave up"
 
 
-def dungeon_report_due(verbose=True):
-    every = float(REPORT["report_every"])
-    if (REPORTED["at"] is not None
-            and time.monotonic() - REPORTED["at"] < every):
-        return
-    REPORTED["at"] = time.monotonic()
+def push_report(verbose=True):
     try:
         path = write_dungeon_report()
         failed = push_dungeon_report(path)
@@ -4935,11 +4954,22 @@ def dungeon_report_due(verbose=True):
               + ("pushed" if failed is None else f"not pushed ({failed})"))
 
 
+def report_loop(verbose=True):
+    every = float(REPORT["report_every"])
+    while True:
+        due = time.monotonic() + every
+        push_report(verbose)
+        time.sleep(max(0.0, due - time.monotonic()))
+
+
+def start_reports(verbose=True):
+    threading.Thread(target=report_loop, args=(verbose,), daemon=True).start()
+
+
 def idle(verbose=True):
     import world_boss
     day, told = None, None
     while True:
-        dungeon_report_due(verbose)
         try:
             now = world_boss.online_utc()
         except RuntimeError as exc:
@@ -5374,7 +5404,6 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
     import recovery
     RUN_OUTCOME["failed"] = False
     DEATH_WATCH["entered"] = False
-    dungeon_report_due(verbose)
     if burst_over():
         if NO_BREAKS:
             print("burst over; no breaks, so straight on"
@@ -5598,6 +5627,7 @@ def start_home(verbose=True):
 
 def run_all(verbose=True):
     after = None
+    start_reports(verbose)
     watch_disconnect(verbose)
     watch_death(verbose)
     start_home(verbose)

@@ -105,7 +105,6 @@ def burst_start(relog_fails):
                      (dungeon, "world_boss_turn", lambda *a, **k: False),
                      (dungeon, "start_block", lambda *a, **k: None),
                      (dungeon, "cool_down", lambda *a, **k: None),
-                     (dungeon, "dungeon_report_due", lambda *a, **k: None),
                      (dungeon, "cancel_bm", lambda *a, **k: None)), \
                 contextlib.redirect_stdout(io.StringIO()) as said:
             after = dungeon.run_in_turn("eop", "EOP", None, True)

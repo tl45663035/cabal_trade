@@ -31,7 +31,7 @@ def play(outcomes):
         dungeon.RUN_OUTCOME["failed"] = results.pop(0) == "timeout"
 
     noop = lambda *a, **k: None
-    names = ["dungeon_report_due", "burst_over", "world_boss_turn", "revive_if_dead", "pre_run_buys",
+    names = ["burst_over", "world_boss_turn", "revive_if_dead", "pre_run_buys",
              "powerful_pot_due", "start_block", "cool_down", "dead", "run_dungeon"]
     saved = {name: getattr(dungeon, name) for name in names}
     saved_burst, saved_state = dungeon.BURST, dict(dungeon.FAILED_RUNS)
