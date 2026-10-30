@@ -3513,7 +3513,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             main_bm_now(float(setting(dungeon_name, "bm_aura_for")),
                         verbose=verbose)
         elif name == "bm_cycle":
-            cycle_cast(BM_CYCLE_SET["slots"][0], verbose,
+            cycle_cast(rest[0] if rest else BM_CYCLE_SET["slots"][0], verbose,
                        first_hunt(dungeon_name, place,
                                   steps[number:number + 1]))
         elif name == "heal_every":
