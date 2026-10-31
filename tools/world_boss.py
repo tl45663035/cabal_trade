@@ -69,6 +69,7 @@ BUFF_AFTER_SPAWN = float(_BOSS["buff_after_spawn"])
 PREPARE_LEAD = float(_BOSS["prepare_lead"])
 PREPARE_CHANNEL = int(_BOSS["prepare_channel"])
 PREPARE_WAIT = float(_BOSS["prepare_wait"])
+TAB_ONE = tuple(_BOSS["tab_one"])
 TAB_TWO = tuple(_BOSS["tab_two"])
 POT_SLOTS = [tuple(point) for point in _BOSS["pot_slots"]]
 KILL_DELAY = float(_BOSS["kill_delay"])
@@ -1031,15 +1032,17 @@ def prepare(verbose=True):
         pause(PREPARE_WAIT)
     channel = first_open(CHANNELS, verbose)
     pause(POT_DELAY)
-    click(TAB_TWO)
+    click(TAB_ONE)
     for point in POT_SLOTS:
         pause(POT_GAP)
         right_click(point)
     calibration.snap("pots", alongside=True)
+    click(TAB_TWO)
     if verbose:
-        print(f"  {POT_DELAY:g}s after Yes: hotbar tab II at {list(TAB_TWO)}, "
+        print(f"  {POT_DELAY:g}s after Yes: hotbar tab I at {list(TAB_ONE)}, "
               f"then pots {POT_GAP:g}s apart at "
-              f"{[list(point) for point in POT_SLOTS]}")
+              f"{[list(point) for point in POT_SLOTS]}, then tab II at "
+              f"{list(TAB_TWO)}")
     return channel
 
 

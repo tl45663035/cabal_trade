@@ -3405,7 +3405,8 @@ def buy_and_open(dungeon_name, location, place, attempt, verbose=True):
 def with_challenge_retries(dungeon_name, location, place, verbose=True):
     for attempt in range(ENTRY_RETRIES + 1):
         try:
-            return start_dungeon(verbose)
+            return start_dungeon(verbose, bool(setting(
+                dungeon_name, "challenge_tab_two")))
         except RuntimeError as exc:
             if attempt == ENTRY_RETRIES:
                 raise
@@ -3871,7 +3872,7 @@ def target_words(dungeon_name, name):
     return list(targets[name])
 
 
-def start_dungeon(verbose=True):
+def start_dungeon(verbose=True, tab_two=True):
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     up, seen = wait_for(CHALLENGE_WINDOW, CHALLENGE_WORD, TRANSFER_TIMEOUT)
@@ -3888,9 +3889,10 @@ def start_dungeon(verbose=True):
         print(f"  {CHALLENGE_WORD} at {point}")
     click(*point, 0.0)
     clicked = time.monotonic()
-    if verbose:
-        print(f"  hotbar tab II at {list(TAB_TWO)}")
-    click(*TAB_TWO, 0.0)
+    if tab_two:
+        if verbose:
+            print(f"  hotbar tab II at {list(TAB_TWO)}")
+        click(*TAB_TWO, 0.0)
     return clicked
 
 
@@ -4700,9 +4702,21 @@ class LiveView:
             out.append((look["spacing"] + why, "quiet"))
         return out
 
+    def wait_segments(self):
+        run, look = self.run, VIEW_SET
+        left = max(0.0, run["ends"] - time.monotonic())
+        return [(look["banner"], "banner"),
+                (look["spacing"] + run["name"], "name"),
+                (look["spacing"] + f"until :{run['until']:%M}", "quiet"),
+                (look["spacing"]
+                 + time.strftime(look["clock"], time.gmtime(left)) + " left",
+                 "banner")]
+
     def segments(self, verdict, why):
         if self.run.get("boss"):
             return self.boss_segments(verdict, why)
+        if self.run.get("waiting"):
+            return self.wait_segments()
         run, look = self.run, VIEW_SET
         reached, rooms = run["reached"], run["rooms"]
         moving = run.get("moving")
@@ -4828,6 +4842,24 @@ class LiveView:
 
     def unique(self, item):
         self.line(self.paint("unique", f"{VIEW_SET['unique']} {item}"))
+
+    def banner(self, lines):
+        for text in lines:
+            self.line(self.paint("banner", text))
+
+    def wait_banner(self, name, until, ends):
+        with self.lock:
+            self.clear()
+            self.run = {"waiting": True, "name": name, "until": until,
+                        "started": time.monotonic(), "ends": ends,
+                        "ended": None}
+            self.draw()
+
+    def wait_banner_end(self):
+        with self.lock:
+            if self.run is not None and self.run.get("waiting"):
+                self.clear()
+                self.run = None
 
     def rotation(self, parts, done):
         look = VIEW_SET
@@ -5473,7 +5505,30 @@ def banner_clear(dungeon_name, verbose=True):
               f":{start:%M} to :{start + length:%M} every hour and a run "
               f"started now could last {run.total_seconds():.0f}s, so no "
               f"dungeon until :{start + length:%M} ({left:.0f}s)")
+        banner_notice(dungeon_name, start + length, left)
     wait_timer(left, False)
+    if LIVE["view"] is not None:
+        LIVE["view"].wait_banner_end()
+
+
+def banner_notice(dungeon_name, until, left):
+    look, view = VIEW_SET, LIVE["view"]
+    fill, edge, width = look["banner_fill"], look["banner_edge"], int(
+        look["banner_width"])
+    places = DUNGEONS[dungeon_name]["locations"]
+    full = (next(iter(places.values()))["name"] if len(places) == 1
+            else dungeon_name)
+    text = f"{look['banner']}   {full} waits until :{until:%M}"
+    if view is None:
+        text += f", {time.strftime(look['clock'], time.gmtime(left))} left"
+    width = max(width, len(text) + 2 * (len(edge) + int(look["banner_pad"])))
+    lines = [fill * width, f"{edge}{text:^{width - 2 * len(edge)}}{edge}",
+             fill * width]
+    for line in lines:
+        print(line)
+    if view is not None:
+        view.banner(lines)
+        view.wait_banner(full, until, time.monotonic() + left)
 
 
 def run_or_relog(dungeon_name, location, after, verbose=True):
@@ -5885,11 +5940,11 @@ if __name__ == "__main__":
     row_model.start_backup_reader()
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(errors="backslashreplace")
-    calibration.log_to_file("dungeon")
-    LIVE["view"] = LiveView.open(sys.stdout.stream)
-    sys.stdout.stream = ConsoleLines(sys.stdout.stream, LIVE["view"])
+    LIVE["view"] = LiveView.open(sys.stdout)
+    sys.stdout = ConsoleLines(sys.stdout, LIVE["view"])
     if LIVE["view"] is not None:
-        sys.stderr.stream = ConsoleErrors(sys.stderr.stream, LIVE["view"])
+        sys.stderr = ConsoleErrors(sys.stderr, LIVE["view"])
+    calibration.log_to_file("dungeon")
     print(f"running on commit {running_commit()}")
     if NO_BANNER:
         print("  --no-banner: the Surprise Attack banner hour is ignored; a "
