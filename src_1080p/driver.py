@@ -1186,6 +1186,22 @@ def shop_ready(why, verbose=True):
     return calibration._trade_window_open()
 
 
+def decline_boxes_due(walked, verbose=True):
+    every = int(calibration.load_shared()["run"]["decline_boxes_every"])
+    if not every or walked % every:
+        return
+    import dungeon
+    if dungeon.NOTIFICATION_CLOSE is None:
+        return
+    if verbose:
+        print(f"  {walked} row(s) walked this pass; declining the bottom-right "
+              f"boxes at {list(dungeon.NOTIFICATION_CLOSE)}, clicked "
+              f"{dungeon.NOTIFICATION_CLICKS} times "
+              f"{dungeon.NOTIFICATION_GAP:g}s apart without a read")
+    with calibration.phase("decline the bottom-right boxes"):
+        dungeon.close_notifications(verbose=False)
+
+
 def relist_pass(model, first, last, passes=0, verbose=True,
                 collect_only=False, start=None):
     shop_ready(f"rows {first}-{last}", verbose=verbose)
@@ -1197,6 +1213,7 @@ def relist_pass(model, first, last, passes=0, verbose=True,
         print(f"  carrying on at row {begin}, where the stall stopped the "
               f"walk; rows {first}-{begin - 1} were walked before it")
     reserved = stock_rows(last) if STOCK_UP["enabled"] else ()
+    walked = 0
     for index in range(begin, last + 1):
         if index in reserved:
             continue
@@ -1216,6 +1233,8 @@ def relist_pass(model, first, last, passes=0, verbose=True,
         else:
             empty += 1
         board_trace(model, passes, index, first, last)
+        walked += 1
+        decline_boxes_due(walked, verbose=verbose)
         if pending_holds_stock():
             print(f"  tab {row_model.WORK_TAB} holds {_PENDING['bought']} "
                   f"bought {_PENDING['core']} waiting at "
