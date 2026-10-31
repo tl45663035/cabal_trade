@@ -294,7 +294,7 @@ END_POLL = float(_DUNGEON["end_poll"])
 OVER = threading.Event()
 HUNTING = threading.Event()
 TARGET_WATCH = {"watch": None}
-RUN_CLOCK = {"started": None, "rooms": []}
+RUN_CLOCK = {"started": None, "rooms": [], "undecided": None}
 PLAYING = threading.Event()
 END = {"at": None, "defeated": False, "overtime": False, "quest_failed": False}
 EXIT = [tuple(step) for step in _DUNGEON["exit"]]
@@ -2399,6 +2399,7 @@ def run_result(dungeon_name, location, result):
     except Exception:
         label = f"{dungeon_name} {location}"
     print(f"{label}: {result}")
+    RUN_CLOCK["undecided"] = None
     started = RUN_CLOCK["started"]
     ended = (END["at"] if result == "pass" and END["at"] is not None
              else time.monotonic())
@@ -2689,7 +2690,7 @@ def day_counts(state, day, today):
                                            "successful").items()}}}
 
 
-def week_lines(state, today):
+def week_lines(state, today, undecided=0):
     if today is None:
         return []
     last = datetime.date.fromisoformat(today)
@@ -2705,7 +2706,8 @@ def week_lines(state, today):
         values = [None if kept is None else dp_gained(kept["successful"]),
                   None if jewels is None else jewel_alz(jewels),
                   None if kept is None
-                  else sum(int(count) for count in kept["entered"].values())]
+                  else sum(int(count) for count in kept["entered"].values())
+                  - (0 if back else undecided)]
         sums = [total + (value or 0) for total, value in zip(sums, values)]
         shown = ["-" if value is None else f"{value}{suffix}"
                  for value, suffix in zip(values, ["", unit, ""])]
@@ -3100,6 +3102,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                          DUNGEONS[dungeon_name].get("after_exit", []), False)
         elif END["at"] is not None:
             count_success(dungeon_name, location, verbose)
+            RUN_CLOCK["undecided"] = None
             if verbose:
                 run_result(dungeon_name, location, "pass")
             run_sequence(dungeon_name, location, phase, verbose,
@@ -3562,6 +3565,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 print(f"  the dungeon has {timer['limit']:g}s from the "
                       f"{CHALLENGE_WORD} click")
             count_challenge(dungeon_name, location, timer, verbose)
+            RUN_CLOCK["undecided"] = (dungeon_name, location)
             if LIVE["view"] is not None:
                 LIVE["view"].start(*run_count(dungeon_name, location),
                                    view_rooms(dungeon_name), clicked)
@@ -4982,8 +4986,19 @@ def running_commit():
     return sha + (f"; uncommitted: {', '.join(changed)}" if changed else "")
 
 
+def undecided_row():
+    run = RUN_CLOCK["undecided"]
+    if run is None:
+        return None
+    dungeon_name, location = run
+    found = LEVEL_TEXT.search(location_of(dungeon_name, location)["name"])
+    return (dungeon_name.upper() if found is None
+            else f"CA{int(found.group(1))}")
+
+
 def dungeon_report():
     state, today = _state(), server_day()
+    pending = undecided_row()
     entered = dungeon_counts(state, today)
     won = state.get("dungeon_successful") or {}
     won = dict(won.get("counts") or {}) if won.get("day") == today else {}
@@ -5001,20 +5016,23 @@ def dungeon_report():
         place = location_of(TRADING_DUNGEON, level_location(level))
         rows.append((f"CA{level}", place["name"], ran.get(level, 0),
                      wins.get(level, 0), LIMITS[level]))
+    rows = [(short, name, tries - (short == pending), good, cap, tries)
+            for short, name, tries, good, cap in rows]
     totals = ("total", "", sum(row[2] for row in rows),
-              sum(row[3] for row in rows), sum(row[4] for row in rows))
+              sum(row[3] for row in rows), sum(row[4] for row in rows),
+              sum(row[5] for row in rows))
     named = max(len(row[1]) for row in rows + [totals])
     head = (f"{'dungeon':<9}{'name':<{named + 2}}{'attempts':>9}"
             f"{'successful':>12}{'daily limit':>13}{'left':>6}")
-    week = week_lines(state, today)
+    week = week_lines(state, today, int(pending is not None))
     lines = [f"DUNGEON REPORT -- {calibration.config_name()}, server day "
              f"{today}, written {report_at()}", "", *unique_lines(today), "",
              *(week + [""] if week else []), *jewel_lines(today), "",
              f"Today DP gained: {dp_gained(won)}, from successful runs only",
              "", head]
-    for short, name, tries, good, cap in rows + [totals]:
+    for short, name, tries, good, cap, used in rows + [totals]:
         lines.append(f"{short:<9}{name:<{named + 2}}{tries:>9}{good:>12}"
-                     f"{cap:>13}{cap - tries:>6}")
+                     f"{cap:>13}{cap - used:>6}")
     from profit_summary import world_boss_lines
     bosses = world_boss_lines()
     if bosses:
