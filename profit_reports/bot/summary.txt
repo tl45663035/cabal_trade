@@ -4,14 +4,14 @@ level     done  limit  successful
 CA1          0      5           0
 CA2          0      5           0
 CA3          0      5           0
-CA4          4      7           4
-CA5          5      7           4
+CA4          5      7           5
+CA5          6      7           5
 CA6          0     10           0
 CA7          0     15           0
 ICE          0     30           0
 FIRE         0     30           0
 TRAIN        0     30           0
-total        9    144           8
+total       11    144          10
 
 
 LAST 7 DAYS -- 2026-10-24 to 2026-10-30, each day midnight to midnight Central
@@ -24,16 +24,16 @@ Mon 2026-10-26            22.85h   24.00h    1.00B      43.78M         18.01B   
 Tue 2026-10-27            23.07h   24.00h    1.36B      59.14M         20.90B         19.54B  26.13K    6.5%
 Wed 2026-10-28            23.55h   24.00h    1.43B      60.54M         22.73B         21.31B  28.50K    6.3%
 Thu 2026-10-29            10.38h   24.00h  491.72M      47.36M          9.90B          9.41B  12.82K    5.0%
-Fri 2026-10-30 (so far)   19.25h   19.38h    2.08B     107.97M         21.14B         19.07B  29.35K    9.8%
+Fri 2026-10-30 (so far)   19.51h   19.64h    2.09B     107.11M         21.52B         19.43B  29.98K    9.7%
 ============================================================================================================
-7 DAYS                   145.22h  163.38h    8.82B  60,716,876135,431,501,204126,614,130,634 187.11K    6.5%
+7 DAYS                   145.48h  163.64h    8.83B  60,684,690135,809,408,651126,981,186,940 187.74K    6.5%
 
 
-PROFIT SUMMARY -- sold since 2026-10-30 00:00 Central (as of 19:23 Central)
+PROFIT SUMMARY -- sold since 2026-10-30 00:00 Central (as of 19:38 Central)
 
 item                      profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------
-chaoscore                  1.12B   13.03B   11.91B  21.15K   563.04K  616.11K    8.6%
+chaoscore                  1.13B   13.41B   12.28B  21.78K   563.61K  615.64K    8.5%
 upgradecoreultimate      502.27M    1.37B  866.57M   2.93K   296.16K  467.82K   36.7%
 yekaterinavipmembership  147.05M    1.38B    1.23B      12   102.75M  115.00M   10.7%
 sienasunbindingstone     120.44M  396.00M  275.56M       4    68.89M   99.00M   30.4%
@@ -44,10 +44,10 @@ forcecoreultimate         15.72M  317.76M  302.04M     805   375.20K  394.73K   
 epicboosterhighest         5.78M  348.00M  342.22M       8    42.78M   43.50M    1.7%
 -------------------------------------------------------------------------------------
 Cores                    566.30M    2.96B    2.40B   8.15K   293.94K  363.40K   19.1%
-Chaos                      1.12B   13.03B   11.91B  21.15K   563.04K  616.11K    8.6%
+Chaos                      1.13B   13.41B   12.28B  21.78K   563.61K  615.64K    8.5%
 Cash                     389.75M    5.15B    4.76B      41   116.08M  125.59M    7.6%
 =====================================================================================
-TOTAL                      2.08B   21.14B   19.07B  29.35K   649.67K  720.50K    9.8%
+TOTAL                      2.09B   21.52B   19.43B  29.98K   648.26K  717.96K    9.7%
 
 
 
@@ -58,43 +58,43 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-10-30_010848_run_board.log, board during pass 146 at row 11, read 2026-10-30T19:23:00 (live)
+ROWS -- 2026-10-30_010848_run_board.log, board during pass 147 at row 15, read 2026-10-30T19:38:29 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    68.89M    99.00M   +30.11M    99.00M    68.89M    30.11M
     2  Epic Booster (Highest)                  x4    43.06M    43.06M        +0    43.06M   172.22M         0
     3  Yekaterina VIP Membership               x1    99.90M   115.00M   +15.10M   115.00M    99.90M    15.10M
     4  Force Gem Package                       x1   172.22M   172.22M        +0   172.22M   172.22M         0
-    5  Chaos Core Set X 174                    x1   560.05K   599.85K   +39.81K   104.37M    97.45M     6.93M
-    6  Chaos Core Set X 249                    x1   564.00K   599.85K   +35.85K   149.36M   140.44M     8.93M
-    7  Chaos Core Set X 159                    x1   563.00K   599.85K   +36.85K    95.38M    89.52M     5.86M
-    8  Chaos Core Set X 207                    x1   585.00K   599.85K   +14.85K   124.17M   121.09M     3.07M
-    9  Chaos Core Set X 249                    x1   585.00K   599.85K   +14.85K   149.36M   145.66M     3.70M
+    5  Chaos Core Set X 174                    x1   560.05K   599.84K   +39.80K   104.37M    97.45M     6.92M
+    6  Chaos Core Set X 249                    x1   564.00K   599.84K   +35.84K   149.36M   140.44M     8.92M
+    7  Chaos Core Set X 159                    x1   563.00K   599.84K   +36.84K    95.37M    89.52M     5.86M
+    8  Chaos Core Set X 207                    x1   585.00K   599.84K   +14.84K   124.17M   121.09M     3.07M
+    9  Chaos Core Set X 249                    x1   585.00K   599.84K   +14.84K   149.36M   145.66M     3.70M
    10  Chaos Core                            x249   648.91K   648.91K        +0   648.91K   161.58M         0
-   11  Chaos Core Set X 207                    x1   580.00K   599.85K   +19.85K   124.17M   120.06M     4.11M <- here
-   12  Chaos Core Set X 168                    x1   581.41K   599.86K   +18.45K   100.78M    97.68M     3.10M
-   13  Chaos Core Set X 249                    x1   580.00K   599.86K   +19.86K   149.36M   144.42M     4.94M
-   14  Chaos Core Set X 174                    x1   589.52K   599.85K   +10.34K   104.37M   102.58M     1.80M
-   15  Force Core(High                       x212   237.14K     1.89M    +1.65M     1.89M    50.27M   350.40M
-   16  Force Core(High                       x250   237.14K     1.89M    +1.65M     1.89M    59.28M   413.21M
-   17  Force Core(High                        x70   237.14K     1.89M    +1.65M     1.89M    16.60M   115.70M
+   11  Chaos Core Set                          x1   580.00K   599.84K   +19.84K   149.36M   144.42M     4.94M
+   12  Chaos Core Set X 168                    x1   581.41K   599.84K   +18.43K   100.77M    97.68M     3.10M
+   13  Chaos Core Set X 249                    x1   582.00K   599.84K   +17.84K   149.36M   144.92M     4.44M
+   14  Chaos Core Set X 249                    x1   582.00K   599.84K   +17.84K   149.36M   144.92M     4.44M
+   15  Force Core(High                       x212   237.14K     1.87M    +1.63M     1.87M    50.27M   346.16M <- here
+   16  Force Core(High                       x250   237.14K     1.88M    +1.64M     1.88M    59.28M   410.71M
+   17  Force Core(High                        x70   237.14K     1.88M    +1.64M     1.88M    16.60M   115.00M
    18  Upgrade Core (Ultimate                x161   296.25K   329.98K   +33.73K   329.98K    47.70M     5.43M
    19  Upgrade Core (Ultimate                 x88   295.00K   329.98K   +34.98K   329.98K    25.96M     3.08M
    20  Force Core (Ultimate                   x28   352.14K   399.97K   +47.83K   399.97K     9.86M     1.34M
    21  Force Core(Highest                    x132   301.81K   333.24K   +31.43K   333.24K    39.84M     4.15M
    22  Force Core(Highest                     x34   301.81K   333.24K   +31.43K   333.24K    10.26M     1.07M
    23  Force Core (Ultimate                  x121   351.61K   399.97K   +48.36K   399.97K    42.54M     5.85M
-   24  Force Core (Ultimate                    x2   353.78K   399.97K   +46.19K   399.97K   707.55K    92.39K
-   25  Force Core(Highest                     x86   321.81K   333.24K   +11.43K   333.24K    27.68M   982.98K
-   26  Upgrade Core (Ultimate                x161   294.97K   329.98K   +35.01K   329.98K    47.49M     5.64M
-    balance now 3.23B, read 2026-10-30T19:20:25
-       stock at its listed price                                                                        3.11B
-       Alz, latest balance line                                                                         3.23B
+   24  Force Core (Ultimate                    x2   353.78K   399.97K   +46.19K   399.97K   707.55K    92.38K
+   25  Force Core(Highest                     x86   321.81K   333.24K   +11.43K   333.24K    27.68M   982.72K
+   26  Upgrade Core (Ultimate                x161   294.97K   329.98K   +35.00K   329.98K    47.49M     5.64M
+    balance now 3.17B, read 2026-10-30T19:36:29
+       stock at its listed price                                                                        3.17B
+       Alz, latest balance line                                                                         3.17B
        Cash at the voucher price                                                                      266.40M
        gems at the voucher price                                                                       14.15M
        NET WORTH                                                                                        6.62B
 
 
-MARKET -- 2026-10-30_010848_run.log, pass 146, log last written 19:23 Central (live)
+MARKET -- 2026-10-30_010848_run.log, pass 147, log last written 19:38 Central (live)
 
 core                     rows  buy/u  sell/u  margin  margin %  wants  short?
 -----------------------------------------------------------------------------------------------------------------
