@@ -829,6 +829,15 @@ def pre_run_buys(dungeon_name, location, verbose=True):
                   f"summoning {summons}x with {ORBS['key']}; the next "
                   f"{summons}x {item} is bought in {every - done % every} "
                   f"run(s)")
+    for name in DUNGEONS[dungeon_name].get(
+            "pre_run_buys", _DUNGEON.get("pre_run_buys", [])):
+        try:
+            buy_max(name, verbose)
+        except RuntimeError as exc:
+            calibration.snap("pre_run_buy_failed")
+            if verbose:
+                print(f"  {PURCHASES[name]['name']} could not be bought "
+                      f"({exc}); the buy is skipped and the prep goes on")
 
 
 def buy_max(name, verbose=True):

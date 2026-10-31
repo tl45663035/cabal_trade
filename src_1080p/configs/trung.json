@@ -89,6 +89,11 @@
     "chat_every": null,
     "chat_reads": {"before": "move_to_", "button": "confirmation"},
     "walk_frames": {"move_to_A": 0.5, "move_to_B": 0.5, "move_to_C": 0.5, "move_to_D": 0.5, "move_to_E": 0.5, "move_to_F": 0.5, "move_to_D1": 0.5, "move_to_G": 0.5, "move_to_H": 0.5, "move_to_I": 0.5, "move_to_J": 0.5, "move_to_K": 0.5, "move_to_L": 0.5},
+    "purchases": {
+      "elixir_myth": {"name": "Elixir of Myth (High)", "tab": "shop_dungeon",
+                      "cell": [39, 795], "inventory_tab": 1}
+    },
+    "pre_run_buys": ["elixir_myth"],
     "dungeons": {
       "chaos_arena": {
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
