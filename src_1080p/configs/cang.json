@@ -114,7 +114,9 @@
       ["tap", "7", 2.0],
       ["tap", "6", 2.0]
     ],
-    "aura": [987, 940],
+    "main_bm": [987, 990],
+    "alternate_bm": [1037, 990],
+    "aura": [1187, 990],
     "bm_aura_for": 3.0,
     "purchases": {
       "elixir_myth": {"name": "Elixir of Myth (High)", "tab": "shop_dungeon",
@@ -284,6 +286,10 @@
   "world_boss": {
     "enabled": true,
     "prepare_channel": 4,
-    "main_bm_cooldown": 40.0
+    "main_bm_cooldown": 40.0,
+    "keyed_points": ["main_bm", "alternate_bm", "aura"],
+    "main_bm": [987, 990],
+    "alternate_bm": [1037, 990],
+    "aura": [1087, 990]
   }
 }

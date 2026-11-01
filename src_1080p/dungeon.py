@@ -154,6 +154,7 @@ DEATH = _DUNGEON.get("death")
 HP_TEXT = re.compile(r"(\d+)/(\d+)")
 FAILED_RUNS = {"in_a_row": 0}
 RUN_OUTCOME = {"failed": False, "inside": None}
+CUT_OFF = {"dungeon": None}
 NO_TARGET_STOP = float(_DUNGEON["no_target_stop"] or 0)
 LIMITS = {int(level): int(cap)
           for level, cap in _DUNGEON["daily_limits"].items()}
@@ -275,15 +276,17 @@ LOOP_POINTS = {"main_bm": MAIN_BM, "alternate_bm": ALTERNATE_BM, "aura": AURA,
 SLOTS = {name: tuple(point) for name, point in _DUNGEON["slots"].items()}
 CLICK_POINTS = {**LOOP_POINTS, **SLOTS}
 ALT_ROW = _DUNGEON["alt_row"]
+KEY_ROW = _DUNGEON["key_row"]
 SLOT_MODIFIER = ALT_ROW["modifier"]
-ALT_KEYS = {(x, ALT_ROW["y"]): key
-            for x, key in zip(ALT_ROW["x"], ALT_ROW["keys"])}
-KEYED_SLOTS = {name: ALT_KEYS.get(CLICK_POINTS[name])
+ROW_KEYS = {(x, row["y"]): (row["modifier"], key)
+            for row in (ALT_ROW, KEY_ROW)
+            for x, key in zip(row["x"], row["keys"])}
+KEYED_SLOTS = {name: ROW_KEYS.get(CLICK_POINTS[name])
                for name in _DUNGEON["keyed_points"]}
 if None in KEYED_SLOTS.values():
     raise SystemExit(
-        f"keyed points off the {SLOT_MODIFIER} hotbar row "
-        f"{ALT_ROW['y']}: "
+        f"keyed points off the hotbar rows {ALT_ROW['y']} and "
+        f"{KEY_ROW['y']}: "
         f"{[name for name, key in KEYED_SLOTS.items() if key is None]}")
 HEAL_KEY = _DUNGEON["heal_key"]
 HEAL_EVERY = float(_DUNGEON["heal_every"])
@@ -387,9 +390,14 @@ def click(x, y, settle):
     calibration.snap(f"click_{x}_{y}")
 
 
+def key_name(keyed, joiner="+"):
+    modifier, key = keyed
+    return key if modifier is None else f"{modifier}{joiner}{key}"
+
+
 def slot_way(name):
-    key = KEYED_SLOTS.get(name)
-    return (f"pressed with {SLOT_MODIFIER}+{key}" if key is not None
+    keyed = KEYED_SLOTS.get(name)
+    return (f"pressed with {key_name(keyed)}" if keyed is not None
             else f"right-clicked at {list(CLICK_POINTS[name])}")
 
 
@@ -400,17 +408,21 @@ def hold_modifier(down):
 
 
 def use_point(name, settle):
-    key = KEYED_SLOTS.get(name)
-    if key is None:
+    keyed = KEYED_SLOTS.get(name)
+    if keyed is None:
         right_click(*CLICK_POINTS[name], settle)
         return
+    modifier, key = keyed
     with KEY_LOCK:
-        hold_modifier(True)
-        try:
+        if modifier is None:
             press(KEYS[key])
-        finally:
-            hold_modifier(False)
-    calibration.snap(f"key_{SLOT_MODIFIER}_{key}")
+        else:
+            hold_modifier(True)
+            try:
+                press(KEYS[key])
+            finally:
+                hold_modifier(False)
+    calibration.snap(f"key_{key_name(keyed, '_')}")
     time.sleep(settle)
 
 
@@ -5469,7 +5481,8 @@ def banner_filler(dungeon_name, pool, verbose=True):
     if not left or now >= start:
         return None
     plan, idle = banner_plan(now, start, [other for other in pool
-                                          if not limit_reached(other)],
+                                          if not limit_reached(other)
+                                          and other != CUT_OFF["dungeon"]],
                              int(BANNER["plan_depth"]))
     if not plan:
         return None
@@ -5485,7 +5498,7 @@ def banner_fill(dungeon_name, verbose=True):
     if NO_BANNER or not BANNER_FILL or dungeon_name in BANNER_SAFE:
         return None
     fill = BANNER_FILL["dungeon"]
-    if limit_reached(fill):
+    if limit_reached(fill) or fill == CUT_OFF["dungeon"]:
         return None
     try:
         now = online_now()
@@ -5560,10 +5573,12 @@ def banner_notice(dungeon_name, until, left):
 
 def run_or_relog(dungeon_name, location, after, verbose=True):
     DEATH_WATCH["again"] = False
+    CUT_OFF["dungeon"] = None
     try:
         return run_in_turn(dungeon_name, location, after, verbose), False
     except calibration.Offline as exc:
         relog_after_disconnect(dungeon_name, exc, verbose)
+        CUT_OFF["dungeon"] = dungeon_name
         return None, True
     except calibration.Defeated as exc:
         relog_after_death(dungeon_name, exc, verbose)
@@ -5762,6 +5777,12 @@ def rotate(names, after=None, verbose=True, group=None, pool=None,
                 not turn)
         if not turn:
             return after
+        if turn == [CUT_OFF["dungeon"]]:
+            if verbose:
+                print(f"{turn[0]} was cut off by the disconnect, so it is "
+                      f"not entered again; the next dungeon in the rotation "
+                      f"goes next")
+            return after
         for name in turn:
             runs = (int(DUNGEONS[name]["daily_limit"])
                     if DUNGEONS[name].get("all_in_turn") else batch)
@@ -5769,7 +5790,8 @@ def rotate(names, after=None, verbose=True, group=None, pool=None,
             while runs is None or done < int(runs):
                 if new_day(day):
                     return after
-                if rotation_done(name, successful):
+                if (rotation_done(name, successful)
+                        or name == CUT_OFF["dungeon"]):
                     break
                 filler = banner_filler(name, pool, verbose)
                 if filler is None:
@@ -5842,8 +5864,17 @@ def run_all(verbose=True):
                       f"are reset, so the rotation starts again from its "
                       f"first group")
             continue
+        left = [name for group in ROTATION_GROUPS
+                for name in group["dungeons"]
+                if not rotation_done(name, group.get("successful"))]
+        if any(name != CUT_OFF["dungeon"] for name in left):
+            continue
         if verbose:
-            print("every dungeon in the loop is at its daily limit")
+            print(f"{CUT_OFF['dungeon']} was cut off by the disconnect and is "
+                  f"the only dungeon with runs left, so it is not entered "
+                  f"again on this server day" if left
+                  else "every dungeon in the loop is at its daily limit")
+        CUT_OFF["dungeon"] = None
         try:
             idle(verbose)
         except calibration.Offline as exc:

@@ -123,13 +123,16 @@ LOOP_POINTS = {name: tuple(_BOSS[name])
                if name not in BUFF_NAMES}
 LOOP_POINTS.update(OFFENSIVE_BUFFS)
 _ROW = _SHARED["dungeon"]["alt_row"]
+_KEY_ROW = _SHARED["dungeon"]["key_row"]
 _KEY_CODES = _SHARED["dungeon"]["keys"]
-ALT_KEYS = {(x, _ROW["y"]): key for x, key in zip(_ROW["x"], _ROW["keys"])}
-KEYED_SLOTS = {name: ALT_KEYS.get(LOOP_POINTS[name])
+ROW_KEYS = {(x, row["y"]): (row["modifier"], key)
+            for row in (_ROW, _KEY_ROW)
+            for x, key in zip(row["x"], row["keys"])}
+KEYED_SLOTS = {name: ROW_KEYS.get(LOOP_POINTS[name])
                for name in _BOSS["keyed_points"] if name in LOOP_POINTS}
 if None in KEYED_SLOTS.values():
     raise SystemExit(
-        f"keyed points off the {_ROW['modifier']} hotbar row {_ROW['y']}: "
+        f"keyed points off the hotbar rows {_ROW['y']} and {_KEY_ROW['y']}: "
         f"{[name for name, key in KEYED_SLOTS.items() if key is None]}")
 MODE_DURATION = float(_BOSS["mode_duration"])
 MAIN_BM_COOLDOWN = float(_BOSS["main_bm_cooldown"])
@@ -344,12 +347,16 @@ def hold_modifier(down):
 
 
 def use_point(name, point):
-    key = KEYED_SLOTS.get(name)
-    if key is None:
+    keyed = KEYED_SLOTS.get(name)
+    if keyed is None:
         right_click(point)
         return
     calibration.halt_if_stopped()
     _LAST_KEY["at"] = time.monotonic()
+    modifier, key = keyed
+    if modifier is None:
+        press(_KEY_CODES[key])
+        return
     hold_modifier(True)
     try:
         press(_KEY_CODES[key])
@@ -968,13 +975,11 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
                                           key_step(plan["phase"]))
             else:
                 press_key(plan, now, count, verbose, buffs_from, saving)
-        elif (keys_free and (key_in >= KEY_SPACING or not keyed)
-              and now >= due["target"]):
+        elif keys_free and now >= due["target"]:
             tap_key(TARGET_VK)
             count["target"] = count.get("target", 0) + 1
             due["target"] = next_due(due["target"], TARGET_EVERY)
-        elif (keys_free and (key_in >= KEY_SPACING or not keyed)
-              and now >= due["heal"]):
+        elif keys_free and now >= due["heal"]:
             tap_key(HEAL_VK)
             count["heal"] = count.get("heal", 0) + 1
             due["heal"] = next_due(due["heal"], HEAL_EVERY)

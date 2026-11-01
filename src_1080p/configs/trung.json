@@ -72,7 +72,9 @@
       ["tap", "7", 2.0],
       ["tap", "6", 2.0]
     ],
-    "aura": [987, 940],
+    "main_bm": [987, 990],
+    "alternate_bm": [1037, 990],
+    "aura": [1187, 990],
     "bm_aura": ["alternate_bm"],
     "bm_aura_for": 3.0,
     "bm_loop": ["alternate_bm", "aura", "C+1", "C+3", "defensive_buffs"],
@@ -274,6 +276,10 @@
     "enabled": true,
     "pot_delay": 5.0,
     "main_bm_cooldown": 40.0,
+    "keyed_points": ["main_bm", "alternate_bm", "aura"],
+    "main_bm": [987, 990],
+    "alternate_bm": [1037, 990],
+    "aura": [1087, 990],
     "rotation_buffs": {"main": {"steps": [["C+1", 2], ["C+3", 2], ["bm_pot", 2]]}}
   }
 }
