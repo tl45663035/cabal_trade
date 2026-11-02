@@ -89,9 +89,6 @@ DEFENSIVE_SWITCH = float(_BOSS["defensive_switch"])
 BUFF_NAMES = set(OFFENSIVE_BUFFS) | {DEFENSIVE}
 BM_ICON = tuple(_BOSS["bm_icon"])
 BM_LEAD = float(_BOSS["bm_lead"])
-POWERFUL_POT = tuple(_BOSS["powerful_pot"])
-POWERFUL_POT_AFTER = float(_BOSS["powerful_pot_after"])
-POWERFUL_LEVELS = {int(level) for level in _BOSS["powerful_levels"]}
 BURST_LEVELS = {int(level) for level in _BOSS["burst_levels"]}
 BURST_CHANNEL = int(_BOSS["burst_channel"])
 BUFF_CLICKS = int(_BOSS["buff_clicks"])
@@ -584,17 +581,14 @@ def spot_boss(plan, verbose=True):
     boss = recognise(read)
     if boss is None:
         return
-    plan.update(boss=boss, powerful=boss["level"] in POWERFUL_LEVELS,
-                burst=boss["level"] in BURST_LEVELS)
+    plan.update(boss=boss, burst=boss["level"] in BURST_LEVELS)
     calibration.snap("boss_recognised", alongside=True)
     if verbose:
         print(f"  spawn {time.monotonic() - plan['spawn']:+.1f}s: read "
               f"{read!r}: the world boss is {boss['name']}, level "
               f"{boss['level']}; "
-              + ("the powerful pot in every channel" if plan["powerful"]
-                 else f"the offensive buffs and the powerful pot only in "
-                      f"Channel {BURST_CHANNEL}" if plan["burst"]
-                 else "no powerful pot")
+              + (f"the offensive buffs only in Channel {BURST_CHANNEL}"
+                 if plan["burst"] else "the offensive buffs in every channel")
               + " for this session, and no more name reads")
 
 
@@ -751,7 +745,7 @@ def mode_plan(spawn_at, when):
             "cancel_left": 0, "cancel_at": None,
             "timer": None, "cancelled": None, "spawn": spawn_at,
             "when": when.isoformat(), "kills": [], "boss": None,
-            "powerful": False, "burst": False}
+            "burst": False}
 
 
 def key_step(phase):
@@ -761,9 +755,7 @@ def key_step(phase):
 def cycle_text(phase):
     lasts = (f"for {MAIN_BM_COOLDOWN:g}s from the cancel"
              if phase == "alternate"
-             else f"until {MODE_DURATION:g}s after its first aura"
-             if phase == "main"
-             else "until the world boss ends, with no more cancels")
+             else f"until {MODE_DURATION:g}s after its first aura")
     keys = SPAMS[phase]
     way = ("by key" if all(name in KEYED_SLOTS for name in keys)
            else "by mouse right-click" if not any(name in KEYED_SLOTS
@@ -785,8 +777,6 @@ def cycle_text(phase):
 
 
 def switch_due(plan, now):
-    if plan["phase"] == "burst_alternate":
-        return False
     if plan["phase"] == "alternate":
         return now >= plan["cancelled"] + MAIN_BM_COOLDOWN
     return plan["timer"] is not None and now >= plan["timer"] + MODE_DURATION
@@ -905,7 +895,7 @@ def buff_click(plan, now, buffs_from, count, saving):
     plan["click_at"] = now + BUFF_GAP
 
 
-def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
+def kill_boss(channel, start, plan, deadline, verbose=True,
               buffs_from=None, loop_from=None, cancel_from=None):
     buffs_from = start if buffs_from is None else buffs_from
     loop_from = plan["key_at"] if loop_from is None else loop_from
@@ -916,11 +906,9 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
         print(f"kill world boss in Channel {channel}: the loop from spawn "
               f"{loop_from - plan['spawn']:+.1f}s, target and heal from "
               f"spawn {start - plan['spawn']:+.1f}s, buffs from spawn "
-              f"{buffs_from - plan['spawn']:+.1f}s, the powerful pot once from "
-              f"spawn {pot_at - plan['spawn']:+.1f}s for a level "
-              f"{'/'.join(map(str, sorted(POWERFUL_LEVELS)))} boss (a level "
-              f"{'/'.join(map(str, sorted(BURST_LEVELS)))} boss gets it and "
-              f"the offensive buffs only in Channel {BURST_CHANNEL}), until "
+              f"{buffs_from - plan['spawn']:+.1f}s (a level "
+              f"{'/'.join(map(str, sorted(BURST_LEVELS)))} boss gets the "
+              f"offensive buffs only in Channel {BURST_CHANNEL}), until "
               f"{REWARD_WORD!r} reads; "
               + (f"no BM cancel before spawn "
                  f"{cancel_from - plan['spawn']:+.1f}s; "
@@ -967,14 +955,7 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
         burst_here = channel == BURST_CHANNEL
         saving = plan["burst"] and not burst_here
         if key_in <= 0 and (keys_free or not keyed):
-            if (pot_at is not None and now >= pot_at
-                    and (plan["powerful"] or (plan["burst"] and burst_here))):
-                use_powerful_pot(plan, now, channel, count, verbose)
-                pot_at = None
-                plan["key_at"] = next_due(plan["key_at"],
-                                          key_step(plan["phase"]))
-            else:
-                press_key(plan, now, count, verbose, buffs_from, saving)
+            press_key(plan, now, count, verbose, buffs_from, saving)
         elif keys_free and now >= due["target"]:
             tap_key(TARGET_VK)
             count["target"] = count.get("target", 0) + 1
@@ -986,16 +967,6 @@ def kill_boss(channel, start, plan, deadline, pot_at, verbose=True,
         if not keying or key_in < HOVER_SETTLE + CLICK_HOLD:
             continue
         buff_click(plan, now, buffs_from, count, saving)
-
-
-def use_powerful_pot(plan, now, channel, count, verbose=True):
-    right_click(POWERFUL_POT)
-    count["powerful_pot"] = 1
-    calibration.snap(f"powerful_pot_channel_{channel}", alongside=True)
-    plan["click_at"] = now + BUFF_GAP
-    if verbose:
-        print(f"  spawn {now - plan['spawn']:+.1f}s: powerful pot "
-              f"right-clicked at {list(POWERFUL_POT)}")
 
 
 def relog_unless_there(channel, verbose=True):
@@ -1023,20 +994,8 @@ def first_open(channels, verbose=True):
                        f"full; there is no world boss channel to wait in.")
 
 
-def prepare(verbose=True):
-    if verbose:
-        print("prepare world boss")
-    try:
-        relog_unless_there(PREPARE_CHANNEL, verbose)
-    except ChannelFull as error:
-        if verbose:
-            print(f"  {error} The stop there is skipped")
-    else:
-        if verbose:
-            print(f"  waiting {PREPARE_WAIT:g}s in Channel {PREPARE_CHANNEL}")
-        pause(PREPARE_WAIT)
-    channel = first_open(CHANNELS, verbose)
-    pause(POT_DELAY)
+def use_pots(channel, wait, verbose=True):
+    pause(wait)
     click(TAB_ONE)
     for point in POT_SLOTS:
         pause(POT_GAP)
@@ -1044,11 +1003,29 @@ def prepare(verbose=True):
     calibration.snap("pots", alongside=True)
     click(TAB_TWO)
     if verbose:
-        print(f"  {POT_DELAY:g}s after Yes: hotbar tab I at {list(TAB_ONE)}, "
-              f"then pots {POT_GAP:g}s apart at "
+        print(f"  Channel {channel}, after {wait:g}s: hotbar tab I at "
+              f"{list(TAB_ONE)}, then pots {POT_GAP:g}s apart at "
               f"{[list(point) for point in POT_SLOTS]}, then tab II at "
               f"{list(TAB_TWO)}")
-    return channel
+
+
+def prepare(verbose=True):
+    if verbose:
+        print("prepare world boss")
+    try:
+        relog_unless_there(PREPARE_CHANNEL, verbose)
+    except ChannelFull as error:
+        if verbose:
+            print(f"  {error} The stop there is skipped, so the pots go in "
+                  f"the first open channel")
+        channel = first_open(CHANNELS, verbose)
+        use_pots(channel, POT_DELAY, verbose)
+        return channel
+    if verbose:
+        print(f"  waiting {PREPARE_WAIT:g}s in Channel {PREPARE_CHANNEL}, "
+              f"then the pots there")
+    use_pots(PREPARE_CHANNEL, PREPARE_WAIT, verbose)
+    return first_open(CHANNELS, verbose)
 
 
 def step_failed(where, error, then, verbose=True):
@@ -1057,10 +1034,10 @@ def step_failed(where, error, then, verbose=True):
         print(f"  {where}: {type(error).__name__}: {error}; {then}")
 
 
-def kill_in_channel(channel, start, plan, deadline, pot_at, verbose=True,
+def kill_in_channel(channel, start, plan, deadline, verbose=True,
                     buffs_from=None, loop_from=None, cancel_from=None):
     try:
-        return kill_boss(channel, start, plan, deadline, pot_at, verbose,
+        return kill_boss(channel, start, plan, deadline, verbose,
                          buffs_from, loop_from, cancel_from)
     except Exception as error:
         step_failed(f"Channel {channel}", error, "on to the next channel",
@@ -1074,8 +1051,7 @@ def route(plan, spawn_at, deadline, verbose=True):
     except Exception as error:
         step_failed("the prep", error, "no channel to fight in", verbose)
         return
-    finished = kill_in_channel(first, spawn_at, plan, deadline,
-                               spawn_at + POWERFUL_POT_AFTER, verbose,
+    finished = kill_in_channel(first, spawn_at, plan, deadline, verbose,
                                spawn_at + BUFF_AFTER_SPAWN)
     for channel in CHANNELS[CHANNELS.index(first) + 1:]:
         if not finished or time.monotonic() >= deadline:
@@ -1091,8 +1067,7 @@ def route(plan, spawn_at, deadline, verbose=True):
                         "on to the next channel", verbose)
             continue
         start = clicked + KILL_DELAY
-        finished = kill_in_channel(channel, start, plan, deadline,
-                                   clicked + POWERFUL_POT_AFTER, verbose,
+        finished = kill_in_channel(channel, start, plan, deadline, verbose,
                                    loop_from=start,
                                    cancel_from=clicked + CANCEL_DELAY)
 
