@@ -474,7 +474,7 @@
     "enabled": false,
     "order": [3, 2, 1],
     "rotation": [],
-    "reset_timezone": "America/Los_Angeles",
+    "reset_timezone": "Etc/GMT+7",
     "reset_hour": 15,
     "start_at": "15:30",
     "rotate_count": 2,
@@ -612,6 +612,7 @@
     "bm_icon": [254, 148],
     "cancel_bm_clicks": 3,
     "cancel_bm_gap": 0.5,
+    "cancel_bm_spam_gap": 0.1,
     "main_bm_cancel_wait": 3.0,
     "main_bm_cast_wait": 6.0,
     "start_cancel_bm": true,
@@ -677,10 +678,10 @@
       ["button", "leave", 0.0]
     ],
     "manual_exit": [["play", "chaos_arena", "exit_dungeon"]],
-    "before_exit": ["cancel_bm"],
+    "before_exit": [["cancel_bm", 5.0]],
     "block_start": ["tab_two", ["use", "A+9", "A+0"]],
     "cooldown": 30,
-    "cooldown_loop": ["bm_pot", "bm_icon"],
+    "cooldown_loop": ["bm_pot"],
     "defeat": [
       ["button", "revive", 0.0]
     ],
@@ -1561,7 +1562,7 @@
     "trading_lead": 705,
     "resume_wait": 30.0,
     "time_limit": 600,
-    "timezone": "America/Los_Angeles",
+    "timezone": "Etc/GMT+7",
     "stop_presses": 3,
     "stop_window": 1.5,
     "spawn_times": ["00:32", "12:32"],

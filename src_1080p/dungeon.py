@@ -208,6 +208,7 @@ ALTERNATE_BM = tuple(_DUNGEON["alternate_bm"])
 BM_ICON = tuple(_DUNGEON["bm_icon"])
 CANCEL_BM_CLICKS = int(_DUNGEON["cancel_bm_clicks"])
 CANCEL_BM_GAP = float(_DUNGEON["cancel_bm_gap"])
+CANCEL_BM_SPAM_GAP = float(_DUNGEON["cancel_bm_spam_gap"])
 MAIN_BM_CANCEL_WAIT = float(_DUNGEON["main_bm_cancel_wait"])
 MAIN_BM_CAST_WAIT = float(_DUNGEON["main_bm_cast_wait"])
 AURA = tuple(_DUNGEON["aura"])
@@ -256,6 +257,7 @@ OTHER_BM_EVERY = float(BM_CYCLE_SET["other_every"])
 OTHER_AURA_AFTER = float(BM_CYCLE_SET["other_aura_after"])
 BM_OFF = {"at": None}
 COOLDOWN = {"after": None}
+BOUGHT_AHEAD = set()
 SEARCH_ATTACK = {"keys": []}
 MAIN_BM_OFF = {"at": None}
 MAIN_BM_CAST = {"at": None}
@@ -308,7 +310,7 @@ REVIVE_SETTLE = float(_DUNGEON["revive_settle"])
 DEATH_WATCH_EVERY = float(_DUNGEON["death_watch_every"])
 BANNER = _DUNGEON["banner_window"]
 BANNER_FILL = _DUNGEON["banner_fill"]
-BANNER_SAFE = {BANNER_FILL["dungeon"]} if BANNER_FILL else set()
+BANNER_SAFE = set(BANNER_FILL["dungeons"]) if BANNER_FILL else set()
 BANNER_FILLS = {"window": None, "done": 0}
 DEATH_WATCH = {"on": False, "armed": False, "entered": False, "again": False}
 DEATH_LOCK = threading.Lock()
@@ -841,10 +843,16 @@ def pre_run_buys(dungeon_name, location, verbose=True):
                   f"summoning {summons}x with {ORBS['key']}; the next "
                   f"{summons}x {item} is bought in {every - done % every} "
                   f"run(s)")
-    for name in DUNGEONS[dungeon_name].get(
-            "pre_run_buys", _DUNGEON.get("pre_run_buys", [])):
+    ahead = set(BOUGHT_AHEAD)
+    BOUGHT_AHEAD.clear()
+    for name in pre_run_names(dungeon_name):
+        if name in ahead:
+            if verbose:
+                print(f"  {PURCHASES[name]['name']} was bought right after the "
+                      f"last run, so not again now")
+            continue
         try:
-            buy_max(name, verbose)
+            buy_max([name], verbose)
         except RuntimeError as exc:
             calibration.snap("pre_run_buy_failed")
             if verbose:
@@ -852,40 +860,67 @@ def pre_run_buys(dungeon_name, location, verbose=True):
                       f"({exc}); the buy is skipped and the prep goes on")
 
 
-def buy_max(name, verbose=True):
-    item = PURCHASES[name]
-    prepare(verbose, int(item["inventory_tab"]))
+def pre_run_names(dungeon_name):
+    return list(DUNGEONS[dungeon_name].get(
+        "pre_run_buys", _DUNGEON.get("pre_run_buys", [])))
+
+
+def after_run_buys(dungeon_name, verbose=True):
+    after = list(setting(dungeon_name, "after_run_buys"))
+    if not after:
+        return
+    tab = PURCHASES[after[0]]["inventory_tab"]
+    ahead = [name for name in pre_run_names(dungeon_name)
+             if name not in after and PURCHASES[name]["inventory_tab"] == tab]
+    try:
+        buy_max(after + ahead, verbose)
+    except RuntimeError as exc:
+        calibration.snap("after_run_buy_failed")
+        if verbose:
+            items = " and ".join(PURCHASES[name]["name"]
+                                 for name in after + ahead)
+            print(f"  {items} could not be bought ({exc}); the buy is "
+                  f"skipped and the loop goes on")
+        return
+    BOUGHT_AHEAD.update(ahead)
+
+
+def buy_max(names, verbose=True):
+    items = [PURCHASES[name] for name in names]
+    prepare(verbose, int(items[0]["inventory_tab"]))
     shop = BUTTONS["shop_dungeon"]
     if not wait_for(tuple(shop["window"]), shop["word"], 0)[0]:
         if verbose:
             print("  N for the shop")
         press(_INPUT["VK_N"])
-    press_button(item["tab"], SELECT_SETTLE, verbose)
-    x, y = item["cell"]
-    if verbose:
-        print(f"  Alt+click {item['name']} at {[x, y]}")
-    calibration.alt_click(x, y, settle=0.0)
-    ok = BUTTONS["key_ok"]
-    up, seen = wait_for(tuple(ok["window"]), ok["word"], BUTTON_TIMEOUT)
-    if up:
-        type_quantity(QUANTITY_MAX)
+    for item in items:
+        press_button(item["tab"], SELECT_SETTLE, verbose)
+        x, y = item["cell"]
         if verbose:
-            print(f"  quantity {QUANTITY_MAX} typed; the window keeps it to "
-                  f"the most there is enough for")
-        press_button("key_ok", BUY_SETTLE, verbose)
-        if wait_for(tuple(ok["window"]), ok["word"], 0)[0]:
+            print(f"  Alt+click {item['name']} at {[x, y]}")
+        calibration.alt_click(x, y, settle=0.0)
+        ok = BUTTONS["key_ok"]
+        up, seen = wait_for(tuple(ok["window"]), ok["word"], BUTTON_TIMEOUT)
+        if up:
+            type_quantity(QUANTITY_MAX)
             if verbose:
-                print("  the purchase window is still up after OK, so nothing "
-                      "was bought")
-            press_button("key_cancel", 0.0, verbose)
-    elif verbose:
-        print(f"  no purchase window within {BUTTON_TIMEOUT:g}s; the "
-              f"{ok['word']} window reads {seen!r}, so nothing bought")
+                print(f"  quantity {QUANTITY_MAX} typed; the window keeps it "
+                      f"to the most there is enough for")
+            press_button("key_ok", BUY_SETTLE, verbose)
+            if wait_for(tuple(ok["window"]), ok["word"], 0)[0]:
+                if verbose:
+                    print("  the purchase window is still up after OK, so "
+                          "nothing was bought")
+                press_button("key_cancel", 0.0, verbose)
+        elif verbose:
+            print(f"  no purchase window within {BUTTON_TIMEOUT:g}s; the "
+                  f"{ok['word']} window reads {seen!r}, so nothing bought")
     press(_INPUT["VK_N"])
     if wait_for(tuple(shop["window"]), shop["word"], 0)[0]:
         raise RuntimeError("the shop is still open after N.")
     if verbose:
-        print(f"  {item['name']} done; N closed the shop")
+        print(f"  {' and '.join(item['name'] for item in items)} done; N "
+              f"closed the shop")
 
 
 def set_difficulty(level, verbose=True):
@@ -1001,14 +1036,25 @@ def cancel_bm_clicks(dungeon_name):
                                           CANCEL_BM_CLICKS))
 
 
-def cancel_bm(dungeon_name, verbose=True):
+def cancel_bm(dungeon_name, verbose=True, span=None):
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
-    clicks = cancel_bm_clicks(dungeon_name)
-    for _click in range(clicks):
-        right_click(*BM_ICON, CANCEL_BM_GAP)
-    BM_OFF["at"] = time.monotonic()
-    note_main_bm_off()
+    started = time.monotonic()
+    if span is None:
+        clicks = cancel_bm_clicks(dungeon_name)
+        for _click in range(clicks):
+            right_click(*BM_ICON, CANCEL_BM_GAP)
+        BM_OFF["at"] = time.monotonic()
+        note_main_bm_off()
+    else:
+        BM_OFF["at"] = started
+        note_main_bm_off()
+        clicks = 0
+        while clicks == 0 or time.monotonic() < started + span:
+            calibration._button(_INPUT["MOUSEEVENTF_RIGHTDOWN"],
+                                _INPUT["MOUSEEVENTF_RIGHTUP"], *BM_ICON,
+                                CANCEL_BM_SPAM_GAP)
+            clicks += 1
     calibration.snap("cancel_bm")
     MAIN_BM_STATE["on"] = False
     ALT_BM["on"] = False
@@ -1019,8 +1065,12 @@ def cancel_bm(dungeon_name, verbose=True):
     pending = AURA_DUE["at"] is not None
     AURA_DUE["at"] = None
     if verbose:
+        how = (f"{CANCEL_BM_GAP:g}s after each" if span is None
+               else f"{CANCEL_BM_SPAM_GAP:g}s apart over "
+                    f"{time.monotonic() - started:.1f}s; the cooldown counts "
+                    f"from the first")
         print(f"  BM icon right-clicked {clicks} times at {list(BM_ICON)}, "
-              f"{CANCEL_BM_GAP:g}s after each"
+              f"{how}"
               + ("; the aura still due for that BM is dropped" if pending
                  else ""))
 
@@ -3187,14 +3237,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
         end_run_film(dungeon_name, location,
                      bool(crashed) or stopped or RUN_OUTCOME["failed"],
                      verbose)
-    for name in setting(dungeon_name, "after_run_buys"):
-        try:
-            buy_max(name, verbose)
-        except RuntimeError as exc:
-            calibration.snap("after_run_buy_failed")
-            if verbose:
-                print(f"  {PURCHASES[name]['name']} could not be bought "
-                      f"({exc}); the buy is skipped and the loop goes on")
+    after_run_buys(dungeon_name, verbose)
     if steps is None:
         off_bike(f"after {dungeon_name}", verbose)
 
@@ -3637,7 +3680,8 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 print(f"  hotbar tab II at {list(TAB_TWO)}")
             click(*TAB_TWO, 0.0)
         elif name == "cancel_bm":
-            cancel_bm(dungeon_name, verbose)
+            cancel_bm(dungeon_name, verbose,
+                      float(rest[0]) if rest else None)
         elif name == "close_notification":
             close_notification(verbose)
         elif name == "disenchant_all":
@@ -5494,11 +5538,36 @@ def banner_filler(dungeon_name, pool, verbose=True):
     return plan[0]
 
 
+def runs_left(dungeon_name):
+    limit = DUNGEONS[dungeon_name].get("daily_limit")
+    return None if limit is None else int(limit) - runs_today(dungeon_name)
+
+
+def fill_plan(left, pool, most):
+    best = {"score": None, "plan": []}
+
+    def walk(index, chosen, total):
+        if total >= left or index == len(pool):
+            score = (max(0.0, left - total), max(0.0, total - left),
+                     len(chosen))
+            if best["score"] is None or score < best["score"]:
+                best.update(score=score, plan=chosen)
+            return
+        name, cost, room = pool[index]
+        count = 0
+        while True:
+            walk(index + 1, chosen + [name] * count, total + count * cost)
+            if (total + count * cost >= left or count == room
+                    or (most is not None and len(chosen) + count >= most)):
+                break
+            count += 1
+
+    walk(0, [], 0.0)
+    return best["score"], sorted(best["plan"], key=run_cost, reverse=True)
+
+
 def banner_fill(dungeon_name, verbose=True):
     if NO_BANNER or not BANNER_FILL or dungeon_name in BANNER_SAFE:
-        return None
-    fill = BANNER_FILL["dungeon"]
-    if limit_reached(fill) or fill == CUT_OFF["dungeon"]:
         return None
     try:
         now = online_now()
@@ -5509,16 +5578,29 @@ def banner_fill(dungeon_name, verbose=True):
         return None
     if BANNER_FILLS["window"] != start:
         BANNER_FILLS.update(window=start, done=0)
-    if BANNER_FILLS["done"] >= int(BANNER_FILL["runs"]):
+    most = (None if BANNER_FILL.get("runs") is None
+            else int(BANNER_FILL["runs"]) - BANNER_FILLS["done"])
+    pool = [(fill, run_cost(fill), runs_left(fill))
+            for fill in BANNER_FILL["dungeons"]
+            if not limit_reached(fill) and fill != CUT_OFF["dungeon"]]
+    if not pool or (most is not None and most <= 0):
+        return None
+    (idle, spill, _count), plan = fill_plan(left, pool, most)
+    if not plan:
         return None
     BANNER_FILLS["done"] += 1
     if verbose:
+        end = start + length
         print(f"{dungeon_name}: the Surprise Attack banner keeps it out until "
-              f":{start + length:%M} ({left:.0f}s), so {fill}, whose "
-              f"recordings stay clear of the banner, runs in the wait "
-              f"({BANNER_FILLS['done']} of {BANNER_FILL['runs']} for this "
-              f"banner)")
-    return fill
+              f":{end:%M} ({left:.0f}s), so {' -> '.join(plan)}, whose "
+              f"recordings stay clear of the banner, fill the wait"
+              + (f" with {idle:.0f}s of it left over" if idle
+                 else f" and end about {spill:.0f}s after :{end:%M}")
+              + f"; {plan[0]} now"
+              + ("" if most is None
+                 else f" ({BANNER_FILLS['done']} of {BANNER_FILL['runs']} "
+                      f"for this banner)"))
+    return plan[0]
 
 
 def banner_clear(dungeon_name, verbose=True):
@@ -5825,7 +5907,6 @@ def start_home(verbose=True):
               "into the home channel")
     forget_active()
     relog(verbose)
-    cancel_bm(TRADING_DUNGEON, verbose)
 
 
 def run_all(verbose=True):

@@ -78,7 +78,7 @@
     "rotation": [{"dungeons": ["ice", "train", "fire", "valley", "keldrasil"], "batch": 3},
                  {"dungeons": ["ic1", "ic2", "eop"], "batch": 3},
                  {"dungeons": ["fn", "tm"], "batch": null}],
-    "banner_fill": {"dungeon": "fn", "runs": 3},
+    "banner_fill": {"dungeons": ["fn"], "runs": 3},
     "rotation_runs": 3,
     "wb_area_check": {"window": [1765, 106, 1875, 126], "word": "No Map Code",
                       "timeout": 5.0, "tries": 3},
@@ -182,6 +182,7 @@
                      ["kill_bm", "Awakened Steamer LHJ-G30", "offensive_boss_loop"]]
       },
       "valley": {
+        "hard_limit_seconds": 300,
         "main_bm_after": 0.0,
         "after_exit": [["wait", 2], "disenchant_all"]
       },
@@ -261,7 +262,7 @@
         "aura_after": 85.0,
         "aura_for": 10.0,
         "main_bm_after": 143.0,
-        "after_exit": [["wait", 2], "cancel_bm"],
+        "after_exit": [["wait", 2]],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      ["tap", "="],
                      "move_to_A",
@@ -280,6 +281,12 @@
                      ["kill_bm", "Awakened Nazabrum", "offensive_boss_loop"],
                      ["kill_all", "any monster", "kill_loop", 3.0],
                      "final_sequence"]
+      },
+      "fn": {
+        "hard_limit_seconds": 420
+      },
+      "tm": {
+        "hard_limit_seconds": 480
       }
     }
   },
