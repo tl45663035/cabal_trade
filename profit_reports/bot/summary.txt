@@ -4,14 +4,14 @@ level     done  limit  successful
 CA1          0      5           0
 CA2          0      5           0
 CA3          0      5           0
-CA4          0      7           0
-CA5          1      7           0
+CA4          1      7           1
+CA5          2      7           1
 CA6          0     10           0
 CA7          0     15           0
 ICE          0     30           0
 FIRE         0     30           0
 TRAIN        0     30           0
-total        1    144           0
+total        3    144           2
 
 
 LAST 7 DAYS -- 2026-10-27 to 2026-11-02, each day midnight to midnight Central
@@ -24,12 +24,12 @@ Thu 2026-10-29            10.38h   24.00h  491.72M      47.36M          9.90B   
 Fri 2026-10-30            23.63h   24.00h    2.22B      93.80M         25.14B         22.92B  36.26K    8.8%
 Sat 2026-10-31            22.35h   24.00h    1.23B      55.02M         22.75B         21.52B  35.27K    5.4%
 Sun 2026-11-01            23.90h   24.00h    1.58B      66.18M         27.27B         25.69B  40.37K    5.8%
-Mon 2026-11-02 (so far)   17.45h   17.73h  693.60M      39.75M          8.85B          8.16B  15.60K    7.8%
+Mon 2026-11-02 (so far)   17.70h   17.99h  693.60M      39.18M          8.85B          8.16B  15.60K    7.8%
 ============================================================================================================
-7 DAYS                   144.34h  161.73h    9.00B  62,377,689137,544,301,005128,540,536,329 194.95K    6.5%
+7 DAYS                   144.60h  161.99h    9.00B  62,267,816137,544,301,005128,540,536,329 194.95K    6.5%
 
 
-PROFIT SUMMARY -- sold since 2026-11-02 00:00 Central (as of 17:43 Central)
+PROFIT SUMMARY -- sold since 2026-11-02 00:00 Central (as of 17:59 Central)
 
 item                      profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------
@@ -57,7 +57,7 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-02_101455_run.log, board after pass 82 (live)
+ROWS -- 2026-11-02_101455_run.log, board after pass 84 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    69.78M    99.00M   +29.22M    99.00M    69.78M    29.22M
     2  Yekaterina VIP Membership               x1   100.50M   115.00M   +14.50M   115.00M   100.50M    14.50M
@@ -65,29 +65,29 @@ ROWS -- 2026-11-02_101455_run.log, board after pass 82 (live)
     4  Force Gem Package                       x1   175.00M   175.00M        +0   175.00M   175.00M         0
     5  Force Core(Highest                      x1   333.33K   333.33K        +0   333.33K   333.33K         0
     6  Force Core(Highest                     x65   355.91K   328.99K   -26.92K    21.38M    23.13M    -1.75M
-    7  Upgrade Core (Ultimate                  x7   293.60K   376.97K   +83.37K     2.64M     2.06M   583.60K
-    8  Force Core(High                        x11   245.20K   286.90K   +41.70K     3.16M     2.70M   458.72K
-    9  Force Core (Ultimate                   x71   434.30K   441.79K    +7.50K    31.37M    30.84M   532.22K
-   10  Force Core (Ultimate                   x58   434.30K   441.79K    +7.50K    25.62M    25.19M   434.71K
-   11  Force Core (Ultimate                   x47   434.30K   441.79K    +7.49K    20.76M    20.41M   352.22K
-   12  Force Core(High                         x7   245.98K   286.90K   +40.92K     2.01M     1.72M   286.43K
-   13  Force Core(High                         x5   240.00K   286.90K   +46.90K     1.43M     1.20M   234.48K
-   14  Upgrade Core (Ultimate                x238   308.54K   376.97K   +68.43K    89.72M    73.43M    16.29M
+    7  Upgrade Core (Ultimate                  x7   293.60K   376.96K   +83.36K     2.64M     2.06M   583.55K
+    8  Force Core(High                        x11   245.20K   286.89K   +41.70K     3.16M     2.70M   458.66K
+    9  Force Core (Ultimate                   x71   434.30K   441.79K    +7.49K    31.37M    30.84M   531.79K
+   10  Force Core (Ultimate                   x58   434.30K   441.79K    +7.49K    25.62M    25.19M   434.36K
+   11  Force Core (Ultimate                   x47   434.30K   441.78K    +7.49K    20.76M    20.41M   351.94K
+   12  Force Core(High                         x7   245.98K   286.89K   +40.91K     2.01M     1.72M   286.39K
+   13  Force Core(High                         x5   240.00K   286.89K   +46.89K     1.43M     1.20M   234.45K
+   14  Upgrade Core (Ultimate                x238   308.54K   376.96K   +68.43K    89.72M    73.43M    16.29M
    15  Force Core(Highest                     x89   300.00K   328.99K   +28.99K    29.28M    26.70M     2.58M
-   16  Upgrade Core (Ultimate                x250   308.54K   376.97K   +68.43K    94.24M    77.13M    17.11M
-   17  Upgrade Core (Ultimate                 x38   308.54K   376.97K   +68.43K    14.32M    11.72M     2.60M
-    balance now 8.33B
-  pass 82: 17 relisted, 13 empty, 0 skipped; 9553.5 minute(s) left
+   16  Upgrade Core (Ultimate                x250   308.54K   376.96K   +68.42K    94.24M    77.13M    17.11M
+   17  Upgrade Core (Ultimate                 x38   308.54K   376.96K   +68.42K    14.32M    11.72M     2.60M
+    balance now 8.34B
+  pass 84: 17 relisted, 13 empty, 0 skipped; 9537.7 minute(s) left
 DUNGEON: the dungeon is due; trading stops here and the dungeon runs
 restoring the default state:
   Escape: window closed
   Inventory already closed
   dungeon: the boss is due; killing it
 chaos_arena CA5 [opening, step 1 of 8]: wait_timer 5
-  0.0s left on the timer; waiting until 5s are left
+  0.4s left on the timer; waiting until 5s are left
   5s left on the timer
 chaos_arena CA5 [opening, step 2 of 8]: inventory
-  Inventory shut: slot grid 0.10, needs 0.33
+  Inventory shut: slot grid 0.09, needs 0.33
   inventory opened
   inventory tab 1 at [1458, 181]
   inventory closed
@@ -99,7 +99,7 @@ chaos_arena CA5 [opening, step 4 of 8]: kill Gate of Chaos
   the HP bar reads 'Lv.145GateofChaos': Gate of Chaos is targeted (gate, chaos), so no more auto target
   1 ` press(es) before 'Gate of Chaos' was targeted
   the HP bar reads '': Gate of Chaos is gone, so it is dead
-  kill 'Gate of Chaos': dead after 1 round(s) in 8.9s
+  kill 'Gate of Chaos': dead after 1 round(s) in 5.5s
 chaos_arena CA5 [opening, step 5 of 8]: bm_aura
   main_bm right-clicked 0.5s apart, over and over for 5s from the first click; aura 80s after the first, right-clicked over and over for 10s with no `
   10 round(s) of main_bm in 5.1s
@@ -112,20 +112,23 @@ chaos_arena CA5 [get_to_middle, step 7 of 8]: get_to_middle
 chaos_arena CA5 [get_to_middle, step 8 of 8]: kill_bm Chaotic Orca
   kill_bm 'Chaotic Orca': the HP bar is read all the time; ` until it shows 'orca', then main_bm -> aura -> C+1 -> C+3 -> C+4 -> C+5 -> C+6/C+7/C+8 (switching every 15s) used from the hotbar 0.5s apart; each buff right-clicked 5 times 0.1s apart, the first round from aura; aura only from 80s after BM over and over, with ` every 0.3s between attacks (not while the named target is locked), stopped the moment none of them shows; in a BM its attack keys go with the ` presses and in the loop, taking turns, one every 0.5s at most
   the HP bar reads 'Lv.195ChaoticOrca': Chaotic Orca is targeted (orca), so no more auto target
-  42 ` press(es) before 'Chaotic Orca' was targeted
-       stock at its listed price                                                                      856.38M
-       Alz, latest balance line                                                                         8.33B
+  13 ` press(es) before 'Chaotic Orca' was targeted
+  the HP bar reads '': Chaotic Orca is gone, so it is dead
+  kill_bm 'Chaotic Orca': dead after 1 round(s) in 30.0s
+  the sequence is done; ` every 0.3s until the dungeon end screen, up to 60s; 'Chaotic Orca' is killed again whenever the HP bar shows it
+       stock at its listed price                                                                      856.37M
+       Alz, latest balance line                                                                         8.34B
        Cash at the voucher price                                                                      174.00M
        gems at the voucher price                                                                       14.79M
        NET WORTH                                                                                        9.38B
 
 
-MARKET -- 2026-11-02_101455_run.log, pass 82, log last written 17:43 Central (live)
+MARKET -- 2026-11-02_101455_run.log, pass 84, log last written 17:59 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         3        -        -       -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  1  528.00K  529.98K   1.98K      0.4%      0
+Chaos Core                  0  525.00K  529.98K   4.98K      0.9%      0
 Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            3        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     4        -        -       -         -      -  holds the most it can want, 3; not priced
