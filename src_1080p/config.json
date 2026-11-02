@@ -703,7 +703,7 @@
     "bm_loop": ["main_bm", "aura", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
     "once_per_target": ["5"],
     "bm_attack": {"keys": ["5", "6"], "main_bm": ["5"], "alternate_bm": ["3", "4"]},
-    "bm_attack_gap": 0.5,
+    "bm_attack_gap": 1.0,
     "kill_loop": ["5"],
     "main_kill_loop": ["5", "`"],
     "main_boss_loop": ["5", "`", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
