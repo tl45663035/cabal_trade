@@ -1036,7 +1036,7 @@ def cancel_bm_clicks(dungeon_name):
                                           CANCEL_BM_CLICKS))
 
 
-def cancel_bm(dungeon_name, verbose=True, span=None):
+def cancel_bm(dungeon_name, verbose=True, span=None, keys=()):
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     started = time.monotonic()
@@ -1054,6 +1054,8 @@ def cancel_bm(dungeon_name, verbose=True, span=None):
             calibration._button(_INPUT["MOUSEEVENTF_RIGHTDOWN"],
                                 _INPUT["MOUSEEVENTF_RIGHTUP"], *BM_ICON,
                                 CANCEL_BM_SPAM_GAP)
+            for key in keys:
+                tap(KEYS[key])
             clicks += 1
     calibration.snap("cancel_bm")
     MAIN_BM_STATE["on"] = False
@@ -1071,6 +1073,8 @@ def cancel_bm(dungeon_name, verbose=True, span=None):
                     f"from the first")
         print(f"  BM icon right-clicked {clicks} times at {list(BM_ICON)}, "
               f"{how}"
+              + (f"; {' and '.join(keys)} tapped after each click" if keys
+                 else "")
               + ("; the aura still due for that BM is dropped" if pending
                  else ""))
 
@@ -3681,7 +3685,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             click(*TAB_TWO, 0.0)
         elif name == "cancel_bm":
             cancel_bm(dungeon_name, verbose,
-                      float(rest[0]) if rest else None)
+                      float(rest[0]) if rest else None, rest[1:])
         elif name == "close_notification":
             close_notification(verbose)
         elif name == "disenchant_all":
