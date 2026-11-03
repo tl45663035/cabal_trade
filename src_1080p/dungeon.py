@@ -310,8 +310,10 @@ REVIVE_SETTLE = float(_DUNGEON["revive_settle"])
 DEATH_WATCH_EVERY = float(_DUNGEON["death_watch_every"])
 BANNER = _DUNGEON["banner_window"]
 BANNER_FILL = _DUNGEON["banner_fill"]
-BANNER_SAFE = set(BANNER_FILL["dungeons"]) if BANNER_FILL else set()
-BANNER_FILLS = {"window": None, "done": 0}
+BANNER_FIRST = list(BANNER_FILL.get("first", [])) if BANNER_FILL else []
+BANNER_SAFE = (set(BANNER_FILL["dungeons"]) | set(BANNER_FIRST)
+               if BANNER_FILL else set())
+BANNER_FILLS = {"window": None, "done": 0, "first": []}
 DEATH_WATCH = {"on": False, "armed": False, "entered": False, "again": False}
 DEATH_LOCK = threading.Lock()
 CHAT_OPEN = float(_DUNGEON["chat_open"])
@@ -5581,23 +5583,36 @@ def banner_fill(dungeon_name, verbose=True):
     if not left:
         return None
     if BANNER_FILLS["window"] != start:
-        BANNER_FILLS.update(window=start, done=0)
+        BANNER_FILLS.update(window=start, done=0, first=[])
     most = (None if BANNER_FILL.get("runs") is None
             else int(BANNER_FILL["runs"]) - BANNER_FILLS["done"])
+    if most is not None and most <= 0:
+        return None
+    lead = list(BANNER_FIRST)
+    for done in BANNER_FILLS["first"]:
+        lead.remove(done)
+    lead = [fill for fill in lead
+            if not limit_reached(fill) and fill != CUT_OFF["dungeon"]]
     pool = [(fill, run_cost(fill), runs_left(fill))
             for fill in BANNER_FILL["dungeons"]
             if not limit_reached(fill) and fill != CUT_OFF["dungeon"]]
-    if not pool or (most is not None and most <= 0):
-        return None
-    (idle, spill, _count), plan = fill_plan(left, pool, most)
+    _score, rest = fill_plan(left - sum(map(run_cost, lead)), pool,
+                             None if most is None else most - len(lead))
+    plan = lead + rest
     if not plan:
         return None
+    total = sum(map(run_cost, plan))
+    idle, spill = max(0.0, left - total), max(0.0, total - left)
     BANNER_FILLS["done"] += 1
+    if plan[0] in lead:
+        BANNER_FILLS["first"].append(plan[0])
     if verbose:
         end = start + length
         print(f"{dungeon_name}: the Surprise Attack banner keeps it out until "
               f":{end:%M} ({left:.0f}s), so {' -> '.join(plan)}, whose "
               f"recordings stay clear of the banner, fill the wait"
+              + (f", {' and '.join(lead)} first (once per banner)" if lead
+                 else "")
               + (f" with {idle:.0f}s of it left over" if idle
                  else f" and end about {spill:.0f}s after :{end:%M}")
               + f"; {plan[0]} now"
