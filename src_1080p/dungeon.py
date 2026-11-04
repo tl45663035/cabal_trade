@@ -111,6 +111,7 @@ ENTER_WORD = _DUNGEON["enter_word"]
 CANNOT_ENTER_WORD = _DUNGEON["cannot_enter_word"]
 PLAY_TIME_REFILL = _DUNGEON["play_time_refill"]
 REFILL = {"done": False}
+NO_PLAY_TIME = {"day": None, "names": []}
 ENTRIES_LEFT = re.compile(r"\((\d+|[Oo])\s*/\s*(\d+)\)")
 RESETS_USED = re.compile(r"(\d+)\s*/\s*(\d+)")
 CHALLENGE_WORD = _DUNGEON["challenge_word"]
@@ -150,6 +151,7 @@ ROTATION_GROUPS = ([group if isinstance(group, dict)
 ROTATION_NAMES = list(dict.fromkeys(name for group in ROTATION_GROUPS
                                     for name in group["dungeons"]))
 ROTATION_RUNS = int(_DUNGEON.get("rotation_runs", 1))
+ANY_ORDER = bool(ROTATION) and all(isinstance(name, str) for name in ROTATION)
 DEATH = _DUNGEON.get("death")
 HP_TEXT = re.compile(r"(\d+)/(\d+)")
 FAILED_RUNS = {"in_a_row": 0}
@@ -255,8 +257,8 @@ BM_CYCLE = {"slot": None, "ends": None, "extended": False, "last": None,
             "aura_at": None}
 OTHER_BM_EVERY = float(BM_CYCLE_SET["other_every"])
 OTHER_AURA_AFTER = float(BM_CYCLE_SET["other_aura_after"])
-BM_OFF = {"at": None}
-COOLDOWN = {"after": None}
+BM_OFF = {"at": None, "slot": None}
+COOLDOWN = {"after": None, "bm": None}
 BOUGHT_AHEAD = set()
 SEARCH_ATTACK = {"keys": []}
 MAIN_BM_OFF = {"at": None}
@@ -847,12 +849,23 @@ def pre_run_buys(dungeon_name, location, verbose=True):
                   f"run(s)")
     ahead = set(BOUGHT_AHEAD)
     BOUGHT_AHEAD.clear()
+    done = dungeon_runs_today()
     for name in pre_run_names(dungeon_name):
+        item, every = PURCHASES[name]["name"], int(PURCHASES[name]["every"])
         if name in ahead:
             if verbose:
-                print(f"  {PURCHASES[name]['name']} was bought right after the "
-                      f"last run, so not again now")
+                print(f"  {item} was bought right after the last run, so not "
+                      f"again now")
             continue
+        if done % every:
+            if verbose:
+                print(f"  {done} dungeon run(s) so far today; {item} every "
+                      f"{every} runs: the next one is bought in "
+                      f"{every - done % every} run(s)")
+            continue
+        if verbose:
+            print(f"  {done} dungeon run(s) so far today; {item} every "
+                  f"{every} runs: buying it now")
         try:
             buy_max([name], verbose)
         except RuntimeError as exc:
@@ -872,8 +885,10 @@ def after_run_buys(dungeon_name, verbose=True):
     if not after:
         return
     tab = PURCHASES[after[0]]["inventory_tab"]
+    done = dungeon_runs_today()
     ahead = [name for name in pre_run_names(dungeon_name)
-             if name not in after and PURCHASES[name]["inventory_tab"] == tab]
+             if name not in after and PURCHASES[name]["inventory_tab"] == tab
+             and done % int(PURCHASES[name]["every"]) == 0]
     try:
         buy_max(after + ahead, verbose)
     except RuntimeError as exc:
@@ -902,7 +917,8 @@ def buy_max(names, verbose=True):
             print(f"  Alt+click {item['name']} at {[x, y]}")
         calibration.alt_click(x, y, settle=0.0)
         ok = BUTTONS["key_ok"]
-        up, seen = wait_for(tuple(ok["window"]), ok["word"], BUTTON_TIMEOUT)
+        wait = float(item.get("window_wait", BUTTON_TIMEOUT))
+        up, seen = wait_for(tuple(ok["window"]), ok["word"], wait)
         if up:
             type_quantity(QUANTITY_MAX)
             if verbose:
@@ -915,7 +931,7 @@ def buy_max(names, verbose=True):
                           "nothing was bought")
                 press_button("key_cancel", 0.0, verbose)
         elif verbose:
-            print(f"  no purchase window within {BUTTON_TIMEOUT:g}s; the "
+            print(f"  no purchase window within {wait:g}s; the "
                   f"{ok['word']} window reads {seen!r}, so nothing bought")
     press(_INPUT["VK_N"])
     if wait_for(tuple(shop["window"]), shop["word"], 0)[0]:
@@ -1063,7 +1079,8 @@ def cancel_bm(dungeon_name, verbose=True, span=None, keys=()):
     MAIN_BM_STATE["on"] = False
     ALT_BM["on"] = False
     if BM_CYCLE["slot"] is not None:
-        BM_CYCLE["off"][BM_CYCLE["slot"]] = time.monotonic()
+        BM_CYCLE["off"][BM_CYCLE["slot"]] = BM_OFF["at"]
+    BM_OFF["slot"] = BM_CYCLE["slot"] if span is not None else None
     BM_CYCLE.update(last=BM_CYCLE["slot"] or BM_CYCLE["last"], slot=None,
                     ends=None, extended=False, resume=False)
     pending = AURA_DUE["at"] is not None
@@ -1085,19 +1102,38 @@ def setting(dungeon_name, key):
     return DUNGEONS[dungeon_name].get(key, _DUNGEON[key])
 
 
+class NoPlayTime(BaseException):
+    pass
+
+
 def refill_play_time(row_y, verbose=True):
     refill = PLAY_TIME_REFILL
     settle = float(refill["settle"])
+    since = since_reset()
+    if since is None:
+        raise RuntimeError(
+            f"{CANNOT_ENTER_WORD} {ENTER_WORD}, but there is no online time, "
+            f"so the time left before the reset is unknown and no Refill "
+            f"Time can be picked. Nothing clicked.")
+    left = (datetime.timedelta(days=1) - since).total_seconds()
+    fits = [option for option in refill["time_options"]
+            if float(option["hours"]) * 3600 <= left]
+    if not fits:
+        raise NoPlayTime(
+            f"{CANNOT_ENTER_WORD} {ENTER_WORD}, and the reset is "
+            f"{left / 60:.1f} min away: every Refill Time would run past "
+            f"it. Nothing clicked.")
+    choice = max(fits, key=lambda option: float(option["hours"]))
     if verbose:
         print(f"  {CANNOT_ENTER_WORD} {ENTER_WORD}: the dungeon play time is "
-              f"refilled: "
+              f"refilled with {choice['name']!r}, the longest Refill Time "
+              f"that ends before the reset {left / 60:.1f} min away: "
               f"Refill on the row at {[refill['row_x'], row_y]}, the gem "
-              f"option at {refill['gem']}, {refill['time_name']!r} from the "
-              f"Refill Time list, Refill at {refill['refill']}, then "
-              f"{BUTTONS['warp_yes']['word']}")
+              f"option at {refill['gem']}, {choice['name']!r} from the "
+              f"Refill Time list at {choice['point']}, Refill at "
+              f"{refill['refill']}, then {BUTTONS['warp_yes']['word']}")
     for point in ([refill["row_x"], row_y], refill["gem"],
-                  refill["time_menu"], refill["time_option"],
-                  refill["refill"]):
+                  refill["time_menu"], choice["point"], refill["refill"]):
         click(*point, settle)
     press_button("warp_yes", settle, verbose)
     REFILL["done"] = True
@@ -2187,11 +2223,11 @@ def swap_bm_aura(dungeon_name, pause, verbose=True):
     went_off = BM_CYCLE["off"].get(following)
     since = None if went_off is None else time.monotonic() - went_off
     if (BM_CYCLE["slot"] is not None and since is not None
-            and since < float(BM_CYCLE_SET["cooldown"])):
+            and since < float(BM_CYCLE_SET["cooldown"][following])):
         if verbose:
             print(f"  BM cycle: {following} went off {since:.0f}s ago, inside "
-                  f"its {BM_CYCLE_SET['cooldown']:g}s cooldown, so {last} "
-                  f"stays on"
+                  f"its {BM_CYCLE_SET['cooldown'][following]:g}s cooldown, "
+                  f"so {last} stays on"
                   + (" and already has its aura" if BM_CYCLE["extended"]
                      else " and gets its aura now"))
         if not BM_CYCLE["extended"]:
@@ -3058,7 +3094,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
     OVER.clear()
     END["at"], END["defeated"], END["overtime"] = None, False, False
     END["quest_failed"] = False
-    BM_OFF["at"] = None
+    BM_OFF.update(at=None, slot=None)
     ALT_BM["on"] = False
     BM_CYCLE.update(slot=None, ends=None, extended=False, resume=False,
                     keep_aura=False, other=None, pressed=None,
@@ -3653,7 +3689,7 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             main_bm_now(float(setting(dungeon_name, "bm_aura_for")),
                         verbose=verbose)
         elif name == "bm_cycle":
-            cycle_cast(rest[0] if rest else BM_CYCLE_SET["slots"][0], verbose,
+            cycle_cast(rest[0] if rest else start_bm(dungeon_name), verbose,
                        first_hunt(dungeon_name, place,
                                   steps[number:number + 1]))
         elif name == "heal_every":
@@ -3907,19 +3943,58 @@ def bm_off_at():
     return BM_OFF["at"] if BM_OFF["at"] is not None else time.monotonic()
 
 
-def cool_down(dungeon_name, rested, verbose=True):
-    cooldown = float(setting(dungeon_name, "cooldown"))
-    left = rested + cooldown - time.monotonic()
+def start_bm(dungeon_name):
+    return DUNGEONS[dungeon_name].get("start_bm", BM_CYCLE_SET["slots"][0])
+
+
+def first_bm(dungeon_name):
+    for step in DUNGEONS[dungeon_name]["sequence"]:
+        name = step[0] if isinstance(step, list) else step
+        if name == "bm_cycle":
+            return (step[1] if isinstance(step, list) and len(step) > 1
+                    else start_bm(dungeon_name))
+        if name in ("bm_aura", "main_bm", "spam", "swap_bm_aura",
+                    "press_other_bm"):
+            return None
+    return None
+
+
+def plan_cooldown(dungeon_name, after):
+    first = first_bm(dungeon_name)
+    known = (after is not None and first is not None
+             and BM_OFF["slot"] is not None and after[1] == BM_OFF["at"])
+    COOLDOWN.update(after=after,
+                    bm=(first, BM_OFF["slot"]) if known else None)
+
+
+def cool_down(dungeon_name, rested, verbose=True, bm=None):
+    now = time.monotonic()
+    if bm is None:
+        cooldown = float(setting(dungeon_name, "cooldown"))
+        left = rested + cooldown - now
+        ready = (f"the {cooldown:g}s cooldown after the BM cancel passed "
+                 f"{-left:.1f}s ago, during the exit and the steps after it")
+        due = f"{cooldown:g}s cooldown after the BM cancel"
+    else:
+        first, last = bm
+        cooldown = float(BM_CYCLE_SET["cooldown"][first])
+        went_off = BM_CYCLE["off"].get(first)
+        since = None if went_off is None else now - went_off
+        left = 0.0 if since is None else cooldown - since
+        head = f"the last run ended on {last} and this one starts with {first}"
+        ready = head + (", not cast yet in this launch" if since is None
+                        else f", off {since:.1f}s ago, past its {cooldown:g}s "
+                             f"cooldown")
+        due = (None if since is None
+               else f"{head}, off {since:.1f}s ago, inside its {cooldown:g}s "
+                    f"cooldown")
     if left <= 0:
         if verbose:
-            print(f"  {dungeon_name}: the {cooldown:g}s cooldown after the BM "
-                  f"cancel passed {-left:.1f}s ago, during the exit and the "
-                  f"steps after it; the next run starts now")
+            print(f"  {dungeon_name}: {ready}; the next run starts now")
         return
     pops = list(setting(dungeon_name, "cooldown_loop"))
     if verbose:
-        print(f"  {dungeon_name}: {cooldown:g}s cooldown after the BM cancel; "
-              f"{left:.1f}s to go before the next run"
+        print(f"  {dungeon_name}: {due}; {left:.1f}s to go before the next run"
               + (f", right-clicking {' -> '.join(pops)} {LOOP_GAP:g}s apart "
                  f"meanwhile" if pops else ""))
     if pops:
@@ -3957,8 +4032,9 @@ def start_dungeon(verbose=True, tab_two=True):
             f"{list(CHALLENGE_WINDOW)} within {TRANSFER_TIMEOUT:g}s; it reads "
             f"{seen!r}. Nothing clicked.")
     after, COOLDOWN["after"] = COOLDOWN["after"], None
+    bm, COOLDOWN["bm"] = COOLDOWN["bm"], None
     if after is not None:
-        cool_down(*after, verbose)
+        cool_down(*after, verbose, bm)
     point = centre(CHALLENGE_WINDOW)
     if verbose:
         print(f"  {CHALLENGE_WORD} at {point}")
@@ -3989,10 +4065,9 @@ def _state():
 
 
 def internet_now():
-    import online_clock
     try:
-        return online_clock.online_utc()
-    except OSError:
+        return online_now()
+    except RuntimeError:
         return None
 
 
@@ -4240,6 +4315,10 @@ def dungeon_counts(state, today):
 
 def runs_today(dungeon_name):
     return dungeon_counts(_state(), server_day()).get(dungeon_name, 0)
+
+
+def dungeon_runs_today():
+    return sum(dungeon_counts(_state(), server_day()).values())
 
 
 def successes_today(dungeon_name):
@@ -4553,7 +4632,13 @@ def _calibrate_list(rows, verbose=True):
 
 def limit_reached(dungeon_name):
     limit = DUNGEONS[dungeon_name].get("daily_limit")
-    return limit is not None and runs_today(dungeon_name) >= int(limit)
+    return out_of_play_time(dungeon_name) or (
+        limit is not None and runs_today(dungeon_name) >= int(limit))
+
+
+def out_of_play_time(dungeon_name):
+    return (dungeon_name in NO_PLAY_TIME["names"]
+            and NO_PLAY_TIME["day"] == server_day())
 
 
 def level_left(level):
@@ -5691,6 +5776,24 @@ def run_or_relog(dungeon_name, location, after, verbose=True):
         return None, False
 
 
+def run_with_play_time(dungeon_name, after, verbose=True):
+    try:
+        return run_or_relog(dungeon_name, only_location(dungeon_name), after,
+                            verbose)
+    except NoPlayTime as exc:
+        group = PLAY_TIME_REFILL["group"]
+        names = group if dungeon_name in group else [dungeon_name]
+        today = server_day()
+        held = NO_PLAY_TIME["names"] if NO_PLAY_TIME["day"] == today else []
+        NO_PLAY_TIME.update(day=today, names=held + [name for name in names
+                                                     if name not in held])
+        if verbose:
+            print(f"{dungeon_name}: {exc} So {', '.join(names)} count as "
+                  f"done until the reset, and the loop goes on without them")
+        escape_everything(verbose)
+        return after, False
+
+
 def run_in_turn(dungeon_name, location, after, verbose=True):
     import recovery
     RUN_OUTCOME["failed"] = False
@@ -5717,8 +5820,9 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
     powerful_pot_due(dungeon_name, verbose)
     if after is None:
         start_block(dungeon_name, location, verbose)
-    COOLDOWN["after"] = (after if after is not None or BM_OFF["at"] is None
-                         else (dungeon_name, BM_OFF["at"]))
+    plan_cooldown(dungeon_name,
+                  after if after is not None or BM_OFF["at"] is None
+                  else (dungeon_name, BM_OFF["at"]))
     if DEATH is not None and dead():
         wait_for_respawn(verbose)
         return None
@@ -5846,6 +5950,84 @@ def rotation_done(dungeon_name, successful):
         and successes_today(dungeon_name) >= int(successful))
 
 
+def show_rotation(label, names, successful, turn, verbose=True):
+    if verbose:
+        held = [name for name in names if out_of_play_time(name)
+                and runs_today(name) < int(DUNGEONS[name]["daily_limit"])]
+        print(f"{label}: "
+              + ", ".join(f"{name} {runs_today(name)} of "
+                          f"{DUNGEONS[name]['daily_limit']}"
+                          + ("" if successful is None
+                             else f" ({successes_today(name)} of "
+                                  f"{successful} successful)")
+                          + (", no play time until the reset"
+                             if name in held else "")
+                          for name in names)
+              + ("" if turn
+                 else f"; the rest are at their daily limits and "
+                      f"{', '.join(held)} have no play time until the reset"
+                 if held
+                 else "; every daily limit is reached"
+                 if successful is None
+                 else f"; each has {successful} successful or is at "
+                      f"its daily limit"))
+    if LIVE["view"] is not None:
+        LIVE["view"].rotation(
+            [(name, runs_today(name), DUNGEONS[name]["daily_limit"],
+              None if successful is None else successes_today(name),
+              rotation_done(name, successful)) for name in names],
+            not turn)
+
+
+def next_in_turn(turn, skip, verbose=True):
+    last = BM_OFF["slot"]
+    choices = [name for name in turn if name != skip] or turn
+    free = [name for name in choices
+            if last is not None and first_bm(name) not in (None, last)]
+    name = (free or choices)[0]
+    if verbose:
+        print(f"{name} next"
+              + (f", not {skip} again straight after its run"
+                 if skip in turn and skip != name else "")
+              + (": the BM the last run ended on is not known, so the list "
+                 "order" if last is None
+                 else f": the last run ended on {last} and {name} starts on "
+                      f"{first_bm(name)}" if free
+                 else f": the last run ended on {last} and no dungeon left "
+                      f"starts on the other BM, so the list order"))
+    return name
+
+
+def rotate_any(names, after=None, verbose=True, pool=None, day=None):
+    pool = names if pool is None else pool
+    skip = again = None
+    while True:
+        if new_day(day):
+            return after
+        turn = [name for name in names if not limit_reached(name)]
+        show_rotation("rotation in any order", names, None, turn, verbose)
+        if not turn:
+            return after
+        if turn == [CUT_OFF["dungeon"]]:
+            if verbose:
+                print(f"{turn[0]} was cut off by the disconnect, so it is "
+                      f"not entered again; the next dungeon in the rotation "
+                      f"goes next")
+            return after
+        name = again if again in turn else next_in_turn(turn, skip, verbose)
+        filler = banner_filler(name, pool, verbose)
+        if filler is None:
+            filler = banner_fill(name, verbose)
+        if filler is not None:
+            after, _relogged = run_with_play_time(filler, after, verbose)
+            continue
+        after, relogged = run_with_play_time(name, after, verbose)
+        again = name if DEATH_WATCH["again"] else None
+        skip = name if relogged or RUN_OUTCOME["failed"] else None
+        if RUN_OUTCOME["failed"] and verbose:
+            print(f"{name}: the run failed, so another dungeon goes next")
+
+
 def rotate(names, after=None, verbose=True, group=None, pool=None,
            day=None):
     group = {} if group is None else group
@@ -5857,25 +6039,8 @@ def rotate(names, after=None, verbose=True, group=None, pool=None,
             return after
         turn = [name for name in names
                 if not rotation_done(name, successful)]
-        if verbose:
-            print(f"rotation {' -> '.join(names)}: "
-                  + ", ".join(f"{name} {runs_today(name)} of "
-                              f"{DUNGEONS[name]['daily_limit']}"
-                              + ("" if successful is None
-                                 else f" ({successes_today(name)} of "
-                                      f"{successful} successful)")
-                              for name in names)
-                  + ("" if turn
-                     else "; every daily limit is reached"
-                     if successful is None
-                     else f"; each has {successful} successful or is at "
-                          f"its daily limit"))
-        if LIVE["view"] is not None:
-            LIVE["view"].rotation(
-                [(name, runs_today(name), DUNGEONS[name]["daily_limit"],
-                  None if successful is None else successes_today(name),
-                  rotation_done(name, successful)) for name in names],
-                not turn)
+        show_rotation(f"rotation {' -> '.join(names)}", names, successful,
+                      turn, verbose)
         if not turn:
             return after
         if turn == [CUT_OFF["dungeon"]]:
@@ -5898,11 +6063,10 @@ def rotate(names, after=None, verbose=True, group=None, pool=None,
                 if filler is None:
                     filler = banner_fill(name, verbose)
                 if filler is not None:
-                    after, _relogged = run_or_relog(
-                        filler, only_location(filler), after, verbose)
+                    after, _relogged = run_with_play_time(filler, after,
+                                                          verbose)
                     continue
-                after, relogged = run_or_relog(name, only_location(name),
-                                               after, verbose)
+                after, relogged = run_with_play_time(name, after, verbose)
                 if DEATH_WATCH["again"]:
                     continue
                 done += 1
@@ -5936,11 +6100,15 @@ def run_all(verbose=True):
     start_home(verbose)
     while True:
         day = server_day()
-        for group in ROTATION_GROUPS:
-            after = rotate(group["dungeons"], after, verbose, group,
-                           ROTATION_NAMES, day)
-            if new_day(day):
-                break
+        if ANY_ORDER:
+            after = rotate_any(ROTATION_NAMES, after, verbose, ROTATION_NAMES,
+                               day)
+        else:
+            for group in ROTATION_GROUPS:
+                after = rotate(group["dungeons"], after, verbose, group,
+                               ROTATION_NAMES, day)
+                if new_day(day):
+                    break
         for level in ORDER:
             if new_day(day):
                 break
@@ -5973,7 +6141,8 @@ def run_all(verbose=True):
             print(f"{CUT_OFF['dungeon']} was cut off by the disconnect and is "
                   f"the only dungeon with runs left, so it is not entered "
                   f"again on this server day" if left
-                  else "every dungeon in the loop is at its daily limit")
+                  else "every dungeon in the loop is at its daily limit or "
+                       "has no play time until the reset")
         CUT_OFF["dungeon"] = None
         try:
             idle(verbose)
@@ -6070,8 +6239,8 @@ def command(args):
                 powerful_pot_due(args[0])
             if run == 0:
                 start_block(args[0], location)
-            COOLDOWN["after"] = (None if rested is None
-                                 else (args[0], rested))
+            plan_cooldown(args[0], None if rested is None
+                          else (args[0], rested))
             if run_dungeon(args[0], location) is False:
                 break
             rested = bm_off_at()

@@ -63,10 +63,8 @@
     "enabled": false,
     "trading_dungeon": "chaos_arena",
     "order": [],
-    "rotation": [{"dungeons": ["ic1", "ic2", "eop"], "batch": 3},
-                 {"dungeons": ["tm"], "batch": null},
-                 {"dungeons": ["ice", "fire", "train"], "batch": 3},
-                 {"dungeons": ["fn", "valley"], "batch": null}],
+    "rotation": ["ic1", "ic2", "eop", "tm", "ice", "fire", "train", "pc",
+                 "fn", "valley"],
     "banner_fill": {"first": ["fn"], "dungeons": ["valley", "ic2"], "runs": null},
     "kill_combo": [
       ["use", "A+2", 2.0],
@@ -94,7 +92,8 @@
     "walk_frames": {"move_to_A": 0.5, "move_to_B": 0.5, "move_to_C": 0.5, "move_to_D": 0.5, "move_to_E": 0.5, "move_to_F": 0.5, "move_to_D1": 0.5, "move_to_G": 0.5, "move_to_H": 0.5, "move_to_I": 0.5, "move_to_J": 0.5, "move_to_K": 0.5, "move_to_L": 0.5},
     "purchases": {
       "elixir_myth": {"name": "Elixir of Myth (High)", "tab": "shop_dungeon",
-                      "cell": [39, 795], "inventory_tab": 1}
+                      "cell": [39, 795], "inventory_tab": 1, "every": 5,
+                      "window_wait": 1.0}
     },
     "pre_run_buys": ["elixir_myth"],
     "dungeons": {
@@ -114,6 +113,7 @@
         "after_exit": [["wait", 2], "after_exit", "close_notification"]
       },
       "ice": {
+        "start_bm": "main_bm",
         "after_run_buys": [],
         "difficulty": 5,
         "bm_aura_for": 3.0,
@@ -141,6 +141,7 @@
                      "final_sequence"]
       },
       "valley": {
+        "start_bm": "alternate_bm",
         "hard_limit_seconds": 300,
         "run_seconds": 131,
         "main_bm_after": 0.0,
@@ -165,6 +166,7 @@
                      ["kill_all", "any monster", "kill_loop", null]]
       },
       "fire": {
+        "start_bm": "main_bm",
         "after_exit": ["close_notification"],
         "after_run_buys": [],
         "difficulty": 5,
@@ -189,6 +191,7 @@
                      ["kill_bm", "Master of Fire Eurostia", "offensive_boss_loop"]]
       },
       "ic1": {
+        "start_bm": "alternate_bm",
         "challenge_wait": 2.0,
         "start_cancel_bm": false,
         "chat_skip": ["move_to_A"],
@@ -212,13 +215,14 @@
                      ["kill_all", "any monster", "kill_loop", null]]
       },
       "ic2": {
-        "challenge_wait": 2.0,
+        "start_bm": "main_bm",
+        "challenge_wait": 3.0,
         "start_cancel_bm": false,
         "chat_skip": ["move_to_A"],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
                      ["tap", "="],
                      "move_to_A",
-                     ["bm_cycle", "main_bm"],
+                     "bm_cycle",
                      ["kill_bm", "Illusive Gatekeeper", "kill_loop"],
                      ["kill_all", "any monster", "kill_loop", 2.0],
                      "move_to_B",
@@ -241,6 +245,7 @@
                      ["kill_all", "any monster", "kill_loop", null]]
       },
       "train": {
+        "start_bm": "alternate_bm",
         "after_exit": ["close_notification"],
         "after_run_buys": [],
         "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
@@ -271,7 +276,7 @@
                      "move_to_B",
                      ["kill_all", "any monster", "kill_loop", 1.0],
                      "move_to_C",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
+                     ["hold_kill_all", [["S", 1.0]], "any monster", "kill_loop", 1.0],
                      "move_to_D",
                      ["kill_all", "any monster", "kill_loop", 6.0],
                      "move_to_E",
@@ -293,6 +298,7 @@
         "after_exit": ["close_notification"]
       },
       "eop": {
+        "start_bm": "alternate_bm",
         "main_bm_after": 0.0,
         "main_bm_loops": {"kill_loop": "main_kill_loop"},
         "start_cancel_bm": false,
@@ -321,10 +327,15 @@
                      "final_sequence"]
       },
       "fn": {
+        "start_bm": "alternate_bm",
         "hard_limit_seconds": 420
       },
       "tm": {
+        "start_bm": "main_bm",
         "hard_limit_seconds": 480
+      },
+      "pc": {
+        "start_bm": "main_bm"
       }
     }
   },
