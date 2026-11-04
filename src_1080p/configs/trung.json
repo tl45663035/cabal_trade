@@ -228,7 +228,7 @@
                      "move_to_B",
                      ["kill_all", "any monster", "kill_loop"],
                      "move_to_C",
-                     ["kill_bm", "Volfid of Despair", "kill_loop"],
+                     ["step_kill_bm", [["E", "Q", 1.0], ["E", "Q", 1.0]], "Volfid of Despair", "kill_loop", 3.0],
                      ["kill_all", "any monster", "kill_loop", 2.0],
                      "cancel_bm",
                      ["wait", 11],

@@ -341,7 +341,8 @@ CHAT_READER = {"proc": None, "lines": None, "down": None, "down_run": None,
 CHAT_READER_LOCK = threading.Lock()
 KILL_DONE = {"at": None}
 KILL_STEPS = ("kill", "kill_bm", "kill_all", "kill_before_boss",
-              "hold_kill_all", "ride_kill_all", "look_kill_bm")
+              "hold_kill_all", "ride_kill_all", "look_kill_bm",
+              "step_kill_bm")
 FAILED_FRAMES = _DUNGEON["failed_frames"]
 FAILED_VIDEOS = _DUNGEON["failed_videos"]
 RUN_START = {"frame": None}
@@ -3566,6 +3567,39 @@ def look_kill_bm(dungeon_name, rest, verbose=True):
     kill_bm(name, words, verbose, loop, None, main_loop)
 
 
+def step_kill_bm(dungeon_name, rest, verbose=True):
+    steps, name, loop_name, search = rest[0], rest[1], rest[2], float(rest[3])
+    words = target_words(dungeon_name, name)
+    loop = list(_DUNGEON[loop_name])
+    main_loop = main_loop_for(dungeon_name, loop_name)
+    if kill_bm(name, words, verbose, loop, search, main_loop) or OVER.is_set():
+        return
+    taken, found = [], False
+    for key, back, seconds in steps:
+        if verbose:
+            print(f"  {name!r} not targeted: step {key} {float(seconds):g}s, "
+                  f"then {TARGET_KEY} again")
+        hold_key(key, float(seconds), verbose)
+        taken.append((back, float(seconds)))
+        found = kill_bm(name, words, verbose, loop, search, main_loop)
+        if OVER.is_set():
+            return
+        if found:
+            break
+    if verbose:
+        print(f"  {len(taken)} step(s) out, so the same back: "
+              + ", ".join(f"{back} {seconds:g}s"
+                          for back, seconds in reversed(taken)))
+    for back, seconds in reversed(taken):
+        hold_key(back, seconds, verbose)
+    if found:
+        return
+    if verbose:
+        print(f"  {name!r} not targeted after {len(taken)} step(s): "
+              f"{TARGET_KEY} from where it started until it shows")
+    kill_bm(name, words, verbose, loop, None, main_loop)
+
+
 def first_hunt(dungeon_name, place, following):
     if not following:
         return None
@@ -3773,6 +3807,9 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             end_aura_window(verbose)
         elif name == "look_kill_bm":
             look_kill_bm(dungeon_name, rest, verbose)
+            end_aura_window(verbose)
+        elif name == "step_kill_bm":
+            step_kill_bm(dungeon_name, rest, verbose)
             end_aura_window(verbose)
         elif name == "kill_all":
             kill_all(dungeon_name, rest, verbose)
@@ -5021,18 +5058,6 @@ class LiveView:
                 self.clear()
                 self.run = None
 
-    def rotation(self, parts, done):
-        look = VIEW_SET
-        out = [(look["rotation"], "quiet")]
-        for name, runs, limit, wins, complete in parts:
-            text = f"{name} {runs}/{limit}" + (
-                "" if wins is None else f" ({wins} {look['successful']})")
-            out += [(look["spacing"], None), (text, "done" if complete else None)]
-        if done:
-            out += [(look["spacing"], None), (look["all_done"], "pass")]
-        self.line("".join(self.paint(colour, text) if colour else text
-                          for text, colour in out))
-
     def boss(self, when):
         with self.lock:
             self.clear()
@@ -5971,12 +5996,6 @@ def show_rotation(label, names, successful, turn, verbose=True):
                  if successful is None
                  else f"; each has {successful} successful or is at "
                       f"its daily limit"))
-    if LIVE["view"] is not None:
-        LIVE["view"].rotation(
-            [(name, runs_today(name), DUNGEONS[name]["daily_limit"],
-              None if successful is None else successes_today(name),
-              rotation_done(name, successful)) for name in names],
-            not turn)
 
 
 def next_in_turn(turn, skip, verbose=True):

@@ -656,12 +656,11 @@
     "unique_file": "unique_drops.jsonl",
     "unique_ignore": ["Orphidia's Amulet"],
     "unique_days": 2,
-    "console_lines": ["^rotation ", "^\\S+ #\\d+: (pass|fail)", "^\\S+ #\\d+: room ", "unique item dropped", "WORLD BOSS", "^idle", "Ctrl \\d+ times:", "recording \\d+", "nothing done until the next reset", "logged out", "could not|not pushed|did not start|Error", "^█"],
+    "console_lines": ["^\\S+ #\\d+: (pass|fail)", "^\\S+ #\\d+: room ", "unique item dropped", "WORLD BOSS", "^idle", "Ctrl \\d+ times:", "recording \\d+", "nothing done until the next reset", "logged out", "could not|not pushed|did not start|Error", "^█"],
     "console_view": {"live": ["^\\S+ #\\d+: (pass|fail)", "^\\S+ #\\d+: room ", "unique item dropped in ",
-                              "^rotation ", "^\\s*WORLD BOSS", "^█"],
+                              "^\\s*WORLD BOSS", "^█"],
                      "banner": "BANNER WAIT", "banner_fill": "█", "banner_edge": "██",
                      "banner_width": 64, "banner_pad": 3,
-                     "rotation": "rotation", "all_done": "✓ all done", "successful": "ok",
                      "boss": "world boss", "boss_clock": "%H:%M %Z", "boss_running": "running",
                      "boss_pass": "✓ done", "boss_fail": "✗ failed", "boss_skipped": "skipped",
                      "cut": "…",
@@ -1554,11 +1553,11 @@
                      "move_to_D",
                      ["kill_all", "any monster", "kill_loop", 1.0],
                      "move_to_E",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
+                     ["kill_all", "any monster", "kill_loop", 3.0],
                      "move_to_F",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
+                     ["kill_all", "any monster", "kill_loop", 3.0],
                      "move_to_G",
-                     ["kill_all", "any monster", "kill_loop", 1.0]]
+                     ["kill_all", "any monster", "kill_loop", 3.0]]
       }
     },
     "finish": [
