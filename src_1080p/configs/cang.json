@@ -74,11 +74,11 @@
   "dungeon": {
     "enabled": false,
     "trading_dungeon": "chaos_arena",
-    "order": [],
+    "order": [7, 6],
     "rotation": [{"dungeons": ["ice", "train", "fire", "valley", "keldrasil"], "batch": 3},
                  {"dungeons": ["ic1", "ic2", "eop"], "batch": 3},
                  {"dungeons": ["fn", "tm"], "batch": null}],
-    "banner_fill": {"dungeons": ["fn"], "runs": 3},
+    "banner_fill": {"dungeons": ["fn"], "runs": 3, "levels": [7, 6]},
     "rotation_runs": 3,
     "wb_area_check": {"window": [1765, 106, 1875, 126], "word": "No Map Code",
                       "timeout": 5.0, "tries": 3},
@@ -111,7 +111,7 @@
     "notification_close": [1903, 834],
     "kill_combo": [
       ["use", "A+2", 2.0],
-      ["tap", "7", 2.0],
+      ["tap", "5", 2.0],
       ["tap", "6", 2.0]
     ],
     "main_bm": [987, 990],
@@ -183,8 +183,27 @@
       },
       "valley": {
         "hard_limit_seconds": 300,
+        "run_seconds": 131,
         "main_bm_after": 0.0,
-        "after_exit": [["wait", 2], "disenchant_all"]
+        "after_exit": [["wait", 2], "disenchant_all"],
+        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
+                     ["tap", "="],
+                     "bm_cycle",
+                     ["kill_all", "any monster", "kill_loop", 1.0],
+                     "move_to_A",
+                     ["kill_all", "any monster", "kill_loop", 1.0],
+                     "move_to_B",
+                     ["kill_all", "any monster", "kill_loop", 1.0],
+                     "move_to_C",
+                     ["kill_all", "any monster", "kill_loop", 1.0],
+                     "move_to_D",
+                     ["kill_all", "any monster", "offensive_boss_loop", 1.0],
+                     "move_to_E",
+                     ["kill_all", "any monster", "kill_loop", 1.0],
+                     "move_to_F",
+                     ["kill_all", "any monster", "kill_loop", 1.0],
+                     "move_to_G",
+                     ["kill_all", "any monster", "kill_loop", null]]
       },
       "eop": {
         "main_bm_after": 0.0,
