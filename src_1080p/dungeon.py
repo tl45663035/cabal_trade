@@ -313,8 +313,9 @@ DEATH_WATCH_EVERY = float(_DUNGEON["death_watch_every"])
 BANNER = _DUNGEON["banner_window"]
 BANNER_FILL = _DUNGEON["banner_fill"]
 BANNER_FIRST = list(BANNER_FILL.get("first", [])) if BANNER_FILL else []
+BANNER_LAST = list(BANNER_FILL.get("last", [])) if BANNER_FILL else []
 BANNER_SAFE = (set(BANNER_FILL["dungeons"]) | set(BANNER_FIRST)
-               if BANNER_FILL else set())
+               | set(BANNER_LAST) if BANNER_FILL else set())
 BANNER_FILLS = {"window": None, "done": 0, "first": []}
 DEATH_WATCH = {"on": False, "armed": False, "entered": False, "again": False}
 DEATH_LOCK = threading.Lock()
@@ -5659,6 +5660,21 @@ def runs_left(dungeon_name):
     return None if limit is None else int(limit) - runs_today(dungeon_name)
 
 
+def fill_left(dungeon_name):
+    if dungeon_name == CUT_OFF["dungeon"] or out_of_play_time(dungeon_name):
+        return 0
+    if dungeon_name == TRADING_DUNGEON:
+        return sum(max(0, level_left(level)) for level in ORDER)
+    return 0 if limit_reached(dungeon_name) else runs_left(dungeon_name)
+
+
+def fill_location(dungeon_name):
+    if dungeon_name == TRADING_DUNGEON:
+        return level_location(next(level for level in ORDER
+                                    if level_left(level) > 0))
+    return only_location(dungeon_name)
+
+
 def fill_plan(left, pool, most):
     best = {"score": None, "plan": []}
 
@@ -5710,6 +5726,10 @@ def banner_fill(dungeon_name, verbose=True):
                              None if most is None else most - len(lead))
     plan = lead + rest
     if not plan:
+        last = [(fill, run_cost(fill), fill_left(fill))
+                for fill in BANNER_LAST if fill_left(fill)]
+        _score, plan = fill_plan(left, last, most)
+    if not plan:
         return None
     total = sum(map(run_cost, plan))
     idle, spill = max(0.0, left - total), max(0.0, total - left)
@@ -5718,14 +5738,18 @@ def banner_fill(dungeon_name, verbose=True):
         BANNER_FILLS["first"].append(plan[0])
     if verbose:
         end = start + length
+        names = [fill_location(fill) if fill == TRADING_DUNGEON else fill
+                 for fill in plan]
         print(f"{dungeon_name}: the Surprise Attack banner keeps it out until "
-              f":{end:%M} ({left:.0f}s), so {' -> '.join(plan)}, whose "
+              f":{end:%M} ({left:.0f}s), so {' -> '.join(names)}, whose "
               f"recordings stay clear of the banner, fill the wait"
+              + (" (every other filler is out)" if plan[0] in BANNER_LAST
+                 else "")
               + (f", {' and '.join(lead)} first (once per banner)" if lead
                  else "")
               + (f" with {idle:.0f}s of it left over" if idle
                  else f" and end about {spill:.0f}s after :{end:%M}")
-              + f"; {plan[0]} now"
+              + f"; {names[0]} now"
               + ("" if most is None
                  else f" ({BANNER_FILLS['done']} of {BANNER_FILL['runs']} "
                       f"for this banner)"))
@@ -5803,7 +5827,7 @@ def run_or_relog(dungeon_name, location, after, verbose=True):
 
 def run_with_play_time(dungeon_name, after, verbose=True):
     try:
-        return run_or_relog(dungeon_name, only_location(dungeon_name), after,
+        return run_or_relog(dungeon_name, fill_location(dungeon_name), after,
                             verbose)
     except NoPlayTime as exc:
         group = PLAY_TIME_REFILL["group"]

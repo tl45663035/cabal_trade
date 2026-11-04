@@ -62,10 +62,11 @@
   "dungeon": {
     "enabled": false,
     "trading_dungeon": "chaos_arena",
-    "order": [],
+    "order": [7, 6],
     "rotation": ["ic1", "ic2", "eop", "tm", "ice", "fire", "train", "pc",
                  "fn", "valley"],
-    "banner_fill": {"first": ["fn"], "dungeons": ["valley", "ic2"], "runs": null},
+    "banner_fill": {"first": ["fn"], "dungeons": ["valley", "ic2"], "last": ["chaos_arena"],
+                    "runs": null},
     "kill_combo": [
       ["use", "A+2", 2.0],
       ["tap", "7", 2.0],
