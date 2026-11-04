@@ -333,6 +333,7 @@ CHAT_BOXES = [(_CHAT_LINES["left"], _CHAT_LINES["top"] + row * _CHAT_LINES["gap"
 UNIQUE_TEXT = re.compile(_DUNGEON["unique_pattern"], re.IGNORECASE)
 CHAT_SAME = float(_DUNGEON["chat_same"])
 UNIQUE_FILE = calibration.LOG_DIR / _DUNGEON["unique_file"]
+UNIQUE_SHOTS = calibration.LOG_DIR / _DUNGEON["unique_shots"]
 UNIQUE_IGNORE = [item.casefold() for item in _DUNGEON["unique_ignore"]]
 UNIQUE_DAYS = int(_DUNGEON["unique_days"])
 CHAT = {"seen": None, "run": None, "last": None, "fresh": False}
@@ -2685,23 +2686,57 @@ def read_chat_lines(image, verbose=True):
         if LIVE["view"] is not None:
             LIVE["view"].unique(item)
         try:
-            note_unique(owner, item, image)
+            saved = note_unique(owner, item, image, verbose)
+            if verbose and saved is not None:
+                print(f"  the screenshot of {item!r} is kept: {saved}")
         except BaseException as exc:
             if verbose:
                 print(f"  {item!r} was not written to {UNIQUE_FILE.name} "
                       f"({type(exc).__name__}: {exc})")
 
 
-def note_unique(owner, item, image):
+def unique_shot_when(owner):
+    from profit_summary import CLOCK
+    try:
+        now = internet_now()
+    except Exception:
+        now = None
+    return (now.astimezone(CLOCK).strftime(FAILED_FRAMES["time_format"])
+            if now is not None
+            else f"{owner['day']}_{FAILED_FRAMES['no_time']}")
+
+
+def save_unique_shot(owner, item, image):
+    name = re.sub(r"[^A-Za-z0-9()._-]+", "_",
+                  f"{unique_shot_when(owner)}_{owner['label']}_{item}"
+                  ).strip("_")
+    UNIQUE_SHOTS.mkdir(parents=True, exist_ok=True)
+    out, copy = UNIQUE_SHOTS / f"{name}.png", 1
+    while out.exists():
+        copy += 1
+        out = UNIQUE_SHOTS / f"{name}_{copy}.png"
+    image.save(out)
+    return out
+
+
+def note_unique(owner, item, image, verbose=True):
     try:
         calibration.snap("unique_drop", image)
     except Exception:
         pass
+    saved = None
+    try:
+        saved = save_unique_shot(owner, item, image)
+    except Exception as exc:
+        if verbose:
+            print(f"  the screenshot of {item!r} was not kept "
+                  f"({type(exc).__name__}: {exc})")
     with UNIQUE_FILE.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps({"day": owner["day"], "item": item,
                                  "dungeon": owner["name"],
                                  "run": owner["label"],
                                  "time": report_at()}) + "\n")
+    return saved
 
 
 def unique_days(day):
