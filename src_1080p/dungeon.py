@@ -2076,6 +2076,7 @@ def main_bm_now(seconds, reason="", verbose=True):
 
 def cycle_cast(slot, verbose=True, then=None):
     cast = float(BM_CYCLE_SET["cast"][slot])
+    gap = float(BM_CYCLE_SET["spam_gap"])
     AURA_DUE["at"] = None
     MAIN_BM_DUE["at"] = None
     BM_CYCLE["slot"] = slot
@@ -2092,12 +2093,13 @@ def cycle_cast(slot, verbose=True, then=None):
             if then is not None and TARGET_WATCH["watch"] is None:
                 TARGET_WATCH["watch"] = start_watch(*then)
         presses += 1
-        OVER.wait(LOOP_GAP)
+        OVER.wait(gap)
     BM_CYCLE.update(slot=slot, extended=False,
                     ends=started + cast + float(BM_CYCLE_SET["lasts"]))
     if verbose:
         print(f"  BM cycle: {slot} {slot_way(slot)} {presses} time(s) over its "
-              f"{cast:g}s cast, {TARGET_KEY} after {targeted} of them; it "
+              f"{cast:g}s cast, {gap:g}s apart, {TARGET_KEY} after "
+              f"{targeted} of them; it "
               f"should run out "
               f"{BM_CYCLE_SET['lasts']:g}s after the cast"
               + "".join(f"; {key} is pressed as {swap}"
@@ -6260,6 +6262,7 @@ def command(args):
         name = " ".join(args[2:])
         kill_bm(name, target_words(args[1], name))
     elif args[:1] == ["run"] and len(args) > 1:
+        start_reports()
         due = start(int(args[1]))
         if due is not None:
             wait_for_boss(due)
@@ -6282,10 +6285,12 @@ def command(args):
     elif len(args) > 1 and all(
             DUNGEONS.get(arg, {}).get("daily_limit") is not None
             for arg in args):
+        start_reports()
         watch_disconnect()
         watch_death()
         rotate(args)
     elif args[:1] and args[0] in DUNGEONS and _from_step() is not None:
+        start_reports()
         location = args[1] if len(args) > 1 else only_location(args[0])
         skipped = before_step(args[0], _from_step())
         timer = {"until": None, "limit": hard_limit(args[0]),
@@ -6299,6 +6304,7 @@ def command(args):
                     steps=DUNGEONS[args[0]]["sequence"][len(skipped):],
                     timer=timer)
     elif args[:1] and args[0] in DUNGEONS and _record_from() is not None:
+        start_reports()
         location = args[1] if len(args) > 1 else only_location(args[0])
         step = _record_from()
         before_step(args[0], step)
@@ -6307,6 +6313,7 @@ def command(args):
         if run_dungeon(args[0], location, until=step) is not False:
             record_from_here(step)
     elif args[:1] and args[0] in DUNGEONS:
+        start_reports()
         location = args[1] if len(args) > 1 else only_location(args[0])
         rested = None
         for run in range(_runs()):
