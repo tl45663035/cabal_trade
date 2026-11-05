@@ -24,12 +24,12 @@ Sun 2026-11-01            23.90h   24.00h    1.58B      66.18M         27.27B   
 Mon 2026-11-02            23.72h   24.00h  774.83M      32.67M         12.26B         11.49B  21.61K    6.3%
 Tue 2026-11-03            23.78h   24.00h  963.61M      40.52M         16.76B         15.80B  26.13K    5.7%
 Wed 2026-11-04            23.78h   24.00h    1.05B      44.21M         16.53B         15.48B  29.70K    6.4%
-Thu 2026-11-05 (so far)   16.26h   16.26h  506.64M      31.16M          7.80B          7.29B  11.47K    6.5%
+Thu 2026-11-05 (so far)   16.51h   16.51h  506.64M      30.68M          7.80B          7.29B  11.47K    6.5%
 ============================================================================================================
-7 DAYS                   157.42h  160.26h    8.32B  52,879,024128,508,798,822120,184,596,798 200.80K    6.5%
+7 DAYS                   157.68h  160.51h    8.32B  52,793,253128,508,798,822120,184,596,798 200.80K    6.5%
 
 
-PROFIT SUMMARY -- sold since 2026-11-05 00:00 Central (as of 16:15 Central)
+PROFIT SUMMARY -- sold since 2026-11-05 00:00 Central (as of 16:30 Central)
 
 item                      profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------
@@ -58,10 +58,10 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-04_192136_run_board.log, board during pass 189 at row 21, read 2026-11-05T16:15:23 (live)
+ROWS -- 2026-11-04_192136_run_board.log, board during pass 192 at row 2, read 2026-11-05T16:30:36 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    69.00M    98.00M   +29.00M    98.00M    69.00M    29.00M
-    2  Yekaterina VIP Membership               x1   103.50M   114.10M   +10.60M   114.10M   103.50M    10.60M
+    2  Yekaterina VIP Membership               x1   103.50M   113.10M    +9.60M   113.10M   103.50M     9.60M <- here
     3  Epic Booster (Highest)                  x3    40.50M    43.60M    +3.10M    43.60M   121.50M     9.30M
     4  Force Gem Package                       x1   172.50M   172.50M        +0   172.50M   172.50M         0
     5  Force Core (Ultimate                    x1   409.00K   418.83K    +9.83K   418.83K   409.00K     9.83K
@@ -71,22 +71,22 @@ ROWS -- 2026-11-04_192136_run_board.log, board during pass 189 at row 21, read 2
     9  Force Core(Highest                    x210   308.82K   319.95K   +11.13K   319.95K    64.85M     2.34M
    10  Force Core(Highest                    x249   308.82K   319.95K   +11.13K   319.95K    76.90M     2.77M
    11  Force Core(Highest                     x50   308.82K   319.95K   +11.13K   319.95K    15.44M   556.30K
-   12  Force Core(High                        x34   246.93K   270.18K   +23.26K   270.18K     8.40M   790.74K
+   12  Force Core(High                        x34   246.93K   270.19K   +23.26K   270.19K     8.40M   790.87K
    13  Upgrade Core (Ultimate                  x1   340.34K   403.03K   +62.69K   403.03K   340.34K    62.69K
-   14  Force Core(High                       x178   252.87K   270.18K   +17.31K   270.18K    45.01M     3.08M
+   14  Force Core(High                       x178   252.87K   270.19K   +17.31K   270.19K    45.01M     3.08M
    15  Upgrade Core (Ultimate                x192   340.34K   403.03K   +62.69K   403.03K    65.34M    12.04M
    16  Upgrade Core (Ultimate                x208   340.34K   403.03K   +62.69K   403.03K    70.79M    13.04M
    17  Chaos Core Set X 249                    x1   520.00K   560.35K   +40.35K   139.53M   129.48M    10.05M
    18  Chaos Core Set X 243                    x1   522.22K   560.35K   +38.13K   136.16M   126.90M     9.26M
    19  Chaos Core Set X 180                    x1   522.22K   560.35K   +38.12K   100.86M    94.00M     6.86M
    20  Chaos Core Set X 249                    x1   522.22K   560.35K   +38.12K   139.53M   130.03M     9.49M
-   21  Chaos Core Set X 162                    x1   522.22K   560.35K   +38.12K    90.78M    84.60M     6.18M <- here
-   22  Chaos Core Set X 249                    x1   522.22K   560.35K   +38.13K   139.53M   130.03M     9.50M
-   23  Chaos Core Set X 231                    x1   522.22K   560.35K   +38.13K   129.44M   120.63M     8.81M
-   24  Chaos Core Set X 183                    x1   525.08K   560.35K   +35.27K   102.54M    96.09M     6.45M
-   25  Chaos Core Set X 21                     x1   520.67K   560.35K   +39.68K    11.77M    10.93M   833.36K
-   26  Chaos Core Set X 249                    x1   533.00K   560.35K   +27.35K   139.53M   132.72M     6.81M
-    balance now 5.93B, read 2026-11-05T16:10:41
+   21  Chaos Core Set X 162                    x1   522.22K   560.35K   +38.12K    90.78M    84.60M     6.18M
+   22  Chaos Core Set X 249                    x1   522.22K   560.34K   +38.12K   139.53M   130.03M     9.49M
+   23  Chaos Core Set X 231                    x1   522.22K   560.34K   +38.12K   129.44M   120.63M     8.81M
+   24  Chaos Core Set X 183                    x1   525.08K   560.34K   +35.26K   102.54M    96.09M     6.45M
+   25  Chaos Core Set X 21                     x1   520.67K   560.34K   +39.67K    11.77M    10.93M   833.15K
+   26  Chaos Core Set X 249                    x1   533.00K   560.34K   +27.34K   139.52M   132.72M     6.81M
+    balance now 5.93B, read 2026-11-05T16:29:59
        stock at its listed price                                                                        2.19B
        Alz, latest balance line                                                                         5.93B
        Cash at the voucher price                                                                      129.60M
@@ -94,7 +94,7 @@ ROWS -- 2026-11-04_192136_run_board.log, board during pass 189 at row 21, read 2
        NET WORTH                                                                                        8.26B
 
 
-MARKET -- 2026-11-04_192136_run.log, pass 189, log last written 16:15 Central (live)
+MARKET -- 2026-11-04_192136_run.log, pass 192, log last written 16:30 Central (live)
 
 core                     rows  buy/u  sell/u  margin  margin %  wants  short?
 -----------------------------------------------------------------------------------------------------------------
