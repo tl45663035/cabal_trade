@@ -4,14 +4,14 @@ level     done  limit  successful
 CA1          0      5           0
 CA2          0      5           0
 CA3          0      5           0
-CA4          1      7           1
-CA5          2      7           2
+CA4          3      7           2
+CA5          3      7           3
 CA6          0     10           0
 CA7          0     15           0
 ICE          0     30           0
 FIRE         0     30           0
 TRAIN        0     30           0
-total        3    144           3
+total        6    144           5
 
 
 LAST 7 DAYS -- 2026-10-29 to 2026-11-04, each day midnight to midnight Central
@@ -24,28 +24,28 @@ Sat 2026-10-31            22.35h   24.00h    1.23B      55.02M         22.75B   
 Sun 2026-11-01            23.90h   24.00h    1.58B      66.18M         27.27B         25.69B  40.37K    5.8%
 Mon 2026-11-02            23.72h   24.00h  774.83M      32.67M         12.26B         11.49B  21.61K    6.3%
 Tue 2026-11-03            23.78h   24.00h  963.61M      40.52M         16.76B         15.80B  26.13K    5.7%
-Wed 2026-11-04 (so far)   17.82h   17.96h  915.87M      51.39M         14.21B         13.29B  25.71K    6.4%
+Wed 2026-11-04 (so far)   18.07h   18.21h  918.57M      50.82M         14.23B         13.31B  25.77K    6.5%
 ============================================================================================================
-7 DAYS                   145.59h  161.96h    8.17B  56,144,240128,288,036,809120,114,107,152 198.17K    6.4%
+7 DAYS                   145.84h  162.21h    8.18B  56,065,329128,308,294,859120,131,668,118 198.23K    6.4%
 
 
-PROFIT SUMMARY -- sold since 2026-11-04 00:00 Central (as of 17:57 Central)
+PROFIT SUMMARY -- sold since 2026-11-04 00:00 Central (as of 18:12 Central)
 
 item                      profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------
-upgradecoreultimate      404.32M    1.57B    1.16B   3.46K   336.46K  453.29K   25.8%
+upgradecoreultimate      406.64M    1.58B    1.17B   3.48K   336.54K  453.29K   25.8%
 chaoscore                362.30M   10.20B    9.83B  17.63K   557.76K  578.31K    3.6%
 yekaterinavipmembership   94.57M    1.03B  933.03M       9   103.67M  114.18M    9.2%
-forcecorehigh             41.81M  749.67M  707.86M   2.96K   239.30K  253.44K    5.6%
+forcecorehigh             42.19M  759.95M  717.76M   3.00K   239.41K  253.49K    5.6%
 forcecorehighest           8.22M  319.60M  311.38M   1.01K   307.08K  315.18K    2.6%
 forcecoreultimate          4.65M  258.75M  254.09M     631   402.68K  410.06K    1.8%
 epicboosterhighest             0   86.25M   86.25M       2    43.12M   43.12M    0.0%
 -------------------------------------------------------------------------------------
-Cores                    459.00M    2.90B    2.44B   8.06K   302.31K  359.23K   15.8%
+Cores                    461.70M    2.92B    2.46B   8.13K   302.17K  358.98K   15.8%
 Chaos                    362.30M   10.20B    9.83B  17.63K   557.76K  578.31K    3.6%
 Cash                      94.57M    1.11B    1.02B      11    92.66M  101.26M    8.5%
 =====================================================================================
-TOTAL                    915.87M   14.21B   13.29B  25.71K   517.04K  552.67K    6.4%
+TOTAL                    918.57M   14.23B   13.31B  25.77K   516.48K  552.13K    6.5%
 
 
 
@@ -56,26 +56,27 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-04_090725_run_board.log, board during pass 98 at row 7, read 2026-11-04T17:55:46 (live)
+ROWS -- 2026-11-04_090725_run_board.log, board during pass 101 at row 12, read 2026-11-04T18:12:43 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    69.00M    99.00M   +30.00M    99.00M    69.00M    30.00M
     2  Yekaterina VIP Membership               x1   103.50M   114.18M   +10.68M   114.18M   103.50M    10.68M
     3  Epic Booster (Highest)                  x2    43.12M    43.60M  +475.25K    43.60M    86.25M   950.49K
     4  Force Gem Package                       x1   172.50M   172.50M        +0   172.50M   172.50M         0
-    5  Force Core (Ultimate                  x160   369.83K   419.95K   +50.12K   419.95K    59.17M     8.02M
-    6  Force Core (Ultimate                  x189   409.00K   419.95K   +10.95K   419.95K    77.30M     2.07M
-    7  Force Core (Ultimate                  x118   409.00K   419.95K   +10.95K   419.95K    48.26M     1.29M <- here
-    8  Upgrade Core (Ultimate                 x55   348.35K   453.55K  +105.20K   453.55K    19.16M     5.79M
-    9  Upgrade Core (Ultimate                 x48   348.35K   453.55K  +105.20K   453.55K    16.72M     5.05M
-   10  Upgrade Core (Ultimate                 x28   348.35K   453.55K  +105.20K   453.55K     9.75M     2.95M
-   11  Force Core(High                       x102   247.43K   257.00K    +9.57K   257.00K    25.24M   975.73K
-    balance now 6.65B, read 2026-11-04T17:54:56
-       stock at its listed price                                                                      754.62M
-       Alz, latest balance line                                                                         6.65B
+    5  Force Core (Ultimate                  x160   369.83K   419.94K   +50.11K   419.94K    59.17M     8.02M
+    6  Force Core (Ultimate                  x189   409.00K   419.94K   +10.94K   419.94K    77.30M     2.07M
+    7  Force Core (Ultimate                  x118   409.00K   419.94K   +10.94K   419.94K    48.26M     1.29M
+    8  Upgrade Core (Ultimate                 x55   348.35K   453.54K  +105.19K   453.54K    19.16M     5.79M
+    9  Upgrade Core (Ultimate                 x36   348.35K   453.54K  +105.19K   453.54K    12.54M     3.79M
+   10  Upgrade Core (Ultimate                 x18   348.35K   453.54K  +105.19K   453.54K     6.27M     1.89M
+   11  Force Core(High                        x62   247.43K   257.00K    +9.57K   257.00K    15.34M   593.09K
+    12  (empty)                                           -          -       -              -               - <- here
+    balance now 6.67B, read 2026-11-04T18:12:35
+       stock at its listed price                                                                      734.36M
+       Alz, latest balance line                                                                         6.67B
        NET WORTH                                                                                        7.40B
 
 
-MARKET -- 2026-11-04_090725_run.log, pass 98, log last written 17:57 Central (live)
+MARKET -- 2026-11-04_090725_run.log, pass 101, log last written 18:12 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
