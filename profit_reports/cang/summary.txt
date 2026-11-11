@@ -31,29 +31,29 @@ Sat 2026-11-07             0.00h   24.00h       0        0        0        0    
 Sun 2026-11-08             0.00h   24.00h       0        0        0        0       0      --
 Mon 2026-11-09             0.00h   24.00h       0        0        0        0       0      --
 Tue 2026-11-10             0.00h   24.00h       0        0        0        0       0      --
-Wed 2026-11-11 (so far)    6.92h    9.70h  92.74M   13.40M  736.53M  643.79M  13.59K   12.6%
+Wed 2026-11-11 (so far)    7.18h    9.95h  92.83M   12.94M  819.88M  727.06M  13.86K   11.3%
 ============================================================================================
-7 DAYS                     6.92h  153.70h  92.74M   13.40M  736.53M  643.79M  13.59K   12.6%
+7 DAYS                     7.18h  153.95h  92.83M   12.94M  819.88M  727.06M  13.86K   11.3%
 
 
-PROFIT SUMMARY -- sold since 2026-11-11 00:00 Central (as of 09:41 Central)
+PROFIT SUMMARY -- sold since 2026-11-11 00:00 Central (as of 09:57 Central)
 
 item                            profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------------
 upgradecoreultimate             91.92M  417.53M  325.61M   1.09K   299.27K  383.76K   22.0%
 forcecoreultimate                2.61M   37.36M   34.75M      89   390.40K  419.75K    7.0%
-forcecorehighest               256.68K    6.60M    6.34M      20   317.15K  329.98K    3.9%
+forcecorehighest               330.36K   89.72M   89.39M     286   312.57K  313.72K    0.4%
 upgradecorehigh                      0   27.38M   27.38M     462    59.26K   59.26K    0.0%
 forcecorelow                         0    1.68M    1.68M      22    76.25K   76.25K    0.0%
 upgradecoremedium                    0    2.75M    2.75M      56    49.15K   49.15K    0.0%
 honormedalrescrolloptionselec        0   12.00M   12.00M       3     4.00M    4.00M    0.0%
 forcecoremedium                      0   12.29M   12.29M      78   157.60K  157.60K    0.0%
 magicdamageamplifierlv               0   26.55M   26.55M  10.99K     2.42K    2.42K    0.0%
-forcecorehigh                   -2.05M  192.39M  194.44M     785   247.69K  245.08K   -1.1%
+forcecorehigh                   -2.04M  192.62M  194.66M     786   247.66K  245.06K   -1.1%
 -------------------------------------------------------------------------------------------
-Cores                           92.74M  736.53M  643.79M  13.59K    47.37K   54.19K   12.6%
+Cores                           92.83M  819.88M  727.06M  13.86K    52.46K   59.16K   11.3%
 ===========================================================================================
-TOTAL                           92.74M  736.53M  643.79M  13.59K    47.37K   54.19K   12.6%
+TOTAL                           92.83M  819.88M  727.06M  13.86K    52.46K   59.16K   11.3%
 
 
 
@@ -64,24 +64,22 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-11_093610_run_board.log, board during pass 1 at row 25, read 2026-11-11T09:41:29 (live)
+ROWS -- 2026-11-11_093610_run_board.log, board during pass 8 at row 5, read 2026-11-11T09:56:53 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Magic Damage Amplifier(Lv. 2) X 99        x5         -     2.76K         -     2.76M         -         -
-    2  Force Core Set (Highest) X 266          x1   312.22K   319.98K    +7.75K    85.11M    83.05M     2.06M
+    2  Chaos Core Set X 669                    x1   508.90K   552.90K   +44.00K   369.89M   340.45M    29.44M
     3  Force Core(Highest                    x188   315.38K   315.38K        +0   315.38K    59.29M         0
     4  Force Core(Highest                    x147   315.38K   315.38K        +0   315.38K    46.36M         0
-    5  Force Core (Ultimate                    x5   387.42K   419.64K   +32.22K   419.64K     1.94M   161.09K
+    5  Force Core (Ultimate                    x5   387.42K   419.62K   +32.20K   419.62K     1.94M   161.00K <- here
     6  Force Core(Highest                     x85   315.38K   315.38K        +0   315.38K    26.81M         0
-    7  Force Core (Ultimate                    x6   387.42K   419.64K   +32.22K   419.64K     2.32M   193.30K
-    8  Force Core(High                         x1   216.88K   232.56K   +15.67K   232.56K   216.88K    15.67K
-    9  Force Core (Ultimate                  x172   387.42K   419.64K   +32.22K   419.64K    66.64M     5.54M
-   10  Upgrade Core (Ultimate                  x1   300.30K   388.81K   +88.51K   388.81K   300.30K    88.51K
-    25  (empty)                                           -          -       -              -               - <- here
-    balance now 17.27M, read 2026-11-11T09:41:11
-       stock at its listed price                                                                      297.75M
-       Alz, latest balance line                                                                        17.27M
+    7  Force Core (Ultimate                    x6   387.42K   419.62K   +32.20K   419.62K     2.32M   193.21K
+    8  Force Core (Ultimate                  x172   387.42K   419.62K   +32.20K   419.62K    66.64M     5.54M
+    9  Upgrade Core (Ultimate                  x1   300.30K   388.81K   +88.51K   388.81K   300.30K    88.51K
+    balance now 372.08K, read 2026-11-11T09:56:44
+       stock at its listed price                                                                      582.29M
+       Alz, latest balance line                                                                       372.08K
        gems at the voucher price                                                                       25.75M
-       NET WORTH                                                                                      340.78M
+       NET WORTH                                                                                      608.42M
 
 
-MARKET -- 2026-11-11_093610_run.log: no pass has printed a core table yet (newest is pass 1)
+MARKET -- 2026-11-11_093610_run.log: no pass has printed a core table yet (newest is pass 8)
