@@ -1,7 +1,7 @@
 DUNGEONS -- entries on server day 2026-11-12
 
 level     done  limit  successful
-CA1          1      5           1
+CA1          2      5           1
 CA2          0      5           0
 CA3          0      5           0
 CA4          0      7           0
@@ -11,7 +11,7 @@ CA7          0     15           0
 ICE          0     30           0
 FIRE         0     30           0
 TRAIN        0     30           0
-total        1    144           1
+total        2    144           1
 
 
 WORLD BOSS
@@ -32,12 +32,12 @@ Sat 2026-11-07             0.00h   24.00h       0        0        0        0    
 Sun 2026-11-08             0.00h   24.00h       0        0        0        0       0      --
 Mon 2026-11-09             0.00h   24.00h       0        0        0        0       0      --
 Tue 2026-11-10             0.00h   24.00h       0        0        0        0       0      --
-Wed 2026-11-11 (so far)    8.35h   16.35h  96.71M   11.59M  878.78M  782.07M  13.96K   11.0%
+Wed 2026-11-11 (so far)    8.60h   16.60h  96.71M   11.25M  901.88M  805.17M  13.97K   10.7%
 ============================================================================================
-7 DAYS                     8.35h  160.35h  96.71M   11.59M  878.78M  782.07M  13.96K   11.0%
+7 DAYS                     8.60h  160.60h  96.71M   11.25M  901.88M  805.17M  13.97K   10.7%
 
 
-PROFIT SUMMARY -- sold since 2026-11-11 00:00 Central (as of 16:20 Central)
+PROFIT SUMMARY -- sold since 2026-11-11 00:00 Central (as of 16:35 Central)
 
 item                           profit  revenue     cost   units  bought/u   sold/u  margin
 ------------------------------------------------------------------------------------------
@@ -47,14 +47,14 @@ forcecoreultimate               3.13M   46.17M   43.04M     110   391.27K  419.7
 upgradecorehigh                     0   27.38M   27.38M     462    59.26K   59.26K    0.0%
 forcecorelow                        0    1.68M    1.68M      22    76.25K   76.25K    0.0%
 upgradecoremedium                   0    2.75M    2.75M      56    49.15K   49.15K    0.0%
-honormedalrescrolloptionselec       0   39.22M   39.22M      10     3.92M    3.92M    0.0%
+honormedalrescrolloptionselec       0   62.32M   62.32M      16     3.90M    3.90M    0.0%
 forcecoremedium                     0   12.29M   12.29M      78   157.60K  157.60K    0.0%
 magicdamageamplifierlv              0   26.55M   26.55M  10.99K     2.42K    2.42K    0.0%
 forcecorehigh                  -2.04M  192.62M  194.66M     786   247.66K  245.06K   -1.1%
 ------------------------------------------------------------------------------------------
-Cores                          96.71M  878.78M  782.07M  13.96K    56.02K   62.95K   11.0%
+Cores                          96.71M  901.88M  805.17M  13.97K    57.65K   64.58K   10.7%
 ==========================================================================================
-TOTAL                          96.71M  878.78M  782.07M  13.96K    56.02K   62.95K   11.0%
+TOTAL                          96.71M  901.88M  805.17M  13.97K    57.65K   64.58K   10.7%
 
 
 
@@ -65,26 +65,25 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-11_161503_run_board.log, board during pass 1 at row 25, read 2026-11-11T16:20:47 (live)
+ROWS -- 2026-11-11_161503_run_board.log, board during pass 8 at row 21, read 2026-11-11T16:35:50 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Magic Damage Amplifier(Lv. 2) X 99        x5         -     2.76K         -     2.76M         -         -
-    2  Chaos Core Set X 200                    x1   507.00K   519.99K   +12.99K   104.00M   101.40M     2.60M
-    3  Chaos Core Set X 172                    x1   507.00K   519.99K   +12.99K    89.44M    87.20M     2.23M
-    4  Force Core(Highest                    x104   303.23K   309.99K    +6.76K   309.99K    31.54M   703.46K
-    5  Chaos Core Set X 200                    x1   507.00K   519.99K   +12.99K   104.00M   101.40M     2.60M
-    6  Force Core (Ultimate                  x162   312.50K   419.57K  +107.07K   419.57K    50.62M    17.34M
-    7  Chaos Core Set X 200                    x1   507.00K   519.99K   +12.99K   104.00M   101.40M     2.60M
-    8  Chaos Core Set X 170                    x1   507.00K   519.99K   +12.99K    88.40M    86.19M     2.21M
-    9  Honor Medal Reset Scroll (Option S        x6         -     3.85M         -     3.85M         -         -
-    25  (empty)                                           -          -       -              -               - <- here
-    balance now 48.29K, read 2026-11-11T16:20:28
-       stock at its listed price                                                                      615.90M
-       Alz, latest balance line                                                                        48.29K
+    2  Chaos Core Set X 200                    x1   507.00K   519.87K   +12.87K   103.97M   101.40M     2.57M
+    3  Chaos Core Set X 172                    x1   507.00K   519.87K   +12.87K    89.42M    87.20M     2.21M
+    4  Force Core(Highest                    x104   303.23K   309.99K    +6.76K   309.99K    31.54M   703.14K
+    5  Chaos Core Set X 200                    x1   507.00K   519.87K   +12.87K   103.97M   101.40M     2.57M
+    6  Force Core (Ultimate                  x162   312.50K   419.56K  +107.06K   419.56K    50.62M    17.34M
+    7  Chaos Core Set X 200                    x1   507.00K   519.87K   +12.87K   103.97M   101.40M     2.57M
+    8  Chaos Core Set X 170                    x1   507.00K   516.79K    +9.79K    87.86M    86.19M     1.66M
+    21  (empty)                                           -          -       -              -               - <- here
+    balance now 23.59M, read 2026-11-11T16:35:39
+       stock at its listed price                                                                      592.17M
+       Alz, latest balance line                                                                        23.59M
        gems at the voucher price                                                                       20.66M
-       NET WORTH                                                                                      636.61M
+       NET WORTH                                                                                      636.42M
 
 
-MARKET -- 2026-11-11_161503_run.log, pass 1, log last written 16:20 Central (live)
+MARKET -- 2026-11-11_161503_run.log, pass 1, log last written 16:35 Central (live); pass 8 is under way and has not priced the cores yet, so this is the last table it printed
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 ---------------------------------------------------------------------------------
