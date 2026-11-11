@@ -1,8 +1,8 @@
 DUNGEONS -- entries on server day 2026-11-12
 
 level     done  limit  successful
-CA1          2      5           1
-CA2          0      5           0
+CA1          3      5           2
+CA2          1      5           1
 CA3          0      5           0
 CA4          0      7           0
 CA5          0      7           0
@@ -11,7 +11,7 @@ CA7          0     15           0
 ICE          0     30           0
 FIRE         0     30           0
 TRAIN        0     30           0
-total        2    144           1
+total        4    144           3
 
 
 WORLD BOSS
@@ -32,12 +32,12 @@ Sat 2026-11-07             0.00h   24.00h       0        0        0        0    
 Sun 2026-11-08             0.00h   24.00h       0        0        0        0       0      --
 Mon 2026-11-09             0.00h   24.00h       0        0        0        0       0      --
 Tue 2026-11-10             0.00h   24.00h       0        0        0        0       0      --
-Wed 2026-11-11 (so far)    8.60h   16.60h  96.71M   11.25M  901.88M  805.17M  13.97K   10.7%
+Wed 2026-11-11 (so far)    8.85h   16.85h  96.71M   10.93M  901.88M  805.17M  13.97K   10.7%
 ============================================================================================
-7 DAYS                     8.60h  160.60h  96.71M   11.25M  901.88M  805.17M  13.97K   10.7%
+7 DAYS                     8.85h  160.85h  96.71M   10.93M  901.88M  805.17M  13.97K   10.7%
 
 
-PROFIT SUMMARY -- sold since 2026-11-11 00:00 Central (as of 16:35 Central)
+PROFIT SUMMARY -- sold since 2026-11-11 00:00 Central (as of 16:51 Central)
 
 item                           profit  revenue     cost   units  bought/u   sold/u  margin
 ------------------------------------------------------------------------------------------
@@ -65,25 +65,24 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-11_161503_run_board.log, board during pass 8 at row 21, read 2026-11-11T16:35:50 (live)
+ROWS -- 2026-11-11_161503_run_board.log, board during pass 14 at row 7, read 2026-11-11T16:50:58 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Magic Damage Amplifier(Lv. 2) X 99        x5         -     2.76K         -     2.76M         -         -
-    2  Chaos Core Set X 200                    x1   507.00K   519.87K   +12.87K   103.97M   101.40M     2.57M
-    3  Chaos Core Set X 172                    x1   507.00K   519.87K   +12.87K    89.42M    87.20M     2.21M
+    2  Chaos Core Set X 200                    x1   507.00K   516.77K    +9.77K   103.35M   101.40M     1.95M
+    3  Chaos Core Set X 172                    x1   507.00K   516.77K    +9.77K    88.88M    87.20M     1.68M
     4  Force Core(Highest                    x104   303.23K   309.99K    +6.76K   309.99K    31.54M   703.14K
-    5  Chaos Core Set X 200                    x1   507.00K   519.87K   +12.87K   103.97M   101.40M     2.57M
+    5  Chaos Core Set X 200                    x1   507.00K   516.77K    +9.77K   103.35M   101.40M     1.95M
     6  Force Core (Ultimate                  x162   312.50K   419.56K  +107.06K   419.56K    50.62M    17.34M
-    7  Chaos Core Set X 200                    x1   507.00K   519.87K   +12.87K   103.97M   101.40M     2.57M
-    8  Chaos Core Set X 170                    x1   507.00K   516.79K    +9.79K    87.86M    86.19M     1.66M
-    21  (empty)                                           -          -       -              -               - <- here
-    balance now 23.59M, read 2026-11-11T16:35:39
-       stock at its listed price                                                                      592.17M
-       Alz, latest balance line                                                                        23.59M
+    7  Chaos Core Set X 200                    x1   507.00K   516.76K    +9.77K   103.35M   101.40M     1.95M <- here
+    8  Chaos Core Set X 170                    x1   507.00K   516.77K    +9.77K    87.85M    86.19M     1.66M
+    balance now 23.62M, read 2026-11-11T16:50:49
+       stock at its listed price                                                                      589.77M
+       Alz, latest balance line                                                                        23.62M
        gems at the voucher price                                                                       20.66M
-       NET WORTH                                                                                      636.42M
+       NET WORTH                                                                                      634.05M
 
 
-MARKET -- 2026-11-11_161503_run.log, pass 1, log last written 16:35 Central (live); pass 8 is under way and has not priced the cores yet, so this is the last table it printed
+MARKET -- 2026-11-11_161503_run.log, pass 1, log last written 16:50 Central (live); pass 14 is under way and has not priced the cores yet, so this is the last table it printed
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 ---------------------------------------------------------------------------------
