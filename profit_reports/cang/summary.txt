@@ -31,17 +31,18 @@ Sat 2026-11-07             0.00h   24.00h       0        0        0        0    
 Sun 2026-11-08             0.00h   24.00h       0        0        0        0      0      --
 Mon 2026-11-09             0.00h   24.00h       0        0        0        0      0      --
 Tue 2026-11-10             0.00h   24.00h       0        0        0        0      0      --
-Wed 2026-11-11 (so far)    3.25h    4.93h  12.93M    3.98M  271.77M  258.84M  1.40K    4.8%
+Wed 2026-11-11 (so far)    3.50h    5.18h  13.15M    3.76M  275.97M  262.82M  1.41K    4.8%
 ===========================================================================================
-7 DAYS                     3.25h  148.93h  12.93M    3.98M  271.77M  258.84M  1.40K    4.8%
+7 DAYS                     3.50h  149.18h  13.15M    3.76M  275.97M  262.82M  1.41K    4.8%
 
 
-PROFIT SUMMARY -- sold since 2026-11-11 00:00 Central (as of 04:55 Central)
+PROFIT SUMMARY -- sold since 2026-11-11 00:00 Central (as of 05:10 Central)
 
 item                            profit  revenue     cost  units  bought/u   sold/u  margin
 ------------------------------------------------------------------------------------------
 upgradecoreultimate             14.09M   60.66M   46.58M    156   298.57K  388.86K   23.2%
 forcecorehighest               256.68K    6.60M    6.34M     20   317.15K  329.98K    3.9%
+forcecoreultimate              222.11K    4.20M    3.98M     10   397.61K  419.82K    5.3%
 upgradecorehigh                      0   27.38M   27.38M    462    59.26K   59.26K    0.0%
 forcecorelow                         0    1.68M    1.68M     22    76.25K   76.25K    0.0%
 upgradecoremedium                    0    2.75M    2.75M     56    49.15K   49.15K    0.0%
@@ -49,9 +50,9 @@ honormedalrescrolloptionselec        0   12.00M   12.00M      3     4.00M    4.0
 forcecoremedium                      0   12.29M   12.29M     78   157.60K  157.60K    0.0%
 forcecorehigh                   -1.41M  148.41M  149.82M    600   249.70K  247.35K   -1.0%
 ------------------------------------------------------------------------------------------
-Cores                           12.93M  271.77M  258.84M  1.40K   185.28K  194.54K    4.8%
+Cores                           13.15M  275.97M  262.82M  1.41K   186.79K  196.14K    4.8%
 ==========================================================================================
-TOTAL                           12.93M  271.77M  258.84M  1.40K   185.28K  194.54K    4.8%
+TOTAL                           13.15M  275.97M  262.82M  1.41K   186.79K  196.14K    4.8%
 
 
 
@@ -62,36 +63,36 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-11_021934_run_board.log, board during pass 47 at row 8, read 2026-11-11T04:55:55 (live)
+ROWS -- 2026-11-11_021934_run_board.log, board during pass 52 at row 1, read 2026-11-11T05:10:54 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Magic Damage Amplifier(Lv. 1) X 99       x11         -     2.42K         -     2.41M         -         -
+    1  Magic Damage Amplifier(Lv. 1) X 99       x11         -     2.42K         -     2.41M         -         - <- here
     2  Magic Damage Amplifier(Lv. 2) X 99        x5         -     2.76K         -     2.76M         -         -
     3  Force Core Set (Highest) X 266          x1   329.98K   329.98K        +0    87.77M    87.77M         0
     4  Force Core(High                       x170   242.57K   242.56K       -11   242.56K    41.24M    -1.87K
     5  Force Core(High                         x9   242.57K   242.56K       -11   242.56K     2.18M       -99
     6  Force Core(Highest                    x188   317.35K   317.35K        +0   317.35K    59.66M         0
     7  Force Core(Highest                    x147   317.35K   317.35K        +0   317.35K    46.65M         0
-    8  Force Core (Ultimate                    x5   397.61K   419.83K   +22.22K   419.83K     1.99M   111.11K <- here
+    8  Force Core (Ultimate                    x5   397.61K   419.82K   +22.21K   419.82K     1.99M   111.05K
     9  Force Core(Highest                     x85   317.35K   317.35K        +0   317.35K    26.97M         0
-   10  Force Core (Ultimate                   x51   397.61K   419.84K   +22.22K   419.84K    20.28M     1.13M
-   11  Force Core (Ultimate                   x16   397.61K   419.83K   +22.22K   419.83K     6.36M   355.57K
-   12  Upgrade Core (Ultimate                  x7   300.30K   388.86K   +88.56K   388.86K     2.10M   619.92K
+   10  Force Core (Ultimate                   x51   397.61K   419.82K   +22.21K   419.82K    20.28M     1.13M
+   11  Force Core (Ultimate                    x6   397.61K   419.82K   +22.21K   419.82K     2.39M   133.25K
+   12  Upgrade Core (Ultimate                  x7   300.30K   388.84K   +88.55K   388.84K     2.10M   619.82K
    13  Force Core(High                         x1   242.56K   242.56K        +0   242.56K   242.56K         0
-   14  Upgrade Core (Ultimate                x250   297.30K   388.86K   +91.56K   388.86K    74.32M    22.89M
-   15  Upgrade Core (Ultimate                 x32   297.30K   388.86K   +91.56K   388.86K     9.51M     2.93M
-    balance now 62.29M, read 2026-11-11T04:55:14
-       stock at its listed price                                                                      412.50M
-       Alz, latest balance line                                                                        62.29M
+   14  Upgrade Core (Ultimate                x250   297.30K   388.84K   +91.55K   388.84K    74.32M    22.89M
+   15  Upgrade Core (Ultimate                 x32   297.30K   388.84K   +91.54K   388.84K     9.51M     2.93M
+    balance now 66.49M, read 2026-11-11T05:10:54
+       stock at its listed price                                                                      408.30M
+       Alz, latest balance line                                                                        66.49M
        gems at the voucher price                                                                       25.75M
        NET WORTH                                                                                      500.55M
 
 
-MARKET -- 2026-11-11_021934_run.log, pass 47, log last written 04:55 Central (live)
+MARKET -- 2026-11-11_021934_run.log, pass 52, log last written 05:10 Central (live)
 
-core                     rows    buy/u   sell/u   margin  margin %  wants  short?
+core                     rows    buy/u   sell/u  margin  margin %  wants   short?
 --------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         3        -        -        -         -      -  holds the most it can want, 3; not priced
-Chaos Core                  0  510.00K  488.43K  -21.57K     -4.4%      0
-Force Core (Ultimate)       3        -        -        -         -      -  holds the most it can want, 3; not priced
-Force Core(High)            3        -        -        -         -      -  holds the most it can want, 3; not priced
-Upgrade Core (Ultimate)     3        -        -        -         -      -  holds the most it can want, 3; not priced
+Force Core(Highest)         3        -        -       -         -      -   holds the most it can want, 3; not priced
+Chaos Core                  0  510.00K  500.00K  -10.00K     -2.0%      0
+Force Core (Ultimate)       3        -        -       -         -      -   holds the most it can want, 3; not priced
+Force Core(High)            3        -        -       -         -      -   holds the most it can want, 3; not priced
+Upgrade Core (Ultimate)     3        -        -       -         -      -   holds the most it can want, 3; not priced
