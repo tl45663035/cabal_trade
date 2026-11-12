@@ -34,12 +34,12 @@ Sun 2026-11-08             0.00h   24.00h        0        0        0      0     
 Mon 2026-11-09             0.00h   24.00h        0        0        0      0       0      --
 Tue 2026-11-10             0.00h   24.00h        0        0        0      0       0      --
 Wed 2026-11-11            11.72h   24.00h  135.16M   11.53M    1.69B  1.56B  15.87K    8.0%
-Thu 2026-11-12 (so far)    2.23h   14.73h  174.29M   78.01M    2.28B  2.11B   5.38K    7.6%
+Thu 2026-11-12 (so far)    2.33h   14.82h  174.29M   74.92M    2.29B  2.12B   9.38K    7.6%
 ===========================================================================================
-7 DAYS                    13.95h  158.73h  309.45M   22.18M    3.98B  3.67B  21.25K    7.8%
+7 DAYS                    14.05h  158.82h  309.45M   22.03M    3.99B  3.68B  25.24K    7.8%
 
 
-PROFIT SUMMARY -- sold since 2026-11-12 00:00 Central (as of 14:43 Central)
+PROFIT SUMMARY -- sold since 2026-11-12 00:00 Central (as of 14:49 Central)
 
 item                            profit  revenue     cost  units  bought/u   sold/u  margin
 ------------------------------------------------------------------------------------------
@@ -52,11 +52,12 @@ forcecorehighest                     0  157.50M  157.50M    525   300.00K  300.0
 upgradecorelow                       0    4.99M    4.99M     82    60.86K   60.86K    0.0%
 honormedalrescrolloptionselec        0   15.20M   15.20M      4     3.80M    3.80M    0.0%
 upgradecorehigh                      0    9.90M    9.90M    120    82.50K   82.50K    0.0%
+magicdamageamplifierlv               0   11.05M   11.05M  4.00K     2.77K    2.77K    0.0%
 ------------------------------------------------------------------------------------------
-Cores                           82.93M  666.20M  583.27M  2.32K   251.74K  287.52K   12.4%
+Cores                           82.93M  677.24M  594.32M  6.31K    94.14K  107.28K   12.2%
 Chaos                           91.36M    1.62B    1.53B  3.06K   498.04K  527.87K    5.7%
 ==========================================================================================
-TOTAL                          174.29M    2.28B    2.11B  5.38K   391.96K  424.36K    7.6%
+TOTAL                          174.29M    2.29B    2.12B  9.38K   226.09K  244.68K    7.6%
 
 
 
@@ -67,33 +68,36 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-12_144000_relist.log, board after pass 1
+ROWS -- 2026-11-12_144354_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Magic Damage Amplifier(Lv. 2) X 99        x5         -     2.76K         -     2.76M         -         -
-    2  Force Core (Ultimate                   x30   385.29K   393.33K    +8.03K    11.80M    11.56M   241.02K
+    1  Magic Damage Amplifier(Lv. 2) X 99        x1         -     2.76K         -     2.76M         -         -
+    2  Force Core (Ultimate                   x30   385.29K   390.00K    +4.70K    11.70M    11.56M   141.06K
     3  Upgrade Core (Ultimate                 x15   250.25K   359.96K  +109.71K     5.40M     3.75M     1.65M
-    4  Force Core (Ultimate                   x70   385.29K   390.00K    +4.70K    27.30M    26.97M   329.28K
-    5  Force Core (Ultimate                   x60   385.29K   390.00K    +4.70K    23.40M    23.12M   282.18K
-    6  Chaos Core Set X 1                    x184   500.00K   535.90K   +35.90K    98.60M    92.00M     6.60M
-    7  Force Core(High                       x106   233.33K   339.70K  +106.37K    36.01M    24.73M    11.27M
-    8  Force Core(High                       x200   233.62K   339.70K  +106.08K    67.94M    46.72M    21.22M
-    9  Force Core(High                        x69   233.62K   339.70K  +106.08K    23.44M    16.12M     7.32M
-   10  Force Core(High                        x24   233.62K   339.70K  +106.08K     8.15M     5.61M     2.55M
+    4  Force Core (Ultimate                   x70   385.29K   390.00K    +4.70K    27.30M    26.97M   329.07K
+    5  Force Core (Ultimate                   x60   385.29K   389.99K    +4.70K    23.40M    23.12M   282.00K
+    6  Chaos Core Set X 1                    x184   500.00K   535.89K   +35.89K    98.60M    92.00M     6.60M
+    7  Force Core(High                       x106   233.33K   333.33K  +100.00K    35.33M    24.73M    10.60M
+    8  Force Core(High                       x200   233.62K   333.33K   +99.71K    66.67M    46.72M    19.94M
+    9  Force Core(High                        x69   233.62K   333.33K   +99.71K    23.00M    16.12M     6.88M
+   10  Force Core(High                        x24   233.62K   333.33K   +99.71K     8.00M     5.61M     2.39M
    11  Upgrade Core (Ultimate                x200   250.20K   359.96K  +109.76K    71.99M    50.04M    21.95M
    12  Upgrade Core (Ultimate                x100   250.20K   359.96K  +109.76K    36.00M    25.02M    10.98M
-   13  Chaos Core Set X 675                    x1   500.00K   535.89K   +35.90K   361.73M   337.50M    24.23M
+   13  Chaos Core Set X 675                    x1   500.00K   535.89K   +35.89K   361.73M   337.50M    24.23M
    14  Chaos Core Set X 120                    x1   509.50K   535.89K   +26.39K    64.31M    61.14M     3.17M
-    balance now 43.07M
+   15  Chaos Core Set X 104                    x1   520.00K   535.89K   +15.89K    55.73M    54.08M     1.65M
+    balance now 35.86K
   0.01 minute(s) are up after pass 1
-1 pass(es), 14 relisted, 11 empty, 0 skipped in 175s (12468 ms a row)
+1 pass(es), 15 relisted, 10 empty, 0 skipped in 288s (19185 ms a row)
 PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
   item                              profit   units  margin        revenue           cost
-       Force Core(High                1.16M      10   33.2%      3.50M                                  2.34M
+       Magic Damage Amplifier(Lv              0   4.00K    0.0%     11.05M                             11.05M
   ------------------------------------------------------------------------------------
-       SOLD                           1.16M      10   33.2%      3.50M                                  2.34M
+       SOLD                                   0   4.00K    0.0%     11.05M                             11.05M
+  bought this run and still unsold, taken as sold at the price each lot was bought against:
+    chaoscore                        104 core(s)      54.08M Alz paid    +1.65M
   ------------------------------------------------------------------------------------
-  RUN CLOSED                     1.16M   (1.16M realised, +0 assumed)
-  started 14:40:00, ended 14:43:39, ran for 3m 38s
+  RUN CLOSED                     1.65M   (0 realised, +1.65M assumed)
+  started 14:43:54, ended 14:49:26, ran for 5m 31s
 ##############################################################################################
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
@@ -110,9 +114,9 @@ PROFIT THIS RUN -- each sale against its row's cost: what this run bought at wha
 ##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
 ##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
 ##############################################################################################
-       stock at its listed price                                                                      838.83M
-       Alz, latest balance line                                                                        43.07M
-       NET WORTH                                                                                      881.90M
+       stock at its listed price                                                                      891.92M
+       Alz, latest balance line                                                                        35.86K
+       NET WORTH                                                                                      891.95M
 
 
-MARKET -- 2026-11-12_144000_relist.log: no pass has printed a core table yet (newest is pass 1)
+MARKET -- 2026-11-12_144354_relist.log: no pass has printed a core table yet (newest is pass 1)
