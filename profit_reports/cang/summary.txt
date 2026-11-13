@@ -6,12 +6,12 @@ CA2          5      5           5
 CA3          5      5           5
 CA4          7      7           6
 CA5          7      7           6
-CA6          9     10           8
+CA6         10     10           9
 CA7          0     15           0
 ICE         12     30          12
 FIRE        14     30          12
 TRAIN       12     30          11
-total       76    144          70
+total       77    144          71
 
 
 WORLD BOSS
@@ -35,12 +35,12 @@ Mon 2026-11-09             0.00h   24.00h        0        0        0      0     
 Tue 2026-11-10             0.00h   24.00h        0        0        0      0       0      --
 Wed 2026-11-11            11.72h   24.00h  135.16M   11.53M    1.69B  1.56B  15.87K    8.0%
 Thu 2026-11-12             5.84h   24.00h  214.10M   36.67M    2.59B  2.37B  10.59K    8.3%
-Fri 2026-11-13 (so far)    2.05h    3.00h   31.50M   15.40M    1.32B  1.29B   3.24K    2.4%
+Fri 2026-11-13 (so far)    2.15h    3.25h   31.50M   14.65M    1.32B  1.29B   3.24K    2.4%
 ===========================================================================================
-7 DAYS                    19.61h  147.00h  380.77M   19.42M    5.60B  5.22B  29.70K    6.8%
+7 DAYS                    19.71h  147.25h  380.77M   19.32M    5.60B  5.22B  29.70K    6.8%
 
 
-PROFIT SUMMARY -- sold since 2026-11-13 00:00 Central (as of 02:59 Central)
+PROFIT SUMMARY -- sold since 2026-11-13 00:00 Central (as of 03:15 Central)
 
 item                           profit  revenue     cost  units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------------
@@ -70,28 +70,27 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-13_013458_run_board.log, board during pass 19 at row 25, read 2026-11-13T02:59:50 (live)
+ROWS -- 2026-11-13_013458_run_board.log, board during pass 21 at row 4, read 2026-11-13T03:03:44 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Magic Damage Amplifier(Lv. 2) X 99        x1         -     2.76K         -     2.76M         -         -
-    2  Upgrade Core (Ultimate                 x10   294.95K   354.87K   +59.92K   354.87K     2.95M   599.20K
+    2  Upgrade Core (Ultimate                 x10   294.95K   354.87K   +59.91K   354.87K     2.95M   599.14K
     3  Chaos Core Set X 1                    x129   505.00K   505.00K        +0   505.00K    65.14M         0
-    4  Force Core(High                       x239   231.46K   239.97K    +8.51K   239.97K    55.32M     2.03M
-    5  Force Core(Highest                     x51   292.78K   307.92K   +15.14K   307.92K    14.93M   772.29K
-    6  Force Core(High                       x106   231.46K   239.97K    +8.51K   239.97K    24.53M   901.74K
-    7  Force Core(High                         x4   231.46K   239.96K    +8.51K   239.96K   925.83K    34.02K
+    4  Force Core(High                       x239   231.46K   239.96K    +8.50K   239.96K    55.32M     2.03M <- here
+    5  Force Core(Highest                     x51   292.78K   307.92K   +15.14K   307.92K    14.93M   772.14K
+    6  Force Core(High                       x106   231.46K   239.96K    +8.50K   239.96K    24.53M   901.42K
+    7  Force Core(High                         x4   231.46K   239.96K    +8.50K   239.96K   925.83K    34.01K
     8  Force Core(Highest                    x122   292.78K   307.92K   +15.14K   307.92K    35.72M     1.85M
     9  Upgrade Core (Ultimate                x137   294.95K   354.87K   +59.92K   354.87K    40.41M     8.21M
-   10  Upgrade Core (Ultimate                x153   294.95K   354.87K   +59.92K   354.87K    45.13M     9.17M
+   10  Upgrade Core (Ultimate                x153   294.95K   354.87K   +59.91K   354.87K    45.13M     9.17M
    11  Force Core(Highest                    x193   302.02K   307.92K    +5.90K   307.92K    58.29M     1.14M
-    25  (empty)                                           -          -       -              -               - <- here
-    balance now 782.86M, read 2026-11-13T02:59:01
-       stock at its listed price                                                                      370.82M
+    balance now 782.86M, read 2026-11-13T03:02:52
+       stock at its listed price                                                                      370.81M
        Alz, latest balance line                                                                       782.86M
        gems at the voucher price                                                                       32.45M
        NET WORTH                                                                                        1.19B
 
 
-MARKET -- 2026-11-13_013458_run.log, pass 19, log last written 02:59 Central (live)
+MARKET -- 2026-11-13_013458_run.log, pass 21, log last written 03:06 Central (live)
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
