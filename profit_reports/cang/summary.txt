@@ -36,7 +36,7 @@ Mon 2026-11-09             0.00h   24.00h        0        0        0       0    
 Tue 2026-11-10             0.00h   24.00h        0        0        0       0       0      --
 Wed 2026-11-11            11.72h   24.00h  135.16M   11.53M    1.69B   1.56B  15.87K    8.0%
 Thu 2026-11-12             5.84h   24.00h  214.10M   36.67M    2.59B   2.37B  10.59K    8.3%
-Fri 2026-11-13 (so far)   10.35h   16.71h  320.86M   31.01M    7.29B   6.97B  16.62K    4.4%
+Fri 2026-11-13 (so far)   10.35h   16.71h  320.86M   31.00M    7.29B   6.97B  16.62K    4.4%
 ============================================================================================
 7 DAYS                    27.91h  160.71h  670.12M   24.01M   11.57B  10.90B  43.08K    5.8%
 
@@ -71,12 +71,12 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-13_163113_relist_board.log, board during pass 1 at row 30, read 2026-11-13T16:42:11 (live)
+ROWS -- 2026-11-13_163113_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Force Core(Highest                     x49   276.60K   437.88K  +161.29K   437.88K    13.55M     7.90M
-    2  Upgrade Core (Ultimate                x180   294.68K   350.00K   +55.32K   350.00K    53.04M     9.96M
-    3  Upgrade Core (Ultimate                x167   294.68K   350.00K   +55.32K   350.00K    49.21M     9.24M
-    4  Force Core(Highest                    x250   276.60K   437.88K  +161.29K   437.88K    69.15M    40.32M
+    1  Force Core(Highest                     x49   276.60K   437.88K  +161.29K    21.46M    13.55M     7.90M
+    2  Upgrade Core (Ultimate                x180   294.68K   350.00K   +55.32K    63.00M    53.04M     9.96M
+    3  Upgrade Core (Ultimate                x167   294.68K   350.00K   +55.32K    58.45M    49.21M     9.24M
+    4  Force Core(Highest                    x250   276.60K   437.88K  +161.29K   109.47M    69.15M    40.32M
     5  Upgrade Core Set (High) X 434           x1         -    43.62K         -    18.93M         -         -
     6  Essence Rune(Alz Bomb Chance) X 1        x1         -     4.39M         -     4.39M         -         -
     7  Chaos Core Set X 119                    x1   524.22K   540.00K   +15.78K    64.26M    62.38M     1.88M
@@ -88,17 +88,47 @@ ROWS -- 2026-11-13_163113_relist_board.log, board during pass 1 at row 30, read 
    13  Chaos Core Set X 216                    x1   520.00K   539.99K   +19.99K   116.64M   112.32M     4.32M
    14  Chaos Core Set X 385                    x1   520.00K   539.99K   +19.99K   207.90M   200.20M     7.70M
    15  Chaos Core Set X 383                    x1   520.00K   539.99K   +19.99K   206.82M   199.16M     7.66M
-   16  Divine Stone                           x22         -   597.00K         -   597.00K         -         -
+   16  Divine Stone                           x22         -   597.00K         -    13.13M         -         -
    17  Epaulet of the Dead                     x1         -    15.00M         -    15.00M         -         -
-    30  (empty)                                           -          -       -              -               - <- here
-    balance now 148.23M, read 2026-11-13T16:41:45
+    balance now 148.23M
+  0.01 minute(s) are up after pass 1
+1 pass(es), 17 relisted, 13 empty, 0 skipped in 510s (30000 ms a row)
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  item                              profit   units  margin        revenue           cost
+       Force Core (Ultimate           3.48M     101    8.9%     39.27M                                 35.79M
+       Upgrade Core Set (Highest              0     524    0.0%     36.84M                             36.84M
+       Force Core(High                3.16M     113   12.3%     25.76M                                 22.60M
+       Upgrade Core (Ultimate         2.49M      45   15.8%     15.75M                                 13.26M
+  ------------------------------------------------------------------------------------
+       SOLD                           9.12M     783    7.8%    117.61M                                108.49M
+  bought this run and still unsold, taken as sold at the price each lot was bought against:
+    chaoscore                        119 core(s)      62.38M Alz paid    +1.88M
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                    11.00M   (9.12M realised, +1.88M assumed)
+  started 16:31:14, ended 16:42:35, ran for 11m 21s
+##############################################################################################
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##############################################################################################
        stock at its listed price                                                                        1.58B
        Alz, latest balance line                                                                       148.23M
        gems at the voucher price                                                                       25.07M
        NET WORTH                                                                                        1.76B
 
 
-MARKET -- 2026-11-13_163113_relist.log, pass 1, log last written 16:42 Central (live)
+MARKET -- 2026-11-13_163113_relist.log, pass 1, log last written 16:42 Central
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
