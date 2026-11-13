@@ -36,12 +36,12 @@ Mon 2026-11-09             0.00h   24.00h        0        0        0       0    
 Tue 2026-11-10             0.00h   24.00h        0        0        0       0       0      --
 Wed 2026-11-11            11.72h   24.00h  135.16M   11.53M    1.69B   1.56B  15.87K    8.0%
 Thu 2026-11-12             5.84h   24.00h  214.10M   36.67M    2.59B   2.37B  10.59K    8.3%
-Fri 2026-11-13 (so far)    8.89h   14.10h  297.31M   33.45M    6.93B   6.63B  15.07K    4.3%
+Fri 2026-11-13 (so far)    8.95h   14.17h  297.31M   33.21M    6.93B   6.63B  15.07K    4.3%
 ============================================================================================
-7 DAYS                    26.45h  158.10h  646.57M   24.45M   11.21B  10.56B  41.53K    5.8%
+7 DAYS                    26.51h  158.17h  646.57M   24.39M   11.21B  10.56B  41.53K    5.8%
 
 
-PROFIT SUMMARY -- sold since 2026-11-13 00:00 Central (as of 14:05 Central)
+PROFIT SUMMARY -- sold since 2026-11-13 00:00 Central (as of 14:10 Central)
 
 item                            profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------------
@@ -71,17 +71,17 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-13_140130_relist.log, board after pass 1
+ROWS -- 2026-11-13_140608_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Magic Damage Amplifier(Lv. 2) X 99        x1         -     2.76K         -     2.76M         -         -
     2  Force Core (Ultimate                  x250   369.72K   388.81K   +19.09K    97.20M    92.43M     4.77M
-    3  Force Core (Ultimate                    x1   369.72K   388.81K   +19.09K   388.81K   369.72K    19.09K
-    4  Upgrade Core (Ultimate                x200   294.95K   354.65K   +59.70K    70.93M    58.99M    11.94M
-    5  Upgrade Core (Ultimate                x167   294.95K   354.64K   +59.70K    59.23M    49.26M     9.97M
-    6  Force Core (Ultimate                  x202   369.72K   388.81K   +19.09K    78.54M    74.68M     3.86M
-    7  Force Core(Highest                    x250   299.77K   437.94K  +138.16K   109.48M    74.94M    34.54M
-    8  Force Core(Highest                     x28   299.77K   437.94K  +138.16K    12.26M     8.39M     3.87M
-    9  Force Core(Highest                    x200   300.00K   437.94K  +137.94K    87.59M    60.00M    27.59M
+    3  Force Core (Ultimate                    x1   369.72K   388.81K   +19.08K   388.81K   369.72K    19.08K
+    4  Upgrade Core (Ultimate                x200   294.95K   354.64K   +59.69K    70.93M    58.99M    11.94M
+    5  Upgrade Core (Ultimate                x167   294.95K   354.64K   +59.69K    59.23M    49.26M     9.97M
+    6  Force Core (Ultimate                  x202   369.72K   388.80K   +19.08K    78.54M    74.68M     3.85M
+    7  Force Core(Highest                    x250   299.77K   437.93K  +138.16K   109.48M    74.94M    34.54M
+    8  Force Core(Highest                     x28   299.77K   437.93K  +138.16K    12.26M     8.39M     3.87M
+    9  Force Core(Highest                    x200   300.00K   437.93K  +137.93K    87.59M    60.00M    27.59M
    10  Force Core(Highest                     x59   300.00K   437.93K  +137.93K    25.84M    17.70M     8.14M
    11  Upgrade Core (Ultimate                 x65   294.90K   354.64K   +59.74K    23.05M    19.17M     3.88M
    12  Force Core(High                       x208   214.00K   227.97K   +13.97K    47.42M    44.51M     2.91M
@@ -89,12 +89,12 @@ ROWS -- 2026-11-13_140130_relist.log, board after pass 1
    14  Force Core(High                       x171   214.00K   227.97K   +13.97K    38.98M    36.59M     2.39M
     balance now 980.82M
   0.01 minute(s) are up after pass 1
-1 pass(es), 14 relisted, 11 empty, 0 skipped in 216s (15410 ms a row)
+1 pass(es), 14 relisted, 11 empty, 0 skipped in 188s (13446 ms a row)
 PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
   nothing has sold yet this run.
   ------------------------------------------------------------------------------------
   RUN CLOSED                             0   (0 realised, +0 assumed)
-  started 14:01:30, ended 14:05:52, ran for 4m 22s
+  started 14:06:08, ended 14:10:03, ran for 3m 54s
 ##############################################################################################
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
@@ -116,7 +116,7 @@ PROFIT THIS RUN -- each sale against its row's cost: what this run bought at wha
        NET WORTH                                                                                        1.69B
 
 
-MARKET -- 2026-11-13_140130_relist.log, pass 1, log last written 14:05 Central
+MARKET -- 2026-11-13_140608_relist.log, pass 1, log last written 14:10 Central
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
