@@ -1,8 +1,8 @@
 DUNGEONS -- entries on server day 2026-11-14
 
 level     done  limit  successful
-CA1          3      5           3
-CA2          3      5           2
+CA1          4      5           3
+CA2          3      5           3
 CA3          0      5           0
 CA4          0      7           0
 CA5          0      7           0
@@ -11,7 +11,7 @@ CA7          0     15           0
 ICE          5     30           3
 FIRE         6     30           6
 TRAIN        4     30           3
-total       21    144          17
+total       22    144          18
 
 
 WORLD BOSS
@@ -36,12 +36,12 @@ Mon 2026-11-09             0.00h   24.00h        0        0        0       0    
 Tue 2026-11-10             0.00h   24.00h        0        0        0       0       0      --
 Wed 2026-11-11            11.72h   24.00h  135.16M   11.53M    1.69B   1.56B  15.87K    8.0%
 Thu 2026-11-12             5.84h   24.00h  214.10M   36.67M    2.59B   2.37B  10.59K    8.3%
-Fri 2026-11-13 (so far)   11.09h   18.06h  348.59M   31.43M    8.19B   7.84B  18.69K    4.3%
+Fri 2026-11-13 (so far)   11.20h   18.18h  348.59M   31.11M    8.19B   7.84B  18.69K    4.3%
 ============================================================================================
-7 DAYS                    28.65h  162.06h  697.86M   24.36M   12.47B  11.77B  45.15K    5.6%
+7 DAYS                    28.76h  162.18h  697.86M   24.26M   12.47B  11.77B  45.15K    5.6%
 
 
-PROFIT SUMMARY -- sold since 2026-11-13 00:00 Central (as of 18:03 Central)
+PROFIT SUMMARY -- sold since 2026-11-13 00:00 Central (as of 18:10 Central)
 
 item                            profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------------
@@ -73,7 +73,7 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-13_175703_relist.log, board after pass 1
+ROWS -- 2026-11-13_180356_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Force Core(Highest                     x49   280.00K   437.87K  +157.87K    21.46M    13.72M     7.74M
     2  Upgrade Core (Ultimate                x180   290.00K   349.99K   +59.99K    63.00M    52.20M    10.80M
@@ -91,14 +91,14 @@ ROWS -- 2026-11-13_175703_relist.log, board after pass 1
    14  Force Core (Ultimate                  x178   369.70K   416.96K   +47.26K    74.22M    65.81M     8.41M
    15  Force Core (Ultimate                  x236   369.70K   416.96K   +47.26K    98.40M    87.25M    11.15M
    16  Force Core (Ultimate                  x190   369.70K   416.96K   +47.26K    79.22M    70.24M     8.98M
-    balance now 623.76M
+    balance now 623.77M
   0.01 minute(s) are up after pass 1
-1 pass(es), 16 relisted, 14 empty, 0 skipped in 351s (21919 ms a row)
+1 pass(es), 16 relisted, 14 empty, 0 skipped in 356s (22253 ms a row)
 PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
   nothing has sold yet this run.
   ------------------------------------------------------------------------------------
   RUN CLOSED                             0   (0 realised, +0 assumed)
-  started 17:57:03, ended 18:03:43, ran for 6m 40s
+  started 18:03:56, ended 18:10:42, ran for 6m 45s
 ##############################################################################################
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
@@ -116,11 +116,11 @@ PROFIT THIS RUN -- each sale against its row's cost: what this run bought at wha
 ##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
 ##############################################################################################
        stock at its listed price                                                                        1.19B
-       Alz, latest balance line                                                                       623.76M
+       Alz, latest balance line                                                                       623.77M
        NET WORTH                                                                                        1.81B
 
 
-MARKET -- 2026-11-13_175703_relist.log, pass 1, log last written 18:03 Central
+MARKET -- 2026-11-13_180356_relist.log, pass 1, log last written 18:10 Central
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
