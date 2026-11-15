@@ -39,12 +39,12 @@ Wed 2026-11-11            11.72h   24.00h  135.16M   11.53M    1.69B   1.56B  15
 Thu 2026-11-12             5.84h   24.00h  214.10M   36.67M    2.59B   2.37B  10.59K    8.3%
 Fri 2026-11-13            14.26h   24.00h  439.27M   30.81M    9.58B   9.14B  21.50K    4.6%
 Sat 2026-11-14            15.99h   24.00h  814.85M   50.95M   24.69B  23.87B  47.01K    3.3%
-Sun 2026-11-15 (so far)    1.00h    1.81h  150.22M  150.29M    3.01B   2.86B   5.37K    5.0%
+Sun 2026-11-15 (so far)    1.26h    2.07h  150.22M  119.61M    3.01B   2.86B   5.37K    5.0%
 ============================================================================================
-7 DAYS                    48.81h  145.81h    1.75B   35.93M   41.55B  39.80B 100.34K    4.2%
+7 DAYS                    49.07h  146.07h    1.75B   35.74M   41.55B  39.80B 100.34K    4.2%
 
 
-PROFIT SUMMARY -- sold since 2026-11-15 00:00 Central (as of 01:48 Central)
+PROFIT SUMMARY -- sold since 2026-11-15 00:00 Central (as of 02:04 Central)
 
 item                      profit  revenue    cost  units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------
@@ -65,15 +65,14 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-15_014412_run_board.log, board during pass 1 at row 30, read 2026-11-15T01:48:28 (live)
+ROWS -- 2026-11-15_014412_run_board.log, board during pass 9 at row 1, read 2026-11-15T02:03:44 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Force Gem Package                       x1   165.00M   165.00M        +0   165.00M   165.00M         0
+    1  Force Gem Package                       x1   165.00M   165.00M        +0   165.00M   165.00M         0 <- here
     2  Epic Booster (Highest)                  x4    41.25M    41.25M        +0    41.25M   165.00M         0
     3  Siena's Unbinding Stone                 x1    66.00M    97.39M   +31.39M    97.39M    66.00M    31.39M
     4  Epaulet of the Dead                     x1         -     1.03M         -     1.03M         -         -
     5  Yekaterina VIP Membership               x1    99.00M   104.00M    +5.00M   104.00M    99.00M     5.00M
-    30  (empty)                                           -          -       -              -               - <- here
-    balance now 2.35B, read 2026-11-15T01:47:32
+    balance now 2.35B, read 2026-11-15T02:03:44
        stock at its listed price                                                                      532.42M
        Alz, latest balance line                                                                         2.35B
        Cash at the voucher price                                                                      264.00M
@@ -81,12 +80,12 @@ ROWS -- 2026-11-15_014412_run_board.log, board during pass 1 at row 30, read 202
        NET WORTH                                                                                        3.20B
 
 
-MARKET -- 2026-11-15_014412_run.log, pass 1, log last written 01:48 Central (live)
+MARKET -- 2026-11-15_014412_run.log, pass 9, log last written 02:04 Central (live)
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 ------------------------------------------------------------------------------------
 Force Core(Highest)         0        -        -       -         -      -  buying off
-Chaos Core                  0  547.00K  541.05K  -5.95K     -1.1%      0
+Chaos Core                  0  545.00K  541.05K  -3.95K     -0.7%      0
 Force Core (Ultimate)       0        -        -       -         -      -  buying off
 Force Core(High)            0        -        -       -         -      -  buying off
 Upgrade Core (Ultimate)     0        -        -       -         -      -  buying off
