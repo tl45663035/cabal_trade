@@ -39,22 +39,22 @@ Wed 2026-11-11            11.72h   24.00h  135.16M   11.53M    1.69B   1.56B  15
 Thu 2026-11-12             5.84h   24.00h  214.10M   36.67M    2.59B   2.37B  10.59K    8.3%
 Fri 2026-11-13            14.26h   24.00h  439.27M   30.81M    9.58B   9.14B  21.50K    4.6%
 Sat 2026-11-14            15.99h   24.00h  814.85M   50.95M   24.69B  23.87B  47.01K    3.3%
-Sun 2026-11-15 (so far)    1.51h    2.32h  150.22M   99.44M    3.01B   2.86B   5.37K    5.0%
+Sun 2026-11-15 (so far)    2.23h    3.42h  166.73M   74.77M    3.63B   3.46B   6.47K    4.6%
 ============================================================================================
-7 DAYS                    49.32h  146.32h    1.75B   35.55M   41.55B  39.80B 100.34K    4.2%
+7 DAYS                    50.04h  147.42h    1.77B   35.37M   42.17B  40.40B 101.45K    4.2%
 
 
-PROFIT SUMMARY -- sold since 2026-11-15 00:00 Central (as of 02:19 Central)
+PROFIT SUMMARY -- sold since 2026-11-15 00:00 Central (as of 03:25 Central)
 
 item                      profit  revenue    cost  units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------
-chaoscore                145.22M    2.90B   2.76B  5.36K   513.92K  540.99K    5.0%
+chaoscore                161.73M    3.52B   3.36B  6.47K   519.27K  544.25K    4.6%
 yekaterinavipmembership    5.00M  104.00M  99.00M      1    99.00M  104.00M    4.8%
 -----------------------------------------------------------------------------------
-Chaos                    145.22M    2.90B   2.76B  5.36K   513.92K  540.99K    5.0%
+Chaos                    161.73M    3.52B   3.36B  6.47K   519.27K  544.25K    4.6%
 Cash                       5.00M  104.00M  99.00M      1    99.00M  104.00M    4.8%
 ===================================================================================
-TOTAL                    150.22M    3.01B   2.86B  5.37K   532.27K  560.27K    5.0%
+TOTAL                    166.73M    3.63B   3.46B  6.47K   534.48K  560.23K    4.6%
 
 
 
@@ -65,27 +65,35 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-15_014412_run_board.log, board during pass 16 at row 3, read 2026-11-15T02:19:19 (live)
+ROWS -- 2026-11-15_030522_run_board.log, board during pass 2 at row 1, read 2026-11-15T03:25:04 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Force Gem Package                       x1   165.00M   165.00M        +0   165.00M   165.00M         0
+    1  Force Gem Package                       x1   165.00M   165.00M        +0   165.00M   165.00M         0 <- here
     2  Epic Booster (Highest)                  x4    41.25M    41.25M        +0    41.25M   165.00M         0
-    3  Siena's Unbinding Stone                 x1    66.00M    97.39M   +31.39M    97.39M    66.00M    31.39M <- here
+    3  Siena's Unbinding Stone                 x1    66.00M    97.39M   +31.39M    97.39M    66.00M    31.39M
     4  Epaulet of the Dead                     x1         -     1.03M         -     1.03M         -         -
     5  Yekaterina VIP Membership               x1    99.00M   104.00M    +5.00M   104.00M    99.00M     5.00M
-    balance now 2.35B, read 2026-11-15T02:18:38
-       stock at its listed price                                                                      532.42M
-       Alz, latest balance line                                                                         2.35B
-       Cash at the voucher price                                                                      264.00M
-       gems at the voucher price                                                                       60.23M
-       NET WORTH                                                                                        3.20B
+    6  Chaos Core Set X 195                    x1   545.00K   559.99K   +14.99K   109.20M   106.28M     2.92M
+    7  Chaos Core Set X 201                    x1   545.41K   559.99K   +14.58K   112.56M   109.63M     2.93M
+    8  Chaos Core Set X 201                    x1   546.70K   559.99K   +13.29K   112.56M   109.89M     2.67M
+    9  Chaos Core Set                          x1   547.76K   559.99K   +12.23K   139.44M   136.39M     3.04M
+   10  Chaos Core Set                          x1   548.00K   559.99K   +11.99K   139.44M   136.45M     2.98M
+   11  Chaos Core Set                          x1   543.00K   559.99K   +16.98K   139.44M   135.21M     4.23M
+   12  Chaos Core Set X 249                    x1   543.00K   559.98K   +16.98K   139.44M   135.21M     4.23M
+   13  Chaos Core Set X 249                    x1   547.68K   559.98K   +12.30K   139.44M   136.37M     3.06M
+   14  Chaos Core Set                          x1   545.21K   559.98K   +14.77K   139.44M   135.76M     3.68M
+   15  Chaos Core Set                          x1   543.00K   559.98K   +16.98K   132.72M   128.69M     4.02M
+    balance now 1.09B, read 2026-11-15T03:25:04
+       stock at its listed price                                                                        1.84B
+       Alz, latest balance line                                                                         1.09B
+       NET WORTH                                                                                        2.93B
 
 
-MARKET -- 2026-11-15_014412_run.log, pass 16, log last written 02:19 Central (live)
+MARKET -- 2026-11-15_030522_run.log, pass 2, log last written 03:25 Central (live)
 
-core                     rows    buy/u   sell/u  margin  margin %  wants  short?
-------------------------------------------------------------------------------------
-Force Core(Highest)         0        -        -       -         -      -  buying off
-Chaos Core                  0  545.00K  541.05K  -3.95K     -0.7%      0
-Force Core (Ultimate)       0        -        -       -         -      -  buying off
-Force Core(High)            0        -        -       -         -      -  buying off
-Upgrade Core (Ultimate)     0        -        -       -         -      -  buying off
+core                     rows  buy/u  sell/u  margin  margin %  wants  short?
+-----------------------------------------------------------------------------------------------------------------
+Force Core(Highest)         0      -       -       -         -      -  buying off
+Chaos Core                 10      -       -       -         -      -  holds the most it can want, 10; not priced
+Force Core (Ultimate)       0      -       -       -         -      -  buying off
+Force Core(High)            0      -       -       -         -      -  buying off
+Upgrade Core (Ultimate)     0      -       -       -         -      -  buying off
