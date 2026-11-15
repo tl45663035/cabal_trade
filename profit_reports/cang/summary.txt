@@ -39,24 +39,24 @@ Wed 2026-11-11            11.72h   24.00h  135.16M   11.53M    1.69B   1.56B  15
 Thu 2026-11-12             5.84h   24.00h  214.10M   36.67M    2.59B   2.37B  10.59K    8.3%
 Fri 2026-11-13            14.26h   24.00h  439.27M   30.81M    9.58B   9.14B  21.50K    4.6%
 Sat 2026-11-14            15.99h   24.00h  814.85M   50.95M   24.69B  23.87B  47.01K    3.3%
-Sun 2026-11-15 (so far)    8.07h    9.26h    1.36B  168.79M   16.75B  15.39B  26.34K    8.1%
+Sun 2026-11-15 (so far)    8.33h    9.51h    1.45B  174.20M   18.13B  16.68B  28.12K    8.0%
 ============================================================================================
-7 DAYS                    55.88h  153.26h    2.97B   53.07M   55.30B  52.33B 121.31K    5.4%
+7 DAYS                    56.14h  153.51h    3.05B   54.40M   56.68B  53.62B 123.09K    5.4%
 
 
-PROFIT SUMMARY -- sold since 2026-11-15 00:00 Central (as of 09:15 Central)
+PROFIT SUMMARY -- sold since 2026-11-15 00:00 Central (as of 09:30 Central)
 
 item                     profit  revenue     cost   units  bought/u   sold/u  margin
 ------------------------------------------------------------------------------------
-chaoscore                 1.29B   15.51B   14.22B  26.33K   540.12K  589.11K    8.3%
-yekaterinavipmembership  43.91M  825.11M  781.20M       8    97.65M  103.14M    5.3%
+chaoscore                 1.38B   16.63B   15.25B  28.10K   542.68K  591.67K    8.3%
+yekaterinavipmembership  44.91M  925.11M  880.20M       9    97.80M  102.79M    4.9%
 sienasunbindingstone     28.50M   94.50M   66.00M       1    66.00M   94.50M   30.2%
-forcegempackage               0  325.00M  325.00M       2   162.50M  162.50M    0.0%
+forcegempackage               0  485.00M  485.00M       3   161.67M  161.67M    0.0%
 ------------------------------------------------------------------------------------
-Chaos                     1.29B   15.51B   14.22B  26.33K   540.12K  589.11K    8.3%
-Cash                     72.41M    1.24B    1.17B      11   106.56M  113.15M    5.8%
+Chaos                     1.38B   16.63B   15.25B  28.10K   542.68K  591.67K    8.3%
+Cash                     73.41M    1.50B    1.43B      13   110.09M  115.74M    4.9%
 ====================================================================================
-TOTAL                     1.36B   16.75B   15.39B  26.34K   584.40K  636.12K    8.1%
+TOTAL                     1.45B   18.13B   16.68B  28.12K   593.33K  644.91K    8.0%
 
 
 
@@ -67,38 +67,29 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-15_030522_run_board.log, board during pass 78 at row 28, read 2026-11-15T09:15:29 (live)
+ROWS -- 2026-11-15_030522_run_board.log, board during pass 83 at row 7, read 2026-11-15T09:30:46 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Force Gem Package                       x1   160.00M   160.00M        +0   160.00M   160.00M         0
     2  Epic Booster (Highest)                  x4    41.25M    41.25M        +0    41.25M   165.00M         0
     3  Siena's Unbinding Stone                 x1    66.00M    97.39M   +31.39M    97.39M    66.00M    31.39M
     4  Epaulet of the Dead                     x1         -     1.03M         -     1.03M         -         -
-    5  Chaos Core Set X 249                    x1   554.33K   629.68K   +75.35K   156.79M   138.03M    18.76M
-    6  Chaos Core Set X 189                    x1   595.00K   629.70K   +34.70K   119.01M   112.45M     6.56M
-    7  Chaos Core Set                          x1   595.00K   629.70K   +34.70K   156.79M   148.15M     8.64M
-    8  Chaos Core Set                          x1   595.00K   629.70K   +34.70K   156.79M   148.15M     8.64M
-    9  Chaos Core Set                          x1   595.00K   629.69K   +34.70K   113.35M   107.10M     6.25M
-   10  Chaos Core Set                          x1   595.00K   629.69K   +34.69K   103.90M    98.17M     5.72M
-   11  Chaos Core Set                          x1   572.40K   629.70K   +57.30K   156.79M   142.53M    14.27M
-   12  Chaos Core Set                          x1   542.27K   629.69K   +87.43K   117.12M   100.86M    16.26M
-   13  Chaos Core Set                          x1   595.00K   629.70K   +34.70K   156.79M   148.16M     8.64M
-   14  Chaos Core Set                          x1   583.70K   629.70K   +45.99K   156.79M   145.34M    11.45M
-   15  Yekaterina VIP Membership               x1    99.00M   100.00M    +1.00M   100.00M    99.00M     1.00M
-   16  Yekaterina VIP Membership               x1    99.00M   100.00M  +999.99K   100.00M    99.00M   999.99K
-    28  (empty)                                           -          -       -              -               - <- here
-    balance now 2.41B, read 2026-11-15T09:13:52
-       stock at its listed price                                                                        2.02B
-       Alz, latest balance line                                                                         2.41B
-       Cash at the voucher price                                                                       64.00M
-       NET WORTH                                                                                        4.49B
+    5  Chaos Core Set X 189                    x1   595.00K   595.00K        +0   112.45M   112.45M         0
+    6  Chaos Core Set X 249                    x1   583.70K   583.70K        +0   145.34M   145.34M         0
+    7  Yekaterina VIP Membership               x1    99.00M   100.00M  +999.99K   100.00M    99.00M   999.99K <- here
+    8  Yekaterina VIP Membership               x1    99.00M   100.00M  +999.99K   100.00M    99.00M   999.99K
+    balance now 3.47B, read 2026-11-15T09:30:11
+       stock at its listed price                                                                      881.22M
+       Alz, latest balance line                                                                         3.47B
+       Cash at the voucher price                                                                      128.00M
+       NET WORTH                                                                                        4.48B
 
 
-MARKET -- 2026-11-15_030522_run.log, pass 78, log last written 09:15 Central (live)
+MARKET -- 2026-11-15_030522_run.log, pass 83, log last written 09:30 Central (live)
 
-core                     rows  buy/u  sell/u  margin  margin %  wants  short?
------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         0      -       -       -         -      -  buying off
-Chaos Core                 10      -       -       -         -      -  holds the most it can want, 10; not priced
-Force Core (Ultimate)       0      -       -       -         -      -  buying off
-Force Core(High)            0      -       -       -         -      -  buying off
-Upgrade Core (Ultimate)     0      -       -       -         -      -  buying off
+core                     rows    buy/u   sell/u   margin  margin %  wants  short?
+-------------------------------------------------------------------------------------
+Force Core(Highest)         0        -        -        -         -      -  buying off
+Chaos Core                  2  595.00K  568.18K  -26.82K     -4.7%      0
+Force Core (Ultimate)       0        -        -        -         -      -  buying off
+Force Core(High)            0        -        -        -         -      -  buying off
+Upgrade Core (Ultimate)     0        -        -        -         -      -  buying off
