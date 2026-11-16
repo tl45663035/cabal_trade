@@ -13,11 +13,11 @@
       "rows": {
         "Yekaterina VIP Membership": 0,
         "Epic Booster (Highest)": 0,
-        "Armor Account bind Unseal Stone": 1,
-        "Armor Account bind Seal Stone": 1,
+        "Armor Account bind Unseal Stone": 0,
+        "Armor Account bind Seal Stone": 0,
         "Siena's Unbinding Stone": 0,
         "Blessing Bead - Superior": 0,
-        "Arionell": 1
+        "Arionell": 0
       }
     },
     "rows_by_margin": {
@@ -344,7 +344,7 @@
     "enabled": false
   },
   "world_boss": {
-    "enabled": true,
+    "enabled": false,
     "pot_delay": 5.0,
     "main_bm_cooldown": 40.0,
     "keyed_points": ["main_bm", "alternate_bm", "aura"],
