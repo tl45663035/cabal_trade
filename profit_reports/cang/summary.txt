@@ -40,12 +40,12 @@ Wed 2026-11-11            11.72h   24.00h  135.16M   11.53M    1.69B   1.56B  15
 Thu 2026-11-12             5.84h   24.00h  214.10M   36.67M    2.59B   2.37B  10.59K    8.3%
 Fri 2026-11-13            14.26h   24.00h  439.27M   30.81M    9.58B   9.14B  21.50K    4.6%
 Sat 2026-11-14            15.99h   24.00h  814.85M   50.95M   24.69B  23.87B  47.01K    3.3%
-Sun 2026-11-15 (so far)   18.25h   21.24h    1.89B  103.61M   31.81B  29.92B  47.45K    5.9%
+Sun 2026-11-15 (so far)   18.50h   21.49h    1.89B  102.20M   31.81B  29.92B  47.45K    5.9%
 ============================================================================================
-7 DAYS                    66.06h  165.24h    3.49B   52.90M   70.35B  66.86B 142.42K    5.0%
+7 DAYS                    66.31h  165.49h    3.49B   52.69M   70.35B  66.86B 142.42K    5.0%
 
 
-PROFIT SUMMARY -- sold since 2026-11-15 00:00 Central (as of 21:14 Central)
+PROFIT SUMMARY -- sold since 2026-11-15 00:00 Central (as of 21:29 Central)
 
 item                          profit  revenue     cost   units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------------
@@ -70,32 +70,31 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-15_202425_run_board.log, board during pass 7 at row 21, read 2026-11-15T21:14:05 (live)
+ROWS -- 2026-11-15_202425_run_board.log, board during pass 12 at row 6, read 2026-11-15T21:29:13 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Epic Booster (Highest)                  x4    39.86M    39.86M        +0    39.86M   159.44M         0
     2  Siena's Unbinding Stone                 x1    63.78M    93.00M   +29.22M    93.00M    63.78M    29.22M
     3  Force Gem Package                       x1   159.44M   160.00M  +555.72K   160.00M   159.44M   555.72K
-    4  Chaos Core Set X 240                    x1   630.00K   639.03K    +9.03K   153.37M   151.20M     2.17M
-    5  Chaos Core Set                          x1   630.00K   639.03K    +9.03K   136.11M   134.19M     1.92M
-    6  Chaos Core Set X 249                    x1   630.00K   639.03K    +9.03K   159.12M   156.87M     2.25M
-    7  Chaos Core Set X 249                    x1   630.00K   639.03K    +9.03K   159.12M   156.87M     2.25M
-    8  Chaos Core Set X 249                    x1   630.00K   639.03K    +9.03K   159.12M   156.87M     2.25M
-    9  Chaos Core Set X 249                    x1   630.00K   639.03K    +9.03K   159.12M   156.87M     2.25M
-   10  Chaos Core Set X 207                    x1   630.00K   639.02K    +9.03K   132.28M   130.41M     1.87M
-   11  Chaos Core Set X 249                    x1   630.00K   639.02K    +9.03K   159.12M   156.87M     2.25M
-   12  Chaos Core Set X 177                    x1   630.00K   639.02K    +9.02K   113.11M   111.51M     1.60M
-   13  Chaos Core Set X 153                    x1   630.00K   639.02K    +9.02K    97.77M    96.39M     1.38M
+    4  Chaos Core Set X 240                    x1   630.00K   630.00K        +0   151.20M   151.20M         0
+    5  Chaos Core Set X 213                    x1   630.00K   630.00K        +0   134.19M   134.19M         0
+    6  Chaos Core Set X 249                    x1   630.00K   630.00K        +0   156.87M   156.87M         0 <- here
+    7  Chaos Core Set X 249                    x1   630.00K   630.00K        +0   156.87M   156.87M         0
+    8  Chaos Core Set X 249                    x1   630.00K   630.00K        +0   156.87M   156.87M         0
+    9  Chaos Core Set X 249                    x1   630.00K   630.00K        +0   156.87M   156.87M         0
+   10  Chaos Core Set X 207                    x1   630.00K   630.00K        +0   130.41M   130.41M         0
+   11  Chaos Core Set X 249                    x1   630.00K   630.00K        +0   156.87M   156.87M         0
+   12  Chaos Core Set X 177                    x1   630.00K   630.00K        +0   111.51M   111.51M         0
+   13  Chaos Core Set X 153                    x1   630.00K   630.00K        +0    96.39M    96.39M         0
    14  Defensive Earring +7                    x1         -   330.00M         -   330.00M         -         -
-    21  (empty)                                           -          -       -              -               - <- here
-    balance now 2.80B, read 2026-11-15T21:13:24
-       stock at its listed price                                                                        2.17B
+    balance now 2.80B, read 2026-11-15T21:28:04
+       stock at its listed price                                                                        2.15B
        Alz, latest balance line                                                                         2.80B
        Cash at the voucher price                                                                       63.78M
        gems at the voucher price                                                                       56.60M
-       NET WORTH                                                                                        5.09B
+       NET WORTH                                                                                        5.07B
 
 
-MARKET -- 2026-11-15_202425_run.log, pass 7, log last written 21:14 Central (live)
+MARKET -- 2026-11-15_202425_run.log, pass 12, log last written 21:29 Central (live)
 
 core                     rows  buy/u  sell/u  margin  margin %  wants  short?
 -----------------------------------------------------------------------------------------------------------------
