@@ -43,16 +43,16 @@ Fri 2026-11-13            14.26h   24.00h  439.27M   30.81M    9.58B   9.14B  21
 Sat 2026-11-14            15.99h   24.00h  814.85M   50.95M   24.69B  23.87B  47.01K    3.3%
 Sun 2026-11-15            18.89h   24.00h    1.89B  100.22M   32.12B  30.23B  47.69K    5.9%
 Mon 2026-11-16            12.84h   24.00h    1.20B   93.80M   13.84B  12.64B  20.35K    8.7%
-Tue 2026-11-17 (so far)   12.09h   16.19h  149.75M   12.39M    6.93B   6.78B  13.69K    2.2%
+Tue 2026-11-17 (so far)   12.17h   16.27h  153.10M   12.58M    6.96B   6.81B  13.78K    2.2%
 ============================================================================================
-7 DAYS                    91.63h  160.19h    4.85B   52.94M   91.44B  86.59B 176.70K    5.3%
+7 DAYS                    91.71h  160.27h    4.85B   52.93M   91.47B  86.61B 176.78K    5.3%
 
 
-PROFIT SUMMARY -- sold since 2026-11-17 00:00 Central (as of 16:11 Central)
+PROFIT SUMMARY -- sold since 2026-11-17 00:00 Central (as of 16:16 Central)
 
 item                            profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------------
-upgradecoreultimate             73.82M  938.00M  864.17M   2.93K   294.54K  319.70K    7.9%
+upgradecoreultimate             77.17M  966.87M  889.70M   3.02K   294.70K  320.26K    8.0%
 forcegempackage                 36.00M  991.00M  955.00M       6   159.17M  165.17M    3.6%
 sienasunbindingstone            29.00M   93.00M   64.00M       1    64.00M   93.00M   31.2%
 forcecorehigh                   26.18M  438.70M  412.51M   1.87K   220.95K  234.97K    6.0%
@@ -64,11 +64,11 @@ upgradecorehigh                      0   12.07M   12.07M     251    48.10K   48.
 upgradecorehighest                   0   19.73M   19.73M     270    73.06K   73.06K    0.0%
 chaoscore                      -26.49M    4.08B    4.11B   7.36K   558.18K  554.58K   -0.6%
 -------------------------------------------------------------------------------------------
-Cores                          111.23M    1.77B    1.66B   6.32K   261.76K  279.35K    6.3%
+Cores                          114.58M    1.80B    1.68B   6.41K   262.27K  280.15K    6.4%
 Chaos                          -26.49M    4.08B    4.11B   7.36K   558.18K  554.58K   -0.6%
 Cash                            65.00M    1.08B    1.02B       7   145.57M  154.86M    6.0%
 ===========================================================================================
-TOTAL                          149.75M    6.93B    6.78B  13.69K   495.43K  506.37K    2.2%
+TOTAL                          153.10M    6.96B    6.81B  13.78K   494.23K  505.34K    2.2%
 
 
 
@@ -79,32 +79,35 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-17_160619_relist.log, board after pass 1
+ROWS -- 2026-11-17_161120_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    64.00M    93.00M   +29.00M    93.00M    64.00M    29.00M
-    2  Force Core (Ultimate                  x163   370.00K   403.72K   +33.72K    65.81M    60.31M     5.50M
-    3  Force Core (Ultimate                  x210   370.00K   403.72K   +33.72K    84.78M    77.70M     7.08M
-    4  Force Core (Ultimate                  x210   370.00K   403.72K   +33.72K    84.78M    77.70M     7.08M
+    2  Force Core (Ultimate                  x163   370.00K   403.71K   +33.71K    65.80M    60.31M     5.49M
+    3  Force Core (Ultimate                  x210   370.00K   403.71K   +33.71K    84.78M    77.70M     7.08M
+    4  Force Core (Ultimate                  x210   370.00K   403.71K   +33.71K    84.78M    77.70M     7.08M
     5  Chaos Core Set X 726                    x1   560.00K   573.92K   +13.92K   416.67M   406.56M    10.11M
     6  Epic Booster (Highest)                  x8    40.00M    40.00M        +0   320.00M   320.00M         0
     7  Force Gem Package                       x1   160.00M   160.00M        +0   160.00M   160.00M         0
-    8  Force Core(High                       x116   214.19K   216.66K    +2.47K    25.13M    24.85M   286.29K
+    8  Force Core(High                       x116   214.19K   216.66K    +2.46K    25.13M    24.85M   285.94K
     9  Force Core(High                       x100   220.00K   220.00K        +0    22.00M    22.00M         0
-   10  Upgrade Core (Ultimate                x250   300.30K   339.71K   +39.41K    84.93M    75.08M     9.85M
-   11  Upgrade Core (Ultimate                 x84   300.30K   339.71K   +39.41K    28.54M    25.23M     3.31M
-   12  Upgrade Core (Ultimate                  x2   300.30K   339.71K   +39.41K   679.42K   600.60K    78.82K
-   13  Force Core(High                       x250   200.00K   216.66K   +16.66K    54.16M    50.00M     4.17M
+   10  Upgrade Core (Ultimate                x165   300.30K   339.70K   +39.40K    56.05M    49.55M     6.50M
+   11  Upgrade Core (Ultimate                 x84   300.30K   339.70K   +39.40K    28.53M    25.23M     3.31M
+   12  Upgrade Core (Ultimate                  x2   300.30K   339.70K   +39.40K   679.39K   600.60K    78.79K
+   13  Force Core(High                       x250   200.00K   216.66K   +16.66K    54.16M    50.00M     4.16M
    14  Force Core(High                       x147   200.00K   216.66K   +16.66K    31.85M    29.40M     2.45M
-   15  Force Core(Highest                     x86   260.00K   293.00K   +33.00K    25.20M    22.36M     2.84M
-   16  Force Core(Highest                     x84   285.71K   293.00K    +7.29K    24.61M    24.00M   611.94K
-    balance now 2.88B
+   15  Force Core(Highest                     x86   260.00K   292.99K   +32.99K    25.20M    22.36M     2.84M
+   16  Force Core(Highest                     x84   285.71K   292.99K    +7.28K    24.61M    24.00M   611.35K
+    balance now 2.91B
   0.01 minute(s) are up after pass 1
-1 pass(es), 16 relisted, 14 empty, 0 skipped in 238s (14899 ms a row)
+1 pass(es), 16 relisted, 14 empty, 0 skipped in 240s (15005 ms a row)
 PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
-  nothing has sold yet this run.
+  item                              profit   units  margin        revenue           cost
+       Upgrade Core (Ultimate         3.35M      85   11.6%     28.88M                                 25.53M
   ------------------------------------------------------------------------------------
-  RUN CLOSED                             0   (0 realised, +0 assumed)
-  started 16:06:19, ended 16:11:04, ran for 4m 45s
+       SOLD                           3.35M      85   11.6%     28.88M                                 25.53M
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                     3.35M   (3.35M realised, +0 assumed)
+  started 16:11:20, ended 16:16:07, ran for 4m 47s
 ##############################################################################################
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
@@ -121,16 +124,16 @@ PROFIT THIS RUN -- each sale against its row's cost: what this run bought at wha
 ##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
 ##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
 ##############################################################################################
-       stock at its listed price                                                                        1.52B
-       Alz, latest balance line                                                                         2.88B
+       stock at its listed price                                                                        1.49B
+       Alz, latest balance line                                                                         2.91B
        NET WORTH                                                                                        4.40B
 
 
-MARKET -- 2026-11-17_160619_relist.log, pass 1, log last written 16:11 Central
+MARKET -- 2026-11-17_161120_relist.log, pass 1, log last written 16:16 Central
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
-Force Core(Highest)         2  289.66K  293.00K    3.34K      1.1%      0
+Force Core(Highest)         2  288.89K  293.00K    4.11K      1.4%      0
 Chaos Core                  1  554.00K  531.91K  -22.09K     -4.2%      0
 Force Core (Ultimate)       3        -        -        -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            4        -        -        -         -      -  holds the most it can want, 3; not priced
