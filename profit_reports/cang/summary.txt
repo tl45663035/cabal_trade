@@ -43,12 +43,12 @@ Fri 2026-11-13            14.26h   24.00h  439.27M   30.81M    9.58B   9.14B  21
 Sat 2026-11-14            15.99h   24.00h  814.85M   50.95M   24.69B  23.87B  47.01K    3.3%
 Sun 2026-11-15            18.89h   24.00h    1.89B  100.22M   32.12B  30.23B  47.69K    5.9%
 Mon 2026-11-16            12.84h   24.00h    1.20B   93.80M   13.84B  12.64B  20.35K    8.7%
-Tue 2026-11-17 (so far)   16.14h   21.57h  192.58M   11.93M    7.38B   7.18B  15.19K    2.6%
+Tue 2026-11-17 (so far)   16.22h   21.65h  192.58M   11.88M    7.38B   7.18B  15.19K    2.6%
 ============================================================================================
-7 DAYS                    95.69h  165.57h    4.89B   51.14M   91.88B  86.99B 178.19K    5.3%
+7 DAYS                    95.76h  165.65h    4.89B   51.11M   91.88B  86.99B 178.19K    5.3%
 
 
-PROFIT SUMMARY -- sold since 2026-11-17 00:00 Central (as of 21:34 Central)
+PROFIT SUMMARY -- sold since 2026-11-17 00:00 Central (as of 21:39 Central)
 
 item                            profit  revenue     cost   units  bought/u   sold/u  margin
 -------------------------------------------------------------------------------------------
@@ -79,32 +79,30 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-17_212802_relist.log, board after pass 2
+ROWS -- 2026-11-17_213429_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    64.00M    93.00M   +29.00M    93.00M    64.00M    29.00M
     2  Force Core (Ultimate                  x163   370.00K   403.26K   +33.26K    65.73M    60.31M     5.42M
-    3  Force Core (Ultimate                  x210   370.00K   403.26K   +33.26K    84.69M    77.70M     6.99M
-    4  Force Core (Ultimate                  x210   370.00K   403.26K   +33.26K    84.69M    77.70M     6.99M
+    3  Force Core (Ultimate                  x210   370.00K   403.26K   +33.26K    84.68M    77.70M     6.98M
+    4  Force Core (Ultimate                  x210   370.00K   403.26K   +33.26K    84.68M    77.70M     6.98M
     5  Chaos Core Set X 726                    x1   560.00K   573.92K   +13.92K   416.67M   406.56M    10.11M
     6  Epic Booster (Highest)                  x8    40.00M    40.00M        +0   320.00M   320.00M         0
     7  Force Gem Package                       x1   160.00M   160.00M        +0   160.00M   160.00M         0
     8  Force Core(High                       x100   220.00K   220.00K        +0    22.00M    22.00M         0
     9  Force Core(Highest                     x86   260.00K   292.78K   +32.78K    25.18M    22.36M     2.82M
-   10  Force Core(Highest                     x33   285.71K   292.78K    +7.07K     9.66M     9.43M   233.18K
-   11  Force Core(Highest                     x31   287.10K   292.78K    +5.68K     9.08M     8.90M   176.17K
-   12  Upgrade Core (Ultimate                x166   311.85K   339.96K   +28.11K    56.43M    51.77M     4.67M
-   13  Upgrade Core (Ultimate                x250   311.85K   339.96K   +28.11K    84.99M    77.96M     7.03M
-   14  Upgrade Core (Ultimate                x197   311.85K   339.95K   +28.11K    66.97M    61.43M     5.54M
+   10  Force Core(Highest                     x33   285.71K   292.78K    +7.06K     9.66M     9.43M   233.08K
+   11  Force Core(Highest                     x31   287.10K   292.78K    +5.68K     9.08M     8.90M   176.08K
+   12  Upgrade Core (Ultimate                x166   311.85K   339.95K   +28.10K    56.43M    51.77M     4.67M
+   13  Upgrade Core (Ultimate                x250   311.85K   339.95K   +28.10K    84.99M    77.96M     7.03M
+   14  Upgrade Core (Ultimate                x197   311.85K   339.95K   +28.10K    66.97M    61.43M     5.54M
     balance now 2.94B
-  0.01 minute(s) are up after pass 2
-2 pass(es), 14 relisted, 16 empty, 0 skipped in 317s (22674 ms a row)
+  0.01 minute(s) are up after pass 1
+1 pass(es), 14 relisted, 16 empty, 0 skipped in 216s (15423 ms a row)
 PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
   nothing has sold yet this run.
-  bought this run and still unsold, taken as sold at the price each lot was bought against:
-    upgradecoreultimate              447 core(s)     139.40M Alz paid   +12.57M
   ------------------------------------------------------------------------------------
-  RUN CLOSED                    12.57M   (0 realised, +12.57M assumed)
-  started 21:28:02, ended 21:34:06, ran for 6m 4s
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 21:34:30, ended 21:38:52, ran for 4m 22s
 ##############################################################################################
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
@@ -126,7 +124,7 @@ PROFIT THIS RUN -- each sale against its row's cost: what this run bought at wha
        NET WORTH                                                                                        4.44B
 
 
-MARKET -- 2026-11-17_212802_relist.log, pass 2, log last written 21:34 Central
+MARKET -- 2026-11-17_213429_relist.log, pass 1, log last written 21:38 Central
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
@@ -134,4 +132,4 @@ Force Core(Highest)         3        -        -       -         -      -  holds 
 Chaos Core                  1  540.00K  531.91K  -8.09K     -1.5%      0
 Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
 Force Core(High)            1  225.18K  216.00K  -9.18K     -4.3%      0
-Upgrade Core (Ultimate)     1  311.85K  339.96K  28.11K      8.3%      3  YES
+Upgrade Core (Ultimate)     3        -        -       -         -      -  holds the most it can want, 3; not priced
