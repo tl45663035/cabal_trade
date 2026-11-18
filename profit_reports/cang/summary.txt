@@ -41,9 +41,9 @@ Sat 2026-11-14            15.99h   24.00h  814.85M   50.95M   24.69B   23.87B  4
 Sun 2026-11-15            18.89h   24.00h    1.89B  100.22M   32.12B   30.23B  47.69K    5.9%
 Mon 2026-11-16            12.84h   24.00h    1.20B   93.80M   13.84B   12.64B  20.35K    8.7%
 Tue 2026-11-17            16.36h   24.00h  206.52M   12.62M    7.54B    7.34B  15.69K    2.7%
-Wed 2026-11-18 (so far)    0.58h    1.05h    6.63M   11.50M  402.03M  395.40M     995    1.6%
+Wed 2026-11-18 (so far)    0.58h    1.06h    6.63M   11.44M  402.03M  395.40M     995    1.6%
 =============================================================================================
-7 DAYS                    84.76h  145.05h    4.78B   56.39M   90.76B   85.98B 163.82K    5.3%
+7 DAYS                    84.76h  145.06h    4.78B   56.38M   90.76B   85.98B 163.82K    5.3%
 
 
 PROFIT SUMMARY -- sold since 2026-11-18 00:00 Central (as of 01:03 Central)
@@ -72,18 +72,18 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-18_005535_relist_board.log, board during pass 1 at row 30, read 2026-11-18T01:03:00 (live)
+ROWS -- 2026-11-18_005535_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Siena's Unbinding Stone                 x1    62.00M    93.00M   +31.00M    93.00M    62.00M    31.00M
-    2  Force Core (Ultimate                  x163   374.44K   403.23K   +28.79K   403.23K    61.03M     4.69M
-    3  Force Core (Ultimate                  x210   374.44K   403.23K   +28.79K   403.23K    78.63M     6.05M
-    4  Force Core (Ultimate                  x210   374.44K   403.22K   +28.79K   403.22K    78.63M     6.05M
+    2  Force Core (Ultimate                  x163   374.44K   403.23K   +28.79K    65.73M    61.03M     4.69M
+    3  Force Core (Ultimate                  x210   374.44K   403.23K   +28.79K    84.68M    78.63M     6.05M
+    4  Force Core (Ultimate                  x210   374.44K   403.22K   +28.79K    84.68M    78.63M     6.05M
     5  Chaos Core Set X 726                    x1   534.90K   573.92K   +39.02K   416.67M   388.34M    28.33M
-    6  Epic Booster (Highest)                  x8    38.75M    38.75M        +0    38.75M   310.00M         0
+    6  Epic Booster (Highest)                  x8    38.75M    38.75M        +0   310.00M   310.00M         0
     7  Force Gem Package                       x1   155.00M   160.00M    +5.00M   160.00M   155.00M     5.00M
-    8  Force Core(High                       x100   225.00K   225.00K        +0   225.00K    22.50M         0
-    9  Force Core(Highest                     x86   290.21K   292.76K    +2.55K   292.76K    24.96M   219.39K
-   10  Force Core(Highest                     x33   290.21K   292.76K    +2.55K   292.76K     9.58M    84.15K
+    8  Force Core(High                       x100   225.00K   225.00K        +0    22.50M    22.50M         0
+    9  Force Core(Highest                     x86   290.21K   292.76K    +2.55K    25.18M    24.96M   219.39K
+   10  Force Core(Highest                     x33   290.21K   292.76K    +2.55K     9.66M     9.58M    84.15K
    11  Force Core(Highest                      x1   290.21K   292.76K    +2.55K   292.76K   290.21K     2.55K
    12  Chaos Core Set X 159                    x1   534.90K   542.93K    +8.03K    86.33M    85.05M     1.28M
    13  Chaos Core Set X 240                    x1   534.90K   542.93K    +8.03K   130.30M   128.38M     1.93M
@@ -94,8 +94,33 @@ ROWS -- 2026-11-18_005535_relist_board.log, board during pass 1 at row 30, read 
    18  Chaos Core Set X 300                    x1   534.90K   542.93K    +8.03K   162.88M   160.47M     2.41M
    19  Chaos Core Set X 150                    x1   534.90K   542.92K    +8.03K    81.44M    80.23M     1.20M
    20  Chaos Core Set X 171                    x1   534.90K   542.92K    +8.02K    92.84M    91.47M     1.37M
-    30  (empty)                                           -          -       -              -               - <- here
-    balance now 2.52B, read 2026-11-18T00:59:54
+    balance now 2.52B
+  0.01 minute(s) are up after pass 1
+1 pass(es), 19 relisted, 11 empty, 0 skipped in 315s (16580 ms a row)
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  item                              profit   units  margin        revenue           cost
+       Force Gem Package              5.00M       1    3.1%    160.00M                                155.00M
+  ------------------------------------------------------------------------------------
+       SOLD                           5.00M       1    3.1%    160.00M                                155.00M
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                     5.00M   (5.00M realised, +0 assumed)
+  started 00:55:35, ended 01:03:23, ran for 7m 47s
+##############################################################################################
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##############################################################################################
        stock at its listed price                                                                        2.32B
        Alz, latest balance line                                                                         2.52B
        Cash at the voucher price                                                                      279.00M
@@ -103,7 +128,7 @@ ROWS -- 2026-11-18_005535_relist_board.log, board during pass 1 at row 30, read 
        NET WORTH                                                                                        5.19B
 
 
-MARKET -- 2026-11-18_005535_relist.log, pass 1, log last written 01:03 Central (live)
+MARKET -- 2026-11-18_005535_relist.log, pass 1, log last written 01:03 Central
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
