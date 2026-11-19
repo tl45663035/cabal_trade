@@ -8,12 +8,12 @@ Sat 2026-11-14             0.00h   24.00h        0        0        0       0    
 Sun 2026-11-15             0.00h   24.00h        0        0        0       0       0      --
 Mon 2026-11-16            17.19h   24.00h  827.57M   48.14M   17.05B  16.22B  28.18K    4.9%
 Tue 2026-11-17            20.46h   24.00h  236.13M   11.54M    7.60B   7.37B  17.75K    3.1%
-Wed 2026-11-18 (so far)   20.10h   20.56h  147.59M    7.34M    4.74B   4.59B  10.76K    3.1%
+Wed 2026-11-18 (so far)   20.24h   20.89h  147.61M    7.29M    4.74B   4.60B  10.76K    3.1%
 ============================================================================================
-7 DAYS                    57.75h  164.56h    1.21B   20.97M   29.39B  28.18B  56.69K    4.1%
+7 DAYS                    57.89h  164.89h    1.21B   20.92M   29.39B  28.18B  56.70K    4.1%
 
 
-PROFIT SUMMARY -- sold since 2026-11-18 00:00 Central (as of 20:33 Central)
+PROFIT SUMMARY -- sold since 2026-11-18 00:00 Central (as of 20:53 Central)
 
 item                  profit  revenue     cost   units  bought/u   sold/u  margin
 ---------------------------------------------------------------------------------
@@ -21,12 +21,12 @@ upgradecoreultimate   68.94M  526.81M  457.88M   1.48K   310.21K  356.92K   13.1
 chaoscore             52.19M    3.44B    3.39B   6.35K   533.88K  542.10K    1.5%
 forcecoreultimate     10.93M  145.86M  134.92M     363   371.69K  401.81K    7.5%
 forcecorehighest       8.60M  221.76M  213.16M     768   277.55K  288.75K    3.9%
-forcecorehigh          6.93M  405.17M  398.24M   1.80K   221.12K  224.97K    1.7%
+forcecorehigh          6.95M  406.52M  399.57M   1.81K   221.12K  224.97K    1.7%
 ---------------------------------------------------------------------------------
-Cores                 95.40M    1.30B    1.20B   4.41K   273.19K  294.83K    7.3%
+Cores                 95.43M    1.30B    1.21B   4.41K   273.11K  294.73K    7.3%
 Chaos                 52.19M    3.44B    3.39B   6.35K   533.88K  542.10K    1.5%
 =================================================================================
-TOTAL                147.59M    4.74B    4.59B  10.76K   427.05K  440.77K    3.1%
+TOTAL                147.61M    4.74B    4.60B  10.76K   426.94K  440.65K    3.1%
 
 
 
@@ -37,25 +37,25 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-18_090654_run_board.log, board during pass 237 at row 4, read 2026-11-18T18:31:06 (live)
+ROWS -- 2026-11-18_184921_run_board.log, board during pass 2 at row 1, read 2026-11-18T18:53:34 (live)
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Force Core (Ultimate                    x1   368.00K   400.86K   +32.86K   400.86K   368.00K    32.86K
-    2  Force Core (Ultimate                    x8   368.00K   400.86K   +32.86K   400.86K     2.94M   262.90K
-    3  Force Core(Highest                     x98   287.81K   292.61K    +4.81K   292.61K    28.20M   471.28K
-    4  Upgrade Core (Ultimate                 x38   341.12K   341.12K        +0   341.12K    12.96M         0 <- here
-    5  Upgrade Core (Ultimate                x141   344.79K   344.79K        +0   344.79K    48.61M         0
-    6  Upgrade Core (Ultimate                x114   339.82K   339.82K        +0   339.82K    38.74M         0
-    7  Force Core(High                        x66   212.04K   224.84K   +12.80K   224.84K    13.99M   844.60K
-    8  Force Core (Ultimate                  x184   368.00K   400.86K   +32.87K   400.86K    67.71M     6.05M
-    9  Force Core(High                        x70   205.88K   224.84K   +18.96K   224.84K    14.41M     1.33M
-    balance now 339.36M, read 2026-11-18T18:30:15
-       stock at its listed price                                                                      236.94M
-       Alz, latest balance line                                                                       339.36M
-       gems at the voucher price                                                                       38.12M
-       NET WORTH                                                                                      614.43M
+    1  Force Core (Ultimate                    x1   367.48K   400.86K   +33.38K   400.86K   367.48K    33.38K <- here
+    2  Force Core (Ultimate                    x8   367.48K   400.86K   +33.38K   400.86K     2.94M   267.05K
+    3  Force Core(Highest                     x98   292.19K   292.61K      +427   292.61K    28.63M    41.85K
+    4  Upgrade Core (Ultimate                 x38   299.16K   333.29K   +34.12K   333.29K    11.37M     1.30M
+    5  Upgrade Core (Ultimate                x141   299.16K   334.79K   +35.62K   334.79K    42.18M     5.02M
+    6  Upgrade Core (Ultimate                x114   299.16K   333.29K   +34.12K   333.29K    34.10M     3.89M
+    7  Force Core(High                        x66   220.59K   224.84K    +4.25K   224.84K    14.56M   280.37K
+    8  Force Core (Ultimate                  x184   367.48K   400.86K   +33.38K   400.86K    67.62M     6.14M
+    9  Force Core(High                        x64   220.59K   224.84K    +4.25K   224.84K    14.12M   271.81K
+    balance now 340.71M, read 2026-11-18T18:53:34
+       stock at its listed price                                                                      233.13M
+       Alz, latest balance line                                                                       340.71M
+       gems at the voucher price                                                                       38.61M
+       NET WORTH                                                                                      612.46M
 
 
-MARKET -- 2026-11-18_090654_run.log, pass 237, log last written 20:31 Central (live)
+MARKET -- 2026-11-18_184921_run.log, pass 1, log last written 20:53 Central (live); pass 2 is under way and has not priced the cores yet, so this is the last table it printed
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
