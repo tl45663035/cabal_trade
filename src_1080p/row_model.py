@@ -114,7 +114,6 @@ class WrongItem(Divergence):
 
 
 LAST_MARKET = {}
-LAST_CHECKED = {}
 WORK_TAB_STALE = False
 
 
@@ -126,23 +125,11 @@ def note_market(name, unit, sure=False):
     LAST_MARKET[item_key(name)] = int(unit)
 
 
-def note_checked(name, unit):
-    if not name or not unit or int(unit) < MIN_PLAUSIBLE_PRICE:
-        return
-    LAST_CHECKED[item_key(name)] = int(unit)
-
-
 def market_anchor(name):
     if not name:
         return 0
     known = LAST_MARKET.get(item_key(name))
     return int(known or calibration.market_unit(name) or 0)
-
-
-def last_checked(name):
-    if not name:
-        return 0
-    return int(LAST_CHECKED.get(item_key(name)) or market_anchor(name))
 
 
 def within(seen, expected):
@@ -1180,7 +1167,8 @@ def special_single(name, qty):
     if not conf.get("enabled") or is_set(name) or pack_size(name) != 1:
         return False
     cores = {item_key(core) for core in conf.get("cores") or []}
-    return item_key(name) in cores and int(qty) == int(conf.get("qty") or 1)
+    return (item_key(name) in cores
+            and 1 <= int(qty) <= calibration.leave_behind_range(name)[1])
 
 
 def canonical(name):
@@ -1798,7 +1786,7 @@ class RowModel:
                    under=None, floor_item=None, floor_units=0,
                    fallback=None,
                    resupply_cost=0, overlap=False, rule_item=None,
-                   special=False, weekly=False, register_row=None,
+                   weekly=False, register_row=None,
                    read_weekly=False, expect_set=None):
         import open_agent_shop_premium as shop
         panel = _shop().get("panel")
@@ -2000,9 +1988,7 @@ class RowModel:
             want = floor
         want = self._hold_core_floor(want, hard_each, hard_set, hard_name,
                                      verbose)
-        priced = (want if special and price is not None
-                  and within(market, expect_market)
-                  else calibration.at_least_market(want, market, under))
+        priced = calibration.at_least_market(want, market, under)
         if priced != want:
             if verbose:
                 print(f"    {want:,} is under the {market:,} the panel prices "
@@ -2115,7 +2101,7 @@ class RowModel:
             want = need
         named = expect_item or meant or floor_item or rule_item
         lowest = never_list_below(named)
-        if lowest and not (special and special_single(named, qty)):
+        if lowest:
             same = item_key(named) == item_key(hard_name)
             each = max(pack_size(named), int(count or 0),
                        hard_total if same else 0,
@@ -2242,8 +2228,6 @@ class RowModel:
         if market:
             unit = market // max(1, each)
             note_market(expect_item, market if resolved else unit)
-            if meant and not resolved and within(market, expect_market):
-                note_checked(meant, unit)
         calibration.steps_table(f"list {qty} at {want:,}")
         if verbose:
             print(f"  listed {qty} at {want:,}"

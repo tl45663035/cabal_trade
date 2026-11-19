@@ -215,8 +215,8 @@ try:
                 pass
         kw = asked[0] if asked else {}
         check("with the turn gone, bot relists its old row as a normal Chaos row: market price, no lower than its cost",
-              kw.get("special") is False and kw.get("price") is None and kw.get("floor") == 731_000
-              and kw.get("under") is None, str({k: kw.get(k) for k in ("special", "price", "floor", "under", "why")}))
+              kw.get("price") is None and kw.get("floor") == 731_000
+              and kw.get("under") is None, str({k: kw.get(k) for k in ("price", "floor", "under", "why")}))
     finally:
         (driver.read_the_row, m.refresh_table, driver.reconcile_work_tab, driver.tab_before_withdrawal,
          driver.select_after_withdrawal, calibration.grab, m.panel_holds_item, calibration.snap,
@@ -237,8 +237,8 @@ try:
             driver.special_list(model, (1, 1), CHAOS, 1, 25, verbose=False, cost=731_000)
         kw = asked[0] if asked else {}
         check("cores bought for the special row after the turn moved on go out as a normal row, no lower than cost",
-              kw.get("special") is False and kw.get("price") is None and kw.get("floor") == 731_000,
-              str({k: kw.get(k) for k in ("special", "price", "floor")}))
+              kw.get("under") is None and kw.get("price") is None and kw.get("floor") == 731_000,
+              str({k: kw.get(k) for k in ("under", "price", "floor")}))
         check("and the log says so", "turn moved on while it was bought" in out.getvalue(), out.getvalue().strip())
     finally:
         driver.back_to_the_shop, driver.register_tab, calibration.click, m.time.sleep = saved

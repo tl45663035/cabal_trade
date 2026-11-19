@@ -98,7 +98,7 @@ price, said = replay((999_998, 999_998, 999_998, 195_232),
                      row=1, col=1, floor=180_000,
                      why="a Force Core Set (Highest) as last bought costs 180,000",
                      expect_item="Force Core(Highest", listed_at=1_000_000, expect_qty=1, under=None,
-                     special=False, expect_market=195_222, lands_in=14, overlap=True, weekly=False)
+                     expect_market=195_222, lands_in=14, overlap=True, weekly=False)
 check("22:54 relist of row 14: the 1 Force Core(Highest) goes back at 999,997, 1 under the 999,998 market",
       price == 999_997, last(said))
 check("22:54 relist of row 14: the 1 Force Core(Highest) is taken as itself, not as something else because "
@@ -112,7 +112,7 @@ check("22:54 relist of row 14: the stack is counted as the 1 the panel holds, ne
 
 def relist(reads, expected, name, qty, listed_at, floor):
     return replay(reads, {name: expected}, row=1, col=1, floor=floor, why=f"it cost {floor:,} each",
-                  expect_item=name, listed_at=listed_at, expect_qty=qty, under=None, special=False,
+                  expect_item=name, listed_at=listed_at, expect_qty=qty, under=None,
                   expect_market=expected * m.pack_size(name), lands_in=5, overlap=True, weekly=False)
 
 
@@ -168,7 +168,7 @@ def weekly_relist(market, week, cores, listed_at, floor, noted):
     try:
         with contextlib.redirect_stdout(out):
             m.RowModel()._list_slot(1, 1, floor=floor, why=f"it cost {floor:,}", expect_item=name,
-                                    listed_at=listed_at, expect_qty=1, under=None, special=False,
+                                    listed_at=listed_at, expect_qty=1, under=None,
                                     expect_market=noted * cores, lands_in=3, overlap=True, weekly=True,
                                     wait_fill=False)
     except Typed as exc:

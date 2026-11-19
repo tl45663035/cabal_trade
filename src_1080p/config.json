@@ -127,36 +127,24 @@
         "Chaos Core",
         "Divine Stone"
       ],
-      "under_market": 500,
-      "under_random_range": 200,
+      "under_market": 7000,
+      "under_random_range": 500,
       "rows": 1,
-      "qty": 10,
       "takes_turns": {
         "default": false,
         "Chaos Core": true
-      },
-      "at_set_market": {
-        "default": false,
-        "Chaos Core": true
-      },
-      "under_set_market": {
-        "default": 0,
-        "Chaos Core": 7000
-      },
-      "under_set_spread": 200
+      }
     },
     "buy_random_range": 15,
     "buy_scroll_limit": 30,
-    "buy_take_all_after": 10,
     "core_offer_rows": 5,
-    "buy_leave_behind": {
-      "default": 0,
-      "Chaos Core": 1,
-      "Divine Stone": 1
-    },
-    "buy_skip_rows_up_to": {
-      "default": 0,
-      "Chaos Core": 10
+    "leave_behind": {
+      "items": [
+        "Chaos Core",
+        "Divine Stone"
+      ],
+      "min": 5,
+      "max": 15
     },
     "buy_under_lister": {
       "default": 0,

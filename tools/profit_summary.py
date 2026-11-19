@@ -55,6 +55,11 @@ def key(name):
 
 CASH = {key(name) for name
         in SETTINGS["resupply"]["cash_shop"]["rows"]}
+SPECIAL = "Special row"
+SPECIAL_LABEL = "Special row (expected)"
+SPECIAL_CORES = {key(name) for name
+                 in SETTINGS["resupply"]["special_row"]["cores"]}
+SPECIAL_SEEN = re.compile(r"special row is listed at|special row; listing ")
 
 
 def pack(name):
@@ -75,6 +80,11 @@ def bucket(name):
     if key(name) in CASH:
         return "Cash"
     return "Chaos" if "chaos" in (name or "").lower() else "Cores"
+
+
+def special_core(name):
+    return (key(name) in SPECIAL_CORES and pack(name) == 1
+            and not is_set(name))
 
 
 def stamp(when):
@@ -329,6 +339,7 @@ def close_runs(since):
                 text = log.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 text = ""
+        listed_special = SPECIAL_SEEN.search(text) is not None
         prices, voucher = launch_floors(text)
         if prices or voucher:
             latest = (prices, voucher)
@@ -351,6 +362,9 @@ def close_runs(since):
                                           "item": event["item"],
                                           "opening": False})
                 continue
+            special = listed_special and special_core(event["item"])
+            named = SPECIAL if special else event["k"]
+            where = SPECIAL if special else bucket(event["item"])
             left, cost, taken = event["units"], 0.0, 0
             queue = stock[event["k"]]
             while left and queue:
@@ -364,7 +378,7 @@ def close_runs(since):
                     queue.popleft()
             if event["cost"] is not None:
                 sold.append({"at": event["at"], "item": event["item"],
-                             "k": event["k"], "bucket": bucket(event["item"]),
+                             "k": named, "bucket": where,
                              "units": event["units"],
                              "revenue": event["gross"],
                              "cost": event["cost"]})
@@ -377,7 +391,7 @@ def close_runs(since):
             if taken:
                 each = event["gross"] / event["units"]
                 sold.append({"at": event["at"], "item": event["item"],
-                             "k": event["k"], "bucket": bucket(event["item"]),
+                             "k": named, "bucket": where,
                              "units": taken, "revenue": each * taken,
                              "cost": cost})
         carried = {k: sum(lot["units"] for lot in queue)
@@ -407,7 +421,7 @@ def gain(t):
     return t["revenue"] - t["cost"]
 
 
-BUCKETS = ("Cores", "Chaos", "Cash")
+BUCKETS = ("Cores", "Chaos", "Cash", SPECIAL)
 DAY_WIDTH = 117
 
 
@@ -479,6 +493,11 @@ def by_day(book):
           f"{gain(grand) / all_up if all_up else 0:>14,.0f}"
           f"{grand['revenue']:>15,.0f}{grand['cost']:>15,.0f}"
           f"{grand['units']:>8,}{rate(grand)}")
+    special = sold_totals([s for s in all_sales(book["runs"])
+                           if s["bucket"] == SPECIAL])
+    print(f"{'incl. special row losses':<26}{'':>18}{gain(special):>15,.0f}"
+          f"{'':>14}{special['revenue']:>15,.0f}{special['cost']:>15,.0f}"
+          f"{special['units']:>8,}{rate(special)}")
 
 
 def report_day(book):
@@ -507,9 +526,11 @@ def report_day(book):
     line(width=DAY_WIDTH)
     groups = {name: collections.Counter() for name in BUCKETS}
     for k, r in sorted(rows.items(), key=lambda kv: -gain(kv[1])):
-        print(f"{k[:29]:<30}{gain(r):>15,.0f}{r['revenue']:>15,.0f}"
-              f"{r['cost']:>15,.0f}{r['units']:>8,}{per_unit(r, 'cost'):>13}"
-              f"{per_unit(r, 'revenue'):>13}{rate(r)}")
+        if k != SPECIAL:
+            print(f"{k[:29]:<30}{gain(r):>15,.0f}{r['revenue']:>15,.0f}"
+                  f"{r['cost']:>15,.0f}{r['units']:>8,}"
+                  f"{per_unit(r, 'cost'):>13}"
+                  f"{per_unit(r, 'revenue'):>13}{rate(r)}")
         for field in ("units", "revenue", "cost"):
             groups[r["where"]][field] += r[field]
     line(width=DAY_WIDTH)
@@ -518,9 +539,10 @@ def report_day(book):
         g = groups[label]
         for field in ("units", "revenue", "cost"):
             total[field] += g[field]
-        if not g["units"]:
+        if not g["units"] and label != SPECIAL:
             continue
-        print(f"{label:<30}{gain(g):>15,.0f}{g['revenue']:>15,.0f}"
+        shown = SPECIAL_LABEL if label == SPECIAL else label
+        print(f"{shown:<30}{gain(g):>15,.0f}{g['revenue']:>15,.0f}"
               f"{g['cost']:>15,.0f}{g['units']:>8,}{per_unit(g, 'cost'):>13}"
               f"{per_unit(g, 'revenue'):>13}{rate(g)}")
     line("=", width=DAY_WIDTH)

@@ -125,21 +125,25 @@ try:
                                 900_000)
     check("an item with no limit is bought as before", err is None and CONFIRM in clicks, f"{err}; {clicks}")
 
-    out, err, clicks = buy_once("Chaos Core", 1, offer("Chaos Core", 800_000),
-                                {"item": "Chaos Core", "price": 800_000, "qty": 1, "qty_max": 5}, 800_000,
-                                special=True)
-    check("the special row buys its one Chaos Core at 800,000, over the limit, on both reads",
-          err is None and out["bought"] == 1 and CONFIRM in clicks, f"{err}; {clicks}")
+    TOP = calibration.leave_behind_range("Chaos Core")[1]
+    special_on = REAL_SHARED()
+    special_on["resupply"]["special_row"]["enabled"] = True
+    out, err, clicks = buy_once("Chaos Core", TOP, offer("Chaos Core", 800_000, qty=TOP + 5),
+                                {"item": "Chaos Core", "price": TOP * 800_000, "qty": TOP, "qty_max": TOP + 5},
+                                TOP * 800_000, special=True, shared=special_on)
+    check(f"the special row buys its {TOP} Chaos Cores at 800,000, over the limit, on both reads",
+          err is None and out["bought"] == TOP and CONFIRM in clicks, f"{err}; {clicks}")
 
-    out, err, clicks = buy_once("Chaos Core", 2, offer("Chaos Core", 800_000),
-                                {"item": "Chaos Core", "price": 800_000, "qty": 1, "qty_max": 5}, 800_000,
-                                special=True)
-    check("a special order for 2 is not the special row's order: refused",
+    out, err, clicks = buy_once("Chaos Core", TOP + 1, offer("Chaos Core", 800_000, qty=TOP + 5),
+                                {"item": "Chaos Core", "price": (TOP + 1) * 800_000, "qty": TOP + 1,
+                                 "qty_max": TOP + 5},
+                                (TOP + 1) * 800_000, special=True, shared=special_on)
+    check(f"a special order for {TOP + 1} is not the special row's order: refused",
           err is not None and "never paid" in str(err) and clicks == [], f"{err}; {clicks}")
 
     out, err, clicks = buy_once("Chaos Core", 1, offer("Chaos Core X 3", 800_000, pack=3),
                                 {"item": "Chaos Core", "price": 2_400_000, "qty": 1, "qty_max": 5}, 2_400_000,
-                                special=True)
+                                special=True, shared=special_on)
     check("a bundle offered to the special row is not exempt: refused",
           err is not None and "never paid" in str(err) and clicks == [], f"{err}; {clicks}")
 
@@ -225,25 +229,16 @@ try:
     out, last, said = listed(700_000, qty=5, floor=0, expect_item="Chaos Core")
     check("a stack of 5 Chaos Cores goes out at 710,000 each", out["price"] == LOW, f"{out['price']:,}")
 
-    special_price = calibration.undercut(700_000, 600)
-    out, last, said = listed(700_000, floor=0, expect_item="Chaos Core", under=600, special=True, resolve=False)
-    check(f"the special row, one Chaos Core, may go out under 710,000: {special_price:,}",
-          out["price"] == special_price < LOW and "never listed below" not in said, f"{out['price']:,}")
+    out, last, said = listed(LOW + 20_000, floor=0, expect_item="Chaos Core", under=7_000, resolve=False)
+    check(f"a special row goes its amount under the core's own market: {LOW + 13_000:,}",
+          out["price"] == LOW + 13_000 and "never listed below" not in said, f"{out['price']:,}")
 
-    out, last, said = listed(700_000, qty=2, floor=0, expect_item="Chaos Core", under=600, special=True,
-                             resolve=False)
-    check("a special listing that turns out to hold 2 cores is not the special row: 710,000",
-          out["price"] == LOW, f"{out['price']:,}")
+    out, last, said = listed(LOW - 100_000, floor=0, expect_item="Chaos Core", under=7_000, resolve=False)
+    check(f"a stray cheap row cannot drag a special row under the {LOW:,} minimum",
+          out["price"] == LOW and "never listed below" in said, f"{out['price']:,}")
 
-    out, last, said = listed(690_000 * 3, floor=0, expect_item="Chaos Core Set X 3", under=600, special=True,
-                             resolve=False)
-    check("the special flag on a set bundle does not exempt it", out["price"] >= SET_LOW * 3, f"{out['price']:,}")
-
-    no_special = real_shared()
-    no_special["resupply"]["special_row"]["enabled"] = False
-    out, last, said = listed(700_000, floor=0, expect_item="Chaos Core", under=600, special=True, resolve=False,
-                             shared=no_special)
-    check("with special rows switched off, nothing is exempt", out["price"] == LOW, f"{out['price']:,}")
+    out, last, said = listed(690_000 * 3, floor=0, expect_item="Chaos Core Set X 3", under=600, resolve=False)
+    check("a set bundle stays held by the set minimum", out["price"] >= SET_LOW * 3, f"{out['price']:,}")
 
     out, last, said = listed(690_000 * 252, rule_item="Chaos Core Set X 252")
     check("the supervisor's tab-4 listing that only names the item is held too",
@@ -254,7 +249,7 @@ try:
     check("freshly crafted sets, 150 in the bundle and no count in the name, go out at no less than 710,000 x 150",
           out["price"] >= SET_LOW * 150, f"{out['price']:,}")
 
-    out, last, said = listed(650_000, floor=0, expect_item="Divine Stone", under=600, special=True, resolve=False)
+    out, last, said = listed(650_000, floor=0, expect_item="Divine Stone", under=600, resolve=False)
     check("a Divine Stone special row is untouched by the Chaos rule",
           out["price"] == calibration.undercut(650_000, 600), f"{out['price']:,}")
 
@@ -272,7 +267,7 @@ try:
     check("a price over the market is kept, since floors and minimums may only raise it",
           out["price"] == 165_000 and "follows its own market" not in said, f"{out['price']:,}")
 
-    out, last, said = listed(700_000, floor=0, expect_item="Chaos Core", under=600, special=True, resolve=False)
+    out, last, said = listed(700_000, floor=0, expect_item="Chaos Core", under=600, resolve=False)
     check("the special row still goes out its own amount under the market",
           out["price"] == calibration.undercut(700_000, 600) and "follows its own market" not in said,
           f"{out['price']:,}")
@@ -310,57 +305,6 @@ finally:
      m.check_price_field, m.find_button, m.underprice_warning, m.dialog_gone, calibration.occupied_slots,
      calibration.steps_table, m.time.sleep, calibration.snap, calibration.load_shared) = saved
 
-class Stop(Exception):
-    pass
-
-
-asked = []
-screen = {}
-saved = (driver.read_the_row, m.refresh_table, driver.reconcile_work_tab, driver.tab_before_withdrawal,
-         driver.select_after_withdrawal, calibration.grab, m.panel_holds_item, calibration.snap,
-         calibration.steps_table)
-driver.read_the_row = lambda model, index: (screen["text"], screen["row"], m.CHANGE_WORD, True)
-m.refresh_table = lambda model=None, verbose=False: None
-driver.reconcile_work_tab = lambda model, verbose=True: None
-driver.tab_before_withdrawal = lambda model, verbose=True: None
-driver.select_after_withdrawal = lambda: None
-calibration.grab = lambda: object()
-m.panel_holds_item = lambda image=None: False
-calibration.snap = lambda *a, **k: None
-calibration.steps_table = lambda *a, **k: None
-
-
-def list_back(*a, **kw):
-    asked.append(kw)
-    raise Stop()
-
-
-try:
-    for text, row, want in (("Chaos Core 1 700,000 On Sale Change", m.Row("Chaos Core", qty=1, price=700_000), True),
-                            ("Chaos Core Set X 3 1 2,100,000 On Sale Change",
-                             m.Row("Chaos Core Set X 3", qty=1, price=2_100_000), False)):
-        asked.clear()
-        screen.update(text=text, row=row)
-        model = m.RowModel().seed({})
-        model._slots[3] = m.Row(row.name, qty=row.qty, price=row.price)
-        model._seat = m.FIRST_SEAT
-        model.scroll_to = lambda index, verbose=True: {"moved": False}
-        model.next_work_slot = lambda: (1, 1)
-        model.button = lambda image=None: m.CHANGE_WORD
-        model.cancel = lambda index, **kw: None
-        model.list_slot = list_back
-        with contextlib.redirect_stdout(io.StringIO()):
-            try:
-                driver.relist_one(model, 3, verbose=False, first=1, last=25)
-            except Stop:
-                pass
-        check(f"the relist of {row.name!r} asks for the special exemption: {want}",
-              asked and asked[0].get("special") is want, str(asked[0].get("special") if asked else asked))
-finally:
-    (driver.read_the_row, m.refresh_table, driver.reconcile_work_tab, driver.tab_before_withdrawal,
-     driver.select_after_withdrawal, calibration.grab, m.panel_holds_item, calibration.snap,
-     calibration.steps_table) = saved
-
 class Finder(ast.NodeVisitor):
     def __init__(self):
         self.stack, self.found = [], []
@@ -391,10 +335,9 @@ for path in (SRC / "driver.py", SRC / "row_model.py", SRC / "buy.py", SRC / "cra
     finder = Finder()
     finder.visit(ast.parse(path.read_text(encoding="utf-8")))
     passing += [(path.name, *f) for f in finder.found]
-check("only the special row asks for the exemption: its relist, its listing, and the order its own job places",
-      sorted(passing) == [("buy.py", "buy_row_one", "_buy_row_one"), ("driver.py", "relist_one", "dict"),
+check("only the special row's own order asks for the buying exemption, and no listing asks for any",
+      sorted(passing) == [("buy.py", "buy_row_one", "_buy_row_one"),
                           ("driver.py", "resupply_special", "special job"),
-                          ("driver.py", "special_list", "list_slot"),
                           ("driver.py", "take_offers", "buy_row_one")],
       str(passing))
 
@@ -408,8 +351,7 @@ try:
                                   ("resupply", True, (False, False))):
         placed.clear()
         job = {"kind": kind, "core": "Chaos Core", "slot": SLOT["Chaos Core"], "target": 1, "want_max": None,
-               "sells_at": 0, "gap": None, "leave": 1, "steps_max": 1, "take_all": 1, "orders": 0, "bought": 0,
-               "paid": 0}
+               "sells_at": 0, "gap": None, "steps_max": 1, "orders": 0, "bought": 0, "paid": 0}
         with contextlib.redirect_stdout(io.StringIO()):
             driver.take_offers(job, 1, 1, on_margin=on_margin, verbose=False)
         check(f"a {kind} job's order {'on' if on_margin else 'past'} the margin asks for (special, top-up) "

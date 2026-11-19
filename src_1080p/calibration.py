@@ -138,12 +138,23 @@ def swapped_for(slot, text):
     return None
 
 
+def _check_leave_behind(shared):
+    conf = shared["resupply"].get("leave_behind") or {}
+    low, high = conf.get("min"), conf.get("max")
+    if (not isinstance(low, int) or not isinstance(high, int)
+            or not 0 <= low <= high):
+        raise SystemExit(
+            f"resupply.leave_behind in config.json needs whole numbers with "
+            f"0 <= min <= max; it reads min {low!r} and max {high!r}.")
+    return shared
+
+
 def load_shared() -> dict:
     out = _sections(_read(OUT))
     chosen = _read(CONFIGS / f"{config_name()}.json")
     for section, values in _sections(_overlay(_read(CONFIG), chosen)).items():
         out.setdefault(section, {}).update(values)
-    return _resolve_swap(out)
+    return _check_leave_behind(_resolve_swap(out))
 
 
 def _measured() -> dict:
@@ -3408,12 +3419,16 @@ def buy_max(core_name):
     return _per_item("buy_max", core_name)
 
 
-def buy_leave_behind(core_name):
-    return _per_item("buy_leave_behind", core_name) or 0
+def leave_behind_range(core_name):
+    conf = load_shared()["resupply"]["leave_behind"]
+    fold = lambda v: re.sub(r"[^a-z0-9]", "", (v or "").lower())
+    if fold(core_name) not in {fold(item) for item in conf.get("items") or []}:
+        return 0, 0
+    return int(conf["min"]), int(conf["max"])
 
 
 def buy_skip_rows_up_to(core_name):
-    return _per_item("buy_skip_rows_up_to", core_name) or 0
+    return leave_behind_range(core_name)[1]
 
 
 def craft_min_cores(core_name):

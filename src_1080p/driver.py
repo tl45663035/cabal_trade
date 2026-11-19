@@ -1064,29 +1064,22 @@ def relist_one(model, index, verbose=True, first=None, last=None,
         floor, why = 0, ""
     special = special_of(row)
     under = None
-    named, market = special_price(special)
-    at = special_set_price(special, market)
     if special:
-        under = None if at else special_undercut(
+        under = special_undercut(
             special, special_ordinal(model, special, index, first, last))
         floor, why = 0, ""
-        print(f"    row {index} is the {special} special row; listing at "
-              + (f"{at:,}, {market - at:,} under the latest {named} market "
-                 f"of {market:,}" if at
-                 else f"{under:,} under the market")
-              + ", no floor")
+        print(f"    row {index} is the {special} special row; listing "
+              f"{under:,} under the market, no floor")
     try:
         with calibration.phase("list it back"):
             expect = dict(floor=floor, why=why, expect_item=row.name,
                           listed_at=None if special else row.price,
-                          expect_qty=row.qty,
-                          under=under, special=bool(special),
+                          expect_qty=row.qty, under=under,
                           expect_market=(row_model.market_anchor(row.name)
                                          * row.pack) or None)
             out = model.list_slot(*landing, verbose=verbose,
                                   lands_in=lands_in, overlap=True,
-                                  weekly=lists_weekly(row.name),
-                                  price=at or None, **expect)
+                                  weekly=lists_weekly(row.name), **expect)
     except row_model.SlotNeverFilled:
         seen, action = model.read_with_button()
         if action != row_model.RECEIPT_WORD:
@@ -1741,8 +1734,22 @@ def special_conf():
     return calibration.load_shared()["resupply"].get("special_row") or {}
 
 
-def special_qty():
-    return int(special_conf().get("qty") or 1)
+def roll_leave_behind(core):
+    low, high = calibration.leave_behind_range(core)
+    return random.randint(low, high) if high else 0
+
+
+def say_leave_behind(core, steps_max):
+    low, high = calibration.leave_behind_range(core)
+    if high:
+        print(f"  {low} to {high} stays behind on every row bought, rolled "
+              f"afresh for each order, and a row of {high} or fewer is passed "
+              f"over; each order prices the favourite afresh, then wheels "
+              f"down, up to {steps_max} step(s)")
+
+
+def special_qty(core):
+    return max(1, roll_leave_behind(core))
 
 
 def special_amounts(core=None):
@@ -1779,40 +1786,8 @@ def special_spread():
 
 def special_undercut(core=None, ordinal=0):
     spread = special_spread()
-    return special_under(core, ordinal) + (random.randint(0, spread)
-                                           if spread > 0 else 0)
-
-
-def special_price(core):
-    if not core:
-        return None, 0
-    table = special_conf().get("at_set_market") or False
-    on = (calibration._per_item_raw(table, core) if isinstance(table, dict)
-          else table)
-    slot = calibration.favourite_slot_of(core) if on else None
-    pair = calibration.pair_slot(slot) if slot is not None else None
-    if pair is None:
-        return None, 0
-    named = calibration.FAVOURITE_ITEMS[str(pair)]
-    return named, row_model.last_checked(named)
-
-
-def special_set_under(core):
-    table = special_conf().get("under_set_market") or 0
-    return int((calibration._per_item_raw(table, core)
-                if isinstance(table, dict) else table) or 0)
-
-
-def special_set_spread():
-    return int(special_conf().get("under_set_spread") or 0)
-
-
-def special_set_price(core, market):
-    if not market:
-        return 0
-    spread = special_set_spread()
-    return (market - special_set_under(core)
-            - (random.randint(-spread, spread) if spread > 0 else 0))
+    return max(0, special_under(core, ordinal)
+               + (random.randint(-spread, spread) if spread > 0 else 0))
 
 
 def takes_turns(core, conf=None):
@@ -1938,26 +1913,21 @@ def special_list(model, landing, core, first, last, verbose=True, cost=0,
                        f"tab {row_model.WORK_TAB}.")
     lands_in = min(empty)
     turned = takes_turns(core) and not holds_turn()
-    named, market = (None, 0) if turned else special_price(core)
-    at = special_set_price(core, market)
+    under = None if turned else special_undercut(core, ordinal)
     if turned:
         print(f"  the {core} special row's turn moved on while it was "
               f"bought; the {core} goes out as a normal row at the market, "
               f"no lower than the {cost:,} it cost")
-    elif at:
-        print(f"  the {core} special row goes out at {at:,}, {market - at:,} "
-              f"under the latest {named} market of {market:,}")
+    else:
+        print(f"  the {core} special row goes out {under:,} under the market")
     try:
         with calibration.phase(f"list {core} from {landing}"):
             listed = model.list_slot(*landing, verbose=verbose,
-                                     lands_in=lands_in, price=at or None,
-                                     under=(None if at or turned else
-                                            special_undercut(core, ordinal)),
+                                     lands_in=lands_in, under=under,
                                      floor=cost if turned else 0,
                                      why=(f"it cost {cost:,} each"
                                           if turned and cost else ""),
-                                     wait_fill=False,
-                                     expect_item=core, special=not turned,
+                                     wait_fill=False, expect_item=core,
                                      expect_market=row_model.market_anchor(
                                          core) or None, resolve=False)
     except row_model.Divergence as exc:
@@ -1973,7 +1943,7 @@ def special_list(model, landing, core, first, last, verbose=True, cost=0,
 
 
 def finish_special(model, job, first, last, verbose=True):
-    core, slot, want = job["core"], job["slot"], special_qty()
+    core, slot, want = job["core"], job["slot"], job["target"]
     if job["step"] == "buy":
         with calibration.phase(f"read tab {row_model.WORK_TAB} before buying"):
             before = work_tab_slots(verbose=False)
@@ -2033,30 +2003,17 @@ def resupply_special(model, first, last, verbose=True):
         print("")
         ordinal = len(special_seats(model, first, last).get(core, []))
         run = calibration.load_shared()["resupply"]
-        leave = int(calibration.buy_leave_behind(core))
         steps_max = int(run["buy_scroll_limit"])
-        take_all = int(run["buy_take_all_after"])
         priced = row_model.market_anchor(core)
-        named, market = special_price(core)
-        under, spread = special_set_under(core), special_set_spread()
+        qty = special_qty(core)
+        under, spread = special_under(core, ordinal), special_spread()
         print(f"-- {core} special row {ordinal + 1} of "
               f"{special_rows(core)}"
               + (f" ({core} at {priced:,} a core)"
                  if calibration.special_ladder(core) and priced else "")
-              + (f": {special_qty()} at {under - spread:,} to "
-                 f"{under + spread:,} under the latest {named} market of "
-                 f"{market:,} --"
-                 if market else
-                 f": {special_qty()} at "
-                 f"{special_under(core, ordinal):,} to "
-                 f"{special_under(core, ordinal) + special_spread():,} under "
-                 f"the market --"))
-        if leave:
-            print(f"  {leave} stays behind on every row bought; an order "
-                  f"{take_all} step(s) down with nothing spare takes the row "
-                  f"it is on whole, and the next order leaves {leave} behind "
-                  f"again; each order prices the favourite afresh, then "
-                  f"wheels down, up to {steps_max} step(s)")
+              + f": {qty} at {max(0, under - spread):,} to "
+                f"{under + spread:,} under the market --")
+        say_leave_behind(core, steps_max)
         if not shop_ready(f"the {core} special row", verbose=verbose):
             return None
         avoid_war(verbose=verbose)
@@ -2070,9 +2027,8 @@ def resupply_special(model, first, last, verbose=True):
         job = {"kind": "special", "core": core, "slot": slot,
                "landing": landing, "step": "buy", "bought": 0, "paid": 0,
                "listed": 0, "rows": [], "ordinal": ordinal,
-               "target": special_qty(), "want_max": None, "sells_at": 0,
-               "gap": None, "leave": leave, "steps_max": steps_max,
-               "take_all": take_all, "orders": 0}
+               "target": qty, "want_max": None, "sells_at": 0,
+               "gap": None, "steps_max": steps_max, "orders": 0}
     else:
         print("")
         print(f"-- {job['core']} special row: carrying on at {job['step']} "
@@ -2634,15 +2590,8 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True,
     elif target != want_min:
         print(f"  buy_min {want_min} is not a whole number of batches of "
               f"{batch}; buying {target}")
-    leave = int(calibration.buy_leave_behind(core))
     steps_max = int(run["buy_scroll_limit"])
-    take_all = int(run["buy_take_all_after"])
-    if leave:
-        print(f"  {leave} stays behind on every row bought; an order "
-              f"{take_all} step(s) down with nothing spare takes the row it "
-              f"is on whole, and the next order leaves {leave} behind again; "
-              f"each order prices the favourite afresh, then wheels down, up "
-              f"to {steps_max} step(s)")
+    say_leave_behind(core, steps_max)
     if calibration.buy_whole_row(core) and want_max:
         print(f"  every order takes all of the row it lands on, up to "
               f"{int(want_max)} held, and the orders stop once {target} is "
@@ -2653,8 +2602,7 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True,
             "target": target, "want_max": want_max,
             "sells_at": set_row["unit_price"],
             "core_price": core_row["unit_price"], "gap": threshold,
-            "leave": leave, "steps_max": steps_max, "take_all": take_all,
-            "step": "buy",
+            "steps_max": steps_max, "step": "buy",
             "orders": 0, "bought": 0, "paid": 0, "crafted": 0, "work": None,
             "rows": [], "listed": 0}
 
@@ -2662,20 +2610,13 @@ def start_craft_resupply(model, slot, held, first, last, verbose=True,
 def take_offers(job, want, batch, on_margin=True, verbose=True):
     run = calibration.load_shared()["resupply"]
     core, slot, target = job["core"], job["slot"], job["target"]
-    take_all = int(job.get("take_all", run["buy_take_all_after"]))
     steps = 0
-    whole = False
     searched = False
     THIN = object()
 
     def order(want, on_margin=True):
-        nonlocal searched, whole
+        nonlocal searched
         job["orders"] += 1
-        if steps >= take_all and not whole:
-            whole = True
-            print(f"  {steps} step(s) down with nothing spare; this order "
-                  f"takes the row it is on whole, and the next one leaves "
-                  f"{job['leave']} behind again")
         for attempt in range(1, int(run["buy_retries"]) + 1):
             try:
                 with calibration.phase(f"buy order {job['orders']}"):
@@ -2686,9 +2627,7 @@ def take_offers(job, want, batch, on_margin=True, verbose=True):
                                           sells_at=job["sells_at"],
                                           gap=job["gap"] if on_margin
                                           else None,
-                                          leave_behind=(
-                                              0 if whole
-                                              else job["leave"]),
+                                          leave_behind=roll_leave_behind(core),
                                           search=not searched,
                                           batch=batch,
                                           balance=job.get("balance"),
@@ -3330,18 +3269,16 @@ def stock_cores(model, first, last, slot, core, set_name, below, bought=0,
                   f"{floor:,} floor at {below:,} a core, under the {least} "
                   f"a craft needs; no {core} bought")
             return None
-        leave = int(calibration.buy_leave_behind(core))
+        low, high = calibration.leave_behind_range(core)
         print(f"  buying up to {most} {core} under {below:,} this batch"
               + ("" if room is None else
                  f", {room:,} left of the stock up budget")
-              + f"; {leave} stays behind on every row bought")
+              + f"; {low} to {high} stays behind on every row bought")
     job = {"slot": slot, "core": core, "set": set_name, "diff": None,
            "target": bought or most, "want_max": most,
            "sells_at": below or 0,
            "core_price": None, "gap": int(STOCK_UP["buy_gap"]),
-           "leave": int(calibration.buy_leave_behind(core)),
-           "steps_max": int(run["buy_scroll_limit"]),
-           "take_all": int(run["buy_take_all_after"]), "step": "buy",
+           "steps_max": int(run["buy_scroll_limit"]), "step": "buy",
            "orders": 0, "bought": bought, "paid": 0, "crafted": 0,
            "work": None, "rows": [], "listed": 0,
            "note": STOCK_UP["ledger_note"]}
@@ -3524,9 +3461,7 @@ def stock_threshold(model, first, last, verbose=True):
           f"panel")
     job = {"slot": core_slot, "core": core, "set": name, "target": 1,
            "want_max": 1, "sells_at": 0, "gap": None,
-           "leave": int(calibration.buy_leave_behind(core)),
            "steps_max": int(run["buy_scroll_limit"]),
-           "take_all": int(run["buy_take_all_after"]),
            "orders": 0, "bought": 0, "paid": 0}
     landing = model.next_work_slot()
     before = work_tab_slots(verbose=verbose)

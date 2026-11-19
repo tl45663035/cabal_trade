@@ -74,21 +74,21 @@ try:
           len(driver.buying_rows(model, 1, 30)) == len(free) - 1, f"{len(free)} free")
 
     said = io.StringIO()
-    saved = (driver.shop_ready, driver.war.avoid, driver.alz_too_low)
+    saved = (driver.shop_ready, driver.war.avoid, driver.alz_too_low, driver.random.randint)
     driver.shop_ready = lambda *a, **k: False
     driver.war.avoid = lambda *a, **k: None
     driver.alz_too_low = lambda: False
-    m.LAST_CHECKED[m.item_key("Chaos Core Set")] = 732_407
+    driver.random.randint = lambda low, high: 9
     try:
         with contextlib.redirect_stdout(said):
             driver.resupply_special(board(0, 725_000), 1, 30, verbose=True)
     finally:
-        driver.shop_ready, driver.war.avoid, driver.alz_too_low = saved
-    under = ON["resupply"]["special_row"]["under_set_market"][CHAOS]
-    spread = ON["resupply"]["special_row"]["under_set_spread"]
-    check("the header says 1 of 1 and the price it goes out at",
-          f"-- Chaos Core special row 1 of 1: {driver.special_qty()} at {under - spread:,} to {under + spread:,} under "
-          f"the latest Chaos Core Set market of 732,407 --" in said.getvalue(),
+        driver.shop_ready, driver.war.avoid, driver.alz_too_low, driver.random.randint = saved
+    under = ON["resupply"]["special_row"]["under_market"]
+    spread = ON["resupply"]["special_row"]["under_random_range"]
+    check("the header says 1 of 1, how many it rolled and how far under the market it goes",
+          f"-- Chaos Core special row 1 of 1: 9 at {under - spread:,} to {under + spread:,} under the market --"
+          in said.getvalue(),
           said.getvalue().strip().splitlines()[1] if len(said.getvalue().strip().splitlines()) > 1 else said.getvalue())
 finally:
     calibration.load_shared = REAL_SHARED

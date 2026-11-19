@@ -32,7 +32,8 @@ for -- "profit", "how are we doing", "today", a bare `/profit_summary`:
    margin (**hours** is second: how long a run was alive that day, midnight to midnight,
    from the run logs' launch stamp and `ended HH:MM:SS` line, the live run
    to now) and **an hour** (the day's profit over those hours). Give every
-   day its own line including the zero days, then the 7-day total. Do not
+   day its own line including the zero days, then the 7-day total and the
+   `incl. special row losses` line under it. Do not
    collapse it to a total, do not drop the empty days, and do not skip the
    block because the question was about today. A lot sits on the day it
    was bought and hours sit where they fall, so stock bought late and sold
@@ -158,6 +159,11 @@ what the held and gone stock is valued at.
 
 ## Reading the result
 
+- `Special row (expected)` tallies the day's raw Chaos Core and Divine Stone
+  sales from runs whose log shows a special row listed or relisted. The row
+  lists under the market on purpose, so its loss is expected. It is kept out
+  of the `Chaos` line and counted in `TOTAL`. `incl. special row losses` is
+  the same tally over the 7 days, already inside the 7-day total.
 - `by run` gives units, realised, assumed, profit, hours and profit an
   hour, on the stock each run bought, whoever sold it. **Hours are launch
   to last trade** from the ledger, so a run still going is short by

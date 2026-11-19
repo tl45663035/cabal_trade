@@ -249,15 +249,15 @@ def _buy_row_one(slot, want, verbose=True, held=0, floor_qty=0,
             f"row 1 asks {offer['unit_price']:,} a unit for "
             f"{offer['name']!r}, over the {cap:,} that is never paid. "
             f"Nothing clicked.")
-    if leave_behind and int(offer["qty"]) - leave_behind < 1:
-        raise TooThin(
-            f"row 1 holds {offer['qty']} and {leave_behind} stays behind, so "
-            f"there is nothing spare to take here.")
     skip = int(calibration.buy_skip_rows_up_to(name))
     if skip and int(offer["qty"]) <= skip:
         raise TooThin(
             f"row 1 holds {offer['qty']}, and a {name} row of {skip} or fewer "
             f"is never bought; moving on to the next row.")
+    if leave_behind and int(offer["qty"]) - leave_behind < 1:
+        raise TooThin(
+            f"row 1 holds {offer['qty']} and {leave_behind} stays behind, so "
+            f"there is nothing spare to take here.")
     if sells_at and gap is not None:
         now = sells_at - offer["unit_price"]
         if now < gap:

@@ -588,7 +588,7 @@ def special_qty_for(name):
         return None
     for item in conf.get("cores") or []:
         if row_model.item_key(item) == row_model.item_key(name):
-            return int(conf.get("qty") or 1)
+            return calibration.leave_behind_range(name)
     return None
 
 
@@ -609,7 +609,8 @@ def step_for(kind, name, qty=None, special=False):
     if slot is None:
         return None
     want = special_qty_for(name)
-    if want is not None and qty is not None and int(qty) == want:
+    if (want is not None and qty is not None
+            and want[0] <= int(qty) <= want[1]):
         return None
     if slot in {calibration.favourite_slot_of(core)
                 for core in calibration.craft_cores()}:

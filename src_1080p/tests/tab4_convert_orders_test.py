@@ -284,7 +284,7 @@ def fake_buy(slot, want, **kw):
 
 buy.buy_row_one = fake_buy
 job = {"core": "Chaos Core", "slot": 3, "target": 150, "want_max": 999, "sells_at": 743996, "gap": 5000,
-       "leave": 1, "steps_max": 10, "take_all": 10, "orders": 0, "bought": 0, "paid": 0, "balance": 123}
+       "steps_max": 10, "orders": 0, "bought": 0, "paid": 0, "balance": 123}
 try:
     with contextlib.redirect_stdout(io.StringIO()):
         driver.buy_cores(job)

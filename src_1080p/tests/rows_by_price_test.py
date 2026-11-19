@@ -107,7 +107,7 @@ try:
     for core, bought in ((CHAOS, 0), (CHAOS, 100), ("Force Core(High)", 100)):
         gaps.clear()
         j = {"core": core, "slot": calibration.favourite_slot_of(core), "target": 300, "want_max": None,
-             "sells_at": 733_000, "gap": ENABLE, "leave": 1, "steps_max": 1, "take_all": 1, "orders": 0,
+             "sells_at": 733_000, "gap": ENABLE, "steps_max": 1, "orders": 0,
              "bought": bought, "paid": bought * 715_000}
         with contextlib.redirect_stdout(io.StringIO()):
             driver.take_offers(j, 10, 1, verbose=False)

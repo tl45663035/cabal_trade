@@ -52,7 +52,10 @@
       ]
     },
     "special_row": {
-      "enabled": false
+      "enabled": true,
+      "takes_turns": {
+        "Chaos Core": false
+      }
     }
   },
   "run": {
