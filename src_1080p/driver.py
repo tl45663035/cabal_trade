@@ -898,6 +898,10 @@ def relist_one(model, index, verbose=True, first=None, last=None,
             return None
         if verbose:
             print(f"    collected; {row.qty} left to relist")
+        if collect_only and held is not None:
+            model.place(index, row_model.Row(
+                held.name, qty=row.qty, price=held.price,
+                buy_cost=held.buy_cost, floor_at=held.floor_at))
 
     if model.is_empty(text) or button == row_model.REGISTER_WORD:
         model.drop(index)
@@ -1197,6 +1201,8 @@ def decline_boxes_due(walked, verbose=True):
 
 def relist_pass(model, first, last, passes=0, verbose=True,
                 collect_only=False, start=None):
+    global _TURN_EVERY
+    _TURN_EVERY = special_check_every()
     shop_ready(f"rows {first}-{last}", verbose=verbose)
     model.home(verbose=False)
     calibration.phases_reset()
@@ -1752,6 +1758,15 @@ def special_qty(core):
     return max(1, roll_leave_behind(core))
 
 
+def special_check_every():
+    conf = special_conf()
+    if not conf.get("enabled"):
+        return 0
+    every = [int(calibration.urgent_check_rows(name))
+             for name in conf.get("cores") or [] if buying_enabled(name)]
+    return min((rows for rows in every if rows > 0), default=0)
+
+
 def special_amounts(core=None):
     table = special_conf().get("under_market") or 0
     value = (calibration._per_item_raw(table, core) if isinstance(table, dict)
@@ -2075,10 +2090,13 @@ def special_pass(model, first, last, verbose=True):
 
 def start_turns():
     global _TURNS, _TURN_EVERY
+    _TURN_EVERY = special_check_every()
     cores = turn_cores()
     if _TURNS is not None or not cores:
+        if _TURN_EVERY and not cores:
+            print(f"  the special row is checked every {_TURN_EVERY} "
+                  f"processed row(s)")
         return
-    _TURN_EVERY = int(calibration.urgent_check_rows(cores[0]) or 0)
     _TURNS = messaging.start_participant(calibration.config_name(), True)
     names = ", ".join(cores)
     if _TURNS is None:
@@ -2113,9 +2131,9 @@ def special_sold(core):
 
 
 def check_special_rows(model, first, last, verbose=True):
-    cores = {row_model.item_key(core) for core in turn_cores()}
+    turns = {row_model.item_key(core) for core in turn_cores()}
     for name, rows in special_seats(model, first, last).items():
-        if row_model.item_key(name) not in cores:
+        if calibration.urgent_check_rows(name) <= 0:
             continue
         for index in rows:
             if index == _WALK["at"]:
@@ -2127,7 +2145,10 @@ def check_special_rows(model, first, last, verbose=True):
             if out is not None:
                 continue
             if _FULL_SALES > sold_before:
-                special_sold(name)
+                if row_model.item_key(name) in turns:
+                    special_sold(name)
+                else:
+                    restock_now(model, name, first, last, verbose=verbose)
             elif special_wanted(model, first, last):
                 print(f"  row {index} no longer holds the {name} special "
                       f"row; listing it again")
@@ -2136,12 +2157,11 @@ def check_special_rows(model, first, last, verbose=True):
 
 def special_turn(model, first, last, processed, verbose=True):
     global _SINCE_SPECIAL
-    if _TURNS is None:
-        return
-    _TURNS.drain(print)
+    if _TURNS is not None:
+        _TURNS.drain(print)
     if processed:
         _SINCE_SPECIAL += 1
-    if _TURNS.take_fresh():
+    if _TURNS is not None and _TURNS.take_fresh():
         _SINCE_SPECIAL = 0
         if special_wanted(model, first, last):
             print("  this machine holds the special row's turn; listing it "
@@ -2150,7 +2170,7 @@ def special_turn(model, first, last, processed, verbose=True):
         return
     if _TURN_EVERY <= 0 or _SINCE_SPECIAL < _TURN_EVERY:
         return
-    if not _TURNS.holds():
+    if _TURNS is not None and not _TURNS.holds():
         return
     _SINCE_SPECIAL = 0
     check_special_rows(model, first, last, verbose=verbose)
