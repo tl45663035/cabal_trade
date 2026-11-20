@@ -44,7 +44,6 @@ ON["resupply"]["special_row"]["enabled"] = True
 LOW, TOP = calibration.leave_behind_range(CHAOS)
 UNDER = ON["resupply"]["special_row"]["under_market"]
 SPREAD = ON["resupply"]["special_row"]["under_random_range"]
-# The live config has no listing minimum for Chaos Core since 2026-11-19; the checks of the minimum set their own.
 MIN_LIST = 500_000
 FLOORED = REAL_SHARED()
 FLOORED["run"]["never_list_below"][CHAOS] = MIN_LIST

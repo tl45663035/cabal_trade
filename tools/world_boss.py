@@ -970,9 +970,6 @@ def kill_boss(channel, start, plan, deadline, verbose=True,
 
 
 def relog_unless_there(channel, verbose=True):
-    # The game opens no Move Channel dialog for the channel the character is
-    # already in, so no dialog means it is in that channel already; the next
-    # relog presses Escape until the menu is up, which shuts the list.
     try:
         quick_relog(channel, verbose)
     except NoMoveDialog as error:

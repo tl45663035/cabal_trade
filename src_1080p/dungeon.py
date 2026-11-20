@@ -1164,8 +1164,6 @@ def reset_play_limit(reset, verbose=True):
 
 
 def reset_popup(reset):
-    """After Enter: True once the reset popup is up, False once the
-    Challenge window is (or after the reset's wait with neither)."""
     heading = tuple(reset["heading_box"])
     deadline = time.monotonic() + float(reset["wait"])
     while True:

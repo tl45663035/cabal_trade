@@ -41,8 +41,6 @@ REAL_SHARED = calibration.load_shared
 RUN = calibration.load_shared()["run"]
 CAP = RUN["never_buy_above"]["Chaos Core"]
 SET_CAP = RUN["never_buy_above"]["Chaos Core Set"]
-# The live config sets no listing minimum for Chaos Cores or Chaos Core Sets (removed 2026-11-19). The checks of the
-# minimum itself configure their own, so the rule stays tested for whenever one is set again.
 LOW = SET_LOW = 500_000
 FLOORED = calibration.load_shared()
 FLOORED["run"]["never_list_below"].update({"Chaos Core": LOW, "Chaos Core Set": SET_LOW})

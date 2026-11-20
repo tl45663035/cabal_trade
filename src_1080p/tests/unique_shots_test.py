@@ -1,4 +1,3 @@
-"""Every unique drop's screenshot goes to its own folder, which nothing clears."""
 import datetime
 import json
 import os

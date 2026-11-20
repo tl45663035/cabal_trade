@@ -89,8 +89,6 @@ blocked_cursor = ctypes.windll.user32.SetCursorPos
 ctypes.windll.user32.SetCursorPos = lambda *a: None
 calibration.snap = lambda *a, **k: None
 try:
-    # The row says an entry is left, but the game has none: Enter brings
-    # the reset popup, which is answered, and the entry opens again.
     fresh("(1/3)", 0)
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
@@ -104,21 +102,18 @@ try:
     check("no entries left after all" in out.getvalue(),
           f"the popup is logged, got {out.getvalue()!r}")
 
-    # The row is right: Enter goes straight to Challenge, no reset.
     fresh("(1/3)", 1)
     with contextlib.redirect_stdout(io.StringIO()):
         dungeon.open_dungeon_key("windmill", "WINDMILL")
     check(clicks[1:] == [ENTER, "forgot"], f"no reset when entries are left, "
           f"got {clicks}")
 
-    # The row reads 0: the reset runs first, as before.
     fresh("(0/3)", 0)
     with contextlib.redirect_stdout(io.StringIO()):
         dungeon.open_dungeon_key("windmill", "WINDMILL")
     check(clicks.count(button) == 1 and clicks[-1] == "forgot",
           f"the 0/3 reset still works, got {clicks}")
 
-    # The popup again after the reset: stop, nothing more.
     fresh("(1/3)", 0, popup_again=True)
     try:
         with contextlib.redirect_stdout(io.StringIO()):
