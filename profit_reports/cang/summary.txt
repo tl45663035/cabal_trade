@@ -42,13 +42,13 @@ Mon 2026-11-16             12.84h   24.00h    1.20B   93.80M   13.84B  12.64B  2
 Tue 2026-11-17             16.36h   24.00h  206.52M   12.62M    7.54B   7.34B  15.69K    2.7%
 Wed 2026-11-18             14.55h   24.00h  195.46M   13.43M    7.21B   7.02B   9.66K    2.7%
 Thu 2026-11-19             14.91h   24.00h  136.25M    9.14M    7.33B   7.20B   9.94K    1.9%
-Fri 2026-11-20 (so far)     4.02h    6.06h   51.61M   12.84M    1.09B   1.04B   2.60K    4.7%
+Fri 2026-11-20 (so far)     4.09h    6.13h   51.61M   12.62M    1.09B   1.04B   2.60K    4.7%
 =============================================================================================
-7 DAYS                     97.57h  150.06h    4.50B   46.15M   93.83B  89.33B 152.93K    4.8%
+7 DAYS                     97.64h  150.13h    4.50B   46.12M   93.83B  89.33B 152.93K    4.8%
 incl. special row losses                          0                 0       0       0      --
 
 
-PROFIT SUMMARY -- sold since 2026-11-20 00:00 Central (as of 06:03 Central)
+PROFIT SUMMARY -- sold since 2026-11-20 00:00 Central (as of 06:07 Central)
 
 item                           profit  revenue     cost  units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------------
@@ -79,30 +79,28 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-20_055722_relist.log, board after pass 1
+ROWS -- 2026-11-20_060342_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Epic Booster (Highest)                  x4    40.38M    40.38M        +0   161.50M   161.50M         0
     2  Siena's Unbinding Stone                 x1    64.60M    93.00M   +28.40M    93.00M    64.60M    28.40M
     3  Force Gem Package                       x1   161.50M   161.50M        +0   161.50M   161.50M         0
     4  Upgrade Core (Ultimate                 x51   369.90K   369.90K        +0    18.86M    18.86M         0
     5  Upgrade Core (Ultimate                  x6   369.90K   369.90K        +0     2.22M     2.22M         0
-    6  Force Core (Ultimate                   x56   355.26K   396.20K   +40.94K    22.19M    19.89M     2.29M
-    7  Force Core (Ultimate                   x75   364.42K   396.20K   +31.79K    29.72M    27.33M     2.38M
-    8  Force Core (Ultimate                   x10   365.36K   396.20K   +30.84K     3.96M     3.65M   308.38K
-    9  Force Core(High                       x250   216.54K   238.68K   +22.14K    59.67M    54.13M     5.54M
-   10  Force Core(High                         x4   216.54K   238.68K   +22.14K   954.70K   866.14K    88.56K
-   11  Force Core(High                       x250   217.58K   238.67K   +21.09K    59.67M    54.40M     5.27M
-   12  Force Core(High                        x50   217.58K   238.67K   +21.09K    11.93M    10.88M     1.05M
+    6  Force Core (Ultimate                   x56   355.26K   396.20K   +40.93K    22.19M    19.89M     2.29M
+    7  Force Core (Ultimate                   x75   364.42K   396.20K   +31.78K    29.71M    27.33M     2.38M
+    8  Force Core (Ultimate                   x10   365.36K   396.19K   +30.83K     3.96M     3.65M   308.31K
+    9  Force Core(High                       x250   216.54K   238.67K   +22.13K    59.67M    54.13M     5.53M
+   10  Force Core(High                         x4   216.54K   238.67K   +22.13K   954.67K   866.14K    88.52K
+   11  Force Core(High                       x250   217.58K   238.67K   +21.08K    59.67M    54.40M     5.27M
+   12  Force Core(High                        x50   217.58K   238.66K   +21.08K    11.93M    10.88M     1.05M
     balance now 2.35B
   0.01 minute(s) are up after pass 1
-1 pass(es), 12 relisted, 18 empty, 0 skipped in 306s (25463 ms a row)
+1 pass(es), 12 relisted, 18 empty, 0 skipped in 198s (16521 ms a row)
 PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
   nothing has sold yet this run.
-  bought this run and still unsold, taken as sold at the price each lot was bought against:
-    forcecorehigh                    554 core(s)     120.28M Alz paid   +11.96M
   ------------------------------------------------------------------------------------
-  RUN CLOSED                    11.96M   (0 realised, +11.96M assumed)
-  started 05:57:22, ended 06:03:14, ran for 5m 52s
+  RUN CLOSED                             0   (0 realised, +0 assumed)
+  started 06:03:42, ended 06:07:47, ran for 4m 5s
 ##############################################################################################
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
@@ -124,12 +122,12 @@ PROFIT THIS RUN -- each sale against its row's cost: what this run bought at wha
        NET WORTH                                                                                        2.97B
 
 
-MARKET -- 2026-11-20_055722_relist.log, pass 1, log last written 06:03 Central
+MARKET -- 2026-11-20_060342_relist.log, pass 1, log last written 06:07 Central
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
 Force Core(Highest)         0  289.15K  292.27K   3.12K      1.1%      0
-Chaos Core                  0  501.34K  497.80K  -3.54K     -0.7%      0
+Chaos Core                  0  497.23K  497.80K     566      0.1%      0
 Force Core (Ultimate)       3        -        -       -         -      -  holds the most it can want, 3; not priced
-Force Core(High)            0  216.53K  238.69K  22.15K      9.3%      3  YES
+Force Core(High)            4        -        -       -         -      -  holds the most it can want, 3; not priced
 Upgrade Core (Ultimate)     2  368.37K  369.90K   1.53K      0.4%      0
