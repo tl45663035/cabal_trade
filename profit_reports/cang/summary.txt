@@ -42,13 +42,13 @@ Mon 2026-11-16             12.84h   24.00h    1.20B   93.80M   13.84B   12.64B  
 Tue 2026-11-17             16.36h   24.00h  206.52M   12.62M    7.54B    7.34B  15.69K    2.7%
 Wed 2026-11-18             14.55h   24.00h  195.46M   13.43M    7.21B    7.02B   9.66K    2.7%
 Thu 2026-11-19             14.91h   24.00h  136.25M    9.14M    7.33B    7.20B   9.94K    1.9%
-Fri 2026-11-20 (so far)     3.25h    5.03h   23.21M    7.15M    1.00B  978.70M   2.60K    2.3%
+Fri 2026-11-20 (so far)     3.25h    5.04h   23.21M    7.14M    1.00B  978.70M   2.60K    2.3%
 ==============================================================================================
-7 DAYS                     96.80h  149.03h    4.47B   46.22M   93.74B   89.27B 152.93K    4.8%
+7 DAYS                     96.80h  149.04h    4.47B   46.22M   93.74B   89.27B 152.93K    4.8%
 incl. special row losses                          0                 0        0       0      --
 
 
-PROFIT SUMMARY -- sold since 2026-11-20 00:00 Central (as of 05:01 Central)
+PROFIT SUMMARY -- sold since 2026-11-20 00:00 Central (as of 05:02 Central)
 
 item                           profit  revenue     cost  units  bought/u   sold/u  margin
 -----------------------------------------------------------------------------------------
@@ -77,22 +77,49 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-20_045810_relist_board.log, board during pass 1 at row 30, read 2026-11-20T05:01:25 (live)
+ROWS -- 2026-11-20_045810_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Epic Booster (Highest)                  x4    40.38M    40.38M        +0    40.38M   161.50M         0
+    1  Epic Booster (Highest)                  x4    40.38M    40.38M        +0   161.50M   161.50M         0
     2  Siena's Unbinding Stone                 x1    64.60M    93.00M   +28.40M    93.00M    64.60M    28.40M
     3  Force Gem Package                       x1   161.50M   161.50M        +0   161.50M   161.50M         0
-    4  Upgrade Core (Ultimate                 x51   369.90K   369.90K        +0   369.90K    18.86M         0
-    5  Upgrade Core (Ultimate                  x6   369.90K   369.90K        +0   369.90K     2.22M         0
-    6  Force Core (Ultimate                   x56   355.26K   396.31K   +41.05K   396.31K    19.89M     2.30M
-    30  (empty)                                           -          -       -              -               - <- here
-    balance now 2.41B, read 2026-11-20T05:00:54
+    4  Upgrade Core (Ultimate                 x51   369.90K   369.90K        +0    18.86M    18.86M         0
+    5  Upgrade Core (Ultimate                  x6   369.90K   369.90K        +0     2.22M     2.22M         0
+    6  Force Core (Ultimate                   x56   355.26K   396.31K   +41.05K    22.19M    19.89M     2.30M
+    balance now 2.41B
+  0.01 minute(s) are up after pass 1
+1 pass(es), 6 relisted, 24 empty, 0 skipped in 170s (28353 ms a row)
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  item                              profit   units  margin        revenue           cost
+       Force Core (Ultimate          10.51M     256   10.4%    101.46M                                 90.95M
+       Force Core(High                     -948      55   -0.0%     11.94M                             11.94M
+       Force Core(Highest                     0       8    0.0%      2.31M                              2.31M
+  ------------------------------------------------------------------------------------
+       SOLD                          10.51M     319    9.1%    115.72M                                105.20M
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                    10.51M   (10.51M realised, +0 assumed)
+  started 04:58:10, ended 05:01:47, ran for 3m 37s
+##############################################################################################
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##############################################################################################
        stock at its listed price                                                                      459.28M
        Alz, latest balance line                                                                         2.41B
        NET WORTH                                                                                        2.86B
 
 
-MARKET -- 2026-11-20_045810_relist.log, pass 1, log last written 05:01 Central (live)
+MARKET -- 2026-11-20_045810_relist.log, pass 1, log last written 05:01 Central
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
