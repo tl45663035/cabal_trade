@@ -41,8 +41,12 @@ REAL_SHARED = calibration.load_shared
 RUN = calibration.load_shared()["run"]
 CAP = RUN["never_buy_above"]["Chaos Core"]
 SET_CAP = RUN["never_buy_above"]["Chaos Core Set"]
-LOW = RUN["never_list_below"]["Chaos Core"]
-SET_LOW = RUN["never_list_below"]["Chaos Core Set"]
+# The live config sets no listing minimum for Chaos Cores or Chaos Core Sets (removed 2026-11-19). The checks of the
+# minimum itself configure their own, so the rule stays tested for whenever one is set again.
+LOW = SET_LOW = 500_000
+FLOORED = calibration.load_shared()
+FLOORED["run"]["never_list_below"].update({"Chaos Core": LOW, "Chaos Core Set": SET_LOW})
+FLOORED["run"]["hard_min_per_unit"]["Chaos Core Set"] = SET_LOW
 SLOT = {name: int(s) for s, name in calibration.FAVOURITE_ITEMS.items()}
 CONFIRM, CANCEL = (1000, 700), (1100, 700)
 
@@ -211,41 +215,58 @@ def listed(market, qty=1, shared=None, **kw):
 
 
 try:
-    out, last, said = listed(690_000 * 252, floor=0, expect_item="Chaos Core Set X 252")
+    calibration.load_shared = real_shared
+    check("the live config sets no listing minimum for single Chaos Cores or Chaos Core Sets",
+          m.never_list_below("Chaos Core") == 0 and m.never_list_below("Chaos Core Set X 252") == 0
+          and m.hard_floor_each("Chaos Core Set X 252") == 0,
+          f"{m.never_list_below('Chaos Core')}, {m.never_list_below('Chaos Core Set X 252')}, "
+          f"{m.hard_floor_each('Chaos Core Set X 252')}")
+    out, last, said = listed(400_000, floor=0, expect_item="Chaos Core", under=7_000, resolve=False)
+    check("with no minimum, a stray 400,000 row takes a special row down to 393,000",
+          out["price"] == 393_000 and "never listed below" not in said, f"{out['price']:,}")
+    out, last, said = listed(450_000 * 252, floor=0, expect_item="Chaos Core Set X 252")
+    check("with no minimum, 252 sets follow a 450,000 market down instead of holding at 500,000 a set",
+          out["price"] == calibration.undercut(450_000 * 252) and "never listed below" not in said
+          and "hard minimum" not in said, f"{out['price']:,}")
+
+    out, last, said = listed(690_000 * 252, floor=0, expect_item="Chaos Core Set X 252", shared=FLOORED)
     check(f"a relist of 252 sets with the market at 690,000 a set goes out at no less than {SET_LOW:,} x 252",
           out["price"] >= SET_LOW * 252 and last == out["price"], f"{out['price']:,}, typed {last:,}")
 
-    lowered = real_shared()
+    lowered = copy.deepcopy(FLOORED)
     lowered["run"]["hard_min_per_unit"]["Chaos Core Set"] = 650_000
     out, last, said = listed(680_000 * 252, floor=0, expect_item="Chaos Core Set X 252", shared=lowered)
     check("with the old 650,000 set minimum back in config, the never-below rule still holds the sets at 710,000",
           out["price"] == SET_LOW * 252 and last == out["price"] and "never listed below" in said,
           f"{out['price']:,}")
 
-    out, last, said = listed(700_000, floor=0, expect_item="Chaos Core")
+    out, last, said = listed(700_000, floor=0, expect_item="Chaos Core", shared=FLOORED)
     check(f"a single Chaos Core that is not a special row goes out at {LOW:,}, not the 699,999 undercut",
           out["price"] == LOW and last == LOW, f"{out['price']:,}")
 
-    out, last, said = listed(700_000, qty=5, floor=0, expect_item="Chaos Core")
+    out, last, said = listed(700_000, qty=5, floor=0, expect_item="Chaos Core", shared=FLOORED)
     check("a stack of 5 Chaos Cores goes out at 710,000 each", out["price"] == LOW, f"{out['price']:,}")
 
-    out, last, said = listed(LOW + 20_000, floor=0, expect_item="Chaos Core", under=7_000, resolve=False)
+    out, last, said = listed(LOW + 20_000, floor=0, expect_item="Chaos Core", under=7_000, resolve=False,
+                             shared=FLOORED)
     check(f"a special row goes its amount under the core's own market: {LOW + 13_000:,}",
           out["price"] == LOW + 13_000 and "never listed below" not in said, f"{out['price']:,}")
 
-    out, last, said = listed(LOW - 100_000, floor=0, expect_item="Chaos Core", under=7_000, resolve=False)
+    out, last, said = listed(LOW - 100_000, floor=0, expect_item="Chaos Core", under=7_000, resolve=False,
+                             shared=FLOORED)
     check(f"a stray cheap row cannot drag a special row under the {LOW:,} minimum",
           out["price"] == LOW and "never listed below" in said, f"{out['price']:,}")
 
-    out, last, said = listed(690_000 * 3, floor=0, expect_item="Chaos Core Set X 3", under=600, resolve=False)
+    out, last, said = listed(690_000 * 3, floor=0, expect_item="Chaos Core Set X 3", under=600, resolve=False,
+                             shared=FLOORED)
     check("a set bundle stays held by the set minimum", out["price"] >= SET_LOW * 3, f"{out['price']:,}")
 
-    out, last, said = listed(690_000 * 252, rule_item="Chaos Core Set X 252")
+    out, last, said = listed(690_000 * 252, rule_item="Chaos Core Set X 252", shared=FLOORED)
     check("the supervisor's tab-4 listing that only names the item is held too",
           out["price"] >= SET_LOW * 252, f"{out['price']:,}")
 
     out, last, said = listed(690_000 * 150, expect_item="Chaos Core Set", unit_market=690_000,
-                             expect_market=690_000 * 150, floor_each=690_000)
+                             expect_market=690_000 * 150, floor_each=690_000, shared=FLOORED)
     check("freshly crafted sets, 150 in the bundle and no count in the name, go out at no less than 710,000 x 150",
           out["price"] >= SET_LOW * 150, f"{out['price']:,}")
 

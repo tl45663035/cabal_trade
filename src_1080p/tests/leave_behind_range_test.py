@@ -44,7 +44,10 @@ ON["resupply"]["special_row"]["enabled"] = True
 LOW, TOP = calibration.leave_behind_range(CHAOS)
 UNDER = ON["resupply"]["special_row"]["under_market"]
 SPREAD = ON["resupply"]["special_row"]["under_random_range"]
-MIN_LIST = ON["run"]["never_list_below"][CHAOS]
+# The live config has no listing minimum for Chaos Core since 2026-11-19; the checks of the minimum set their own.
+MIN_LIST = 500_000
+FLOORED = REAL_SHARED()
+FLOORED["run"]["never_list_below"][CHAOS] = MIN_LIST
 real_randint = driver.random.randint
 held_turn = driver.holds_turn
 driver.holds_turn = lambda: True
@@ -73,7 +76,7 @@ replaced = ([k for k in ("buy_leave_behind", "buy_skip_rows_up_to", "buy_take_al
             + [k for k in ("qty", "at_set_market", "under_set_market", "under_set_spread")
                if k in ON["resupply"]["special_row"]])
 check("the settings the range replaces are gone", not replaced, str(replaced))
-check("the special row goes 7,000 under the market, give or take 500, from config", (UNDER, SPREAD) == (7_000, 500),
+check("the special row goes 2,000 under the market, give or take 500, from config", (UNDER, SPREAD) == (2_000, 500),
       f"{UNDER:,}, {SPREAD}")
 
 calibration.load_shared = lambda: copy.deepcopy(ranged(3, 8))
@@ -325,10 +328,11 @@ finally:
     (driver.take_offers, driver.work_tab_slots, driver.await_arrival, driver.special_list,
      calibration.load_shared) = saved
 
-saved = (driver.shop_ready, driver.war.avoid, driver.alz_too_low)
+saved = (driver.shop_ready, driver.war.avoid, driver.alz_too_low, driver.get_alz.read_balance)
 driver.shop_ready = lambda *a, **k: False
 driver.war.avoid = lambda *a, **k: None
 driver.alz_too_low = lambda: False
+driver.get_alz.read_balance = lambda *a, **k: 900_000_000
 calibration.load_shared = lambda: copy.deepcopy(ON)
 driver.random.randint = lambda a, b: 11
 said = io.StringIO()
@@ -338,7 +342,7 @@ try:
 finally:
     driver.random.randint = real_randint
     calibration.load_shared = REAL_SHARED
-    driver.shop_ready, driver.war.avoid, driver.alz_too_low = saved
+    driver.shop_ready, driver.war.avoid, driver.alz_too_low, driver.get_alz.read_balance = saved
 check("the header says how many it rolled and how far under the market it goes",
       f"-- Chaos Core special row 1 of 1: 11 at {UNDER - SPREAD:,} to {UNDER + SPREAD:,} under the market --"
       in said.getvalue(), said.getvalue().strip())
@@ -481,13 +485,17 @@ m.time.sleep = lambda s: None
 calibration.snap = lambda *a, **k: None
 
 
-def listed(market, item=CHAOS):
+def listed(market, item=CHAOS, shared=None):
     typed.clear()
     panel.update(market=market, qty=12)
     said = io.StringIO()
-    with contextlib.redirect_stdout(said):
-        out = m.RowModel().seed({})._list_slot(1, 1, verbose=True, floor=0, expect_item=item, under=UNDER,
-                                               expect_market=market, resolve=False)
+    calibration.load_shared = (lambda: copy.deepcopy(shared)) if shared else REAL_SHARED
+    try:
+        with contextlib.redirect_stdout(said):
+            out = m.RowModel().seed({})._list_slot(1, 1, verbose=True, floor=0, expect_item=item, under=UNDER,
+                                                   expect_market=market, resolve=False)
+    finally:
+        calibration.load_shared = REAL_SHARED
     return out, said.getvalue()
 
 
@@ -496,12 +504,15 @@ try:
     check(f"with the core at 526,000 the special row is typed at {526_000 - UNDER:,}",
           out["price"] == 526_000 - UNDER and typed[0] == 526_000 - UNDER, f"{out['price']:,}, typed {typed}")
     out, said = listed(400_000)
+    check(f"with no minimum in the live config, a stray 400,000 row takes the special row to {400_000 - UNDER:,}",
+          out["price"] == 400_000 - UNDER and "never listed below" not in said, f"{out['price']:,}, typed {typed}")
+    out, said = listed(400_000, shared=FLOORED)
     check(f"a stray 400,000 row cannot drag the special row under the {MIN_LIST:,} minimum",
           out["price"] == MIN_LIST and typed[-1] != 400_000 - UNDER and "never listed below" in said,
           f"{out['price']:,}, typed {typed}")
-    out, said = listed(MIN_LIST + UNDER - 1)
+    out, said = listed(MIN_LIST + UNDER - 1, shared=FLOORED)
     check(f"a price one Alz under the minimum is raised to {MIN_LIST:,}", out["price"] == MIN_LIST, f"{out['price']:,}")
-    out, said = listed(MIN_LIST + UNDER)
+    out, said = listed(MIN_LIST + UNDER, shared=FLOORED)
     check(f"a price exactly on the minimum stays at {MIN_LIST:,}",
           out["price"] == MIN_LIST and "never listed below" not in said, f"{out['price']:,}")
     out, said = listed(400_000, item=DIVINE)
