@@ -1,33 +1,22 @@
 {
+  "supervise": {
+    "recover_retries": 59,
+    "recover_wait": 60
+  },
   "resupply": {
     "cash_shop": {
       "rows": {
         "Yekaterina VIP Membership": 0,
-        "Epic Booster (Highest)": 0,
+        "Force Gem Package": 1,
+        "Epic Booster (Highest)": 1,
         "Armor Account bind Unseal Stone": 0,
         "Armor Account bind Seal Stone": 0,
-        "Siena's Unbinding Stone": 0,
+        "Siena's Unbinding Stone": 1,
         "Blessing Bead - Superior": 0,
         "Arionell": 0
       }
     },
-    "enable_buying": {
-      "Force Core(Highest)": true,
-      "Divine Stone": true,
-      "Force Core (Ultimate)": false,
-      "Force Core(High)": true,
-      "Upgrade Core (Ultimate)": true
-    },
-    "buy_min": {
-      "Chaos Core": 150
-    },
-    "special_row": {
-      "enabled": false
-    },
     "rows_by_margin": {
-      "default": [
-        4
-      ],
       "Force Core (Ultimate)": [
         3
       ],
@@ -40,13 +29,13 @@
       "Force Core(Highest)": [
         3
       ],
-      "Divine Stone": [
-        3,
-        5
-      ],
       "Chaos Core": [
         3,
         6
+      ],
+      "Divine Stone": [
+        3,
+        5
       ]
     },
     "rows_by_margin_on": {
@@ -59,303 +48,1419 @@
       "Chaos Core": [
         [0, 7]
       ]
+    },
+    "buy_min": {
+      "default": 180,
+      "Chaos Core": 150
+    },
+    "special_row": {
+      "enabled": false
+    },
+    "enable_buying": {
+      "Chaos Core": true,
+      "Force Core(Highest)": true,
+      "Force Core(High)": true,
+      "Upgrade Core (Ultimate)": true,
+      "Force Core (Ultimate)": true,
+      "Divine Stone": false
     }
   },
   "run": {
-    "relist_to": 25,
-    "home_channel": 11
+    "relist_to": 30,
+    "home_channel": 12,
+    "decline_boxes_every": 5,
+    "stop_key_presses": 8
   },
   "recovery": {
     "channel_missing_wait": 10.0
   },
   "favourite_items": {
-    "5": "Divine Stone",
-    "6": "Divine Stone Set"
+    "5": "Force Core (Ultimate)",
+    "6": "Force Core Set (Ultimate)"
   },
   "dungeon": {
     "enabled": false,
+    "start_relog": true,
     "trading_dungeon": "chaos_arena",
-    "order": [7, 6],
-    "rotation": ["ice", "train", "fire", "valley", "keldrasil", "ic1", "ic2",
-                 "eop", "fn", "tm"],
-    "banner_fill": {"dungeons": ["fn"], "runs": 3, "levels": [7, 6]},
-    "rotation_runs": 3,
-    "wb_area_check": {"window": [1765, 106, 1875, 126], "word": "No Map Code",
-                      "timeout": 5.0, "tries": 3},
-    "chat_reads": {"before": "move_to_", "button": "confirmation"},
-    "death": {"hp_window": [80, 28, 290, 46], "settle": 5, "failed_in_a_row": 5},
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "levels_first": true,
+    "rotation": [
+      [
+        "ice",
+        "train",
+        "fire",
+        "valley"
+      ]
+    ],
+    "every_run_use": [
+      "A+-"
+    ],
+    "steady_attack": [
+      "alternate_bm"
+    ],
+    "banner_fill": {
+      "dungeons": [
+        "chaos_arena"
+      ]
+    },
+    "rotation_runs": 5,
+    "wb_area_check": {
+      "window": [
+        1765,
+        106,
+        1875,
+        126
+      ],
+      "word": "No Map Code",
+      "timeout": 5.0,
+      "tries": 3
+    },
+    "chat_reads": {
+      "before": "move_to_",
+      "button": "confirmation"
+    },
+    "death": {
+      "hp_window": [
+        80,
+        28,
+        290,
+        46
+      ],
+      "settle": 5,
+      "failed_in_a_row": 9999
+    },
     "buttons": {
-      "replay_confirmation": {"window": [924, 313, 1058, 334], "word": "Confirmation", "timeout": 3.0}
+      "replay_confirmation": {
+        "window": [
+          924,
+          313,
+          1058,
+          334
+        ],
+        "word": "Confirmation",
+        "timeout": 3.0
+      },
+      "dungeon_close": {
+        "window": [
+          1326,
+          869,
+          1455,
+          906
+        ],
+        "word": "Close",
+        "timeout": 3.0
+      }
     },
     "target_slots": [
-      {"name": "middle", "cap": [787, 45], "fill": [793, 45], "frame": [794, 41]},
-      {"name": "left", "cap": [578, 45], "fill": [586, 45], "frame": [587, 41]},
-      {"name": "right", "cap": [975, 45], "fill": [980, 45], "frame": [981, 41]}
+      {
+        "name": "middle",
+        "cap": [
+          787,
+          45
+        ],
+        "fill": [
+          793,
+          45
+        ],
+        "frame": [
+          794,
+          41
+        ]
+      },
+      {
+        "name": "left",
+        "cap": [
+          578,
+          45
+        ],
+        "fill": [
+          586,
+          45
+        ],
+        "frame": [
+          587,
+          41
+        ]
+      },
+      {
+        "name": "right",
+        "cap": [
+          975,
+          45
+        ],
+        "fill": [
+          980,
+          45
+        ],
+        "frame": [
+          981,
+          41
+        ]
+      }
     ],
-    "target_frame": [[151, 151, 151], [70, 70, 70], [2, 2, 2]],
-    "cycle_keys": {"main_bm": {"5": "3", "6": "4"}},
-    "bm_cycle": {"slots": ["main_bm", "alternate_bm"],
-                 "cast": {"main_bm": 3.0, "alternate_bm": 6.0}},
-    "bm_attack": {"main_bm": ["3", "4"], "alternate_bm": ["5", "6"]},
+    "target_frame": [
+      [
+        151,
+        151,
+        151
+      ],
+      [
+        70,
+        70,
+        70
+      ],
+      [
+        2,
+        2,
+        2
+      ]
+    ],
+    "cycle_keys": {
+      "main_bm": {
+        "5": "3",
+        "6": "4"
+      }
+    },
+    "bm_cycle": {
+      "slots": [
+        "main_bm",
+        "alternate_bm"
+      ],
+      "cast": {
+        "main_bm": 3.0,
+        "alternate_bm": 6.0
+      },
+      "lasts": 90.0
+    },
+    "bm_attack": {
+      "main_bm": [
+        "3",
+        "4"
+      ],
+      "alternate_bm": [
+        "5",
+        "6"
+      ]
+    },
     "twin_bm": "alternate_bm",
     "once_per_target": [],
-    "bike": {"key": "1", "slot": [664, 978, 712, 1022], "grey_below": 85,
-             "recheck": 3.0, "settle": 1.0, "dismount_wait": 5.0},
-    "fn_nobm_kill_loop": ["5", "6", "8", "9"],
-    "fn_nobm_defensive_loop": ["5", "6", "8", "9", "defensive_buffs"],
-    "fn_nobm_boss_loop": ["5", "6", "8", "9", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
-    "fn_main_defensive_loop": ["5", "6", "defensive_buffs"],
-    "c1_buff_loop": ["5", "C+1"],
-    "main_kill_loop": ["5", "6", "`"],
-    "main_defensive_loop": ["5", "6", "`", "defensive_buffs"],
-    "main_boss_loop": ["5", "6", "`", "C+1", "C+3", "C+4", "C+5", "defensive_buffs"],
-    "key_tab": 7,
-    "notification_close": [1903, 834],
-    "kill_combo": [
-      ["use", "A+2", 2.0],
-      ["tap", "5", 2.0],
-      ["tap", "6", 2.0]
+    "bike": {
+      "key": "1",
+      "slot": [
+        664,
+        978,
+        712,
+        1022
+      ],
+      "grey_below": 85,
+      "recheck": 3.0,
+      "settle": 1.0,
+      "dismount_wait": 5.0
+    },
+    "fn_nobm_kill_loop": [
+      "5",
+      "6",
+      "8",
+      "9"
     ],
-    "main_bm": [987, 990],
-    "alternate_bm": [1037, 990],
-    "aura": [1187, 990],
+    "fn_nobm_defensive_loop": [
+      "5",
+      "6",
+      "8",
+      "9",
+      "defensive_buffs"
+    ],
+    "fn_nobm_boss_loop": [
+      "5",
+      "6",
+      "8",
+      "9",
+      "C+1",
+      "C+2",
+      "C+3",
+      "defensive_buffs"
+    ],
+    "fn_main_defensive_loop": [
+      "5",
+      "6",
+      "defensive_buffs"
+    ],
+    "c1_buff_loop": [
+      "5",
+      "C+1"
+    ],
+    "main_kill_loop": [
+      "5",
+      "6",
+      "`"
+    ],
+    "main_defensive_loop": [
+      "5",
+      "6",
+      "`",
+      "defensive_buffs"
+    ],
+    "main_boss_loop": [
+      "5",
+      "6",
+      "`",
+      "C+1",
+      "C+2",
+      "C+3",
+      "defensive_buffs"
+    ],
+    "offensive_buffs": {
+      "C+1": [
+        837,
+        882
+      ],
+      "C+2": [
+        887,
+        882
+      ],
+      "C+3": [
+        937,
+        882
+      ]
+    },
+    "bm_loop": [
+      "main_bm",
+      "aura",
+      "C+1",
+      "C+2",
+      "C+3",
+      "C+6",
+      "C+7",
+      "C+8"
+    ],
+    "ca_boss_loop": [
+      "5",
+      "6",
+      "C+1",
+      "C+2",
+      "C+3",
+      "C+6",
+      "C+7",
+      "C+8"
+    ],
+    "offensive_boss_loop": [
+      "5",
+      "C+1",
+      "C+2",
+      "C+3"
+    ],
+    "all_buffs_boss_loop": [
+      "5",
+      "C+1",
+      "C+2",
+      "C+3",
+      "defensive_buffs"
+    ],
+    "key_tab": 6,
+    "summon_orbs": null,
+    "notification_close": [
+      1903,
+      834
+    ],
+    "kill_combo": [
+      [
+        "use",
+        "A+2",
+        2.0
+      ],
+      [
+        "tap",
+        "5",
+        2.0
+      ],
+      [
+        "tap",
+        "6",
+        2.0
+      ]
+    ],
+    "main_bm": [
+      987,
+      990
+    ],
+    "alternate_bm": [
+      1037,
+      990
+    ],
+    "aura": [
+      1187,
+      990
+    ],
     "bm_aura_for": 3.0,
     "purchases": {
-      "elixir_myth": {"name": "Elixir of Myth (High)", "tab": "shop_dungeon",
-                      "cell": [39, 795], "inventory_tab": 1, "every": 5,
-                      "window_wait": 1.0}
-    },
-    "pre_run_buys": ["elixir_myth"],
-    "dungeons": {
-      "fc": {
-        "sequence": ["get_entry",
-                     "open_dungeon_key",
-                     "start_dungeon",
-                     ["tap", "="],
-                     "kill_phase",
-                     "move_to_A",
-                     "bm_cycle",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_B",
-                     ["kill_all", "any monster", "kill_loop", 4.0],
-                     "move_to_C",
-                     ["kill_all", "any monster", "c1_buff_loop"],
-                     "move_to_D",
-                     "aura_on",
-                     ["kill_all", "any monster", "offensive_boss_loop"],
-                     "move_to_E",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_F",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_G",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_H",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_I",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_J",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_K",
-                     ["kill_all", "any monster", "offensive_boss_loop"]]
-      },
-      "chaos_arena": {
-        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon",
-                     ["wait", 3], "get_to_gate", ["kill", "Gate of Chaos"],
-                     ["timer", 345], ["tap", "="],
-                     ["use", "A+2"], ["wait_timer", 5],
-                     "inventory", "wait_timer", ["kill", "Gate of Chaos"],
-                     "bm_aura", "kill_phase",
-                     "get_to_middle", ["kill_bm", "boss"]],
-        "exit": [
-          ["button", "confirmation", 0.0],
-          ["click", "obtain_treasure", 0.5],
-          ["button", "fire_leave", 0.0]
+      "elixir_myth": {
+        "name": "Elixir of Myth (High)",
+        "tab": "shop_dungeon",
+        "cell": [
+          39,
+          795
         ],
-        "after_exit": [["wait", 2], "after_exit"]
-      },
-      "fire": {
-        "after_run_buys": [],
-        "difficulty": 5,
-        "bm_aura_for": 3.0,
-        "aura_after": 85.0,
-        "aura_for": 10.0,
-        "main_bm_after": 143.0,
-        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["tap", "="],
-                     "move_to_A",
-                     "bm_cycle",
-                     ["kill_bm", "Fire Guardian Manticore", "kill_loop"],
-                     ["kill_bm", "Treasure Chest", "kill_loop"],
-                     "move_to_B",
-                     ["keep_aura", "target"],
-                     ["look_kill_bm", [["Q", "E", 1.0], ["E", "Q", 1.0]], "Fire Guard Dark Archer", "kill_loop", 3.0],
-                     "move_to_C",
-                     ["look_kill_bm", [["Q", "E", 1.0], ["E", "Q", 1.0]], "Fire Gatekeeper Demonic Jason", "kill_loop", 3.0],
-                     "move_to_D",
-                     ["kill_bm", "Lava Gate", "kill_loop"],
-                     "move_to_E",
-                     ["kill_bm", "Master of Fire Eurostia", "offensive_boss_loop"]]
-      },
-      "train": {
-        "after_run_buys": [],
-        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["tap", "="],
-                     "move_to_A",
-                     "bm_cycle",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_B",
-                     ["kill_all", "any monster", "kill_loop"],
-                     ["kill_all", "any monster", "kill_loop", 2.0],
-                     "move_to_C",
-                     ["kill_bm", "Awakened TA-01 Gravis Rota", "kill_loop"],
-                     ["kill_bm", "Treasure Chest", "kill_loop"],
-                     "move_to_D",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_E",
-                     ["keep_aura", "target"],
-                     ["kill_bm", "Awakened Steamer LHJ-G30", "offensive_boss_loop"]]
-      },
-      "valley": {
-        "hard_limit_seconds": 300,
-        "run_seconds": 131,
-        "main_bm_after": 0.0,
-        "after_exit": [["wait", 2], "disenchant_all"],
-        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["tap", "="],
-                     "bm_cycle",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "move_to_A",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "move_to_B",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "move_to_C",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "move_to_D",
-                     ["kill_all", "any monster", "offensive_boss_loop", 1.0],
-                     "move_to_E",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "move_to_F",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "move_to_G",
-                     ["kill_all", "any monster", "kill_loop", null]]
-      },
-      "eop": {
-        "main_bm_after": 0.0,
-        "main_bm_loops": {"kill_loop": "main_kill_loop"},
-        "start_cancel_bm": false,
-        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["tap", "="],
-                     "move_to_A",
-                     "bm_cycle",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     ["wait", 1.5],
-                     "move_to_B",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     ["wait", 1.5],
-                     "move_to_C",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     ["wait", 1.5],
-                     "move_to_D",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     ["wait", 1.5],
-                     "move_to_E",
-                     ["kill_bm", "Zehgo of Ambition", "offensive_boss_loop"],
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     ["wait", 8],
-                     ["wait", 1.5],
-                     "move_to_F",
-                     ["kill_all", "any monster", "kill_loop", null],
-                     "final_sequence"]
-      },
-      "ic1": {
-        "challenge_wait": 2.0,
-        "start_cancel_bm": false,
-        "chat_skip": ["move_to_A"],
-        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["tap", "="],
-                     "move_to_A",
-                     "bm_cycle",
-                     ["kill_all", "any monster", "kill_loop", 3.0],
-                     "move_to_B",
-                     ["wait", 10],
-                     ["kill_bm", "Divine Dazzled Researcher", "kill_loop"],
-                     "move_to_C",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "move_to_D",
-                     ["kill_all", "any monster", "kill_loop"],
-                     ["kill_bm", "Corrupted Divine Illusion Faello", "kill_loop", 3.0],
-                     ["kill_all", "any monster", "kill_loop", 2.0],
-                     "move_to_E",
-                     ["wait", 5],
-                     ["kill_bm", "Divine Golem of Rage", "offensive_boss_loop"],
-                     ["kill_all", "any monster", "kill_loop", null]]
-      },
-      "ic2": {
-        "challenge_wait": 5.0,
-        "start_cancel_bm": false,
-        "chat_skip": ["move_to_A"],
-        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["tap", "="],
-                     "move_to_A",
-                     ["bm_cycle", "alternate_bm"],
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "move_to_B",
-                     ["kill_all", "any monster", "kill_loop"],
-                     "move_to_C",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "cancel_bm",
-                     ["wait", 11],
-                     "move_to_D",
-                     ["bm_cycle", "main_bm"],
-                     ["keep_aura", "target"],
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "move_to_E",
-                     ["kill_all", "any monster", "kill_loop", 1.0],
-                     "move_to_F",
-                     ["kill_all", "any monster", "offensive_boss_loop", null]]
-      },
-      "ice": {
-        "after_run_buys": [],
-        "difficulty": 5,
-        "bm_aura_for": 3.0,
-        "aura_after": 85.0,
-        "aura_for": 10.0,
-        "main_bm_after": 143.0,
-        "after_exit": [["wait", 2]],
-        "sequence": ["get_entry", "open_dungeon_key", "start_dungeon", "kill_phase",
-                     ["tap", "="],
-                     "move_to_A",
-                     "bm_cycle",
-                     ["kill_bm", "Awakened Monarch Akenaph", "kill_loop"],
-                     "move_to_B",
-                     ["kill_bm", "Frozen Bone Stack", "kill_loop"],
-                     "move_to_C",
-                     ["keep_aura", "target"],
-                     ["kill_bm", "Awakened Ice Guardian", "kill_loop"],
-                     ["kill_bm", "Treasure Chest", "kill_loop"],
-                     ["kill_all", "any monster", "kill_loop", 3.0],
-                     ["timer", 1.0],
-                     "wait_timer",
-                     "move_to_D",
-                     ["kill_bm", "Awakened Nazabrum", "offensive_boss_loop"],
-                     ["kill_all", "any monster", "kill_loop", 3.0],
-                     "final_sequence"]
-      },
-      "fn": {
+        "inventory_tab": 1,
+        "every": 5,
+        "window_wait": 1.0
+      }
+    },
+    "pre_run_buys": [],
+    "dungeons": {
+      "windmill": {
         "hard_limit_seconds": 420
       },
+      "keldrasil": {
+        "hard_limit_seconds": 420
+      },
+      "at": {
+        "hard_limit_seconds": 720
+      },
+      "fc": {
+        "hard_limit_seconds": 720,
+        "sequence": [
+          "get_entry",
+          "open_dungeon_key",
+          "start_dungeon",
+          [
+            "tap",
+            "="
+          ],
+          "kill_phase",
+          "move_to_A",
+          "bm_cycle",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            4.0
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "c1_buff_loop"
+          ],
+          "move_to_D",
+          "aura_on",
+          [
+            "kill_all",
+            "any monster",
+            "offensive_boss_loop"
+          ],
+          "move_to_E",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          "move_to_F",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          "move_to_G",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          "move_to_H",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          "move_to_I",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          "move_to_J",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          "move_to_K",
+          [
+            "kill_all",
+            "any monster",
+            "offensive_boss_loop"
+          ]
+        ]
+      },
+      "chaos_arena": {
+        "hard_limit_seconds": 720,
+        "every_run_use": [],
+        "aura_after": 3.0,
+        "powerful_pot": {
+          "slot": "A+8",
+          "every": 3600,
+          "locations": [
+            "CA5",
+            "CA6"
+          ]
+        },
+        "sequence": [
+          "get_entry",
+          "open_dungeon_key",
+          "start_dungeon",
+          [
+            "wait",
+            3
+          ],
+          "get_to_gate",
+          [
+            "kill",
+            "Gate of Chaos"
+          ],
+          [
+            "timer",
+            345
+          ],
+          [
+            "tap",
+            "="
+          ],
+          [
+            "use",
+            "A+2"
+          ],
+          [
+            "wait_timer",
+            30
+          ],
+          [
+            "use",
+            "A+-"
+          ],
+          [
+            "wait_timer",
+            5
+          ],
+          "inventory",
+          "wait_timer",
+          [
+            "kill",
+            "Gate of Chaos"
+          ],
+          "bm_cycle",
+          "keep_aura",
+          [
+            "use_at",
+            [
+              "CA5",
+              "CA6"
+            ],
+            "A+9",
+            "A+0"
+          ],
+          "kill_phase",
+          "get_to_middle",
+          [
+            "kill_bm",
+            "boss",
+            "ca_boss_loop"
+          ]
+        ],
+        "exit": [
+          [
+            "button",
+            "confirmation",
+            0.0
+          ],
+          [
+            "click",
+            "obtain_treasure",
+            0.5
+          ],
+          [
+            "click",
+            "obtain_points",
+            0.5
+          ],
+          [
+            "button",
+            "fire_leave",
+            0.0
+          ]
+        ],
+        "after_exit": [
+          [
+            "wait",
+            2
+          ],
+          "after_exit"
+        ]
+      },
+      "fire": {
+        "hard_limit_seconds": 300,
+        "after_run_buys": [],
+        "difficulty": 0,
+        "powerful_pot": {
+          "slots": [
+            "A+8",
+            "A+9",
+            "A+0"
+          ],
+          "every": 3600
+        },
+        "bm_aura_for": 3.0,
+        "aura_after": 85.0,
+        "aura_for": 10.0,
+        "main_bm_after": 143.0,
+        "sequence": [
+          "get_entry",
+          "peek_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
+          "open_dungeon_key",
+          "start_dungeon",
+          [
+            "use",
+            "A+="
+          ],
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "bm_cycle",
+          "move_to_A",
+          [
+            "kill_bm",
+            "Fire Guardian Manticore",
+            "kill_loop"
+          ],
+          [
+            "kill_bm",
+            "Treasure Chest",
+            "kill_loop"
+          ],
+          "move_to_B",
+          [
+            "keep_aura",
+            "target"
+          ],
+          [
+            "look_kill_bm",
+            [
+              [
+                "Q",
+                "E",
+                1.0
+              ],
+              [
+                "E",
+                "Q",
+                1.0
+              ]
+            ],
+            "Fire Guard Dark Archer",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_C",
+          [
+            "look_kill_bm",
+            [
+              [
+                "Q",
+                "E",
+                1.0
+              ],
+              [
+                "E",
+                "Q",
+                1.0
+              ]
+            ],
+            "Fire Gatekeeper Demonic Jason",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_D",
+          [
+            "kill_bm",
+            "Lava Gate",
+            "kill_loop"
+          ],
+          "move_to_E",
+          [
+            "kill_bm",
+            "Master of Fire Eurostia",
+            "offensive_boss_loop"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ]
+      },
+      "train": {
+        "hard_limit_seconds": 300,
+        "after_run_buys": [],
+        "difficulty": 0,
+        "powerful_pot": {
+          "slots": [
+            "A+8",
+            "A+9",
+            "A+0"
+          ],
+          "every": 3600
+        },
+        "sequence": [
+          "get_entry",
+          "peek_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
+          "open_dungeon_key",
+          "start_dungeon",
+          [
+            "use",
+            "A+="
+          ],
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "move_to_A",
+          "bm_cycle",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_C",
+          [
+            "kill_bm",
+            "Awakened TA-01 Gravis Rota",
+            "kill_loop"
+          ],
+          [
+            "kill_bm",
+            "Treasure Chest",
+            "kill_loop"
+          ],
+          "move_to_D",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          "move_to_E",
+          [
+            "keep_aura",
+            "target"
+          ],
+          [
+            "kill_bm",
+            "Awakened Steamer LHJ-G30",
+            "offensive_boss_loop"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ]
+      },
+      "valley": {
+        "powerful_pot": {
+          "slots": [
+            "A+8",
+            "A+9",
+            "A+0"
+          ],
+          "every": 3600
+        },
+        "hard_limit_seconds": 420,
+        "run_seconds": 131,
+        "main_bm_after": 0.0,
+        "after_exit": [
+          [
+            "wait",
+            2
+          ],
+          "disenchant_all"
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "sequence": [
+          "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
+          "open_dungeon_key",
+          "start_dungeon",
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "bm_cycle",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_A",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_D",
+          [
+            "kill_all",
+            "any monster",
+            "offensive_boss_loop",
+            1.0
+          ],
+          "move_to_E",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_F",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_G",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            null
+          ]
+        ]
+      },
+      "eop": {
+        "hard_limit_seconds": 420,
+        "main_bm_after": 0.0,
+        "main_bm_loops": {
+          "kill_loop": "main_kill_loop"
+        },
+        "start_cancel_bm": false,
+        "sequence": [
+          "get_entry",
+          "open_dungeon_key",
+          "start_dungeon",
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "move_to_A",
+          "bm_cycle",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          [
+            "wait",
+            1.5
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          [
+            "wait",
+            1.5
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          [
+            "wait",
+            1.5
+          ],
+          "move_to_D",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          [
+            "wait",
+            1.5
+          ],
+          "move_to_E",
+          [
+            "kill_bm",
+            "Zehgo of Ambition",
+            "offensive_boss_loop"
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          [
+            "wait",
+            8
+          ],
+          [
+            "wait",
+            1.5
+          ],
+          "move_to_F",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            null
+          ],
+          "final_sequence"
+        ]
+      },
+      "pc": {
+        "hard_limit_seconds": 360,
+        "difficulty": 0,
+        "powerful_pot": {
+          "slots": [
+            "A+8",
+            "A+9",
+            "A+0"
+          ],
+          "every": 3600
+        },
+        "sequence": [
+          "get_entry",
+          "peek_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
+          "open_dungeon_key",
+          "start_dungeon",
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "move_to_A",
+          "bm_cycle",
+          [
+            "kill_all",
+            "any monster",
+            "offensive_boss_loop",
+            5.0
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_D",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_E",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_F",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_G",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          ["hover_kill", 12, "any monster", "kill_loop", 3.0]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "room_idle_stop": {
+          "move_to_G": 30
+        }
+      },
+      "ic1": {
+        "hard_limit_seconds": 360,
+        "challenge_wait": 2.0,
+        "start_cancel_bm": false,
+        "chat_skip": [
+          "move_to_A"
+        ],
+        "sequence": [
+          "get_entry",
+          "open_dungeon_key",
+          "start_dungeon",
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "move_to_A",
+          "bm_cycle",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_B",
+          [
+            "wait",
+            10
+          ],
+          [
+            "kill_bm",
+            "Divine Dazzled Researcher",
+            "kill_loop"
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_D",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          [
+            "kill_bm",
+            "Corrupted Divine Illusion Faello",
+            "kill_loop",
+            3.0
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            2.0
+          ],
+          "move_to_E",
+          [
+            "wait",
+            5
+          ],
+          [
+            "kill_bm",
+            "Divine Golem of Rage",
+            "offensive_boss_loop"
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            null
+          ]
+        ]
+      },
+      "ic2": {
+        "hard_limit_seconds": 360,
+        "challenge_wait": 5.0,
+        "start_cancel_bm": false,
+        "chat_skip": [
+          "move_to_A"
+        ],
+        "sequence": [
+          "get_entry",
+          "open_dungeon_key",
+          "start_dungeon",
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "move_to_A",
+          [
+            "bm_cycle",
+            "alternate_bm"
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop"
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "cancel_bm",
+          [
+            "wait",
+            11
+          ],
+          "move_to_D",
+          [
+            "bm_cycle",
+            "main_bm"
+          ],
+          [
+            "keep_aura",
+            "target"
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_E",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_F",
+          [
+            "kill_all",
+            "any monster",
+            "offensive_boss_loop",
+            null
+          ]
+        ]
+      },
+      "ice": {
+        "targets": {
+          "Awakened Monarch Akenaph": [
+            "monarch",
+            "akenaph",
+            "akena",
+            "monar"
+          ],
+          "Frozen Bone Stack": [
+            "frozen",
+            "rozen",
+            "bone",
+            "stack",
+            "stac"
+          ],
+          "Awakened Ice Guardian": [
+            "ice",
+            "guardian",
+            "guard"
+          ],
+          "Treasure Chest": [
+            "treasure",
+            "treas",
+            "chest"
+          ],
+          "Awakened Nazabrum": [
+            "nazab",
+            "azabr",
+            "azabu"
+          ]
+        },
+        "hard_limit_seconds": 300,
+        "after_run_buys": [],
+        "difficulty": 0,
+        "powerful_pot": {
+          "slots": [
+            "A+8",
+            "A+9",
+            "A+0"
+          ],
+          "every": 3600
+        },
+        "bm_aura_for": 3.0,
+        "aura_after": 85.0,
+        "aura_for": 10.0,
+        "main_bm_after": 143.0,
+        "after_exit": [
+          [
+            "wait",
+            2
+          ]
+        ],
+        "sequence": [
+          "get_entry",
+          "peek_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
+          "open_dungeon_key",
+          "start_dungeon",
+          [
+            "use",
+            "A+="
+          ],
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "move_to_A",
+          "bm_cycle",
+          [
+            "kill_bm",
+            "Awakened Monarch Akenaph",
+            "kill_loop"
+          ],
+          "move_to_B",
+          [
+            "kill_bm",
+            "Frozen Bone Stack",
+            "kill_loop",
+            5.0
+          ],
+          "move_to_C",
+          [
+            "keep_aura",
+            "target"
+          ],
+          [
+            "kill_bm",
+            "Awakened Ice Guardian",
+            "kill_loop"
+          ],
+          [
+            "kill_bm",
+            "Treasure Chest",
+            "kill_loop"
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          [
+            "timer",
+            1.0
+          ],
+          "wait_timer",
+          "move_to_D",
+          [
+            "kill_bm",
+            "Awakened Nazabrum",
+            "offensive_boss_loop"
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "final_sequence",
+          "final_sweep",
+          "final_sequence"
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ]
+      },
+      "fn": {
+        "hard_limit_seconds": 540
+      },
       "tm": {
-        "hard_limit_seconds": 480
+        "hard_limit_seconds": 600
       }
-    }
+    },
+    "room_idle_stop": 10,
+    "zoom_out_after_random": {
+      "notches": 15,
+      "gap": 0.03,
+      "at": [
+        960,
+        540
+      ]
+    },
+    "rotation_relog": true,
+    "combo_skip_ca": true,
+    "trade_passes": 10
   },
   "world_boss": {
-    "enabled": true,
+    "enabled": false,
     "prepare_channel": 4,
     "main_bm_cooldown": 40.0,
-    "keyed_points": ["main_bm", "alternate_bm", "aura"],
-    "main_bm": [987, 990],
-    "alternate_bm": [1037, 990],
-    "aura": [1087, 990]
+    "keyed_points": [
+      "main_bm",
+      "alternate_bm",
+      "aura"
+    ],
+    "main_bm": [
+      987,
+      990
+    ],
+    "alternate_bm": [
+      1037,
+      990
+    ],
+    "aura": [
+      1187,
+      990
+    ],
+    "offensive_buffs": {
+      "C+6": [
+        1087,
+        882
+      ],
+      "C+7": [
+        1137,
+        882
+      ],
+      "C+8": [
+        1187,
+        882
+      ]
+    },
+    "main_loop": [
+      "C+6",
+      "C+7",
+      "C+8"
+    ],
+    "alternate_loop": [
+      "bm_pot",
+      "C+1",
+      "C+3",
+      "C+4",
+      "C+5",
+      "C+6",
+      "C+7",
+      "C+8"
+    ],
+    "burst_alternate_loop": [
+      "bm_pot",
+      "C+1",
+      "C+3",
+      "C+4",
+      "C+5",
+      "C+6",
+      "C+7",
+      "C+8"
+    ]
+  },
+  "war_end": {
+    "wexp_up": {
+      "window": [
+        640,
+        768,
+        760,
+        792
+      ],
+      "word": "WEXP UP"
+    },
+    "ok": {
+      "window": [
+        775,
+        768,
+        905,
+        792
+      ],
+      "word": "Confirmation"
+    }
   }
 }
