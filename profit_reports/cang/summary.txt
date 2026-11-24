@@ -42,28 +42,28 @@ Fri 2026-11-20             14.91h   24.00h  190.55M   12.78M    3.32B   3.13B   
 Sat 2026-11-21              2.87h   24.00h   68.14M   23.71M    1.36B   1.29B   1.66K    5.0%
 Sun 2026-11-22             14.73h   24.00h  209.18M   14.20M    9.92B   9.71B  20.36K    2.1%
 Mon 2026-11-23             13.86h   24.00h  250.99M   18.11M    8.21B   7.96B  18.66K    3.1%
-Tue 2026-11-24 (so far)     7.99h   12.13h    8.30M    1.04M    1.96B   1.95B   3.83K    0.4%
+Tue 2026-11-24 (so far)     8.07h   12.20h    6.94M  860.06K    1.99B   1.98B   3.93K    0.3%
 =============================================================================================
-7 DAYS                     83.82h  156.13h    1.06B   12.63M   39.31B  38.26B  71.52K    2.7%
+7 DAYS                     83.89h  156.20h    1.06B   12.61M   39.34B  38.28B  71.62K    2.7%
 incl. special row losses                          0                 0       0       0      --
 
 
-PROFIT SUMMARY -- sold since 2026-11-24 00:00 Central (as of 12:07 Central)
+PROFIT SUMMARY -- sold since 2026-11-24 00:00 Central (as of 12:12 Central)
 
-item                      profit  revenue     cost  units  bought/u   sold/u  margin
-------------------------------------------------------------------------------------
-forcecorehigh             10.20M  160.61M  150.41M    707   212.74K  227.16K    6.4%
-upgradecoreultimate        9.69M  122.93M  113.24M    325   348.44K  378.25K    7.9%
-forcegempackage            7.50M  340.00M  332.50M      2   166.25M  170.00M    2.2%
-forcecorehighest        -430.52K  121.38M  121.81M    430   283.28K  282.28K   -0.4%
-chaoscore                -18.66M    1.22B    1.24B  2.37K   521.77K  513.89K   -1.5%
-------------------------------------------------------------------------------------
-Cores                     19.46M  404.92M  385.46M  1.46K   263.65K  276.96K    4.8%
-Chaos                    -18.66M    1.22B    1.24B  2.37K   521.77K  513.89K   -1.5%
-Cash                       7.50M  340.00M  332.50M      2   166.25M  170.00M    2.2%
-Special row (expected)         0        0        0      0         -        -      --
-====================================================================================
-TOTAL                      8.30M    1.96B    1.95B  3.83K   509.79K  511.95K    0.4%
+item                     profit  revenue     cost  units  bought/u   sold/u  margin
+-----------------------------------------------------------------------------------
+forcecorehigh            10.20M  160.61M  150.41M    707   212.74K  227.16K    6.4%
+upgradecoreultimate       9.69M  122.93M  113.24M    325   348.44K  378.25K    7.9%
+forcegempackage           7.50M  340.00M  332.50M      2   166.25M  170.00M    2.2%
+forcecorehighest         -1.79M  146.61M  148.41M    533   278.44K  275.07K   -1.2%
+chaoscore               -18.66M    1.22B    1.24B  2.37K   521.77K  513.89K   -1.5%
+-----------------------------------------------------------------------------------
+Cores                    18.10M  430.15M  412.05M  1.56K   263.29K  274.86K    4.2%
+Chaos                   -18.66M    1.22B    1.24B  2.37K   521.77K  513.89K   -1.5%
+Cash                      7.50M  340.00M  332.50M      2   166.25M  170.00M    2.2%
+Special row (expected)        0        0        0      0         -        -      --
+===================================================================================
+TOTAL                     6.94M    1.99B    1.98B  3.93K   503.20K  504.96K    0.3%
 
 
 
@@ -74,7 +74,7 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-24_120301_relist.log, board after pass 1
+ROWS -- 2026-11-24_120741_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Epic Booster (Highest)                  x4    41.88M    41.88M        +0   167.50M   167.50M         0
     2  Chaos Core Set X 982                    x1   508.11K   576.01K   +67.90K   565.65M   498.97M    66.68M
@@ -84,20 +84,21 @@ ROWS -- 2026-11-24_120301_relist.log, board after pass 1
     6  Force Core (Ultimate                    x5   362.14K   362.14K        +0     1.81M     1.81M         0
     7  Force Core (Ultimate                  x170   362.14K   362.14K        +0    61.56M    61.56M         0
     8  Force Core(Highest                    x250   273.00K   245.00K   -28.00K    61.25M    68.25M    -7.00M
-    9  Force Core(Highest                     x73   273.00K   245.00K   -28.00K    17.88M    19.93M    -2.04M
-   10  Force Core(High                        x34   209.00K   209.00K        +0     7.11M     7.11M         0
-   11  Upgrade Core (Ultimate                x239   350.00K   399.99K   +49.99K    95.60M    83.65M    11.95M
-   12  Upgrade Core (Ultimate                x180   350.00K   399.99K   +49.99K    72.00M    63.00M     9.00M
-   13  Upgrade Core (Ultimate                 x88   350.00K   399.99K   +49.99K    35.20M    30.80M     4.40M
-   14  Force Core(Highest                     x30   222.22K   245.00K   +22.77K     7.35M     6.67M   683.22K
-    balance now 3.10B
+    9  Force Core(High                        x34   209.00K   209.00K        +0     7.11M     7.11M         0
+   10  Upgrade Core (Ultimate                x239   350.00K   399.98K   +49.99K    95.60M    83.65M    11.95M
+   11  Upgrade Core (Ultimate                x180   350.00K   399.98K   +49.99K    72.00M    63.00M     9.00M
+   12  Upgrade Core (Ultimate                 x88   350.00K   399.98K   +49.99K    35.20M    30.80M     4.40M
+    balance now 3.13B
   0.01 minute(s) are up after pass 1
-1 pass(es), 14 relisted, 16 empty, 0 skipped in 218s (15553 ms a row)
+1 pass(es), 12 relisted, 18 empty, 0 skipped in 206s (17204 ms a row)
 PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
-  nothing has sold yet this run.
+  item                              profit   units  margin        revenue           cost
+       Force Core(Highest            -1.36M     103   -5.4%     25.23M                                 26.60M
   ------------------------------------------------------------------------------------
-  RUN CLOSED                             0   (0 realised, +0 assumed)
-  started 12:03:01, ended 12:07:26, ran for 4m 24s
+       SOLD                          -1.36M     103   -5.4%     25.23M                                 26.60M
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                    -1.36M   (-1.36M realised, +0 assumed)
+  started 12:07:41, ended 12:11:55, ran for 4m 13s
 ##############################################################################################
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
 ##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
@@ -114,12 +115,12 @@ PROFIT THIS RUN -- each sale against its row's cost: what this run bought at wha
 ##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
 ##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
 ##############################################################################################
-       stock at its listed price                                                                        1.36B
-       Alz, latest balance line                                                                         3.10B
+       stock at its listed price                                                                        1.34B
+       Alz, latest balance line                                                                         3.13B
        NET WORTH                                                                                        4.47B
 
 
-MARKET -- 2026-11-24_120301_relist.log, pass 1, log last written 12:07 Central
+MARKET -- 2026-11-24_120741_relist.log, pass 1, log last written 12:11 Central
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
