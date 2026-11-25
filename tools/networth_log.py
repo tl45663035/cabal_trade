@@ -98,15 +98,16 @@ def boards(text):
 
 
 def reading():
-    log = networth.newest_log()
-    if log is None:
-        return None
-    found = None
-    for found in boards(log.read_text(encoding="utf-8", errors="replace")):
-        pass
-    if found is None:
-        return None
-    return (central_now().replace(microsecond=0),) + tuple(found)
+    # newest first: a pass still running has no finished board yet, so the
+    # newest log that has one is the reading
+    for log in sorted(networth.trading_logs(LOGS),
+                      key=lambda p: p.stat().st_mtime, reverse=True):
+        found = None
+        for found in boards(log.read_text(encoding="utf-8", errors="replace")):
+            pass
+        if found is not None:
+            return (central_now().replace(microsecond=0),) + tuple(found)
+    return None
 
 
 def recorded(path):
@@ -128,7 +129,7 @@ def backfill(rows):
         return rows
     since = min(row[0] for row in rows) - WHOLE_DAY
     held = {}
-    for log in sorted(LOGS.glob("*_run.log")):
+    for log in sorted(networth.trading_logs(LOGS)):
         try:
             launched = log_launch(log)
             if launched is None or launched < since:

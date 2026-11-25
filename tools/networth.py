@@ -97,8 +97,13 @@ def cash_worth(cash, gems, price):
     return round((cash or 0) * each), round((gems or 0) * gem_cash() * each)
 
 
+def trading_logs(folder):
+    """the supervised run's *_run.log and combo's trading passes' *_relist.log"""
+    return list(folder.glob("*_run.log")) + list(folder.glob("*_relist.log"))
+
+
 def newest_log():
-    logs = sorted(TREE.glob("logs/*_run.log"), key=lambda p: p.stat().st_mtime)
+    logs = sorted(trading_logs(TREE / "logs"), key=lambda p: p.stat().st_mtime)
     return logs[-1] if logs else None
 
 

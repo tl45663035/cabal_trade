@@ -132,7 +132,50 @@ def focus_game(settle: float = FOCUS_SETTLE) -> bool:
         for t in threads:
             _user32.AttachThreadInput(current, t, False)
     time.sleep(settle)
+    if _user32.GetForegroundWindow() == hwnd:
+        return True
+    # Windows refuses SetForegroundWindow to a process launched in the
+    # background; a real click is always allowed to activate a window.
+    if _click_title_bar(hwnd):
+        time.sleep(settle)
     return _user32.GetForegroundWindow() == hwnd
+
+
+class _Rect(ctypes.Structure):
+    _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+
+
+class _Point(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+
+def _click_title_bar(hwnd) -> bool:
+    """One left click on the window's title bar, never on the game itself
+    (a click there would walk the character). False when it has none."""
+    frame, client = _Rect(), _Point(0, 0)
+    if (not _user32.GetWindowRect(hwnd, ctypes.byref(frame))
+            or not _user32.ClientToScreen(hwnd, ctypes.byref(client))):
+        return False
+    top = max(frame.top, 0)
+    if client.y - top < 6:
+        return False
+    x, y = (frame.left + frame.right) // 2, (top + client.y) // 2
+    calibration.halt_if_stopped()
+    was = _Point()
+    _user32.GetCursorPos(ctypes.byref(was))
+    _user32.SetCursorPos(x, y)
+    time.sleep(0.05)
+    down, up = _IN["MOUSEEVENTF_LEFTDOWN"], _IN["MOUSEEVENTF_LEFTUP"]
+    for flags in (down, up):
+        event = _Input(type=INPUT_MOUSE,
+                       u=_InputUnion(mi=_MouseInput(0, 0, 0, flags, 0, None)))
+        _user32.SendInput(1, ctypes.byref(event), ctypes.sizeof(_Input))
+        time.sleep(0.05)
+    _user32.SetCursorPos(was.x, was.y)
+    print(f"  the game would not come forward; clicked its title bar at "
+          f"[{x}, {y}]")
+    return True
 
 
 def open_inventory() -> None:

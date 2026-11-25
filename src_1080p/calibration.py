@@ -1228,9 +1228,21 @@ def read_balance_from(image, tesseract=True):
                            "balance was not read.")
     seen = texts[0] if texts is not None else read_line(image, box)
     value = _digits(seen)
+    if value is None and texts is not None:
+        # Paddle drops a doubled digit of the orange (100M+) balance:
+        # '279,690,511' reads '279,690,51'. Tesseract reads it, with stray
+        # marks from the coin icon, so only one fully comma-grouped number
+        # in its read is taken.
+        value = _grouped_balance(read_line(image, box))
     if value is None or value < MIN_PLAUSIBLE_BALANCE:
         return None
     return value
+
+
+def _grouped_balance(text):
+    found = re.findall(r"(?<![0-9,])[0-9]{1,3}(?:,[0-9]{3})+(?![0-9,])",
+                       re.sub(r"(?<=\d)[.,]+(?=\d)", ",", text or ""))
+    return int(found[0].replace(",", "")) if len(found) == 1 else None
 
 
 def undercut(price, by=None):
@@ -1441,6 +1453,13 @@ def read_digits(image: Image.Image, box, scale: int = None):
         input=buf.getvalue(), capture_output=True, timeout=OCR_TIMEOUT)
     digits = _NOT_DIGIT.sub("", run.stdout.decode("utf-8", "replace"))
     return int(digits) if digits else None
+
+
+# the Alz row at 1920x1080: the coin's left edge to the balance's right edge
+# (1680 -> 1859 in every measurement on 2026-11-12), and the widest a box
+# holding only the coin gets
+ALZ_COIN_TO_RIGHT_EDGE = 179
+ALZ_COIN_ONLY_WIDTH = 40
 
 
 def find_alz(image: Image.Image, search=None):
@@ -1711,6 +1730,14 @@ def calibrate_inventory(verbose=True):
             "the Alz balance was not found, so the Inventory panel is not "
             "open. Nothing measured.")
     anchor = (alz[2], alz[1])
+    if alz[2] - alz[0] <= ALZ_COIN_ONLY_WIDTH:
+        # a small balance is drawn in white, so only the gold coin is found;
+        # the number's right edge sits a fixed distance from the coin's left
+        # (2026-11-12: at 35,856 Alz the anchor fell 155px short and every
+        # inventory click missed)
+        anchor = (alz[0] + ALZ_COIN_TO_RIGHT_EDGE, alz[1])
+        say(f"  Alz box {alz} is only the coin; the balance's right edge "
+            f"is taken {ALZ_COIN_TO_RIGHT_EDGE}px right of it")
     say(f"  Alz box {alz}   anchor {anchor}")
 
     layout = load_shared()["panel_layout"]

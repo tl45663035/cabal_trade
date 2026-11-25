@@ -394,6 +394,25 @@ def keypad(verbose=True, seen=None):
     return out
 
 
+def dungeon_dialog(image=None):
+    """Where the Exit button of a dungeon's Challenge/Exit dialog is, or None.
+
+    A run can end with the character inside a dungeon at its start, the
+    timer at 00:00:00 and this dialog open (2026-11-22: after a failed Ice
+    the game put the character back in the dungeon). The dialog blocks
+    Escape, so nothing else gets past it; both buttons must read."""
+    d = _SHARED["dungeon"]
+    image = image if image is not None else calibration.grab()
+    found = {}
+    for window, word in ((d["challenge_window"], d["challenge_word"]),
+                         (d["exit_window"], d["exit_word"])):
+        found[word] = _find(word, words=calibration.ocr(image, tuple(window)),
+                            whole=False)
+    if any(point is None for point in found.values()):
+        return None
+    return found[d["exit_word"]]
+
+
 def recover(verbose=True, channel=None):
     from open_inventory import focus_game
     who = account()
@@ -447,6 +466,26 @@ def recover(verbose=True, channel=None):
                 print("  no login screen; the server list is already up")
             _pick_channel(who, verbose=verbose)
             return _pick_character(who, verbose=verbose)
+        leave = dungeon_dialog()
+        if leave is not None:
+            calibration.snap("recovery_dungeon_dialog")
+            if verbose:
+                print(f"  a dungeon's Challenge/Exit dialog is up; Exit at "
+                      f"{list(leave)}, which leaves the dungeon")
+            calibration.click(*leave)
+            deadline = time.monotonic() + SCREEN_TIMEOUT
+            while time.monotonic() < deadline:
+                if dungeon_dialog() is None and (
+                        in_the_world() or world_answers(verbose=False)):
+                    calibration.snap("recovery_left_dungeon")
+                    if verbose:
+                        print("  out of the dungeon and back in the world")
+                    return True
+                time.sleep(POLL_GAP)
+            calibration.snap("recovery_dungeon_dialog_stuck")
+            raise Refused(
+                f"clicked Exit on the dungeon's Challenge/Exit dialog, but the "
+                f"world did not answer within {SCREEN_TIMEOUT:g}s.")
         calibration.snap("recovery_nothing_to_recover")
         raise Refused(
             "no disconnect notice, no login screen, no server or character "

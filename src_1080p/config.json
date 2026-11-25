@@ -401,6 +401,18 @@
     "pass_allowance": 60,
     "online_every": 60
   },
+  "war_end": {
+    "boost": "200",
+    "report": {"window": [430, 155, 550, 180], "word": "Report"},
+    "wexp_up": {"window": [668, 808, 752, 831], "word": "WEXP UP"},
+    "ok": {"window": [800, 808, 875, 831], "word": "OK"},
+    "boost_title": {"window": [830, 425, 1090, 447], "word": "Increase WEXP with Force Gem"},
+    "select": {"window": [945, 512, 1115, 535], "word": "Select"},
+    "option": {"window": [950, 639, 1135, 660], "word": "200 %"},
+    "cost": {"window": [1000, 552, 1080, 574]},
+    "yes": {"window": [900, 602, 1025, 627], "word": "Yes"},
+    "no": {"window": [1035, 602, 1160, 627], "word": "No"}
+  },
   "recovery": {
     "screen_timeout": 25.0,
     "world_timeout": 120.0,
@@ -611,7 +623,7 @@
     "start_cancel_bm": true,
     "challenge_wait": 1.0,
     "challenge_tab_two": true,
-    "slots": {"A+1": [687, 940], "A+2": [737, 940], "A+7": [987, 940], "A+8": [1037, 940], "A+9": [1087, 940], "A+0": [1137, 940]},
+    "slots": {"A+1": [687, 940], "A+2": [737, 940], "A+7": [987, 940], "A+8": [1037, 940], "A+9": [1087, 940], "A+0": [1137, 940], "A+-": [1187, 940], "A+=": [1237, 940]},
     "bm_aura": ["main_bm"],
     "bm_aura_for": 5.0,
     "aura_after": 80.0,
@@ -648,8 +660,6 @@
     "console_lines": ["^\\S+ #\\d+: (pass|fail)", "^\\S+ #\\d+: room ", "unique item dropped", "WORLD BOSS", "^idle", "Ctrl \\d+ times:", "recording \\d+", "nothing done until the next reset", "logged out", "could not|not pushed|did not start|Error", "^█"],
     "console_view": {"live": ["^\\S+ #\\d+: (pass|fail)", "^\\S+ #\\d+: room ", "unique item dropped in ",
                               "^\\s*WORLD BOSS", "^█"],
-                     "banner": "BANNER WAIT", "banner_fill": "█", "banner_edge": "██",
-                     "banner_width": 64, "banner_pad": 3,
                      "boss": "world boss", "boss_clock": "%H:%M %Z", "boss_running": "running",
                      "boss_pass": "✓ done", "boss_fail": "✗ failed", "boss_skipped": "skipped",
                      "cut": "…",
@@ -660,7 +670,7 @@
                      "clock": "%#M:%S", "name_width": 9, "spacing": "   ", "tick": 1.0,
                      "colours": {"name": "1", "done": "32", "current": "33", "left": "90",
                                  "pass": "32", "fail": "31", "stopped": "33", "quiet": "90",
-                                 "unique": "93", "banner": "1;93"}},
+                                 "unique": "93"}},
     "uncommitted_ignore": ["calibration.json"],
     "failed_frames": {"folder": "failed_frames", "keep": 5, "quality": 85, "time_format": "%Y-%m-%d_%H%M%S", "no_time": "no-online-time", "no_commit": "no-commit", "log_name": "run.log", "why_name": "why.txt"},
     "failed_videos": {"folder": "failed_videos", "keep": 3, "recording": "recording.mp4", "suffix": ".mp4"},
@@ -673,6 +683,8 @@
     "manual_exit": [["play", "chaos_arena", "exit_dungeon"]],
     "before_exit": [["cancel_bm", 2.0, "Space"]],
     "block_start": ["tab_two", ["use", "A+9", "A+0"]],
+    "every_run_use": [],
+    "steady_attack": [],
     "cooldown": 30,
     "cooldown_loop": ["bm_pot"],
     "defeat": [
@@ -681,9 +693,6 @@
     "revive_settle": 5.0,
     "death_watch": false,
     "death_watch_every": 1.0,
-    "banner_window": {"minute": 1, "minutes": 10, "entry_allowance": 60,
-                      "exit_allowance": 15, "plan_depth": 4},
-    "banner_fill": null,
     "offensive_buffs": {"C+1": [837, 882], "C+3": [937, 882], "C+4": [987, 882], "C+5": [1037, 882]},
     "defensive_buffs": {"C+6": [1087, 882], "C+7": [1137, 882], "C+8": [1187, 882]},
     "defensive_slots": null,
@@ -843,6 +852,7 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -959,6 +969,7 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -1007,6 +1018,7 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -1062,6 +1074,7 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "targets": {
@@ -1353,6 +1366,7 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "after_exit": [["wait", 2], "close_notification", "disenchant_all"],
@@ -1401,6 +1415,7 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "reset": {"heading_box": [775, 468, 960, 488], "heading_word": "Reset",
@@ -1436,6 +1451,7 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "reset": {"heading_box": [775, 468, 960, 488], "heading_word": "Reset",
@@ -1526,6 +1542,7 @@
         "exit": [
           ["button", "confirmation", 0.0],
           ["click", "obtain_treasure", 0.5],
+          ["click", "obtain_points", 0.5],
           ["button", "fire_leave", 0.0]
         ],
         "after_exit": ["close_notification"],
@@ -1666,6 +1683,20 @@
     "history_file": "world_boss_history.jsonl",
     "shots_dir": "world_boss_shots",
     "shots_days": 7
+  },
+  "launch_game": {
+    "launcher": "C:\\Games\\PlayCabal\\PlayCabal Launcher.exe",
+    "launcher_title": "PlayCabal",
+    "game_title": "PlayCabal EP39",
+    "game_process": "CabalMain.exe",
+    "play_offset": [1010, 600],
+    "play_probe": [40, 12],
+    "play_red_over": 40,
+    "launcher_wait": 120,
+    "game_wait": 120,
+    "maximized_rect": [-8, -8, 1928, 1048],
+    "settle": 1.5,
+    "poll": 20
   },
   "supervise": {
     "poll": 20,

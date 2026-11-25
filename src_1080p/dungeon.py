@@ -1,4 +1,5 @@
 import base64
+import collections
 import contextlib
 import ctypes
 import datetime
@@ -35,13 +36,16 @@ def _plain_argv():
         if arg == "--config":
             skip = True
             continue
-        if arg in ("--runs", "--record-from", "--from", "--channel"):
+        if arg in ("--runs", "--record-from", "--from", "--channel",
+                   "--channels", "--minutes"):
             skip = True
             continue
         if (arg.startswith("--config=") or arg == "--frames"
-                or arg == "--no-breaks" or arg == "--no-banner"
+                or arg == "--no-breaks"
                 or arg.startswith("--runs=")
                 or arg.startswith("--channel=")
+                or arg.startswith("--channels=")
+                or arg.startswith("--minutes=")
                 or arg.startswith("--record-from=")
                 or arg.startswith("--from=")):
             continue
@@ -65,6 +69,30 @@ def _channel():
         if arg == "--channel" and index + 1 < len(sys.argv):
             return int(sys.argv[index + 1])
     return None
+
+
+def _option(name):
+    for index, arg in enumerate(sys.argv):
+        if arg.startswith(f"{name}="):
+            return arg.split("=", 1)[1]
+        if arg == name and index + 1 < len(sys.argv):
+            return sys.argv[index + 1]
+    return None
+
+
+def _channels():
+    """--channels 11,12: after every run of a single-dungeon loop, relog
+    into the next of these channels in turn."""
+    value = _option("--channels")
+    return [] if not value else [int(part) for part in value.split(",")
+                                 if part.strip()]
+
+
+def _minutes():
+    """--minutes N: a single-dungeon loop starts no new run after N
+    minutes."""
+    value = _option("--minutes")
+    return None if value is None else float(value)
 
 
 def _record_from():
@@ -151,6 +179,7 @@ ROTATION_GROUPS = ([group if isinstance(group, dict)
 ROTATION_NAMES = list(dict.fromkeys(name for group in ROTATION_GROUPS
                                     for name in group["dungeons"]))
 ROTATION_RUNS = int(_DUNGEON.get("rotation_runs", 1))
+ROTATION_RELOG = bool(_DUNGEON.get("rotation_relog"))
 ANY_ORDER = bool(ROTATION) and all(isinstance(name, str) for name in ROTATION)
 DEATH = _DUNGEON.get("death")
 HP_TEXT = re.compile(r"(\d+)/(\d+)")
@@ -201,6 +230,9 @@ TRADE_TABS = [(tuple(tab["window"]), tab["word"])
               for tab in _DUNGEON["trade_tabs"]]
 SEQUENCES = (calibration.HERE / _DUNGEON["sequences_dir"]
              / calibration.config_name())
+PEEK_CLOSE_SETTLE = float(_DUNGEON.get("peek_close_settle", 0.6))
+RANDOM_PLAYED = {}
+DECK_NAME = "deck.json"
 WALK_FRAMES = {name: float(every)
                for name, every in (_DUNGEON.get("walk_frames") or {}).items()}
 TARGET_KEY = _DUNGEON["kill_target_key"]
@@ -264,10 +296,10 @@ SEARCH_ATTACK = {"keys": []}
 MAIN_BM_OFF = {"at": None}
 MAIN_BM_CAST = {"at": None}
 POWERFUL_POT = {"at": None}
+POWERFUL_POT_FILE = calibration.LOG_DIR / "powerful_pot.json"
 WORLD_BOSS = {"done": None}
 BURST = _DUNGEON.get("burst")
 NO_BREAKS = "--no-breaks" in sys.argv
-NO_BANNER = "--no-banner" in sys.argv
 CHANNEL = _channel()
 BURST_STATE = {"until": None, "on_channel": False}
 LAST_KILL = {"name": None, "words": None, "loop": None}
@@ -303,26 +335,27 @@ HUNTING = threading.Event()
 TARGET_WATCH = {"watch": None}
 RUN_CLOCK = {"started": None, "rooms": [], "undecided": None}
 PLAYING = threading.Event()
-END = {"at": None, "defeated": False, "overtime": False, "quest_failed": False}
+END = {"at": None, "defeated": False, "overtime": False, "quest_failed": False,
+       "idle": False}
 EXIT = [tuple(step) for step in _DUNGEON["exit"]]
 MANUAL_EXIT = _DUNGEON["manual_exit"]
 DEFEAT = [tuple(step) for step in _DUNGEON["defeat"]]
 DEFEAT_SIGN = BUTTONS[DEFEAT[0][1]]
 REVIVE_SETTLE = float(_DUNGEON["revive_settle"])
 DEATH_WATCH_EVERY = float(_DUNGEON["death_watch_every"])
-BANNER = _DUNGEON["banner_window"]
-BANNER_FILL = _DUNGEON["banner_fill"]
-BANNER_FIRST = list(BANNER_FILL.get("first", [])) if BANNER_FILL else []
-BANNER_LAST = list(BANNER_FILL.get("last", [])) if BANNER_FILL else []
-BANNER_SAFE = (set(BANNER_FILL["dungeons"]) | set(BANNER_FIRST)
-               | set(BANNER_LAST) if BANNER_FILL else set())
-BANNER_FILLS = {"window": None, "done": 0, "first": []}
 DEATH_WATCH = {"on": False, "armed": False, "entered": False, "again": False}
 DEATH_LOCK = threading.Lock()
 CHAT_OPEN = float(_DUNGEON["chat_open"])
 CHAT_EVERY = _DUNGEON["chat_every"]
 CHAT_READS = _DUNGEON["chat_reads"]
 ROOM_PREFIX = _DUNGEON["room_prefix"]
+ROOM_IDLE_STOP = float(_DUNGEON.get("room_idle_stop") or 0)
+ROOM_IDLE_POLL = float(_DUNGEON.get("room_idle_poll", 0.5))
+ROOM_WATCH = {"gen": 0}
+# after every play_random recording: the mouse wheel turned toward the
+# player this many notches at `at`, `gap`s apart, to reset the camera to its
+# farthest zoom (what the dungeon recordings were made at); 0 turns it off
+ZOOM_OUT = _DUNGEON.get("zoom_out_after_random") or {}
 RECORD_END = _DUNGEON["record_end"]
 _CHAT_LINES = _DUNGEON["chat_lines"]
 CHAT_BOXES = [(_CHAT_LINES["left"], _CHAT_LINES["top"] + row * _CHAT_LINES["gap"],
@@ -366,6 +399,9 @@ HUNT_TARGET_EVERY = float(_DUNGEON["hunt_target_every"])
 TWIN_BM = _DUNGEON["twin_bm"]
 TWIN_TARGETS = int(_DUNGEON["twin_targets"])
 KEY_LOCK = threading.Lock()
+ATTACK_LOCK = threading.Lock()
+# set while a BM is cast or cancelled: the steady attack keys hold off
+CASTING = threading.Event()
 REPLAY_MODIFIERS = set(_DUNGEON["replay_modifiers"])
 
 
@@ -633,6 +669,55 @@ def relog(verbose=True):
         recover_retrying(lambda: recovery.relog(verbose=verbose), verbose)
 
 
+SWITCH_TRIES = 4
+SWITCH_WAIT = 15.0
+
+
+def switch_channel(channel, verbose=True):
+    """Relog into `channel` between runs (--channels). The logout itself is
+    retried: right after a run the game can turn it down with a notice
+    (2026-11-24: no Yes after 'select character'), and the plain recovery
+    that recover_retrying falls back to stops as soon as the character is in
+    the world, which would leave it on the old channel."""
+    import recovery
+    print(f"  switching to Channel {channel}: a relog through the server "
+          f"list")
+    with relogging():
+        for attempt in range(1, SWITCH_TRIES + 1):
+            try:
+                recovery.logout(verbose=verbose)
+                break
+            except Exception as exc:
+                print(f"  the logout for Channel {channel} did not go through "
+                      f"(attempt {attempt} of {SWITCH_TRIES}): {exc}")
+                calibration.snap(f"switch_channel_logout_{attempt}")
+                for _ in range(3):
+                    notice = recovery.disconnected()
+                    if notice is None:
+                        break
+                    shut = recovery._find_near(
+                        recovery.OK_WORD, notice, timeout=2.0,
+                        verbose=False) or recovery._point(
+                            recovery.DIALOG_BUTTON_F)
+                    print(f"  a notice at {list(notice)}; "
+                          f"{recovery.OK_WORD} at {list(shut)}")
+                    calibration.click(*shut)
+                    time.sleep(1.0)
+                calibration.close_everything(verbose=False)
+                if attempt == SWITCH_TRIES:
+                    print(f"  no logout after {SWITCH_TRIES} tries; staying "
+                          f"on this channel for the next run")
+                    recover_retrying(lambda: recovery.recover(
+                        verbose=verbose), verbose)
+                    return False
+                time.sleep(SWITCH_WAIT)
+        recover_retrying(lambda: recovery.recover(verbose=verbose,
+                                                  channel=channel),
+                         verbose, channel)
+    print(f"  on Channel {channel}")
+    return True
+
+
 def recover_retrying(first, verbose=True, channel=None):
     import recovery
     failed = relogged = 0
@@ -753,6 +838,10 @@ def type_quantity(quantity):
 
 def buy_item(name, verbose=True, quantity=1):
     item = PURCHASES[name]
+    # a trading pass can leave the Trade window up, and N does not open the
+    # shop over it
+    if calibration._trade_window_open() or calibration.vendor_open():
+        calibration.close_everything(verbose)
     prepare(verbose, int(item["inventory_tab"]))
     shop = BUTTONS["shop_dungeon"]
     if not wait_for(tuple(shop["window"]), shop["word"], 0)[0]:
@@ -792,26 +881,62 @@ def orb_runs_today(dungeon_name, location):
     return sum(ran_today(_state(), server_day()).values())
 
 
-def powerful_pot_due(dungeon_name, verbose=True):
+def powerful_pot_due(dungeon_name, verbose=True, location=None):
     pot = DUNGEONS[dungeon_name].get("powerful_pot")
     if pot is None:
         return
+    only = pot.get("locations")
+    if only is not None and location not in only:
+        return
     every = float(pot["every"])
-    since = (None if POWERFUL_POT["at"] is None
-             else time.monotonic() - POWERFUL_POT["at"])
-    if since is not None and since < every:
+    slots = list(pot.get("slots") or [pot["slot"]])
+    # kept on disk (wall clock): every combo batch is a new process, and an
+    # in-memory timer made the pot fire at the start of every batch
+    at = POWERFUL_POT["at"]
+    if at is None:
+        try:
+            at = float(json.loads(POWERFUL_POT_FILE.read_text(
+                encoding="utf-8"))["at"])
+        except (OSError, ValueError, KeyError, TypeError):
+            at = None
+    since = None if at is None else time.time() - at
+    if since is not None and 0 <= since < every:
         return
     if not focus_game():
         raise RuntimeError("could not bring the game to the foreground.")
     if verbose:
-        print(f"  {dungeon_name}: powerful pot {pot['slot']} "
-              + ("for the first time in this launch" if since is None
+        print(f"  {dungeon_name}: powerful pot {' '.join(slots)} "
+              + ("with no earlier use on record" if since is None
                  else f"{since:.0f}s after the last one")
               + f"; the next one {every:g}s from now; hotbar tab II at "
               f"{list(TAB_TWO)} first, where the pot is")
     click(*TAB_TWO, SELECT_SETTLE)
-    use_point(pot["slot"], SELECT_SETTLE)
-    POWERFUL_POT["at"] = time.monotonic()
+    for index, slot in enumerate(slots):
+        if index:
+            time.sleep(USE_GAP)
+        use_point(slot, SELECT_SETTLE)
+    POWERFUL_POT["at"] = time.time()
+    try:
+        POWERFUL_POT_FILE.write_text(json.dumps({"at": POWERFUL_POT["at"]}),
+                                     encoding="utf-8")
+    except OSError:
+        pass
+
+
+def every_run_use(dungeon_name, verbose=True):
+    slots = list(setting(dungeon_name, "every_run_use") or [])
+    if not slots:
+        return
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
+    if verbose:
+        print(f"  {dungeon_name}: before every run, {' '.join(slots)}; "
+              f"hotbar tab II at {list(TAB_TWO)} first")
+    click(*TAB_TWO, SELECT_SETTLE)
+    for index, slot in enumerate(slots):
+        if index:
+            time.sleep(USE_GAP)
+        use_slot(slot, verbose)
 
 
 def pre_run_buys(dungeon_name, location, verbose=True):
@@ -1418,6 +1543,16 @@ PLAY_STOP = PlayStop()
 
 
 def play(dungeon_name, sequence, verbose=True):
+    ROOM_WATCH["gen"] += 1
+    try:
+        return _play(dungeon_name, sequence, verbose)
+    finally:
+        if RUN_CLOCK["started"] is not None and not OVER.is_set():
+            start_room_watch(sequence, verbose,
+                             room_idle_limit(dungeon_name, sequence))
+
+
+def _play(dungeon_name, sequence, verbose=True):
     import record_action
     path = SEQUENCES / dungeon_name / f"{sequence}.jsonl"
     if not path.exists():
@@ -1617,6 +1752,54 @@ def target_slots(image):
                 if near(image.getpixel(TARGET_SLOTS[index][2]), TARGET_FILL)]
 
 
+def idle_quit(why, verbose=True):
+    if OVER.is_set():
+        return
+    END["at"], END["overtime"] = time.monotonic(), True
+    END["idle"], END["idle_why"] = True, why
+    OVER.set()
+    ENDED.set()
+    calibration.snap("dungeon_idle")
+    if verbose:
+        print(f"  {why}; cancelling the BM and leaving for the next dungeon")
+
+
+def room_idle_limit(dungeon_name, room):
+    """the dungeon's own `room_idle_stop` {recording: seconds} wins over
+    the global dungeon.room_idle_stop for that one room"""
+    try:
+        rooms = DUNGEONS.get(dungeon_name, {}).get("room_idle_stop") or {}
+        return float(rooms.get(room, ROOM_IDLE_STOP))
+    except Exception:
+        return ROOM_IDLE_STOP
+
+
+def start_room_watch(room, verbose=True, limit=None):
+    limit = ROOM_IDLE_STOP if limit is None else limit
+    if not ROOM_IDLE_STOP or not limit:
+        return
+    ROOM_WATCH["gen"] += 1
+    gen = ROOM_WATCH["gen"]
+
+    def run():
+        until = time.monotonic() + limit
+        while time.monotonic() < until:
+            if gen != ROOM_WATCH["gen"] or OVER.is_set():
+                return
+            try:
+                live = target_slots(calibration.grab())[1]
+            except Exception:
+                live = []
+            if live:
+                return
+            time.sleep(ROOM_IDLE_POLL)
+        if gen == ROOM_WATCH["gen"] and not OVER.is_set():
+            idle_quit(f"after {room}: no HP bar turned yellow in "
+                      f"{limit:g}s", verbose)
+
+    threading.Thread(target=run, daemon=True).start()
+
+
 def target_bars(image, words):
     up, live = target_slots(image)
     if not words or not live:
@@ -1784,10 +1967,9 @@ def hunt(name, words, attack, label, plan, verbose=True, search=None):
                         continue
                     if OVER.is_set() or ENDED.is_set():
                         break
-                    raise RuntimeError(
-                        f"{name!r}: nothing targeted in {NO_TARGET_STOP:g}s "
-                        f"and not on the bike; the run is given up here, not "
-                        f"at its time limit.")
+                    idle_quit(f"{name!r}: nothing targeted in "
+                              f"{NO_TARGET_STOP:g}s", verbose)
+                    break
                 if not focus_game():
                     raise RuntimeError(f"the game is not in the foreground; "
                                        f"the {label} stopped.")
@@ -2073,6 +2255,14 @@ def main_bm_now(seconds, reason="", verbose=True):
 
 
 def cycle_cast(slot, verbose=True, then=None):
+    CASTING.set()
+    try:
+        _cycle_cast(slot, verbose, then)
+    finally:
+        CASTING.clear()
+
+
+def _cycle_cast(slot, verbose=True, then=None):
     cast = float(BM_CYCLE_SET["cast"][slot])
     gap = float(BM_CYCLE_SET["spam_gap"])
     AURA_DUE["at"] = None
@@ -2109,7 +2299,7 @@ def cycle_cast(slot, verbose=True, then=None):
 def cycle_aura(verbose=True, target=False):
     started = time.monotonic()
     left = max(0.0, BM_CYCLE["ends"] - started)
-    presses, targeted = 0, 0
+    presses, targeted, attacks = 0, 0, 0
     while (not OVER.is_set()
            and time.monotonic() < started + float(BM_CYCLE_SET["aura_for"])):
         use_point("aura", 0.0)
@@ -2117,6 +2307,12 @@ def cycle_aura(verbose=True, target=False):
                                and not named_locked()):
             auto_target()
             targeted += 1
+        elif HUNTING.is_set():
+            # mid-kill, the BM's attack keys go between the aura presses
+            # (at most one every BM_ATTACK_GAP) instead of waiting it out
+            pressed = ATTACK_PRESS["last"]
+            attack_key(time.monotonic())
+            attacks += ATTACK_PRESS["last"] != pressed
         presses += 1
         OVER.wait(AURA_GAP)
     keeps = (float(BM_CYCLE_SET["aura_base"])
@@ -2125,10 +2321,20 @@ def cycle_aura(verbose=True, target=False):
     if verbose:
         print(f"  BM cycle: aura {slot_way('aura')} {presses} time(s) with "
               f"{left:.1f}s of {BM_CYCLE['slot']} left, {TARGET_KEY} after "
-              f"{targeted} of them; it should now run out in {keeps:.1f}s")
+              f"{targeted} of them"
+              + (f", {attacks} attack key(s) between them" if attacks else "")
+              + f"; it should now run out in {keeps:.1f}s")
 
 
 def cancel_spam(verbose=True):
+    CASTING.set()
+    try:
+        _cancel_spam(verbose)
+    finally:
+        CASTING.clear()
+
+
+def _cancel_spam(verbose=True):
     span = float(BM_CYCLE_SET["cancel_for"])
     started, clicks = time.monotonic(), 0
     while not OVER.is_set() and time.monotonic() < started + span:
@@ -2325,13 +2531,26 @@ def attack_keys():
 
 
 def attack_key(now):
-    keys = attack_keys()
-    if not keys or now < ATTACK_PRESS["last"] + BM_ATTACK_GAP:
-        return
-    key = keys[(keys.index(ATTACK_PRESS["key"]) + 1) % len(keys)
-               if ATTACK_PRESS["key"] in keys else 0]
+    with ATTACK_LOCK:
+        keys = attack_keys()
+        if not keys or now < ATTACK_PRESS["last"] + BM_ATTACK_GAP:
+            return
+        key = keys[(keys.index(ATTACK_PRESS["key"]) + 1) % len(keys)
+                   if ATTACK_PRESS["key"] in keys else 0]
+        ATTACK_PRESS.update(last=now, key=key)
     tap(KEYS[key])
-    ATTACK_PRESS.update(last=now, key=key)
+
+
+def steady_attack(stop, slots):
+    """For the whole time one of `slots` is the BM, its attack keys one
+    every BM_ATTACK_GAP, kill or no kill; not while a recording plays and
+    not while a BM is cast or cancelled."""
+    while (not stop.is_set() and not OVER.is_set()
+           and not calibration.STOPPED.is_set()):
+        if (current_bm() in slots and not PLAYING.is_set()
+                and not CASTING.is_set()):
+            attack_key(time.monotonic())
+        stop.wait(WAIT_SLICE)
 
 
 def auto_target():
@@ -3127,10 +3346,16 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                        args=(stop, timer, verbose),
                                        daemon=True),
              "chat": threading.Thread(target=watch_chat, args=(stop, verbose),
-                                      daemon=True)}
+                                      daemon=True),
+             "steady": threading.Thread(
+                 target=steady_attack,
+                 args=(stop, set(setting(dungeon_name, "steady_attack"))),
+                 daemon=True)}
     OVER.clear()
     END["at"], END["defeated"], END["overtime"] = None, False, False
-    END["quest_failed"] = False
+    END["quest_failed"], END["idle"] = False, False
+    END["idle_why"] = None
+    ROOM_WATCH["gen"] += 1
     BM_OFF.update(at=None, slot=None)
     ALT_BM["on"] = False
     BM_CYCLE.update(slot=None, ends=None, extended=False, resume=False,
@@ -3149,7 +3374,7 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
         off_bike(f"before {dungeon_name}", verbose)
     first = calibration.frames_taken() + 1
     RUN_START["frame"] = first
-    crashed, stopped = None, False
+    crashed, stopped, counted = None, False, False
     try:
         if not overtime(timer, verbose):
             phase["limit"].start()
@@ -3196,12 +3421,20 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                                f"{failed['error']}. Stopped.")
         stop.set()
         for thread in (phase["healer"], phase["ender"], phase["limit"],
-                       phase["chat"]):
+                       phase["chat"], phase["steady"]):
             if thread.is_alive():
                 thread.join()
         if END["overtime"] or END["quest_failed"]:
             why = ("Quest Dungeon Failed" if END["quest_failed"]
+                   else (END.get("idle_why") or "nothing attacked")
+                   if END["idle"]
                    else f"past its {hard_limit(dungeon_name):g}s")
+            if END["idle"]:
+                try:
+                    cancel_bm(dungeon_name, verbose)
+                except Exception as exc:
+                    print(f"  cancel_bm before leaving did not finish "
+                          f"({type(exc).__name__}: {exc}); leaving anyway")
             manual = manual_exit(dungeon_name)
             if not manual:
                 raise RuntimeError(f"{dungeon_name}: {why} and no manual "
@@ -3243,11 +3476,15 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
                          DUNGEONS[dungeon_name].get("after_exit", []), False)
         elif END["at"] is not None:
             count_success(dungeon_name, location, verbose)
+            counted = True
             RUN_CLOCK["undecided"] = None
             if verbose:
                 run_result(dungeon_name, location, "pass")
             run_sequence(dungeon_name, location, phase, verbose,
                          setting(dungeon_name, "before_exit"), False)
+            run_sequence(dungeon_name, location, phase, verbose,
+                         DUNGEONS[dungeon_name].get("before_claim", []),
+                         False)
             while time.monotonic() < END["at"] + timer["end_wait"]:
                 calibration.halt_if_stopped()
                 time.sleep(min(WAIT_SLICE,
@@ -3289,6 +3526,16 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
             arm_death_watch(dungeon_name, verbose)
     except KeyboardInterrupt:
         stopped = True
+        if (END["at"] is not None and not counted and not END["defeated"]
+                and not END["quest_failed"] and not END["overtime"]
+                and steps is None):
+            # stopped with Ctrl after the cleared banner: the dungeon was
+            # won, so it counts as a pass, not a failed attempt
+            count_success(dungeon_name, location, verbose)
+            if verbose:
+                run_result(dungeon_name, location, "pass")
+                print(f"  {dungeon_name} {location}: stopped with Ctrl "
+                      f"after it was cleared; counted as a pass")
         raise
     except calibration.Offline:
         crashed = "disconnected"
@@ -3306,16 +3553,18 @@ def run_dungeon(dungeon_name, location, verbose=True, steps=None,
         MAIN_RECAST.update(at=None, dungeon=None)
         LAST_KILL.update(name=None, words=None, loop=None)
         for thread in (phase["healer"], phase["ender"], phase["limit"],
-                       phase["chat"]):
+                       phase["chat"], phase["steady"]):
             if thread.is_alive():
                 thread.join()
         if crashed == "crashed" and steps is None:
             bike_after_crash(dungeon_name, verbose)
         if crashed:
             keep_failed_frames(dungeon_name, location, crashed, verbose)
+        # a run stopped with Ctrl is not a failed run: its video is not
+        # kept with the failed ones
         end_run_film(dungeon_name, location,
-                     bool(crashed) or stopped or RUN_OUTCOME["failed"],
-                     verbose)
+                     bool(crashed) or RUN_OUTCOME["failed"],
+                     verbose and not stopped)
     after_run_buys(dungeon_name, verbose)
     if steps is None:
         off_bike(f"after {dungeon_name}", verbose)
@@ -3540,6 +3789,105 @@ def with_entry_retries(attempt_once, verbose=True):
             escape_everything(verbose)
 
 
+def peek_entry(dungeon_name, location, verbose=True):
+    try:
+        _peek_entry(dungeon_name, location, verbose)
+    except Exception as exc:
+        calibration.snap("peek_entry_failed")
+        print(f"  peek_entry did not finish ({type(exc).__name__}: {exc}); "
+              f"carrying on with the dungeon")
+
+
+def _peek_entry(dungeon_name, location, verbose=True):
+    place = location_of(dungeon_name, location)
+    name, words = place["name"], place.get("list_words")
+    right = place.get("list_right")
+    windows = (LEVEL_WINDOWS if right is None
+               else [(box[0], box[1], right, box[3]) for box in LEVEL_WINDOWS])
+    entry = _state().get("entry")
+    if not entry:
+        print(f"  no entry is noted in {STATE.name}; nothing to right-click, "
+              f"carrying on")
+        return
+    if not focus_game():
+        print("  could not bring the game to the foreground; carrying on")
+        return
+    ctypes.windll.user32.SetCursorPos(*TAB_TWO)
+    box, reads = find_in_list(name, 0, words, windows)
+    if box is None:
+        prepare(verbose, entry["tab"])
+        if verbose:
+            print(f"  right-click the entry in tab {entry['tab']} slot "
+                  f"{tuple(entry['slot'])} at {entry['point']}")
+        right_click(*entry["point"], 0.0)
+        press_button("warp_yes", 0.0, verbose, required=False)
+        ctypes.windll.user32.SetCursorPos(*TAB_TWO)
+        box, reads = find_in_list(name, TRANSFER_TIMEOUT, words, windows)
+        if box is None and verbose:
+            print(f"  no {name!r} read in the dungeon list within "
+                  f"{TRANSFER_TIMEOUT:g}s (rows {reads}); pressing Close "
+                  f"anyway and carrying on")
+    if verbose:
+        print("  pressing Close on the dungeon window")
+    press_button("dungeon_close", PEEK_CLOSE_SETTLE, verbose, required=False)
+
+
+def zoom_out(verbose=True):
+    notches = int(ZOOM_OUT.get("notches") or 0)
+    if notches <= 0:
+        return
+    import record_action
+    x, y = ZOOM_OUT.get("at", [960, 540])
+    gap = float(ZOOM_OUT.get("gap", 0.03))
+    ctypes.windll.user32.SetCursorPos(int(x), int(y))
+    time.sleep(gap)
+    for _ in range(notches):
+        record_action.send(_mouse_input(record_action.WHEEL_FLAGS["wheel"],
+                                        -120))
+        time.sleep(gap)
+    if verbose:
+        print(f"  camera zoomed all the way out: wheel turned back "
+              f"{notches} notch(es) at {[x, y]}")
+
+
+def play_random(folder, verbose=True):
+    try:
+        files = sorted((SEQUENCES / folder).glob("*.jsonl"))
+        if not files:
+            if verbose:
+                print(f"  no recordings in {SEQUENCES / folder}; nothing "
+                      f"played, carrying on")
+            return
+        stems = [path.stem for path in files]
+        deck_file = SEQUENCES / folder / DECK_NAME
+        try:
+            saved = json.loads(deck_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            saved = {}
+        deck = [stem for stem in saved.get("deck", []) if stem in stems]
+        last = saved.get("last")
+        if not deck:
+            deck = stems[:]
+            random.shuffle(deck)
+            if len(deck) > 1 and deck[0] == last:
+                deck.append(deck.pop(0))
+            if verbose:
+                print(f"  shuffled a new deck of {len(deck)} recording(s)")
+        pick = deck.pop(0)
+        deck_file.write_text(json.dumps({"deck": deck, "last": pick},
+                                        indent=1), encoding="utf-8")
+        RANDOM_PLAYED[folder] = pick
+        if verbose:
+            print(f"  playing {folder}/{pick}.jsonl, {len(stems) - len(deck)} "
+                  f"of {len(stems)} through this shuffle")
+        play(folder, pick, verbose)
+        zoom_out(verbose)
+    except Exception as exc:
+        calibration.snap("play_random_failed")
+        print(f"  play_random did not finish ({type(exc).__name__}: {exc}); "
+              f"carrying on with the dungeon")
+
+
 def buy_and_open(dungeon_name, location, place, attempt, verbose=True):
     if attempt:
         get_entry(*place["entry"], verbose=verbose)
@@ -3678,6 +4026,119 @@ def kill_all(dungeon_name, rest, verbose=True):
     return kills
 
 
+class _CursorInfo(ctypes.Structure):
+    _fields_ = [("cbSize", ctypes.c_uint32), ("flags", ctypes.c_uint32),
+                ("hCursor", ctypes.c_void_p), ("x", ctypes.c_long),
+                ("y", ctypes.c_long)]
+
+
+class _IconInfo(ctypes.Structure):
+    _fields_ = [("fIcon", ctypes.c_int), ("x", ctypes.c_uint32),
+                ("y", ctypes.c_uint32), ("mask", ctypes.c_void_p),
+                ("color", ctypes.c_void_p)]
+
+
+ctypes.windll.user32.GetIconInfo.argtypes = [ctypes.c_void_p,
+                                             ctypes.POINTER(_IconInfo)]
+ctypes.windll.gdi32.GetBitmapBits.argtypes = [ctypes.c_void_p, ctypes.c_long,
+                                              ctypes.c_void_p]
+ctypes.windll.gdi32.DeleteObject.argtypes = [ctypes.c_void_p]
+
+
+def cursor_shape():
+    """A short hash of the cursor image; the game makes a fresh handle each
+    time it changes the cursor, so only the pixels say which cursor it is."""
+    import hashlib
+    info = _CursorInfo()
+    info.cbSize = ctypes.sizeof(_CursorInfo)
+    ctypes.windll.user32.GetCursorInfo(ctypes.byref(info))
+    icon = _IconInfo()
+    if not info.hCursor or not ctypes.windll.user32.GetIconInfo(
+            info.hCursor, ctypes.byref(icon)):
+        return None
+    digest = hashlib.md5()
+    for bitmap in (icon.mask, icon.color):
+        if bitmap:
+            buf = ctypes.create_string_buffer(64 * 64 * 4 * 2)
+            size = ctypes.windll.gdi32.GetBitmapBits(bitmap, len(buf), buf)
+            digest.update(buf.raw[:size])
+            ctypes.windll.gdi32.DeleteObject(bitmap)
+    return digest.hexdigest()[:8]
+
+
+# cursor image hashes: over a monster, and over walls or the UI (never one)
+HOVER = {"area": (600, 330, 1320, 840), "step": 60, "toward": (960, 540),
+         "settle": 0.09, "monster": ["cae10b9f", "f309eb51"], "not_monster": ["93847fcc"]}
+
+
+def hover_attack(dungeon_name, rest, verbose=True):
+    """Find a monster ` will not target by moving the mouse over the room
+    without clicking: the cursor changes over a monster, and only that spot
+    is clicked, so the character attacks instead of walking off."""
+    opts = dict(HOVER, **(rest[0] if rest else {}))
+    if not focus_game():
+        raise RuntimeError("could not bring the game to the foreground.")
+    left, top, right, bottom = opts["area"]
+    toward = tuple(opts["toward"])
+    points = [(x, y) for y in range(top, bottom + 1, opts["step"])
+              for x in range(left, right + 1, opts["step"])]
+    shapes = {}
+    for point in points:
+        if OVER.is_set():
+            return False
+        calibration.hover(*point)
+        time.sleep(opts["settle"])
+        shapes[point] = cursor_shape()
+    counts = collections.Counter(shapes.values())
+    ground = counts.most_common(1)[0][0]
+    known = [s for s in opts["monster"] if s in counts and s != ground]
+    if known:
+        wanted = set(known)
+    else:
+        # an unknown cursor: the rarest one that is not ground or a wall
+        others = [s for s in counts
+                  if s != ground and s not in opts["not_monster"]]
+        wanted = {min(others, key=counts.get)} if others else set()
+    odd = sorted((p for p, s in shapes.items() if s in wanted),
+                 key=lambda p: (p[0] - toward[0]) ** 2 + (p[1] - toward[1]) ** 2)
+    if verbose:
+        where = {s: [list(p) for p, t in shapes.items() if t == s][:6]
+                 for s in counts if s != ground and counts[s] <= 12}
+        print(f"  hover_attack: {len(points)} points, ground cursor {ground}; "
+              f"cursors seen {dict(counts)}; rare ones at {where}; "
+              f"monster cursor {sorted(wanted) or 'none'}, at "
+              f"{len(odd)} point(s)")
+    calibration.snap("hover_attack_scan")
+    if not odd:
+        return False
+    # the character overlaps the monster, so a click can land on it and
+    # target itself; a monster target fills a bar yellow, so check and move on
+    tried = []
+    for x, y in odd:
+        if OVER.is_set():
+            return False
+        if any(abs(x - a) < opts["step"] and abs(y - b) < opts["step"]
+               for a, b in tried):
+            continue
+        tried.append((x, y))
+        if len(tried) > opts.get("tries", 6):
+            break
+        calibration.hover(x, y)
+        time.sleep(opts["settle"])
+        if cursor_shape() not in wanted:
+            continue
+        click(x, y, 0.4)
+        if target_slots(calibration.grab())[1]:
+            if verbose:
+                print(f"  hover_attack: clicked {[x, y]}; a monster is "
+                      f"targeted")
+            return True
+        if verbose:
+            print(f"  hover_attack: clicked {[x, y]}; no monster targeted, "
+                  f"trying the next spot")
+    return False
+
+
 def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                  stop_when_over=True, timer=None):
     place = location_of(dungeon_name, location)
@@ -3714,6 +4175,10 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
         if name == "get_entry":
             with_entry_retries(lambda attempt: get_entry(
                 *place["entry"], verbose=verbose), verbose)
+        elif name == "peek_entry":
+            peek_entry(dungeon_name, location, verbose)
+        elif name == "play_random":
+            play_random(rest[0], verbose)
         elif name == "open_dungeon_key":
             with_entry_retries(lambda attempt: buy_and_open(
                 dungeon_name, location, place, attempt, verbose), verbose)
@@ -3812,6 +4277,13 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                       + f"and the end screen read all the time, until the end "
                       f"screen has been up {end_wait(dungeon_name):g}s")
             phase["healer"].start()
+            steady = setting(dungeon_name, "steady_attack")
+            if steady:
+                if verbose:
+                    print(f"  while {' or '.join(steady)} is on, its attack "
+                          f"keys one every {BM_ATTACK_GAP:g}s the whole time, "
+                          f"not during a recording or a BM cast/cancel")
+                phase["steady"].start()
             phase["killing"].set()
             if CHAT_EVERY is not None:
                 start_chat(phase, dungeon_name, location, verbose)
@@ -3849,6 +4321,25 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
             end_aura_window(verbose)
         elif name == "kill_all":
             kill_all(dungeon_name, rest, verbose)
+        elif name == "hover_attack":
+            hover_attack(dungeon_name, rest, verbose)
+        elif name == "hover_kill":
+            # [rounds, kill_all args...]: hover, click, kill, until the
+            # dungeon ends or two scans in a row find nothing
+            misses = 0
+            for round_ in range(1, int(rest[0]) + 1):
+                if OVER.is_set():
+                    break
+                if hover_attack(dungeon_name, [], verbose):
+                    misses = 0
+                    kill_all(dungeon_name, rest[1:], verbose)
+                else:
+                    misses += 1
+                    if misses >= 2:
+                        break
+            if verbose:
+                print(f"  hover_kill: stopped after round {round_}"
+                      + ("; the dungeon is over" if OVER.is_set() else ""))
         elif name == "hold_kill_all":
             for key, seconds in rest[0]:
                 if key is not None:
@@ -3901,6 +4392,16 @@ def run_sequence(dungeon_name, location, phase, verbose=True, steps=None,
                 if index:
                     time.sleep(USE_GAP)
                 use_slot(slot, verbose)
+        elif name == "use_at":
+            if location not in rest[0]:
+                if verbose:
+                    print(f"  {location} is not one of {', '.join(rest[0])}; "
+                          f"{' '.join(rest[1:])} not used")
+            else:
+                for index, slot in enumerate(rest[1:]):
+                    if index:
+                        time.sleep(USE_GAP)
+                    use_slot(slot, verbose)
         elif name == "tap":
             if not focus_game():
                 raise RuntimeError("could not bring the game to the "
@@ -4935,21 +5436,9 @@ class LiveView:
             out.append((look["spacing"] + why, "quiet"))
         return out
 
-    def wait_segments(self):
-        run, look = self.run, VIEW_SET
-        left = max(0.0, run["ends"] - time.monotonic())
-        return [(look["banner"], "banner"),
-                (look["spacing"] + run["name"], "name"),
-                (look["spacing"] + f"until :{run['until']:%M}", "quiet"),
-                (look["spacing"]
-                 + time.strftime(look["clock"], time.gmtime(left)) + " left",
-                 "banner")]
-
     def segments(self, verdict, why):
         if self.run.get("boss"):
             return self.boss_segments(verdict, why)
-        if self.run.get("waiting"):
-            return self.wait_segments()
         run, look = self.run, VIEW_SET
         reached, rooms = run["reached"], run["rooms"]
         moving = run.get("moving")
@@ -5075,24 +5564,6 @@ class LiveView:
 
     def unique(self, item):
         self.line(self.paint("unique", f"{VIEW_SET['unique']} {item}"))
-
-    def banner(self, lines):
-        for text in lines:
-            self.line(self.paint("banner", text))
-
-    def wait_banner(self, name, until, ends):
-        with self.lock:
-            self.clear()
-            self.run = {"waiting": True, "name": name, "until": until,
-                        "started": time.monotonic(), "ends": ends,
-                        "ended": None}
-            self.draw()
-
-    def wait_banner_end(self):
-        with self.lock:
-            if self.run is not None and self.run.get("waiting"):
-                self.clear()
-                self.run = None
 
     def boss(self, when):
         with self.lock:
@@ -5629,216 +6100,11 @@ def relog_after_death(dungeon_name, exc, verbose=True):
     DEATH_WATCH["armed"] = True
 
 
-def run_seconds(dungeon_name):
-    return float(DUNGEONS[dungeon_name].get("run_seconds",
-                                            hard_limit(dungeon_name)))
-
-
-def banner_wait(now, dungeon_name):
-    start = now.replace(minute=int(BANNER["minute"]), second=0, microsecond=0)
-    length = datetime.timedelta(minutes=float(BANNER["minutes"]))
-    if now >= start + length:
-        start += datetime.timedelta(hours=1)
-    run = datetime.timedelta(seconds=float(BANNER["entry_allowance"])
-                             + run_seconds(dungeon_name))
-    left = (0.0 if now + run <= start
-            else (start + length - now).total_seconds())
-    return left, start, length, run
-
-
-def run_cost(dungeon_name):
-    return (float(BANNER["entry_allowance"]) + run_seconds(dungeon_name)
-            + float(BANNER["exit_allowance"]))
-
-
-def banner_plan(now, start, pool, depth):
-    best = ([], (start - now).total_seconds())
-    if depth <= 0:
-        return best
-    for other in pool:
-        if banner_wait(now, other)[0]:
-            continue
-        rest, idle = banner_plan(
-            now + datetime.timedelta(seconds=run_cost(other)), start, pool,
-            depth - 1)
-        if (idle, -len(rest) - 1) < (best[1], -len(best[0])):
-            best = ([other] + rest, idle)
-    return best
-
-
-def banner_filler(dungeon_name, pool, verbose=True):
-    if NO_BANNER or dungeon_name in BANNER_SAFE:
-        return None
-    try:
-        now = online_now()
-    except RuntimeError:
-        return None
-    left, start, _length, _run = banner_wait(now, dungeon_name)
-    if not left or now >= start:
-        return None
-    plan, idle = banner_plan(now, start, [other for other in pool
-                                          if not limit_reached(other)
-                                          and other != CUT_OFF["dungeon"]],
-                             int(BANNER["plan_depth"]))
-    if not plan:
-        return None
-    if verbose:
-        print(f"{dungeon_name}: a run started now would still be on when the "
-              f"Surprise Attack banner comes up at :{start:%M}, so "
-              f"{' -> '.join(plan)} fill the time before it ({idle:.0f}s left "
-              f"over); {plan[0]} now")
-    return plan[0]
-
-
-def runs_left(dungeon_name):
-    limit = DUNGEONS[dungeon_name].get("daily_limit")
-    return None if limit is None else int(limit) - runs_today(dungeon_name)
-
-
-def fill_left(dungeon_name):
-    if dungeon_name == CUT_OFF["dungeon"] or out_of_play_time(dungeon_name):
-        return 0
-    if dungeon_name == TRADING_DUNGEON:
-        return sum(max(0, level_left(level)) for level in ORDER)
-    return 0 if limit_reached(dungeon_name) else runs_left(dungeon_name)
-
-
 def fill_location(dungeon_name):
     if dungeon_name == TRADING_DUNGEON:
         return level_location(next(level for level in ORDER
                                     if level_left(level) > 0))
     return only_location(dungeon_name)
-
-
-def fill_plan(left, pool, most):
-    best = {"score": None, "plan": []}
-
-    def walk(index, chosen, total):
-        if total >= left or index == len(pool):
-            score = (max(0.0, left - total), max(0.0, total - left),
-                     len(chosen))
-            if best["score"] is None or score < best["score"]:
-                best.update(score=score, plan=chosen)
-            return
-        name, cost, room = pool[index]
-        count = 0
-        while True:
-            walk(index + 1, chosen + [name] * count, total + count * cost)
-            if (total + count * cost >= left or count == room
-                    or (most is not None and len(chosen) + count >= most)):
-                break
-            count += 1
-
-    walk(0, [], 0.0)
-    return best["score"], sorted(best["plan"], key=run_cost, reverse=True)
-
-
-def banner_fill(dungeon_name, verbose=True):
-    if NO_BANNER or not BANNER_FILL or dungeon_name in BANNER_SAFE:
-        return None
-    try:
-        now = online_now()
-    except RuntimeError:
-        return None
-    left, start, length, _run = banner_wait(now, dungeon_name)
-    if not left:
-        return None
-    if BANNER_FILLS["window"] != start:
-        BANNER_FILLS.update(window=start, done=0, first=[])
-    most = (None if BANNER_FILL.get("runs") is None
-            else int(BANNER_FILL["runs"]) - BANNER_FILLS["done"])
-    if most is not None and most <= 0:
-        return None
-    lead = list(BANNER_FIRST)
-    for done in BANNER_FILLS["first"]:
-        lead.remove(done)
-    lead = [fill for fill in lead
-            if not limit_reached(fill) and fill != CUT_OFF["dungeon"]]
-    pool = [(fill, run_cost(fill), runs_left(fill))
-            for fill in BANNER_FILL["dungeons"]
-            if not limit_reached(fill) and fill != CUT_OFF["dungeon"]]
-    _score, rest = fill_plan(left - sum(map(run_cost, lead)), pool,
-                             None if most is None else most - len(lead))
-    plan = lead + rest
-    if not plan:
-        last = [(fill, run_cost(fill), fill_left(fill))
-                for fill in BANNER_LAST if fill_left(fill)]
-        _score, plan = fill_plan(left, last, most)
-    if not plan:
-        return None
-    total = sum(map(run_cost, plan))
-    idle, spill = max(0.0, left - total), max(0.0, total - left)
-    BANNER_FILLS["done"] += 1
-    if plan[0] in lead:
-        BANNER_FILLS["first"].append(plan[0])
-    if verbose:
-        end = start + length
-        names = [fill_location(fill) if fill == TRADING_DUNGEON else fill
-                 for fill in plan]
-        print(f"{dungeon_name}: the Surprise Attack banner keeps it out until "
-              f":{end:%M} ({left:.0f}s), so {' -> '.join(names)}, whose "
-              f"recordings stay clear of the banner, fill the wait"
-              + (" (every other filler is out)" if plan[0] in BANNER_LAST
-                 else "")
-              + (f", {' and '.join(lead)} first (once per banner)" if lead
-                 else "")
-              + (f" with {idle:.0f}s of it left over" if idle
-                 else f" and end about {spill:.0f}s after :{end:%M}")
-              + f"; {names[0]} now"
-              + ("" if most is None
-                 else f" ({BANNER_FILLS['done']} of {BANNER_FILL['runs']} "
-                      f"for this banner)"))
-    return plan[0]
-
-
-def banner_clear(dungeon_name, verbose=True):
-    if NO_BANNER:
-        return
-    try:
-        now = online_now()
-    except RuntimeError:
-        if verbose:
-            print("  no time server has answered yet, so the Surprise Attack "
-                  "banner hour is not checked before this run")
-        return
-    left, start, length, run = banner_wait(now, dungeon_name)
-    if not left:
-        return
-    if dungeon_name in BANNER_SAFE:
-        if verbose:
-            print(f"  {dungeon_name}: its recordings stay clear of the "
-                  f"Surprise Attack banner, so it runs now without waiting "
-                  f"for :{start + length:%M}")
-        return
-    if verbose:
-        print(f"  {dungeon_name}: the Surprise Attack banner is up from "
-              f":{start:%M} to :{start + length:%M} every hour and a run "
-              f"started now could last {run.total_seconds():.0f}s, so no "
-              f"dungeon until :{start + length:%M} ({left:.0f}s)")
-        banner_notice(dungeon_name, start + length, left)
-    wait_timer(left, False)
-    if LIVE["view"] is not None:
-        LIVE["view"].wait_banner_end()
-
-
-def banner_notice(dungeon_name, until, left):
-    look, view = VIEW_SET, LIVE["view"]
-    fill, edge, width = look["banner_fill"], look["banner_edge"], int(
-        look["banner_width"])
-    places = DUNGEONS[dungeon_name]["locations"]
-    full = (next(iter(places.values()))["name"] if len(places) == 1
-            else dungeon_name)
-    text = f"{look['banner']}   {full} waits until :{until:%M}"
-    if view is None:
-        text += f", {time.strftime(look['clock'], time.gmtime(left))} left"
-    width = max(width, len(text) + 2 * (len(edge) + int(look["banner_pad"])))
-    lines = [fill * width, f"{edge}{text:^{width - 2 * len(edge)}}{edge}",
-             fill * width]
-    for line in lines:
-        print(line)
-    if view is not None:
-        view.banner(lines)
-        view.wait_banner(full, until, time.monotonic() + left)
 
 
 def run_or_relog(dungeon_name, location, after, verbose=True):
@@ -5899,9 +6165,9 @@ def run_in_turn(dungeon_name, location, after, verbose=True):
     if world_boss_turn(dungeon_name, verbose):
         after = (dungeon_name, time.monotonic())
     revive_if_dead(verbose)
-    banner_clear(dungeon_name, verbose)
     pre_run_buys(dungeon_name, location, verbose)
-    powerful_pot_due(dungeon_name, verbose)
+    powerful_pot_due(dungeon_name, verbose, location)
+    every_run_use(dungeon_name, verbose)
     if after is None:
         start_block(dungeon_name, location, verbose)
     plan_cooldown(dungeon_name,
@@ -6093,12 +6359,6 @@ def rotate_any(names, after=None, verbose=True, pool=None, day=None):
                       f"goes next")
             return after
         name = again if again in turn else next_in_turn(turn, skip, verbose)
-        filler = banner_filler(name, pool, verbose)
-        if filler is None:
-            filler = banner_fill(name, verbose)
-        if filler is not None:
-            after, _relogged = run_with_play_time(filler, after, verbose)
-            continue
         after, relogged = run_with_play_time(name, after, verbose)
         again = name if DEATH_WATCH["again"] else None
         skip = name if relogged or RUN_OUTCOME["failed"] else None
@@ -6137,13 +6397,6 @@ def rotate(names, after=None, verbose=True, group=None, pool=None,
                 if (rotation_done(name, successful)
                         or name == CUT_OFF["dungeon"]):
                     break
-                filler = banner_filler(name, pool, verbose)
-                if filler is None:
-                    filler = banner_fill(name, verbose)
-                if filler is not None:
-                    after, _relogged = run_with_play_time(filler, after,
-                                                          verbose)
-                    continue
                 after, relogged = run_with_play_time(name, after, verbose)
                 if DEATH_WATCH["again"]:
                     continue
@@ -6155,6 +6408,15 @@ def rotate(names, after=None, verbose=True, group=None, pool=None,
                         print(f"{name}: the run failed, so the next dungeon "
                               f"in the list goes next")
                     break
+            if ROTATION_RELOG and done and not relogged and not new_day(day):
+                if verbose:
+                    print(f"{name}: {done} run(s) done in this batch; "
+                          f"relogging before the next dungeon")
+                try:
+                    relog(verbose)
+                except Exception as exc:
+                    print(f"  the relog between dungeons did not finish "
+                          f"({type(exc).__name__}: {exc}); carrying on")
 
 
 def start_home(verbose=True):
@@ -6163,10 +6425,15 @@ def start_home(verbose=True):
             print("the loop starts with the burst's own relog, through the "
                   "server list, before the first run")
         return
+    forget_active()
+    if not _DUNGEON.get("start_relog", True):
+        if verbose:
+            print("the loop starts where the character stands: start_relog "
+                  "is off, so there is no relog before the first run")
+        return
     if verbose:
         print("the loop starts with a full relog, out to the server list and "
               "into the home channel")
-    forget_active()
     relog(verbose)
 
 
@@ -6176,17 +6443,23 @@ def run_all(verbose=True):
     watch_disconnect(verbose)
     watch_death(verbose)
     start_home(verbose)
+    levels_first = bool(_DUNGEON.get("levels_first"))
+
+    def run_rotation(after, day):
+        if ANY_ORDER:
+            return rotate_any(ROTATION_NAMES, after, verbose, ROTATION_NAMES,
+                              day)
+        for group in ROTATION_GROUPS:
+            after = rotate(group["dungeons"], after, verbose, group,
+                           ROTATION_NAMES, day)
+            if new_day(day):
+                break
+        return after
+
     while True:
         day = server_day()
-        if ANY_ORDER:
-            after = rotate_any(ROTATION_NAMES, after, verbose, ROTATION_NAMES,
-                               day)
-        else:
-            for group in ROTATION_GROUPS:
-                after = rotate(group["dungeons"], after, verbose, group,
-                               ROTATION_NAMES, day)
-                if new_day(day):
-                    break
+        if not levels_first:
+            after = run_rotation(after, day)
         for level in ORDER:
             if new_day(day):
                 break
@@ -6204,6 +6477,8 @@ def run_all(verbose=True):
             if verbose and not new_day(day):
                 print(f"{location}: {LIMITS[level]} of {LIMITS[level]} "
                       f"entered on this server day")
+        if levels_first and not new_day(day):
+            after = run_rotation(after, day)
         if new_day(day):
             if verbose:
                 print(f"server day {server_day()} has begun: the daily limits "
@@ -6314,12 +6589,24 @@ def command(args):
         start_reports()
         location = args[1] if len(args) > 1 else only_location(args[0])
         rested = None
+        channels, minutes = _channels(), _minutes()
+        stop_at = (None if minutes is None
+                   else time.monotonic() + minutes * 60)
+        if channels:
+            print(f"--channels: after every run, a relog into the next of "
+                  f"Channel {', '.join(map(str, channels))} in turn")
+        if minutes is not None:
+            print(f"--minutes: no new run after {minutes:g} minutes")
         for run in range(_runs()):
+            if stop_at is not None and time.monotonic() >= stop_at:
+                print(f"--minutes: {minutes:g} minutes are up after {run} "
+                      f"run(s); no new run")
+                break
             revive_if_dead()
-            banner_clear(args[0])
             pre_run_buys(args[0], location)
             if not limit_reached(args[0]):
-                powerful_pot_due(args[0])
+                powerful_pot_due(args[0], location=location)
+                every_run_use(args[0])
             if run == 0:
                 start_block(args[0], location)
             plan_cooldown(args[0], None if rested is None
@@ -6327,6 +6614,9 @@ def command(args):
             if run_dungeon(args[0], location) is False:
                 break
             rested = bm_off_at()
+            if channels and (stop_at is None
+                             or time.monotonic() < stop_at):
+                switch_channel(channels[run % len(channels)])
     else:
         raise SystemExit(f"unknown command {' '.join(args)!r}; use "
                          f"nothing for the whole loop, "
@@ -6356,9 +6646,6 @@ if __name__ == "__main__":
         sys.stderr = ConsoleErrors(sys.stderr, LIVE["view"])
     calibration.log_to_file("dungeon")
     print(f"running on commit {running_commit()}")
-    if NO_BANNER:
-        print("  --no-banner: the Surprise Attack banner hour is ignored; a "
-              "run starts at any time")
     calibration.frames_on(True if "--frames" in sys.argv else None)
     calibration.watch_for_stop()
     try:

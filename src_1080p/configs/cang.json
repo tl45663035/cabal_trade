@@ -46,7 +46,10 @@
     },
     "rows_by_price": {
       "Chaos Core": [
-        [0, 7]
+        [
+          0,
+          7
+        ]
       ]
     },
     "buy_min": {
@@ -96,7 +99,11 @@
         "ice",
         "train",
         "fire",
-        "valley"
+        "valley",
+        "ic1"
+      ],
+      [
+        "ic2"
       ]
     ],
     "every_run_use": [
@@ -105,11 +112,6 @@
     "steady_attack": [
       "alternate_bm"
     ],
-    "banner_fill": {
-      "dungeons": [
-        "chaos_arena"
-      ]
-    },
     "rotation_runs": 5,
     "wb_area_check": {
       "window": [
@@ -415,18 +417,308 @@
     "pre_run_buys": [],
     "dungeons": {
       "windmill": {
-        "hard_limit_seconds": 420
+        "hard_limit_seconds": 420,
+        "sequence": [
+          "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
+          "open_dungeon_key",
+          "start_dungeon",
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "bm_cycle",
+          [
+            "tap",
+            "`",
+            "5"
+          ],
+          "move_to_A",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            6.0
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            6.0
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            6.0
+          ],
+          "move_to_D",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            6.0
+          ],
+          "move_to_E",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ]
+        ],
+        "after_exit": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ]
       },
       "keldrasil": {
-        "hard_limit_seconds": 420
+        "hard_limit_seconds": 420,
+        "sequence": [
+          "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
+          "open_dungeon_key",
+          "start_dungeon",
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "bm_cycle",
+          [
+            "tap",
+            "`",
+            "5"
+          ],
+          "move_to_A",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            5.0
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            6.0
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            6.0
+          ],
+          "move_to_D",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_E",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_F",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ]
+        ],
+        "after_exit": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ]
       },
       "at": {
-        "hard_limit_seconds": 720
+        "hard_limit_seconds": 720,
+        "sequence": [
+          "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
+          "open_dungeon_key",
+          "start_dungeon",
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "move_to_A",
+          "bm_cycle",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            5.0
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_D",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_E",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_F",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_G",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_H",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_I",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_J",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_K",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_L",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_M",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_N",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_O",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ],
+          "move_to_P",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            3.0
+          ]
+        ],
+        "after_exit": [
+          [
+            "wait",
+            2
+          ],
+          "close_notification",
+          "disenchant_all",
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ]
       },
       "fc": {
         "hard_limit_seconds": 720,
         "sequence": [
           "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
           "open_dungeon_key",
           "start_dungeon",
           [
@@ -503,6 +795,24 @@
             "any monster",
             "offensive_boss_loop"
           ]
+        ],
+        "after_exit": [
+          [
+            "wait",
+            2
+          ],
+          "close_notification",
+          "disenchant_all",
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
         ]
       },
       "chaos_arena": {
@@ -519,6 +829,10 @@
         },
         "sequence": [
           "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
           "open_dungeon_key",
           "start_dungeon",
           [
@@ -606,13 +920,29 @@
             "wait",
             2
           ],
-          "after_exit"
+          "after_exit",
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
         ]
       },
       "fire": {
+        "after_exit": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
         "hard_limit_seconds": 300,
         "after_run_buys": [],
-        "difficulty": 0,
+        "difficulty": 3,
         "powerful_pot": {
           "slots": [
             "A+8",
@@ -718,9 +1048,15 @@
         ]
       },
       "train": {
+        "after_exit": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
         "hard_limit_seconds": 300,
         "after_run_buys": [],
-        "difficulty": 0,
+        "difficulty": 3,
         "powerful_pot": {
           "slots": [
             "A+8",
@@ -819,7 +1155,11 @@
             "wait",
             2
           ],
-          "disenchant_all"
+          "disenchant_all",
+          [
+            "play_random",
+            "before_run"
+          ]
         ],
         "before_claim": [
           [
@@ -907,6 +1247,10 @@
         "start_cancel_bm": false,
         "sequence": [
           "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
           "open_dungeon_key",
           "start_dungeon",
           "kill_phase",
@@ -987,9 +1331,34 @@
             null
           ],
           "final_sequence"
+        ],
+        "after_exit": [
+          [
+            "wait",
+            2
+          ],
+          "close_notification",
+          "disenchant_all",
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
         ]
       },
       "pc": {
+        "after_exit": [
+          "close_notification",
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
         "hard_limit_seconds": 360,
         "difficulty": 0,
         "powerful_pot": {
@@ -1064,7 +1433,13 @@
             "kill_loop",
             3.0
           ],
-          ["hover_kill", 12, "any monster", "kill_loop", 3.0]
+          [
+            "hover_kill",
+            12,
+            "any monster",
+            "kill_loop",
+            3.0
+          ]
         ],
         "before_claim": [
           [
@@ -1077,14 +1452,48 @@
         }
       },
       "ic1": {
+        "powerful_pot": {
+          "slots": [
+            "A+8",
+            "A+9",
+            "A+0"
+          ],
+          "every": 3600
+        },
+        "room_idle_stop": {
+          "move_to_B": 25,
+          "move_to_E": 20
+        },
         "hard_limit_seconds": 360,
         "challenge_wait": 2.0,
         "start_cancel_bm": false,
         "chat_skip": [
           "move_to_A"
         ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "after_exit": [
+          [
+            "wait",
+            2
+          ],
+          "close_notification",
+          "disenchant_all",
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
         "sequence": [
           "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
           "open_dungeon_key",
           "start_dungeon",
           "kill_phase",
@@ -1162,6 +1571,10 @@
         ],
         "sequence": [
           "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
           "open_dungeon_key",
           "start_dungeon",
           "kill_phase",
@@ -1227,6 +1640,24 @@
             "offensive_boss_loop",
             null
           ]
+        ],
+        "after_exit": [
+          [
+            "wait",
+            2
+          ],
+          "close_notification",
+          "disenchant_all",
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
         ]
       },
       "ice": {
@@ -1262,7 +1693,7 @@
         },
         "hard_limit_seconds": 300,
         "after_run_buys": [],
-        "difficulty": 0,
+        "difficulty": 3,
         "powerful_pot": {
           "slots": [
             "A+8",
@@ -1279,6 +1710,10 @@
           [
             "wait",
             2
+          ],
+          [
+            "play_random",
+            "before_run"
           ]
         ],
         "sequence": [
@@ -1363,10 +1798,302 @@
         ]
       },
       "fn": {
-        "hard_limit_seconds": 540
+        "hard_limit_seconds": 540,
+        "sequence": [
+          "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
+          "open_dungeon_key",
+          "start_dungeon",
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "bm_cycle",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_A",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            10.0
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            10.0
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            10.0
+          ],
+          "move_to_D",
+          [
+            "kill_all",
+            "any monster",
+            "offensive_boss_loop"
+          ],
+          "move_to_E",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            10.0
+          ],
+          "move_to_F",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            10.0
+          ],
+          "move_to_G",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            6.0
+          ],
+          "move_to_H",
+          [
+            "heal_every",
+            0.5
+          ],
+          "aura_on",
+          [
+            "kill_all",
+            "any monster",
+            "all_buffs_boss_loop"
+          ],
+          [
+            "heal_every"
+          ],
+          "move_to_I",
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "kill_loop",
+            1.0
+          ],
+          "move_to_J",
+          [
+            "press_other_bm",
+            "aura"
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "all_buffs_boss_loop"
+          ]
+        ],
+        "after_exit": [
+          [
+            "wait",
+            2
+          ],
+          "close_notification",
+          "disenchant_all",
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ]
       },
       "tm": {
-        "hard_limit_seconds": 600
+        "hard_limit_seconds": 600,
+        "sequence": [
+          "get_entry",
+          [
+            "play_random",
+            "before_run"
+          ],
+          "open_dungeon_key",
+          "start_dungeon",
+          "kill_phase",
+          [
+            "tap",
+            "="
+          ],
+          "move_to_A",
+          "bm_cycle",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop",
+            5.0
+          ],
+          "move_to_B",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop"
+          ],
+          "move_to_C",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop",
+            1.0
+          ],
+          "move_to_D",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop",
+            1.0
+          ],
+          "move_to_E",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop",
+            1.0
+          ],
+          "move_to_F",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop"
+          ],
+          "move_to_G",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop",
+            1.0
+          ],
+          "move_to_H",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop"
+          ],
+          "move_to_I",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop",
+            1.0
+          ],
+          "move_to_J",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop",
+            1.0
+          ],
+          "move_to_K",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop",
+            1.0
+          ],
+          "move_to_L",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop",
+            1.0
+          ],
+          "move_to_M",
+          [
+            "kill_all",
+            "any monster",
+            "main_defensive_loop",
+            1.0
+          ],
+          "move_to_N",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop",
+            1.0
+          ],
+          "move_to_O",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop"
+          ],
+          "move_to_P",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop"
+          ],
+          "move_to_Q",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop"
+          ],
+          "move_to_R",
+          [
+            "kill_all",
+            "any monster",
+            "main_boss_loop"
+          ],
+          "move_to_S",
+          [
+            "kill_all",
+            "any monster",
+            "main_kill_loop"
+          ],
+          "move_to_T",
+          [
+            "press_other_bm",
+            "aura"
+          ],
+          [
+            "kill_all",
+            "any monster",
+            "main_boss_loop"
+          ]
+        ],
+        "after_exit": [
+          [
+            "wait",
+            2
+          ],
+          "close_notification",
+          "disenchant_all",
+          [
+            "play_random",
+            "before_run"
+          ]
+        ],
+        "before_claim": [
+          [
+            "play_random",
+            "before_run"
+          ]
+        ]
       }
     },
     "room_idle_stop": 10,
@@ -1380,7 +2107,19 @@
     },
     "rotation_relog": true,
     "combo_skip_ca": true,
-    "trade_passes": 10
+    "trade_passes": 10,
+    "difficulty": {
+      "buys": {
+        "5": {
+          "item": "gemstone",
+          "every": 4
+        },
+        "3": {
+          "item": "gemstone",
+          "every": 8
+        }
+      }
+    }
   },
   "world_boss": {
     "enabled": false,

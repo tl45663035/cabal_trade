@@ -91,12 +91,19 @@ def stamp(when):
     return when.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def trading_logs():
+    """the supervised run's *_run.log and combo's trading passes' *_relist.log"""
+    return list(LOGS.glob("*_run.log")) + list(LOGS.glob("*_relist.log"))
+
+
 def run_log(run):
     try:
         began = datetime.datetime.strptime(run, "%Y-%m-%dT%H:%M:%S")
     except ValueError:
         return None
-    return LOGS / f"{began:%Y-%m-%d_%H%M%S}_run.log"
+    log = LOGS / f"{began:%Y-%m-%d_%H%M%S}_run.log"
+    relist = LOGS / f"{began:%Y-%m-%d_%H%M%S}_relist.log"
+    return relist if not log.exists() and relist.exists() else log
 
 
 LIVE_WITHIN = float(KNOBS["live_within"])
@@ -164,7 +171,7 @@ def run_hours(run):
 
 def run_spans(since):
     spans = []
-    for log in LOGS.glob("*_run.log"):
+    for log in trading_logs():
         try:
             began = datetime.datetime.strptime(
                 log.name[:len(datetime.datetime.now().strftime(LOG_STAMP))],
@@ -277,7 +284,7 @@ def opening_stock(text):
 
 def run_logs(since):
     found = []
-    for log in LOGS.glob("*_run.log"):
+    for log in trading_logs():
         launched = log_launch(log)
         if launched is None or launched < since:
             continue
@@ -681,7 +688,7 @@ def report_trace(log, text):
 
 
 def report_board():
-    logs = sorted(LOGS.glob("*_run.log"), key=lambda f: f.stat().st_mtime)
+    logs = sorted(trading_logs(), key=lambda f: f.stat().st_mtime)
     if not logs:
         return
     log = logs[-1]
@@ -762,7 +769,7 @@ def number(text):
 
 
 def report_market():
-    logs = sorted(LOGS.glob("*_run.log"), key=lambda f: f.stat().st_mtime)
+    logs = sorted(trading_logs(), key=lambda f: f.stat().st_mtime)
     if not logs:
         return
     log = logs[-1]

@@ -244,6 +244,9 @@ def craft_sets(core=None, verbose=True, held=None, slot=None):
                 f"onto what tab {calibration.WORK_TAB} already held, in "
                 f"{landed}")
     with calibration.step("compress the crafted Sets"):
+        # the game flips the inventory back to another tab after Complete
+        # All (2026-11-13 video: tab VI), so tab 4 is shown again first
+        show_work_tab()
         compress(landed, verbose=verbose)
     say(f"  {used if used is not None else 'an unknown number of'} "
         f"{CORE_NAME}(s) went into the queue")

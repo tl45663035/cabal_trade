@@ -63,6 +63,7 @@ TAB_SETTLE = _T["tab_settle"]
 WITHDRAW_SETTLE = _T["withdraw_settle"]
 _ROW = re.compile(_SHARED["text"]["purchase_row"])
 _GROUPING = re.compile(_SHARED["text"]["row_grouping"])
+_NOISE = re.compile(_SHARED["text"]["row_noise"])
 MIN_PLAUSIBLE_PRICE = _SHARED["detect"]["min_plausible_price"]
 CAPACITY = _SHARED["game_facts"]["shop_capacity"]
 VISIBLE = _SHARED["game_facts"]["shop_visible"]
@@ -419,7 +420,7 @@ def _parsed_row(text):
 
 
 def _row_from(text):
-    cleaned = (text or "").strip()
+    cleaned = re.sub(r"\s+", " ", _NOISE.sub(" ", text or "")).strip()
     row = _parsed_row(cleaned)
     if row is not None:
         return row
@@ -955,6 +956,15 @@ def relist_one(model, index, verbose=True, first=None, last=None,
                 row = row_model.Row(held.name, qty=row.qty, price=held.price,
                                     buy_cost=held.buy_cost,
                                     floor_at=held.floor_at)
+        elif not known_item(row.name) and known_item(held.name):
+            print(f"    the row reads {row.name!r} at {row.price:,}, a name "
+                  f"no favourite or cash-shop item matches, and this run "
+                  f"recorded {held.name!r} there; the reading is wrong, so "
+                  f"it is relisted as {held.name!r} with its cost carried "
+                  f"over")
+            row = row_model.Row(held.name, qty=row.qty, price=row.price,
+                                buy_cost=held.buy_cost,
+                                floor_at=held.floor_at)
         else:
             calibration.snap(f"row_{index}_named_differently")
             print(f"    the row reads {row.name!r} at {row.price:,}, and this "
@@ -1288,6 +1298,9 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
     deadline = time.monotonic() + minutes * 60
     print(f"relisting rows {first}-{last} for {minutes:g} minute(s)")
     passes = done = skipped = empty = 0
+    walked = stall_restarts = 0
+    stall_cap = int(calibration.load_shared()["run"].get(
+        "stall_pass_retries", 3))
     stopped = None
     started = time.perf_counter()
     while True:
@@ -1323,6 +1336,7 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
             done += made
             skipped += missed
             empty += bare
+            walked += 1
             rest_the_game(verbose=verbose)
         except calibration.ServerStalled as exc:
             print(f"  {exc}")
@@ -1331,8 +1345,14 @@ def do_relist(first=None, last=None, minutes=None, verbose=True):
                       f"carries on there once the stall is recovered")
             row_model.WORK_TAB_STALE = True
             if time.monotonic() >= deadline:
-                print(f"  {minutes:g} minute(s) are up after pass {passes}")
-                break
+                if walked or stall_restarts >= stall_cap:
+                    print(f"  {minutes:g} minute(s) are up after pass "
+                          f"{passes}")
+                    break
+                stall_restarts += 1
+                print(f"  {minutes:g} minute(s) are up, but no pass has "
+                      f"walked the board yet; starting it again after the "
+                      f"stall ({stall_restarts} of {stall_cap})")
             continue
         except row_model.Divergence as exc:
             print(f"  STOPPED: {exc}")
