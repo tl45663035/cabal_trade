@@ -43,7 +43,7 @@ Sun 2026-11-22             14.73h   24.00h  209.18M   14.20M    9.92B   9.71B  2
 Mon 2026-11-23             13.86h   24.00h  250.99M   18.11M    8.21B   7.96B  18.66K    3.1%
 Tue 2026-11-24             12.21h   24.00h   78.92M    6.46M    3.24B   3.16B   9.13K    2.4%
 Wed 2026-11-25             10.76h   24.00h  190.16M   17.67M    2.90B   2.71B   4.47K    6.6%
-Thu 2026-11-26 (so far)     0.09h    0.19h   19.00M  203.14M   90.04M  71.04M     228   21.1%
+Thu 2026-11-26 (so far)     0.10h    0.19h   19.00M  197.07M   90.04M  71.04M     228   21.1%
 =============================================================================================
 7 DAYS                     69.43h  144.19h    1.01B   14.50M   29.04B  28.03B  61.91K    3.5%
 incl. special row losses                          0                 0       0       0      --
@@ -69,33 +69,58 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-26_000530_relist_board.log, board during pass 2 at row 30, read 2026-11-26T00:10:55 (live)
+ROWS -- 2026-11-26_000530_relist.log, board after pass 2
                                               qty  bought/u  listed/u    margin     price  row cost    profit
-    1  Epic Booster (Highest)                  x4    39.99M    39.99M        +0    39.99M   159.94M         0
+    1  Epic Booster (Highest)                  x4    39.99M    39.99M        +0   159.94M   159.94M         0
     2  Chaos Core Set X 982                    x1   508.99K   532.31K   +23.32K   522.73M   499.83M    22.90M
     3  Force Gem Package                       x1   159.94M   160.00M   +56.00K   160.00M   159.94M    56.00K
     4  Siena's Unbinding Stone                 x1    63.98M    99.40M   +35.42M    99.40M    63.98M    35.42M
-    5  Force Core (Ultimate                  x200   300.00K   348.87K   +48.87K   348.87K    60.00M     9.77M
-    6  Force Core (Ultimate                   x29   300.00K   348.87K   +48.87K   348.87K     8.70M     1.42M
-    7  Force Core(Highest                     x18   220.00K   233.33K   +13.33K   233.33K     3.96M   239.98K
-    8  Epic Booster (Highest)                  x4    39.99M    39.99M        +0    39.99M   159.94M         0
+    5  Force Core (Ultimate                  x200   300.00K   348.87K   +48.87K    69.77M    60.00M     9.77M
+    6  Force Core (Ultimate                   x29   300.00K   348.87K   +48.87K    10.12M     8.70M     1.42M
+    7  Force Core(Highest                     x18   220.00K   233.33K   +13.33K     4.20M     3.96M   239.98K
+    8  Epic Booster (Highest)                  x4    39.99M    39.99M        +0   159.94M   159.94M         0
     9  Chief Laxar's Brooch (Med) wy           x1         -     6.26M         -     6.26M         -         -
-   10  Force Core (Ultimate                   x56   300.00K   348.87K   +48.87K   348.87K    16.80M     2.74M
-   11  Upgrade Core (Ultimate                x102   311.58K   394.90K   +83.31K   394.90K    31.78M     8.50M
-   12  Upgrade Core (Ultimate                x106   311.58K   394.89K   +83.31K   394.89K    33.03M     8.83M
-   13  Upgrade Core (Ultimate                 x10   311.58K   394.89K   +83.31K   394.89K     3.12M   833.09K
-   14  Force Core(High                       x180   215.34K   215.89K      +549   215.89K    38.76M    98.82K
-   15  Force Core(High                        x58   215.34K   215.89K      +543   215.89K    12.49M    31.49K
-   16  Force Core(High                        x99   215.34K   215.88K      +542   215.88K    21.32M    53.66K
-   17  Force Core(Highest                     x47   150.00K   233.33K   +83.33K   233.33K     7.05M     3.92M
-    30  (empty)                                           -          -       -              -               - <- here
-    balance now 1.45B, read 2026-11-26T00:10:19
+   10  Force Core (Ultimate                   x56   300.00K   348.87K   +48.87K    19.54M    16.80M     2.74M
+   11  Upgrade Core (Ultimate                x102   311.58K   394.90K   +83.31K    40.28M    31.78M     8.50M
+   12  Upgrade Core (Ultimate                x106   311.58K   394.89K   +83.31K    41.86M    33.03M     8.83M
+   13  Upgrade Core (Ultimate                 x10   311.58K   394.89K   +83.31K     3.95M     3.12M   833.09K
+   14  Force Core(High                       x180   215.34K   215.89K      +549    38.86M    38.76M    98.82K
+   15  Force Core(High                        x58   215.34K   215.89K      +543    12.52M    12.49M    31.49K
+   16  Force Core(High                        x99   215.34K   215.88K      +542    21.37M    21.32M    53.66K
+   17  Force Core(Highest                     x47   150.00K   233.33K   +83.33K    10.97M     7.05M     3.92M
+    balance now 1.45B
+  0.01 minute(s) are up after pass 2
+2 pass(es), 17 relisted, 13 empty, 0 skipped in 300s (17645 ms a row)
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  item                              profit   units  margin        revenue           cost
+       Upgrade Core (Ultimate        19.00M     228   21.1%     90.04M                                 71.04M
+  ------------------------------------------------------------------------------------
+       SOLD                          19.00M     228   21.1%     90.04M                                 71.04M
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                    19.00M   (19.00M realised, +0 assumed)
+  started 00:05:30, ended 00:11:17, ran for 5m 47s
+##############################################################################################
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##############################################################################################
        stock at its listed price                                                                        1.38B
        Alz, latest balance line                                                                         1.45B
        NET WORTH                                                                                        2.84B
 
 
-MARKET -- 2026-11-26_000530_relist.log, pass 2, log last written 00:11 Central (live)
+MARKET -- 2026-11-26_000530_relist.log, pass 2, log last written 00:11 Central
 
 core                     rows    buy/u   sell/u   margin  margin %  wants  short?
 --------------------------------------------------------------------------------------------------------------------
