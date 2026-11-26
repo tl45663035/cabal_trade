@@ -42,9 +42,9 @@ Sun 2026-11-22             14.73h   24.00h  209.18M   14.20M    9.92B   9.71B  2
 Mon 2026-11-23             13.86h   24.00h  250.99M   18.11M    8.21B   7.96B  18.66K    3.1%
 Tue 2026-11-24             12.21h   24.00h   78.92M    6.46M    3.24B   3.16B   9.13K    2.4%
 Wed 2026-11-25             10.76h   24.00h  190.16M   17.67M    2.90B   2.71B   4.47K    6.6%
-Thu 2026-11-26 (so far)     2.45h   11.69h  142.47M   58.12M    3.29B   3.15B   6.08K    4.3%
+Thu 2026-11-26 (so far)     2.45h   11.70h  142.47M   58.05M    3.29B   3.15B   6.08K    4.3%
 =============================================================================================
-7 DAYS                     71.79h  155.69h    1.13B   15.75M   32.23B  31.10B  67.76K    3.5%
+7 DAYS                     71.79h  155.70h    1.13B   15.75M   32.23B  31.10B  67.76K    3.5%
 incl. special row losses                          0                 0       0       0      --
 
 
@@ -77,38 +77,70 @@ item  profit  bought  bought/u  listed/u  held
   nothing bought for stock up yet.
 
 
-ROWS -- 2026-11-26_111831_relist_board.log, board during pass 1 at row 30, read 2026-11-26T11:41:13 (live)
+ROWS -- 2026-11-26_111831_relist.log, board after pass 1
                                               qty  bought/u  listed/u    margin     price  row cost    profit
     1  Quartz Core(Mithril) X 17               x1         -    38.97K         -   662.56K         -         -
     2  Chaos Core Set                          x1   509.99K   529.99K   +20.00K   124.02M   119.34M     4.68M
     3  Force Gem Package                       x1   156.00M   160.00M    +4.00M   160.00M   156.00M     4.00M
     4  Siena's Unbinding Stone                 x1    62.40M    94.00M   +31.60M    94.00M    62.40M    31.60M
-    5  Force Core (Ultimate                  x200   346.15K   348.82K    +2.66K   348.82K    69.23M   532.60K
-    6  Force Core (Ultimate                   x29   346.15K   348.81K    +2.66K   348.81K    10.04M    77.20K
-    7  Epic Booster (Highest)                  x4    39.00M    39.00M        +0    39.00M   156.00M         0
+    5  Force Core (Ultimate                  x200   346.15K   348.82K    +2.66K    69.76M    69.23M   532.60K
+    6  Force Core (Ultimate                   x29   346.15K   348.81K    +2.66K    10.12M    10.04M    77.20K
+    7  Epic Booster (Highest)                  x4    39.00M    39.00M        +0   156.00M   156.00M         0
     8  Chief Laxar's Brooch (Med) wy           x1         -     6.26M         -     6.26M         -         -
-    9  Force Core (Ultimate                   x32   346.15K   348.81K    +2.66K   348.81K    11.08M    85.15K
-   10  Force Core(High                       x180   207.06K   222.90K   +15.83K   222.90K    37.27M     2.85M
-   11  Force Core(High                       x155   207.06K   222.90K   +15.83K   222.90K    32.09M     2.45M
-   12  Upgrade Core (Ultimate                 x19   328.80K   383.89K   +55.09K   383.89K     6.25M     1.05M
+    9  Force Core (Ultimate                   x32   346.15K   348.81K    +2.66K    11.16M    11.08M    85.15K
+   10  Force Core(High                       x180   207.06K   222.90K   +15.83K    40.12M    37.27M     2.85M
+   11  Force Core(High                       x155   207.06K   222.90K   +15.83K    34.55M    32.09M     2.45M
+   12  Upgrade Core (Ultimate                 x19   328.80K   383.89K   +55.09K     7.29M     6.25M     1.05M
    13  Chaos Core Set                          x1   509.99K   529.99K   +20.00K   131.97M   126.99M     4.98M
    14  Chaos Core Set                          x1   509.99K   529.99K   +20.00K    96.99M    93.33M     3.66M
    15  Chaos Core Set                          x1   509.99K   529.99K   +20.00K   111.30M   107.10M     4.20M
    16  Chaos Core Set                          x1   509.99K   529.99K   +20.00K   124.02M   119.34M     4.68M
    17  Chaos Core Set                          x1   509.99K   529.99K   +20.00K   127.20M   122.40M     4.80M
    18  Chaos Core Set                          x1   509.99K   529.99K   +20.00K   131.97M   126.99M     4.98M
-   19  Force Core(Highest                    x180   282.00K   298.80K   +16.80K   298.80K    50.76M     3.02M
-   20  Epic Booster (Highest)                  x4    39.00M    39.00M        +0    39.00M   156.00M         0
-   21  Honor Medal Reset Scroll (Option S       x16         -     4.09M         -     4.09M         -         -
+   19  Force Core(Highest                    x180   282.00K   298.80K   +16.80K    53.78M    50.76M     3.02M
+   20  Epic Booster (Highest)                  x4    39.00M    39.00M        +0   156.00M   156.00M         0
+   21  Honor Medal Reset Scroll (Option S       x16         -     4.09M         -    65.44M         -         -
    22  Upgrade Core Set (Highest) X 999        x1         -    77.00K         -    76.92M         -         -
    23  Orphidia's Soul X 197                   x1         -   397.26K         -    78.26M         -         -
-   24  Force Core(High                       x182   207.06K   222.89K   +15.83K   222.89K    37.69M     2.88M
-   25  Force Core(Highest                    x181   282.00K   298.79K   +16.80K   298.79K    51.04M     3.04M
-   26  Upgrade Core (Ultimate                x202   328.80K   383.89K   +55.09K   383.89K    66.42M    11.13M
-   27  Upgrade Core (Ultimate                x141   328.87K   383.89K   +55.02K   383.89K    46.37M     7.76M
-   28  Force Core(Highest                    x200   282.00K   298.79K   +16.80K   298.79K    56.40M     3.36M
-    30  (empty)                                           -          -       -              -               - <- here
-    balance now 1.33B, read 2026-11-26T11:39:49
+   24  Force Core(High                       x182   207.06K   222.89K   +15.83K    40.57M    37.69M     2.88M
+   25  Force Core(Highest                    x181   282.00K   298.79K   +16.80K    54.08M    51.04M     3.04M
+   26  Upgrade Core (Ultimate                x202   328.80K   383.89K   +55.09K    77.55M    66.42M    11.13M
+   27  Upgrade Core (Ultimate                x141   328.87K   383.89K   +55.02K    54.13M    46.37M     7.76M
+   28  Force Core(Highest                    x200   282.00K   298.79K   +16.80K    59.76M    56.40M     3.36M
+    balance now 1.33B
+  0.01 minute(s) are up after pass 1
+1 pass(es), 20 relisted, 10 empty, 0 skipped in 1242s (62108 ms a row)
+PROFIT THIS RUN -- each sale against its row's cost: what this run bought at what it paid, stock it started with at the start-up market price; unsold lots at the price they were bought against
+  item                              profit   units  margin        revenue           cost
+       Chaos Core Set X 255          33.55M   1.68K    3.8%    888.80M                                855.25M
+       Force Gem Package              4.00M       1    2.5%    160.00M                                156.00M
+       Honor Medal Reset Scroll               0      32    0.0%    130.88M                            130.88M
+       Force Core(High)                 475.02K      30    7.1%      6.69M                              6.21M
+  ------------------------------------------------------------------------------------
+       SOLD                          38.03M   1.74K    3.2%  1.19B                                      1.15B
+  bought this run and still unsold, taken as sold at the price each lot was bought against:
+    upgradecoreultimate              329 core(s)     108.19M Alz paid   +18.12M
+    forcecorehighest                 361 core(s)     101.80M Alz paid    +6.06M
+    forcecorehigh                    335 core(s)      69.37M Alz paid    +5.30M
+  ------------------------------------------------------------------------------------
+  RUN CLOSED                    67.51M   (38.03M realised, +29.49M assumed)
+  started 11:18:31, ended 11:41:36, ran for 23m 4s
+##############################################################################################
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##########  ##########  ##      ##  ##########    ########  ##      ##  ##########  ########  
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ####    ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+##              ##      ##  ##  ##      ##      ##          ##      ##  ##          ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+########        ##      ##  ##  ##      ##        ######    ##########  ########    ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##    ####      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##              ##      ##      ##      ##              ##  ##      ##  ##          ##      ##
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##          ##########  ##      ##  ##########  ########    ##      ##  ##########  ########  
+##############################################################################################
        stock at its listed price                                                                        2.15B
        Alz, latest balance line                                                                         1.33B
        Cash at the voucher price                                                                      124.80M
@@ -116,7 +148,7 @@ ROWS -- 2026-11-26_111831_relist_board.log, board during pass 1 at row 30, read 
        NET WORTH                                                                                        3.65B
 
 
-MARKET -- 2026-11-26_111831_relist.log, pass 1, log last written 11:41 Central (live)
+MARKET -- 2026-11-26_111831_relist.log, pass 1, log last written 11:41 Central
 
 core                     rows    buy/u   sell/u  margin  margin %  wants  short?
 -------------------------------------------------------------------------------------------------------------------
